@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../design/app_kit.dart';
-import '../../courses/component/number_pair.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/number_pair.dart';
 import '../../../../utils/helpers.dart';
 import '../../../student/models.dart';
 import '../sessions_provider.dart';

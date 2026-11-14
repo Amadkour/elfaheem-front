@@ -22,7 +22,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart' show CourseCover;
+import 'package:flutter_education_app/features/courses/course_space/course_space.dart' show CourseCover;
 
 /// The glass play badge in the middle of a paused reel, its icon, and the glass of a control (in a 48 px target).
 const double _playGlass = 56;

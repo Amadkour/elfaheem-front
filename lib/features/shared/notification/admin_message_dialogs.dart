@@ -13,7 +13,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import '../../../main.dart' show navigatorKey;
 import '../../../utils/widget/app_navigator.dart';
 import '../../../utils/widget/view_as_state.dart';
-import '../../student/courses/details/growth_tr.dart';
+import 'package:flutter_education_app/features/courses/student/details/growth_tr.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 class AdminMessageDialogs {

@@ -26,10 +26,10 @@ import 'package:volume_controller/volume_controller.dart';
 import '../../../../config/app_config.dart';
 import '../../../../core/offline/offline_strings.dart';
 import '../../../../utils/helpers.dart';
-import '../../../student/courses/details/course_detail_provider.dart';
-import '../../../student/courses/security/device_blocked_dialog.dart';
-import '../../../student/courses/security/device_id_service.dart';
-import '../../../student/courses/security/device_security_provider.dart';
+import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
+import 'package:flutter_education_app/features/courses/student/security/device_blocked_dialog.dart';
+import 'package:flutter_education_app/features/courses/student/security/device_id_service.dart';
+import 'package:flutter_education_app/features/courses/student/security/device_security_provider.dart';
 import 'fullscreen_stub.dart'
 if (dart.library.js_interop) 'fullscreen_web.dart' as webfs;
 

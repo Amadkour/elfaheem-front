@@ -2,9 +2,9 @@
 // the hero over a cover (full bleed with the block overlapping it on phones, framed beside the title on desktop),
 // the progress bar, a session row whose materials unfold, and the price / discount / private marks.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/course/course_price_tag.dart';
-import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
-import 'package:flutter_education_app/features/shared/course/private_flag.dart';
+import 'package:flutter_education_app/features/courses/course_price_tag.dart';
+import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
+import 'package:flutter_education_app/features/courses/private_flag.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

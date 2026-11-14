@@ -1,4 +1,4 @@
-// The course roadmap + recommendations parsers (lib/features/shared/roadmap/roadmap_api.dart, D-120) against REAL
+// The course roadmap + recommendations parsers (lib/features/courses/roadmap/roadmap_api.dart, D-120) against REAL
 // server answers — test/fixtures/payloads/{roadmap_*, recommendations, learning_prefs, journey,
 // me_home_student_journey}.json, written by ../back/tests/contract/dump_payloads.py learning from
 // tests/org_v2/e2e_learning_roadmap.py (FRONT_DIR=<this checkout> when it is not ../nextbrain-front). Every key a
@@ -6,7 +6,7 @@
 // `journey`) parses to no card.
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
-import 'package:flutter_education_app/features/shared/roadmap/roadmap_api.dart';
+import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'payload_shapes_test.dart' show fixture, hasKeys, m, ms;

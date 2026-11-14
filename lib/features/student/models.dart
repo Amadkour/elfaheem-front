@@ -6,12 +6,12 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/course_access.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
-import '../shared/category/categories_provider.dart';
-import '../shared/category/model.dart';
+import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
+import 'package:flutter_education_app/features/courses/category/model.dart';
 import '../teacher/home/teacher_models.dart';
-import '../shared/course/course_scope.dart' show CourseOrg;
+import 'package:flutter_education_app/features/courses/course_scope.dart' show CourseOrg;
 
-export '../shared/course/discount_info.dart';
+export 'package:flutter_education_app/features/courses/discount_info.dart';
 
 enum CourseStatus { all, inProgress, completed, withdrawn }
 

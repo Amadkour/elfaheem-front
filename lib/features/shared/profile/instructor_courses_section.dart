@@ -24,8 +24,8 @@ import '../../../design/app_kit.dart'
 import '../../../design/app_tokens.dart';
 import '../../../utils/widget/app_navigator.dart';
 import '../../student/models.dart';
-import '../course/course_list_card.dart';
-import '../course/course_row.dart' show CourseCard;
+import 'package:flutter_education_app/features/courses/course_list_card.dart';
+import 'package:flutter_education_app/features/courses/course_row.dart' show CourseCard;
 
 // ── Data ────────────────────────────────────────────────────────────────────
 

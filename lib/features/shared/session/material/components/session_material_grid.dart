@@ -23,7 +23,7 @@ import '../../../../../design/app_kit.dart' show showAppSheet, AppSheetHeader, A
 import '../../../../../design/app_tokens.dart';
 import '../../../../../utils/helpers.dart';
 import '../../../../../utils/widget/rating_widget.dart';
-import '../../../../student/courses/details/course_detail_provider.dart';
+import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
 import '../../../../student/models.dart';
 import '../../../../teacher/sessions/sessions_provider.dart';
 import '../../video/video_player_screen.dart';

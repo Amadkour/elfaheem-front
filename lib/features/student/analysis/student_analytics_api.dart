@@ -5,7 +5,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/course/course_scope.dart' show modeCourseScopeQuery;
+import 'package:flutter_education_app/features/courses/course_scope.dart' show modeCourseScopeQuery;
 
 import '../../teacher/analysis/attendance/attendance_model.dart';
 import '../../teacher/data_lab/data_lab_api.dart';

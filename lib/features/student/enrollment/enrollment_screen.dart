@@ -11,7 +11,7 @@ import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppPressScale;
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/features/shared/course/course_list_card.dart' show CourseCoverArt, coursePrimaryInk;
+import 'package:flutter_education_app/features/courses/course_list_card.dart' show CourseCoverArt, coursePrimaryInk;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/student/enrollment/saved_cards/saved_payment_models.dart';

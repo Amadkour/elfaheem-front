@@ -22,8 +22,8 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_kit.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../admin/admin_common.dart' show t;
-import '../../shared/roadmap/journey_page.dart' show JourneyTrack, journeyActionLabel, journeyStepState;
-import '../../shared/roadmap/roadmap_api.dart';
+import 'package:flutter_education_app/features/courses/roadmap/journey_page.dart' show JourneyTrack, journeyActionLabel, journeyStepState;
+import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart';
 
 /// The card's data from /me/home's raw `journey` block, or null when no card is drawn: not the personal context
 /// ([roadmapOrgAccount]: Organization mode or an organization login), a switch off, or no clear interest yet.

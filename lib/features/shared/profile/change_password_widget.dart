@@ -23,7 +23,7 @@ import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/auth_widgets.dart';
 import '../../auth/login_screen.dart';
-import '../../student/courses/details/components/app_responsive.dart';
+import 'package:flutter_education_app/features/courses/student/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase;
 

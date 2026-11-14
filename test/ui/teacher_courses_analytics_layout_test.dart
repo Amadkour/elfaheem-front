@@ -8,9 +8,9 @@ import 'package:flutter_education_app/features/shared/analytics/analytics_summar
 import 'package:flutter_education_app/features/student/analysis/analytics_editorial.dart';
 import 'package:flutter_education_app/features/student/analysis/student_course_analytics_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart' show AppCurrency, CourseStatus;
-import 'package:flutter_education_app/features/teacher/courses/component/course_progress_status_card.dart';
-import 'package:flutter_education_app/features/teacher/courses/component/currency_selector.dart';
-import 'package:flutter_education_app/features/teacher/courses/component/section_card.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/course_progress_status_card.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/currency_selector.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/section_card.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_api.dart';

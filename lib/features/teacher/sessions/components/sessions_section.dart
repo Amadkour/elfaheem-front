@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../../shared/course/course_space/course_space.dart';
+import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
 import '../../../shared/session/material/session_material_widget.dart';
 import '../sessions_provider.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';

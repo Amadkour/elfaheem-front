@@ -15,9 +15,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/course/course_scope.dart';
-import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
-import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
+import 'package:flutter_education_app/features/courses/course_scope.dart';
+import 'package:flutter_education_app/features/courses/course_scope_bar.dart';
+import 'package:flutter_education_app/features/courses/home_course_list.dart';
 import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
 import 'package:flutter_test/flutter_test.dart';
 

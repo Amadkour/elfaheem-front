@@ -1,6 +1,6 @@
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/course_access.dart';
-import 'package:flutter_education_app/features/admin/course_trash/trash_models.dart';
+import 'package:flutter_education_app/features/courses/admin/course_trash/trash_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> trashJson() => {

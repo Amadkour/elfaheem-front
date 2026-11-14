@@ -16,7 +16,7 @@ import '../../core/base_provider.dart';
 import '../../utils/helpers.dart';
 import '../../utils/widget/view_as_state.dart';
 import '../../core/app_mode.dart';
-import '../shared/category/categories_provider.dart';
+import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
 import '../shared/notification/notification_service.dart';
 import '../../config/app_config.dart' show AppConfig;
 import 'package:flutter_education_app/features/exams/exam_media.dart' show MediaBytesCache;

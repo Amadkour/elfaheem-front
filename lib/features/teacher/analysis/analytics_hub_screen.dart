@@ -29,7 +29,7 @@ import '../../shared/analytics/analytics_ui.dart';
 import '../../student/analysis/student_analytics_profile_screen.dart';
 import '../../student/analysis/analytics_editorial.dart';
 import '../../student/analysis/student_analytics_provider.dart';
-import '../courses/teacher_courses_provider.dart';
+import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
 import '../data_lab/data_lab_api.dart';
 import '../data_lab/data_lab_models.dart';
 import '../home/teacher_models.dart';

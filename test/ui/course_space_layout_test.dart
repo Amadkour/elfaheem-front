@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
+import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
 import 'package:flutter_education_app/features/student/models.dart' show sessionInstantUtc;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show CourseSchedule;

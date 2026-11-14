@@ -11,7 +11,7 @@ import 'package:flutter_education_app/features/shared/session/session_track_tabs
 import 'package:flutter_education_app/features/shared/session/video/vod_player_parts.dart';
 import 'package:flutter_education_app/features/shared/upload/upload_progress_footer.dart';
 import 'package:flutter_education_app/features/shared/upload/upload_task.dart';
-import 'package:flutter_education_app/features/student/courses/details/session_exam_gate.dart';
+import 'package:flutter_education_app/features/courses/student/details/session_exam_gate.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

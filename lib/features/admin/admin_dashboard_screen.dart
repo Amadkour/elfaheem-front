@@ -32,7 +32,7 @@ import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/design/app_settings.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
-import 'package:flutter_education_app/features/student/courses/details/components/app_responsive.dart';
+import 'package:flutter_education_app/features/courses/student/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppPageHeader;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';

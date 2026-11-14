@@ -12,7 +12,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/offline/downloads_availability.dart' show linkAvailableHere;
 import 'package:flutter_education_app/design/app_image_cropper.dart';
-import 'package:flutter_education_app/features/student/courses/details/course_detail_screen.dart';
+import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';

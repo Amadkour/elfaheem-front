@@ -2,9 +2,9 @@
 // old tab names mapped, the unread count, and every profile tab drawn at 320x640 / 1400x900, ar / en, textScaler 1.3
 // with the profile preloaded (no network).
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
-import 'package:flutter_education_app/features/shared/course_profile/course_profile_hub.dart';
-import 'package:flutter_education_app/features/shared/course_profile/course_profile_models.dart' show CoursePageState;
+import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_models.dart' show CoursePageState;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

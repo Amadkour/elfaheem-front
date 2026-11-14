@@ -42,7 +42,7 @@ import '../../../core/attention/decision_refresh.dart';
 import '../../../core/base_provider.dart';
 import '../../../core/home/me_home.dart' show MeHomeService, MeLiveRoom, liveRoomsAfterEvent;
 import '../../../utils/live_events.dart';
-import '../courses/component/teacher_stats.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 import 'teacher_home_extra.dart';
 import 'teacher_models.dart';
 

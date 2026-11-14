@@ -1,12 +1,12 @@
-// Course scope (lib/features/shared/course/course_scope.dart): the personal account lists only courses outside any
+// Course scope (lib/features/courses/course_scope.dart): the personal account lists only courses outside any
 // organization, Organization mode only that organization's; the student's chips and smart default; and the two
 // providers on the wire (`scope` / `org_id`, following AppModeController, an older server that ignores the scope).
 // Server side: ../back/tests/org_v2/e2e_course_scope.py.
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
-import 'package:flutter_education_app/features/shared/course/course_scope.dart';
-import 'package:flutter_education_app/features/student/courses/my_courses/my_courses_provider.dart';
-import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
+import 'package:flutter_education_app/features/courses/course_scope.dart';
+import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_provider.dart';
+import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

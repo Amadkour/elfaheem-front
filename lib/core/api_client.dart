@@ -24,9 +24,9 @@ import '../features/admin/admin_mfa_page.dart' show AdminMfaPage;
 import '../features/auth/teacher_onboarding_token.dart';
 import '../features/shared/guest/guest_state.dart';
 import 'guest_link_visit.dart';
-import '../features/student/courses/security/device_blocked_dialog.dart';
-import '../features/student/courses/security/device_id_service.dart';
-import '../features/student/courses/security/device_security_provider.dart';
+import 'package:flutter_education_app/features/courses/student/security/device_blocked_dialog.dart';
+import 'package:flutter_education_app/features/courses/student/security/device_id_service.dart';
+import 'package:flutter_education_app/features/courses/student/security/device_security_provider.dart';
 import '../utils/widget/view_as_state.dart';
 
 // ── User-facing messages (single place to translate / edit) ──────────────────

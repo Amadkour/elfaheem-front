@@ -81,10 +81,10 @@ Tests: `test/ui/polish_auth_shared_layout_test.dart` (20 tests: `NotificationsSt
 | shared/attendance/teacher_attendance_launcher.dart | `Colors.grey` ×2 | theme | no pull-to-refresh: the session list is handed in by the caller |
 | shared/attendance/offline_attendance_tab.dart | spinner; hand empty state | skeleton; `AppEmpty` | local cache, no refresh source |
 | shared/attendance/admin_data_lab_page.dart | spinner; hand `RefreshIndicator`; `'$e'`; ± buttons unlabelled | skeleton; `AppRefresh`; API message; tooltips | — |
-| shared/category/categories_screen.dart · _provider.dart | Arabic-only strings (bug 8); no pull-to-refresh; 5 colours; physical badge; clear-search unlabelled | bilingual `_tx`; `AppRefresh` on both layouts + `CategoriesProvider.refresh()`; theme; directional; tooltip | own shimmer widgets kept (already skeletons) |
-| shared/course_profile/course_profile_screen.dart | 7 colours; hand `RefreshIndicator` | theme; `AppRefresh` | — |
-| shared/course_profile/course_profile_parts.dart | hand `RefreshIndicator`; raw `'$e'` | `AppRefresh`; `cpErrorMessage` | — |
-| shared/course_profile/course_profile_actions.dart · _announcements.dart · _models.dart | — | — | already kit-based |
+| features/courses/category/categories_screen.dart · _provider.dart | Arabic-only strings (bug 8); no pull-to-refresh; 5 colours; physical badge; clear-search unlabelled | bilingual `_tx`; `AppRefresh` on both layouts + `CategoriesProvider.refresh()`; theme; directional; tooltip | own shimmer widgets kept (already skeletons) |
+| features/courses/course_profile/course_profile_screen.dart | 7 colours; hand `RefreshIndicator` | theme; `AppRefresh` | — |
+| features/courses/course_profile/course_profile_parts.dart | hand `RefreshIndicator`; raw `'$e'` | `AppRefresh`; `cpErrorMessage` | — |
+| features/courses/course_profile/course_profile_actions.dart · _announcements.dart · _models.dart | — | — | already kit-based |
 | shared/analytics/analytics_ui.dart | 21 colours; `AnGlassPill` / `AnChip` overflow on long labels | theme; `Flexible` + ellipsis | — |
 
 ## Process note

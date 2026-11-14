@@ -9,7 +9,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../../../core/api_client.dart';
-import 'package:flutter_education_app/features/shared/course/course_scope.dart' show modeCourseScopeQuery;
+import 'package:flutter_education_app/features/courses/course_scope.dart' show modeCourseScopeQuery;
 import 'cert_issue_logic.dart';
 import 'cert_verify_logic.dart' show kCertLookupBase;
 import 'cert_issue_photo_logic.dart';

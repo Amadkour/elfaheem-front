@@ -14,7 +14,7 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show ErrorRetry, asInt, asMap, asMapList, t;
-import '../../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_screen.dart' show openCourseProfile;
 import '../org_providers.dart';
 import 'org_home_tasks.dart' show OrgRowsCard;
 

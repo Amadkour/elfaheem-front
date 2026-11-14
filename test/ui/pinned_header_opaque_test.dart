@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
+import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/admin/course_trash/trash_models.dart';
-import 'package:flutter_education_app/features/admin/course_trash/trash_widgets.dart';
+import 'package:flutter_education_app/features/courses/admin/course_trash/trash_models.dart';
+import 'package:flutter_education_app/features/courses/admin/course_trash/trash_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

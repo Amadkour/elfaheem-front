@@ -23,7 +23,7 @@ import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredAdminEntityManage;
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
-import 'package:flutter_education_app/features/shared/course/course_price_tag.dart' show coursePriceLabel;
+import 'package:flutter_education_app/features/courses/course_price_tag.dart' show coursePriceLabel;
 import 'package:flutter_education_app/features/student/models.dart' show AppCurrencyX;
 import 'package:provider/provider.dart';
 

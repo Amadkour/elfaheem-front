@@ -3,7 +3,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../courses/list/courses_list_screen.dart';
+import 'package:flutter_education_app/features/courses/student/list/courses_list_screen.dart';
 
 /// The home's search box (a button that opens the course search), drawn as the kit's input well (the warm `inputBg`
 /// fill, radius 14, a hairline at rest — §3a of lib/design/README.md) so it reads as "type here". Under the header on

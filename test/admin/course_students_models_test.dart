@@ -1,5 +1,5 @@
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/admin/course_students/cs_models.dart';
+import 'package:flutter_education_app/features/courses/admin/course_students/cs_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> access({String reason = 'enrolled', String status = 'active', bool has = true, String? exp = '2027-04-28T16:19:07', List<String> flags = const []}) => {

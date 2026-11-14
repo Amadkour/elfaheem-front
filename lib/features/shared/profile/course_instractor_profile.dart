@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// features/student/courses/components/course_instractor_profile.dart
+// features/courses/student/components/course_instractor_profile.dart
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
@@ -18,7 +18,7 @@ import '../../../utils/widget/rating_widget.dart';
 import '../../auth/teacher_document_model.dart';
 import '../../auth/teacher_document_provider.dart';
 import '../../student/models.dart';
-import '../../teacher/courses/component/teacher_stats.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 import '../../teacher/home/home_screen.dart';
 import 'instructor_courses_section.dart';
 import 'package:flutter_education_app/design/app_kit.dart';

@@ -7,7 +7,7 @@ import 'package:flutter_education_app/core/display/app_fonts.dart' show AppFonts
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asMap, t;
-import 'package:flutter_education_app/features/student/courses/security/device_id_service.dart';
+import 'package:flutter_education_app/features/courses/student/security/device_id_service.dart';
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
 import 'package:flutter_education_app/features/exams/exam_integrity.dart';
 import 'package:flutter_education_app/features/exams/exam_taking.dart';

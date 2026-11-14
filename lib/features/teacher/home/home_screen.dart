@@ -47,8 +47,8 @@ import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
 // (OrgMemberHome is built through deferredOrgMemberHome)
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
-import 'package:flutter_education_app/features/shared/course/course_list_card.dart';
-import 'package:flutter_education_app/features/shared/course/course_scope.dart' show CourseScope;
+import 'package:flutter_education_app/features/courses/course_list_card.dart';
+import 'package:flutter_education_app/features/courses/course_scope.dart' show CourseScope;
 import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 import 'package:flutter_education_app/features/shared/inbox/inbox_page.dart' show kInboxFeatureKey;
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart'
@@ -75,7 +75,7 @@ import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../../shared/notification/notifications_provider.dart';
 import '../../student/dashboard/dashboard_screen.dart';
-import '../courses/component/teacher_stats.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 import '../home/teacher_models.dart';
 import '../sessions/sessions_provider.dart';
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';

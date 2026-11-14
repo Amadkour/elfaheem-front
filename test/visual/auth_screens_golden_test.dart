@@ -38,7 +38,7 @@ import 'package:flutter_education_app/features/auth/register_screen.dart';
 import 'package:flutter_education_app/features/auth/username.dart';
 import 'package:flutter_education_app/features/auth/username_field.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
-import 'package:flutter_education_app/features/shared/category/categories_provider.dart';
+import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/about/about_terms_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_test/flutter_test.dart';

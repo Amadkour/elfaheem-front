@@ -8,7 +8,7 @@ import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/org/org_member_today.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
-import 'package:flutter_education_app/features/teacher/courses/component/teacher_stats.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 import 'package:flutter_education_app/features/teacher/home/home_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_test/flutter_test.dart';

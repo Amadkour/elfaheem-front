@@ -1,10 +1,10 @@
 // Course profile: pure helpers + the page at 320x640 / 1400x900, Arabic + English, textScaler 1.3 (no network:
 // the payload is passed in `initial`).
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/course_profile/course_profile_actions.dart';
-import 'package:flutter_education_app/features/shared/course_profile/course_profile_models.dart';
-import 'package:flutter_education_app/features/shared/course_profile/course_profile_parts.dart';
-import 'package:flutter_education_app/features/shared/course_profile/course_profile_screen.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_actions.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_models.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_parts.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

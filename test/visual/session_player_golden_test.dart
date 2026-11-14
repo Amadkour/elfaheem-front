@@ -30,7 +30,7 @@ import 'package:flutter_education_app/features/shared/session/material/component
 import 'package:flutter_education_app/features/shared/session/material/components/session_shared_widgets.dart';
 import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
-import 'package:flutter_education_app/features/student/courses/details/session_exam_gate.dart';
+import 'package:flutter_education_app/features/courses/student/details/session_exam_gate.dart';
 import 'package:flutter_education_app/features/shared/session/video/video_player_screen.dart';
 import 'package:flutter_education_app/features/shared/session/video/vod_listen.dart';
 import 'package:flutter_education_app/features/shared/session/video/vod_player_parts.dart';

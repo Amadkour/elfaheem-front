@@ -15,8 +15,8 @@ import '../../shared/guest/guest_state.dart';
 import '../analysis/student_analytics_provider.dart';
 import '../analysis/student_analytics_screen.dart';
 import '../../shared/profile/profile_screen.dart';
-import '../courses/my_courses/my_courses_provider.dart';
-import '../courses/my_courses/my_courses_screen.dart';
+import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_provider.dart';
+import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_screen.dart';
 import '../../shared/notification/notifications_provider.dart';
 import '../home/home_screen.dart';
 

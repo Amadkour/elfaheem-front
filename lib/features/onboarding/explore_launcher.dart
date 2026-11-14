@@ -3,7 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../shared/category/categories_screen.dart';
+import 'package:flutter_education_app/features/courses/category/categories_screen.dart';
 import '../shared/guest/guest_state.dart';
 
 /// Starts guest mode, lands on `/dashboard` and pushes the explorer for [categoryId] (a level, else a subject; null =

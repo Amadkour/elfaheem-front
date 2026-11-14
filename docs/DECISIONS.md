@@ -1747,7 +1747,7 @@ smart page, as premium as possible; redesign the header icons (back, share, refr
 simple." The student's course details and the teacher's studio (both `CourseSpace`) each had a "Course profile" quick
 action that pushed `CourseProfileScreen` (overview · lectures · sections · attendance · announcements · certificates ·
 team · archive) — a second page about the same course with its own hero and tabs.
-**Decision.** The profile's parts became tabs of the one page (`lib/features/shared/course_profile/course_profile_hub.dart`):
+**Decision.** The profile's parts became tabs of the one page (`lib/features/courses/course_profile/course_profile_hub.dart`):
 student — Announcements (unread count) · Progress (per-part progress, attendance, grade, certificates) · Archive (closed
 course: code / request) and the teaching team in About; staff — Announcements · Attendance (open attendance, by hand,
 the numbers, the attendance report, certificate rules) · Team (assistant grants) · Archive (access policy, requests,
@@ -1886,7 +1886,7 @@ no level / tags, no interests.
   (`course_prereq_links`, the owner's own personal courses, never also a next step: 422 `roadmap_cycle`), advisory only
   (owner's answer: show status, never block enrolment); `courses.level` / `courses.tags` are new (migration 0031). Read
   and edited through `GET/PUT /api/v1/roadmap/courses/{id}` (+ `/candidates`). On the course page it is a "Path" tab
-  (`lib/features/shared/roadmap/roadmap_tab.dart`) for both roles: ONE vertical path (`roadmap_path.dart`): previous →
+  (`lib/features/courses/roadmap/roadmap_tab.dart`) for both roles: ONE vertical path (`roadmap_path.dart`): previous →
   the course tinted "You are here" → the next courses numbered, each with its prerequisites as ✓ / ○ chips; the student
   sees states and live % (done = enrolment completed or every material done, the app's rule) and "Enroll in the whole
   path"; the teacher sees drafts and edits in one sheet (`roadmap_editor.dart`: add · drag to reorder · remove next
@@ -2655,7 +2655,7 @@ Two types beyond the brief: `admin_granted` (access with no payment) and `plan_b
 ## D-212 — The Super Admin's Courses ↔ Students console · 2026-11-04 · accepted
 
 `/api/v1/admin/course-students/…` (super admin only; kill switch `admin.course_students`) and
-`lib/features/admin/course_students/`: courses with active / expiring / expired students, revenue and issues; each
+`lib/features/courses/admin/course_students/`: courses with active / expiring / expired students, revenue and issues; each
 course's full roster with a status badge and the inconsistencies (paid without access, access without payment); a
 student drawer whose first block is the live access diagnostic per course, then the subscriptions, payments and the
 event timeline. Students are found by academic ID, national ID (shown masked), e-mail, phone or @username. Extend,

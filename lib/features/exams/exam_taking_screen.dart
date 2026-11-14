@@ -20,7 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, t, asMapList;
 import 'package:flutter_education_app/features/admin/admin_money_p8.dart' show p8SaveBytes;
-import 'package:flutter_education_app/features/student/courses/security/device_id_service.dart';
+import 'package:flutter_education_app/features/courses/student/security/device_id_service.dart';
 import 'package:flutter_education_app/features/exams/exam_consent_screen.dart';
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
 import 'package:flutter_education_app/features/exams/exam_integrity.dart';

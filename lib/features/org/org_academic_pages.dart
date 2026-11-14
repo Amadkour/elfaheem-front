@@ -28,7 +28,7 @@ import 'org_page_kit.dart' show OrgPartPicker;
 import 'org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'org_suggestions.dart' show OrgTermSuggestions;
-import '../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_screen.dart' show openCourseProfile;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';

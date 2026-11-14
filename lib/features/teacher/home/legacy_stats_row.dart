@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 
 import '../../../config/app_config.dart';
 import '../../../design/app_kit.dart';
-import '../courses/component/teacher_stats.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 
 class StatsRow extends StatelessWidget {
   final TeacherStats stats;

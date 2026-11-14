@@ -10,7 +10,7 @@ import 'package:flutter_education_app/features/shared/calendar/schedule_page.dar
 import 'package:flutter_education_app/features/shared/calendar/schedule_store.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
-import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
+import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
@@ -19,7 +19,7 @@ import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../utils/widget/app_navigator.dart' show AppNavigator;
 import '../analysis/analytics_hub_screen.dart';
-import '../courses/courses_screen.dart';
+import 'package:flutter_education_app/features/courses/teacher/courses_screen.dart';
 import '../home/home_screen.dart';
 import '../../shared/profile/profile_screen.dart';
 import '../home/teacher_home_provider.dart';

@@ -25,7 +25,7 @@ import 'admin_message_dialogs.dart';
 import '../attendance/attendance_push.dart';
 
 // TODO: adjust this path if CourseDetailProvider actually lives elsewhere.
-import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
+import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
 
 import 'web_notification_stub.dart'
     if (dart.library.js_interop) 'web_notification_web.dart';

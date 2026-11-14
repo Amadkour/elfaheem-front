@@ -1,12 +1,12 @@
-// The course roadmap + recommendations models (lib/features/shared/roadmap/roadmap_api.dart, D-120): parsing the
+// The course roadmap + recommendations models (lib/features/courses/roadmap/roadmap_api.dart, D-120): parsing the
 // server's payloads, the teacher's draft, reasons, the journey's lines and which errors hide a part.
 import 'package:dio/dio.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_screen.dart' show NotifKind, notificationKind;
-import 'package:flutter_education_app/features/shared/roadmap/roadmap_api.dart';
-import 'package:flutter_education_app/features/shared/roadmap/roadmap_path.dart';
-import 'package:flutter_education_app/features/shared/roadmap/recommendations.dart' show interestChoices;
+import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart';
+import 'package:flutter_education_app/features/courses/roadmap/roadmap_path.dart';
+import 'package:flutter_education_app/features/courses/roadmap/recommendations.dart' show interestChoices;
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _c(int id, {String? state, double progress = 0, List<Map<String, dynamic>> prereqs = const [], bool? met}) => {

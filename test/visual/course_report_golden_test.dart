@@ -17,10 +17,10 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/student/analysis/student_course_analytics_screen.dart';
-import 'package:flutter_education_app/features/shared/category/categories_provider.dart';
+import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
 import 'package:flutter_education_app/features/teacher/analysis/analytics_hub_screen.dart';
-import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
-import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
+import 'package:flutter_education_app/features/courses/teacher/course_form_screen.dart';
+import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 

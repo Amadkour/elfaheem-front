@@ -6,7 +6,7 @@
 // "you vs the class", and the saved review / read flags.
 // For the student every course leads to its full report (attendance list, exams, trend) and the flags open the banks.
 //
-// The old path lib/features/student/courses/details/student_analytics_profile_screen.dart re-exports this file,
+// The old path lib/features/courses/student/details/student_analytics_profile_screen.dart re-exports this file,
 // so existing imports keep working.
 library;
 

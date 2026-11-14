@@ -24,7 +24,7 @@ import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandP
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/shared/course/course_list_card.dart';
+import 'package:flutter_education_app/features/courses/course_list_card.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart' show ScreenAppBar;
 import 'package:flutter_education_app/utils/widget/base_page.dart' show BasePage;
 import 'package:flutter_test/flutter_test.dart';

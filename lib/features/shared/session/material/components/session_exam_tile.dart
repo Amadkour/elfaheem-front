@@ -14,7 +14,7 @@ import '../../../../../design/app_buttons.dart';
 import '../../../../../design/app_motion_kit.dart' show AppPressScale;
 import '../../../../../design/app_tokens.dart';
 import '../../../../../utils/helpers.dart';
-import '../../../../student/courses/details/session_exam_gate.dart';
+import 'package:flutter_education_app/features/courses/student/details/session_exam_gate.dart';
 
 class SessionExamTile extends StatelessWidget {
   final SessionExamGate gate;

@@ -18,12 +18,12 @@ import 'package:flutter_education_app/design/master_detail/entity_panel_controll
 import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
-import 'package:flutter_education_app/features/student/courses/my_courses/my_courses_provider.dart';
-import 'package:flutter_education_app/features/student/courses/my_courses/my_courses_screen.dart';
+import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_provider.dart';
+import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_screen.dart';
 import 'package:flutter_education_app/features/student/record/student_record_pages.dart';
 import 'package:flutter_education_app/features/teacher/classroom/teacher_classroom.dart';
-import 'package:flutter_education_app/features/teacher/courses/courses_screen.dart';
-import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
+import 'package:flutter_education_app/features/courses/teacher/courses_screen.dart';
+import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

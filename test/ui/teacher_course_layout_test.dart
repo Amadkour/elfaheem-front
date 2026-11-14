@@ -2,8 +2,8 @@
 // 320×640 and 1400×900, ar / en, textScaler 1.3.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
-import 'package:flutter_education_app/features/teacher/courses/component/add_item_dialog.dart';
+import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/add_item_dialog.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/student/models.dart' show TeacherSessionItem;
 import 'package:flutter_education_app/features/teacher/sessions/components/session_form_sheet.dart';

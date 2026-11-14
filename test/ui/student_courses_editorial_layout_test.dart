@@ -6,8 +6,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/category/categories_provider.dart';
-import 'package:flutter_education_app/features/shared/category/categories_screen.dart';
+import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
+import 'package:flutter_education_app/features/courses/category/categories_screen.dart';
 import 'package:flutter_education_app/features/student/enrollment/enrollment_screen.dart';
 import 'package:flutter_education_app/features/student/enrollment/enrollment_widgets.dart';
 import 'package:flutter_education_app/features/student/models.dart' show CourseModel;

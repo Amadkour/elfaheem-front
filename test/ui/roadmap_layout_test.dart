@@ -5,11 +5,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/admin/admin_recs_page.dart';
-import 'package:flutter_education_app/features/shared/roadmap/journey_page.dart';
-import 'package:flutter_education_app/features/shared/roadmap/recommendations.dart';
-import 'package:flutter_education_app/features/shared/roadmap/roadmap_api.dart';
-import 'package:flutter_education_app/features/shared/roadmap/roadmap_editor.dart';
-import 'package:flutter_education_app/features/shared/roadmap/roadmap_tab.dart';
+import 'package:flutter_education_app/features/courses/roadmap/journey_page.dart';
+import 'package:flutter_education_app/features/courses/roadmap/recommendations.dart';
+import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart';
+import 'package:flutter_education_app/features/courses/roadmap/roadmap_editor.dart';
+import 'package:flutter_education_app/features/courses/roadmap/roadmap_tab.dart';
 import 'package:flutter_education_app/features/student/home/home_journey.dart';
 import 'package:flutter_education_app/features/student/models.dart' show CourseSummary;
 import 'package:flutter_test/flutter_test.dart';

@@ -10,11 +10,11 @@ import 'package:flutter_education_app/features/student/models.dart';
 import '../../../config/app_config.dart';
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/rating_widget.dart';
-import '../../shared/course/course_scope.dart' show CourseOrg;
-import '../../shared/category/categories_provider.dart';
-import '../courses/component/teacher_stats.dart';
+import 'package:flutter_education_app/features/courses/course_scope.dart' show CourseOrg;
+import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 
-export '../../shared/course/discount_info.dart';
+export 'package:flutter_education_app/features/courses/discount_info.dart';
 
 class CourseSchedule {
   final int id;

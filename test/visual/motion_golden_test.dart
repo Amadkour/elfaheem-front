@@ -20,7 +20,7 @@ import 'package:flutter_education_app/design/app_charts.dart';
 import 'package:flutter_education_app/design/app_kpi.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
-import 'package:flutter_education_app/features/shared/course/course_list_card.dart';
+import 'package:flutter_education_app/features/courses/course_list_card.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;

@@ -25,7 +25,7 @@ import '../../auth/teacher_document_provider.dart';
 import '../../auth/username.dart';
 import '../../auth/username_field.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import '../../student/courses/details/components/app_responsive.dart';
+import 'package:flutter_education_app/features/courses/student/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppBlock, AppBlockTone, AppButton, AppButtonSize, AppCard, AppSettingsTile, AppSkeletonBox, AppStatusBadge, AppTabItem,

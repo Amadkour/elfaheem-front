@@ -19,7 +19,7 @@ import 'package:flutter_education_app/features/exams/exam_quick_screen.dart';
 import 'package:flutter_education_app/features/exams/exam_results_screen.dart';
 import 'package:flutter_education_app/features/exams/exam_review_screen.dart' show SessionLockChip;
 import 'package:flutter_education_app/features/shared/session/material/components/session_exam_tile.dart';
-import 'package:flutter_education_app/features/student/courses/details/session_exam_gate.dart';
+import 'package:flutter_education_app/features/courses/student/details/session_exam_gate.dart';
 import 'package:flutter_education_app/features/exams/legacy/teacher/teacher_exam_hub_screen.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:flutter_test/flutter_test.dart';

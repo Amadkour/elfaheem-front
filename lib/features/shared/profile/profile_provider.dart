@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
-import 'package:flutter_education_app/features/shared/course/course_scope.dart' show modeCourseScopeQuery;
+import 'package:flutter_education_app/features/courses/course_scope.dart' show modeCourseScopeQuery;
 import 'package:flutter_education_app/core/live/live_events_client.dart';
 import 'package:http/http.dart' hide MultipartFile;
 import '../../../config/storage_service.dart';

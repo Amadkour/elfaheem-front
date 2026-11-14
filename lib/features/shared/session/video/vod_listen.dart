@@ -26,8 +26,8 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../../core/media_focus.dart';
-import '../../../student/courses/details/course_detail_provider.dart';
-import '../../../student/courses/security/device_id_service.dart';
+import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
+import 'package:flutter_education_app/features/courses/student/security/device_id_service.dart';
 import '../material/session_material_model.dart';
 import 'vod_media_controls.dart';
 import 'vod_player_parts.dart';

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty, AppRefresh;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
+import 'package:flutter_education_app/features/courses/home_course_list.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/search_text_field.dart';
-import '../../student/courses/details/course_detail_screen.dart';
+import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart';
 import '../../student/models.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 

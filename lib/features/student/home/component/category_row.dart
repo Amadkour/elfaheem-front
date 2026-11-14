@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import '../../../shared/category/categories_provider.dart';
-import '../../../shared/category/categories_screen.dart';
+import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
+import 'package:flutter_education_app/features/courses/category/categories_screen.dart';
 
 class CategoriesRow extends StatelessWidget {
   const CategoriesRow({super.key});

@@ -26,7 +26,7 @@ import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/student/courses/details/components/app_responsive.dart'
+import 'package:flutter_education_app/features/courses/student/details/components/app_responsive.dart'
     show Breakpoints;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';

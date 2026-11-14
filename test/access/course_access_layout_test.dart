@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/course_access.dart';
-import 'package:flutter_education_app/features/student/courses/details/components/course_access_parts.dart';
+import 'package:flutter_education_app/features/courses/student/details/components/course_access_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

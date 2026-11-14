@@ -24,7 +24,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/design/boot_splash.dart' show BootSplash;
 import 'package:flutter_education_app/utils/widget/url_strategy.dart' show reloadPage;
-import 'package:flutter_education_app/features/shared/course_profile/course_profile_hub.dart' show CourseProfileHub;
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart' show CourseProfileHub;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse;
 import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
 import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityRef;
@@ -53,7 +53,7 @@ import 'package:flutter_education_app/features/exams/exam_all_screen.dart' defer
 import 'package:flutter_education_app/features/exams/hub/exam_hub_screen.dart' deferred as exam_hub_screen;
 import '../../features/teacher/certificates/certificate_requests_screen.dart' deferred as cert_requests;
 import '../../features/teacher/certificates/designer/certificate_designs_screen.dart' deferred as cert_designs;
-import '../../features/teacher/courses/course_form_screen.dart' deferred as course_form;
+import 'package:flutter_education_app/features/courses/teacher/course_form_screen.dart' deferred as course_form;
 import '../../features/teacher/dashboard/teacher_dashboard_screen.dart' deferred as teacher_dashboard;
 import '../../features/teacher/data_lab/data_lab_screen.dart' deferred as data_lab;
 import 'package:flutter_education_app/features/live/room/join_args.dart' show JoinArgs;

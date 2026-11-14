@@ -16,7 +16,7 @@ import 'package:flutter_education_app/features/exams/legacy/teacher/teacher_exam
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/teacher/analysis/teacher_stat_band.dart';
-import 'package:flutter_education_app/features/teacher/courses/component/number_pair.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/number_pair.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/features/exams/exam_review_screen.dart' show EngineReviewSection;
 import 'package:flutter_education_app/features/exams/exam_authoring.dart' show ExamAuthoringApi;
