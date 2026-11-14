@@ -13,6 +13,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_inputs.dart' show AppField;
 import 'package:flutter_education_app/features/shared/exam_engine/marks/mark_templates_api.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_editor_model.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_editor_panel.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_template_editor.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_template_library.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,6 +39,17 @@ Map<String, dynamic> detectReply() => {
         proposal('p5', 'blob', [0.50, 0.70, 0.10, 0.05], conf: 0.3),
       ],
     };
+
+/// Selects box [id] in the editor's box list by its key: the side panel is a lazy ListView, so the list is scrolled
+/// into being first. The stray box's row still names its missing type.
+Future<void> selectBox(WidgetTester tester, String id) async {
+  final row = find.byKey(ValueKey('markbox.$id'));
+  final panel = find.descendant(of: find.byType(MarkEditorPanel), matching: find.byType(Scrollable)).first;
+  await tester.scrollUntilVisible(row, 200, scrollable: panel);
+  await tester.pump();
+  if (id == 'p5') expect(find.descendant(of: row, matching: find.textContaining('Type not set')), findsOneWidget);
+  await tester.tap(row);
+}
 
 MarkSheetSpec spec0() => MarkSheetSpec.fromDetect(detectReply(), MarkKind.markSheet);
 
@@ -289,9 +301,7 @@ void main() {
       expect(posted, isNull);
 
       // select the stray box from the list and delete it from its form
-      await tester.ensureVisible(find.textContaining('Type not set ·'));
-      await tester.pump();
-      await tester.tap(find.textContaining('Type not set ·'));
+      await selectBox(tester, 'p5');
       await frames(tester);
       await tester.ensureVisible(find.byTooltip('Delete box'));
       await tester.pump();
@@ -365,9 +375,7 @@ void main() {
       await tester.pumpWidget(app(MarkTemplateEditorPage(spec: spec0(), image: png(), blankKey: 'k', kind: MarkKind.markSheet)));
       await frames(tester);
       expect(find.text('Boxes (5)'), findsOneWidget);
-      await tester.ensureVisible(find.textContaining('Type not set ·'));
-      await tester.pump();
-      await tester.tap(find.textContaining('Type not set ·'));
+      await selectBox(tester, 'p5');
       await frames(tester);
       await tester.sendKeyEvent(LogicalKeyboardKey.delete);
       await frames(tester);

@@ -100,6 +100,7 @@ class MarkFieldList extends StatelessWidget {
     return Column(children: [
       for (final f in model.fields)
         Material(
+          key: ValueKey('markbox.${f.id}'),
           color: f.id == model.selectedId ? c.lightPrimary : Colors.transparent,
           borderRadius: AppRadius.cardAll,
           child: InkWell(

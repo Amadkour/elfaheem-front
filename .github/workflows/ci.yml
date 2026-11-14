@@ -24,12 +24,12 @@ jobs:
       - name: no errors or warnings (info-level lints are tracked, not gated — docs/DECISIONS.md D-002)
         run: |
           flutter analyze --no-fatal-infos --fatal-warnings
-      - name: tests (the real suites; test/widget_test.dart is the stock template)
+      - name: tests (the real suites)
         run: flutter test test/org/ test/export/ test/ui/ test/auth/ test/access/ test/admin/ test/perf/
       - name: API contract (every path the app calls exists in the server snapshot, D-026)
         run: flutter test test/contract/
       - name: web build
-        run: flutter build web --release
+        run: flutter build web --release --base-href /app/
 
   secrets:
     name: secrets (gitleaks — current tree + the commits this push / PR adds)

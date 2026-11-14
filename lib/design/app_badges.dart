@@ -91,7 +91,16 @@ Color appWashOn(BuildContext context, Color tone) {
 
 /// [tone] as TEXT (or an icon) on [tint]: the same hue, darkened — lifted in dark mode — until it reads at AA.
 /// Gold, success and warning are only 2.9 – 4.3:1 on their own tints as they come (system.md §2).
-Color appInkOn(BuildContext context, Color tone, Color tint) => ensureContrast(tone, [tint]);
+Color appInkOn(BuildContext context, Color tone, Color tint) => appInkOnTint(tone, tint, dark: context.colors.isDark);
+
+/// The ratio a tone's ink aims for on its own tint in dark mode. Light ink on a dark tint loses more to anti-aliasing
+/// than dark ink on a light one: an ink computed at exactly 4.5:1 measured 3.9:1 as drawn at 11 px (a pill's label),
+/// so dark mode keeps a margin above AA. Light mode aims at AA itself.
+const double kDarkInkOnTint = 5.5;
+
+/// [appInkOn] without a context: [tone] moved (hue kept) until it reaches AA on [tint], [kDarkInkOnTint] when [dark].
+Color appInkOnTint(Color tone, Color tint, {required bool dark}) =>
+    ensureContrast(tone, [tint], min: dark ? kDarkInkOnTint : kWcagAaText);
 
 /// The ink on a SOLID tone fill (a count bubble, a filled chip): whichever of the on-hero ink, the text ink and the
 /// canvas reads best on it (in dark mode the text ink is light, so a light fill takes the dark canvas).

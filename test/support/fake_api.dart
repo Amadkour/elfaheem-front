@@ -32,7 +32,8 @@ class FakeCall {
   String toString() => '$key (d$depth)';
 }
 
-/// A route's answer: a body (Map / List / String) with a status, built from the request.
+/// A route's answer: a body (Map / List / String, or a Uint8List served as raw bytes) with a status, built from the
+/// request.
 typedef FakeHandler = Object? Function(RequestOptions o);
 
 class FakeApi implements HttpClientAdapter {
@@ -146,6 +147,11 @@ class FakeApi implements HttpClientAdapter {
       body = body.body;
     }
     call.done = true;
+    if (body is Uint8List) {
+      return ResponseBody.fromBytes(body, status, headers: {
+        Headers.contentTypeHeader: ['application/octet-stream'],
+      });
+    }
     return ResponseBody.fromString(body is String ? body : jsonEncode(body), status, headers: {
       Headers.contentTypeHeader: ['application/json; charset=utf-8'],
     });
