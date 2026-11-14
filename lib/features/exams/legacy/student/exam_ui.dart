@@ -5,6 +5,7 @@
 // gradient hero, glass icon buttons, soft rounded cards, segmented tabs.
 library;
 
+import 'package:flutter_education_app/design/app_tokens.dart' show AppRadius, AppSpace, AppTouch;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
@@ -114,11 +115,11 @@ class ExamSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return ExamCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Icon(icon, size: 19, color: accent ?? c.primary),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Text(title,
                 style: examT(14.5, w: FontWeight.w800, c: c.textDark)),
@@ -149,7 +150,7 @@ class ExamHero extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppRadius.hero)),
         boxShadow: [
           BoxShadow(
             color: cs.last.withValues(alpha: 0.25),
@@ -161,11 +162,11 @@ class ExamHero extends StatelessWidget {
       child: RepaintBoundary(
         child: AppMeshSurface(
           color: colors == null ? null : cs.last,
-          radius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+          radius: const BorderRadius.vertical(bottom: Radius.circular(AppRadius.hero)),
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 22),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 22),
               child: child,
             ),
           ),
@@ -194,7 +195,7 @@ class ExamHeroBar extends StatelessWidget {
   Widget build(BuildContext context) => Row(children: [
         if (showBack && Navigator.of(context).canPop()) ...[
           const AppBackButton(onHero: true),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
         ],
         Expanded(
           child: Column(
@@ -214,7 +215,7 @@ class ExamHeroBar extends StatelessWidget {
             ],
           ),
         ),
-        for (final a in actions) ...[const SizedBox(width: 8), a],
+        for (final a in actions) ...[const SizedBox(width: AppSpace.xs), a],
       ]);
 }
 
@@ -236,8 +237,8 @@ class GlassIcon extends StatelessWidget {
         onTap: onTap,
         radius: 24,
         child: SizedBox(
-          width: 48,
-          height: 48,
+          width: AppTouch.min,
+          height: AppTouch.min,
           child: Center(
             child: Container(
               width: 40,
@@ -273,10 +274,10 @@ class HeroStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: 6),
           decoration: BoxDecoration(
             color: context.colors.onHero.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: context.colors.onHero.withValues(alpha: 0.18)),
           ),
           child: Column(children: [
@@ -304,7 +305,7 @@ class HeroPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 5),
         decoration: BoxDecoration(
           color: context.colors.onHero.withValues(alpha: 0.16),
           borderRadius: BorderRadius.circular(20),
@@ -408,7 +409,7 @@ class ExamChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 13, color: color),
@@ -480,12 +481,12 @@ class ExamInfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(children: [
         IconTile(icon, color, size: 36),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Text(label,
               style: examT(13, c: context.colors.textMedium)),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         Text(value, style: examT(13.5, w: FontWeight.w800, c: color)),
       ]);
 }
@@ -502,7 +503,7 @@ class ExamStatBox extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: color.withValues(alpha: 0.2)),
           ),
           child: Column(children: [
@@ -582,7 +583,7 @@ class GradientButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: disabled ? context.colors.divider : null,
           gradient: disabled ? null : (color == null ? AppGradients.brand(context) : AppGradients.blend(context, color: base)),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           boxShadow: disabled
               ? []
               : [
@@ -610,7 +611,7 @@ class GradientButton extends StatelessWidget {
                       children: [
                         if (icon != null) ...[
                           Icon(icon, color: context.colors.onHero, size: 20),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpace.xs),
                         ],
                         Flexible(
                           child: Text(label,
@@ -648,13 +649,13 @@ class SoftButton extends StatelessWidget {
         height: 50,
         decoration: BoxDecoration(
           color: c.cardBg,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: c.divider),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           if (icon != null) ...[
             Icon(icon, size: 18, color: c.textMedium),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
           ],
           Text(label, style: examT(14.5, w: FontWeight.w700, c: c.textMedium)),
         ]),
@@ -695,7 +696,7 @@ class ExamTabBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         boxShadow: [
           BoxShadow(
               color: c.heroShade.withValues(alpha: 0.05),
@@ -703,16 +704,16 @@ class ExamTabBar extends StatelessWidget {
               offset: const Offset(0, 3)),
         ],
       ),
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(AppSpace.xxs),
       child: TabBar(
         controller: controller,
         isScrollable: scrollable,
         tabAlignment: scrollable ? TabAlignment.start : null,
         dividerColor: Colors.transparent,
         indicatorSize: TabBarIndicatorSize.tab,
-        splashBorderRadius: BorderRadius.circular(12),
+        splashBorderRadius: BorderRadius.circular(AppRadius.chip),
         indicator: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
           gradient: AppGradients.brand(context),
         ),
         labelColor: context.colors.onHero,
@@ -745,7 +746,7 @@ class ExamTabsDelegate extends SliverPersistentHeaderDelegate {
   Widget build(BuildContext context, double shrinkOffset, bool overlaps) =>
       Container(
         color: context.colors.pinnedBackground,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
         child: ExamTabBar(
             controller: controller, tabs: tabs, scrollable: scrollable),
       );
@@ -766,7 +767,7 @@ class ExamEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xl),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
               width: 88,
@@ -803,7 +804,7 @@ class ExamError extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(AppSpace.xl),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
               width: 88,
@@ -847,7 +848,7 @@ class ExamBanner extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(color: color.withValues(alpha: 0.25)),
         ),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -957,11 +957,11 @@ class _SheetTable extends StatelessWidget {
     }
     final rowCount = rows.length + 1; // +1 = footer ("showing x / y" or the loading spinner)
     // Room for the floating selection bar, the same on both lists so they stay aligned.
-    final bottomPad = EdgeInsets.only(bottom: p.selected.isEmpty ? 16 : 96);
+    final bottomPad = EdgeInsets.only(bottom: p.selected.isEmpty ? AppSpace.md : AppSpace.xxxl + AppSpace.xl);
 
     final scrollbarTheme = ScrollbarThemeData(
       thickness: const WidgetStatePropertyAll(8),
-      radius: const Radius.circular(8),
+      radius: const Radius.circular(AppRadius.chip),
       thumbVisibility: const WidgetStatePropertyAll(true),
       trackVisibility: const WidgetStatePropertyAll(true),
       thumbColor: WidgetStatePropertyAll(c.primary.withValues(alpha: 0.45)),
@@ -1301,10 +1301,10 @@ class _FrozenHeadCell extends StatelessWidget {
             onLongPress: menu,
             onSecondaryTap: menu,
             child: Padding(
-              padding: const EdgeInsetsDirectional.only(start: 8, end: 14),
+              padding: const EdgeInsetsDirectional.only(start: AppSpace.xs, end: 14),
               child: Row(children: [
                 Icon(Icons.push_pin_rounded, size: 12 * z, color: c.primary.withValues(alpha: 0.7)),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpace.xxs),
                 Expanded(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
@@ -1421,7 +1421,7 @@ class _IdentityCell extends StatelessWidget {
         onLongPress: () => _rowActions(context, p, row),
         onSecondaryTap: () => _rowActions(context, p, row),
         child: Padding(
-          padding: const EdgeInsetsDirectional.only(start: 6, end: 8),
+          padding: const EdgeInsetsDirectional.only(start: 6, end: AppSpace.xs),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
               empty ? '—' : value,
@@ -1458,11 +1458,11 @@ Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) asy
       builder: (ctx) {
       final c = ctx.colors;
       Widget tile(String v, IconData icon, String title, String sub, Color color) => ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
         leading: Container(
           width: 40,
           height: 40,
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
           child: Icon(icon, color: color, size: 20),
         ),
         title: Text(title, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
@@ -1477,12 +1477,12 @@ Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) asy
             padding: const EdgeInsets.all(10),
             child: Material(
               color: c.cardBg,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(AppRadius.block),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(8, 14, 8, 10),
+                padding: const EdgeInsets.fromLTRB(AppSpace.xs, 14, AppSpace.xs, 10),
                 child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.sm, 0, AppSpace.sm, AppSpace.xs),
                     child: Text(row.name.isEmpty ? '—' : row.name, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                   ),
                   tile('history', Icons.history_rounded, _tr('dl_history_short', 'History'),
@@ -1522,9 +1522,9 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
     final c = ctx.colors;
     final msg = dlLoginMessage(name: '${r['name']}', login: '${r['login']}', password: '${r['password']}', link: '${r['link']}', course: course);
     Widget line(String label, String value, {bool big = false}) => Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: c.divider)),
+      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.control), border: Border.all(color: c.divider)),
       child: Row(children: [
         Expanded(child: Text(label, style: AppType.meta(context).copyWith(color: c.textMedium))),
         SelectableText(value, textDirection: TextDirection.ltr,
@@ -1539,9 +1539,9 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
           padding: const EdgeInsets.all(10),
           child: Material(
             color: c.cardBg,
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(AppRadius.block),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+              padding: const EdgeInsets.fromLTRB(18, AppSpace.md, 18, 18),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Container(
                   width: 64,
@@ -1551,7 +1551,7 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
                 ),
                 const SizedBox(height: 10),
                 Text('${r['name']}', style: AppType.section(context).copyWith(color: c.textDark)),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 Text(
                   r['emailed'] == true
                       ? _tr('dl_login_emailed', 'Also sent to the student by e-mail.')
@@ -1563,14 +1563,14 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
                 line(_tr('dl_login_login', 'Login'), '${r['login']}'),
                 line(_tr('dl_login_password', 'Temporary password'), '${r['password']}', big: true),
                 line(_tr('dl_login_link', 'Link'), '${r['link']}'),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 Row(children: [
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
                         side: BorderSide(color: c.divider),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                       ),
                       onPressed: () async {
                         await Clipboard.setData(ClipboardData(text: msg));
@@ -1586,7 +1586,7 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
                       style: FilledButton.styleFrom(
                         backgroundColor: c.primary,
                         minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                       ),
                       onPressed: () => SharePlus.instance.share(ShareParams(text: msg)),
                       icon: const Icon(Icons.share_rounded, size: 18),
@@ -1619,17 +1619,17 @@ void showPinSheet(BuildContext context, DataLabProvider p) {
             final on = pinned.contains(key);
             final order = on ? pinned.indexOf(key) + 1 : null;
             return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
               child: Material(
                 color: on ? c.primaryWash : c.inputBg,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.control),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppRadius.control),
                   onTap: () {
                     if (!p.toggleFrozen(key)) toast(_tr('dl_pin_keep_one', 'Keep at least one pinned column'), error: true);
                   },
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 10),
                     child: Row(children: [
                       Icon(icon, size: 19, color: on ? c.primary : c.textMedium),
                       const SizedBox(width: 10),
@@ -1655,14 +1655,14 @@ void showPinSheet(BuildContext context, DataLabProvider p) {
                   constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.85),
                   child: ListView(
                     shrinkWrap: true,
-                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+                    padding: const EdgeInsets.fromLTRB(18, AppSpace.sm, 18, 18),
                     children: [
                       Row(children: [
                         Icon(Icons.push_pin_rounded, color: c.primary),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpace.xs),
                         Expanded(child: Text(_tr('dl_pinned_title', 'Pinned columns'), style: AppType.section(context).copyWith(color: c.textDark))),
                       ]),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpace.xxs),
                       Text(
                         _tr('dl_pinned_sub', 'Pinned columns stay on the side while the rest of the sheet scrolls. Tap to pin or unpin — the number is their order. Drag the edge of a title to change its width.'),
                         style: AppType.meta(context).copyWith(color: c.textMedium),
@@ -1680,7 +1680,7 @@ void showPinSheet(BuildContext context, DataLabProvider p) {
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(46),
                           side: BorderSide(color: c.divider),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                         ),
                         onPressed: p.resetWidths,
                         icon: const Icon(Icons.width_normal_rounded, size: 18),
@@ -1752,10 +1752,10 @@ class _HeadCell extends StatelessWidget {
                         feedback: Material(
                           color: Colors.transparent,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
                             decoration: BoxDecoration(
                               color: c.primary,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(AppRadius.chip),
                               boxShadow: c.primaryShadow,
                             ),
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1776,7 +1776,7 @@ class _HeadCell extends StatelessWidget {
                       ),
                       if (col.isLocked) ...[
                         Icon(Icons.lock_rounded, size: 12 * z, color: c.warning),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpace.xxs),
                       ],
                       // The title shrinks to stay on one line.
                       Expanded(
@@ -1788,7 +1788,7 @@ class _HeadCell extends StatelessWidget {
                         ),
                       ),
                       if (col.isCalculated) ...[
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpace.xxs),
                         Icon(col.isNumber ? Icons.functions_rounded : Icons.text_fields_rounded, size: 13 * z, color: c.purple),
                       ],
                       if (col.style.rules.isNotEmpty || col.style.scale) ...[
@@ -1796,7 +1796,7 @@ class _HeadCell extends StatelessWidget {
                         Icon(Icons.palette_rounded, size: 12 * z, color: c.accent2),
                       ],
                       if (sorted) ...[
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpace.xxs),
                         Icon(p.desc ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 13 * z, color: c.primary),
                       ],
                     ]),
@@ -1927,19 +1927,19 @@ class _ColumnSheetState extends State<_ColumnSheet> {
                 Center(
                   child: Container(width: 40, height: 4, decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(4))),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
                 // ── who is this column ──
                 Row(children: [
                   Container(
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(AppRadius.control),
                       gradient: AppGradients.blend(context),
                     ),
                     child: Icon(col.isCalculated ? Icons.functions_rounded : Icons.view_column_rounded, color: c.onHero, size: 22),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(col.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
@@ -1960,9 +1960,9 @@ class _ColumnSheetState extends State<_ColumnSheet> {
                 if (col.hasExpr)
                   Container(
                     width: double.infinity,
-                    margin: const EdgeInsets.only(top: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                    decoration: BoxDecoration(color: c.purple.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14)),
+                    margin: const EdgeInsets.only(top: AppSpace.sm),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 9),
+                    decoration: BoxDecoration(color: c.purple.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.control)),
                     child: Text('=  ${DlFormulaText.toLabels(col.expr!, p.columns)}',
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
@@ -1971,14 +1971,14 @@ class _ColumnSheetState extends State<_ColumnSheet> {
                   ),
                 // ── class insights ──
                 if (st != null && st.filled > 0) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpace.md),
                   _Insights(stat: st, col: col, total: p.grid?.studentsTotal ?? st.filled, passPercent: p.config.passPercent),
                 ],
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
                 // ── how this column is drawn ──
                 if (col.isNumber) ...[
                   Text(_tr('dl_pres_title', 'How this column looks'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   _PresentationPicker(value: _pres, onChanged: _setPres),
                   const SizedBox(height: 14),
                 ],
@@ -1992,7 +1992,7 @@ class _ColumnSheetState extends State<_ColumnSheet> {
                   sub: _tr('dl_shown_students_hint', 'Students can see this column in their own results.'),
                   onChanged: _toggleStudents,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 if (col.isNumber || col.isCustom)
                   _ToggleTile(
                     on: _locked,
@@ -2003,7 +2003,7 @@ class _ColumnSheetState extends State<_ColumnSheet> {
                     sub: _tr('dl_lock_hint', 'For approved marks: nobody can edit or import into this column until you unlock it.'),
                     onChanged: _toggleLock,
                   ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.sm),
                 // ── actions ──
                 Row(children: [
                   Expanded(
@@ -2106,7 +2106,7 @@ class _Insights extends StatelessWidget {
           Expanded(child: Text(_tr('dl_insights', 'Class insights'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
           Text('${stat.filled} / $total ${_tr('dl_filled', 'filled')}', style: AppType.meta(context).copyWith(color: c.textMedium)),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         Row(children: [
           cell(_tr('dl_avg', 'Average'), dlFmt(stat.avg), color: dlScoreColor(context, stat.avg == null ? null : stat.avg! / mx * 100)),
           cell(_tr('dl_median', 'Median'), dlFmt(stat.median)),
@@ -2155,7 +2155,7 @@ class _ToggleTile extends StatelessWidget {
     final c = context.colors;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
-      padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 8, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(14, AppSpace.sm, AppSpace.xs, AppSpace.sm),
       decoration: BoxDecoration(
         color: on ? color.withValues(alpha: 0.10) : c.textLight.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
@@ -2163,7 +2163,7 @@ class _ToggleTile extends StatelessWidget {
       ),
       child: Row(children: [
         Icon(on ? iconOn : iconOff, color: on ? color : c.textMedium),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
@@ -2171,9 +2171,9 @@ class _ToggleTile extends StatelessWidget {
             Text(sub, style: AppType.meta(context).copyWith(color: c.textMedium)),
           ]),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         AppSwitch(value: on, activeColor: color, onChanged: onChanged, semanticLabel: title),
-        const SizedBox(width: 4),
+        const SizedBox(width: AppSpace.xxs),
       ]),
     );
   }
@@ -2202,7 +2202,7 @@ class _ActionTile extends StatelessWidget {
             Container(
               width: 34,
               height: 34,
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(11)),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(AppRadius.chip)),
               child: Icon(icon, size: 18, color: color),
             ),
             const SizedBox(width: 10),
@@ -2357,13 +2357,13 @@ class _ValueCell extends StatelessWidget {
                   child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       Icon(Icons.format_color_fill_rounded, color: c.primary),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpace.xs),
                       Expanded(
                         child: Text('${row.name.isEmpty ? '—' : row.name} · ${col.label}',
                             maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
                       ),
                     ]),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpace.xxs),
                     Text(_tr('dl_hl_cell_sub', 'Highlight this cell by hand. Everyone who opens the sheet sees it.'),
                         style: AppType.meta(context).copyWith(color: c.textMedium)),
                     const SizedBox(height: 14),
@@ -2476,11 +2476,11 @@ class _CellEditorState extends State<_CellEditor> {
     return Padding(
       padding: EdgeInsets.only(bottom: inset),
       child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, AppSpace.md),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   DlAvatar(name: r.name, size: 42),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(r.name.isEmpty ? '—' : r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark)),
@@ -2498,10 +2498,10 @@ class _CellEditorState extends State<_CellEditor> {
                   ),
                 ]),
                 if (widget.manual && !col.isCustom) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpace.sm),
                   DlBanner(icon: Icons.edit_rounded, text: 'dl_manual_hint'.tr, color: c.primary),
                 ],
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
                 if (col.options.isNotEmpty)
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     for (final o in col.options)
@@ -2527,14 +2527,14 @@ class _CellEditorState extends State<_CellEditor> {
                       errorText: _error,
                       filled: true,
                       fillColor: c.inputBg,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: c.divider)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: c.divider)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide(color: c.primary, width: 1.6)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.md),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.card), borderSide: BorderSide(color: c.divider)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.card), borderSide: BorderSide(color: c.divider)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.card), borderSide: BorderSide(color: c.primary, width: 1.6)),
                     ),
                   ),
                 if (col.isNumber && widget.p.avgOf(col) != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   Text('${'dl_class_avg'.tr}: ${dlFmt(widget.p.avgOf(col))}', textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
                 ],
                 const SizedBox(height: 14),
@@ -2543,9 +2543,9 @@ class _CellEditorState extends State<_CellEditor> {
                   const SizedBox(width: 6),
                   Text(_tr('dl_hl_cell', 'Highlight this cell'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
                 ]),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 DlSwatches(value: _hl, size: 28, onChanged: _setHighlight),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.md),
                 Row(children: [
                   if (widget.manual && !col.isCustom)
                     Expanded(
@@ -2553,7 +2553,7 @@ class _CellEditorState extends State<_CellEditor> {
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(50),
                           side: BorderSide(color: c.divider),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
                         ),
                         onPressed: () => Navigator.pop(context, ''),
                         icon: const Icon(Icons.auto_awesome_rounded, size: 18),
@@ -2566,7 +2566,7 @@ class _CellEditorState extends State<_CellEditor> {
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(50),
                           side: BorderSide(color: c.divider),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
                         ),
                         onPressed: () => Navigator.pop(context, ''),
                         icon: Icon(Icons.backspace_outlined, size: 18, color: c.danger),

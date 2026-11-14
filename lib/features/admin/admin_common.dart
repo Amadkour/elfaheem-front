@@ -34,7 +34,6 @@ import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_states.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
 /// How long every admin search box waits after the LAST keystroke before it
@@ -104,32 +103,7 @@ GlobalKey<ScaffoldMessengerState>();
 void toast(String message, {bool error = false}) {
   // 0) above EVERY route (sheets / dialogs included) — a SnackBar sat behind open overlays
   if (showAppNotice(message, error: error)) return;
-  // 1) fallback: the app-level messenger (no BuildContext involved)
-  final messenger = rootMessengerKey.currentState;
-  if (messenger != null) {
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
-          backgroundColor: (error ? AdminPalette.rose : AdminPalette.green).last,
-          content: Row(children: [
-            Icon(error ? Icons.error_rounded : Icons.check_circle_rounded,
-                color: AdminPalette.ink, size: AppIconSize.md),
-            const SizedBox(width: AppSpace.xs),
-            Expanded(
-              child: Text(message,
-                  style: TextStyle(
-                      fontFamily: AppFonts.family, color: AdminPalette.ink, fontWeight: FontWeight.w600)),
-            ),
-          ]),
-        ),
-      );
-    return;
-  }
-  // 2) fallback: the old helper, but never let a stale context crash the caller
+  // 1) fallback: the old helper, but never let a stale context crash the caller
   try {
     Helpers.showMessage(message, isError: error);
   } catch (e) {

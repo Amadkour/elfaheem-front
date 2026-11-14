@@ -123,16 +123,13 @@ class _TransferCard extends StatelessWidget {
 
   Future<bool> _approve(BuildContext context) async {
     final p = context.read<TeacherTransfersProvider>();
-    final messenger = ScaffoldMessenger.of(context);
-    final c = context.colors;
 
     final ok = await p.approve(transfer.paymentId);
     showRequestSnack(
-      messenger,
       ok
           ? 'request_approved'.tr
           : (p.errorMessage ?? 'request_approve_failed'.tr),
-      color: ok ? c.success : c.danger,
+      error: !ok,
       icon: ok ? Icons.check_circle_rounded : Icons.error_outline_rounded,
     );
     return ok;
@@ -140,8 +137,6 @@ class _TransferCard extends StatelessWidget {
 
   Future<bool> _reject(BuildContext context) async {
     final p = context.read<TeacherTransfersProvider>();
-    final messenger = ScaffoldMessenger.of(context);
-    final c = context.colors;
 
     final reason = await showReasonDialog(
       context,
@@ -156,11 +151,10 @@ class _TransferCard extends StatelessWidget {
 
     final ok = await p.reject(transfer.paymentId, reason);
     showRequestSnack(
-      messenger,
       ok
           ? 'request_rejected'.tr
           : (p.errorMessage ?? 'request_reject_failed'.tr),
-      color: c.danger,
+      error: true, // a rejection reads as red, as before
       icon: ok ? Icons.cancel_rounded : Icons.error_outline_rounded,
     );
     return ok;

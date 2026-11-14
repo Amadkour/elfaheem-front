@@ -127,7 +127,7 @@ class HomeHeader extends StatelessWidget {
     this.subtitle,
     this.wideTrailing,
     this.wideSide,
-    this.padding = const EdgeInsets.fromLTRB(20, 20, 20, 8),
+    this.padding = const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, AppSpace.md + AppSpace.xxs, AppSpace.md + AppSpace.xxs, AppSpace.xs),
     this.helpPageId,
     this.tone,
     this.greetingHero = false,
@@ -481,7 +481,7 @@ class HomeSectionTitle extends StatelessWidget {
                     // an editorial section heading (D-611); a quiet one keeps the muted ink
                     style: AppType.section(context).copyWith(color: quiet ? c.textMedium : c.textDark))),
             if (count != null && count! > 0) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Text(count! > 999 ? '999+' : '$count',
                   style: appText(14, w: FontWeight.w500, c: c.textMedium).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
             ],
@@ -521,7 +521,7 @@ class HomeSectionTitle extends StatelessWidget {
       );
     }
     return Padding(
-      padding: padding ?? const EdgeInsetsDirectional.fromSTEB(20, 0, 12, 10), // the start side follows the language (an Arabic title sat 8 px past the cards' edge)
+      padding: padding ?? const EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, 0, AppSpace.sm, 10), // the start side follows the language (an Arabic title sat 8 px past the cards' edge)
       // The title takes every pixel the action leaves (a Flexible + Spacer pair split the row in halves: the title
       // was cut at half the width and the action floated mid-row instead of sitting at the end).
       // D-650 r3: a page-colour halo when the doodle field would drop the heading (its muted line, its link) below AA
@@ -533,7 +533,7 @@ class HomeSectionTitle extends StatelessWidget {
             child: TextButton(
               onPressed: onAction,
               // horizontally compact only: the vertical density keeps the 48 px tap target (a compact one is 40)
-              style: TextButton.styleFrom(visualDensity: const VisualDensity(horizontal: -2), padding: const EdgeInsets.symmetric(horizontal: 8)),
+              style: TextButton.styleFrom(visualDensity: const VisualDensity(horizontal: -2), padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs)),
               child: Text(actionLabel!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w500, c: appInk(context, c.primary))),
             ),
           ),
@@ -569,7 +569,7 @@ class HomeHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final blockTone = tone ?? AppBlockTone.peach;
     return Padding(
-      padding: margin ?? const EdgeInsets.symmetric(horizontal: 20),
+      padding: margin ?? const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs),
       // depth (D-583): a gentle tilt toward the mouse with a soft glare, a press depth on touch; the ring floats
       child: AppTilt(
         radius: AppRadius.block,
@@ -670,7 +670,7 @@ class HomeActionCard extends StatelessWidget {
     Widget iconBox = Container(
       width: 40,
       height: 40,
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
       // D-650 r3: a brand tile (no tone of its own) wears the gradient glyph
       child: tone == null
           ? AppGradientIcon(icon, size: 21, on: [Color.alphaBlend(color.withValues(alpha: 0.12), c.cardBg)])
@@ -706,7 +706,7 @@ class HomeActionCard extends StatelessWidget {
                   ),
                 ),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
           ]),
         ),
@@ -750,7 +750,7 @@ class HomeTodoCard extends StatelessWidget {
 
 /// Equal-height rows: 2 columns on phones, 3 from 560, 4 from 900.
 class HomeActionGrid extends StatelessWidget {
-  const HomeActionGrid({super.key, required this.children, this.padding = const EdgeInsets.symmetric(horizontal: 20)});
+  const HomeActionGrid({super.key, required this.children, this.padding = const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs)});
   final List<Widget> children;
   final EdgeInsetsGeometry padding;
 
@@ -874,7 +874,7 @@ class HomeAgenda extends StatefulWidget {
     this.emptyMessage,
     this.emptyActionLabel,
     this.onEmptyAction,
-    this.padding = const EdgeInsets.symmetric(horizontal: 20),
+    this.padding = const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs),
     this.nowMin,
     this.compact = true,
     this.maxItems = 3,
@@ -947,7 +947,7 @@ class _HomeAgendaState extends State<HomeAgenda> {
       return Padding(
         padding: padding,
         child: AppCard(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
           child: AnimatedSize(
             duration: (MediaQuery.maybeDisableAnimationsOf(context) ?? false) ? Duration.zero : const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
@@ -1007,7 +1007,7 @@ class _AgendaRow extends StatelessWidget {
               SizedBox(
                 width: 68,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     FittedBox(
                         fit: BoxFit.scaleDown,
@@ -1041,7 +1041,7 @@ class _AgendaRow extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
                     Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
                     if (item.subtitle != null && item.subtitle!.isNotEmpty)
@@ -1052,9 +1052,9 @@ class _AgendaRow extends StatelessWidget {
               if (item.live || item.tag != null)
                 Center(
                   child: Container(
-                    margin: const EdgeInsetsDirectional.only(start: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+                    margin: const EdgeInsetsDirectional.only(start: AppSpace.xs),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 3),
+                    decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
                     child: Text(item.live ? 'home_live'.tr : item.tag!, maxLines: 1, style: appText(11, w: FontWeight.w500, c: tone)),
                   ),
                 ),
@@ -1082,7 +1082,7 @@ class HomeShortcut {
 }
 
 class HomeShortcuts extends StatelessWidget {
-  const HomeShortcuts({super.key, required this.items, this.padding = const EdgeInsets.symmetric(horizontal: 20)});
+  const HomeShortcuts({super.key, required this.items, this.padding = const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs)});
   final List<HomeShortcut> items;
   final EdgeInsetsGeometry padding;
 
@@ -1105,7 +1105,7 @@ class HomeShortcuts extends StatelessWidget {
                 borderRadius: BorderRadius.circular(c.radiusMedium),
                 onTap: s.onTap,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.xs, horizontal: 2),
                   child: Column(children: [
                     Badge(
                       isLabelVisible: s.badge > 0,
@@ -1116,14 +1116,14 @@ class HomeShortcuts extends StatelessWidget {
                         height: 52,
                         decoration: BoxDecoration(
                           color: c.cardBg,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(AppRadius.card),
                           border: Border.all(color: c.divider),
                           boxShadow: c.cardShadow,
                         ),
                         child: AppGradientIcon(s.icon, size: 23, on: [c.cardBg]),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.xs),
                     Text(s.label,
                         maxLines: 2,
                         textAlign: TextAlign.center,
@@ -1261,7 +1261,7 @@ class HomeStat {
 /// scrolls sideways when it is wider than the screen (it never grows a second line); each pill is a 48 px tap
 /// target (a 40 px pill inside).
 class HomeStatStrip extends StatelessWidget {
-  const HomeStatStrip({super.key, required this.items, this.padding = const EdgeInsets.symmetric(horizontal: 20)});
+  const HomeStatStrip({super.key, required this.items, this.padding = const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs)});
   final List<HomeStat> items;
   final EdgeInsetsGeometry padding;
 
@@ -1286,7 +1286,7 @@ class HomeStatStrip extends StatelessWidget {
       padding: padding,
       child: Row(children: [
         for (var i = 0; i < shown.length; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
+          if (i > 0) const SizedBox(width: AppSpace.xs),
           _StatPill(shown[i]),
         ],
       ]),
@@ -1337,7 +1337,7 @@ class _StatRow extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 52),
           child: Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 10, 12, 10),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 10, AppSpace.sm, 10),
             child: Row(children: [
               Container(
                 width: 32,
@@ -1347,11 +1347,11 @@ class _StatRow extends StatelessWidget {
                     ? AppGradientIcon(s.icon, size: 17, on: [Color.alphaBlend(c.primary.withValues(alpha: 0.10), c.cardBg)])
                     : Icon(s.icon, size: 17, color: ink),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Text(s.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               AppCountUp(value, memoryKey: 'stat:${s.label}', style: appText(15, w: FontWeight.w600, c: ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
               if (s.onTap != null) ...[
                 const SizedBox(width: 2),
@@ -1373,7 +1373,7 @@ class _StatPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final ink = appInk(context, s.tone ?? c.primary);
-    final r = BorderRadius.circular(999);
+    final r = BorderRadius.circular(AppRadius.pill);
     final value = s.value ?? (s.count > 999 ? '999+' : '${s.count}');
     return Semantics(
       button: s.onTap != null,
@@ -1385,14 +1385,14 @@ class _StatPill extends StatelessWidget {
           onTap: s.onTap,
           customBorder: RoundedRectangleBorder(borderRadius: r),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
             child: Container(
               constraints: const BoxConstraints(minHeight: 40),
-              padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 14, 6),
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, 6, 14, 6),
               decoration: BoxDecoration(color: c.cardBg, borderRadius: r, border: Border.all(color: c.divider)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(s.icon, size: 16, color: ink),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 AppCountUp(value, memoryKey: 'stat:${s.label}', style: appText(14, w: FontWeight.w600, c: ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
                 const SizedBox(width: 6),
                 ConstrainedBox(
@@ -1431,7 +1431,7 @@ class HomeCourseSummary extends StatelessWidget {
     this.moreLabel,
     this.onMore,
     this.onFigures,
-    this.padding = const EdgeInsets.symmetric(horizontal: 20),
+    this.padding = const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs),
   });
 
   /// (value, label) pairs, drawn side by side.
@@ -1465,11 +1465,11 @@ class HomeCourseSummary extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: AppCountUp(value, memoryKey: 'home.figure.$label', style: appText(18, w: FontWeight.w600, c: band.ink, h: 1.2)),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xxs),
             Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: band.muted, h: 1.25)),
           ]);
       head = Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.md),
         child: LayoutBuilder(builder: (context, box) {
           // a phone shares the width; a wide card gives each figure a column of its own and leaves the rest calm
           final wide = box.maxWidth >= math.max(640, figures.length * 168 + 48);
@@ -1484,7 +1484,7 @@ class HomeCourseSummary extends StatelessWidget {
       head = Material(color: band.surface, child: onFigures != null ? InkWell(onTap: onFigures, child: head) : head);
     } else if (caption != null && caption!.isNotEmpty) {
       head = Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, 14, AppSpace.md, AppSpace.sm),
         child: Text(caption!, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium, h: 1.35)),
       );
     }
@@ -1494,7 +1494,7 @@ class HomeCourseSummary extends StatelessWidget {
         padding: EdgeInsets.zero,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           ?head,
-          if (footer != null) Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: footer),
+          if (footer != null) Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md), child: footer),
           for (var i = 0; i < lines.length; i++) ...[
             if (i > 0 || (head != null && figures.isEmpty) || footer != null) divider, // the peach band is its own edge
             _CourseLineRow(lines[i]),
@@ -1507,7 +1507,7 @@ class HomeCourseSummary extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 48),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
                   child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Flexible(
                       child: Text(moreLabel!,
@@ -1537,13 +1537,13 @@ class _CourseLineRow extends StatelessWidget {
     return InkWell(
       onTap: x.onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
         child: Row(children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppRadius.chip),
             child: SizedBox(
-              width: 40,
-              height: 40,
+              width: AppIconSize.hero,
+              height: AppIconSize.hero,
               child: url != null && url.startsWith('http')
                   ? AppNetworkImage(url: url, width: 40, height: 40)
                   : ColoredBox(
@@ -1552,7 +1552,7 @@ class _CourseLineRow extends StatelessWidget {
                     ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(x.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w500, c: c.textDark, h: 1.3)),
@@ -1561,14 +1561,14 @@ class _CourseLineRow extends StatelessWidget {
                 Text(x.subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium, h: 1.3)),
               ],
               if (x.progress != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.xs),
                 // progress is not a grade: the brand colour while under way, success when done
                 AppProgressBar(value: x.progress, height: 3, color: x.progress! >= 100 ? c.success : appChartPalette(context).first),
               ],
             ]),
           ),
           if (x.trailing != null) ...[
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Text(x.trailing!,
                 maxLines: 1, style: appText(13, w: FontWeight.w500, c: c.textMedium).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
           ],
@@ -1623,10 +1623,10 @@ class HomeAgendaLine extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 52),
       decoration: focus ? BoxDecoration(color: tone.withValues(alpha: 0.05), borderRadius: r) : null,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: focus ? 10 : 16, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: focus ? 10 : AppSpace.md, vertical: AppSpace.xs),
         child: Row(children: [
           SizedBox(
-            width: 64,
+            width: AppSpace.xxxl,
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: AlignmentDirectional.centerStart,
@@ -1637,7 +1637,7 @@ class HomeAgendaLine extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: 16,
+            width: AppSpace.md,
             child: Center(
               child: x.live
                   ? HomePulseDot(color: tone, size: 7)
@@ -1652,7 +1652,7 @@ class HomeAgendaLine extends StatelessWidget {
                     ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: ExcludeSemantics(child: !hasNote
                 ? title
@@ -1666,7 +1666,7 @@ class HomeAgendaLine extends StatelessWidget {
                   ])),
           ),
           if (hasAction) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 148),
               child: FilledButton.icon(
@@ -1678,9 +1678,9 @@ class HomeAgendaLine extends StatelessWidget {
                   backgroundColor: ensureContrast(c.primary, [c.onHero]),
                   foregroundColor: c.onHero,
                   minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
                   textStyle: appText(13, w: FontWeight.w600),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.chip)),
                   elevation: 0,
                 ),
                 icon: Icon(x.actionIcon ?? Icons.sensors_rounded, size: 16),
@@ -1688,11 +1688,11 @@ class HomeAgendaLine extends StatelessWidget {
               ),
             ),
           ] else if (tag != null) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             Container(
               constraints: const BoxConstraints(maxWidth: 112), // a long tag never squeezes the title out
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(color: tone.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 3),
+              decoration: BoxDecoration(color: tone.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(AppRadius.chip)),
               child: Text(tag, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w500, c: appInk(context, tone))),
             ),
           ],
@@ -1700,7 +1700,7 @@ class HomeAgendaLine extends StatelessWidget {
       ),
     );
     return Padding(
-      padding: focus ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4) : EdgeInsets.zero,
+      padding: focus ? const EdgeInsets.symmetric(horizontal: 6, vertical: AppSpace.xxs) : EdgeInsets.zero,
       // with an action the row and its button are two targets: the row's texts are left out (its label says them),
       // the button stays a node of its own
       child: Semantics(
@@ -1731,13 +1731,13 @@ class HomeShowAllRow extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 48),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               Flexible(
                 child: Text(expanded ? 'home_show_less'.tr : 'home_show_all'.tr.replaceAll('{n}', '$count'),
                     maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w500, c: ink)),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpace.xxs),
               Icon(expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 18, color: ink),
             ]),
           ),
@@ -1883,7 +1883,7 @@ class _HomeSectionState extends State<HomeSection> {
                     : w.subtitle,
             actionLabel: folded && !w.empty ? null : w.actionLabel,
             onAction: folded && !w.empty ? null : w.onAction,
-            padding: w.titlePadding ?? const EdgeInsetsDirectional.fromSTEB(20, 0, 12, 4),
+            padding: w.titlePadding ?? const EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, 0, AppSpace.sm, AppSpace.xxs),
             collapsed: folded,
             quiet: quiet,
             onToggle: w.foldable ? () => HomeFolds.instance.toggle(w.id, empty: w.empty) : null,
@@ -2000,7 +2000,7 @@ String homeLiveFor(Duration d) {
 /// how long it has been live, a pulsing dot and ONE Join button. Draws nothing without rooms. [now] fixes the clock
 /// (tests / renders); null = the device clock, ticking every second while shown.
 class HomeLiveBanner extends StatefulWidget {
-  const HomeLiveBanner({super.key, required this.items, this.now, this.padding = const EdgeInsets.symmetric(horizontal: 20)});
+  const HomeLiveBanner({super.key, required this.items, this.now, this.padding = const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs)});
   final List<HomeLiveItem> items;
   final DateTime? now;
   final EdgeInsetsGeometry padding;
@@ -2057,7 +2057,7 @@ class _HomeLiveBannerState extends State<HomeLiveBanner> {
               padding: widget.padding,
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 for (var i = 0; i < items.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 8),
+                  if (i > 0) const SizedBox(height: AppSpace.xs),
                   _LiveCard(item: items[i], now: now),
                 ],
               ]),
@@ -2096,7 +2096,7 @@ class _LiveCard extends StatelessWidget {
         minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: 18),
         textStyle: appText(14, w: FontWeight.w600),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.chip)),
         elevation: 0,
       ),
     );
@@ -2116,7 +2116,7 @@ class _LiveCard extends StatelessWidget {
           ),
         ),
       ]),
-      const SizedBox(height: 4),
+      const SizedBox(height: AppSpace.xxs),
       Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w600, c: c.textDark, h: 1.3)),
       if (who.isNotEmpty) ...[
         const SizedBox(height: 2),
@@ -2137,7 +2137,7 @@ class _LiveCard extends StatelessWidget {
             // calm: the card surface with a hairline in the live tone — the dot and the button carry the accent
             decoration: BoxDecoration(borderRadius: r, border: Border.all(color: red.withValues(alpha: 0.28))),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpace.md),
               child: LayoutBuilder(builder: (context, box) {
                 // the button sits at the end while the text keeps room; on a narrow phone (or big text) it goes under
                 final roomy = box.maxWidth >= 300 * MediaQuery.textScalerOf(context).scale(1);
@@ -2152,8 +2152,8 @@ class _LiveCard extends StatelessWidget {
                   ]);
                 }
                 return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [avatar(40), const SizedBox(width: 12), Expanded(child: text)]),
-                  const SizedBox(height: 16),
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [avatar(40), const SizedBox(width: AppSpace.sm), Expanded(child: text)]),
+                  const SizedBox(height: AppSpace.md),
                   join,
                 ]);
               }),

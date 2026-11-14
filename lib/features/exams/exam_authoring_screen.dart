@@ -96,19 +96,19 @@ class _DateTimeField extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Material(
         color: c.inputBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppRadius.control),
           onTap: () async {
             final v = await pickEngineDateTime(context, value);
             if (v != null) onChanged(v);
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: c.divider)),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.control), border: Border.all(color: c.divider)),
             child: Row(children: [
               Icon(Icons.event_rounded, size: 20, color: c.textMedium),
               const SizedBox(width: 10),
@@ -140,7 +140,7 @@ class SessionLockPicker extends StatelessWidget {
     final c = context.colors;
     if (sessions.isEmpty && selected == null) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppDropdown<int?>(
           key: const ValueKey('exam.session_lock'),
@@ -154,7 +154,7 @@ class SessionLockPicker extends StatelessWidget {
         ),
         if (selected != null)
           Padding(
-            padding: const EdgeInsetsDirectional.only(top: 6, start: 4, end: 4),
+            padding: const EdgeInsetsDirectional.only(top: 6, start: AppSpace.xxs, end: AppSpace.xxs),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Icon(Icons.info_outline_rounded, size: 15, color: c.primary),
               const SizedBox(width: 6),
@@ -359,7 +359,7 @@ class ExcelImportBody extends StatelessWidget {
       ],
       _gap(12),
       AppCard(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpace.sm),
         child: Row(children: [
           Icon(fileName == null ? Icons.table_chart_outlined : Icons.insert_drive_file_rounded, color: c.primary),
           const SizedBox(width: 10),
@@ -367,7 +367,7 @@ class ExcelImportBody extends StatelessWidget {
             child: Text(fileName ?? t('ملف Excel (.xlsx)', 'An Excel file (.xlsx)'),
                 maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: fileName == null ? c.textMedium : c.textDark)),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           OutlinedButton(key: const ValueKey('exam.import.pick'), onPressed: onPick, child: Text(fileName == null ? t('اختر ملفاً', 'Choose a file') : t('تغيير', 'Change'))),
         ]),
       ),
@@ -376,7 +376,7 @@ class ExcelImportBody extends StatelessWidget {
       _gap(14),
       Row(children: [
         Expanded(child: TextButton(onPressed: busy ? null : onDone, child: Text(t('تم', 'Done')))),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         Expanded(
           flex: 2,
           child: AppPrimaryButton(key: const ValueKey('exam.import.upload'), label: t('رفع واستيراد', 'Upload and import'), icon: Icons.upload_file_rounded, busy: busy, onPressed: busy ? null : onUpload),
@@ -554,7 +554,7 @@ class ExamSectionsPanel extends StatelessWidget {
     final s = sv.section;
     final title = s.title.trim().isEmpty ? t('القسم ${index + 1}', 'Section ${index + 1}') : s.title.trim();
     return AppCard(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
@@ -609,7 +609,7 @@ class ExamSectionsPanel extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             buildDefaultDragHandles: false,
-            proxyDecorator: (child, _, anim) => Material(color: Colors.transparent, elevation: 4, borderRadius: BorderRadius.circular(12), child: child),
+            proxyDecorator: (child, _, anim) => Material(color: Colors.transparent, elevation: 4, borderRadius: BorderRadius.circular(AppRadius.chip), child: child),
             onReorder: (o, n) => onReorderQuestions!(s, o, n),
             children: [
               for (var qi = 0; qi < sv.questions.length; qi++)
@@ -632,20 +632,20 @@ class ExamSectionsPanel extends StatelessWidget {
   Widget _questionRow(BuildContext context, SectionDraft s, PlacedQuestion q, int index, {required bool draft, int count = 1, int sections = 1}) {
     final c = context.colors;
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 4, 8),
-      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.divider)),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
+      padding: const EdgeInsetsDirectional.fromSTEB(10, AppSpace.xs, AppSpace.xxs, AppSpace.xs),
+      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip), border: Border.all(color: c.divider)),
       child: Row(children: [
         if (draft && onReorderQuestions != null && count > 1)
           ReorderableDragStartListener(
             index: index,
-            child: Padding(padding: const EdgeInsetsDirectional.only(end: 4), child: Icon(Icons.drag_indicator_rounded, size: 22, color: c.textLight, semanticLabel: t('اسحب لإعادة الترتيب', 'Drag to reorder'))),
+            child: Padding(padding: const EdgeInsetsDirectional.only(end: AppSpace.xxs), child: Icon(Icons.drag_indicator_rounded, size: 22, color: c.textLight, semanticLabel: t('اسحب لإعادة الترتيب', 'Drag to reorder'))),
           ),
         Text('${index + 1}.', style: appText(13, w: FontWeight.w700, c: c.textMedium)),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         if (q.media != null) ...[
           QuestionImage.bank(questionId: q.questionId, media: q.media!, compact: true),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
         ],
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -725,7 +725,7 @@ class _SectionFormState extends State<SectionForm> with _Controllers {
     final c = context.colors;
     final structural = !widget.published;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSectionTitle(s.id == null ? t('قسم جديد', 'New section') : t('تعديل القسم', 'Edit section')),
         AppField(controller: ctl('title', s.title), label: t('عنوان القسم', 'Section title'), onChanged: (v) => s.title = v),
@@ -825,7 +825,7 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
   }
 
   Widget _partial(String value, List<(String, String)> choices, ValueChanged<String> onChanged) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: AppSpace.sm),
         child: AppDropdown<String>(
           value: value,
           decoration: InputDecoration(labelText: t('الدرجة الجزئية', 'Partial credit')),
@@ -842,7 +842,7 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
           subtitle: d.isNew ? null : t('الحفظ ينشئ نسخة جديدة؛ الاختبارات الجارية تبقى على نسختها', 'Saving creates a new version; running exams keep theirs')),
       if (d.isNew)
         Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: AppDropdown<String>(
             value: d.type,
             decoration: InputDecoration(labelText: t('نوع السؤال', 'Question type')),
@@ -854,7 +854,7 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
           ),
         )
       else
-        Padding(padding: const EdgeInsets.only(bottom: 12), child: Align(alignment: AlignmentDirectional.centerStart, child: AppBadgePill(questionTypeLabel(d.type)))),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: Align(alignment: AlignmentDirectional.centerStart, child: AppBadgePill(questionTypeLabel(d.type)))),
       AppField(
           controller: ctl('prompt', d.prompt), label: t('نص السؤال', 'Question text'), maxLines: 4,
           hint: d.type == 'fill_blank' ? t('ضع ___ مكان كل فراغ', 'Put ___ where each blank goes') : null,
@@ -896,7 +896,7 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
           busy: _busy, onPressed: _save),
       _gap(16),
     ]);
-    return widget.scrollable ? SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), child: content) : content;
+    return widget.scrollable ? SingleChildScrollView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg), child: content) : content;
   }
 
   List<Widget> _typeEditor(BuildContext context) {
@@ -910,7 +910,7 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
           for (final o in d.options)
             Row(key: ValueKey('opt.${o.uid}'), children: [
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: _iconBtn(
                   multi
                       ? (d.correctMulti.contains(o.id) ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded)
@@ -929,7 +929,7 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
               Expanded(child: AppField(controller: ctl('opt.${o.uid}', o.text), label: t('الخيار ${o.id}', 'Option ${o.id}'), onChanged: (v) => o.text = v)),
               if (d.options.length > 2)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: AppSpace.sm),
                   child: _iconBtn(Icons.delete_outline_rounded, t('حذف', 'Remove'), () => setState(() {
                         d.options.remove(o);
                         d.correctMulti.remove(o.id);
@@ -971,7 +971,7 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
               Expanded(child: AppField(controller: ctl('blank.${d.blanks[i].uid}', d.blanks[i].text), label: t('الفراغ ${i + 1}', 'Blank ${i + 1}'),
                   onChanged: (v) => d.blanks[i].text = v)),
               if (d.blanks.length > 1)
-                Padding(padding: const EdgeInsets.only(bottom: 12),
+                Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm),
                     child: _iconBtn(Icons.delete_outline_rounded, t('حذف', 'Remove'), () => setState(() => d.blanks.removeAt(i)), color: c.danger)),
             ]),
           Align(
@@ -986,10 +986,10 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
           for (final p in d.pairs)
             Row(key: ValueKey('pair.${p.uid}'), children: [
               Expanded(child: AppField(controller: ctl('pl.${p.uid}', p.left), label: t('العنصر', 'Item'), onChanged: (v) => p.left = v)),
-              Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 12), child: Icon(Icons.swap_horiz_rounded, size: 18, color: c.textLight)),
+              Padding(padding: const EdgeInsets.fromLTRB(AppSpace.xxs, 0, AppSpace.xxs, AppSpace.sm), child: Icon(Icons.swap_horiz_rounded, size: 18, color: c.textLight)),
               Expanded(child: AppField(controller: ctl('pr.${p.uid}', p.right), label: t('يطابق', 'Matches'), onChanged: (v) => p.right = v)),
               if (d.pairs.length > 2)
-                Padding(padding: const EdgeInsets.only(bottom: 12),
+                Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm),
                     child: _iconBtn(Icons.delete_outline_rounded, t('حذف', 'Remove'), () => setState(() => d.pairs.remove(p)), color: c.danger)),
             ]),
           Align(
@@ -1005,11 +1005,11 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
           AppSectionTitle(t('العناصر بالترتيب الصحيح', 'Items in the correct order'), subtitle: t('يراها الطالب بترتيب مختلف', 'Students get them in another order')),
           for (var i = 0; i < d.items.length; i++)
             Row(key: ValueKey('item.${d.items[i].uid}'), children: [
-              Padding(padding: const EdgeInsetsDirectional.only(end: 6, bottom: 12), child: Text('${i + 1}', style: appText(13, w: FontWeight.w700, c: c.textMedium))),
+              Padding(padding: const EdgeInsetsDirectional.only(end: 6, bottom: AppSpace.sm), child: Text('${i + 1}', style: appText(13, w: FontWeight.w700, c: c.textMedium))),
               Expanded(child: AppField(controller: ctl('item.${d.items[i].uid}', d.items[i].text), label: t('العنصر ${i + 1}', 'Item ${i + 1}'),
                   onChanged: (v) => d.items[i].text = v)),
               Padding(
-                padding: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   _iconBtn(Icons.arrow_upward_rounded, t('لأعلى', 'Up'), i == 0 ? null : () => setState(() => d.items.insert(i - 1, d.items.removeAt(i)))),
                   _iconBtn(Icons.arrow_downward_rounded, t('لأسفل', 'Down'),
@@ -1044,10 +1044,10 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
           for (final u in d.units)
             Row(key: ValueKey('unit.${u.uid}'), children: [
               Expanded(child: AppField(controller: ctl('un.${u.uid}', u.name), label: t('الوحدة', 'Unit'), ltr: true, onChanged: (v) => u.name = v)),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Expanded(child: AppField(controller: ctl('uf.${u.uid}', u.factor), label: t('المعامل', 'Factor'), keyboard: _numKeyboard, ltr: true,
                   onChanged: (v) => u.factor = v)),
-              Padding(padding: const EdgeInsets.only(bottom: 12),
+              Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm),
                   child: _iconBtn(Icons.delete_outline_rounded, t('حذف', 'Remove'), () => setState(() => d.units.remove(u)), color: c.danger)),
             ]),
           Align(
@@ -1109,7 +1109,7 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
             AppCard(
               key: ValueKey('crit.${cr.uid}'),
               margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 8, 0),
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.xs, 0),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Row(children: [
                   AppBadgePill(cr.id),
@@ -1171,8 +1171,8 @@ class BankQuestionTile extends StatelessWidget {
     final c = context.colors;
     final q = question;
     return AppCard(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 8, 12),
+      margin: const EdgeInsets.only(bottom: AppSpace.xs),
+      padding: const EdgeInsetsDirectional.fromSTEB(14, AppSpace.sm, AppSpace.xs, AppSpace.sm),
       onTap: onTap,
       child: Row(children: [
         if (q.media != null) ...[
@@ -1273,7 +1273,7 @@ class _QuestionBankBrowserState extends State<QuestionBankBrowser> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final items = _loaded ? _paging.items : null;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xl), children: [
       ...widget.header,
       AppField(
           controller: _search, label: t('بحث في نص السؤال', 'Search the question text'),
@@ -1314,12 +1314,12 @@ class _QuestionBankBrowserState extends State<QuestionBankBrowser> {
         for (final q in items)
           BankQuestionTile(question: q, trailing: widget.trailing?.call(q), onTap: widget.onTap == null ? null : () => widget.onTap!(q)),
       if (items != null && _paging.scanCapped && !_paging.hasMore)
-        Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(t('البحث اقتصر على جزء من البنك — ضيّق البحث', 'The search covered part of the bank — narrow it down'), style: appText(12, c: c.textLight))),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: Text(t('البحث اقتصر على جزء من البنك — ضيّق البحث', 'The search covered part of the bank — narrow it down'), style: appText(12, c: c.textLight))),
       if (items != null && _paging.hasMore)
         Align(
           child: TextButton.icon(
             onPressed: _more ? null : () => _load(more: true),
-            icon: _more ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.expand_more_rounded),
+            icon: _more ? const SizedBox(width: AppIconSize.sm, height: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.expand_more_rounded),
             label: Text(t('تحميل المزيد', 'Load more')),
           ),
         ),
@@ -1439,7 +1439,7 @@ class _QuestionPickerSheetState extends State<QuestionPickerSheet> {
         _gap(4),
       ],
       trailing: (q) => _placed.contains(q.id)
-          ? Padding(padding: const EdgeInsets.all(8), child: Icon(Icons.check_circle_rounded, color: c.success))
+          ? Padding(padding: const EdgeInsets.all(AppSpace.xs), child: Icon(Icons.check_circle_rounded, color: c.success))
           : _busy.contains(q.id)
               ? const Padding(padding: EdgeInsets.all(10), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
               : _iconBtn(Icons.add_circle_outline_rounded, t('إضافة', 'Add'), q.status == 'active' ? () => _place(q.id) : null, color: c.primary),
@@ -1514,7 +1514,7 @@ class _ProctoringPolicyFormState extends State<ProctoringPolicyForm> {
         AppCard(
           key: ValueKey('rule.${r.category}'),
           margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 8, 12),
+          padding: const EdgeInsetsDirectional.fromSTEB(14, 10, AppSpace.xs, AppSpace.sm),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
               Expanded(child: Text(categoryLabel(r.category), style: appText(14, w: FontWeight.w700, c: c.textDark))),
@@ -1588,8 +1588,8 @@ class AccommodationsPanel extends StatelessWidget {
       if (list != null)
         for (final a in list)
           AppCard(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 8, 10),
+            margin: const EdgeInsets.only(bottom: AppSpace.xs),
+            padding: const EdgeInsetsDirectional.fromSTEB(14, 10, AppSpace.xs, 10),
             child: Row(children: [
               Icon(Icons.accessibility_new_rounded, color: c.primary),
               const SizedBox(width: 10),
@@ -1640,7 +1640,7 @@ class _AccommodationFormState extends State<AccommodationForm> with _Controllers
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           AppSectionTitle(t('تيسير لطالب', 'Accommodation for a student')),
           AppField(controller: ctl('sid', ''), label: t('رقم الطالب', 'Student id'), keyboard: TextInputType.number, ltr: true, onChanged: (v) => a.studentId = v),
@@ -1679,7 +1679,7 @@ class ExamPublishPanel extends StatelessWidget {
     final statusColor = switch (e.status) { 'published' => c.success, 'closed' => c.textMedium, _ => c.warning };
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       AppCard(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: AppSpace.sm),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Wrap(spacing: 8, runSpacing: 8, children: [
             AppBadgePill(examStatusLabel(e.status), color: statusColor, icon: Icons.flag_outlined),
@@ -1698,10 +1698,10 @@ class ExamPublishPanel extends StatelessWidget {
         AppSectionTitle(t('قبل النشر', 'Before publishing')),
         for (final b in blockers)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Icon(Icons.error_outline_rounded, size: 18, color: c.danger),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Expanded(child: Text(b.text, style: appText(13.5, c: c.textDark, h: 1.4))),
             ]),
           ),
@@ -1709,17 +1709,17 @@ class ExamPublishPanel extends StatelessWidget {
       ],
       if (e.isDraft && blockers.isEmpty)
         Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: AppBanner(icon: Icons.check_circle_outline_rounded, color: c.success, text: t('جاهز للنشر', 'Ready to publish')),
         ),
       if (e.status == 'published')
         Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
           child: AppBanner(icon: Icons.info_outline_rounded,
               text: t('إلغاء النشر ممكن قبل أن يبدأ أي طالب؛ بعدها أغلق الاختبار', 'Unpublishing works until a student starts; after that, close the exam')),
         ),
       if (error != null)
-        Padding(padding: const EdgeInsets.only(bottom: 12), child: AppBanner(icon: Icons.error_outline_rounded, text: error!, color: c.danger)),
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppBanner(icon: Icons.error_outline_rounded, text: error!, color: c.danger)),
       for (final a in actions)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -1727,7 +1727,7 @@ class ExamPublishPanel extends StatelessWidget {
               ? AppPrimaryButton(label: examActionLabel(a), icon: a == ExamAction.publish ? Icons.publish_rounded : Icons.campaign_rounded, busy: busy == a,
                   onPressed: busy != null || (a == ExamAction.publish && blockers.isNotEmpty) ? null : () => onAction(a))
               : SizedBox(
-                  height: 48,
+                  height: AppTouch.min,
                   child: OutlinedButton.icon(
                     onPressed: busy != null ? null : () => onAction(a),
                     icon: Icon(a == ExamAction.close ? Icons.lock_outline_rounded : Icons.undo_rounded),
@@ -1852,7 +1852,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
       examTitle: v.exam.title,
       setup: _paper,
       onSetup: v.exam.courseId == null ? null : _openSetup,
-      margin: const EdgeInsets.only(bottom: 12));
+      margin: const EdgeInsets.only(bottom: AppSpace.sm));
 
   Future<void> _loadAccommodations() async {
     final id = _examId;
@@ -2137,7 +2137,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
         key: const ValueKey('exam.authoring'),
         appBar: AppHeader(title: t('اختبار جديد', 'New exam')),
         child: ExamPageWidth(width: AppWidth.reading, builder: (side) => SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(side, 8, side, 24),
+          padding: EdgeInsets.fromLTRB(side, AppSpace.xs, side, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppHero(title: t('اختبار جديد', 'New exam'), subtitle: t('ابدأ بالإعدادات، ثم الأقسام والأسئلة والمراقبة', 'Start with the settings, then sections, questions and proctoring'),
                 icon: Icons.edit_note_rounded),
@@ -2179,12 +2179,12 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
         child: v == null || w == null
             ? (_error != null
                 ? Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpace.md),
                     child: AppEmpty(icon: Icons.error_outline_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load))
                 : const AppListSkeleton(items: 4, withAvatar: false))
             : TabBarView(children: [
                 ExamPageWidth(width: AppWidth.reading, builder: (side) => SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(side, 8, side, 24),
+                  padding: EdgeInsets.fromLTRB(side, AppSpace.xs, side, AppSpace.lg),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     if (isPaperExam(_paper)) _paperEntry(v),
                     ExamSettingsForm(key: ValueKey('settings.$_settingsGen'), draft: w, onSave: _saveSettings, sessions: _sessions),
@@ -2192,7 +2192,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
                 )),
                 AppRefresh(
                   onRefresh: () => _load(side: false),
-                  child: ExamPageWidth(width: AppWidth.content, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 24), children: [
+                  child: ExamPageWidth(width: AppWidth.content, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, AppSpace.sm, side, AppSpace.lg), children: [
                     ExamSectionsPanel(
                       view: v,
                       onAddSection: () => _sectionSheet(SectionDraft()..title = t('القسم ${v.sections.length + 1}', 'Section ${v.sections.length + 1}')),
@@ -2209,7 +2209,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
                     ),
                   ])),
                 ),
-                ExamPageWidth(width: AppWidth.reading, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 24), children: [
+                ExamPageWidth(width: AppWidth.reading, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, AppSpace.sm, side, AppSpace.lg), children: [
                   if (v.proctoring == null)
                     AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: authoringCodeText('policy_not_found'))
                   else
@@ -2217,7 +2217,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
                         onSave: _saveProctoring),
                   AccommodationsPanel(items: _accommodations, error: _accError, onAdd: _addAccommodation, onRevoke: _revokeAccommodation),
                 ])),
-                ExamPageWidth(width: AppWidth.reading, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 24), children: [
+                ExamPageWidth(width: AppWidth.reading, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, AppSpace.sm, side, AppSpace.lg), children: [
                   if (isPaperExam(_paper)) _paperEntry(v),
                   if (v.exam.id != null) OfflineExamEntryTile(examId: v.exam.id!, title: v.exam.title),
                   ExamPublishPanel(view: v, onAction: _action, busy: _busyAction, error: _publishError),

@@ -99,10 +99,10 @@ class CalTimeFields extends StatelessWidget {
             borderRadius: BorderRadius.circular(c.radiusMedium),
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 10),
               child: Row(children: [
                 Icon(icon, size: 18, color: c.primary),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, c: c.textLight)),
@@ -117,10 +117,10 @@ class CalTimeFields extends StatelessWidget {
     return Column(children: [
       box(Icons.calendar_today_rounded, t('اليوم', 'Day'),
           AppTime.date(AppTime.fromZone(DateTime(start.year, start.month, start.day, 12)), pattern: 'EEEE d MMMM y'), pickDay),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       Row(children: [
         Expanded(child: box(Icons.schedule_rounded, t('من', 'From'), _clock(start), () => pickTime(true))),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         Expanded(child: box(Icons.schedule_rounded, t('إلى', 'To'), _clock(end), () => pickTime(false))),
       ]),
     ]);
@@ -221,7 +221,7 @@ class _AudiencePickerState extends State<_AudiencePicker> {
     final a = widget.aud;
     Widget row(IconData icon, String title, String? sub, bool on, VoidCallback onTap, {Widget? avatar, String? username}) => ListTile(
           dense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
           leading: avatar ?? CircleAvatar(radius: 17, backgroundColor: c.primaryTint, child: Icon(icon, size: 18, color: c.primary)),
           title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
           subtitle: username != null
@@ -233,7 +233,7 @@ class _AudiencePickerState extends State<_AudiencePicker> {
     return SizedBox(
       height: MediaQuery.sizeOf(context).height * 0.78,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.sm),
         child: Column(children: [
           AppSheetHeader(t('مع من؟', 'Who is invited?'),
               trailing: TextButton(onPressed: () => Navigator.pop(context), child: Text(t('تم', 'Done')))),
@@ -246,7 +246,7 @@ class _AudiencePickerState extends State<_AudiencePicker> {
             decoration: InputDecoration(
                 isDense: true, prefixIcon: const Icon(Icons.search_rounded), hintText: t('ابحث بالاسم أو @اسم المستخدم', 'Search by name or @username')),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Expanded(
             child: d == null && _error == null
                 ? const AppListSkeleton(items: 5)
@@ -445,7 +445,7 @@ class _MeetingFormState extends State<MeetingForm> {
       for (final e in _aud.courses.entries) (e.key, e.value, Icons.school_rounded, _aud.courses),
     ];
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.viewInsetsOf(context).bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSheetHeader(t('اجتماع جديد', 'New meeting')),
         _mode == 'online'
@@ -455,7 +455,7 @@ class _MeetingFormState extends State<MeetingForm> {
                 label: t('العنوان (اختياري)', 'Title (optional)'),
                 hint: t('اختياري، يُستخدم التاريخ', 'Optional, the date is used'))
             : AppField(controller: _title, label: t('العنوان', 'Title'), hint: t('مثال: متابعة المشروع', 'e.g. Project check-in')),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         CalTimeFields(
             start: _s,
             end: _e,
@@ -506,7 +506,7 @@ class _MeetingFormState extends State<MeetingForm> {
               }),
         ]),
         if (!_private) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final (id, label, icon, map) in chips)
               InputChip(
@@ -536,7 +536,7 @@ class _MeetingFormState extends State<MeetingForm> {
           source: MentionApi.source('meeting', item: widget.orgId),
           child: AppField(controller: _notes, label: t('ملاحظات (اختياري)', 'Notes (optional)'), maxLines: 3),
         ),
-        if (_checking || mine.isNotEmpty || others.isNotEmpty) const SizedBox(height: 12),
+        if (_checking || mine.isNotEmpty || others.isNotEmpty) const SizedBox(height: AppSpace.sm),
         if (_checking && mine.isEmpty && others.isEmpty)
           Text(t('نتحقق من التوفر…', 'Checking availability…'), style: appText(12, c: c.textLight)),
         if (mine.isNotEmpty)
@@ -545,7 +545,7 @@ class _MeetingFormState extends State<MeetingForm> {
               color: c.warning,
               text: '${t('لديك في هذا الوقت', 'You already have')}: ${asMapList(mine.first['items']).map((i) => i['title']).join('، ')}'),
         if (others.isNotEmpty) ...[
-          if (mine.isNotEmpty) const SizedBox(height: 8),
+          if (mine.isNotEmpty) const SizedBox(height: AppSpace.xs),
           AppBanner(
               icon: Icons.warning_amber_rounded,
               color: c.danger,
@@ -557,7 +557,7 @@ class _MeetingFormState extends State<MeetingForm> {
           const SizedBox(height: 10),
           AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         AppPrimaryButton(
           label: others.isNotEmpty ? t('أرسل رغم ذلك', 'Send anyway') : (_private ? t('حفظ', 'Save') : t('إرسال الدعوات', 'Send invitations')),
           icon: _private ? Icons.check_rounded : Icons.send_rounded,
@@ -736,7 +736,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
       },
       child: m == null
           ? Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
               child: _error == null
                   ? const SizedBox(height: 260, child: AppListSkeleton(items: 3))
                   : AppBanner(
@@ -760,7 +760,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
     final ended = m['status'] == 'ended';
     final dept = asMap(m['dept']), org = asMap(m['org']);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md + AppSpace.xxs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSheetHeader('${m['title']}'),
         Wrap(spacing: 6, runSpacing: 6, children: [
@@ -770,7 +770,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
           if (m['visibility'] == 'private') AppTag(t('خاص', 'Private'), c.accent, icon: Icons.lock_rounded),
           if (m['source_type'] == 'complaint') AppTag(t('من شكوى / طلب', 'From a request'), c.warning, icon: Icons.support_agent_rounded),
         ]),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         if (s != null && e != null) _Info(icon: Icons.schedule_rounded, label: t('الموعد', 'When'), value: _range(s, e)),
         if (!online && '${m['location'] ?? ''}'.isNotEmpty)
           _Info(icon: Icons.place_rounded, label: t('المكان', 'Where'), value: '${m['location']}'),
@@ -787,7 +787,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
         if (online && m['status'] != 'cancelled' && !ended)
           if (MeetingTimeLimit.parse(m['time_limit']) case final limit?)
             if (!(owner && m['owner_plan_active'] == true)) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               AppBanner(
                 key: const ValueKey('meeting.free_time'),
                 icon: Icons.timer_outlined,
@@ -820,7 +820,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
         ],
         // [meeting-recording] the latest recording: status while it is made, the drive link when done
         if (online) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           MeetingRecordingStatus(
             key: ValueKey('meeting_recording.${widget.meetingId}'),
             meetingId: widget.meetingId,
@@ -857,7 +857,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
           ]),
         ],
         if (attendees.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           AppSectionTitle(t('المدعوون', 'Invitees'),
               subtitle: [
                 for (final k in ['accepted', 'pending', 'proposed', 'declined'])
@@ -866,7 +866,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
           for (final a in attendees) _attendee(context, a, owner),
         ],
         if (owner && m['status'] == 'scheduled') ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           Wrap(spacing: 8, runSpacing: 8, children: [
             AppPill(icon: Icons.edit_calendar_rounded, label: t('تغيير الموعد', 'Change time'), onTap: _busy ? null : () => _move()),
             AppPill(
@@ -893,7 +893,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
     final u = asMap(a['user']);
     final ps = _parse(a['proposed_start']), pe = _parse(a['proposed_end']);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Stack(clipBehavior: Clip.none, children: [
           AppAvatar(name: '${u['name'] ?? ''}', url: u['image_url']?.toString(), size: 36),
@@ -941,7 +941,7 @@ class _Info extends StatelessWidget {
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
           padding: const EdgeInsets.all(7),
-          decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.chip)),
           child: Icon(icon, size: 16, color: c.primary),
         ),
         const SizedBox(width: 10),
@@ -970,11 +970,11 @@ class _TimePickSheetState extends State<_TimePickSheet> {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md + AppSpace.xxs),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           AppSheetHeader(widget.title),
           CalTimeFields(start: _s, end: _e, onChanged: (s, e) => setState(() { _s = s; _e = e; })),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           AppPrimaryButton(label: widget.action, icon: Icons.check_rounded, onPressed: () => Navigator.pop(context, (_s, _e))),
         ]),
       );
@@ -1110,7 +1110,7 @@ class _QuickMeetingButtonState extends State<QuickMeetingButton> {
               tooltip: label,
               onPressed: _busy ? null : _go,
               icon: _busy
-                  ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: c.primary))
+                  ? SizedBox(width: AppIconSize.md, height: AppIconSize.md, child: CircularProgressIndicator(strokeWidth: 2, color: c.primary))
                   : Icon(Icons.video_call_rounded, color: appInk(context, c.primary)),
             )
           : widget.fab
@@ -1198,13 +1198,13 @@ class _ComplaintMeetingFormState extends State<_ComplaintMeetingForm> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.viewInsetsOf(context).bottom),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSheetHeader(t('تحويل إلى اجتماع', 'Turn into a meeting')),
         Text(widget.subject, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium)),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         CalTimeFields(start: _s, end: _e, onChanged: (s, e) => setState(() { _s = s; _e = e; })),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         CalModeChoice(mode: _mode, onChanged: (m) => setState(() => _mode = m)),
         const SizedBox(height: 10),
         if (_mode == 'offline') AppField(controller: _place, label: t('المكان', 'Location')),
@@ -1214,7 +1214,7 @@ class _ComplaintMeetingFormState extends State<_ComplaintMeetingForm> {
           const SizedBox(height: 10),
           AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         AppPrimaryButton(label: t('تحديد الاجتماع', 'Set the meeting'), icon: Icons.event_available_rounded, busy: _saving, onPressed: _saving ? null : _save),
       ]),
     );

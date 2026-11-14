@@ -189,7 +189,7 @@ class _LiveNowCardState extends State<LiveNowCard> {
     final ink = appInk(context, tone);
     final r = BorderRadius.circular(c.radiusLarge);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs),
       child: Material(
         color: Color.alphaBlend(tone.withValues(alpha: 0.06), c.cardBg),
         borderRadius: r,
@@ -210,7 +210,7 @@ class _LiveNowCardState extends State<LiveNowCard> {
                         child: Text('home_live'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w800, c: ink)),
                       ),
                     ]),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpace.xxs),
                     Text(s.courseName, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15.5, w: FontWeight.w900, c: c.textDark, h: 1.25)),
                     const SizedBox(height: 2),
                     Text(
@@ -224,7 +224,7 @@ class _LiveNowCardState extends State<LiveNowCard> {
                     ),
                   ]),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
                 Flexible(
                   child: GestureDetector(
                     onLongPress: () => openTeacherGuestLink(context, s),
@@ -243,7 +243,7 @@ class _LiveNowCardState extends State<LiveNowCard> {
                   ),
                 ),
               ]),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.sm),
               Row(children: [
                 Expanded(child: AppProgressBar(value: done * 100, height: 5, color: tone)),
                 const SizedBox(width: 10),
@@ -367,7 +367,7 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
             nowListenable: _now,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
       ],
     );
   }
@@ -383,7 +383,7 @@ class _QueueHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, AppSpace.xxs, AppSpace.md + AppSpace.xxs, AppSpace.sm),
       child: Row(
         children: [
           Flexible(
@@ -400,7 +400,7 @@ class _QueueHeader extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
             decoration: BoxDecoration(
@@ -443,7 +443,7 @@ class _DayGroup extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 6),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, AppSpace.xxs, AppSpace.md + AppSpace.xxs, 6),
           child: Text(
             dayLabel,
             style: TextStyle(
@@ -513,11 +513,11 @@ class ScheduleSessionCard extends StatelessWidget {
         final accent = _accentFor(context, isOngoing: isOngoing);
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          padding: const EdgeInsets.fromLTRB(AppSpace.sm, 0, AppSpace.sm, AppSpace.xs),
           child: Container(
             decoration: BoxDecoration(
               color: background ?? context.colors.primary.withAlpha(50),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppRadius.card),
               border: Border.all(
                 color: isOngoing
                     ? accent.withValues(alpha: 0.5)
@@ -622,7 +622,7 @@ class _CountdownBar extends StatelessWidget {
 
       return Container(
         color: accent.withValues(alpha: 0.06),
-        padding: const EdgeInsets.fromLTRB(14, 6, 14, 8),
+        padding: const EdgeInsets.fromLTRB(14, 6, 14, AppSpace.xs),
         child: Column(
           children: [
             // Progress bar
@@ -649,7 +649,7 @@ class _CountdownBar extends StatelessWidget {
                         size: 12,
                         color: accent,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpace.xxs),
                       Flexible(
                         child: Text(
                           'qw_live_now'.tr,
@@ -666,7 +666,7 @@ class _CountdownBar extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 // Time remaining
                 Flexible(
                   child: Row(
@@ -677,7 +677,7 @@ class _CountdownBar extends StatelessWidget {
                         size: 12,
                         color: accent.withValues(alpha: 0.7),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpace.xxs),
                       Flexible(
                         child: Text(
                           '${'qw_ends_in'.tr}  ${_fmtCountdown(untilEnd.isNegative ? Duration.zero : untilEnd)}',
@@ -731,7 +731,7 @@ class _CountdownBar extends StatelessWidget {
           ...List.generate(3, (i) {
             final lit = display.inMinutes < (30 - i * 10);
             return Container(
-              margin: const EdgeInsetsDirectional.only(start: 4),
+              margin: const EdgeInsetsDirectional.only(start: AppSpace.xxs),
               width: 6,
               height: 6,
               decoration: BoxDecoration(
@@ -785,7 +785,7 @@ class _InlineStartButton extends StatelessWidget {
           children: [
             if (session.isOngoing) ...[_LiveDot(), const SizedBox(height: 5)],
             Icon(_icon, color: context.colors.onHero, size: 20),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xxs),
             Text(
               _label,
               style: TextStyle(
@@ -816,7 +816,7 @@ class _TimeBlock extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       decoration: BoxDecoration(
         // color: accent.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(11),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
         border: Border.all(color: accent.withValues(alpha: 0.22)),
       ),
       child: Column(
@@ -891,7 +891,7 @@ class _CourseInfo extends StatelessWidget {
             if (isOngoing??false) ...[const SizedBox(width: 5), _LiveDot()],
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
 
         // wraps onto a second line on a narrow card instead of overflowing
         Wrap(
@@ -1031,12 +1031,12 @@ class _EmptyQueue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs),
     child: Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpace.md + AppSpace.xxs),
       decoration: BoxDecoration(
         color: context.colors.primaryWash,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(
           color: context.colors.primary.withValues(alpha: 0.15),
         ),

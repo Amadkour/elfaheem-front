@@ -14,6 +14,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../admin/admin_common.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show showAppPickSheet;
 
 enum GridFilterKind { all, cohort, teacher, assistant, room, group, student }
 
@@ -152,30 +153,29 @@ class TimetableFilterBar extends StatelessWidget {
       _ =>
         values.isEmpty
             ? Text('—', style: style)
-            : DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  isExpanded: true,
-                  isDense: true,
-                  value: values.containsKey(filter.value) ? filter.value : null,
-                  hint: Text(
-                    t('اختر ${gridFilterLabel(filter.kind)}', 'Choose ${gridFilterLabel(filter.kind).toLowerCase()}'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: style.copyWith(color: c.textLight),
-                  ),
-                  style: style,
-                  dropdownColor: c.cardBg,
-                  borderRadius: BorderRadius.circular(AppRadius.control),
-                  items: [
-                    for (final e in values.entries)
-                      DropdownMenuItem(
-                        value: e.key,
-                        child: Text(e.value, maxLines: 1, overflow: TextOverflow.ellipsis),
+            // the inline value + arrow of the old dense dropdown; a tap opens the kit's pick sheet (search when long)
+            : Builder(builder: (context) {
+                final hint = t('اختر ${gridFilterLabel(filter.kind)}', 'Choose ${gridFilterLabel(filter.kind).toLowerCase()}');
+                final chosen = values[filter.value];
+                return InkWell(
+                  onTap: () async {
+                    final v = await showAppPickSheet<String>(context,
+                        title: hint, options: values, current: values.containsKey(filter.value) ? filter.value : null);
+                    if (v != null) onChanged(GridFilter(filter.kind, v));
+                  },
+                  child: Row(children: [
+                    Expanded(
+                      child: Text(
+                        chosen ?? hint,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: chosen == null ? style.copyWith(color: c.textLight) : style,
                       ),
-                  ],
-                  onChanged: (v) => onChanged(GridFilter(filter.kind, v)),
-                ),
-              ),
+                    ),
+                    Icon(Icons.arrow_drop_down, size: AppIconSize.lg, color: c.textMedium),
+                  ]),
+                );
+              }),
     };
 
     return Row(

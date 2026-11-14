@@ -12,7 +12,7 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_time.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 
 /// What a column holds — decides the Excel number format, the alignment and the text in Word / PDF.
 enum AppColType { text, number, integer, money, percent, date, dateTime, status }
@@ -382,13 +382,7 @@ num? numValue(Object? v) {
   return (wall, withTime);
 }
 
-String _datePattern(DateTime d, String pattern) {
-  try {
-    return DateFormat(pattern, AppConfig.lang).format(d);
-  } catch (_) {
-    return DateFormat(pattern).format(d);
-  }
-}
+String _datePattern(DateTime d, String pattern) => AppTime.wall(d, pattern: pattern);
 
 String _clock(DateTime d) {
   try {

@@ -74,7 +74,7 @@ class LearningStatsView extends StatelessWidget {
         AppStatTile(icon: Icons.replay_rounded, label: t('أُعيدت صياغتها', 'Rephrased'), value: _pct(s.rephraseRate), color: c.warning),
         AppStatTile(icon: Icons.inbox_rounded, label: t('اقتراحات مفتوحة', 'Open suggestions'), value: '${s.suggestionsOpen}'),
       ]),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       RagTileGrid(minTile: 300, children: [
         AppCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -88,7 +88,7 @@ class LearningStatsView extends StatelessWidget {
             Text(t('الأسئلة المُنشأة', 'Generated questions'), style: appText(14, w: FontWeight.w800, c: c.textDark)),
             const SizedBox(height: 2),
             Text(t('${s.examItems} سؤالاً راجعها المعلمون', '${s.examItems} questions reviewed by teachers'), style: appText(12, c: c.textMedium)),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             _ShareRow(label: t('قُبلت كما هي', 'Accepted as is'), rate: s.acceptRate, color: c.success),
             _ShareRow(label: t('عُدّلت', 'Edited'), rate: s.editRate, color: c.warning),
             _ShareRow(label: t('رُفضت', 'Rejected'), rate: s.rejectRate, color: c.danger),
@@ -111,13 +111,13 @@ class _ShareRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(children: [
         Expanded(child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textDark))),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         SizedBox(width: 90, child: AppProgressBar(value: (rate ?? 0) * 100, color: color)),
         const SizedBox(width: 6),
-        SizedBox(width: 44, child: Align(alignment: AlignmentDirectional.centerEnd, child: Text(_pct(rate), textDirection: TextDirection.ltr, style: appText(12, c: c.textMedium)))),
+        SizedBox(width: AppSpace.xl + AppSpace.sm, child: Align(alignment: AlignmentDirectional.centerEnd, child: Text(_pct(rate), textDirection: TextDirection.ltr, style: appText(12, c: c.textMedium)))),
       ]),
     );
   }
@@ -156,13 +156,13 @@ class LoraCommandList extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       for (final (i, cmd) in commands.indexed)
         Padding(
-          padding: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.only(top: AppSpace.xs),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text('${i + 1}. ${loraStepLabel(cmd.step)}', style: appText(12, w: FontWeight.w700, c: c.textMedium)),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xxs),
             Container(
-              padding: const EdgeInsetsDirectional.fromSTEB(10, 6, 4, 6),
-              decoration: BoxDecoration(color: c.textLight.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsetsDirectional.fromSTEB(10, 6, AppSpace.xxs, 6),
+              decoration: BoxDecoration(color: c.textLight.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(AppRadius.chip)),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(
                   child: Padding(
@@ -202,11 +202,11 @@ class LoraReadinessCard extends StatelessWidget {
     final cand = r.lastCandidate;
     final exportAt = ragParseUtc(r.lastExportAt);
     return AppCard(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(child: Text(modelKindLabel(r.kind), style: appText(14, w: FontWeight.w800, c: c.textDark))),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           AppBadgePill(r.reached ? t('جاهز', 'Ready') : t('قيد الجمع', 'Collecting'), color: r.reached ? c.success : c.warning),
         ]),
         const SizedBox(height: 10),
@@ -221,7 +221,7 @@ class LoraReadinessCard extends StatelessWidget {
             padding: const EdgeInsets.only(top: 3),
             child: Row(children: [
               Expanded(child: Text(loraSourceLabel(e.key), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium))),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Text(appCompactNumber(e.value), textDirection: TextDirection.ltr, style: appText(12.5, w: FontWeight.w700, c: c.textDark)),
             ]),
           ),
@@ -245,14 +245,14 @@ class LoraReadinessCard extends StatelessWidget {
           ]),
           for (final f in cand.failures.take(3))
             Padding(
-              padding: const EdgeInsetsDirectional.only(start: 24, top: 2),
+              padding: const EdgeInsetsDirectional.only(start: AppSpace.lg, top: 2),
               child: Text('• $f', textDirection: TextDirection.ltr, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
             ),
         ],
         if (commands.isNotEmpty) ...[
           const SizedBox(height: 10),
           const Divider(height: 1),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Text(t('أوامر التدريب (خارج الخادم)', 'Training commands (off the server)'), style: appText(13, w: FontWeight.w800, c: c.textDark)),
           LoraCommandList(commands: commands, onCopy: onCopy),
         ],
@@ -296,11 +296,11 @@ class LearningSuggestionCard extends StatelessWidget {
     final sources = s.sourceQuestions;
     final answer = s.isQa ? asAnswer(s) : '';
     return AppCard(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(child: Text(s.title, maxLines: 4, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark))),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Tooltip(
             message: t('عدد من طلبوه أو صوّتوا ضده', 'Distinct people behind it'),
             child: AppBadgePill('${s.support}', icon: Icons.people_alt_outlined, color: c.primary),
@@ -311,7 +311,7 @@ class LearningSuggestionCard extends StatelessWidget {
           Text(answer, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
         ],
         if (sources.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Text(t('أسئلة الناس', 'What people asked'), style: appText(12, w: FontWeight.w700, c: c.textMedium)),
           const SizedBox(height: 2),
           for (final q in sources.take(4))
@@ -321,7 +321,7 @@ class LearningSuggestionCard extends StatelessWidget {
             ),
           if (sources.length > 4) Text(t('و${sources.length - 4} أخرى', '+${sources.length - 4} more'), style: appText(12, c: c.textLight)),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         Wrap(alignment: WrapAlignment.end, spacing: 8, runSpacing: 6, children: [
           TextButton(onPressed: busy ? null : onDismiss, child: Text(t('تجاهل', 'Dismiss'))),
           FilledButton.icon(
@@ -356,7 +356,7 @@ class LearningSuggestionsView extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       for (final (kind, list) in groups) ...[
         Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 6),
+          padding: const EdgeInsets.only(top: AppSpace.xs, bottom: 6),
           child: Row(children: [
             Expanded(child: Text(suggestionKindLabel(kind), style: appText(14, w: FontWeight.w800, c: c.textDark))),
             AppBadgePill('${list.length}', color: c.textMedium),
@@ -364,7 +364,7 @@ class LearningSuggestionsView extends StatelessWidget {
         ),
         for (final s in list)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
             child: LearningSuggestionCard(
                 suggestion: s,
                 busy: busy.contains(s.id),
@@ -394,7 +394,7 @@ class ModelVersionTile extends StatelessWidget {
     final color = m.live ? c.success : (m.candidate ? c.warning : c.textLight);
     final deltas = m.candidate ? metricDeltas(m, live) : [for (final e in m.metrics.entries) MetricDelta(e.key, null, e.value)];
     return AppCard(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
           Text('${modelKindLabel(m.kind)} · ${m.version}', style: appText(14, w: FontWeight.w800, c: c.textDark)),
@@ -420,7 +420,7 @@ class ModelVersionTile extends StatelessWidget {
             ),
         ],
         if (onPromote != null || onRollback != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Wrap(alignment: WrapAlignment.end, spacing: 8, runSpacing: 6, children: [
             if (onRollback != null)
               TextButton.icon(onPressed: busy ? null : onRollback, icon: const Icon(Icons.undo_rounded, size: 18), label: Text(t('رجوع', 'Rollback'))),
@@ -453,7 +453,7 @@ class LearningModelsView extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       for (final m in shown)
         Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
           child: ModelVersionTile(
               model: m,
               live: liveModel(models, m.kind),
@@ -475,7 +475,7 @@ class LearningContributeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
       child: AppSwitchTile(
         icon: Icons.volunteer_activism_outlined,
         title: t('ساعد في تحسين المساعد المشترك', 'Help improve the shared assistant'),
@@ -618,27 +618,27 @@ class _RagLearningBodyState extends State<RagLearningBody> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    if (_loading && _stats == null && _suggestions.isEmpty) return const AppListSkeleton(items: 4, padding: EdgeInsets.all(16));
+    if (_loading && _stats == null && _suggestions.isEmpty) return const AppListSkeleton(items: 4, padding: EdgeInsets.all(AppSpace.md));
     if (_unavailable) {
-      return Padding(padding: const EdgeInsets.all(16), child: AppEmpty(icon: Icons.system_update_alt_rounded, title: learningNeedsUpdateText()));
+      return Padding(padding: const EdgeInsets.all(AppSpace.md), child: AppEmpty(icon: Icons.system_update_alt_rounded, title: learningNeedsUpdateText()));
     }
     return AppRefresh(
       onRefresh: _load,
       // a centred column of at most kRagPageMaxWidth (the console's tab is the full desktop width)
       child: LayoutBuilder(builder: (context, box) {
       final side = ragGutter(box.maxWidth, maxWidth: kRagPageMaxWidth);
-      return ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 24), children: [
+      return ListView(padding: EdgeInsets.fromLTRB(side, AppSpace.sm, side, AppSpace.lg), children: [
         if (_error != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!)),
         AppBanner(
             icon: Icons.school_outlined,
             color: appInk(context, c.primary),
             text: t('يتعلم المساعد من الاستخدام الحقيقي، لكن لا يُنشر شيء دون موافقتك.', 'The assistant learns from real use, but nothing goes live without your approval.')),
         if (!_platform && _contribute != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           LearningContributeCard(value: _contribute!, onChanged: _setContribute),
         ],
         if (_stats != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           AppSectionTitle(t('المؤشرات', 'Stats'), subtitle: t('آخر $_days يوماً', 'Last $_days days')),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final d in const [7, 30, 90])
@@ -651,16 +651,16 @@ class _RagLearningBodyState extends State<RagLearningBody> {
           LearningStatsView(stats: _stats!),
         ],
         if (_platform && _stats?.lora != null) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           AppSectionTitle(t('جاهزية تدريب النموذج', 'Model training readiness'),
               subtitle: t('تُحسب بمرشّحات التصدير نفسها؛ التدريب يجري خارج الخادم', "Counted with the export's own filters; training runs off the server")),
           LoraReadinessView(lora: _stats!.lora!, suggestions: _suggestions),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         AppSectionTitle(t('الاقتراحات', 'Suggestions'), subtitle: t('مسودات تنتظر موافقتك', 'Drafts waiting for your approval')),
         LearningSuggestionsView(items: _suggestions, busy: _busy, onAccept: _accept, onDismiss: _dismiss),
         if (_platform) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.md),
           AppSectionTitle(t('إصدارات النماذج', 'Model versions'),
               subtitle: t('لا يُعتمد إصدار إلا إن لم يتراجع في بوابة التقييم', 'A version is promoted only if it does not regress on the evaluation gate')),
           LearningModelsView(models: _stats?.loraDisabled == true ? [for (final m in _models) if (!loraKinds.contains(m.kind)) m] : _models, busy: _busyModels, onPromote: _promote, onRollback: _rollback),
