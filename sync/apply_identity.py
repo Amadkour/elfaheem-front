@@ -58,7 +58,7 @@ SCOPES = [
 # Never touched: real server payloads, the certificate fixtures and their test (the fixture leaf IS nextbrain.site),
 # the decision history, generated lock files.
 EXCLUDE = re.compile(
-    r'^(test/fixtures/|docs/DECISIONS|landing/package-lock\.json|landing/node_modules/|sync/)'
+    r'^(test/fixtures/|docs/DECISIONS|landing/node_modules/|sync/)'
     r'|^test/auth/cert_pin_test\.dart$|^lib/core/cert_pin\.dart$'
 )
 TEXT_EXT = {
@@ -179,7 +179,7 @@ def platform_names(rel: str, text: str) -> str:
         # NextBrain's splash cream / emerald -> Alfaheem's splash colours (they must match the native splash).
         text = re.sub('#FBF7EC', E['SPLASH_COLOR'], text, flags=re.I)
         text = re.sub('#0F7B5F', E['SPLASH_COLOR_DARK'], text, flags=re.I)
-    if rel == 'landing/package.json':
+    if rel in ('landing/package.json', 'landing/package-lock.json'):
         text = text.replace('"name": "nextbrain-landing"', f'"name": "{BIN}-landing"')
     return text
 
