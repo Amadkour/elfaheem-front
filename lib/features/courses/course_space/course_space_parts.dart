@@ -42,7 +42,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show CourseSchedule;
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart' show CourseSchedule;
 import 'package:flutter_education_app/features/courses/private_flag.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
 

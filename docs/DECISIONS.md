@@ -856,7 +856,7 @@ jitter); per-axis One Euro (flattens curves where one axis slows down).
 
 ## D-084 — The Analytics tabs compare with the class, not with a previous period · 2026-10-29
 
-**Decision.** The student's and the instructor's Analytics tabs are one summary page (`shared/analytics/
+**Decision.** The student's and the instructor's Analytics tabs are one summary page (`features/analytics/
 analytics_summary.dart` pure, `analytics_summary_ui.dart` plain-value widgets): concentric rings for progress ·
 attendance · exams around the overall figure with ONE sentence, four count tiles, "For you" (up to three
 plain-language nudges, one of each kind before a second, each opening what it is about), one bar per course for the
@@ -956,7 +956,7 @@ and the day view fetch whole weeks from the start of their week so the week view
 every range inside it). `detail=true` (additive, back `b2c4784`) adds each changed date's `change` (online /
 substitute / cancelled with the answers, `can_respond` / `can_edit`), keeps cancelled dates with `cancelled: true`
 (an older app never asked, so it never shows them as classes) and returns `pauses` (exam windows pausing the
-weekly classes). A personal course's weekly appointments (`GET /student|teacher/schedules`) are expanded to dated
+weekly classes). A personal course's weekly appointments (`GET /student|features/home/teacher/schedules`) are expanded to dated
 `course_weekly` events in the app (cached 15 min, never failing the page). Live: the store reloads on the new
 stream-only `calendar_updated` (every meeting notification), `meeting_live`, `session_live` and timetable /
 exam-timetable `attention_changed`; "Live now · Join" comes from the home's `MeHomeService.liveNow` (no extra
@@ -1098,7 +1098,7 @@ a session creates it at the slot's start, so the dashboard matches it (course + 
 shows it. "Meet now" stays one tap away as the sheet's secondary action (the header icon left; it comes back when the
 kill switch `teacher.quick_live` hides Go live). Nothing is fetched when the home opens: the sheet asks
 `GET /courses/{id}/sessions` for the course it shows (cached per course while open), so the request budgets are
-unchanged. Files: `lib/features/teacher/home/go_live.dart` (pure, `test/org/go_live_test.dart`), `go_live_sheet.dart`
+unchanged. Files: `lib/features/home/teacher/go_live.dart` (pure, `test/org/go_live_test.dart`), `go_live_sheet.dart`
 (`test/ui/go_live_layout_test.dart`; renders `test/visual/go_live_golden_test.dart`).
 **Rejected.** A new server route ("quick live" in one call): the two existing calls do it, and `POST /quick_session`
 ignores the title and the Record switch; a floating button (the app assistant floats in the same corner); a primary-

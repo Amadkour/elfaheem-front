@@ -46,8 +46,8 @@ import 'package:flutter_education_app/features/sessions/teacher/components/sessi
 import 'package:flutter_education_app/features/courses/teacher/component/certificate_manager_sheet.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
-import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
+import 'package:flutter_education_app/features/home/teacher/schedules/schedules_screen.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/share_link.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/course_reel_player.dart';

@@ -26,7 +26,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/checkout_pages.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/payment_flow_provider.dart';

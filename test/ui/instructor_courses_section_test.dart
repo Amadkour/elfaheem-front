@@ -11,7 +11,7 @@ import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/features/auth/teacher_document_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart';
 import 'package:flutter_education_app/features/shared/profile/instructor_courses_section.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

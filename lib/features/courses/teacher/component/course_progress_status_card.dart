@@ -12,7 +12,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseStatus, CourseStatusX;
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseStatus, CourseStatusX;
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppBorder, AppIconSize, AppMotion, AppRadius, AppSpace, AppStatusBadge, AppTone, AppTouch, AppType, appInkOn, appTintOn;

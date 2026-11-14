@@ -1,8 +1,8 @@
-// The pure half of the Analytics tabs (lib/features/shared/analytics/analytics_summary.dart): the headline figures and
+// The pure half of the Analytics tabs (lib/features/analytics/analytics_summary.dart): the headline figures and
 // their class comparison, the ranking, the ONE sentence and the "For you" nudges (student and instructor), and the
 // words they are written in (English fallback here: the tests do not load translation.json).
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/analytics/analytics_summary.dart';
+import 'package:flutter_education_app/features/analytics/analytics_summary.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 AnCourseFacts course(

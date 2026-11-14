@@ -18,9 +18,9 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart' show modeCourseScopeQuery;
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
-import 'package:flutter_education_app/features/student/models.dart'
+import 'package:flutter_education_app/features/home/student/models.dart'
     show AppCurrency, AppCurrencyX, CourseStatus, CourseStatusX;
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart' show RoadmapDraft;
 
 // ─────────────────────────────────────────────────────────────────────────────

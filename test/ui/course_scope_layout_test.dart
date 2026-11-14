@@ -10,7 +10,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart';
 import 'package:flutter_education_app/features/courses/course_scope_bar.dart';
 import 'package:flutter_education_app/features/courses/home_course_list.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

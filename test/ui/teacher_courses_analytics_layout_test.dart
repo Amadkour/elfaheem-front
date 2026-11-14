@@ -3,11 +3,11 @@
 // exception, long texts included.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/analytics/analytics_summary.dart';
-import 'package:flutter_education_app/features/shared/analytics/analytics_summary_ui.dart';
-import 'package:flutter_education_app/features/student/analysis/analytics_editorial.dart';
-import 'package:flutter_education_app/features/student/analysis/student_course_analytics_screen.dart';
-import 'package:flutter_education_app/features/student/models.dart' show AppCurrency, CourseStatus;
+import 'package:flutter_education_app/features/analytics/analytics_summary.dart';
+import 'package:flutter_education_app/features/analytics/analytics_summary_ui.dart';
+import 'package:flutter_education_app/features/analytics/student/analytics_editorial.dart';
+import 'package:flutter_education_app/features/analytics/student/student_course_analytics_screen.dart';
+import 'package:flutter_education_app/features/home/student/models.dart' show AppCurrency, CourseStatus;
 import 'package:flutter_education_app/features/courses/teacher/component/course_progress_status_card.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/currency_selector.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/section_card.dart';

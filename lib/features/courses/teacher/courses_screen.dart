@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart'
     show TeacherCourseStatus, TeacherCourse;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
@@ -16,9 +16,9 @@ import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/app_responsive.dart';
-import 'package:flutter_education_app/features/student/models.dart' show DiscountInfoX;
-import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
-import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
+import 'package:flutter_education_app/features/home/student/models.dart' show DiscountInfoX;
+import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
+import 'package:flutter_education_app/features/home/teacher/schedules/schedules_screen.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
@@ -40,7 +40,7 @@ import 'package:flutter_education_app/design/master_detail/entity_panel_controll
 import 'package:flutter_education_app/design/master_detail/entity_viewer_actions.dart';
 import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
-import 'package:flutter_education_app/features/teacher/classroom/teacher_classroom.dart';
+import 'package:flutter_education_app/features/home/teacher/classroom/teacher_classroom.dart';
 
 /// The teacher's "My courses" tab: the strip Courses · My students · Submissions · Reviews (D-290), then the courses:
 /// the side (CourseScopeBanner — the app mode), ONE calm toolbar (search · All / Published / Drafts) and the shared

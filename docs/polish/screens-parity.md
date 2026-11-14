@@ -5,9 +5,9 @@
 | route | screen | roles |
 |---|---|---|
 | /login, /register, /otp, /forgot-password | `features/auth/*` | pre-auth |
-| /home | `student/home/home_screen.dart` | student + guest |
-| /dashboard | `student/dashboard/dashboard_screen.dart`: home · my_courses · my_schedule · analysis · my_profile (`student_tab_<label>` kill-switch) | student + guest |
-| /teacher_dashboard | `teacher/dashboard/teacher_dashboard_screen.dart`: home · my_courses · my_schedule · analysis · my_profile | teacher |
+| /home | `features/home/student/home_screen.dart` | student + guest |
+| /dashboard | `features/home/student/dashboard/dashboard_screen.dart`: home · my_courses · my_schedule · analysis · my_profile (`student_tab_<label>` kill-switch) | student + guest |
+| /teacher_dashboard | `features/home/teacher/dashboard/teacher_dashboard_screen.dart`: home · my_courses · my_schedule · analysis · my_profile | teacher |
 | /parent_dashboard | `parent/parent_dashboard_screen.dart`: children · reports · alerts · link · more | parent |
 | /admin_dashboard | `admin/admin_dashboard_screen.dart`: phone overview · students · courses · teachers · More; wide adds hubs people / finance / support / config (`admin_services_hub.dart`, super-admin gates L183/198/220) | admin, super-admin, developer |
 | /org_dashboard | `org/org_dashboard_screen.dart` (OrgsGate): home · people · academics · timetable · services · settings; phones fold services into More | org-admin, org-staff |

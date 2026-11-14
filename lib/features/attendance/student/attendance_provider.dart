@@ -4,7 +4,7 @@
 library;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 
 class StudentAttendanceProvider extends BaseProvider {
   final ApiClient _api;

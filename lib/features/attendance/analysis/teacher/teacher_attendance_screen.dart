@@ -9,10 +9,10 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/features/attendance/analysis/teacher/attendance_model.dart';
 import 'package:flutter_education_app/features/attendance/analysis/teacher/teacher_attendance_provider.dart';
-import 'package:flutter_education_app/features/student/analysis/student_analytics_profile_screen.dart';
+import 'package:flutter_education_app/features/analytics/student/student_analytics_profile_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppGradients, AppHeader, AppListSkeleton, AppWidth;
-import 'package:flutter_education_app/features/teacher/analysis/teacher_stat_band.dart';
+import 'package:flutter_education_app/features/analytics/teacher/teacher_stat_band.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 

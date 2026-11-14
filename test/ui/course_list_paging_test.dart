@@ -18,7 +18,7 @@ import 'package:flutter_education_app/design/app_infinite_scroll.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart';
 import 'package:flutter_education_app/features/courses/student/list/courses_provider.dart';
 import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_provider.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

@@ -10,7 +10,7 @@ import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/search_text_field.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart';
-import '../../student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class FavouriteCoursesScreen extends StatefulWidget {

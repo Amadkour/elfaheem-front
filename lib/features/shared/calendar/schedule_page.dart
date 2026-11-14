@@ -49,8 +49,8 @@ import 'package:flutter_education_app/features/org/org_member_changes.dart' show
 import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgTimetableScreen;
 import 'package:flutter_education_app/features/org/org_my_exams.dart' show openMyExams;
 import 'package:flutter_education_app/features/courses/student/details/course_live_join.dart' show openCourseLiveRoom;
-import 'package:flutter_education_app/features/student/home/home_live.dart' show joinHomeLiveRoom;
-import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart' show openTeacherCourseSessions;
+import 'package:flutter_education_app/features/home/student/home_live.dart' show joinHomeLiveRoom;
+import 'package:flutter_education_app/features/home/teacher/queue_work_items.dart' show openTeacherCourseSessions;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';

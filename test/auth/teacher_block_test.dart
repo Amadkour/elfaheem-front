@@ -1,7 +1,7 @@
 // A course's / the doctors list's `teacher` block (TeacherProfileData.fromJson): the server blanks the contact fields
 // there (back PublicTeacherResponse: `gmail` "", `phone` null) and may drop them and the account fields later; the
 // parser must take all three shapes.
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> serverBlock() => {

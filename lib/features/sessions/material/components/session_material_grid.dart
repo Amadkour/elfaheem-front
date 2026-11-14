@@ -24,7 +24,7 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:flutter_education_app/features/sessions/video/video_player_screen.dart';
 import 'package:flutter_education_app/features/sessions/video/vod_player_parts.dart' show VodAction, VodInk, VodGlassButton, vodText;

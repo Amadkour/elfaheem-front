@@ -20,7 +20,7 @@ import 'package:flutter_education_app/design/app_share_sheet.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
-import 'package:flutter_education_app/features/student/models.dart' show CourseSummary;
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseSummary;
 import 'package:flutter_education_app/features/courses/course_price_tag.dart' show coursePriceLabel;
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart';

@@ -15,7 +15,7 @@ import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/courses/student/details/growth_tr.dart';
 
 /// The public URL of a course: the same `/c/<id>?ref=<sharer>` link `DeepLinkService.shareCourse` builds

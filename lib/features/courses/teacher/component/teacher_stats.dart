@@ -1,4 +1,4 @@
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 
 class TeacherStats {
   final double overallRating;

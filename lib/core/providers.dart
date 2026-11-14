@@ -1,6 +1,6 @@
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/student/analysis/student_analytics_provider.dart';
+import 'package:flutter_education_app/features/analytics/student/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/attendance/student/attendance_provider.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
 import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
@@ -18,13 +18,13 @@ import '../features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/student_exam_provider.dart';
 import 'package:flutter_education_app/features/courses/student/list/courses_provider.dart';
 import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_provider.dart';
-import '../features/student/home/home_provider.dart';
+import 'package:flutter_education_app/features/home/student/home_provider.dart';
 import 'package:nested/nested.dart';
-import '../features/student/reward/rewards_provider.dart';
-import '../features/teacher/home/teacher_home_provider.dart';
+import 'package:flutter_education_app/features/home/student/reward/rewards_provider.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
 import '../features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
-import '../features/teacher/schedules/schedules_provider.dart';
+import 'package:flutter_education_app/features/home/teacher/schedules/schedules_provider.dart';
 import 'package:flutter_education_app/features/sessions/teacher/students/course_student_provider.dart';
 
 List<SingleChildWidget> appProviders({

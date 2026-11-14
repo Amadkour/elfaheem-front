@@ -6,7 +6,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/number_pair.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:flutter_education_app/features/sessions/session_track_tabs.dart';
 

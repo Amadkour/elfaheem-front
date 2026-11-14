@@ -34,7 +34,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:flutter_education_app/design/app_switch.dart';
-import 'package:flutter_education_app/features/student/analysis/student_analytics_profile_screen.dart';
+import 'package:flutter_education_app/features/analytics/student/student_analytics_profile_screen.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_certificates_sheet.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_column_sheet.dart';

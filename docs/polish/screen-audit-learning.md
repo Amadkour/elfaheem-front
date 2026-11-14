@@ -1,6 +1,6 @@
 # Screen audit — learning (Track A2, area 2 of 3, 2026-10-28)
 
-Scope: `lib/features/student/**` except `student/home/**`, `lib/features/teacher/**` except `teacher/home/**`, `lib/features/shared/{session,course,exam_engine,live,guest,models}/**` (243 Dart files).
+Scope: `lib/features/student/**` except `features/home/student/**`, `lib/features/teacher/**` except `features/home/teacher/**`, `lib/features/shared/{session,course,exam_engine,live,guest,models}/**` (243 Dart files).
 Checks per screen: (a) colours only from `context.colors` · (b) page / list spinners → `AppListSkeleton` / `AppShimmer` · (c) empty + error states (`AppEmpty`, `ErrorRetry`, `apiErrorText`), no raw exception text · (d) RTL · (e) overflow at 320×640 / textScaler 1.3 / ar + en · (f) 48 px targets, labels on icon-only buttons · (g) old widgets → kit · (h) times via `AppTime` · (i) pull-to-refresh via `AppRefresh`.
 Behaviour and API calls are unchanged except where a row or the bug list says "bug". `RoomPage` / `VideoPlayerScreen` are covered through their presentational parts only.
 
@@ -39,7 +39,7 @@ Tests: `test/ui/polish_learning_layout_test.dart` (28 tests in four groups — s
 
 Not fixed:
 - (outside this area) `lib/design/app_notice.dart`: `showAppNotice` / `appToast` from sheets opened inside the full-screen live room (lobby, share link) are still drawn under the room layer. Suggested fix: draw into the room navigator's overlay while `LiveRoomHost.isOpen && !LiveRoomHost.isMinimized`.
-- (outside this area) `teacher/home/teacher_models.dart` adds 700 to `students_count` when it parses a course (inflated student counts).
+- (outside this area) `features/home/teacher/teacher_models.dart` adds 700 to `students_count` when it parses a course (inflated student counts).
 - (this area, left) `room.dart` `_fmtDuration` ("joined X ago") compares `DateTime.now()` with naively parsed server times; left until the server's time format is confirmed.
 
 ## Per screen
@@ -77,17 +77,17 @@ Not fixed:
 | `features/exams/legacy/student/student_course_exams_widget.dart` | k* palette; spinner; end date `d/m` by hand | theme; skeleton; `AppTime.date` | — |
 | `features/exams/legacy/student/student_exam_provider.dart` | 5 x `e.toString()` shown to the student | `apiErrorText(ApiException.from(e))` | — |
 | `features/exams/legacy/student/student_active_exam_screen.dart`, `passcode_screen.dart` | 17 + 4 colours, raw `e.toString()` | colours -> theme, apiErrorText | both unused (no importer; the live quiz is `student_exam_quiz_screen.dart`, passcodes use `PasscodeSheet`) |
-| `student/analysis/flags/student_flags_screen.dart` (+ provider) | 2 colours + k*; spinner; 2 RefreshIndicators; raw error | theme; skeleton; `AppRefresh`; tooltip; apiErrorText | — |
-| `student/analysis/student_analytics_screen.dart` | 7 colours (white avatar on hero); spinner; RefreshIndicator; clear-search icon without tooltip | theme (avatar -> onHero); skeleton; `AppRefresh`; tooltip | — |
-| `student/analysis/student_course_analytics_screen.dart` (+ provider) | 29 colours; 4 spinners; 5 RefreshIndicators; glass buttons 40 px unlabelled; 3 raw errors in provider | theme; skeletons; `AppRefresh`; 48 px + tooltips; apiErrorText | attendance dates are pre-converted with `toLocal()` (AppTime would shift twice) |
-| `student/analysis/student_analytics_profile_screen.dart` | 4 colours; spinner; RefreshIndicator; raw `'$e'` | theme; skeleton; `AppRefresh`; apiErrorText | — |
+| `features/analytics/student/flags/student_flags_screen.dart` (+ provider) | 2 colours + k*; spinner; 2 RefreshIndicators; raw error | theme; skeleton; `AppRefresh`; tooltip; apiErrorText | — |
+| `features/analytics/student/student_analytics_screen.dart` | 7 colours (white avatar on hero); spinner; RefreshIndicator; clear-search icon without tooltip | theme (avatar -> onHero); skeleton; `AppRefresh`; tooltip | — |
+| `features/analytics/student/student_course_analytics_screen.dart` (+ provider) | 29 colours; 4 spinners; 5 RefreshIndicators; glass buttons 40 px unlabelled; 3 raw errors in provider | theme; skeletons; `AppRefresh`; 48 px + tooltips; apiErrorText | attendance dates are pre-converted with `toLocal()` (AppTime would shift twice) |
+| `features/analytics/student/student_analytics_profile_screen.dart` | 4 colours; spinner; RefreshIndicator; raw `'$e'` | theme; skeleton; `AppRefresh`; apiErrorText | — |
 | `features/certificates/student/my_certificates_screen.dart` | 8 colours; spinners (page + image); RefreshIndicator; `_toast` ignored its `error` flag (every success notice showed as an error); close button `Positioned(right:)` without tooltip | theme; skeleton + shimmer; `AppRefresh`; `error: error`; `PositionedDirectional(end:)` + tooltip | — |
 | `features/courses/student/details/course_detail_provider.dart`, `courses/security/device_security_provider.dart` | raw `e.toString()` to the user | apiErrorText | — |
 | `features/attendance/student/attendance_screen.dart` | 4 colours; hand-rolled hh:mm | colours -> theme | unused (no importer) |
-| `student/reward/rewards_screen.dart` (+ provider) | 3 colours, Arabic-only, mock leaderboard data | colours -> theme | unused (no importer) — mock screen |
-| `student/dashboard/component/student_exam_tab.dart` | 3 colours, spinner, RefreshIndicator, Arabic-only strings, raw error | colours -> theme, `AppRefresh`, apiErrorText | unused (no importer); Arabic-only strings left |
-| `student/dashboard/component/student_schedule_tab.dart`, `student/dashboard/dashboard_screen.dart` | — | — | dashboard owned by the homes track |
-| `student/models.dart` | hand-rolled `d/m hh:mm` session labels | — | values come from `toLocalSaTime` (already converted); AppTime needs the raw UTC, so the change belongs with the model |
+| `features/home/student/reward/rewards_screen.dart` (+ provider) | 3 colours, Arabic-only, mock leaderboard data | colours -> theme | unused (no importer) — mock screen |
+| `features/home/student/dashboard/component/student_exam_tab.dart` | 3 colours, spinner, RefreshIndicator, Arabic-only strings, raw error | colours -> theme, `AppRefresh`, apiErrorText | unused (no importer); Arabic-only strings left |
+| `features/home/student/dashboard/component/student_schedule_tab.dart`, `features/home/student/dashboard/dashboard_screen.dart` | — | — | dashboard owned by the homes track |
+| `features/home/student/models.dart` | hand-rolled `d/m hh:mm` session labels | — | values come from `toLocalSaTime` (already converted); AppTime needs the raw UTC, so the change belongs with the model |
 
 ## Teacher (`lib/features/teacher/**`, without `home/`, `sessions/live/`, `data_lab/`)
 
@@ -105,11 +105,11 @@ Not fixed:
 | `features/certificates/certificate_requests_screen.dart` | page spinner; failed load showed "no requests"; hand-written empty state + RefreshIndicator | body factored to `CertificateRequestsBody` (plain values): skeleton · `ErrorRetry` · `AppEmpty` (pullable) · `AppRefresh` list; tested | — |
 | `features/certificates/designer/certificate_designs_screen.dart` | page spinner; failed load showed "no designs"; RefreshIndicator; asymmetric LTRB | skeleton; `ErrorRetry`; `AppEmpty` (pullable); `AppRefresh`; `fromSTEB` | — |
 | `features/certificates/designer/certificate_designer_screen.dart` | 19 colours; 7 icon-only buttons without tooltip | chrome colours → roles; tooltips (align / lines / show-hide / delete / close / remove) | signature ink palette (`_inks`), photo placeholder on the canvas, `hexToColor` fallback kept — certificate content, not UI chrome; ink swatches stay 30 px (wide-only side panel); designer loading spinner kept (canvas, not a list) |
-| `teacher/analysis/analytics_hub_screen.dart` | 12 colours; page spinner; RefreshIndicator; close IconButton without tooltip | roles; skeleton; `AppRefresh`; tooltip; `fromSTEB` | per-course load failure still shows shortcuts only (by design: "the hub still works") |
+| `features/analytics/teacher/analytics_hub_screen.dart` | 12 colours; page spinner; RefreshIndicator; close IconButton without tooltip | roles; skeleton; `AppRefresh`; tooltip; `fromSTEB` | per-course load failure still shows shortcuts only (by design: "the hub still works") |
 | `features/attendance/analysis/teacher/teacher_attendance_screen.dart` (+ provider) | 10 colours; spinners; raw `e.toString()` errors; clear button without tooltip | roles (`heroTint` for hero stat); skeletons; `apiErrorText(ApiException.from(e))`; tooltip | — |
 | `features/exams/legacy/teacher/teacher_exam_hub_screen.dart` (+ provider) | 32 colours; tab spinners; 10 raw `e.toString()`; exam start time shown in UTC; picked dates HH:MM by hand; popup items colour without context; asymmetric LTRB; remove-option button without tooltip | roles; skeletons; `apiErrorText`; `_fmtDate` reads naive UTC → `AppTime.dateTime`; picked times `clockMinutes`; `fromSTEB`; tooltip | — |
-| `teacher/analysis/flags/teacher_read_flags_screen.dart` | 5 colours (+ const hero gradient); spinner; raw error; RefreshIndicator | roles (`heroEnd(kDanger)`); skeleton; `apiErrorText`; `AppRefresh` | `kDanger` / `examT` come from student `exam_ui.dart` (other area) |
-| `teacher/schedules/schedules_screen.dart` | 32 colours (ring painter white); RefreshIndicator; slot times raw "HH:MM"; 38 / 40 px delete / add without labels; `only(left:)` | roles (painter takes the ink colour); `AppRefresh`; `AppTime.clock` for slots + delete prompt, picked time `clockMinutes`; 48 px targets + semantic labels; directional margin | decorative hero circles keep left/right |
+| `features/analytics/teacher/flags/teacher_read_flags_screen.dart` | 5 colours (+ const hero gradient); spinner; raw error; RefreshIndicator | roles (`heroEnd(kDanger)`); skeleton; `apiErrorText`; `AppRefresh` | `kDanger` / `examT` come from student `exam_ui.dart` (other area) |
+| `features/home/teacher/schedules/schedules_screen.dart` | 32 colours (ring painter white); RefreshIndicator; slot times raw "HH:MM"; 38 / 40 px delete / add without labels; `only(left:)` | roles (painter takes the ink colour); `AppRefresh`; `AppTime.clock` for slots + delete prompt, picked time `clockMinutes`; 48 px targets + semantic labels; directional margin | decorative hero circles keep left/right |
 | `teacher/profile/payout/teacher_payouts_screen.dart` | 5 colours; page spinner; RefreshIndicator | roles; skeleton; `AppRefresh` | — |
 | `teacher/profile/switch_device_requests/teacher_device_requests_screen.dart` | spinner; RefreshIndicator; SnackBars (hidden under sheets) | skeleton; `AppRefresh`; `showAppNotice` | — |
 | `features/sessions/teacher/sessions_screen.dart` | RefreshIndicator with `BouncingScrollPhysics` (short list could not be pulled on Android) | `AppRefresh` + always-scrollable physics | — |
@@ -118,7 +118,7 @@ Not fixed:
 | `features/sessions/teacher/components/course_hero.dart`, `course_stats_row.dart`, `session_form_sheet.dart`, `guest_link_sheet.dart` | colours; session form date HH:MM by hand; `only(left:)` error labels | roles; `clockMinutes`; directional | QR `backgroundColor: Colors.white` kept (scanner needs a light quiet zone) |
 | `features/sessions/teacher/components/course_reel_player.dart` | 17 colours; 36 px glass buttons without labels | roles + theme import; buttons labelled (tooltip + semantics) with 48 px target | video chrome kept: gold progress line, dark poster gradient, black full-screen background |
 | `features/sessions/teacher/students/course_student_screen.dart` | 25 colours (getter + const palette without context); spinner; RefreshIndicator; failed load showed "no students"; 36 px back + 28 px dialog close | roles (palette from theme roles); skeleton; `AppRefresh`; `ErrorRetry`; 48 px targets + labels | — |
-| `features/certificates/certificate_requests_provider.dart`, `teacher/dashboard/*`, `switch_device_requests` provider, `sessions/model` | no UI issues | — | `teacher/dashboard` belongs to the homes/dashboards owner |
+| `features/certificates/certificate_requests_provider.dart`, `features/home/teacher/dashboard/*`, `switch_device_requests` provider, `sessions/model` | no UI issues | — | `features/home/teacher/dashboard` belongs to the homes/dashboards owner |
 
 ## Live room, lobby, guest, video player (`features/live/room/**`, `shared/{live,guest,session/video}/**`)
 

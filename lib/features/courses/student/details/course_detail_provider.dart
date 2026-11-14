@@ -12,7 +12,7 @@ import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_sessions.dart' show courseStudentSessionDone;
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_models.dart' show CoursePageState;
 import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/issued_certificate.dart';
 import 'package:flutter_education_app/features/courses/student/details/session_exam_gate.dart';
 export 'package:flutter_education_app/features/courses/student/details/session_exam_gate.dart';

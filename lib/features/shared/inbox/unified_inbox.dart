@@ -35,7 +35,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseModel;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';

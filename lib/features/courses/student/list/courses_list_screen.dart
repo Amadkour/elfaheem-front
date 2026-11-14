@@ -21,7 +21,7 @@ import 'package:flutter_education_app/config/app_config.dart' as Helpers;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace, AppWidth;
 
 class CoursesListScreen extends StatefulWidget {

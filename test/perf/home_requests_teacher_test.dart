@@ -1,6 +1,6 @@
 // Instructor home: HTTP requests on first open, duplicates, waterfall depth, pull-to-refresh — within the budget
 // (home_requests_harness.dart). Its own file = its own isolate (fresh app singletons).
-import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart';
+import 'package:flutter_education_app/features/home/teacher/dashboard/teacher_dashboard_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_requests_harness.dart';

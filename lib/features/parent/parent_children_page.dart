@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../shared/analytics/analytics_ui.dart';
+import 'package:flutter_education_app/features/analytics/analytics_ui.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_models.dart' show DlProfile;
 import 'parent_link_providers.dart';
 import 'parent_reports_page.dart';

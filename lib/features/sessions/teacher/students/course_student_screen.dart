@@ -29,7 +29,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/sessions/teacher/students/course_student_card.dart';
 import 'package:flutter_education_app/features/sessions/teacher/students/course_student_provider.dart';
 import 'package:flutter_education_app/features/sessions/teacher/students/course_students_nudge.dart';

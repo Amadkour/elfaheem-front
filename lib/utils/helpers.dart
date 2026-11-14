@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import '../config/app_config.dart';
 import '../config/theme/theme_config_provider.dart';
-import '../features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/session_form_sheet.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import '../main.dart';

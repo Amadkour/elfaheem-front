@@ -24,7 +24,7 @@ import 'package:flutter_education_app/features/courses/course_scope.dart';
 import 'package:flutter_education_app/features/courses/home_course_list.dart';
 import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_provider.dart';
 import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_screen.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseModel;
 import 'package:flutter_education_app/features/courses/teacher/courses_screen.dart';
 import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
 import 'package:flutter_test/flutter_test.dart';

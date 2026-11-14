@@ -28,7 +28,7 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/teacher_document_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/change_password_widget.dart';
 import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart';
-import 'package:flutter_education_app/features/student/models.dart' show TeacherProfileData;
+import 'package:flutter_education_app/features/home/student/models.dart' show TeacherProfileData;
 import 'package:flutter_education_app/features/shared/profile/profile_hero.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_screen.dart';
@@ -36,7 +36,7 @@ import 'package:flutter_education_app/features/shared/profile/update_account_wid
 import 'package:flutter_education_app/features/shared/public_profile/public_profile.dart';
 import 'package:flutter_education_app/features/shared/public_profile/public_profile_view.dart';
 import 'package:flutter_education_app/features/payments/subscription/subscription_screen.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/teacher/profile/payout/teacher_payouts_screen.dart';
 import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_screen.dart';

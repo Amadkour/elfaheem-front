@@ -42,7 +42,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 
 class TeacherCoursesProvider extends BaseProvider {
   final ApiClient _api;

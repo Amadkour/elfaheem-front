@@ -7,7 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_charts.dart';
-import 'package:flutter_education_app/features/shared/analytics/analytics_summary_ui.dart';
+import 'package:flutter_education_app/features/analytics/analytics_summary_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// appChartPalette for a theme, without a widget tree (same formula: primary · peach (accent1) · sage (accent3) ·

@@ -132,8 +132,8 @@ cards, panel, states and keyboard everywhere (the server pages, searches, filter
 
 | role | configurations | where |
 |---|---|---|
-| teacher | `teacherStudentsList`, `teacherSubmissionsList`, `teacherReviewsList` (`features/teacher/classroom/`) | the strip on My courses: Courses · My students · Submissions · Reviews (`?view=`) |
-| student | `studentGradesList`, `studentPaymentsList`, `studentSubscriptionsList`, `studentLeftCoursesList` (`features/student/record/`) | Profile: Grades and certificates, Payments and subscriptions; My courses: Left |
+| teacher | `teacherStudentsList`, `teacherSubmissionsList`, `teacherReviewsList` (`features/home/teacher/classroom/`) | the strip on My courses: Courses · My students · Submissions · Reviews (`?view=`) |
+| student | `studentGradesList`, `studentPaymentsList`, `studentSubscriptionsList`, `studentLeftCoursesList` (`features/home/student/record/`) | Profile: Grades and certificates, Payments and subscriptions; My courses: Left |
 | parent | the panel over the children cards (the child's own record); the alerts' child chip | Children, Alerts |
 | org staff | the panel over People (students, teachers) and Courses; a guarded chip on a request's source | `org_people_page`, `org_courses_page`, `gov_item_screen` |
 

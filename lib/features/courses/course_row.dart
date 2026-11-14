@@ -1,7 +1,7 @@
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseModel, DiscountInfoX;
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseModel, DiscountInfoX;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/courses/course_list_card.dart';
 import 'package:flutter_education_app/features/courses/course_price_tag.dart' show coursePriceLabel;

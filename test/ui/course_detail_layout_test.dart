@@ -6,8 +6,8 @@ import 'package:flutter_education_app/features/courses/course_space/course_space
 import 'package:flutter_education_app/features/courses/student/details/components/about.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/course_detail_parts.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/issued_certificate.dart';
-import 'package:flutter_education_app/features/student/models.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

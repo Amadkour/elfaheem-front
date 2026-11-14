@@ -36,7 +36,7 @@ import 'package:provider/provider.dart';
 import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
 import 'package:flutter_education_app/features/courses/course_price_tag.dart' show coursePriceLabel;
-import '../student/models.dart' show AppCurrencyX;
+import 'package:flutter_education_app/features/home/student/models.dart' show AppCurrencyX;
 import 'admin_common.dart';
 import 'admin_filter_models.dart';
 import 'admin_filters.dart';

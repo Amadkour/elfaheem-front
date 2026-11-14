@@ -20,14 +20,14 @@
 - Data: `GET /org/public/me/overview` then `/org/public/schedule/me`, `/me/inbox?org_id`, `/org/public/me/feed`, governance, `/me/attention` (4–5 calls, each its own skeleton); no error state for the overview.
 - Weak: the pill wrap is the main navigation (> 20 pills for a teacher-admin, no grouping); inbox and decision list duplicate the tiles; no upcoming-week view; 4 app-bar icons in 190 px.
 
-## Student — `student/dashboard/dashboard_screen.dart` + `home/home_screen.dart`
+## Student — `features/home/student/dashboard/dashboard_screen.dart` + `home/home_screen.dart`
 
 - Structure: Home · My courses · My schedule · Analysis · Profile. Home = HomeHeader → `_NextUpHero` → "Needs you" grid → HomeAgenda (today) → HomeShortcuts → inbox preview, courses strip, featured, ads, org mix, other courses, categories, best teachers.
 - Data: `GET /teacher/student-dashboard` + `/student/schedules` + `/me/calendar` + `/notifications` + `/me/attention` + `/me/inbox` + `/ads/feed` + `/home/mix` + `/org/public/me/overview` ≈ 9 calls from separate widgets, uncoordinated, no cache (except `fetchOnce` on schedule).
 - Weak: no aggregate; no upcoming beyond the next slot; notification count only in the header; shells (`WideShell` / `RailShell` / `MobileShell`, 25 hard-coded colors) + old widgets frame the new home; guest mode gates 4 of 5 tabs.
 - Perf: 4 `context.watch` at the top of HomeScreen → whole home rebuilds on any change; shell `setState` on attention.
 
-## Teacher — `teacher/dashboard/teacher_dashboard_screen.dart` + `home/home_screen.dart`
+## Teacher — `features/home/teacher/dashboard/teacher_dashboard_screen.dart` + `home/home_screen.dart`
 
 - Structure: same 5 tabs. Home = HomeHeader → `_TeachingDayHero` → "Needs you" (todo, attendance missing, grading, material missing, enrollment requests) → HomeAgenda → HomeShortcuts → live queue → course strip → inbox preview, ads, org mix.
 - Data: `GET /teacher/dashboard` (real aggregate) + `Future.wait(/notifications, /devices/teacher/switch-requests, /complaints/unread-count)` + attention + inbox + ads + mix. Hero shimmer only; **no error state** (zeros + "free today" on failure, pull-to-refresh only).

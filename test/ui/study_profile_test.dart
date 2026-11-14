@@ -9,7 +9,7 @@ import 'package:flutter_education_app/features/admin/admin_study_profile_setting
 import 'package:flutter_education_app/features/shared/study_profile/study_profile_form.dart';
 import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart';
 import 'package:flutter_education_app/features/shared/study_profile/study_profile_pages.dart' show StudyPromptCard;
-import 'package:flutter_education_app/features/student/home/home_screen.dart';
+import 'package:flutter_education_app/features/home/student/home_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

@@ -11,7 +11,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
 import 'package:flutter_education_app/features/sessions/material/session_material_widget.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
 import 'package:flutter_education_app/features/courses/student/details/growth_tr.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';

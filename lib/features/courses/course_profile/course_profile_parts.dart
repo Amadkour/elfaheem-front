@@ -19,9 +19,9 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse;
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart' show TeacherCourse;
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart' show TeacherCourseScreenProvider;
-import 'package:flutter_education_app/features/student/analysis/student_course_analytics_screen.dart';
+import 'package:flutter_education_app/features/analytics/student/student_course_analytics_screen.dart';
 import 'package:flutter_education_app/features/attendance/attendance_course_entry.dart' show AttendanceCourseEntry;
 import 'package:flutter_education_app/features/attendance/attendance_widgets.dart' show showTeacherAttendanceSheet;
 import 'package:flutter_education_app/features/sessions/material/components/session_material_grid.dart' show MaterialImageViewerDialog;

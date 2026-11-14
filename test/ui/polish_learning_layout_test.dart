@@ -18,13 +18,13 @@ import 'package:flutter_education_app/features/courses/student/details/component
 import 'package:flutter_education_app/features/courses/student/details/course_access_sheet.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart';
 import 'package:flutter_education_app/features/courses/student/details/session_exam_gate.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/certificates/certificate_requests_screen.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/course_progress_status_card.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/currency_selector.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/section_card.dart';
 import 'package:flutter_education_app/features/courses/teacher/course_privacy_card.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/teacher_course_parts.dart';
 import 'package:flutter_education_app/features/live/room/widgets/live_palette.dart';
 import 'package:flutter_education_app/features/live/room/widgets/participant_stats.dart';

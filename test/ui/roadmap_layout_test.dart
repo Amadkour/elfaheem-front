@@ -10,8 +10,8 @@ import 'package:flutter_education_app/features/courses/roadmap/recommendations.d
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_editor.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_tab.dart';
-import 'package:flutter_education_app/features/student/home/home_journey.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseSummary;
+import 'package:flutter_education_app/features/home/student/home_journey.dart';
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseSummary;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

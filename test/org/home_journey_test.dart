@@ -11,8 +11,8 @@ import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/features/courses/roadmap/journey_page.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart';
-import 'package:flutter_education_app/features/student/home/home_journey.dart';
-import 'package:flutter_education_app/features/student/home/home_screen.dart';
+import 'package:flutter_education_app/features/home/student/home_journey.dart';
+import 'package:flutter_education_app/features/home/student/home_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

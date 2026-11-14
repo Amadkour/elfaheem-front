@@ -6,7 +6,7 @@
 //      recording migration).
 //      `availableQualities` computed getter returns all playable variants.
 
-import 'package:flutter_education_app/features/student/models.dart' show sessionInstantUtc;
+import 'package:flutter_education_app/features/home/student/models.dart' show sessionInstantUtc;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 

@@ -7,7 +7,7 @@ import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart';
 import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_provider.dart';
 import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

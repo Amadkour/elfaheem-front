@@ -23,7 +23,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
-import 'package:flutter_education_app/features/student/models.dart' show AppCurrency, AppCurrencyX;
+import 'package:flutter_education_app/features/home/student/models.dart' show AppCurrency, AppCurrencyX;
 
 const kRoadmapKey = 'roadmap';
 const kRoadmapPathKey = 'roadmap.path';

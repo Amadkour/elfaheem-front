@@ -19,7 +19,7 @@ import 'package:flutter_education_app/features/exams/exam_review.dart';
 import 'package:flutter_education_app/features/exams/exam_review_screen.dart';
 import 'package:flutter_education_app/features/exams/exam_scan_review.dart' show OcrWordsView;
 import 'package:flutter_education_app/features/exams/paper/omr_counts.dart';
-import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart' show goLiveStudentsText;
+import 'package:flutter_education_app/features/home/teacher/go_live_sheet.dart' show goLiveStudentsText;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/sessions/teacher/students/course_student_card.dart';
 import 'package:flutter_education_app/features/sessions/teacher/students/course_student_provider.dart';
 import 'package:flutter_education_app/features/sessions/teacher/students/course_student_screen.dart';

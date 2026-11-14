@@ -8,12 +8,12 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart';
 import 'package:flutter_education_app/features/courses/category/categories_screen.dart' show CategoryAvatar;
-import 'package:flutter_education_app/features/student/analysis/student_analytics_provider.dart';
+import 'package:flutter_education_app/features/analytics/student/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_provider.dart';
-import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
-import 'package:flutter_education_app/features/student/home/home_screen.dart' show orgDaySummaryOf;
-import 'package:flutter_education_app/features/student/models.dart';
-import 'package:flutter_education_app/features/teacher/home/home_screen.dart' show teacherDaySummary;
+import 'package:flutter_education_app/features/home/student/home_event_rows.dart';
+import 'package:flutter_education_app/features/home/student/home_screen.dart' show orgDaySummaryOf;
+import 'package:flutter_education_app/features/home/student/models.dart';
+import 'package:flutter_education_app/features/home/teacher/home_screen.dart' show teacherDaySummary;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_api.dart';

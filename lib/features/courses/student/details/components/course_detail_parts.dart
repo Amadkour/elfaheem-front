@@ -25,7 +25,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/courses/course_price_tag.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/courses/student/details/growth_tr.dart';
 import 'package:flutter_education_app/core/course_access.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/course_access_parts.dart';

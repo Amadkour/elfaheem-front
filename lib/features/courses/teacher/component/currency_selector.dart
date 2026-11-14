@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/features/student/models.dart' show AppCurrency, AppCurrencyX;
+import 'package:flutter_education_app/features/home/student/models.dart' show AppCurrency, AppCurrencyX;
 import 'package:flutter_education_app/design/app_kit.dart' show AppBorder, AppFieldLabel, AppIconSize, AppMotion, AppRadius, AppSpace, AppTouch, AppType;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase;
 

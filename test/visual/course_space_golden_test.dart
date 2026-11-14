@@ -22,9 +22,9 @@ import 'package:flutter_education_app/features/sessions/session_track_tabs.dart'
 import 'package:flutter_education_app/features/sessions/material/components/session_material_grid.dart';
 import 'package:flutter_education_app/features/sessions/material/session_material_model.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseModel, SessionModel;
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseModel, SessionModel;
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/teacher_course_parts.dart';
 import 'package:flutter_education_app/features/sessions/material/components/material_tile_parts.dart';
 import 'package:flutter_test/flutter_test.dart';

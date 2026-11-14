@@ -21,7 +21,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_provider.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_widgets.dart';

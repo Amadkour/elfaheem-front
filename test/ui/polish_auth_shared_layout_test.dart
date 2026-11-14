@@ -7,7 +7,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/auth/auth_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_widgets.dart' show ProgressBar;
 import 'package:flutter_education_app/features/auth/verify_way.dart';
-import 'package:flutter_education_app/features/shared/analytics/analytics_ui.dart';
+import 'package:flutter_education_app/features/analytics/analytics_ui.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_screen.dart';
 import 'package:flutter_education_app/features/shared/passcode/passcode_screen.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaint_model.dart' show complaintUtc;

@@ -1,15 +1,15 @@
-// The Analytics summary widgets (lib/features/shared/analytics/analytics_summary_ui.dart) and the student's real
+// The Analytics summary widgets (lib/features/analytics/analytics_summary_ui.dart) and the student's real
 // Analytics tab over a fake data source, at 320x640 and 1400x900, Arabic + English, textScaler 1.3: no overflow, no
 // layout exception — with long course names, a lone ring (no Data Lab), the skeleton, the segmented switch and the
 // "Show all" that unfolds in place.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/analytics/analytics_summary.dart';
-import 'package:flutter_education_app/features/shared/analytics/analytics_summary_ui.dart';
+import 'package:flutter_education_app/features/analytics/analytics_summary.dart';
+import 'package:flutter_education_app/features/analytics/analytics_summary_ui.dart';
 import 'package:flutter_education_app/features/attendance/analysis/student/student_attendance_model.dart';
-import 'package:flutter_education_app/features/student/analysis/student_analytics_api.dart';
-import 'package:flutter_education_app/features/student/analysis/student_analytics_provider.dart';
-import 'package:flutter_education_app/features/student/analysis/student_analytics_screen.dart';
+import 'package:flutter_education_app/features/analytics/student/student_analytics_api.dart';
+import 'package:flutter_education_app/features/analytics/student/student_analytics_provider.dart';
+import 'package:flutter_education_app/features/analytics/student/student_analytics_screen.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';

@@ -20,7 +20,7 @@ import 'package:flutter_education_app/features/exams/hub/hub_entry.dart';
 import 'package:flutter_education_app/features/shared/downloads/downloads_screen.dart';
 import 'package:flutter_education_app/design/app_settings.dart';
 import 'package:flutter_education_app/features/shared/profile/student_favorite_screen.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -33,7 +33,7 @@ import 'package:flutter_education_app/features/live/meeting_recording_sheets.dar
 import '../../parent/student_link_code_screen.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';
-import '../../student/record/student_record_pages.dart';
+import 'package:flutter_education_app/features/home/student/record/student_record_pages.dart';
 import '../../teacher/profile/payout/teacher_payouts_screen.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_screen.dart';

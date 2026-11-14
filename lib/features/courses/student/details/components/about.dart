@@ -12,7 +12,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
 import 'package:flutter_education_app/features/shared/public_profile/public_profile_page.dart' show openPersonProfile;
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 

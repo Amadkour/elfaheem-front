@@ -12,7 +12,7 @@ Kind: **ND** = checks for new data · **JP** = progress of a job the user waits 
 | shared/guest/guest_live_page.dart:160 | GET /public/live/{token} | 10 s until live; 60 s after 429 | page open | ND | none (no FCM token) |
 | features/live/room/room.dart:1288 `_pollActiveQuiz` | GET /courses/{id}/exams/active | 30 s | students, whole room visit | ND | none (LiveKit data topics exist) |
 | features/sessions/material/components/session_material_grid.dart:1283 `_CaptionsAction` | GET /sessions/{sid}/materials | 8 s while captions pending | per tile | JP | none |
-| student/dashboard/component/student_exam_tab.dart:43 | GET /student/exams/upcoming | 5 min | tab mounted | ND | none |
+| features/home/student/dashboard/component/student_exam_tab.dart:43 | GET /student/exams/upcoming | 5 min | tab mounted | ND | none |
 | org/org_providers.dart:422 `OrgScheduleProvider._follow` | GET …/schedules/{sid}/runs/{rid} | 2 s; stops after 5 misses / 4 min | while a run is followed | JP | none |
 | org/org_registrar_member.dart:160 | GET …/register-requests/{id} | server `poll_after_ms` | after cart submit | JP | none (outbox `registration.processed` not fanned out) |
 | shared/rag/rag_chat.dart:287 `RagApi.waitFor` | GET /rag/queries/{id} | 1 s → 4 s, 3 min | per question | JP | none |
@@ -25,7 +25,7 @@ Kind: **ND** = checks for new data · **JP** = progress of a job the user waits 
 | features/payments/enrollment/enrollment_provider.dart:631 `_pollVerification` | POST payment verify | 5 s × 18 | after checkout | JP | none (`payment_success` visible push exists) |
 | auth/verified_screen.dart:477 `_pollLink` | checkPhoneLink | 2 s | QR shown | JP | none |
 | features/attendance/teacher_attendance_controller.dart:313,324, …_provider.dart:115 | attendance code / roster `_sync()` | 5 s | attendance screen | ND | students get silent pushes; teacher roster polls |
-| teacher/home/queue_work_items.dart:108 | none (old 10 s poll commented out) | 10 s tick | teacher home | C | — |
+| features/home/teacher/queue_work_items.dart:108 | none (old 10 s poll commented out) | 10 s tick | teacher home | C | — |
 | clocks / countdowns / local saves (ads slider, calendar 1 min, exam timers, video position 5 s, room clocks, mic meter, announcements visibility 700 ms) | no HTTP | — | — | C | — |
 
 Not polled at all (pull-to-refresh only): unified inbox, notification list, org dashboards, governance lists, calendar feed.

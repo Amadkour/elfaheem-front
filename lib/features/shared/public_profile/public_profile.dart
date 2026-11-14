@@ -18,7 +18,7 @@ library;
 
 import '../../../core/api_client.dart';
 import '../../auth/username.dart' show UsernameRules;
-import '../../student/models.dart' show CourseModel;
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseModel;
 
 /// Kill switch of the "Share my profile link" and of the profile page (also `auth.username`).
 const kPublicLinkFeatureKey = 'profile.public_link';

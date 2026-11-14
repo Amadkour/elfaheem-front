@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_education_app/features/student/home/home_provider.dart';
+import 'package:flutter_education_app/features/home/student/home_provider.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +9,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 import 'package:flutter_education_app/features/courses/course_list_card.dart';
 import 'package:flutter_education_app/features/courses/home_course_list.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart';
 import 'package:flutter_education_app/features/courses/student/list/courses_list_screen.dart';
 import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_provider.dart';
@@ -27,7 +27,7 @@ import 'package:flutter_education_app/design/master_detail/entity_panel_controll
 import 'package:flutter_education_app/design/master_detail/entity_viewer_actions.dart';
 import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
-import 'package:flutter_education_app/features/student/record/student_record_pages.dart';
+import 'package:flutter_education_app/features/home/student/record/student_record_pages.dart';
 
 /// The student's "My courses": which side (scope chips, only when the courses live on several), then ONE calm
 /// toolbar (search · All / In progress / Completed with their counts · Left), then the shared course cards

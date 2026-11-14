@@ -30,13 +30,13 @@ import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarE
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
-import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart';
-import 'package:flutter_education_app/features/teacher/home/home_screen.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
-import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
-import 'package:flutter_education_app/features/teacher/todo/teacher_todo_models.dart';
-import 'package:flutter_education_app/features/teacher/todo/teacher_todo_page.dart';
+import 'package:flutter_education_app/features/home/teacher/go_live_sheet.dart';
+import 'package:flutter_education_app/features/home/teacher/home_screen.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_home_extra.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
+import 'package:flutter_education_app/features/home/teacher/schedules/schedules_screen.dart';
+import 'package:flutter_education_app/features/home/teacher/todo/teacher_todo_models.dart';
+import 'package:flutter_education_app/features/home/teacher/todo/teacher_todo_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;

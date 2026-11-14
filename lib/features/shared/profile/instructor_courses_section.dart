@@ -23,7 +23,7 @@ import '../../../design/app_kit.dart'
     show appCompactNumber, AppButton, AppShimmer, AppSkeletonBox, AppStatePlate, AppStatusBadge, AppTone;
 import '../../../design/app_tokens.dart';
 import '../../../utils/widget/app_navigator.dart';
-import '../../student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/courses/course_list_card.dart';
 import 'package:flutter_education_app/features/courses/course_row.dart' show CourseCard;
 

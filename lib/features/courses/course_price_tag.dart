@@ -20,7 +20,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/courses/discount_info.dart';
-import 'package:flutter_education_app/features/student/models.dart' show AppCurrency, AppCurrencyX;
+import 'package:flutter_education_app/features/home/student/models.dart' show AppCurrency, AppCurrencyX;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppSpace, AppRadius, AppType, AppIconSize, appInk, appInkOn, appTintOn;

@@ -18,7 +18,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart';
 import 'package:flutter_education_app/features/courses/course_scope_bar.dart';
 import 'package:flutter_education_app/features/courses/home_course_list.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseModel;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;

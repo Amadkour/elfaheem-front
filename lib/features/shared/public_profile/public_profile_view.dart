@@ -29,7 +29,7 @@ import '../../../design/app_responsive.dart' show Breakpoints;
 import '../../../design/app_motion_kit.dart' show AppCountUp, AppReveal, AppTilt;
 import '../profile/profile_hero.dart' show ProfileAvatar;
 import '../../admin/admin_common.dart' show t;
-import '../../student/models.dart' show CourseModel;
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseModel;
 import 'package:flutter_education_app/features/courses/course_row.dart' show CourseCard;
 import 'public_profile.dart';
 

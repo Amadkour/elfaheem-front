@@ -146,7 +146,7 @@ By nature (recorded, no action): offline downloads / exam sittings, QR scan (cou
 
 ## 5. Key decisions and owner actions
 
-**Owner decision (found 2026-10-28):** `lib/features/teacher/home/teacher_models.dart:402` adds 700 to every course's `students_count` in the teacher's own view (from commit 5f43494 "private courses"). Looks like a leftover test value. **Resolved 2026-10-28** (owner: "apply all points"): removed together with the student model's +700 and the rating +200 / +4 (FIX.2, bf74b09).
+**Owner decision (found 2026-10-28):** `lib/features/home/teacher/teacher_models.dart:402` adds 700 to every course's `students_count` in the teacher's own view (from commit 5f43494 "private courses"). Looks like a leftover test value. **Resolved 2026-10-28** (owner: "apply all points"): removed together with the student model's +700 and the rating +200 / +4 (FIX.2, bf74b09).
 
 **Owner actions before the next backend deploy (from A1.3, D-060 in `../back/docs/DECISIONS.md`):**
 - `.env.production` has no `OTP_PROVIDER`: set `OTP_PROVIDER=twilio | whatsapp_cloud | none` (with credentials) or the API refuses to start.

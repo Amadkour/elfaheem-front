@@ -18,9 +18,9 @@ import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/primary_menue.dart';
 import 'package:flutter_education_app/utils/widget/text_field.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseStatus;
-import 'package:flutter_education_app/features/teacher/schedules/schedules_provider.dart'
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseStatus;
+import 'package:flutter_education_app/features/home/teacher/schedules/schedules_provider.dart'
     show kDayOrder, kDayLabels, slotDayLabel;
 import 'package:flutter_education_app/features/courses/teacher/component/add_item_dialog.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/number_pair.dart';

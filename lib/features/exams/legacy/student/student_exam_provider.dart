@@ -8,7 +8,7 @@ import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:flutter_education_app/features/exams/legacy/exam_model.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/student_exam_api.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/exam_tr.dart';
-import 'package:flutter_education_app/features/student/analysis/flags/student_flags_api.dart';
+import 'package:flutter_education_app/features/analytics/student/flags/student_flags_api.dart';
 
 // ── Quiz session state ────────────────────────────────────────────────────────
 

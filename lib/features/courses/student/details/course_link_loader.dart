@@ -14,7 +14,7 @@ import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_access_sheet.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart';
 import 'package:flutter_education_app/features/courses/student/details/growth_tr.dart';

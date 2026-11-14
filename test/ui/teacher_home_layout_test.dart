@@ -5,11 +5,11 @@ import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxEntry;
 import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
-import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart' show GoLiveButton;
-import 'package:flutter_education_app/features/teacher/home/home_screen.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
-import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
+import 'package:flutter_education_app/features/home/teacher/go_live_sheet.dart' show GoLiveButton;
+import 'package:flutter_education_app/features/home/teacher/home_screen.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_home_extra.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
+import 'package:flutter_education_app/features/home/teacher/schedules/schedules_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

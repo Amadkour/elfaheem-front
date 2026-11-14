@@ -85,11 +85,11 @@ Tests: `test/ui/polish_auth_shared_layout_test.dart` (20 tests: `NotificationsSt
 | features/courses/course_profile/course_profile_screen.dart | 7 colours; hand `RefreshIndicator` | theme; `AppRefresh` | — |
 | features/courses/course_profile/course_profile_parts.dart | hand `RefreshIndicator`; raw `'$e'` | `AppRefresh`; `cpErrorMessage` | — |
 | features/courses/course_profile/course_profile_actions.dart · _announcements.dart · _models.dart | — | — | already kit-based |
-| shared/analytics/analytics_ui.dart | 21 colours; `AnGlassPill` / `AnChip` overflow on long labels | theme; `Flexible` + ellipsis | — |
+| features/analytics/analytics_ui.dart | 21 colours; `AnGlassPill` / `AnChip` overflow on long labels | theme; `Flexible` + ellipsis | — |
 
 ## Process note
 
 The scratchpad is shared with the other polish agents. One `unused.py` run read another agent's analyzer output and removed
 imports reported unused there from files outside this area (`app_loading_indicator.dart` in admin / org pages, `base_page.dart` in
-`student/dashboard/dashboard_screen.dart`). Those imports were unused at that moment (the removal only clears a warning), but the
+`features/home/student/dashboard/dashboard_screen.dart`). Those imports were unused at that moment (the removal only clears a warning), but the
 owners of those folders should know.

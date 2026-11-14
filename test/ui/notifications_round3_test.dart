@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_screen.dart';
-import 'package:flutter_education_app/features/student/models.dart' show TeacherProfileData;
+import 'package:flutter_education_app/features/home/student/models.dart' show TeacherProfileData;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

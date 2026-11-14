@@ -20,7 +20,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppFill;
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
