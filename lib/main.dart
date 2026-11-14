@@ -325,7 +325,7 @@ void _runApp() {
   runApp(
     MultiProvider(
       providers: appProviders(storage: _storage, api: api),
-      child: const ElFaheemApp(),
+      child: const AlfaheemApp(),
     ),
   );
 }
@@ -455,14 +455,14 @@ class _FatalAppState extends State<_FatalApp> {
 // App widget
 // ─────────────────────────────────────────────────────────────────────────────
 
-class ElFaheemApp extends StatefulWidget {
-  const ElFaheemApp({super.key});
+class AlfaheemApp extends StatefulWidget {
+  const AlfaheemApp({super.key});
 
   @override
-  State<ElFaheemApp> createState() => _ElFaheemAppState();
+  State<AlfaheemApp> createState() => _AlfaheemAppState();
 }
 
-class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
+class _AlfaheemAppState extends State<AlfaheemApp> with WidgetsBindingObserver {
   /// The root navigator under a Router (D-170): the same navigator, routes and start as before, while the browser
   /// gets one history entry per page (core/routing/web_history.dart).
   late final AppRouterDelegate _routerDelegate = AppRouterDelegate(

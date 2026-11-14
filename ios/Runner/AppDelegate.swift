@@ -2494,7 +2494,7 @@ import os
             return
         }
 
-        let boundary = "----ElFaheemPingBoundary\(attempt)"
+        let boundary = "----AlfaheemPingBoundary\(attempt)"
         var body = Data()
         func addField(_ name: String, _ value: String) {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
@@ -2584,7 +2584,7 @@ import os
         // Instead we write the multipart envelope to a temp file and use
         // uploadTask(with:fromFile:) which streams directly from disk —
         // the correct approach for large binary payloads.
-        let boundary  = "----ElFaheemBoundary\(index)x\(attempt)"
+        let boundary  = "----AlfaheemBoundary\(index)x\(attempt)"
         let tmpName   = "upload_chunk_\(index)_\(attempt).bin"
         let tmpURL    = FileManager.default.temporaryDirectory.appendingPathComponent(tmpName)
 

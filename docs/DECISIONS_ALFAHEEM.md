@@ -19,7 +19,7 @@ here: it arrives unchanged with every sync. Each entry: what, why, and what is s
   file key `nextbrain_offline_exam`, calendar UIDs `...@nextbrain.site`, script file names, environment variable
   names (`NEXTBRAIN_*`, `NB_*`).
 
-## A-002 Certificate pinning is per identity; Alfaheem ships no pin yet
+## A-002 Certificate pinning is per identity
 
 NextBrain's SPKI pin and legacy certificate pin are for nextbrain.site and must not ship in Alfaheem. The two pin
 sets of `lib/core/cert_pin.dart` are written from `CERT_PIN_SPKI_SHA256` / `CERT_PIN_LEGACY_SHA256` in
@@ -27,7 +27,9 @@ sets of `lib/core/cert_pin.dart` are written from `CERT_PIN_SPKI_SHA256` / `CERT
 rule: a leaf for the API host, in date, signed by one of the bundled Let's Encrypt intermediates. Any other
 certificate (another CA, a proxy, a user CA) is still refused, because the system roots are never consulted.
 
-TODO (owner): once the alfheemacademy.com certificate exists (issued with `certbot ... --reuse-key`), read its SPKI
+DONE 2026-11-14: alfheemacademy.com has its own certificate (Let's Encrypt YE2, issued with `--reuse-key`, `reuse_key = True` in its renewal conf, expires 2027-02-12); its SPKI `H/Cbms/WWS6LMgVcAQMAwcETwnleV0UNtcT3znv8V8o=` is in `CERT_PIN_SPKI_SHA256`. The iOS Google sign-in client (REVERSED_CLIENT_ID) is wired the same way.
+
+Original TODO: once the alfheemacademy.com certificate exists (issued with `certbot ... --reuse-key`), read its SPKI
 SHA-256 on the server, put it in `CERT_PIN_SPKI_SHA256`, run `py -3.12 sync/apply_identity.py`, commit. The same
 goes for `ANDROID_SHA256_FINGERPRINTS` (App Links, `web/.well-known/assetlinks.json`) once the Alfaheem release key
 exists. `test/auth/cert_pin_test.dart` keeps testing the mechanism with nextbrain.site's real certificates, handed

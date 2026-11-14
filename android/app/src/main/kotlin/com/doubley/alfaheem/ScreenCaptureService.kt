@@ -1356,7 +1356,7 @@ class ScreenCaptureService : Service() {
     }
 
     private fun uploadChunk(file: File, index: Int, isFinal: Boolean, seamless: Boolean) {
-        val boundary = "----ElFaheemBoundary${System.currentTimeMillis()}"
+        val boundary = "----AlfaheemBoundary${System.currentTimeMillis()}"
         val conn = (java.net.URL(uploadUrl).openConnection() as java.net.HttpURLConnection).apply {
             requestMethod  = "POST"
             doOutput       = true
