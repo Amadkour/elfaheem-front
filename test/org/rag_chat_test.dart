@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart' show RagAnswerCard;
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/rag_chat_screen.dart' show RagAnswerCard;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

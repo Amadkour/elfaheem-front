@@ -5,7 +5,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 import 'package:flutter/services.dart';
@@ -40,7 +40,7 @@ import 'package:flutter_education_app/features/sessions/video/vod_player_parts.d
 import 'package:flutter_education_app/features/sessions/video/vod_listen.dart';
 import 'package:flutter_education_app/core/media_focus.dart';
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_side_sheet.dart' show appSheetIsSide;
 import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;

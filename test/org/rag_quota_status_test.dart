@@ -3,8 +3,8 @@
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
 import 'package:flutter_education_app/features/exams/exam_taking.dart' show examCodeText;
-import 'package:flutter_education_app/features/shared/rag/rag_library.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_library_screen.dart';
+import 'package:flutter_education_app/features/rag/rag_library.dart';
+import 'package:flutter_education_app/features/rag/rag_library_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

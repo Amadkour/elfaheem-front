@@ -56,7 +56,7 @@ import 'package:flutter_education_app/features/live/room/widgets/live_hands.dart
 import 'package:flutter_education_app/features/live/room/widgets/live_quiz.dart';
 import 'package:flutter_education_app/features/live/room/widgets/live_reactions.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/features/live/live_room.dart';
 import 'package:flutter_education_app/features/live/live_room_words.dart';
 import 'package:flutter_education_app/features/live/live_lobby_sheets.dart';
@@ -100,7 +100,7 @@ import 'package:flutter_education_app/features/live/live_quality_governor.dart' 
 import 'package:flutter_education_app/features/live/room/whiteboard/board_video_track.dart';
 import 'package:flutter_education_app/features/live/room/whiteboard/board_export.dart' show BoardRecordingFrames;
 import 'package:flutter_education_app/features/live/room/whiteboard/board_rec_ink.dart' show BoardRecFrame;
-import 'package:flutter_education_app/features/shared/calendar/calendar_api.dart' show RemoteCalendarApi;
+import 'package:flutter_education_app/features/calendar/calendar_api.dart' show RemoteCalendarApi;
 import 'package:flutter_education_app/features/live/room/whiteboard/board_rec_pacing.dart';
 import 'package:flutter_education_app/features/live/room/whiteboard/board_format.dart' show BoardViewportPos;
 import 'package:flutter_education_app/features/live/live_recording_layout.dart';

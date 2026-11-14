@@ -27,7 +27,7 @@ import 'package:flutter_education_app/features/courses/course_space/course_space
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart' show kRoadmapTab;
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_tab.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppNavigator;
-import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/profile/compalints/new_complaint_screen.dart';
 import 'package:flutter_education_app/features/profile/public_profile/public_profile_page.dart' show openPersonProfile;

@@ -27,7 +27,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asMapList, t;
-import 'package:flutter_education_app/features/shared/rag/rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
+import 'package:flutter_education_app/features/rag/rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
 import 'package:flutter_education_app/features/exams/exam_all.dart';
 import 'package:flutter_education_app/features/exams/exam_all_screen.dart' show staffOrgs;
 import 'package:flutter_education_app/features/exams/exam_authoring.dart';

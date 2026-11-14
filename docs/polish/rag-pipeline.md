@@ -1,6 +1,6 @@
 # Track E analysis — current RAG pipeline vs the target (2026-10-28, read-only)
 
-Backend `../back/rag_service` (+ `mlkit/`), client `lib/features/shared/rag/`. Server: CPU only, 12 vCPU / 47 GB.
+Backend `../back/rag_service` (+ `mlkit/`), client `lib/features/rag/`. Server: CPU only, 12 vCPU / 47 GB.
 
 ## Layer table
 
@@ -45,7 +45,7 @@ Backend `../back/rag_service` (+ `mlkit/`), client `lib/features/shared/rag/`. S
 
 ## Status (E.2, 2026-10-28)
 
-Curated Q&A shipped in the app: `lib/features/shared/rag/rag_qa_admin.dart` (`QaPair` / `QaApi` / `qaCodeText`, `RagQaAdminPage` for `scope: app | org`, `QaPairSheet`), the console's Q&A tab + "Promote to Q&A" on the overview's not-found / unhelpful rows, the Q&A entry in the library screen; kill switch `rag.qa_admin`; tests `test/org/rag_qa_test.dart`, `test/ui/rag_qa_layout_test.dart`.
+Curated Q&A shipped in the app: `lib/features/rag/rag_qa_admin.dart` (`QaPair` / `QaApi` / `qaCodeText`, `RagQaAdminPage` for `scope: app | org`, `QaPairSheet`), the console's Q&A tab + "Promote to Q&A" on the overview's not-found / unhelpful rows, the Q&A entry in the library screen; kill switch `rag.qa_admin`; tests `test/org/rag_qa_test.dart`, `test/ui/rag_qa_layout_test.dart`.
 
 ## Status (E.8, 2026-10-28)
 

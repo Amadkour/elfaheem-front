@@ -39,11 +39,11 @@ import 'package:flutter_education_app/features/live/live_room.dart' show LiveRoo
 import 'package:flutter_education_app/features/live/live_lobby_sheets.dart' show showLobbySheet;
 import 'package:flutter_education_app/features/payments/points/points_api.dart' show kPointsFeatureKey, pointsModuleFor;
 import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart' show PointsWalletPage;
-import '../../features/shared/records/records_api.dart' show kRecordsFeatureKey;
-import '../../features/shared/records/records_page.dart' show RecordsPage;
-import '../../features/shared/records/records_share.dart' show SharedRecordPage;
-import '../../features/shared/records/records_share_api.dart' show kRecordsShareFeatureKey;
-import '../../features/shared/rag/rag_admin_links.dart' deferred as rag_admin_links;
+import 'package:flutter_education_app/features/records/records_api.dart' show kRecordsFeatureKey;
+import 'package:flutter_education_app/features/records/records_page.dart' show RecordsPage;
+import 'package:flutter_education_app/features/records/records_share.dart' show SharedRecordPage;
+import 'package:flutter_education_app/features/records/records_share_api.dart' show kRecordsShareFeatureKey;
+import 'package:flutter_education_app/features/rag/rag_admin_links.dart' deferred as rag_admin_links;
 import 'package:flutter_education_app/features/exams/identity/identity_request_gate.dart' show openIdentityRequestsFromLink;
 import 'package:flutter_education_app/features/exams/paper/exam_setup_wizard.dart' deferred as exam_setup_wizard;
 import 'package:flutter_education_app/features/exams/exam_notice.dart' deferred as exam_notice;

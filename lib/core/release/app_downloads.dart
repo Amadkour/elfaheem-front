@@ -1,6 +1,6 @@
 // lib/core/release/app_downloads.dart — the website channel's downloads (D-144, docs/release/APP_RELEASES_CODEMAGIC.md
 // "Downloads"): the public list `GET /api/v1/app/downloads`, what this browser is offered first, and the dismissal
-// remembered per browser for one version. Drawn by AppDownloadBanner (lib/features/shared/get_app/app_download_banner.dart).
+// remembered per browser for one version. Drawn by AppDownloadBanner (lib/features/get_app/app_download_banner.dart).
 //
 //   parseAppDownloads(raw)                 the list, leniently ({items} / {downloads} / a bare list; web and file-less
 //                                          entries dropped: the site itself is not a download)

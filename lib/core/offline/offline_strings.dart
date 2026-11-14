@@ -1,4 +1,4 @@
-/// lib/features/shared/downloads/offline_strings.dart
+/// lib/features/downloads/offline_strings.dart
 library;
 
 import 'package:flutter_education_app/config/app_config.dart';

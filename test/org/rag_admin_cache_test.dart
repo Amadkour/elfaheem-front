@@ -1,9 +1,9 @@
 // The cache card and the D-220 settings: parsing, the PUT bodies, the card's actions, the lora-disabled stats.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/rag/admin/rag_cache_card.dart';
-import 'package:flutter_education_app/features/shared/rag/admin/rag_console_settings.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_learning.dart';
+import 'package:flutter_education_app/features/rag/admin/rag_cache_card.dart';
+import 'package:flutter_education_app/features/rag/admin/rag_console_settings.dart';
+import 'package:flutter_education_app/features/rag/rag_learning.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

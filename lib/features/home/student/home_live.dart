@@ -15,9 +15,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_api.dart' show RemoteCalendarApi;
-import 'package:flutter_education_app/features/shared/calendar/calendar_meeting.dart' show openMeetingRoom;
-import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
+import 'package:flutter_education_app/features/calendar/calendar_api.dart' show RemoteCalendarApi;
+import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show openMeetingRoom;
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_live_join.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 

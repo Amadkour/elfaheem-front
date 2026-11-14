@@ -14,8 +14,8 @@ import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, t;
-import 'package:flutter_education_app/features/shared/rag/rag_library.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_learning.dart' show examReasonLabel, examReasons;
+import 'package:flutter_education_app/features/rag/rag_library.dart';
+import 'package:flutter_education_app/features/rag/rag_learning.dart' show examReasonLabel, examReasons;
 import 'package:flutter_education_app/features/exams/exam_gen_api.dart' show GenQMeta;
 import 'package:flutter_education_app/features/exams/exam_generate.dart';
 import 'package:flutter_education_app/features/exams/exam_generate_wizard.dart' show ExamGenEntry;

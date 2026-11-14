@@ -70,12 +70,12 @@ import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarE
 import 'package:flutter_education_app/design/chrome_button.dart' show ChromeCard, ChromeIconButton;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextPill;
 import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant, appAssistantFeatureKey;
+import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant, appAssistantFeatureKey;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart' show t;
-import '../shared/help/help_info_button.dart';
+import 'package:flutter_education_app/features/help/help_info_button.dart';
 import 'org_common.dart' show orgColor, orgTypeIcons;
 import 'org_dashboard_settings.dart' show showOrgSwitcher;
 import 'org_providers.dart';

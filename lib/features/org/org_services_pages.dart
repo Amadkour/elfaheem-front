@@ -24,7 +24,7 @@ import '../admin/admin_common.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart' show EntityGuardedChip;
 import '../admin/admin_list.dart';
-import '../shared/calendar/calendar_meeting.dart' show showComplaintMeetingSheet;
+import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show showComplaintMeetingSheet;
 import 'org_common.dart';
 import 'org_reports/report_page.dart' show OrgComplaintReportPage;
 import 'org_providers.dart';

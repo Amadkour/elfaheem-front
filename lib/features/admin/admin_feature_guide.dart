@@ -22,7 +22,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../org/org_v3.dart';
-import '../shared/rag/rag_library.dart' show RagLibraryApi, ragOutcomeSummary, ragResultText;
+import 'package:flutter_education_app/features/rag/rag_library.dart' show RagLibraryApi, ragOutcomeSummary, ragResultText;
 import 'admin_common.dart' show asInt, asMap, asMapList, t;
 import 'admin_features_page.dart' show AdminFeaturesPage;
 import 'admin_page.dart';

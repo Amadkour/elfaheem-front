@@ -13,8 +13,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/get_app/get_app_service.dart';
-import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart';
-import 'package:flutter_education_app/features/shared/get_app/get_app_sheet.dart';
+import 'package:flutter_education_app/features/get_app/get_app_banner.dart';
+import 'package:flutter_education_app/features/get_app/get_app_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;

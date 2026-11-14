@@ -26,7 +26,7 @@ import 'package:flutter_education_app/features/live/room/widgets/live_room_rules
 import 'package:flutter_education_app/features/live/room/widgets/share_presets.dart' show SharePreset;
 import 'package:flutter_education_app/features/live/room/widgets/live_video_view.dart';
 import 'package:flutter_education_app/features/live/live_self_view.dart';
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/features/live/live_room.dart';
 import 'package:flutter_education_app/features/live/live_room_words.dart' show liveTr;
 import 'package:flutter_education_app/features/live/live_config.dart';

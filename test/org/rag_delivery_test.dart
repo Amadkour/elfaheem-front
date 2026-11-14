@@ -1,7 +1,7 @@
-// How an assistant answer reached the app (lib/features/shared/rag/rag_chat.dart, [RagDelivery]): `stream` when the
+// How an assistant answer reached the app (lib/features/rag/rag_chat.dart, [RagDelivery]): `stream` when the
 // live event woke the fetch that found it done, `poll` when a timed poll did, `mixed` when both played a part, and
 // nothing to report for an answer done before any wake-up (the first response or the first fetch).
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

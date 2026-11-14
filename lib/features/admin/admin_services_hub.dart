@@ -19,7 +19,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/features/attendance/admin_data_lab_page.dart';
-import '../shared/rag/rag_admin_console.dart' show RagAdminConsole;
+import 'package:flutter_education_app/features/rag/rag_admin_console.dart' show RagAdminConsole;
 import 'models/ai_models_page.dart' show AiModelsPage;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredExamHub;
 import 'package:flutter_education_app/features/exams/paper/templates/omr_template_library.dart' show openOmrTemplateLibrary;

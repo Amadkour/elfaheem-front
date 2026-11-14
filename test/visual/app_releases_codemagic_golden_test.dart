@@ -30,7 +30,7 @@ import 'package:flutter_education_app/features/admin/app_releases/app_release_de
 import 'package:flutter_education_app/features/admin/app_releases/app_release_form.dart';
 import 'package:flutter_education_app/features/admin/app_releases/app_releases_models.dart';
 import 'package:flutter_education_app/features/admin/app_releases/app_releases_page.dart';
-import 'package:flutter_education_app/features/shared/get_app/app_download_banner.dart';
+import 'package:flutter_education_app/features/get_app/app_download_banner.dart';
 import 'package:flutter_education_app/main.dart' show navigatorKey;
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';

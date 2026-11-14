@@ -2,11 +2,11 @@
 // rules, the guest token, the publish words.
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/share/app_links.dart';
-import 'package:flutter_education_app/features/shared/records/material_studio_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_guests_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_share_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_studio_parts.dart' show StudioTool;
+import 'package:flutter_education_app/features/records/material_studio_api.dart';
+import 'package:flutter_education_app/features/records/records_api.dart';
+import 'package:flutter_education_app/features/records/records_guests_api.dart';
+import 'package:flutter_education_app/features/records/records_share_api.dart';
+import 'package:flutter_education_app/features/records/records_studio_parts.dart' show StudioTool;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

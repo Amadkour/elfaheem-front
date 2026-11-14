@@ -27,7 +27,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter_education_app/design/app_responsive.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';

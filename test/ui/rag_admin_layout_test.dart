@@ -1,10 +1,10 @@
 // Layout harness (320x640 and 1400x900, ar/en, textScaler 1.3) for the RAG admin additions.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/rag/admin/rag_cache_card.dart';
-import 'package:flutter_education_app/features/shared/rag/admin/rag_console_settings.dart';
-import 'package:flutter_education_app/features/shared/rag/admin/rag_feedback_review.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_admin_console.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_learning.dart';
+import 'package:flutter_education_app/features/rag/admin/rag_cache_card.dart';
+import 'package:flutter_education_app/features/rag/admin/rag_console_settings.dart';
+import 'package:flutter_education_app/features/rag/admin/rag_feedback_review.dart';
+import 'package:flutter_education_app/features/rag/rag_admin_console.dart';
+import 'package:flutter_education_app/features/rag/rag_learning.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../org/rag_admin_fixtures.dart';

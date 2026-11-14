@@ -1,6 +1,6 @@
-// The assistant notices' deep links (lib/features/shared/rag/rag_admin_links.dart): module → page, by role and
+// The assistant notices' deep links (lib/features/rag/rag_admin_links.dart): module → page, by role and
 // kill switch.
-import 'package:flutter_education_app/features/shared/rag/rag_admin_links.dart';
+import 'package:flutter_education_app/features/rag/rag_admin_links.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

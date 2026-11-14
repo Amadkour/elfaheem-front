@@ -17,7 +17,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart';
 import 'package:flutter_education_app/design/app_display.dart';
-import 'package:flutter_education_app/features/shared/records/records_api.dart';
+import 'package:flutter_education_app/features/records/records_api.dart';
 import 'studio_scenes.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -18,7 +18,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp;
-import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart';
+import 'package:flutter_education_app/features/guest/guest_live_api.dart';
 import 'package:flutter_education_app/features/home/student/models.dart' show TeacherSessionItem;
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/guest_link_sheet.dart';

@@ -76,5 +76,5 @@ Before / after pairs for the three worst issues are in `docs/polish/visual/`:
 - `lib/features/home/student/home_screen.dart`: `HomeSplit`.
 - `lib/features/home/student/home_event_rows.dart`: progress colour and ink.
 - `lib/features/parent/parent_overview_page.dart`: mode label and time ink.
-- `lib/features/shared/rag/` (second pass, rows 19–23, 31, 32): `rag_chat.dart` (`kRagChatMaxWidth`, `kRagPageMaxWidth`, `ragGutter`), `rag_chat_screen.dart`, `rag_chat_sessions.dart`, `rag_admin_console.dart`, `rag_learning_page.dart` (`RagTileGrid`), `rag_qa_admin.dart`, `rag_library_screen.dart`; the golden test draws the chat column as the view does and adds `rag_learning_*`.
+- `lib/features/rag/` (second pass, rows 19–23, 31, 32): `rag_chat.dart` (`kRagChatMaxWidth`, `kRagPageMaxWidth`, `ragGutter`), `rag_chat_screen.dart`, `rag_chat_sessions.dart`, `rag_admin_console.dart`, `rag_learning_page.dart` (`RagTileGrid`), `rag_qa_admin.dart`, `rag_library_screen.dart`; the golden test draws the chat column as the view does and adds `rag_learning_*`.
 - `lib/features/admin/admin_finance_page.dart` and `lib/features/admin/admin_income_breakdown.dart`: two unused imports from HEAD removed. They were analyzer warnings already in `fe9492e`.

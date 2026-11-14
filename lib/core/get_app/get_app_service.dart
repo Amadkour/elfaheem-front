@@ -1,6 +1,6 @@
 // lib/core/get_app/get_app_service.dart — the web build's "Get the app" state: where the page runs, the releases
 // manifest, the remembered dismissals and the light analytics. Drawn by GetAppBanner / GetAppSheet / GetAppTile
-// (lib/features/shared/get_app/).
+// (lib/features/get_app/).
 //
 // Everything offered comes from ONE file, the releases manifest `<site>/releases/releases.json` (schema in
 // releases_manifest.dart), published with the files by scripts/release/publish_release.py into the server's

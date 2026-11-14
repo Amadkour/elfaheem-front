@@ -3,8 +3,8 @@
 // 320x640 and 1400x900, Arabic and English, textScaler 1.3.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_learning.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_learning_page.dart';
+import 'package:flutter_education_app/features/rag/rag_learning.dart';
+import 'package:flutter_education_app/features/rag/rag_learning_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

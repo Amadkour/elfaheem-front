@@ -1,7 +1,7 @@
 // Layout of the chat answer's newer blocks: no overflow at 320x640 / 1400x900, ar / en, text scale 1.3.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/rag/chat/rag_answer_extras.dart';
-import 'package:flutter_education_app/features/shared/rag/chat/rag_payload.dart';
+import 'package:flutter_education_app/features/rag/chat/rag_answer_extras.dart';
+import 'package:flutter_education_app/features/rag/chat/rag_payload.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/exams/exam_generate.dart';
 import 'package:flutter_education_app/features/exams/exam_generate_sheet.dart';
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_admin_console.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_library.dart';
+import 'package:flutter_education_app/features/rag/app_assistant.dart';
+import 'package:flutter_education_app/features/rag/rag_admin_console.dart';
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/rag_chat_screen.dart';
+import 'package:flutter_education_app/features/rag/rag_library.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

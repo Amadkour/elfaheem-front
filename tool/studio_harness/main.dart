@@ -16,11 +16,11 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart';
 import 'package:flutter_education_app/design/app_display.dart';
-import 'package:flutter_education_app/features/shared/records/records_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_share_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_studio.dart';
-import 'package:flutter_education_app/features/shared/records/records_studio_parts.dart';
-import 'package:flutter_education_app/features/shared/records/studio_source.dart';
+import 'package:flutter_education_app/features/records/records_api.dart';
+import 'package:flutter_education_app/features/records/records_share_api.dart';
+import 'package:flutter_education_app/features/records/records_studio.dart';
+import 'package:flutter_education_app/features/records/records_studio_parts.dart';
+import 'package:flutter_education_app/features/records/studio_source.dart';
 import 'package:flutter_education_app/main.dart' show navigatorKey;
 import 'package:shared_preferences/shared_preferences.dart';
 

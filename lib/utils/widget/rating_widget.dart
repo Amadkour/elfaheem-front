@@ -8,7 +8,7 @@ import '../../config/theme/theme_config_provider.dart';
 import '../../core/api_client.dart'; // adjust import path as needed
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
-import '../../features/shared/guest/guest_state.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/plural.dart';
 // ══════════════════════════════════════════════

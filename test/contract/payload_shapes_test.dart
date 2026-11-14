@@ -18,11 +18,11 @@ import 'package:flutter_education_app/features/admin/admin_home_data.dart';
 import 'package:flutter_education_app/features/org/advising/adv_appt_models.dart' show AdvMemberHub;
 import 'package:flutter_education_app/features/org/org_dashboard_model.dart';
 import 'package:flutter_education_app/features/parent/parent_overview.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
+import 'package:flutter_education_app/features/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
-import 'package:flutter_education_app/features/shared/rag/rag_admin_console.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_qa_admin.dart';
+import 'package:flutter_education_app/features/rag/rag_admin_console.dart';
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/rag_qa_admin.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';
 

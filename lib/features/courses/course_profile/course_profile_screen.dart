@@ -14,7 +14,7 @@
 // every write; tabs come from cpTabs(). The header is identity only — each role's numbers live on its overview.
 library;
 
-import 'package:flutter_education_app/features/shared/help/help_tour.dart';
+import 'package:flutter_education_app/features/help/help_tour.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -24,7 +24,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
-import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
+import 'package:flutter_education_app/features/rag/rag_chat_screen.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_announcements.dart';

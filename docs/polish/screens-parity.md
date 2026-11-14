@@ -38,7 +38,7 @@
 
 ## C. Main list screens WITHOUT pull-to-refresh
 
-`features/messaging/notification/notifications_screen.dart` (no refresh at all) · `shared/calendar/calendar_screen.dart` · student / teacher / parent dashboard shells (inner tabs have it) · `org/org_courses_page.dart` · `org_people_page.dart` · `org_schedule_hub.dart` · `org_schedule_pages.dart` · `org_member_today.dart` · `org_member_changes.dart` · org section hubs · `engine_exams_section.dart` · `attendance_widgets.dart` · `subscription_screen.dart` (icon only) · `rag_chat.dart` · `rag_admin_console.dart` · `admin_services_hub.dart` · `admin_mfa_page.dart`.
+`features/messaging/notification/notifications_screen.dart` (no refresh at all) · `features/calendar/calendar_screen.dart` · student / teacher / parent dashboard shells (inner tabs have it) · `org/org_courses_page.dart` · `org_people_page.dart` · `org_schedule_hub.dart` · `org_schedule_pages.dart` · `org_member_today.dart` · `org_member_changes.dart` · org section hubs · `engine_exams_section.dart` · `attendance_widgets.dart` · `subscription_screen.dart` (icon only) · `rag_chat.dart` · `rag_admin_console.dart` · `admin_services_hub.dart` · `admin_mfa_page.dart`.
 
 Have it: unified inbox, student / teacher home, my_courses, teacher courses / sessions / schedules / analytics, student exams / analytics / certificates, downloads, admin PagedList + most admin pages, all gov_* lists, org home tab, member dashboard / space, departments, announcements, registrar, join / terms / sections, course profile, exam engine screens, parent pages.
 

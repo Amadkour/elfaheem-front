@@ -19,7 +19,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
+import 'package:flutter_education_app/features/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/home/student/home_event_rows.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 

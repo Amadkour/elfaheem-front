@@ -131,7 +131,7 @@ regenerate the contract snapshots.
   packageName`; the form (`ReleaseReadinessBox`), the release page (channel, settings, the Codemagic link, files, store
   note), the list's `CodemagicStatusBanner` (the D-143 build server strip only for a server without `/config`).
 - `lib/core/release/app_downloads.dart` (list, offer rules, `AppDownloadsService`) and
-  `lib/features/shared/get_app/app_download_banner.dart` (`AppDownloadBanner` in `main.dart`'s builder between
+  `lib/features/get_app/app_download_banner.dart` (`AppDownloadBanner` in `main.dart`'s builder between
   `WebReleaseBanner` and `GetAppBanner`; `AppDownloadsSheetBody`). The strip reuses D-137's `GetAppBannerView`.
 - `VersionCheckService`: `channel: store` → the store button (Google Play on Android, else the App Store); a
   `download_url` path is read against the API base.

@@ -8,11 +8,11 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
 import 'package:flutter_education_app/features/exams/exam_generate.dart' show GenMark;
 import 'package:flutter_education_app/features/exams/exam_generate_sheet.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_learning.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_learning_page.dart';
-import 'package:flutter_education_app/features/shared/rag/chat/rag_chat_parts.dart' show RagSourceChip;
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/rag_chat_screen.dart';
+import 'package:flutter_education_app/features/rag/rag_learning.dart';
+import 'package:flutter_education_app/features/rag/rag_learning_page.dart';
+import 'package:flutter_education_app/features/rag/chat/rag_chat_parts.dart' show RagSourceChip;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

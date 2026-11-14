@@ -9,7 +9,7 @@ import '../../design/app_kit.dart' show appConfirm;
 import '../../design/app_tokens.dart';
 import '../../design/app_notice.dart';
 import '../../utils/helpers.dart';
-import '../shared/guest/guest_state.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'auth_provider.dart';
 import 'auth_shell.dart';
 import 'auth_widgets.dart';

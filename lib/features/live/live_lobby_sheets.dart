@@ -39,7 +39,7 @@ import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
-import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart' show guestPinValid;
+import 'package:flutter_education_app/features/guest/guest_live_api.dart' show guestPinValid;
 import 'package:flutter_education_app/features/live/room/widgets/live_palette.dart';
 import 'package:flutter_education_app/features/live/live_room.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;

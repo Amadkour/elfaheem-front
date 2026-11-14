@@ -2,8 +2,8 @@
 // decision, the signal debounce, the suggestions / stats / model versions parsing, the metric deltas behind Promote.
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_learning.dart';
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/rag_learning.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeLearning implements LearningApi {

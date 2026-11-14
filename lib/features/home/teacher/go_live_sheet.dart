@@ -32,7 +32,7 @@ import 'package:flutter_education_app/design/home_kit.dart' show homeDurationTex
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_meeting.dart' show startQuickMeeting;
+import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show startQuickMeeting;
 import 'package:flutter_education_app/features/live/live_room_host.dart';
 import 'package:flutter_education_app/features/live/room/join_args.dart';
 import 'package:flutter_education_app/features/home/teacher/go_live.dart';

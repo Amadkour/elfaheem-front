@@ -11,7 +11,7 @@ import 'dart:async' show unawaited;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -21,7 +21,7 @@ import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, t;
-import 'package:flutter_education_app/features/shared/rag/rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
+import 'package:flutter_education_app/features/rag/rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
 import 'package:flutter_education_app/features/exams/exam_authoring.dart';
 import 'package:flutter_education_app/features/exams/exam_authoring_screen.dart' show ExamEditorScreen, SessionLockPicker, pickEngineDateTime;
 import 'package:flutter_education_app/features/exams/exam_forms_import.dart' show GoogleFormsImportSheet, createExamForForm, kGoogleFormsImportFeatureKey;

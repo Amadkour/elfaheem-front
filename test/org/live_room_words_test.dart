@@ -6,7 +6,7 @@ import 'dart:io';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart';
+import 'package:flutter_education_app/features/guest/guest_live_api.dart';
 import 'package:flutter_education_app/features/live/live_controls_api.dart';
 import 'package:flutter_education_app/features/live/live_room.dart';
 import 'package:flutter_education_app/features/live/live_room_words.dart';

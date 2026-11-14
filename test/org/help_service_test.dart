@@ -2,8 +2,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter_education_app/features/shared/help/help_models.dart';
-import 'package:flutter_education_app/features/shared/help/help_service.dart';
+import 'package:flutter_education_app/features/help/help_models.dart';
+import 'package:flutter_education_app/features/help/help_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

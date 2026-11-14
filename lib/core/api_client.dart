@@ -22,7 +22,7 @@ import 'package:flutter_education_app/main.dart';
 import 'package:flutter/material.dart' show MaterialPageRoute;
 import '../features/admin/admin_mfa_page.dart' show AdminMfaPage;
 import '../features/auth/teacher_onboarding_token.dart';
-import '../features/shared/guest/guest_state.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'guest_link_visit.dart';
 import 'package:flutter_education_app/features/courses/student/security/device_blocked_dialog.dart';
 import 'package:flutter_education_app/features/courses/student/security/device_id_service.dart';

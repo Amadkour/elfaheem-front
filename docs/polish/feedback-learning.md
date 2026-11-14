@@ -62,4 +62,4 @@ use, measurably and safely.
 |---|---|---|
 | F.1 | Capture + learning store + suggestion jobs 1–5 + routes + stats | `rag_service/learning/**` (new), migration `rag_0010`, `models.py` (additive), `examgen.py` (exemplars + rules hook), `routers/learning.py`, `worker.py` (tick, additive), `tests/rag/e2e_rag_learning.py` |
 | F.2 | Reranker retraining pipeline + model registry + gated promotion | `mlops/learning/**` (new), `requirements-train.txt`, `bench/rag/**` (eval hooks), docs; runtime loader hook in `mlkit/reranker.py` applied by the coordinator after the CPU-benchmark agent finishes |
-| F.3 | App: feedback reasons UI, exam item accept / edit / reject, suggestions inbox, learning stats + model versions page | `lib/features/shared/rag/**` (learning files), `lib/features/exams/exam_generate*.dart`, tests |
+| F.3 | App: feedback reasons UI, exam item accept / edit / reject, suggestions inbox, learning stats + model versions page | `lib/features/rag/**` (learning files), `lib/features/exams/exam_generate*.dart`, tests |

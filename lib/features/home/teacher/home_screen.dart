@@ -49,7 +49,7 @@ import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeT
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/courses/course_list_card.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart' show CourseScope;
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
+import 'package:flutter_education_app/features/help/help_info_button.dart';
 import 'package:flutter_education_app/features/messaging/inbox/inbox_page.dart' show kInboxFeatureKey;
 import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart'
     show InboxEntry, InboxEntryCard, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;

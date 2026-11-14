@@ -65,13 +65,13 @@ Tests: `test/ui/polish_auth_shared_layout_test.dart` (20 tests: `NotificationsSt
 | features/messaging/notification/notifications_screen.dart | spinner replaced the app bar; bare-icon empty; no error state; empty group drew its header; 20 px "mark all read"; no paging (bug 2) | `NotificationsStateBody`; empty group hidden; `TextButton` 48 px; title `Expanded` | "NEW" badge text is English in both languages (server icon kind; cosmetic) |
 | features/messaging/notification/admin_message_dialogs.dart | — | — | — |
 | features/messaging/inbox/unified_inbox.dart | 6 colours; hand `RefreshIndicator` | theme; `AppRefresh` | — (skeleton / empty / retry already there) |
-| shared/calendar/calendar_screen.dart | chevrons (bug 1); 2 colours | plain chevrons | header refresh spinner (16 px status, not a list) |
-| shared/calendar/calendar_views.dart | physical `Positioned` (bug 9); 5 colours | `PositionedDirectional`; theme | — |
-| shared/calendar/calendar_models.dart | 2 timetable hexes | `accent2` / `lerp(primary, accent2)` | — |
-| shared/calendar/calendar_meeting.dart | — | — | already themed; errors via `calErrorText` |
+| features/calendar/calendar_screen.dart | chevrons (bug 1); 2 colours | plain chevrons | header refresh spinner (16 px status, not a list) |
+| features/calendar/calendar_views.dart | physical `Positioned` (bug 9); 5 colours | `PositionedDirectional`; theme | — |
+| features/calendar/calendar_models.dart | 2 timetable hexes | `accent2` / `lerp(primary, accent2)` | — |
+| features/calendar/calendar_meeting.dart | — | — | already themed; errors via `calErrorText` |
 | features/payments/subscription/subscription_screen.dart · _provider.dart | page spinner; provider returned `'$e'` | `AppListSkeleton`; `ApiException.from(e).message` | — |
-| shared/downloads/downloads_screen.dart | 4 colours; spinner; hand `RefreshIndicator`; home / delete icon buttons unlabelled; physical gradient | theme; skeleton; `AppRefresh`; tooltips; directional | — |
-| shared/upload/upload_progress_footer.dart · upload_queue_manager.dart | 1 colour; failure text is the raw server body | theme | `task.errorMessage` is logged only, never shown |
+| features/downloads/downloads_screen.dart | 4 colours; spinner; hand `RefreshIndicator`; home / delete icon buttons unlabelled; physical gradient | theme; skeleton; `AppRefresh`; tooltips; directional | — |
+| features/upload/upload_progress_footer.dart · upload_queue_manager.dart | 1 colour; failure text is the raw server body | theme | `task.errorMessage` is logged only, never shown |
 | features/profile/passcode/passcode_screen.dart | fixed dark / gold palette (17 hexes) ignored theme and light mode; icon-only delete / close keys | live theme tokens; `Semantics` labels | status-strip spinner (fixed 44 px strip) |
 | features/attendance/attendance_widgets.dart (student + teacher sheets) | 16 colours; 3 `SnackBar` (bug 6); teacher sheet without pull-to-refresh; nested scroll view; unlabelled close buttons; hand time | theme; `showAppNotice`; `_SheetFrame(onRefresh:)` + `TeacherAttendanceController.refresh()` (same code read as the ticker), inner scroll view dropped; tooltips; `AppTime.time` | button / stage spinners; student sheet refresh (it polls live) |
 | features/attendance/attendance_live_screen.dart | 16 colours | `onHero` / `heroShade` tokens | countdown ring (progress, not loading) |

@@ -27,7 +27,7 @@ import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgTimetableScreen;
 import 'package:flutter_education_app/features/org/org_my_exams.dart' show openMyExams;
-import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
+import 'package:flutter_education_app/features/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/courses/course_list_card.dart' show CourseCardShape, CourseListCard, CourseProgressFooter;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 

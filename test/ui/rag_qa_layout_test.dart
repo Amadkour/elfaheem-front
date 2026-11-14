@@ -1,10 +1,10 @@
-// Layout smoke for the curated Q&A screen (lib/features/shared/rag/rag_qa_admin.dart): the list row, the stats
+// Layout smoke for the curated Q&A screen (lib/features/rag/rag_qa_admin.dart): the list row, the stats
 // header, the edit form (as the sheet shows it) and the whole body with data / empty, at 320x640 and 1400x900,
 // Arabic and English, textScaler 1.3.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_admin_console.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_qa_admin.dart';
+import 'package:flutter_education_app/features/rag/rag_admin_console.dart';
+import 'package:flutter_education_app/features/rag/rag_qa_admin.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

@@ -1,5 +1,5 @@
 // What a student sees after an Exam Engine attempt: by the exam's results policy (nothing before it allows).
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
+import 'package:flutter_education_app/features/help/help_info_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';

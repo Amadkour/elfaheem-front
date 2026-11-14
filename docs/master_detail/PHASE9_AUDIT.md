@@ -108,7 +108,7 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 | screen | file | lists | status |
 |---|---|---|---|
 | Notifications | `features/messaging/notification/notifications_screen.dart` | notifications | on (entities with `can_open`, P7) |
-| Schedule | `shared/calendar/schedule_page.dart` | events | on (`EntityNavigator`) |
+| Schedule | `features/calendar/schedule_page.dart` | events | on (`EntityNavigator`) |
 | Certificate issue lists | `features/certificates/issue/cert_issue_lists.dart` | students to issue to | **P9** (gaps B): a person with a `student_id` (on the platform) is an `EntityGuardedChip` (teachers, admins and org staff issue); a newcomer stays plain text |
 | Course profile, course list card / row / home list | `features/courses/course_profile/`, `features/courses/` | the course page itself, catalogue cards | out |
 | Complaints, RAG console / chat, about, attendance offline tab, OMR audience picker, material grid, VOD parts | `shared/*` | | out |

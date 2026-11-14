@@ -17,7 +17,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart' show GuestJoin;
+import 'package:flutter_education_app/features/guest/guest_live_api.dart' show GuestJoin;
 import 'package:flutter_education_app/features/live/live_room.dart' show JoinOutcome;
 import 'package:flutter_education_app/features/live/live_time_limit.dart' show parseNaiveUtc;
 import 'package:flutter_education_app/features/payments/points/points_api.dart';

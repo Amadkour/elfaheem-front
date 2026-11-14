@@ -5,11 +5,11 @@ import 'dart:convert';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/live/live_events_client.dart' show SseEvent, SseParser;
-import 'package:flutter_education_app/features/shared/rag/chat/assistant_page_context.dart';
-import 'package:flutter_education_app/features/shared/rag/chat/rag_payload.dart';
-import 'package:flutter_education_app/features/shared/rag/chat/rag_stream.dart';
-import 'package:flutter_education_app/features/shared/rag/chat/rag_answer_extras.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/chat/assistant_page_context.dart';
+import 'package:flutter_education_app/features/rag/chat/rag_payload.dart';
+import 'package:flutter_education_app/features/rag/chat/rag_stream.dart';
+import 'package:flutter_education_app/features/rag/chat/rag_answer_extras.dart';
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';

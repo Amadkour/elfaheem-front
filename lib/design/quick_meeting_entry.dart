@@ -2,7 +2,7 @@
 //
 // QuickMeetingIcon — "Meet now" in a home header (HomeHeader.actions), next to the calendar and the bell: one tap
 // opens an online, private meeting starting now and its pre-join page (startQuickMeeting in
-// lib/features/shared/calendar/calendar_meeting.dart, live-rooms-spec §7). In Organization mode the meeting
+// lib/features/calendar/calendar_meeting.dart, live-rooms-spec §7). In Organization mode the meeting
 // belongs to the open organization. Hidden by the kill switch `live.quick_meeting` and for guests.
 library;
 
@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 
 import '../core/app_mode.dart';
 import '../features/admin/admin_common.dart' show t;
-import '../features/shared/calendar/calendar_meeting.dart' show startQuickMeeting;
+import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show startQuickMeeting;
 import '../utils/widget/parent_component.dart';
 import 'chrome_button.dart';
 

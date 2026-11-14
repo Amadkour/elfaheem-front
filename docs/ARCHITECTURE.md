@@ -57,7 +57,7 @@ flowchart TB
 
 Ports and services behind nginx: core `api` 8000 (everything under `/api/v1/…` except the two below), Exam Engine
 8001 (`/api/v1/exam/…`, client `lib/features/exams/exam_engine_api.dart`), RAG 8002 (`/api/v1/rag/…`,
-`lib/features/shared/rag/`). The app sends every path in full on top of `AppConfig.baseUrl`
+`lib/features/rag/`). The app sends every path in full on top of `AppConfig.baseUrl`
 (`https://nextbrain.site/api`, or `--dart-define=API_BASE_URL=…` for a dev build), so requests reach nginx as
 `/api/api/v1/…`: `/api/api/v1/exam/…` and `/api/api/v1/rag/…` go to the engine and RAG with the extra `/api` cut, and
 everything else goes to the core with the first `/api` stripped (`../back/docs/DEPLOY.md`,
@@ -168,7 +168,7 @@ sequenceDiagram
   otherwise it talks to production.
 - **Admin money and RAG quota** (D-009): the refund sheet handles 409 `refund_external_recorded` and the cards show
   refunded / refundable (`admin_money_p8.dart`, `admin_finance_page.dart`); the Super Admin sets a library quota per
-  organization from the organization review sheet (`lib/features/shared/rag/rag_quota_admin.dart`).
+  organization from the organization review sheet (`lib/features/rag/rag_quota_admin.dart`).
 - **Transport** (D-005, D-009): `android/app/src/main/res/xml/network_security_config.xml` (cleartext only for
   loopback — the offline-video server — and the emulator host) is prepared but not referenced by the manifest yet;
   `usesCleartextTraffic` / `NSAllowsArbitraryLoads` stay until the server's media URLs are confirmed https.

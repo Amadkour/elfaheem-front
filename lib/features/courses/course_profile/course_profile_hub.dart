@@ -39,7 +39,7 @@ import 'package:flutter_education_app/features/home/student/models.dart' show Co
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart' show TeacherCourse;
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart' show TeacherCourseScreenProvider;
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart' show RagChatScreen;
+import 'package:flutter_education_app/features/rag/rag_chat_screen.dart' show RagChatScreen;
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_announcements.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_models.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_parts.dart';

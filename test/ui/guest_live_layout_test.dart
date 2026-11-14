@@ -6,8 +6,8 @@
 // Plus the pure route helpers that resolve `/live/<token>` from a route name / browser URL, hash and path forms.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_live_page.dart';
+import 'package:flutter_education_app/features/guest/guest_live_api.dart';
+import 'package:flutter_education_app/features/guest/guest_live_page.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/guest_link_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 

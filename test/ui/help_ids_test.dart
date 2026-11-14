@@ -23,7 +23,7 @@ void main() {
     final re = RegExp(r"(?:helpPageId: |HelpInfoButton\(pageId: |HelpTourTarget\(pageId: )'([a-z0-9_./]+)'");
     final wired = <String, String>{};
     for (final f in Directory('lib').listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart'))) {
-      if (f.path.replaceAll(Platform.pathSeparator, '/').contains('features/shared/help/')) continue;
+      if (f.path.replaceAll(Platform.pathSeparator, '/').contains('features/help/')) continue;
       for (final m in re.allMatches(f.readAsStringSync())) {
         wired[m.group(1)!] = f.path;
       }

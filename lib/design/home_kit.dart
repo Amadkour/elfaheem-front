@@ -60,7 +60,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellScope;
 import 'package:flutter_education_app/design/chrome_button.dart' show ChromeBar;
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
+import 'package:flutter_education_app/features/help/help_info_button.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:provider/provider.dart' show Provider;
 import 'package:shared_preferences/shared_preferences.dart';

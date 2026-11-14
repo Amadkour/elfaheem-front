@@ -36,7 +36,7 @@
 // Layout test: test/ui/student_home_layout_test.dart.
 library;
 
-import 'package:flutter_education_app/features/shared/help/help_tour.dart';
+import 'package:flutter_education_app/features/help/help_tour.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -52,7 +52,7 @@ import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
-import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
+import 'package:flutter_education_app/features/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/courses/home_course_list.dart';
 import 'package:flutter_education_app/features/messaging/inbox/inbox_page.dart' show kInboxFeatureKey;
 import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart' show InboxEntry, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
@@ -77,7 +77,7 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
 import 'package:flutter_education_app/features/courses/category/categories_screen.dart';
 import 'package:flutter_education_app/features/courses/course_access.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/features/courses/student/list/courses_list_screen.dart';
 import 'package:flutter_education_app/features/home/student/dashboard/dashboard_screen.dart' show CalendarIcon, NotificationIcon, UserChipButton;
 import 'package:flutter_education_app/features/home/student/models.dart';

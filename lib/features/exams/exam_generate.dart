@@ -20,9 +20,9 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t;
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart' show RagApi;
-import 'package:flutter_education_app/features/shared/rag/rag_learning.dart' show ExamItemAction, LearningApi, examItemBody, learningOlderServer;
-import 'package:flutter_education_app/features/shared/rag/rag_library.dart' show RagDocument, ragLibraryCodeText;
+import 'package:flutter_education_app/features/rag/rag_chat.dart' show RagApi;
+import 'package:flutter_education_app/features/rag/rag_learning.dart' show ExamItemAction, LearningApi, examItemBody, learningOlderServer;
+import 'package:flutter_education_app/features/rag/rag_library.dart' show RagDocument, ragLibraryCodeText;
 import 'package:flutter_education_app/features/exams/exam_authoring.dart' show QOption;
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult, engineCall;
 import 'package:flutter_education_app/features/exams/exam_gen_api.dart';

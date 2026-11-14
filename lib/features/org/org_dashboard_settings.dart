@@ -51,8 +51,8 @@ import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/profile/display/display_settings_page.dart' show DisplaySettingsTile;
 import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show CertVerifyEntryTile;
-import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart' show GetAppTile;
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
+import 'package:flutter_education_app/features/get_app/get_app_banner.dart' show GetAppTile;
+import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Settings ("More" on phones)

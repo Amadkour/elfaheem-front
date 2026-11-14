@@ -24,8 +24,8 @@ import 'package:provider/provider.dart';
 
 import '../auth/auth_provider.dart';
 import 'package:flutter_education_app/features/attendance/admin_data_lab_page.dart';
-import '../shared/rag/rag_admin_console.dart' show RagAdminApi, RagAdminConsole;
-import '../shared/rag/rag_alerts.dart' show RagAlertsApi, RagAlertsData, ragAdminAlert;
+import 'package:flutter_education_app/features/rag/rag_admin_console.dart' show RagAdminApi, RagAdminConsole;
+import 'package:flutter_education_app/features/rag/rag_alerts.dart' show RagAlertsApi, RagAlertsData, ragAdminAlert;
 import 'admin_features_page.dart';
 import 'admin_home_body.dart';
 import 'admin_home_data.dart';

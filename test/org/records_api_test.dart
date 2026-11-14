@@ -2,7 +2,7 @@
 // the edit rules (the server's MIN_PART / speeds), the request bodies and the play URL.
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/live/meeting_recording.dart';
-import 'package:flutter_education_app/features/shared/records/records_api.dart';
+import 'package:flutter_education_app/features/records/records_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _row(int id, {String status = 'done', String kind = 'meeting', int meeting = 7, String created = '2026-11-08T09:00:00',

@@ -23,7 +23,7 @@
 import 'dart:async' show unawaited;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show helpAvailableForMenu, showHelpForPage;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show helpAvailableForMenu, showHelpForPage;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:provider/provider.dart';

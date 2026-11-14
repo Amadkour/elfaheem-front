@@ -1,11 +1,11 @@
 // Smart calendar: pure layout logic + the views / sheets at 320x640 and 1400x900, Arabic + English, textScaler 1.3.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_time.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_api.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_meeting.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart';
-import 'package:flutter_education_app/features/shared/calendar/schedule_page.dart';
-import 'package:flutter_education_app/features/shared/calendar/schedule_store.dart';
+import 'package:flutter_education_app/features/calendar/calendar_api.dart';
+import 'package:flutter_education_app/features/calendar/calendar_meeting.dart';
+import 'package:flutter_education_app/features/calendar/calendar_models.dart';
+import 'package:flutter_education_app/features/calendar/schedule_page.dart';
+import 'package:flutter_education_app/features/calendar/schedule_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

@@ -942,7 +942,7 @@ the page question automatically (the person should see and own what is asked).
 
 ## D-085 — "My schedule" and "My calendar" are one page · 2026-10-29 · accepted
 
-**Decision.** `SchedulePage` (`lib/features/shared/calendar/schedule_page.dart`) is the only schedule / calendar page:
+**Decision.** `SchedulePage` (`lib/features/calendar/schedule_page.dart`) is the only schedule / calendar page:
 the student and teacher shells' Schedule tab (`asTab: true`), the top-bar calendar icon, `'/calendar'` (deep links,
 notification taps, AppNavigator `calendar` / `live_lobby`, the org and department dashboards; `CalendarScreen` /
 `CalendarView` are thin names for it) all open it. Views: Agenda (phone default — today pinned, then only the days
@@ -3167,7 +3167,7 @@ recorded on the host's device, assembled on the server, stored on their Google D
 newest first, grouped by meeting (title + date), with cover, title, length, size and a status chip (recording ·
 editing · saving to the drive · ready · failed + Retry). Tap a ready item → the editor; ⋯ → play & edit · rename ·
 cover · open in the drive · retry · delete; long-press → multi-select with a bar (Merge 2+ ready items in a chosen
-order, Delete). Files: `lib/features/shared/records/` (`records_api.dart` pure, `records_parts.dart` plain values,
+order, Delete). Files: `lib/features/records/` (`records_api.dart` pure, `records_parts.dart` plain values,
 `records_page.dart`, `records_notice.dart`); backend `routers/records_router.py`, `services/records_service.py`,
 `services/records_edit.py`, migration 0064; contract `../back/FLUTTER_API_CHANGES.md` "Records".
 
@@ -3205,7 +3205,7 @@ shows "Saving your recording to Records" with Open; the ready / failed notificat
 
 **Play first.** A tap on a ready record opens the PLAYER, not the editor: the app's one course video player
 (`VideoPlayerScreen.fromLegacy` on the signed stream of D-311, through `RecordPlayerPage` in
-`lib/features/shared/records/records_share.dart`), so the owner sees the recording exactly as a student sees a lesson
+`lib/features/records/records_share.dart`), so the owner sees the recording exactly as a student sees a lesson
 (controls, speed, gestures, fullscreen, screen protection). The player gained `actions: [VodAction]` — caller buttons
 on its top bar (`VodActionButton`, icons only below 720 px, the help button gives them its place below 480 px). Records
 puts **Open in Studio** (pops the player, opens the Studio) and **Share** (the sheet over the player) there; the item
@@ -3414,7 +3414,7 @@ viewers, the browser cost of the outline.
 
 ## D-315 — The Studio on session video materials (drafts, then publish as new or in place); records shared with guests by e-mail · 2026-11-08 · accepted
 
-**The Studio's source is pluggable.** `StudioSource` (`lib/features/shared/records/studio_source.dart`) is all the
+**The Studio's source is pluggable.** `StudioSource` (`lib/features/records/studio_source.dart`) is all the
 Studio page talks to: `RecordStudioSource` (a drive recording, D-311 / D-312, unchanged behaviour) or
 `MaterialStudioSource` (`material_studio_api.dart`: a course session's VIDEO / RECORDED material in MinIO). A source
 names its tools (a material has no Cover — the course page draws none), whether its jobs make drafts, and its
@@ -4513,7 +4513,7 @@ app without "Display over other apps" does not see (nor record) other people's v
 
 ## D-844 — After the video or the meeting: a soft "create an account / sign in" card · 2026-11-13 · accepted
 
-**Decision.** `GuestLinkCta` (`lib/features/shared/guest/guest_link_cta.dart`): under the guest player for a signed-out guest, and on the meeting's guest page once the guest is back from the room. It pushes `/register` or `/login` on top (Back returns to the video); the page works the same without it. A meeting still asks a guest only for a display name, and keeps its PIN, lobby and host approval.
+**Decision.** `GuestLinkCta` (`lib/features/guest/guest_link_cta.dart`): under the guest player for a signed-out guest, and on the meeting's guest page once the guest is back from the room. It pushes `/register` or `/login` on top (Back returns to the video); the page works the same without it. A meeting still asks a guest only for a display name, and keeps its PIN, lobby and host approval.
 ## D-850 — ONE profile page per person: the owner, a visitor and a guest see the same page · 2026-11-13 · accepted
 
 **Decision.** `PublicProfileView` is THE profile page. A visitor opens it with `PublicProfileScreen(username)` (the

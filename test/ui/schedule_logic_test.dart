@@ -2,9 +2,9 @@
 // weekly appointments, the .ics file, the feed cache and the detail payload (changes, cancelled dates, pauses).
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_time.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart';
-import 'package:flutter_education_app/features/shared/calendar/schedule_logic.dart';
-import 'package:flutter_education_app/features/shared/calendar/schedule_store.dart';
+import 'package:flutter_education_app/features/calendar/calendar_models.dart';
+import 'package:flutter_education_app/features/calendar/schedule_logic.dart';
+import 'package:flutter_education_app/features/calendar/schedule_store.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';
 

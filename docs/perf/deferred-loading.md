@@ -3,7 +3,7 @@
 `main.dart.js` (release) was 18.2 MB with no deferred parts; the browser needs about 6 s to parse and start it.
 dump-info of that build: app code 10.1 MB, of which `features/org` 2.0 MB (+ governance 451 KB, org_reports 107 KB,
 insights 39 KB), `exam_engine` 1.16 MB, `features/admin` 820 KB (+ app_releases 139, models 96), `teacher/sessions`
-607 KB (the live room), `shared/rag` 331, `design/export_hub` 308, `features/data_lab` 291, `export_layout` 196,
+607 KB (the live room), `features/rag` 331, `design/export_hub` 308, `features/data_lab` 291, `export_layout` 196,
 `features/certificates` 183, `certificates_issue` 143; packages: `timezone` 836 KB, `flutter_localizations` 492,
 `image` 337, `livekit_client` 288, `archive` 116, `pdf` 106.
 
@@ -62,7 +62,7 @@ availability / academic path / my exams pages opened from the inbox, and `openOr
 Main-unit size by folder (dump-info units, KB): features/org 2370 -> 478, exam_engine 1829 -> 198,
 teacher/sessions 965 -> 73, org/governance 412 -> gone, org_reports, export_hub 281 -> deferred, admin 172.
 
-Still eager on purpose: the student shell, auth, the course page, the assistant (`shared/rag` 370 KB, a floating
+Still eager on purpose: the student shell, auth, the course page, the assistant (`features/rag` 370 KB, a floating
 host on every page), `flutter_localizations` (900 KB, needed for the app locale), profile screens (433 KB), calendar
 (273 KB), exam TAKING.
 

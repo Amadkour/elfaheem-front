@@ -189,7 +189,7 @@ findings fixed (app D-009, back D-045):
 - Open items (G4): dead calls `MyAuthProvider.resetPassword` / `ProfileProvider.resendOtp` removed (contract scan:
   1 known-missing left); refund sheet handles 409 `refund_external_recorded` (`RefundExternalRecorded`, same
   idempotency key, Refund off at 0) and the cards show refunded / refundable (`paymentRefundFigures`); RAG quota
-  override for the Super Admin (`lib/features/shared/rag/rag_quota_admin.dart`, entry `org.rag_quota` in the
+  override for the Super Admin (`lib/features/rag/rag_quota_admin.dart`, entry `org.rag_quota` in the
   organization review sheet); `role_swap` / `llm_disagrees` flag labels; `DocStatusBadge` on the instructor profile;
   `feeConflictText` for 409 `fee_already_paid` / `fee_under_review` without a token; `orgErrorText` maps
   `logo_url_not_allowed`; `.gitignore` gains secret / key / docs-venv patterns.

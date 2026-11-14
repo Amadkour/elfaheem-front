@@ -27,7 +27,7 @@ import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asMap, t;
-import 'package:flutter_education_app/features/shared/rag/rag_library.dart';
+import 'package:flutter_education_app/features/rag/rag_library.dart';
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
 import 'package:flutter_education_app/features/exams/exam_gen_api.dart';
 import 'package:flutter_education_app/features/exams/exam_generate.dart';

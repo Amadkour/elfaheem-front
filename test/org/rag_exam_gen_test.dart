@@ -3,8 +3,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/exams/exam_generate.dart';
 import 'package:flutter_education_app/features/exams/exam_generate_sheet.dart';
 import 'package:flutter_education_app/features/exams/exam_quick.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_library.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_library_screen.dart';
+import 'package:flutter_education_app/features/rag/rag_library.dart';
+import 'package:flutter_education_app/features/rag/rag_library_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

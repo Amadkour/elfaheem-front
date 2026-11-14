@@ -2,7 +2,7 @@
 // 403 org_inactive get their own bilingual text in the chat, never the raw server message.
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

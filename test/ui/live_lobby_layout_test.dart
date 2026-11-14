@@ -2,8 +2,8 @@
 // lib/features/live/live_lobby_sheets.dart (and the control bar's lobby button, the guest page's meeting
 // card) at phone and web sizes, in Arabic and English, text scale 1.3 — no overflow, no layout exception.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_live_page.dart';
+import 'package:flutter_education_app/features/guest/guest_live_api.dart';
+import 'package:flutter_education_app/features/guest/guest_live_page.dart';
 import 'package:flutter_education_app/features/live/live_lobby_sheets.dart';
 import 'package:flutter_education_app/features/live/live_room.dart';
 import 'package:flutter_education_app/features/live/room/widgets/live_control_bar.dart';

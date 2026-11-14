@@ -15,7 +15,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart' show modeCourseScopeQuery;
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 
 // ── Simple models ─────────────────────────────────────────────────────────────

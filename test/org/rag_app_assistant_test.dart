@@ -4,9 +4,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_library.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_library_screen.dart';
+import 'package:flutter_education_app/features/rag/app_assistant.dart';
+import 'package:flutter_education_app/features/rag/rag_library.dart';
+import 'package:flutter_education_app/features/rag/rag_library_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

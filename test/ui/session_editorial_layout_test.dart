@@ -9,8 +9,8 @@ import 'package:flutter_education_app/features/sessions/material/components/sess
 import 'package:flutter_education_app/features/sessions/material/session_material_model.dart';
 import 'package:flutter_education_app/features/sessions/session_track_tabs.dart';
 import 'package:flutter_education_app/features/sessions/video/vod_player_parts.dart';
-import 'package:flutter_education_app/features/shared/upload/upload_progress_footer.dart';
-import 'package:flutter_education_app/features/shared/upload/upload_task.dart';
+import 'package:flutter_education_app/features/upload/upload_progress_footer.dart';
+import 'package:flutter_education_app/features/upload/upload_task.dart';
 import 'package:flutter_education_app/features/courses/student/details/session_exam_gate.dart';
 import 'package:flutter_test/flutter_test.dart';
 

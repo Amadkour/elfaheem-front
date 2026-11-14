@@ -12,7 +12,7 @@
 library;
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';

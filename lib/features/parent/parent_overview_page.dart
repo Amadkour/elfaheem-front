@@ -25,7 +25,7 @@ import 'package:flutter_education_app/design/boot_splash.dart' show SplashState;
 import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/core/plural.dart';
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:provider/provider.dart';
 

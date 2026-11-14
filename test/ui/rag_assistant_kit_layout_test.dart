@@ -2,11 +2,11 @@
 // 1400x900, ar / en, text scale 1.3.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
-import 'package:flutter_education_app/features/shared/help/help_models.dart';
-import 'package:flutter_education_app/features/shared/help/help_tour.dart';
-import 'package:flutter_education_app/features/shared/rag/chat/rag_chat_parts.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/help/help_info_button.dart';
+import 'package:flutter_education_app/features/help/help_models.dart';
+import 'package:flutter_education_app/features/help/help_tour.dart';
+import 'package:flutter_education_app/features/rag/chat/rag_chat_parts.dart';
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

@@ -16,7 +16,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'package:provider/provider.dart';
 

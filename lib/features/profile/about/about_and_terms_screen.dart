@@ -28,7 +28,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_identity.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppEmpty, AppRefresh, appText;
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';

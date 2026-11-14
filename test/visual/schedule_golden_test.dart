@@ -17,10 +17,10 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_time.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_api.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart';
-import 'package:flutter_education_app/features/shared/calendar/schedule_page.dart';
-import 'package:flutter_education_app/features/shared/calendar/schedule_store.dart';
+import 'package:flutter_education_app/features/calendar/calendar_api.dart';
+import 'package:flutter_education_app/features/calendar/calendar_models.dart';
+import 'package:flutter_education_app/features/calendar/schedule_page.dart';
+import 'package:flutter_education_app/features/calendar/schedule_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

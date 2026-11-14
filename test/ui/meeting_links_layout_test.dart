@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_share_sheet.dart';
 import 'package:flutter_education_app/features/live/meeting_links.dart';
 import 'package:flutter_education_app/features/live/meeting_links_parts.dart';
-import 'package:flutter_education_app/features/shared/share/share_link_page.dart' show ShareLinkPreviewView;
+import 'package:flutter_education_app/features/share/share_link_page.dart' show ShareLinkPreviewView;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

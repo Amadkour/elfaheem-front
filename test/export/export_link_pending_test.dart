@@ -2,7 +2,7 @@
 // first signed-in screen (main.dart's `_Guard` calls ExportLinkPending.consume).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/export/export_studio_api.dart' show exportLinkTokenFromRoute;
-import 'package:flutter_education_app/features/shared/exports/export_link_open_page.dart' show ExportLinkPending;
+import 'package:flutter_education_app/features/exports/export_link_open_page.dart' show ExportLinkPending;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

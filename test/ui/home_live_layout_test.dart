@@ -4,7 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart';
+import 'package:flutter_education_app/features/calendar/calendar_models.dart';
 import 'package:flutter_education_app/features/home/student/home_event_rows.dart';
 import 'package:flutter_education_app/features/home/student/home_live.dart';
 import 'package:flutter_test/flutter_test.dart';

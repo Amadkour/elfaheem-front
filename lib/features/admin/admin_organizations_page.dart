@@ -20,7 +20,7 @@ import '../org/org_danger_zone.dart';
 import '../org/org_providers.dart';
 import '../org/org_v3.dart' show orgCall, orgErrorText;
 import '../org/org_ui.dart';
-import '../shared/rag/rag_quota_admin.dart' show showRagQuotaAdminSheet;
+import 'package:flutter_education_app/features/rag/rag_quota_admin.dart' show showRagQuotaAdminSheet;
 import 'admin_bulk.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';

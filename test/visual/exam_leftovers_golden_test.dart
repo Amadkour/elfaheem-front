@@ -23,7 +23,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/exams/engine_exams_section.dart';
 import 'package:flutter_education_app/features/exams/paper/review/omr_results_page.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart';
+import 'package:flutter_education_app/features/rag/app_assistant.dart';
 import 'package:flutter_education_app/features/exams/legacy/teacher/teacher_exam_hub_screen.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';

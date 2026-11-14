@@ -21,7 +21,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/features/profile/components/setting_group.dart';
 import 'package:flutter_education_app/features/profile/components/setting_title.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';

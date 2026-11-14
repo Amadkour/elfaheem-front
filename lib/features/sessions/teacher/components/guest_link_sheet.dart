@@ -20,7 +20,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart';
+import 'package:flutter_education_app/features/guest/guest_live_api.dart';
 
 /// Kill-switch id of the whole feature (teacher action + sheet).
 const String kGuestLinkFeatureKey = 'live.guest_link';

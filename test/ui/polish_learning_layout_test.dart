@@ -10,7 +10,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/courses/course_price_tag.dart';
 import 'package:flutter_education_app/features/courses/private_flag.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/features/sessions/material/components/session_exam_tile.dart';
 import 'package:flutter_education_app/features/sessions/material/components/session_shared_widgets.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/exam_ui.dart';

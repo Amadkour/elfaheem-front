@@ -15,8 +15,8 @@ library;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t, asMap, asMapList, asInt;
 import 'package:flutter_education_app/features/live/meeting_recording.dart' show parseRecordingTime;
-import 'package:flutter_education_app/features/shared/records/records_api.dart' show RecordPlay;
-import 'package:flutter_education_app/features/shared/records/records_guests_api.dart' show GuestRecordApi, GuestRecordCard;
+import 'package:flutter_education_app/features/records/records_api.dart' show RecordPlay;
+import 'package:flutter_education_app/features/records/records_guests_api.dart' show GuestRecordApi, GuestRecordCard;
 
 /// The kill switch of a course video's guest links (feature catalog `materials.guest_link`).
 const kMaterialGuestLinkKey = 'materials.guest_link';

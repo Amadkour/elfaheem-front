@@ -17,7 +17,7 @@ import 'package:flutter_education_app/design/export_hub/export_flow_parts.dart';
 import 'package:flutter_education_app/design/export_hub/export_sheet_studio.dart';
 import 'package:flutter_education_app/design/export_hub/export_themes.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
-import 'package:flutter_education_app/features/shared/exports/exports_center_page.dart';
+import 'package:flutter_education_app/features/exports/exports_center_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

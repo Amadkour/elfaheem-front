@@ -22,7 +22,7 @@ import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart' show GestureBinding, PointerDeviceKind, PointerScrollEvent;
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData, HardwareKeyboard, SystemChrome, SystemUiMode, SystemUiOverlay;
 import 'package:flutter_education_app/core/display/lazy_fonts.dart';

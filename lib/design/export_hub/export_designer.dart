@@ -31,7 +31,7 @@ import 'package:http/http.dart' as http;
 import '../../features/admin/admin_common.dart' show t, toast;
 import '../../features/org/org_providers.dart' show orgBase;
 import '../../features/org/org_ui.dart' show orgFileUrl;
-import '../../features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/features/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/data_lab/data_lab_saver_web.dart' as saver;
 import '../app_image_cropper.dart';
 import '../app_kit.dart';

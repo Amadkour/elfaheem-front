@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/rag/admin/rag_feedback_review.dart';
+import 'package:flutter_education_app/features/rag/admin/rag_feedback_review.dart';
 import 'package:flutter_education_app/main.dart' show navigatorKey;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

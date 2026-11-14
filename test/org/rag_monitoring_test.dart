@@ -3,7 +3,7 @@
 // and the settings' `conversation_retention_days` (parsed, clamped, always in the PUT body).
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_admin_console.dart';
+import 'package:flutter_education_app/features/rag/rag_admin_console.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> monitoringJson({int days = 14}) => {

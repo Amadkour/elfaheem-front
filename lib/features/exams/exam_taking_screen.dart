@@ -7,7 +7,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -28,7 +28,7 @@ import 'package:flutter_education_app/features/exams/exam_result_screen.dart';
 import 'package:flutter_education_app/features/exams/exam_media.dart';
 import 'package:flutter_education_app/features/exams/exam_taking.dart';
 import 'package:flutter_education_app/features/exams/exam_page_width.dart';
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 

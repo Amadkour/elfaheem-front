@@ -42,8 +42,8 @@ import 'package:flutter_education_app/features/org/org_department_dashboard.dart
 import 'package:flutter_education_app/features/org/org_providers.dart';
 import 'package:flutter_education_app/features/org/org_member_dashboard.dart';
 import 'package:flutter_education_app/features/parent/parent_overview_page.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/rag_chat_screen.dart';
 import 'package:flutter_education_app/features/home/student/home_screen.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 import 'package:flutter_education_app/features/home/teacher/home_screen.dart';

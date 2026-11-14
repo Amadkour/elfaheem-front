@@ -42,7 +42,7 @@ import 'api_client.dart';
 import 'cert_pin.dart' show CertPin, kPinUpdateCode;
 import '../utils/remote_config_service.dart';
 import 'release/app_downloads.dart' show resolveDownloadUrl;
-import '../features/shared/get_app/get_app_sheet.dart' show getAppLtr;
+import 'package:flutter_education_app/features/get_app/get_app_sheet.dart' show getAppLtr;
 import 'display/app_fonts.dart';
 import 'get_app/get_app_service.dart' show fetchReleasesManifest, releasesManifestUriFor;
 import 'get_app/releases_manifest.dart';

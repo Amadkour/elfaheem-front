@@ -1,6 +1,6 @@
 /// schedules/schedules_provider.dart — a course's weekly appointments (the teacher's course studio).
 ///
-/// The student / teacher "My schedule" tab is the one schedule page now (lib/features/shared/calendar/schedule_page.dart,
+/// The student / teacher "My schedule" tab is the one schedule page now (lib/features/calendar/schedule_page.dart,
 /// D-085): it reads GET /student|teacher/schedules itself (CalendarStore.weekly).
 library;
 

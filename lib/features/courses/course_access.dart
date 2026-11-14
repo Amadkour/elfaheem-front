@@ -3,7 +3,7 @@ import 'package:flutter_education_app/config/app_config.dart'; // String.tr
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 
-import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/features/profile/passcode/passcode_screen.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
 

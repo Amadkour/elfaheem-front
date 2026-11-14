@@ -30,7 +30,7 @@ import 'package:flutter_education_app/features/sessions/video/video_player_scree
 import 'package:flutter_education_app/features/sessions/video/vod_player_parts.dart' show VodAction, VodInk, VodGlassButton, vodText;
 import 'package:flutter_education_app/core/offline/offline_strings.dart' show offlineT;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale, AppEase;
-import 'package:flutter_education_app/features/shared/records/material_studio_page.dart'
+import 'package:flutter_education_app/features/records/material_studio_page.dart'
     show MaterialStudioDraftsPanel, materialStudioLabel, materialStudioOn, openMaterialStudio;
 import 'package:flutter_education_app/features/sessions/material/material_guest_links_api.dart' show kMaterialGuestLinkKey;
 import 'package:flutter_education_app/features/sessions/material/material_guest_links_sheet.dart' show showMaterialGuestLinksSheet;

@@ -12,8 +12,8 @@ import 'package:flutter_education_app/features/admin/app_releases/app_release_fo
 import 'package:flutter_education_app/features/admin/app_releases/app_releases_models.dart';
 import 'package:flutter_education_app/features/admin/app_releases/app_releases_page.dart';
 import 'package:flutter_education_app/features/admin/app_releases/app_releases_view.dart';
-import 'package:flutter_education_app/features/shared/get_app/app_download_banner.dart';
-import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart' show GetAppBannerView;
+import 'package:flutter_education_app/features/get_app/app_download_banner.dart';
+import 'package:flutter_education_app/features/get_app/get_app_banner.dart' show GetAppBannerView;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/app_releases_samples.dart';

@@ -11,7 +11,7 @@
 // with refresh + log out instead of the "app is free" page again.
 library;
 
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
+import 'package:flutter_education_app/features/help/help_info_button.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 

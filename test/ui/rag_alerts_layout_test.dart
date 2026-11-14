@@ -8,8 +8,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_home_body.dart';
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_alerts.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_alerts_page.dart';
+import 'package:flutter_education_app/features/rag/rag_alerts.dart';
+import 'package:flutter_education_app/features/rag/rag_alerts_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../org/rag_alerts_test.dart' show alertsJson, gateJson;

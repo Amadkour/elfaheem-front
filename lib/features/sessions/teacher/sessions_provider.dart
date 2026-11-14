@@ -26,7 +26,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/sessions/material/session_material_model.dart';
-import 'package:flutter_education_app/features/shared/upload/upload_queue_manager.dart';
+import 'package:flutter_education_app/features/upload/upload_queue_manager.dart';
 import 'package:flutter_education_app/features/courses/student/details/session_exam_gate.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';

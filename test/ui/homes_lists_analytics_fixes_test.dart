@@ -6,7 +6,7 @@
 //   N5 / M3  the class figure on the scale of the enrolment's progress: a cohort of one is level
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart';
+import 'package:flutter_education_app/features/calendar/calendar_models.dart';
 import 'package:flutter_education_app/features/courses/category/categories_screen.dart' show CategoryAvatar;
 import 'package:flutter_education_app/features/analytics/student/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_provider.dart';

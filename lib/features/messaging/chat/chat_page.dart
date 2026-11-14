@@ -22,7 +22,7 @@ import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 

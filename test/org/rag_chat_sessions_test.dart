@@ -1,4 +1,4 @@
-// Chat sessions (Track E.5, lib/features/shared/rag/rag_chat.dart): the conversation model, the title a new chat
+// Chat sessions (Track E.5, lib/features/rag/rag_chat.dart): the conversation model, the title a new chat
 // gets from its first question, the retention notice (ar / en), relative times, the deep-link module, the API
 // bodies / query strings through a recording client, and the older-server decision.
 import 'dart:convert';
@@ -7,7 +7,7 @@ import 'dart:io';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Records what RagApi hands to ApiClient (a singleton; this stands in through its interface).

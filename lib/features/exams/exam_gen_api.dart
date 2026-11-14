@@ -21,7 +21,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t;
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart' show RagApi;
+import 'package:flutter_education_app/features/rag/rag_chat.dart' show RagApi;
 import 'package:flutter_education_app/features/exams/exam_authoring.dart' show MatchPair, QOption, TextItem;
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult, engineCall;
 import 'package:flutter_education_app/features/exams/exam_quick.dart';

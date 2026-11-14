@@ -5,7 +5,7 @@ library;
 import 'dart:typed_data';
 
 import '../../../core/api_client.dart';
-import '../../shared/help/help_models.dart';
+import 'package:flutter_education_app/features/help/help_models.dart';
 
 /// One row of `GET /admin/help/pages`.
 class HelpPageRow {
