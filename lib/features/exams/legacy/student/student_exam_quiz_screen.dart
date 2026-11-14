@@ -80,9 +80,9 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
         textDirection: Helpers.pageDirection,
         child: Dialog(
           backgroundColor: dctx.colors.cardBg,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          insetPadding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(AppRadius.sheet),
           ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
@@ -114,7 +114,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                     textAlign: TextAlign.center,
                     style: examT(13, c: dctx.colors.textMedium, h: 1.7),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpace.lg),
                   Row(
                     children: [
                       Expanded(
@@ -123,7 +123,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                           onTap: () => Navigator.pop(dctx, false),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpace.sm),
                       Expanded(
                         child: GradientButton(
                           label: tx('exam_quiz_submit_short'),
@@ -214,7 +214,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
               decoration: BoxDecoration(
                 color: c.cardBg,
                 borderRadius:
-                const BorderRadius.vertical(bottom: Radius.circular(28)),
+                const BorderRadius.vertical(bottom: Radius.circular(AppRadius.sheet)),
                 boxShadow: [
                   BoxShadow(
                     color: c.heroShade.withValues(alpha: 0.06),
@@ -226,20 +226,20 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md),
                   child: Column(
                     children: [
                       Row(
                         children: [
                           InkWell(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(AppRadius.control),
                             onTap: () => _showQuestionGrid(context, s),
                             child: Container(
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
                                 color: c.primary.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(AppRadius.control),
                               ),
                               child: Icon(Icons.grid_view_rounded,
                                   color: c.primary, size: 21),
@@ -292,12 +292,12 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                   opacity: _fadeAnim,
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _QuestionCard(question: q, index: s.currentIndex),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpace.md),
                         if (q.options.isNotEmpty)
                           ...q.options.asMap().entries.map(
                                 (e) => _OptionTile(
@@ -327,11 +327,11 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
 
             // ── Bottom navigation bar ───────────────────────────────────
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md + AppSpace.xxs),
               decoration: BoxDecoration(
                 color: c.cardBg,
                 borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
+                const BorderRadius.vertical(top: Radius.circular(AppRadius.block)),
                 boxShadow: [
                   BoxShadow(
                     color: c.heroShade.withValues(alpha: 0.07),
@@ -371,7 +371,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                           },
                         )
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpace.sm),
                     _NavBtn(
                       icon: Icons.arrow_forward_ios_rounded,
                       enabled: !s.isFirst,
@@ -464,7 +464,7 @@ class _TimerChipState extends State<_TimerChip>
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: .10),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.control),
                 border: Border.all(color: color.withValues(alpha: .35)),
               ),
               child: Row(
@@ -497,7 +497,7 @@ class _CounterBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: [context.colors.primaryDark, c.primary]),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         boxShadow: [
           BoxShadow(
             color: c.primary.withValues(alpha: .3),
@@ -528,7 +528,7 @@ class _QuestionCard extends StatelessWidget {
     return ExamCard(
       radius: 22,
       borderColor: c.primary.withValues(alpha: .16),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpace.md + AppSpace.xxs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -536,7 +536,7 @@ class _QuestionCard extends StatelessWidget {
             children: [
               Container(
                 padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 5),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: [context.colors.primaryDark, c.primary]),
                   borderRadius: BorderRadius.circular(20),
@@ -606,7 +606,7 @@ class _ReviewFlagButton extends StatelessWidget {
             size: 15,
             color: color,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpace.xxs),
           Text(
             flagged ? tx('flag_review_marked') : tx('flag_review_mark'),
             style: examT(11, w: FontWeight.w700, c: color),
@@ -648,7 +648,7 @@ class _OptionTile extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: selected ? c.primaryWash : c.cardBg,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(
             color: selected ? c.primary : c.divider.withValues(alpha: .7),
             width: selected ? 2 : 1,
@@ -680,7 +680,7 @@ class _OptionTile extends StatelessWidget {
                     ? LinearGradient(colors: [context.colors.primaryDark, c.primary])
                     : null,
                 color: selected ? null : c.divider.withValues(alpha: .45),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadius.chip),
               ),
               child: Center(
                 child: Text(
@@ -789,7 +789,7 @@ class _NavBtn extends StatelessWidget {
         height: 52,
         decoration: BoxDecoration(
           color: enabled ? c.primary.withValues(alpha: .10) : c.divider.withValues(alpha: .35),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           border: Border.all(
             color: enabled ? c.primary.withValues(alpha: .3) : c.divider,
           ),
@@ -824,11 +824,11 @@ class _QuestionGridSheet extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, AppSpace.sm, AppSpace.md + AppSpace.xxs, 6),
               child: Row(
                 children: [
                   Icon(Icons.grid_view_rounded, size: 19, color: c.primary),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpace.xs),
                   Text(tx('exam_quiz_questions'),
                       style: examT(16.5, w: FontWeight.w800, c: c.textDark)),
                   const Spacer(),
@@ -842,7 +842,7 @@ class _QuestionGridSheet extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, AppSpace.xxs, AppSpace.md + AppSpace.xxs, 10),
               child: ExamBar(
                 pct: s.questions.isEmpty
                     ? 0
@@ -853,7 +853,7 @@ class _QuestionGridSheet extends StatelessWidget {
             ),
             Expanded(
               child: GridView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 6, AppSpace.md + AppSpace.xxs, AppSpace.lg),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 5,
                   mainAxisSpacing: 10,
@@ -880,7 +880,7 @@ class _QuestionGridSheet extends StatelessWidget {
                             : answered
                             ? c.primary.withValues(alpha: .13)
                             : c.divider.withValues(alpha: .35),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(AppRadius.control),
                         border: Border.all(
                           color: isCurrent
                               ? c.primary

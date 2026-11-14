@@ -537,6 +537,19 @@ class _Pick<T> {
   final T? value;
 }
 
+/// The kit's pick sheet on its own, for a compact inline trigger that is not a field well (a filter bar's value):
+/// `value → text` options, a check on [current]; the picked value, or null when dismissed.
+Future<T?> showAppPickSheet<T extends Object>(BuildContext context,
+    {required String title, required Map<T, String> options, T? current}) async {
+  final picked = await _showPickSheet<T>(
+    context,
+    title: title,
+    options: [for (final e in options.entries) _PickOption<T>(e.key, Text(e.value), e.value)],
+    current: current,
+  );
+  return picked?.value;
+}
+
 /// The sheet behind [AppDropdown] and [AppPicker]: the title, a search box once the list is long, 48 px rows with a
 /// check on the current one, the kit's radius and type.
 Future<_Pick<T>?> _showPickSheet<T>(

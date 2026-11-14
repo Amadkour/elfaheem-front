@@ -10,9 +10,7 @@
 // Nothing here talks to the server or guesses: a figure the server did not send stays null and is shown as "—".
 library;
 
-import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_time.dart';
-import 'package:intl/intl.dart';
 
 import '../admin/admin_common.dart';
 import 'org_providers.dart' show orgDays;
@@ -435,10 +433,5 @@ String calendarDate(Object? iso, {String pattern = 'EEE d MMM y'}) {
   final s = '${iso ?? ''}';
   final d = DateTime.tryParse(s.length >= 10 ? s.substring(0, 10) : s);
   if (d == null) return s.isEmpty ? '—' : s;
-  AppTime.toZone(DateTime.utc(2000)); // loads the date-symbol data (Arabic month names)
-  try {
-    return DateFormat(pattern, AppConfig.lang).format(d);
-  } catch (_) {
-    return DateFormat(pattern).format(d);
-  }
+  return AppTime.wall(d, pattern: pattern);
 }

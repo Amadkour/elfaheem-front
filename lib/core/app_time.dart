@@ -250,6 +250,17 @@ class AppTime {
     }
   }
 
+  /// A wall-clock / calendar date (never shifted by a zone: a timetable day, a date cell of an export) → [pattern]
+  /// in the app language, Latin digits.
+  static String wall(DateTime d, {String pattern = 'd MMM y'}) {
+    toZone(DateTime.utc(2000)); // also loads the date-symbol data (Arabic month names)
+    try {
+      return (DateFormat(pattern, AppConfig.lang)..useNativeDigits = false).format(d);
+    } catch (_) {
+      return DateFormat(pattern).format(d);
+    }
+  }
+
   /// UTC instant → "23 Oct 2026 · 8:30 AM".
   static String dateTime(DateTime utc) => '${date(utc)} · ${time(utc)}';
 }

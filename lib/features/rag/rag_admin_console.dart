@@ -667,11 +667,11 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
             Tab(text: t('مراجعة التقييمات', 'Feedback')),
           ]),
         ),
-        if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!)),
+        if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!)),
         Expanded(
           child: TabBarView(controller: _tabs, children: [
             _overview == null
-                ? const AppListSkeleton(items: 4, padding: EdgeInsets.all(16))
+                ? const AppListSkeleton(items: 4, padding: EdgeInsets.all(AppSpace.md))
                 : RagOverviewView(
                     overview: _overview!,
                     settings: _settings,
@@ -681,13 +681,13 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
                       _load();
                     }),
             _settings == null
-                ? const AppListSkeleton(items: 4, padding: EdgeInsets.all(16))
+                ? const AppListSkeleton(items: 4, padding: EdgeInsets.all(AppSpace.md))
                 : SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpace.md),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                       RagPlatformSettingsForm(settings: _settings!, onSave: _save, onTest: _test, onManageModels: _manageModels),
                       if (_settings!.extra.present) ...[
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpace.md),
                         RagExtraSettingsCard(
                             settings: _settings!.extra,
                             onSave: _saveExtra,
@@ -696,7 +696,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
                             training: _training,
                             job: _embedderJob),
                       ],
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpace.md),
                       RagCacheSection(api: widget.cacheApi, saveSettings: _saveSettingsBody),
                     ]),
                   ),
@@ -731,7 +731,7 @@ class RagOverviewView extends StatelessWidget {
     final o = overview;
     final s = settings;
     final modelOn = s != null && s.llmAvailable && s.effectiveGenerator == 'llm';
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
       AppHero(
         title: t('المساعد الذكي', 'AI assistant'),
         subtitle: modelOn && s.llmLocal
@@ -746,12 +746,12 @@ class RagOverviewView extends StatelessWidget {
           AppHeroStat(icon: Icons.thumb_up_alt_rounded, value: o.helpfulRate == null ? '—' : '${o.helpfulRate}%', label: t('مفيدة', 'helpful')),
         ],
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final d in const [7, 30, 90]) AppChoiceChip(label: t('آخر $d يوماً', 'Last $d days'), selected: o.days == d, onTap: () => onDays?.call(d)),
       ]),
-      const SizedBox(height: 12),
-      if (o.monitoring != null) ...[RagHealthBlock(monitoring: o.monitoring!), const SizedBox(height: 16)],
+      const SizedBox(height: AppSpace.sm),
+      if (o.monitoring != null) ...[RagHealthBlock(monitoring: o.monitoring!), const SizedBox(height: AppSpace.md)],
       AppGrid(minTile: 150, children: [
         AppStatTile(icon: Icons.people_alt_rounded, label: t('سائلون', 'Askers'), value: o.askers),
         AppStatTile(icon: Icons.timer_outlined, label: t('زمن الإجابة (وسيط)', 'Answer time (median)'), value: o.p50 == null ? '—' : '${(o.p50! / 1000).toStringAsFixed(1)} s'),
@@ -762,7 +762,7 @@ class RagOverviewView extends StatelessWidget {
         if (o.qaPairs > 0 || o.qaDirect > 0)
           AppStatTile(icon: Icons.verified_rounded, label: t('إجابات معتمدة مباشرة', 'Direct Q&A answers'), value: o.qaDirect, color: c.success),
       ]),
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpace.md),
       AppSectionTitle(t('أين يُسأل', 'Where questions come from')),
       AppCard(
         child: Column(children: [
@@ -773,26 +773,26 @@ class RagOverviewView extends StatelessWidget {
                 rate: ragRate(e.value['found'] ?? 0, e.value['asked'] ?? 0)),
         ]),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppSectionTitle(t('كيف كُتبت الإجابات', 'How answers were written')),
       AppCard(
         child: Wrap(spacing: 8, runSpacing: 8, children: [
           for (final e in o.generators.entries) AppStatChip(icon: Icons.bolt_rounded, value: '${e.value}', label: ragGeneratorLabel(e.key)),
         ]),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppSectionTitle(t('أسئلة بلا إجابة', 'Questions without an answer'), subtitle: t('أضف مستنداً يجيب عنها أو حسّن الموجود', 'Add a document that answers them, or improve the existing ones')),
       if (o.notFound.isEmpty)
         AppEmpty(icon: Icons.task_alt_rounded, title: t('كل الأسئلة وُجدت لها إجابة', 'Every question found its answer'))
       else
         RagAskedList(rows: o.notFound, tone: c.warning, onPromote: onPromote),
       if (o.hedged.isNotEmpty) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.sm),
         AppSectionTitle(t('أُجيبت بأقرب ما وُجد', 'Answered with the closest match'),
             subtitle: t('المستندات تجيب عنها جزئياً: أكمل القسم أو اعتمد إجابة', 'The documents half-answer them: complete the section or promote an answer')),
         RagAskedList(rows: o.hedged, tone: c.primary, onPromote: onPromote),
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppSectionTitle(t('إجابات لم تُفد', 'Unhelpful answers')),
       if (o.unhelpful.isEmpty)
         AppEmpty(icon: Icons.thumb_up_alt_outlined, title: t('لا شكاوى من الإجابات', 'No answer was rated unhelpful'))
@@ -882,7 +882,7 @@ class RagHealthBlock extends StatelessWidget {
             label: t('رد معتمد مباشر', 'Direct Q&A'), value: ragPctText(m.qaDirectRate), delta: m.qaDirectDelta, spark: m.qaDirectSpark,
             deltaHint: hint, icon: Icons.verified_rounded, color: palette[3 % palette.length]),
       ]),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       Wrap(spacing: 8, runSpacing: 8, children: [
         _RatePill(icon: Icons.lightbulb_outline_rounded, value: ragPctText(m.qaExampleRate), label: t('استعان بإجابة معتمدة', 'helped by a Q&A pair')),
         _RatePill(icon: Icons.undo_rounded, value: ragPctText(m.fallbackRate), label: t('بديل عن النموذج', 'model fallback')),
@@ -890,11 +890,11 @@ class RagHealthBlock extends StatelessWidget {
         if (m.deliveryReported > 0)
           _RatePill(icon: Icons.sync_rounded, value: ragPctText(m.pollRate), label: t('وصلت بالاستطلاع لا بالبث', 'delivered by polling, not the stream')),
       ]),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(t('الأسئلة يومياً', 'Questions per day'), style: appText(14, w: FontWeight.w800, c: c.textDark)),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           if (m.hasActivity)
             AppBarChart(
               title: t('الأسئلة يومياً', 'Questions per day'),
@@ -908,7 +908,7 @@ class RagHealthBlock extends StatelessWidget {
             Text(t('لا أسئلة في هذه الفترة', 'No questions in this period'), style: appText(13, c: c.textLight)),
         ]),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpace.sm),
       Align(
         alignment: AlignmentDirectional.centerStart,
         child: ConstrainedBox(
@@ -916,7 +916,7 @@ class RagHealthBlock extends StatelessWidget {
           child: AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(t('زمن الإجابة حسب المسار', 'Answer time by path'), style: appText(14, w: FontWeight.w800, c: c.textDark)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           RagLatencyRow(label: t('المسار', 'Path'), questions: t('أسئلة', 'Asked'), p50: 'p50', p95: 'p95', header: true),
           for (final p in ragPaths)
             RagLatencyRow(
@@ -942,7 +942,7 @@ class _RatePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 12, 6),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, 6, AppSpace.sm, 6),
       decoration: BoxDecoration(
         color: c.primaryWash,
         borderRadius: BorderRadius.circular(20),
@@ -976,7 +976,7 @@ class RagLatencyRow extends StatelessWidget {
             alignment: AlignmentDirectional.centerEnd,
             child: Text(v, textDirection: TextDirection.ltr, maxLines: 1, overflow: TextOverflow.ellipsis, style: st)));
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(children: [
         Expanded(child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: st)),
         cell(questions),
@@ -997,7 +997,7 @@ class _RateRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(children: [
         Expanded(child: Text(label, style: appText(13, c: c.textDark))),
         Text('$count', style: appText(13, w: FontWeight.w800, c: c.textDark)),
@@ -1088,7 +1088,7 @@ class _RagPlatformSettingsFormState extends State<RagPlatformSettingsForm> {
         items: [_item('llm', t('يكتبها النموذج من المصادر ويراجعها', 'Written by the model from the sources and checked')), _item('extractive', t('اقتباس مباشر من المستندات (بلا نموذج)', 'Quoted straight from the documents (no model)'))],
         onChanged: (v) => setState(() => _s = _s.copyWith(generator: v)),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       if (s.llmExternal || !s.llmAvailable)
         AppSwitchTile(
             title: t('المؤسسات تستخدم النموذج افتراضياً', 'Organizations use the model by default'),
@@ -1101,11 +1101,11 @@ class _RagPlatformSettingsFormState extends State<RagPlatformSettingsForm> {
         items: [_item('concise', t('مختصر', 'Concise')), _item('balanced', t('متوازن', 'Balanced')), _item('detailed', t('مفصّل', 'Detailed'))],
         onChanged: (v) => setState(() => _s = _s.copyWith(answerStyle: v)),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       AppField(controller: _name, label: t('اسم المساعد (اختياري)', 'Assistant name (optional)'), onChanged: (v) => _s = _s.copyWith(assistantName: v)),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       AppField(controller: _ar, label: t('توجيهات إضافية (بالعربية)', 'Extra guidance (Arabic)'), hint: t('النبرة، ما يُشدَّد عليه…', 'Tone, what to stress…'), maxLines: 3, onChanged: (v) => _s = _s.copyWith(personaAr: v)),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       AppField(controller: _en, label: t('توجيهات إضافية (بالإنجليزية)', 'Extra guidance (English)'), maxLines: 3, ltr: true, onChanged: (v) => _s = _s.copyWith(personaEn: v)),
       _title(context, t('الوكلاء', 'Agents')),
       AppSwitchTile(
@@ -1126,16 +1126,16 @@ class _RagPlatformSettingsFormState extends State<RagPlatformSettingsForm> {
       Row(children: [
         Expanded(child: Text(t('أسئلة سابقة تُؤخذ بالحسبان', 'Earlier turns the writer sees'), style: appText(13, c: c.textDark))),
         IconButton.outlined(onPressed: s.conversationTurns > 0 ? () => setState(() => _s = _s.copyWith(conversationTurns: s.conversationTurns - 1)) : null, icon: const Icon(Icons.remove_rounded, size: 18)),
-        SizedBox(width: 36, child: Text('${s.conversationTurns}', textAlign: TextAlign.center, style: appText(15, w: FontWeight.w800, c: c.textDark))),
+        SizedBox(width: AppSpace.xl + AppSpace.xxs, child: Text('${s.conversationTurns}', textAlign: TextAlign.center, style: appText(15, w: FontWeight.w800, c: c.textDark))),
         IconButton.outlined(onPressed: s.conversationTurns < 10 ? () => setState(() => _s = _s.copyWith(conversationTurns: s.conversationTurns + 1)) : null, icon: const Icon(Icons.add_rounded, size: 18)),
       ]),
       Row(children: [
         Expanded(child: Text(t('أقصى عدد للمصادر في الإجابة', 'Sources quoted per answer'), style: appText(13, c: c.textDark))),
         IconButton.outlined(onPressed: s.maxCitations > 1 ? () => setState(() => _s = _s.copyWith(maxCitations: s.maxCitations - 1)) : null, icon: const Icon(Icons.remove_rounded, size: 18)),
-        SizedBox(width: 36, child: Text('${s.maxCitations}', textAlign: TextAlign.center, style: appText(15, w: FontWeight.w800, c: c.textDark))),
+        SizedBox(width: AppSpace.xl + AppSpace.xxs, child: Text('${s.maxCitations}', textAlign: TextAlign.center, style: appText(15, w: FontWeight.w800, c: c.textDark))),
         IconButton.outlined(onPressed: s.maxCitations < 8 ? () => setState(() => _s = _s.copyWith(maxCitations: s.maxCitations + 1)) : null, icon: const Icon(Icons.add_rounded, size: 18)),
       ]),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       AppNumberField(
           controller: _retention,
           label: t('مدة الاحتفاظ بالمحادثات (أيام)', 'Keep chats for (days)'),
@@ -1145,7 +1145,7 @@ class _RagPlatformSettingsFormState extends State<RagPlatformSettingsForm> {
             if (v != null) _s = _s.copyWith(conversationRetentionDays: v.toInt().clamp(0, RagAdminSettings.maxRetentionDays));
           }),
       Padding(
-        padding: const EdgeInsetsDirectional.only(start: 4, top: 4),
+        padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs, top: AppSpace.xxs),
         child: Text(t('تُحذف تلقائياً المحادثات التي لم يُطرح فيها سؤال جديد طوال هذه المدة؛ 0 يحتفظ بها دائماً',
             'Chats with no new question for this many days are deleted automatically; 0 keeps them'), style: appText(12, c: c.textLight)),
       ),
@@ -1159,11 +1159,11 @@ class _RagPlatformSettingsFormState extends State<RagPlatformSettingsForm> {
       ] else ...[
         _title(context, t('الجهد والنماذج', 'Effort and models')),
         AppDropdown<String>(value: s.effortAnswer, decoration: InputDecoration(labelText: t('جهد كاتب الإجابة', 'Writer effort')), items: _efforts(), onChanged: (v) => setState(() => _s = _s.copyWith(effortAnswer: v))),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         AppDropdown<String>(value: s.effortLight, decoration: InputDecoration(labelText: t('جهد المخطِّط والمراجع', 'Planner / verifier effort')), items: _efforts(), onChanged: (v) => setState(() => _s = _s.copyWith(effortLight: v))),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         AppDropdown<String>(value: s.effortExam, decoration: InputDecoration(labelText: t('جهد كاتب الامتحانات', 'Exam writer effort')), items: _efforts(xhigh: true), onChanged: (v) => setState(() => _s = _s.copyWith(effortExam: v))),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         if (widget.onManageModels != null)
           AppActionCard(
               key: const ValueKey('manage_models'),
@@ -1174,11 +1174,11 @@ class _RagPlatformSettingsFormState extends State<RagPlatformSettingsForm> {
               onTap: widget.onManageModels!)
         else ...[
           AppField(controller: _model, label: t('النموذج (فارغ = إعداد الخادم ${s.llmModel})', 'Model (empty = the server\'s ${s.llmModel})'), ltr: true, onChanged: (v) => _s = _s.copyWith(model: v)),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           AppField(controller: _fast, label: t('النموذج الأسرع للخطوات الخفيفة (فارغ = ${s.llmFastModel})', 'Fast model for the light steps (empty = ${s.llmFastModel})'), ltr: true, onChanged: (v) => _s = _s.copyWith(fastModel: v)),
         ],
       ],
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpace.md),
       AppPrimaryButton(label: t('حفظ الإعدادات', 'Save settings'), icon: Icons.save_rounded, onPressed: () => widget.onSave(_s)),
     ]);
   }
@@ -1234,16 +1234,16 @@ class _RagPlaygroundTabState extends State<RagPlaygroundTab> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
       AppBanner(icon: Icons.science_outlined, color: appInk(context, c.primary), text: t('اسأل كما يسأل العضو وشاهد كل خطوة: الفهم، الاستعلامات، النتائج، الكتابة والمراجعة.', 'Ask as a member would and see every step: understanding, queries, hits, writing and verification.')),
       const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: [
         AppChoiceChip(label: t('مساعد التطبيق', 'App assistant'), selected: _app, onTap: () => setState(() => _app = true)),
         AppChoiceChip(label: t('مستندات مؤسسة', 'Organization documents'), selected: !_app, onTap: () => setState(() => _app = false)),
       ]),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       AppField(controller: _org, label: _app ? t('رقم المؤسسة (اختياري: التطبيق داخل مؤسسة)', 'Organization id (optional: the app inside an organization)') : t('رقم المؤسسة', 'Organization id'), keyboard: TextInputType.number, ltr: true),
-      const SizedBox(height: 8),
+      const SizedBox(height: AppSpace.xs),
       EnterSubmits(onSubmit: _run, child: AppField(controller: _q, label: t('السؤال', 'Question'), maxLines: 3)),
       const SizedBox(height: 10),
       AppPrimaryButton(label: t('اسأل', 'Ask'), icon: Icons.play_arrow_rounded, busy: _busy, onPressed: _busy ? null : _run),
@@ -1253,7 +1253,7 @@ class _RagPlaygroundTabState extends State<RagPlaygroundTab> {
         AppSectionTitle(t('الإجابة', 'Answer'), subtitle: '${ragGeneratorLabel(_answer!.generator)} · ${_answer!.generator}'),
         AppCard(child: RagAnswerBody(text: _answer!.answer)),
         if (_answer!.citations.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           for (final ci in _answer!.citations) AppInfoRow(Icons.format_quote_rounded, '[${ci.n}] ${ci.label}'),
         ],
         if (_trace != null && !_trace!.isEmpty) ...[const SizedBox(height: 14), RagTraceView(trace: _trace!)],
@@ -1279,7 +1279,7 @@ class RagTraceView extends StatelessWidget {
             Text('${t('القصد', 'Intent')}: ${tr.intent} · ${t('اللغة', 'Language')}: ${asStr(tr.plan['lang'])}', style: appText(12.5, c: c.textMedium)),
             if (asStr(tr.plan['standalone']).isNotEmpty) Text('${t('السؤال المستقل', 'Standalone')}: ${asStr(tr.plan['standalone'])}', style: appText(12.5, c: c.textMedium)),
             if (tr.queries.isNotEmpty) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpace.xxs),
               Wrap(spacing: 6, runSpacing: 6, children: [for (final q in tr.queries) AppBadgePill(q, icon: Icons.search_rounded)]),
             ],
             const Divider(height: 16),
@@ -1355,10 +1355,10 @@ class _RagQuestionsTabState extends State<RagQuestionsTab> {
     final c = context.colors;
     return Column(children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, 10, AppSpace.md, 0),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           EnterSubmits(onSubmit: _load, child: AppField(controller: _search, label: t('ابحث في الأسئلة', 'Search the questions'), onSubmitted: (_) => _load())),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final f in const ['all', 'notfound', 'unhelpful', 'app'])
               AppChoiceChip(
@@ -1371,14 +1371,14 @@ class _RagQuestionsTabState extends State<RagQuestionsTab> {
           ]),
         ]),
       ),
-      if (_error != null) Padding(padding: const EdgeInsets.all(16), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!)),
+      if (_error != null) Padding(padding: const EdgeInsets.all(AppSpace.md), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!)),
       Expanded(
         child: _items == null
-            ? const AppListSkeleton(items: 5, padding: EdgeInsets.all(16))
+            ? const AppListSkeleton(items: 5, padding: EdgeInsets.all(AppSpace.md))
             : _items!.isEmpty
                 ? AppEmpty(icon: Icons.question_answer_outlined, title: t('لا أسئلة', 'No questions'))
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpace.md),
                     itemCount: _items!.length,
                     itemBuilder: (_, i) => RagAdminQueryTile(item: _items![i]),
                   ),
@@ -1405,8 +1405,8 @@ class RagAdminQueryTile extends StatelessWidget {
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+          childrenPadding: const EdgeInsets.fromLTRB(AppSpace.sm, 0, AppSpace.sm, AppSpace.sm),
           title: Text(a.question, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
           subtitle: Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
             badge,

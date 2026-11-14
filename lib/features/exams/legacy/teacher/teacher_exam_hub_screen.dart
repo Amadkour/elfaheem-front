@@ -162,7 +162,7 @@ class _HubViewState extends State<_HubView>
               backgroundColor: context.colors.primary,
               elevation: 4,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(AppRadius.card),
               ),
               icon: Icon(Icons.add_rounded, color: context.colors.onHero),
               label: Text(
@@ -248,7 +248,7 @@ class _HubViewState extends State<_HubView>
             ),
           ),
           _legacyExamsSliver(prov),
-          const SliverToBoxAdapter(child: SizedBox(height: 96)), // clear of the "New exam" button
+          const SliverToBoxAdapter(child: SizedBox(height: AppSpace.xxxl + AppSpace.xl)), // clear of the "New exam" button
         ],
       );
 
@@ -273,7 +273,7 @@ class _HubViewState extends State<_HubView>
     final isWide = MediaQuery.of(context).size.width > 720;
     if (!isWide) {
       return SliverPadding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
         sliver: SliverList.separated(
           itemCount: prov.exams.length,
           separatorBuilder: (_, _) => const SizedBox(height: 14),
@@ -282,7 +282,7 @@ class _HubViewState extends State<_HubView>
       );
     }
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
       sliver: SliverToBoxAdapter(
         child: LayoutBuilder(
           builder: (_, box) {
@@ -341,9 +341,9 @@ class _HubViewState extends State<_HubView>
       children: [
         // Summary header
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
           child: ExamCard(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 8, 14),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 14, AppSpace.xs, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -361,7 +361,7 @@ class _HubViewState extends State<_HubView>
                     PopupMenuButton<String>(
                       tooltip: 'menu_export'.tr,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(AppRadius.control),
                       ),
                       icon: Icon(
                         Icons.file_download_outlined,
@@ -389,9 +389,9 @@ class _HubViewState extends State<_HubView>
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.sm),
                 Padding(
-                  padding: const EdgeInsetsDirectional.only(end: 8),
+                  padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
                   child: Row(
                     children: [
                       _MiniStat(
@@ -434,7 +434,7 @@ class _HubViewState extends State<_HubView>
                 )
               : ListView.separated(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, 14, AppSpace.md, AppSpace.xl),
                   itemCount: prov.results.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (_, i) => _ResultTile(
@@ -474,7 +474,7 @@ class _HubViewState extends State<_HubView>
         child: AlertDialog(
           backgroundColor: context.colors.cardBg,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(AppRadius.block),
           ),
           title: Text(
             'delete_exam_title'.tr,
@@ -500,7 +500,7 @@ class _HubViewState extends State<_HubView>
               style: ElevatedButton.styleFrom(
                 backgroundColor: context.colors.dangerBase,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                 ),
               ),
               child: Text(
@@ -662,7 +662,7 @@ class _ExamCard extends StatelessWidget {
 
     return ExamCard(
       borderColor: accent.withValues(alpha: .22),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -671,7 +671,7 @@ class _ExamCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               IconTile(Icons.quiz_rounded, accent, size: 50),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -703,7 +703,7 @@ class _ExamCard extends StatelessWidget {
                 child: PopupMenuButton<String>(
                   padding: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppRadius.control),
                   ),
                   icon: Icon(
                     Icons.more_vert_rounded,
@@ -827,7 +827,7 @@ class _ExamCard extends StatelessWidget {
 
           const SizedBox(height: 14),
           Divider(height: 1, color: c.divider.withValues(alpha: .7)),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
 
           // ── Actions ────────────────────────────────────────────────────
           Row(
@@ -844,7 +844,7 @@ class _ExamCard extends StatelessWidget {
                   onTap: onToggle,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: _ModernActionBtn(
                   title: 'btn_questions'.tr,
@@ -853,7 +853,7 @@ class _ExamCard extends StatelessWidget {
                   onTap: onManageQuestions,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: _ModernActionBtn(
                   title: 'btn_results'.tr,
@@ -862,19 +862,19 @@ class _ExamCard extends StatelessWidget {
                   onTap: onResults,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Material(
                 color: c.danger.withValues(alpha: .10),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.control),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppRadius.control),
                   onTap: () {
                     showDialog(
                       context: context,
                       builder: (dctx) => AlertDialog(
                         backgroundColor: dctx.colors.cardBg,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(22),
+                          borderRadius: BorderRadius.circular(AppRadius.block),
                         ),
                         title: Text(
                           'delete_confirm_title'.tr,
@@ -908,8 +908,8 @@ class _ExamCard extends StatelessWidget {
                     );
                   },
                   child: SizedBox(
-                    width: 48,
-                    height: 48,
+                    width: AppTouch.min,
+                    height: AppTouch.min,
                     child: Icon(
                       Icons.delete_outline_rounded,
                       color: c.danger,
@@ -955,7 +955,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
 
             // Title row
             Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 12, 0),
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, 14, AppSpace.sm, 0),
               child: Row(
                 children: [
                   Icon(
@@ -1064,7 +1064,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                             size: 48,
                             color: context.colors.divider,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpace.xs),
                           Text(
                             error,
                             style: TextStyle(
@@ -1072,7 +1072,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                               color: context.colors.textLight,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpace.sm),
                           ElevatedButton(
                             onPressed: () => prov.loadQuestions(exam.id),
                             style: ElevatedButton.styleFrom(
@@ -1118,7 +1118,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                       ),
                     )
                   : ReorderableListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xl),
                       itemCount: questions.length,
                       // drag-to-reorder hint (order save via API not implemented)
                       itemBuilder: (_, i) {
@@ -1170,7 +1170,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
         textDirection: Helpers.pageDirection,
         child: AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.card),
           ),
           title: Text(
             'delete_question_title'.tr,
@@ -1196,7 +1196,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: ctx.colors.dangerBase,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                 ),
               ),
               child: Text(
@@ -1233,7 +1233,7 @@ class _QuestionTile extends StatelessWidget {
     margin: const EdgeInsets.only(bottom: 10),
     decoration: BoxDecoration(
       color: context.colors.cardBg,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       border: Border.all(color: context.colors.inputBg),
       boxShadow: [
         BoxShadow(
@@ -1248,7 +1248,7 @@ class _QuestionTile extends StatelessWidget {
       children: [
         // Question header
         Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 8, 8),
+          padding: const EdgeInsetsDirectional.fromSTEB(14, AppSpace.sm, AppSpace.xs, AppSpace.xs),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1291,7 +1291,7 @@ class _QuestionTile extends StatelessWidget {
                   color: context.colors.textLight,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                 ),
                 onSelected: (v) {
                   if (v == 'edit') onEdit();
@@ -1338,7 +1338,7 @@ class _QuestionTile extends StatelessWidget {
         // MCQ options (if any)
         if (question.isMcq)
           Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(50, 0, 14, 4),
+            padding: const EdgeInsetsDirectional.fromSTEB(50, 0, 14, AppSpace.xxs),
             child: Wrap(
               spacing: 6,
               runSpacing: 4,
@@ -1347,7 +1347,7 @@ class _QuestionTile extends StatelessWidget {
                 return Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
-                    vertical: 4,
+                    vertical: AppSpace.xxs,
                   ),
                   decoration: BoxDecoration(
                     color: isCorrect
@@ -1369,7 +1369,7 @@ class _QuestionTile extends StatelessWidget {
                           size: 12,
                           color: context.colors.success,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpace.xxs),
                       ],
                       Text(
                         opt,
@@ -1550,7 +1550,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
 
             // Title bar
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 14, AppSpace.md + AppSpace.xxs, 0),
               child: Row(
                 children: [
                   Icon(
@@ -1559,7 +1559,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                         : Icons.add_circle_outline_rounded,
                     color: context.colors.primary,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpace.xs),
                   Text(
                     isEditing
                         ? 'edit_question_title'.tr
@@ -1577,7 +1577,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
 
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 0, AppSpace.md + AppSpace.xxs, AppSpace.lg),
                 child: Form(
                   key: _form,
                   child: Column(
@@ -1638,13 +1638,13 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                             color: context.colors.textLight,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpace.xs),
 
                         // Option fields
                         ...List.generate(
                           _optionCtrls.length,
                           (i) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.only(bottom: AppSpace.xs),
                             child: Row(
                               children: [
                                 Expanded(
@@ -1667,20 +1667,20 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                                       filled: true,
                                       fillColor: context.colors.inputBg,
                                       border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(AppRadius.chip),
                                         borderSide: BorderSide(
                                           color: context.colors.inputBg,
                                         ),
                                       ),
                                       enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(AppRadius.chip),
                                         borderSide: BorderSide(
                                           color: context.colors.inputBg,
                                         ),
                                       ),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
-                                            horizontal: 12,
+                                            horizontal: AppSpace.sm,
                                             vertical: 10,
                                           ),
                                     ),
@@ -1721,7 +1721,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                           ),
                         ),
 
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpace.sm),
                       ],
                       // Correct answer
                       _Field(
@@ -1729,7 +1729,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                         label: 'correct_answer_label'.tr,
                         hint: 'correct_answer_hint'.tr,
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: AppSpace.md + AppSpace.xxs),
 
                       // Submit button
                       SizedBox(
@@ -1741,7 +1741,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                             foregroundColor: context.colors.onHero,
                             padding: const EdgeInsets.symmetric(vertical: 15),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(AppRadius.control),
                             ),
                           ),
                           child: prov.saving
@@ -1913,14 +1913,14 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+            padding: EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, AppSpace.md, AppSpace.md + AppSpace.xxs, 0),
             child: Row(
               children: [
                 Icon(
                   Icons.add_circle_outline_rounded,
                   color: context.colors.primary,
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: AppSpace.xs),
                 Text(
                   'create_exam_sheet_title'.tr,
                   style: TextStyle(
@@ -1935,7 +1935,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
           const Divider(height: 20),
           Flexible(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 0, AppSpace.md + AppSpace.xxs, AppSpace.md + AppSpace.xxs),
               child: Form(
                 key: _form,
                 child: Column(
@@ -1946,14 +1946,14 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       hint: 'field_exam_name_hint'.tr,
                       validator: (v) => v!.isEmpty ? 'field_required'.tr : null,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpace.sm),
                     _Field(
                       ctrl: _descCtrl,
                       label: 'field_desc_optional_label'.tr,
                       hint: 'field_desc_hint_short'.tr,
                       maxLines: 2,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpace.sm),
                     NumberPair(
                       first: AppNumberField(
                         controller: _totalMarksCtrl,
@@ -1972,7 +1972,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                         decimals: 2,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpace.sm),
                     AppNumberField(
                       controller: _durationCtrl,
                       label: 'field_duration_label'.tr,
@@ -2001,15 +2001,15 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                           filled: true,
                           fillColor: context.colors.inputBg,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(AppRadius.chip),
                             borderSide: BorderSide(color: context.colors.divider),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(AppRadius.chip),
                             borderSide: BorderSide(color: context.colors.inputBg),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
+                            horizontal: AppSpace.sm,
                             vertical: 10,
                           ),
                         ),
@@ -2039,8 +2039,8 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                         Padding(
                           padding: const EdgeInsets.only(
                             top: 6,
-                            right: 4,
-                            left: 4,
+                            right: AppSpace.xxs,
+                            left: AppSpace.xxs,
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2110,13 +2110,13 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 14,
-                                  vertical: 12,
+                                  vertical: AppSpace.sm,
                                 ),
                                 decoration: BoxDecoration(
                                   border: Border.all(
                                     color: context.colors.divider,
                                   ),
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(AppRadius.chip),
                                 ),
                                 child: Row(
                                   children: [
@@ -2125,7 +2125,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                       size: 18,
                                       color: context.colors.textLight,
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: AppSpace.xs),
                                     Text(
                                       _scheduleDate != null
                                           ? '${_scheduleDate!.day}/${_scheduleDate!.month}/${_scheduleDate!.year}  '
@@ -2163,13 +2163,13 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 14,
-                                  vertical: 12,
+                                  vertical: AppSpace.sm,
                                 ),
                                 decoration: BoxDecoration(
                                   border: Border.all(
                                     color: context.colors.warning,
                                   ),
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(AppRadius.chip),
                                 ),
                                 child: Row(
                                   children: [
@@ -2178,7 +2178,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                       size: 18,
                                       color: context.colors.warning,
                                     ),
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: AppSpace.xs),
                                     Text(
                                       _deadlineDate != null
                                           ? '${_deadlineDate!.day}/${_deadlineDate!.month}/${_deadlineDate!.year}  '
@@ -2204,7 +2204,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                       initial: _rules,
                       onChanged: (r) => _rules = r,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpace.md + AppSpace.xxs),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -2214,7 +2214,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                           foregroundColor: context.colors.onHero,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(AppRadius.control),
                           ),
                         ),
                         child: widget.provider.saving
@@ -2258,14 +2258,14 @@ class _SessionPickerSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, AppSpace.md, AppSpace.md + AppSpace.xxs, AppSpace.xxs),
               child: Row(
                 children: [
                   Icon(
                     Icons.play_lesson_rounded,
                     color: context.colors.primary,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(
                     child: Text(
                       'exam_pick_session_title'.tr,
@@ -2280,7 +2280,7 @@ class _SessionPickerSheet extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 0, AppSpace.md + AppSpace.xxs, AppSpace.xs),
               child: Text(
                 'exam_session_gate_hint'.tr,
                 style: TextStyle(
@@ -2314,7 +2314,7 @@ class _SessionPickerSheet extends StatelessWidget {
                       ),
                     if (sessions.isEmpty)
                       Padding(
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(AppSpace.lg),
                         child: Center(
                           child: Text(
                             'no_sessions_yet'.tr,
@@ -2373,7 +2373,7 @@ class _AnswersSheet extends StatelessWidget {
     child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, AppSpace.md, AppSpace.md + AppSpace.xxs, 0),
             child: Row(
               children: [
                 CircleAvatar(
@@ -2444,7 +2444,7 @@ class _AnswersSheet extends StatelessWidget {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                    padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 0, AppSpace.md + AppSpace.xxs, AppSpace.xl),
                     itemCount: result.answers.length,
                     itemBuilder: (_, i) {
                       final a = result.answers[i];
@@ -2457,7 +2457,7 @@ class _AnswersSheet extends StatelessWidget {
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: color.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadius.chip),
                           border: Border.all(
                             color: color.withValues(alpha: 0.3),
                           ),
@@ -2574,7 +2574,7 @@ class _ResultTile extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2609,13 +2609,13 @@ class _ResultTile extends StatelessWidget {
                   ],
                 ),
                 if (pct != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   ExamBar(pct: pct, color: color, height: 5),
                 ],
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           if (pct != null)
             ExamRing(
               value: pct,
@@ -2651,7 +2651,7 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: AppSpace.xxs),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(20),
@@ -2676,7 +2676,7 @@ class _MiniStat extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: .09),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
       ),
       child: Column(
         children: [
@@ -2738,14 +2738,14 @@ class _Field extends StatelessWidget {
       filled: true,
       fillColor: context.colors.inputBg,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
         borderSide: BorderSide(color: context.colors.divider),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
         borderSide: BorderSide(color: context.colors.inputBg),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 10),
     ),
   );
 }
@@ -2769,7 +2769,7 @@ class _Toggle extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
       border: Border.all(color: context.colors.inputBg),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(AppRadius.chip),
     ),
     child: Column(
       children: [
@@ -2849,19 +2849,19 @@ class _ModernActionBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: color.withValues(alpha: .10),
-    borderRadius: BorderRadius.circular(14),
+    borderRadius: BorderRadius.circular(AppRadius.control),
     child: InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       onTap: onTap,
       child: SizedBox(
-        height: 48,
+        height: AppTouch.min,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: color, size: 19),
             const SizedBox(height: 2),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
               child: Text(
                 title,
                 maxLines: 1,
@@ -2956,7 +2956,7 @@ class _ImportResultDialog extends StatelessWidget {
   Widget build(BuildContext context) => Directionality(
     textDirection: Helpers.pageDirection,
     child: AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
       title: Text(
         'import_result_title'.tr,
         style: TextStyle(
@@ -2988,7 +2988,7 @@ class _ImportResultDialog extends StatelessWidget {
                   color: context.colors.danger,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 200),
                 child: ListView(
@@ -2996,7 +2996,7 @@ class _ImportResultDialog extends StatelessWidget {
                   children: [
                     for (final e in result.errors)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.only(bottom: AppSpace.xxs),
                         child: Text(
                           '${'import_row_label'.tr} ${e.row}: ${e.message}',
                           style: TextStyle(
@@ -3163,7 +3163,7 @@ class _ExamRulesFieldsState extends State<_ExamRulesFields> {
                       min: 1,
                       required: true,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.xs),
                     Text(
                       tooMany
                           ? 'questions_exceed_pool_warning'.tr
@@ -3246,11 +3246,11 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, AppSpace.md, AppSpace.md + AppSpace.xxs, 0),
             child: Row(
               children: [
                 Icon(Icons.tune_rounded, color: context.colors.primary),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 Expanded(
                   child: Text(
                     'exam_rules_title'.tr,
@@ -3267,13 +3267,13 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
           const Divider(height: 20),
           Flexible(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 0, AppSpace.md + AppSpace.xxs, AppSpace.md + AppSpace.xxs),
               child: Form(
                 key: _form,
                 child: Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.only(bottom: AppSpace.sm),
                       child: Text(
                         'exam_rules_apply_note'.tr,
                         style: TextStyle(
@@ -3288,7 +3288,7 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
                       poolSize: widget.exam.questionCount,
                       onChanged: (r) => _rules = r,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpace.md + AppSpace.xxs),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -3298,7 +3298,7 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
                           foregroundColor: context.colors.onHero,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(AppRadius.control),
                           ),
                         ),
                         child: _busy

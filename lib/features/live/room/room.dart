@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace;
 import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'dart:async';
@@ -721,7 +722,7 @@ class _RoomPageState extends State<RoomPage>
             child: SizedBox(
               height: h,
               child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.block)),
                 child: Container(
                   decoration: BoxDecoration(
                     color: _surfaceHi,
@@ -3270,7 +3271,7 @@ class _RoomPageState extends State<RoomPage>
                                         // shows the avatar (the stage is one of the budget).
                                         scrollCacheExtent: const ScrollCacheExtent.pixels(0),
                                         padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
+                                          horizontal: AppSpace.sm,
                                         ),
                                         scrollDirection: Axis.horizontal,
                                         itemCount: _stageTracks.length - 1,
@@ -3428,7 +3429,7 @@ class _RoomPageState extends State<RoomPage>
                         bottom: draws
                             ? Column(mainAxisSize: MainAxisSize.min, children: [
                                 Padding(
-                                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                  padding: const EdgeInsets.fromLTRB(AppSpace.xs, 0, AppSpace.xs, AppSpace.xs),
                                   child: WhiteboardDock(key: const ValueKey('live_room.focus_dock'), controller: _board),
                                 ),
                                 ?bar,
@@ -3464,7 +3465,7 @@ class _RoomPageState extends State<RoomPage>
                         bottom: draws
                             ? Column(mainAxisSize: MainAxisSize.min, children: [
                                 Padding(
-                                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                  padding: const EdgeInsets.fromLTRB(AppSpace.xs, 0, AppSpace.xs, AppSpace.xs),
                                   child: WhiteboardDock(key: const ValueKey('live_room.overlay_dock'), controller: _board),
                                 ),
                                 ?bar,
@@ -3491,8 +3492,8 @@ class _RoomPageState extends State<RoomPage>
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 28,
+                        horizontal: AppSpace.xl,
+                        vertical: AppSpace.lg + AppSpace.xxs,
                       ),
                       decoration: BoxDecoration(
                         color: LivePalette.surface,
@@ -3515,7 +3516,7 @@ class _RoomPageState extends State<RoomPage>
                             color: _cyan,
                             strokeWidth: 2.5,
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: AppSpace.md + AppSpace.xxs),
                           Text(
                             'lr_saving_recording'.tr,
                             style: TextStyle(
@@ -3525,7 +3526,7 @@ class _RoomPageState extends State<RoomPage>
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpace.xs),
                           ListenableBuilder(
                             listenable: _recorder ?? ChangeNotifier(),
                             builder: (_, _) {
@@ -3680,7 +3681,7 @@ class _RoomPageState extends State<RoomPage>
       final dock = _isBoardMain && _board.canDrawLocal ? (MediaQuery.sizeOf(context).width >= 980 ? 78.0 : 128.0) : 0.0;
       bottom = math.max(bottom, 96 + dock);
     }
-    return SelfViewKeepOut(base: EdgeInsets.fromLTRB(12, top, 12, bottom));
+    return SelfViewKeepOut(base: EdgeInsets.fromLTRB(AppSpace.sm, top, AppSpace.sm, bottom));
   }
 
   void _onStageTap(Offset at, Size stage) {
@@ -3721,7 +3722,7 @@ class _RoomPageState extends State<RoomPage>
             onTap: () => setState(() => _pipSwapped = false),
             onLongPress: _openSelfViewOptions,
             tile: ClipRRect(
-              borderRadius: BorderRadius.circular(prefs.shape == SelfViewShape.circle ? 999 : 16),
+              borderRadius: BorderRadius.circular(prefs.shape == SelfViewShape.circle ? AppRadius.pill : AppRadius.card),
               child: AbsorbPointer(child: ParticipantWidget.widgetFor(_stageTracks.first, showStatsLayer: false)),
             ),
           ),
@@ -3788,7 +3789,7 @@ class _RoomPageState extends State<RoomPage>
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.85),
           child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.block)),
             child: DecoratedBox(
               decoration: BoxDecoration(color: _surfaceHi, border: Border(top: BorderSide(color: _glassBdr))),
               child: SafeArea(
@@ -4081,7 +4082,7 @@ class _RoomPageState extends State<RoomPage>
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.85),
           child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.block)),
             child: DecoratedBox(
               decoration: BoxDecoration(color: _surfaceHi, border: Border(top: BorderSide(color: _glassBdr))),
               child: SafeArea(
@@ -4140,7 +4141,7 @@ class _RoomPageState extends State<RoomPage>
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: LivePalette.surface,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(
               color: _cyan.withValues(alpha: 0.5),
               width: 1.2,
@@ -4170,9 +4171,9 @@ class _RoomPageState extends State<RoomPage>
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Icon(Icons.screen_share_rounded, color: _cyan, size: 16),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Expanded(
                 child: Text(
                   'lr_sharing_screen'.tr,
@@ -4203,10 +4204,10 @@ class _RoomPageState extends State<RoomPage>
               _LiveTap(
                 onTap: _stopIOSBroadcast,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 6),
                   decoration: BoxDecoration(
                     color: _rose.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
                     border: Border.all(
                       color: _rose.withValues(alpha: 0.5),
                     ),
@@ -4235,7 +4236,7 @@ class _RoomPageState extends State<RoomPage>
   // countdown · the weak-network pill · Room locked · the recording control (Record / REC time → Pause · Resume ·
   // Stop) · Full view · Minimize. The clocks and the recorder rebuild only this (D-092).
   Widget _buildTopRow() => Padding(
-        padding: const EdgeInsets.fromLTRB(10, 4, 10, 4),
+        padding: const EdgeInsets.fromLTRB(10, AppSpace.xxs, 10, AppSpace.xxs),
         child: ListenableBuilder(
           // The board's page / presenter / permission join the row while a board fills the stage (D-108).
           listenable: Listenable.merge([_clockTick, ?_recorder, _board]),
@@ -4578,7 +4579,7 @@ class _RoomPageState extends State<RoomPage>
                   ? const SizedBox.shrink()
                   : Padding(
                       key: ValueKey('lobby.banner.${r.id}'),
-                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                      padding: const EdgeInsets.fromLTRB(AppSpace.sm, 10, AppSpace.sm, 0),
                       child: Center(
                         child: LobbyBanner(
                           request: r,
@@ -5753,14 +5754,14 @@ class _RoomPageState extends State<RoomPage>
               children: [
                 // Header
                 Container(
-                  padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 8, 12),
+                  padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.xs, AppSpace.sm),
                   decoration: BoxDecoration(
                     border: Border(bottom: BorderSide(color: _glassBdr)),
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.people_rounded, color: _cyan, size: 18),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpace.xs),
                       Text(
                         'lr_participants_title'.tr,
                         style: TextStyle(
@@ -5773,8 +5774,8 @@ class _RoomPageState extends State<RoomPage>
                       const Spacer(),
                       if (_loadingStudents)
                         SizedBox(
-                          width: 16,
-                          height: 16,
+                          width: AppIconSize.sm,
+                          height: AppIconSize.sm,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             color: _cyan,
@@ -5785,10 +5786,10 @@ class _RoomPageState extends State<RoomPage>
                       if (widget.isTeacher && !widget.isGuest && guests.isNotEmpty && !_teacherControlsOn)
                         _guestBusy.value == '*'
                             ? const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                padding: EdgeInsets.symmetric(horizontal: AppSpace.xs),
                                 child: SizedBox(
-                                    width: 16,
-                                    height: 16,
+                                    width: AppIconSize.sm,
+                                    height: AppIconSize.sm,
                                     child: CircularProgressIndicator(strokeWidth: 2, color: _textMid)),
                               )
                             : IconButton(
@@ -5797,7 +5798,7 @@ class _RoomPageState extends State<RoomPage>
                                 onPressed: _guestBusy.value == null ? _guestsMuteAll : null,
                                 icon: Icon(Icons.mic_off_rounded, size: 18, color: LivePalette.warning),
                               ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpace.xxs),
                       IconButton(
                         key: const ValueKey('live_room.people_close'),
                         tooltip: 'lr_close'.tr,
@@ -5832,7 +5833,7 @@ class _RoomPageState extends State<RoomPage>
 
                 // Section label
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, 10, AppSpace.md, 6),
                   child: Row(
                     children: [
                       Text(
@@ -5847,7 +5848,7 @@ class _RoomPageState extends State<RoomPage>
                       const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
+                          horizontal: AppSpace.xs,
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
@@ -5899,7 +5900,7 @@ class _RoomPageState extends State<RoomPage>
                           color: _textLow,
                           size: 32,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpace.xs),
                         Text(
                           'lr_no_students'.tr,
                           style: TextStyle(
@@ -5912,7 +5913,7 @@ class _RoomPageState extends State<RoomPage>
                     ),
                   )
                       : ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
                     itemCount: others.length + _enrolledStudents.length,
                     itemBuilder: (ctx, i) {
                       if (i < others.length) {
@@ -5967,7 +5968,7 @@ class _RoomPageState extends State<RoomPage>
     final name = g.name.isNotEmpty ? g.name : id.substring(kGuestIdentityPrefix.length);
     if (_guestBusy.value == id) {
       return const SizedBox(
-          width: 32, height: 32, child: Center(child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: _textMid))));
+          width: AppIconSize.xl, height: AppIconSize.xl, child: Center(child: SizedBox(width: AppIconSize.xs, height: AppIconSize.xs, child: CircularProgressIndicator(strokeWidth: 2, color: _textMid))));
     }
     final canSpeak = g.permissions.canPublish;
     return PopupMenuButton<String>(
@@ -5978,7 +5979,7 @@ class _RoomPageState extends State<RoomPage>
       padding: EdgeInsets.zero,
       iconSize: 18,
       icon: const Icon(Icons.more_vert_rounded, color: _textMid),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: const BorderSide(color: _glassBdr)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control), side: const BorderSide(color: _glassBdr)),
       onSelected: (v) {
         switch (v) {
           case 'mute':
@@ -6038,10 +6039,10 @@ class _RoomPageState extends State<RoomPage>
             child: FadeTransition(
               opacity: _quizSlide,
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
+                margin: const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs),
                 decoration: BoxDecoration(
                   color: _surfaceHi,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(AppRadius.block),
                   border: Border.all(
                     color: _cyan.withValues(alpha: 0.35),
                     width: 1.5,
@@ -6076,12 +6077,12 @@ class _RoomPageState extends State<RoomPage>
       children: [
         // Header
         Container(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 18, AppSpace.md + AppSpace.xxs, 14),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [_cyan.withValues(alpha: 0.15), Colors.transparent],
             ),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(23)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.block)),
           ),
           child: Row(
             children: [
@@ -6138,7 +6139,7 @@ class _RoomPageState extends State<RoomPage>
                       size: 13,
                       color: _quizSecondsLeft < 30 ? _rose : _textMid,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpace.xxs),
                     Text(
                       timerStr,
                       style: TextStyle(
@@ -6155,7 +6156,7 @@ class _RoomPageState extends State<RoomPage>
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 0, AppSpace.md + AppSpace.xxs, AppSpace.xxs),
           child: Text(
             quiz.name,
             style: const TextStyle(
@@ -6166,7 +6167,7 @@ class _RoomPageState extends State<RoomPage>
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, AppSpace.xxs, AppSpace.md + AppSpace.xxs, AppSpace.sm),
           child: Row(
             children: [
               Text(
@@ -6193,7 +6194,7 @@ class _RoomPageState extends State<RoomPage>
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md + AppSpace.xxs, 0, AppSpace.md + AppSpace.xxs, 14),
           child: Text(
             q.text,
             style: const TextStyle(
@@ -6212,11 +6213,11 @@ class _RoomPageState extends State<RoomPage>
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+              margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 13),
               decoration: BoxDecoration(
                 color: selected ? _cyan.withValues(alpha: 0.15) : _glass10,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.control),
                 border: Border.all(
                   color: selected ? _cyan.withValues(alpha: 0.6) : _glassBdr,
                   width: selected ? 1.5 : 1,
@@ -6248,7 +6249,7 @@ class _RoomPageState extends State<RoomPage>
                         ? Icon(Icons.check_rounded, size: 13, color: _bg)
                         : null,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Text(
                       q.options[idx],
@@ -6266,7 +6267,7 @@ class _RoomPageState extends State<RoomPage>
           );
         }),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.md + AppSpace.xxs),
           child: Row(
             children: [
               if (_currentQuestionIndex > 0) ...[
@@ -6279,7 +6280,7 @@ class _RoomPageState extends State<RoomPage>
                       padding: const EdgeInsets.symmetric(vertical: 13),
                       decoration: BoxDecoration(
                         color: _glass10,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(AppRadius.control),
                         border: Border.all(color: _glassBdr),
                       ),
                       child: Row(
@@ -6322,7 +6323,7 @@ class _RoomPageState extends State<RoomPage>
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
                       ),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(AppRadius.control),
                       boxShadow: [
                         BoxShadow(
                           color: _cyan.withValues(alpha: 0.3),
@@ -6364,7 +6365,7 @@ class _RoomPageState extends State<RoomPage>
   Widget _buildQuizResultView(ActiveQuiz quiz) {
     final answered = _selectedAnswers.length;
     return Padding(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(AppSpace.lg + AppSpace.xxs),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -6391,7 +6392,7 @@ class _RoomPageState extends State<RoomPage>
               fontSize: 20,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.xs),
           Text(
             trp('lr_you_answered', {'n': '$answered', 'total': '${quiz.questions.length}'}),
             style: TextStyle(
@@ -6401,14 +6402,14 @@ class _RoomPageState extends State<RoomPage>
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.lg),
           _LiveTap(
             onTap: _dismissQuiz,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 13),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xl, vertical: 13),
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: [_cyan, _indigo]),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.control),
                 boxShadow: [
                   BoxShadow(
                     color: _cyan.withValues(alpha: 0.3),
@@ -6567,7 +6568,7 @@ class _ParticipantRow extends StatelessWidget {
                     else if (isGuest) ...[
                       _MiniTag(label: 'lr_guest'.tr, color: LivePalette.warning),
                       if (isOnline) ...[
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpace.xxs),
                         _MiniTag(label: 'lr_online'.tr, color: _emerald),
                       ],
                     ] else ...[
@@ -6576,7 +6577,7 @@ class _ParticipantRow extends StatelessWidget {
                         color: isAttended ? _emerald : _rose,
                       ),
                       if (isOnline) ...[
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpace.xxs),
                         _MiniTag(label: 'lr_online'.tr, color: _emerald),
                       ],
                     ],
@@ -6681,9 +6682,9 @@ class _ThumbnailCard extends StatelessWidget {
       duration: const Duration(milliseconds: 250),
       width: 152,
       height: 108,
-      margin: const EdgeInsetsDirectional.only(end: 8),
+      margin: const EdgeInsetsDirectional.only(end: AppSpace.xs),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         border: Border.all(
           color: isSpeaking
               ? _cyan.withValues(alpha: 0.8)
@@ -6706,7 +6707,7 @@ class _ThumbnailCard extends StatelessWidget {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -6721,7 +6722,7 @@ class _ThumbnailCard extends StatelessWidget {
               left: 0,
               right: 0,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: 5),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
@@ -6736,7 +6737,7 @@ class _ThumbnailCard extends StatelessWidget {
                   children: [
                     if (isScreen)
                       Padding(
-                        padding: const EdgeInsetsDirectional.only(end: 4),
+                        padding: const EdgeInsetsDirectional.only(end: AppSpace.xxs),
                         child: Icon(
                           Icons.screen_share_rounded,
                           size: 10,
@@ -6761,7 +6762,7 @@ class _ThumbnailCard extends StatelessWidget {
                       Container(
                         width: 7,
                         height: 7,
-                        margin: const EdgeInsetsDirectional.only(start: 4),
+                        margin: const EdgeInsetsDirectional.only(start: AppSpace.xxs),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: _cyan,
@@ -6868,7 +6869,7 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
         ),
         Positioned.fill(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 72),
+            padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.xxxl + AppSpace.xs),
             child: AnimatedBuilder(
               animation: _borderGlow,
               builder: (_, child) => Container(
@@ -7027,12 +7028,12 @@ class _PresenterBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AnimatedContainer(
     duration: const Duration(milliseconds: 300),
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
     decoration: BoxDecoration(
       color: isSpeaking
           ? _cyan.withValues(alpha: 0.22)
           : LivePalette.shade(0.55),
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(AppRadius.sheet),
       border: Border.all(
         color: isSpeaking ? _cyan.withValues(alpha: 0.7) : _glassBdr,
         width: 1,
@@ -7056,7 +7057,7 @@ class _PresenterBadge extends StatelessWidget {
                 : [],
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         Icon(
           Icons.person_rounded,
           size: 13,
@@ -7086,7 +7087,7 @@ class _ScreenShareLiveBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 7),
     decoration: BoxDecoration(
       gradient: LinearGradient(
         colors: [
@@ -7094,7 +7095,7 @@ class _ScreenShareLiveBadge extends StatelessWidget {
           _cyan.withValues(alpha: 0.75),
         ],
       ),
-      borderRadius: BorderRadius.circular(30),
+      borderRadius: BorderRadius.circular(AppRadius.sheet),
       boxShadow: [
         BoxShadow(color: _indigo.withValues(alpha: 0.4), blurRadius: 14),
       ],
@@ -7286,8 +7287,8 @@ class _ScreenShareLoadingPlaceholder extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         SizedBox(
-          width: 24,
-          height: 24,
+          width: AppIconSize.lg,
+          height: AppIconSize.lg,
           child: CircularProgressIndicator(strokeWidth: 2, color: _cyan),
         ),
         const SizedBox(height: 14),
@@ -7587,7 +7588,7 @@ void _showAllParticipantsDialog(BuildContext context, List<_TeamsTileData> tiles
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(20, 18, 12, 12),
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, 18, AppSpace.sm, AppSpace.sm),
               child: Row(
                 children: [
                   Expanded(
@@ -7682,10 +7683,10 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
       backgroundColor: Colors.transparent,
       child: Container(
         width: 340,
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+        padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xl, AppSpace.lg, AppSpace.lg),
         decoration: BoxDecoration(
           color: _surface,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(AppRadius.block),
           border: Border.all(color: _glassBdr),
           boxShadow: [
             BoxShadow(
@@ -7763,7 +7764,7 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
                 color: (data.isHost ? _cyan : _emerald).withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
                 border: Border.all(
                     color: (data.isHost ? _cyan : _emerald).withValues(alpha: 0.5)),
               ),
@@ -7777,7 +7778,7 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpace.md + AppSpace.xxs),
             _ProfileInfoRow(
               icon: data.isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
               iconColor: data.isMicOn ? _emerald : _rose,
@@ -7840,16 +7841,16 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
                     value: '${entry.value}',
                   ),
             ],
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             SizedBox(
               width: double.infinity,
               child: TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
                 style: TextButton.styleFrom(
                   backgroundColor: _glass10,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(AppRadius.chip)),
                 ),
                 child: Text(
                   'close'.tr,
@@ -7962,10 +7963,10 @@ class _SessionEndedDialog extends StatelessWidget {
   Widget build(BuildContext context) => Dialog(
     backgroundColor: Colors.transparent,
     child: Container(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.all(AppSpace.lg + AppSpace.xxs),
       decoration: BoxDecoration(
         color: _surfaceHi,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppRadius.block),
         border: Border.all(color: _glassBdr, width: 1),
         boxShadow: [
           BoxShadow(color: _cyan.withValues(alpha: 0.10), blurRadius: 40),
@@ -7989,7 +7990,7 @@ class _SessionEndedDialog extends StatelessWidget {
               size: 34,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpace.md + AppSpace.xxs),
           Text(
             liveTr('lr_teacher_ended_title', kind),
             style: TextStyle(
@@ -8010,7 +8011,7 @@ class _SessionEndedDialog extends StatelessWidget {
               height: 1.5,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.lg),
           _LiveTap(
             onTap: () => Navigator.pop(context),
             child: Container(
@@ -8022,7 +8023,7 @@ class _SessionEndedDialog extends StatelessWidget {
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.control),
                 boxShadow: [
                   BoxShadow(
                     color: _cyan.withValues(alpha: 0.28),

@@ -280,7 +280,7 @@ class WhiteboardToolbar extends StatelessWidget {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             if (above != null) ...[
               _Glass(child: above),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.xs),
             ],
             _Glass(child: dock),
           ]),
@@ -377,7 +377,7 @@ class _Glass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: 2),
         decoration: BoxDecoration(
           color: LivePalette.surfaceHi.withValues(alpha: 0.97),
           borderRadius: BorderRadius.circular(20),
@@ -393,7 +393,7 @@ class _Divider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      Container(width: 1, height: 26, margin: const EdgeInsets.symmetric(horizontal: 4), color: LivePalette.hairline);
+      Container(width: 1, height: 26, margin: const EdgeInsets.symmetric(horizontal: AppSpace.xxs), color: LivePalette.hairline);
 }
 
 class _ToolGlyph extends StatelessWidget {
@@ -518,11 +518,11 @@ class WhiteboardTopBar extends StatelessWidget {
           height: 30,
           decoration: BoxDecoration(
             gradient: LinearGradient(colors: [LivePalette.accent, LivePalette.accent2]),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppRadius.chip),
           ),
           child: const Icon(Icons.draw_rounded, size: 17, color: LivePalette.textHigh),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpace.xs),
         Flexible(
           child: Text(title,
               maxLines: 1,
@@ -530,7 +530,7 @@ class WhiteboardTopBar extends StatelessWidget {
               style: appText(14, w: FontWeight.w800, c: LivePalette.textHigh)),
         ),
         if (canDraw && !presenting) ...[
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           _Pill(icon: Icons.edit_rounded, label: t('يمكنك الرسم', 'You can draw'), iconOnly: tiny, color: LivePalette.success),
         ],
       ]);
@@ -554,7 +554,7 @@ class WhiteboardTopBar extends StatelessWidget {
                 onTap: onOptions,
                 child: const Icon(Icons.tune_rounded, size: 22, color: LivePalette.textHigh),
               ),
-              if (stop != null) ...[const SizedBox(width: 4), Flexible(child: stop)],
+              if (stop != null) ...[const SizedBox(width: AppSpace.xxs), Flexible(child: stop)],
             ])
           : (stop ?? const SizedBox.shrink()); // a host stops a participant's board
 
@@ -569,17 +569,17 @@ class WhiteboardTopBar extends StatelessWidget {
                 )
               else ...[
                 Expanded(child: Align(alignment: AlignmentDirectional.centerStart, child: badge)),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 pager,
               ],
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               actions,
             ])
           : Row(children: [
               Expanded(child: Align(alignment: AlignmentDirectional.centerStart, child: badge)),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               pager,
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Expanded(child: Align(alignment: AlignmentDirectional.centerEnd, child: actions)),
             ]);
       return Semantics(
@@ -623,7 +623,7 @@ class _Pager extends StatelessWidget {
         label: pageWord,
         excludeSemantics: true,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: 7),
           decoration: BoxDecoration(color: LivePalette.glass, borderRadius: BorderRadius.circular(20), border: Border.all(color: LivePalette.glassBorder)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             const Icon(Icons.description_outlined, size: 15, color: LivePalette.textMid),
@@ -634,7 +634,7 @@ class _Pager extends StatelessWidget {
       );
     }
     return Container(
-      decoration: BoxDecoration(color: LivePalette.glass, borderRadius: BorderRadius.circular(24), border: Border.all(color: LivePalette.glassBorder)),
+      decoration: BoxDecoration(color: LivePalette.glass, borderRadius: BorderRadius.circular(AppRadius.block), border: Border.all(color: LivePalette.glassBorder)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         AnnotToolButton(
           key: const ValueKey('board.page_prev'),
@@ -657,7 +657,7 @@ class _Pager extends StatelessWidget {
           child: InkWell(
             key: const ValueKey('board.page_add'),
             onTap: count >= kBoardMaxPages ? null : onAdd,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(AppRadius.block),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               child: Padding(
@@ -665,7 +665,7 @@ class _Pager extends StatelessWidget {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.add_rounded, size: 20, color: LivePalette.textHigh),
                   if (showAddLabel) ...[
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppSpace.xxs),
                     Text(t('صفحة', 'Page'), style: appText(13, w: FontWeight.w700, c: LivePalette.textHigh)),
                   ],
                 ]),
@@ -697,13 +697,13 @@ class _StopButton extends StatelessWidget {
         child: InkWell(
           key: const ValueKey('board.stop'),
           onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(AppRadius.block),
           child: Container(
             constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
             padding: EdgeInsets.symmetric(horizontal: iconOnly ? 0 : (compact ? 12 : 16)),
             decoration: BoxDecoration(
               color: LivePalette.danger,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(AppRadius.block),
               boxShadow: [BoxShadow(color: LivePalette.danger.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 4))],
             ),
             child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -779,19 +779,19 @@ class BoardBackgroundTile extends StatelessWidget {
       child: InkWell(
         key: ValueKey('board.bg.${background.name}'),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.control),
         child: Padding(
-          padding: const EdgeInsets.all(4),
+          padding: const EdgeInsets.all(AppSpace.xxs),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 160),
               padding: const EdgeInsets.all(2.5),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(13),
+                borderRadius: BorderRadius.circular(AppRadius.control),
                 border: Border.all(color: ring, width: selected ? 2.5 : 1),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: BorderRadius.circular(AppRadius.chip),
                 child: AspectRatio(
                   aspectRatio: kBoardAspect,
                   child: CustomPaint(
@@ -800,7 +800,7 @@ class BoardBackgroundTile extends StatelessWidget {
                         ? Align(
                             alignment: AlignmentDirectional.topEnd,
                             child: Padding(
-                              padding: const EdgeInsets.all(4),
+                              padding: const EdgeInsets.all(AppSpace.xxs),
                               child: Icon(Icons.check_circle_rounded, size: 18, color: c.primary),
                             ),
                           )
@@ -926,18 +926,18 @@ class WhiteboardOptionsLayout extends StatelessWidget {
     final c = context.colors;
     final cont = format == BoardFormat.continuous;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md + AppSpace.xxs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSectionTitle(t('شكل الصفحة', 'Page')),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         BoardFormatPicker(value: format, onChanged: onFormat),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         AppSectionTitle(t('الخلفية', 'Background')),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpace.xs),
         BoardBackgroundPicker(value: background, onChanged: onBackground),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
         AppSectionTitle(t('الصفحة ${pageIndex + 1} من $pageCount', 'Page ${pageIndex + 1} of $pageCount')),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpace.xxs),
         _OptionRow(
           key: const ValueKey('board.export'),
           icon: Icons.image_outlined,
@@ -983,7 +983,7 @@ class WhiteboardOptionsLayout extends StatelessWidget {
             onTap: onDeletePage,
           ),
         if (isHost) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           AppSectionTitle(t('الطلاب', 'Students')),
           AppSwitchTile(
             key: const ValueKey('board.allow_students'),
@@ -1003,7 +1003,7 @@ class WhiteboardOptionsLayout extends StatelessWidget {
           ),
         ],
         if (onStylusOnly != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           AppSectionTitle(t('هذا الجهاز', 'This device')),
           AppSwitchTile(
             key: const ValueKey('board.stylus_only'),
@@ -1030,7 +1030,7 @@ class BoardFormatPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         for (final (i, f) in BoardFormat.values.indexed) ...[
-          if (i > 0) const SizedBox(width: 8),
+          if (i > 0) const SizedBox(width: AppSpace.xs),
           Expanded(
             child: BoardFormatTile(
               format: f,
@@ -1065,14 +1065,14 @@ class BoardFormatTile extends StatelessWidget {
       child: InkWell(
         key: ValueKey('board.format.${format.name}'),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           constraints: const BoxConstraints(minHeight: 48),
-          padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+          padding: const EdgeInsets.fromLTRB(AppSpace.xs, 10, AppSpace.xs, 10),
           decoration: BoxDecoration(
             color: selected ? c.primary.withValues(alpha: dark ? 0.16 : 0.07) : (dark ? LivePalette.glass : c.cardBg),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: ring, width: selected ? 2 : 1),
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1088,7 +1088,7 @@ class BoardFormatTile extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Text(label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -1235,19 +1235,19 @@ class _OptionRow extends StatelessWidget {
     final tint = onTap == null ? c.textLight : (color ?? c.primary);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.control),
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 56),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.xs, horizontal: AppSpace.xxs),
           child: Row(children: [
             Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(color: tint.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: tint.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
               child: Icon(icon, color: tint, size: 21),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                 Text(title,
