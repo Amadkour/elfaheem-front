@@ -23,7 +23,7 @@ const chatEntryFeatureKey = 'chat';
 
 void openMyCalendar(BuildContext context) => AppShellNav.navigatorFor(context).pushNamed('/calendar');
 
-/// NextBrain Messages (D-330): the same small button in every role's shell and home header, with its unread count.
+/// Alfaheem Messages (D-330): the same small button in every role's shell and home header, with its unread count.
 class ChatEntryIcon extends StatelessWidget {
   const ChatEntryIcon({super.key});
 

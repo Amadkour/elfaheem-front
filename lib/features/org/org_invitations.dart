@@ -216,7 +216,7 @@ class OrgInvitation {
   final String invitedBy;
   final int sentCount;
 
-  /// `https://nextbrain.site/i/<token>`: only the create response carries it (the server keeps a hash).
+  /// `https://alfheemacademy.com/i/<token>`: only the create response carries it (the server keeps a hash).
   final String? link;
 
   factory OrgInvitation.fromJson(Map<String, dynamic> j) {
@@ -351,8 +351,8 @@ class MyInvitation {
 
 /// The invitation message to share with a link.
 String inviteShareText(String orgName, String role, String link) => t(
-      'دعوة للانضمام إلى «$orgName» بصفة ${inviteRoleLabel(role)} على نكست برين:\n$link',
-      'You are invited to join "$orgName" as ${inviteRoleLabel(role)} on NextBrain:\n$link',
+      'دعوة للانضمام إلى «$orgName» بصفة ${inviteRoleLabel(role)} على الفهيم:\n$link',
+      'You are invited to join "$orgName" as ${inviteRoleLabel(role)} on Alfaheem:\n$link',
     );
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -431,7 +431,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   //
   // After the share is published: when annotation is on, "Display over other apps" is checked (asked once per
   // room, with an explanation first), then the overlay is ARMED: a floating pen bubble over every app once the
-  // presenter leaves NextBrain (tap: toolbar + canvas; D-083), nothing over the app itself. While it is
+  // presenter leaves Alfaheem (tap: toolbar + canvas; D-083), nothing over the app itself. While it is
   // armed [annotationOverlayActive] is true and the room puts its AnnotationController in burned-in mode (the
   // strokes are in the video, nothing is sent as vectors). Refused / failed: nothing is said, the in-app
   // annotation on the share view stays the way to draw. Hidden on every stop (our Stop, the system's Stop via
@@ -461,8 +461,8 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       final ok = await appConfirm(
         context,
         message: t(
-            'للرسم فوق التطبيقات الأخرى أثناء المشاركة، اسمح لـ NextBrain بـ «الظهور فوق التطبيقات الأخرى» في الإعدادات ثم ارجع إلى هنا. بدونه ترسم داخل التطبيق فقط.',
-            'To draw over other apps while you share, allow NextBrain to "Display over other apps" in Settings, then come back here. Without it you draw inside the app only.'),
+            'للرسم فوق التطبيقات الأخرى أثناء المشاركة، اسمح للفهيم بـ «الظهور فوق التطبيقات الأخرى» في الإعدادات ثم ارجع إلى هنا. بدونه ترسم داخل التطبيق فقط.',
+            'To draw over other apps while you share, allow Alfaheem to "Display over other apps" in Settings, then come back here. Without it you draw inside the app only.'),
         confirmLabel: t('فتح الإعدادات', 'Open Settings'),
       );
       if (!ok) {
@@ -708,7 +708,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   //     → AppDelegate rotates chunk + resumes in-app RPScreenRecorder video
 
   static const _ssChannel = MethodChannel(
-    'com.doubley.nextbrain/screen_share',
+    'com.doubley.alfaheem/screen_share',
   );
 
   bool _isBroadcastActive = false;

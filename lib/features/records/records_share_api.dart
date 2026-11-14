@@ -11,7 +11,7 @@
 //           GET    /api/v1/me/records/shared/{token}        → SharedRecord   404 record_not_found (not allowed)
 //           POST   /api/v1/me/records/shared/{token}/play   → RecordPlay (the same signed stream)
 //
-// A share link is https://nextbrain.site/s/record/<token> (core/share/app_links.dart, D-307). Tests:
+// A share link is https://alfheemacademy.com/s/record/<token> (core/share/app_links.dart, D-307). Tests:
 // test/org/records_share_api_test.dart.
 import 'dart:convert' show base64Decode;
 import 'dart:typed_data';

@@ -19,7 +19,7 @@ paths = [
   '''(^|/)lib/firebase_options\.dart$''',
   '''(^|/)android/app/google-services\.json$''',
   '''(^|/)web/firebase-messaging-sw\.js$''',
-  # the Apple apps' GoogleService-Info.plist (iOS and macOS share one Firebase app, com.doubley.nextbrain, D-145):
+  # the Apple apps' GoogleService-Info.plist (iOS and macOS share one Firebase app, com.doubley.alfaheem, D-145):
   # the same public client key as firebase_options.dart's ios block, downloaded by `firebase apps:sdkconfig IOS`
   '''(^|/)ios/Runner/GoogleService-Info\.plist$''',
   '''(^|/)macos/Runner/GoogleService-Info\.plist$''',

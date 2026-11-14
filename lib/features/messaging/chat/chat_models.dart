@@ -1,4 +1,4 @@
-// lib/features/messaging/chat/chat_models.dart — NextBrain Messages (D-330): the wire shapes, pure.
+// lib/features/messaging/chat/chat_models.dart — Alfaheem Messages (D-330): the wire shapes, pure.
 //
 // Times arrive as naive UTC ISO strings (`chatUtc`). Nothing here holds a phone number or an e-mail: the server only
 // ever sends {id, name, image_url, role} for a person.

@@ -1,6 +1,6 @@
-# NextBrain landing site
+# Alfaheem landing site
 
-The public, static landing site of https://nextbrain.site (Arabic first, English too). It is
+The public, static landing site of https://alfheemacademy.com (Arabic first, English too). It is
 **not** Flutter: Astro with static output, no client framework, one small vanilla TypeScript script.
 The Flutter web app lives under `/app/`.
 
@@ -16,7 +16,7 @@ npm run assets     # regenerates the committed logo / favicon / og.png from ../a
 ```
 
 Production build (atomic swap, keeps `dist-prev/` for rollback, uses Docker when node is missing):
-`scripts/build_landing.sh`. `LANDING_API_ORIGIN=https://nextbrain.site` bakes the public stats and
+`scripts/build_landing.sh`. `LANDING_API_ORIGIN=https://alfheemacademy.com` bakes the public stats and
 subject options in at build time (optional; a failed fetch never fails the build). Without it the
 page fetches them in the browser and shows "—" until they arrive.
 
@@ -30,7 +30,7 @@ page fetches them in the browser and shows "—" until they arrive.
 | `/ar/privacy/`, `/en/privacy/`, `/ar/terms/`, `/en/terms/` | the same pages per language. Text: `src/content/legal/*.json`, a copy of the backend's `data/legal/` (`back/scripts/contract/export_legal.py --front <front>`); with `LANDING_API_ORIGIN` the build reads the live, possibly edited text |
 | `/sitemap.xml`, `/robots.txt`, `/og.png`, icons | `public/` |
 | `/app/…` | the Flutter web build (login, explore, register, start/institution) |
-| `/api/api/v1/public/landing/{stats,options,match,highlights}` | backend, same origin, plain `fetch`, 4 s timeout, fails soft. On another host (Firebase Hosting) set `PUBLIC_LANDING_API_BASE=https://nextbrain.site` at build time (absolute origin, no trailing slash) so every landing call goes there; `/app/...` links stay relative |
+| `/api/api/v1/public/landing/{stats,options,match,highlights}` | backend, same origin, plain `fetch`, 4 s timeout, fails soft. On another host (Firebase Hosting) set `PUBLIC_LANDING_API_BASE=https://alfheemacademy.com` at build time (absolute origin, no trailing slash) so every landing call goes there; `/app/...` links stay relative |
 
 ## Where content lives
 

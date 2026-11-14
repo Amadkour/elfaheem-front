@@ -49,7 +49,7 @@ List<Map<String, Object?>> rows(int n) => [
 AppTableExport table({int n = 6, bool rtl = false, String? groupBy}) => AppTableExport(
       id: 'studio.test',
       title: rtl ? 'تقرير المدفوعات' : 'Payments',
-      brand: 'NextBrain Academy',
+      brand: 'Alfaheem Academy',
       columns: cols,
       rtl: rtl,
       groupBy: groupBy,
@@ -104,7 +104,7 @@ ExportDataset dataset({int n = 6}) => ExportDataset(
       module: 'table',
       title: 'Payments',
       lang: 'en',
-      meta: {'org': 'NextBrain Academy', 'exporter': 'Ahmed'},
+      meta: {'org': 'Alfaheem Academy', 'exporter': 'Ahmed'},
       columns: const [
         ExportColumn('name', labelEn: 'Name', labelAr: 'الاسم'),
         ExportColumn('dept', labelEn: 'Department', labelAr: 'القسم'),
@@ -180,7 +180,7 @@ void main() {
       expect(sheet, contains('rightToLeft="1"'));
       expect(styles, contains('readingOrder="2"'));
       expect(RegExp(r'<row r="1"[^>]*>.*?Name').hasMatch(sheet), isTrue);
-      expect(sheet, isNot(contains('NextBrain Academy')));
+      expect(sheet, isNot(contains('Alfaheem Academy')));
       expect(sheet, isNot(contains('<pane')));
       expect(sheet, contains('width="33.0"'));
       final (fill, ink, _) = xfLook(styles, styleOf(sheet, 'A1'));
@@ -198,7 +198,7 @@ void main() {
           exporter: 'Ahmed'));
       expectValidXml(f);
       final sheet = f['xl/worksheets/sheet1.xml']!, styles = f['xl/styles.xml']!;
-      expect(sheet, contains('NextBrain Academy · 6 · Ahmed'));
+      expect(sheet, contains('Alfaheem Academy · 6 · Ahmed'));
       expect(sheet, contains('<drawing r:id="rId1"/>'));
       expect(f.keys, containsAll(['xl/drawings/drawing1.xml', 'xl/drawings/_rels/drawing1.xml.rels', 'xl/worksheets/_rels/sheet1.xml.rels', 'xl/media/image1.png']));
       expect(f['xl/drawings/drawing1.xml'], contains('<xdr:ext cx="1152000" cy="576000"/>')); // 2:1 kept at 1.6 cm high
@@ -254,7 +254,7 @@ void main() {
       expect(doc, contains('w:fill="FFE4E6"'));
       expect(doc, contains('<w:color w:val="9F1239"/>'));
       expect(doc, contains('Waiting'));
-      expect(f['word/header1.xml'], contains('Payments · 5 · NextBrain Academy'));
+      expect(f['word/header1.xml'], contains('Payments · 5 · Alfaheem Academy'));
       expect(f['word/footer1.xml'], contains('By Ahmed'));
     });
 

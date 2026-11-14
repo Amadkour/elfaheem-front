@@ -31,7 +31,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     mockRequestPlugins();
     PackageInfo.setMockInitialValues(
-        appName: 'NextBrain', packageName: 'com.doubley.nextbrain', version: '1.0.0', buildNumber: '10', buildSignature: '');
+        appName: 'Alfaheem', packageName: 'com.doubley.alfaheem', version: '1.0.0', buildNumber: '10', buildSignature: '');
     api = FakeApi({'GET /api/app/version-check': (o) => answer(o)}, latency: const Duration(milliseconds: 10))..install();
   });
 
@@ -56,7 +56,7 @@ void main() {
     return f.evaluate().isEmpty ? null : tester.widget<UpdateDialog>(f);
   }
 
-  const link = 'https://nextbrain.site/api/v1/app/downloads/app.apk';
+  const link = 'https://alfheemacademy.com/api/v1/app/downloads/app.apk';
 
   testWidgets('must_update → a blocking dialog without "Later"', (tester) async {
     answer = (_) => {'must_update': true, 'should_update': true, 'latest_version': '2.0.0', 'download_url': link};

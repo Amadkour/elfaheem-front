@@ -63,7 +63,7 @@ final _shot = GlobalKey();
 String tr(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
 const _link = LiveLink(
-  url: 'https://nextbrain.site/live/4f3b1c9e8d7a6b5c4d3e2f1a',
+  url: 'https://alfheemacademy.com/live/4f3b1c9e8d7a6b5c4d3e2f1a',
   token: '4f3b1c9e',
   canPublish: true,
   maxGuests: 25,
@@ -138,7 +138,7 @@ class _FakeLinks extends MeetingLinksApi {
         startsAt: now.subtract(const Duration(minutes: 20)),
         endsAt: now.add(const Duration(minutes: 40)),
         isHost: true,
-        guest: const MeetingGuestLink(url: 'https://nextbrain.site/live/4f3b1c9e', direct: true, guestsJoined: 3),
+        guest: const MeetingGuestLink(url: 'https://alfheemacademy.com/live/4f3b1c9e', direct: true, guestsJoined: 3),
       ),
       MeetingLinkItem(
         kind: 'session',
@@ -181,7 +181,7 @@ Widget _info() => MeetingInfoSheet(
         elapsed: const Duration(minutes: 41, seconds: 7),
         liveFor: const Duration(minutes: 52, seconds: 18),
         participants: 27,
-        linkUrl: 'https://nextbrain.site/live/4f3b1c9e8d7a6b5c',
+        linkUrl: 'https://alfheemacademy.com/live/4f3b1c9e8d7a6b5c',
         admission: LiveAdmission.approve,
         guestAdmission: LiveGuestAdmission.approve,
         freeLeft: const Duration(minutes: 2, seconds: 40),

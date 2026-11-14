@@ -11,7 +11,7 @@ import 'package:livekit_client/livekit_client.dart' show PlatformType, lkPlatfor
 
 import 'package:flutter_education_app/features/live/room/whiteboard/board_video_source.dart';
 
-const _channel = MethodChannel('com.doubley.nextbrain/screen_share');
+const _channel = MethodChannel('com.doubley.alfaheem/screen_share');
 
 bool boardVideoSupported() => lkPlatformIs(PlatformType.android);
 

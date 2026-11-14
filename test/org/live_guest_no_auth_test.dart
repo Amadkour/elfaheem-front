@@ -49,9 +49,9 @@ void main() {
             'duration_seconds': 600,
             'owner': {'name': 'Teacher'},
           },
-      'POST /api/v1/public/records/guest/*': (_) => {'url': 'https://media.nextbrain.site/r/1.mp4', 'expires_in': 600},
+      'POST /api/v1/public/records/guest/*': (_) => {'url': 'https://media.alfheemacademy.com/r/1.mp4', 'expires_in': 600},
       'GET /api/v1/public/videos/*': (_) => {'title': 'Lecture 1', 'duration_seconds': 900},
-      'POST /api/v1/public/videos/*': (_) => {'url': 'https://media.nextbrain.site/v/1.mp4', 'expires_in': 600},
+      'POST /api/v1/public/videos/*': (_) => {'url': 'https://media.alfheemacademy.com/v/1.mp4', 'expires_in': 600},
     }, latency: const Duration(milliseconds: 10))
       ..install();
     seen = _Seen();

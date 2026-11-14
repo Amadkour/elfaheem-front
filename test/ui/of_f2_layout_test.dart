@@ -41,7 +41,7 @@ void main() {
   });
 
   testWidgets('invite result with links and skipped', (tester) async {
-    final r = InviteResult([_i(1, 'long.long.long.long.address@university.edu.eg', 'pending', link: 'https://nextbrain.site/i/AAAAAAAA'), _i(2, '+201001234567', 'pending', link: 'https://nextbrain.site/i/BBBBBBBB')],
+    final r = InviteResult([_i(1, 'long.long.long.long.address@university.edu.eg', 'pending', link: 'https://alfheemacademy.com/i/AAAAAAAA'), _i(2, '+201001234567', 'pending', link: 'https://alfheemacademy.com/i/BBBBBBBB')],
         const [InviteSkip('someone.else@university.edu.eg', 'already_member'), InviteSkip('x@y.z', 'already_invited')]);
     await expectNoLayoutErrors(tester, () => SingleChildScrollView(padding: const EdgeInsets.all(16), child: InviteResultView(result: r, orgName: 'Nile')));
   });

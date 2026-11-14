@@ -24,12 +24,12 @@ void main() {
   group('parseCertCode', () {
     test('our verification links give the token', () {
       for (final url in [
-        'https://nextbrain.site/verify/$_token',
-        'https://www.nextbrain.site/verify/$_token',
-        'https://nextbrain.site/app/verify/$_token',
+        'https://alfheemacademy.com/verify/$_token',
+        'https://www.alfheemacademy.com/verify/$_token',
+        'https://alfheemacademy.com/app/verify/$_token',
         'https://NEXTBRAIN.site/verify/$_token',
-        'https://nextbrain.site:443/verify/$_token',
-        'nextbrain.site/verify/$_token',
+        'https://alfheemacademy.com:443/verify/$_token',
+        'alfheemacademy.com/verify/$_token',
       ]) {
         final c = parseCertCode(url);
         expect(c.kind, CertCodeKind.token, reason: url);
@@ -40,16 +40,16 @@ void main() {
     test('anything else that is a link is foreign and carries no token', () {
       for (final (url, host) in [
         ('https://evil.example/verify/$_token', 'evil.example'),
-        ('https://nextbrain.site.evil.example/verify/$_token', 'nextbrain.site.evil.example'),
-        ('https://evilnextbrain.site/verify/$_token', 'evilnextbrain.site'),
-        ('https://nextbrain.site@evil.example/verify/$_token', 'evil.example'),
-        ('https://user:pw@nextbrain.site/verify/$_token', 'nextbrain.site'),
-        ('http://nextbrain.site/verify/$_token', 'nextbrain.site'),
-        ('https://nextbrain.site:8443/verify/$_token', 'nextbrain.site'),
-        ('https://nextbrain.site/login', 'nextbrain.site'),
-        ('https://nextbrain.site/verify/$_token/extra', 'nextbrain.site'),
-        ('https://nextbrain.site/x/verify/$_token', 'nextbrain.site'),
-        ('https://nextbrain.site/verify/short', 'nextbrain.site'),
+        ('https://alfheemacademy.com.evil.example/verify/$_token', 'alfheemacademy.com.evil.example'),
+        ('https://evilalfheemacademy.com/verify/$_token', 'evilalfheemacademy.com'),
+        ('https://alfheemacademy.com@evil.example/verify/$_token', 'evil.example'),
+        ('https://user:pw@alfheemacademy.com/verify/$_token', 'alfheemacademy.com'),
+        ('http://alfheemacademy.com/verify/$_token', 'alfheemacademy.com'),
+        ('https://alfheemacademy.com:8443/verify/$_token', 'alfheemacademy.com'),
+        ('https://alfheemacademy.com/login', 'alfheemacademy.com'),
+        ('https://alfheemacademy.com/verify/$_token/extra', 'alfheemacademy.com'),
+        ('https://alfheemacademy.com/x/verify/$_token', 'alfheemacademy.com'),
+        ('https://alfheemacademy.com/verify/short', 'alfheemacademy.com'),
         ('javascript:alert(1)', ''),
         ('intent://verify/$_token#Intent;scheme=https;end', 'verify'),
         ('tel:+201000000000', ''),
@@ -58,7 +58,7 @@ void main() {
         expect(c.kind, CertCodeKind.foreign, reason: url);
         expect(c.value, host, reason: url);
       }
-      expect(parseCertCode(r'https://evil.example\@nextbrain.site/verify/' + _token).kind, CertCodeKind.foreign);
+      expect(parseCertCode(r'https://evil.example\@alfheemacademy.com/verify/' + _token).kind, CertCodeKind.foreign);
     });
 
     test('numbers are normalised the way the server does; other text is malformed', () {
@@ -194,7 +194,7 @@ void main() {
 
     testWidgets('a scanned verify URL is looked up by its token', (tester) async {
       install({'GET /api/v1/public/certificates/verify/*': answer(_fixture('no_expiry'))});
-      await pump(tester, CertVerifyPage(scanAvailable: true, scan: (_) async => 'https://nextbrain.site/verify/$_token'));
+      await pump(tester, CertVerifyPage(scanAvailable: true, scan: (_) async => 'https://alfheemacademy.com/verify/$_token'));
       await tester.tap(find.byKey(const ValueKey('cv.scan')));
       await settle(tester);
       expect(api.calls.single.path, '/api/v1/public/certificates/verify/$_token');
@@ -208,7 +208,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('cv.scan')));
       await settle(tester);
       expect(api.calls, isEmpty);
-      expect(find.text('Not a NextBrain code'), findsOneWidget);
+      expect(find.text('Not an Alfaheem code'), findsOneWidget);
       expect(find.textContaining('evil.example'), findsOneWidget);
     });
 

@@ -9,7 +9,7 @@ library;
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 
 const String kCertLookupBase = '/api/v1/public/certificates/lookup';
-const Set<String> kCertVerifyHosts = {'nextbrain.site', 'www.nextbrain.site'};
+const Set<String> kCertVerifyHosts = {'alfheemacademy.com', 'www.alfheemacademy.com'};
 const String kCertVerifyFeature = 'certificates.verify';
 
 /// The camera path exists on phones only: on the web and on a desktop the page offers typing alone.

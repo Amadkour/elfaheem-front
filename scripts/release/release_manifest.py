@@ -5,14 +5,14 @@ Standard library only: it runs on the server (python3), where the files are, so 
 manifest are those of the files nginx actually serves. publish_release.py uploads it next to the files and calls it;
 the Linux build script on the server calls it too.
 
-  release_manifest.py init  --root /root/nextbrain/releases
+  release_manifest.py init  --root /root/elfaheem/releases
       creates releases.json if missing: iPhone / iPad, Windows and Mac offer the web app ("pwa": true)
-  release_manifest.py set   --root R --base-url https://nextbrain.site/releases --platform android
+  release_manifest.py set   --root R --base-url https://alfheemacademy.com/releases --platform android
                             --version 1.0.0 --build 1 [--min-build 1] [--min-os "Android 7.0"]
                             [--notes-en ...] [--notes-ar ...] [--primary arm64-v8a | pwa] [--pwa | --no-pwa]
                             --file ARCH:KIND:REL_PATH [--file ...] [--expect-sha REL_PATH=HEX ...]
                             [--latest REL_LINK=REL_TARGET ...]
-      replaces that platform's entry (other platforms untouched); --latest moves a "NextBrain-latest…" symlink
+      replaces that platform's entry (other platforms untouched); --latest moves an "Alfaheem-latest…" symlink
   release_manifest.py show  --root R
 
 Every write: the previous manifest is copied to releases.json.bak-<UTC time> (the newest 10 are kept), the new one is

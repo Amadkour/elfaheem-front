@@ -9674,8 +9674,8 @@
     "ar": "أدر حسابك والمظهر والإعدادات من هنا."
   },
   "guest_promo_title": {
-    "en": "Join NextBrain",
-    "ar": "انضم إلى NextBrain"
+    "en": "Join Alfaheem",
+    "ar": "انضم إلى الفهيم"
   },
   "guest_promo_sub": {
     "en": "Create a free account to enroll, track progress and join live sessions.",
@@ -9826,8 +9826,8 @@
     "ar": "مشاركة"
   },
   "pl_share_text": {
-    "en": "My NextBrain parent link code:",
-    "ar": "كود ربط ولي الأمر في NextBrain:"
+    "en": "My Alfaheem parent link code:",
+    "ar": "كود ربط ولي الأمر في الفهيم:"
   },
   "pl_code_hidden": {
     "en": "A code is active but is shown only once. Create a new one to see it.",
@@ -19630,8 +19630,8 @@
     "ar": "وجّه الكاميرا إلى رمز QR الموجود على الشهادة"
   },
   "cv_no_camera": {
-    "en": "To scan a QR code, open this page in the NextBrain app on your phone.",
-    "ar": "لمسح رمز QR، افتح هذه الصفحة في تطبيق NextBrain على هاتفك."
+    "en": "To scan a QR code, open this page in the Alfaheem app on your phone.",
+    "ar": "لمسح رمز QR، افتح هذه الصفحة في تطبيق الفهيم على هاتفك."
   },
   "cv_bad_number": {
     "en": "This is not a certificate number. It looks like NB-2026-ABC234.",
@@ -19642,8 +19642,8 @@
     "ar": "شهادة حقيقية"
   },
   "cv_real_valid_sub": {
-    "en": "This certificate is in NextBrain's records and is valid today.",
-    "ar": "هذه الشهادة موجودة في سجلات NextBrain وهي سارية اليوم."
+    "en": "This certificate is in Alfaheem's records and is valid today.",
+    "ar": "هذه الشهادة موجودة في سجلات الفهيم وهي سارية اليوم."
   },
   "cv_real_expired_sub": {
     "en": "This certificate was really issued, but its validity has ended.",
@@ -19666,24 +19666,24 @@
     "ar": "شهادة مزيفة"
   },
   "cv_fake_sub_number": {
-    "en": "No certificate with this number is in NextBrain's records. Check that you typed it correctly. If it matches the paper, do not trust this certificate.",
-    "ar": "لا توجد شهادة بهذا الرقم في سجلات NextBrain. تأكد من كتابته بشكل صحيح. وإن كان مطابقاً للورقة فلا تثق بهذه الشهادة."
+    "en": "No certificate with this number is in Alfaheem's records. Check that you typed it correctly. If it matches the paper, do not trust this certificate.",
+    "ar": "لا توجد شهادة بهذا الرقم في سجلات الفهيم. تأكد من كتابته بشكل صحيح. وإن كان مطابقاً للورقة فلا تثق بهذه الشهادة."
   },
   "cv_fake_sub_link": {
-    "en": "This link is not in NextBrain's records. Do not trust this certificate.",
-    "ar": "هذا الرابط غير موجود في سجلات NextBrain. لا تثق بهذه الشهادة."
+    "en": "This link is not in Alfaheem's records. Do not trust this certificate.",
+    "ar": "هذا الرابط غير موجود في سجلات الفهيم. لا تثق بهذه الشهادة."
   },
   "cv_foreign_title": {
-    "en": "Not a NextBrain code",
-    "ar": "ليس رمزاً من NextBrain"
+    "en": "Not an Alfaheem code",
+    "ar": "ليس رمزاً من الفهيم"
   },
   "cv_foreign_sub": {
-    "en": "This code points to {host}, not to NextBrain, and it was not opened. Treat this certificate as fake.",
-    "ar": "يشير هذا الرمز إلى {host} وليس إلى NextBrain، ولم يتم فتحه. اعتبر هذه الشهادة مزيفة."
+    "en": "This code points to {host}, not to Alfaheem, and it was not opened. Treat this certificate as fake.",
+    "ar": "يشير هذا الرمز إلى {host} وليس إلى الفهيم، ولم يتم فتحه. اعتبر هذه الشهادة مزيفة."
   },
   "cv_foreign_sub_nohost": {
-    "en": "This code is not a NextBrain verification code, and it was not opened. Treat this certificate as fake.",
-    "ar": "هذا الرمز ليس رمز تحقق من NextBrain، ولم يتم فتحه. اعتبر هذه الشهادة مزيفة."
+    "en": "This code is not an Alfaheem verification code, and it was not opened. Treat this certificate as fake.",
+    "ar": "هذا الرمز ليس رمز تحقق من الفهيم، ولم يتم فتحه. اعتبر هذه الشهادة مزيفة."
   },
   "cv_status_label": {
     "en": "Status",
@@ -19742,8 +19742,8 @@
     "ar": "امسح رمز QR على الشهادة لرؤية الشهادة نفسها ونتائجها."
   },
   "cv_proof_note": {
-    "en": "\"Real\" means this number or link is in NextBrain's records. Compare the name and details above with the certificate you hold: an edited paper can carry a real number.",
-    "ar": "تعني \"حقيقية\" أن هذا الرقم أو الرابط موجود في سجلات NextBrain. قارن الاسم والتفاصيل أعلاه بالشهادة التي معك: فالورقة المعدّلة قد تحمل رقماً حقيقياً."
+    "en": "\"Real\" means this number or link is in Alfaheem's records. Compare the name and details above with the certificate you hold: an edited paper can carry a real number.",
+    "ar": "تعني \"حقيقية\" أن هذا الرقم أو الرابط موجود في سجلات الفهيم. قارن الاسم والتفاصيل أعلاه بالشهادة التي معك: فالورقة المعدّلة قد تحمل رقماً حقيقياً."
   },
   "cv_another": {
     "en": "Check another certificate",
@@ -21806,16 +21806,16 @@
     "ar": "حمّل تطبيق لينكس"
   },
   "get_app_install_title_ios": {
-    "en": "Install NextBrain on your iPhone",
-    "ar": "ثبّت NextBrain على الآيفون"
+    "en": "Install Alfaheem on your iPhone",
+    "ar": "ثبّت الفهيم على الآيفون"
   },
   "get_app_install_title_ipados": {
-    "en": "Install NextBrain on your iPad",
-    "ar": "ثبّت NextBrain على الآيباد"
+    "en": "Install Alfaheem on your iPad",
+    "ar": "ثبّت الفهيم على الآيباد"
   },
   "get_app_install_title_web": {
-    "en": "Install NextBrain on this computer",
-    "ar": "ثبّت NextBrain على هذا الكمبيوتر"
+    "en": "Install Alfaheem on this computer",
+    "ar": "ثبّت الفهيم على هذا الكمبيوتر"
   },
   "get_app_open_safari_title": {
     "en": "Open in Safari to install the app",
@@ -21878,8 +21878,8 @@
     "ar": "تعذّر فتح الرابط. حاول مرة أخرى."
   },
   "get_app_sheet_sub": {
-    "en": "Always the latest version, straight from NextBrain.",
-    "ar": "أحدث إصدار دائمًا، مباشرة من NextBrain."
+    "en": "Always the latest version, straight from Alfaheem.",
+    "ar": "أحدث إصدار دائمًا، مباشرة من الفهيم."
   },
   "get_app_this_device": {
     "en": "This device",
@@ -21934,8 +21934,8 @@
     "ar": "اختر «إضافة إلى الشاشة الرئيسية»."
   },
   "get_app_ios_step3": {
-    "en": "Tap Add, then open NextBrain from your Home Screen.",
-    "ar": "اضغط إضافة، ثم افتح NextBrain من الشاشة الرئيسية."
+    "en": "Tap Add, then open Alfaheem from your Home Screen.",
+    "ar": "اضغط إضافة، ثم افتح الفهيم من الشاشة الرئيسية."
   },
   "get_app_ios_note": {
     "en": "It works like an app: full screen, its own icon, and notifications on iOS 16.4 or later.",
@@ -22010,8 +22010,8 @@
     "ar": "استخدم قائمة المتصفح لتثبيت التطبيق."
   },
   "get_app_installed": {
-    "en": "Installed. Open NextBrain from your apps.",
-    "ar": "تم التثبيت. افتح NextBrain من تطبيقاتك."
+    "en": "Installed. Open Alfaheem from your apps.",
+    "ar": "تم التثبيت. افتح الفهيم من تطبيقاتك."
   },
   "get_app_web_app": {
     "en": "Web app",
@@ -22050,16 +22050,16 @@
     "ar": "الإصدار {v} متاح."
   },
   "get_app_update_body_force": {
-    "en": "This version is no longer supported. Download version {v} to keep using NextBrain.",
-    "ar": "هذا الإصدار لم يعد مدعومًا. نزّل الإصدار {v} لمتابعة استخدام NextBrain."
+    "en": "This version is no longer supported. Download version {v} to keep using Alfaheem.",
+    "ar": "هذا الإصدار لم يعد مدعومًا. نزّل الإصدار {v} لمتابعة استخدام الفهيم."
   },
   "app_update_required_generic": {
     "en": "This version is no longer supported. Please update the app to continue.",
     "ar": "هذا الإصدار لم يعد مدعومًا. يُرجى تحديث التطبيق للمتابعة."
   },
   "tls_pin_update_required": {
-    "en": "This version of the app can no longer connect securely to NextBrain. Please update the app to continue.",
-    "ar": "لم يعد هذا الإصدار من التطبيق قادرًا على الاتصال الآمن بـ NextBrain. يُرجى تحديث التطبيق للمتابعة."
+    "en": "This version of the app can no longer connect securely to Alfaheem. Please update the app to continue.",
+    "ar": "لم يعد هذا الإصدار من التطبيق قادرًا على الاتصال الآمن بالفهيم. يُرجى تحديث التطبيق للمتابعة."
   },
   "get_app_update_now": {
     "en": "Download update",
@@ -22090,8 +22090,8 @@
     "ar": "تنزيلات أخرى"
   },
   "app_dl_browse_title": {
-    "en": "Get the NextBrain app",
-    "ar": "حمّل تطبيق NextBrain"
+    "en": "Get the Alfaheem app",
+    "ar": "حمّل تطبيق الفهيم"
   },
   "app_dl_see_downloads": {
     "en": "See downloads",

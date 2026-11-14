@@ -422,7 +422,7 @@ void main() {
                 child: RecordShareLayout(
                   mode: RecordShareMode.people,
                   people: [_p(1, opened: true), _p(2)],
-                  link: 'https://nextbrain.site/s/record/abcdefghijklmnopqrstuvwx',
+                  link: 'https://alfheemacademy.com/s/record/abcdefghijklmnopqrstuvwx',
                   active: true,
                   views: 12,
                   dirty: true,

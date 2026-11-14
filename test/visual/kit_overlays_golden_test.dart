@@ -195,7 +195,7 @@ final _scenes = <String, void Function(BuildContext)>{
         ),
       ),
   'share': (c) => showAppShareSheet(c,
-      url: 'https://nextbrain.site/s/meeting/12',
+      url: 'https://alfheemacademy.com/s/meeting/12',
       title: _tr('اجتماع أولياء الأمور', 'Parents meeting'),
       subtitle: _tr('الخميس ٤ م', 'Thursday, 4 pm'),
       kind: _tr('اجتماع', 'Meeting'),

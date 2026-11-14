@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://nextbrain.site/sitemap.xml
+Sitemap: https://alfheemacademy.com/sitemap.xml

@@ -59,7 +59,7 @@ AppTableExport _export() => AppTableExport(
       id: 'visual.students',
       title: 'Students',
       titles: const {'ar': 'الطلاب', 'en': 'Students'},
-      brand: 'NextBrain Academy',
+      brand: 'Alfaheem Academy',
       filters: const {'Course': 'Algebra'},
       columns: const [
         AppExportColumn('name', 'Name', labels: {'ar': 'الاسم', 'en': 'Name'}, locked: true),

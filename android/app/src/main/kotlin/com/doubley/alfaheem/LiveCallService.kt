@@ -1,4 +1,4 @@
-package com.doubley.nextbrain
+package com.doubley.alfaheem
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LiveCallService — the live room's microphone in the background
@@ -43,7 +43,7 @@ class LiveCallService : Service() {
     companion object {
         private const val TAG = "LiveCallService"
 
-        const val CH_LIVE_CALL = "com.doubley.nextbrain/live_call"
+        const val CH_LIVE_CALL = "com.doubley.alfaheem/live_call"
         private const val CHANNEL_ID = "live_call_channel"
         private const val NOTIFICATION_ID = 1002 // 1001 = ScreenCaptureService
 

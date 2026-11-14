@@ -12,9 +12,9 @@ void main() {
 
   group('AppLink', () {
     test('builds the root-form links', () {
-      expect(const AppLink.course(12, ref: 5).url(), 'https://nextbrain.site/c/12?ref=5');
+      expect(const AppLink.course(12, ref: 5).url(), 'https://alfheemacademy.com/c/12?ref=5');
       expect(const AppLink.course(12).route, '/c/12');
-      expect(const AppLink.meeting(7).url(), 'https://nextbrain.site/s/meeting/7');
+      expect(const AppLink.meeting(7).url(), 'https://alfheemacademy.com/s/meeting/7');
       expect(const AppLink.session(3).route, '/s/session/3');
       expect(const AppLink.material(9).route, '/s/material/9');
       expect(const AppLink.roadmap(4).route, '/s/roadmap/4');
@@ -65,13 +65,13 @@ void main() {
     final payload = {
       'items': [
         {'id': 'meeting:5', 'kind': 'meeting', 'ref_id': 5, 'title': 'Staff sync', 'status': 'live', 'is_host': true,
-         'starts_at': '2026-11-08T10:00:00', 'ends_at': '2026-11-08T11:00:00', 'app_link': 'https://nextbrain.site/s/meeting/5',
+         'starts_at': '2026-11-08T10:00:00', 'ends_at': '2026-11-08T11:00:00', 'app_link': 'https://alfheemacademy.com/s/meeting/5',
          'org': {'id': 1, 'name_ar': 'جامعة', 'name_en': 'Uni'},
-         'guest_link': {'url': 'https://nextbrain.site/live/tok', 'has_pin': true, 'guests_joined': 2, 'link_status': 'active'}},
+         'guest_link': {'url': 'https://alfheemacademy.com/live/tok', 'has_pin': true, 'guests_joined': 2, 'link_status': 'active'}},
         {'id': 'session:3', 'kind': 'session', 'ref_id': 3, 'title': 'Live 2026-11-09', 'title_auto': true,
          'subtitle': 'Algebra', 'course_id': 12, 'status': 'scheduled', 'recurring': true, 'starts_at': '2026-11-09T08:00:00'},
         {'id': 'meeting:6', 'kind': 'meeting', 'ref_id': 6, 'title': 'Old', 'status': 'ended', 'is_host': true,
-         'guest_link': {'url': 'https://nextbrain.site/live/old', 'link_status': 'expired'}},
+         'guest_link': {'url': 'https://alfheemacademy.com/live/old', 'link_status': 'expired'}},
         {'kind': 'other', 'ref_id': 1},
         {'kind': 'meeting', 'ref_id': 0},
       ],

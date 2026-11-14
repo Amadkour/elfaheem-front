@@ -1,4 +1,4 @@
-# NextBrain design system
+# Alfaheem design system
 
 One import gives a screen everything: `import 'package:flutter_education_app/design/app_kit.dart';`
 

@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
 
-const _long = 'باستخدامك لتطبيق NextBrain فإنك توافق على هذه الشروط والأحكام، وعلى سياسة الخصوصية المرفقة بها، '
+const _long = 'باستخدامك لتطبيق الفهيم فإنك توافق على هذه الشروط والأحكام، وعلى سياسة الخصوصية المرفقة بها، '
     'وإذا لم توافق على أي بند يُرجى التوقف عن استخدام التطبيق. By using the app you agree to these terms.';
 
 void main() {
@@ -100,7 +100,7 @@ void main() {
       () => SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(children: [
-          const AboutHeroCard(name: 'مركز NextBrain التعليمي المتكامل', tagline: _long, version: '2.4.0 (41)', updateAvailable: true),
+          const AboutHeroCard(name: 'أكاديمية الفهيم التعليمي المتكامل', tagline: _long, version: '2.4.0 (41)', updateAvailable: true),
           const SizedBox(height: 16),
           const AboutStatsCard(stats: [
             AppStatModel(id: 1, value: '1,000,000+', label: 'طالب مسجّل في المنصة', order: 1),

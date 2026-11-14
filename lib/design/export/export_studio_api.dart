@@ -24,7 +24,7 @@ import 'table_export_model.dart' show tx;
 const exportsBase = '/api/v1/exports';
 
 /// The deep link a share link opens in the app (`/e/<token>`, handled in main.dart → ExportLinkOpenPage).
-String exportLinkUrl(String token) => 'https://nextbrain.site/e/$token';
+String exportLinkUrl(String token) => 'https://alfheemacademy.com/e/$token';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Result + error text

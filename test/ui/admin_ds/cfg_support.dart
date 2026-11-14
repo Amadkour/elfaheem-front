@@ -208,7 +208,7 @@ Map<String, FakeHandler> cfgRoutes({bool missing = false}) {
     'PUT /api/v1/exam/admin/feedback/settings': (o) => _rec(o, {...(o.data as Map).cast<String, dynamic>(), 'records': 1840}),
     'GET /api/v1/admin/live-settings': (_) => <String, dynamic>{},
     'GET /api/v1/admin/content/about': (_) => {
-          'info': {'name_ar': 'نكست برين', 'name_en': 'NextBrain', 'mission_ar': 'تعليم أفضل للجميع', 'mission_en': 'Better learning for all'},
+          'info': {'name_ar': 'الفهيم', 'name_en': 'Alfaheem', 'mission_ar': 'تعليم أفضل للجميع', 'mission_en': 'Better learning for all'},
           'stats': [
             {'id': 1, 'value': '12K', 'label_ar': 'طالب مسجّل', 'label_en': 'Registered students', 'icon': 'groups', 'is_active': true},
           ],

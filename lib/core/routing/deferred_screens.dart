@@ -329,7 +329,7 @@ Widget deferredTeacherSessionsScreen({bool? expandDetails, CourseProfileHub? pro
 /// The teacher's whole to-do list (D-303).
 Widget deferredTeacherTodoPage() => DeferredPage(id: 'teacher_todo', load: teacher_todo.loadLibrary, builder: (_) => teacher_todo.TeacherTodoPage());
 
-/// NextBrain Messages (D-330). [args]: a conversation id (int), or {peer_id, course_id?, org_id?} to open that person's chat.
+/// Alfaheem Messages (D-330). [args]: a conversation id (int), or {peer_id, course_id?, org_id?} to open that person's chat.
 Widget deferredChatHome(Object? args) => DeferredPage(
     id: 'chat',
     load: chat_page.loadLibrary,

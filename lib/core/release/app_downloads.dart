@@ -33,7 +33,7 @@ const String kDownloadBannerDismissedKey = 'app_download_banner_dismissed_v1';
 const String kAppDownloadsPath = '/api/v1/app/downloads';
 
 /// [url] as an absolute link: a path on our API (`/api/v1/app/downloads/android/x.apk`) is read against [apiBase]
-/// (`https://nextbrain.site/api`, which carries the proxy's `/api` prefix); anything else is returned as it is.
+/// (`https://alfheemacademy.com/api`, which carries the proxy's `/api` prefix); anything else is returned as it is.
 String resolveDownloadUrl(String url, {required String apiBase}) {
   if (!url.startsWith('/') || url.startsWith('//')) return url;
   final base = apiBase.endsWith('/') ? apiBase.substring(0, apiBase.length - 1) : apiBase;

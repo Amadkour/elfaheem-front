@@ -1,4 +1,4 @@
-package com.doubley.nextbrain
+package com.doubley.alfaheem
 
 import com.cloudwebrtc.webrtc.ElFaheemBridge
 import android.app.Notification
@@ -66,26 +66,26 @@ class ScreenCaptureService : Service() {
         const val CHANNEL_NAME    = "Screen Capture"
         const val NOTIFICATION_ID = 1001
 
-        const val ACTION_START_MIC_ONLY             = "com.doubley.nextbrain.START_MIC_ONLY"
-        const val ACTION_STORE_PROJECTION           = "com.doubley.nextbrain.STORE_PROJECTION"
-        const val ACTION_START_SHARE                = "com.doubley.nextbrain.START_SHARE"
-        const val ACTION_STOP_SHARE                 = "com.doubley.nextbrain.STOP_SHARE"
-        const val ACTION_STOP                       = "com.doubley.nextbrain.STOP_SCREEN_CAPTURE"
-        const val ACTION_REVERT_TO_PLACEHOLDER      = "com.doubley.nextbrain.REVERT_TO_PLACEHOLDER"
-        const val ACTION_DOWNGRADE_TO_MIC_FOR_SHARE = "com.doubley.nextbrain.DOWNGRADE_TO_MIC_FOR_SHARE"
-        const val ACTION_DOWNGRADE_TO_MIC           = "com.doubley.nextbrain.DOWNGRADE_TO_MIC"
-        const val ACTION_PROMOTE_FOR_SHARE          = "com.doubley.nextbrain.PROMOTE_FOR_SHARE"
+        const val ACTION_START_MIC_ONLY             = "com.doubley.alfaheem.START_MIC_ONLY"
+        const val ACTION_STORE_PROJECTION           = "com.doubley.alfaheem.STORE_PROJECTION"
+        const val ACTION_START_SHARE                = "com.doubley.alfaheem.START_SHARE"
+        const val ACTION_STOP_SHARE                 = "com.doubley.alfaheem.STOP_SHARE"
+        const val ACTION_STOP                       = "com.doubley.alfaheem.STOP_SCREEN_CAPTURE"
+        const val ACTION_REVERT_TO_PLACEHOLDER      = "com.doubley.alfaheem.REVERT_TO_PLACEHOLDER"
+        const val ACTION_DOWNGRADE_TO_MIC_FOR_SHARE = "com.doubley.alfaheem.DOWNGRADE_TO_MIC_FOR_SHARE"
+        const val ACTION_DOWNGRADE_TO_MIC           = "com.doubley.alfaheem.DOWNGRADE_TO_MIC"
+        const val ACTION_PROMOTE_FOR_SHARE          = "com.doubley.alfaheem.PROMOTE_FOR_SHARE"
         // MainActivity, right before the consent dialog (M4): a microphone-typed foreground start while the
         // activity is in front, so the STORE_PROJECTION that follows is never a background start.
-        const val ACTION_PREPARE_SHARE              = "com.doubley.nextbrain.PREPARE_SHARE"
+        const val ACTION_PREPARE_SHARE              = "com.doubley.alfaheem.PREPARE_SHARE"
 
         // ── pause / resume recording ─────────────────────────────────────────
         // PAUSE  → finish current chunk (isFinal=false), stop encoding,
         //          park the projection, emit "recordingPaused".
         // RESUME → re-enter the chunk loop from where we left off,
         //          emit "recordingResumed".
-        const val ACTION_PAUSE_RECORDING  = "com.doubley.nextbrain.PAUSE_RECORDING"
-        const val ACTION_RESUME_RECORDING = "com.doubley.nextbrain.RESUME_RECORDING"
+        const val ACTION_PAUSE_RECORDING  = "com.doubley.alfaheem.PAUSE_RECORDING"
+        const val ACTION_RESUME_RECORDING = "com.doubley.alfaheem.RESUME_RECORDING"
 
         const val EXTRA_RESULT_CODE = "resultCode"
         const val EXTRA_DATA        = "data"

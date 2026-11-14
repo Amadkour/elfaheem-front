@@ -7,19 +7,20 @@
 // Notes:
 //   - Web Push only works over HTTPS or http://localhost. It will silently
 //     fail on plain HTTP hosting.
-//   - The config below matches lib/firebase_options.dart (DefaultFirebaseOptions.web, project nextbrain-2y, D-145).
+//   - The config below matches lib/firebase_options.dart (DefaultFirebaseOptions.web, project elfaheem, A-004).
 //     If you ever rotate/regenerate Firebase config, update both places together.
 
 importScripts("https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js");
 
 firebase.initializeApp({
-  apiKey: "AIzaSyAD0BWtCBEXdFD-5q97hgSEYTBDXmae50Y",
-  appId: "1:647242717565:web:7c22c255a55be260d69414",
-  messagingSenderId: "647242717565",
-  projectId: "nextbrain-2y",
-  authDomain: "nextbrain-2y.firebaseapp.com",
-  storageBucket: "nextbrain-2y.firebasestorage.app",
+  apiKey: "AIzaSyAAMGDzpS1mT9jK524CdDPzAOy5GrnwQ00",
+  appId: "1:520907928286:web:18b6dc8a8c5f9f5b77884f",
+  messagingSenderId: "520907928286",
+  projectId: "elfaheem",
+  authDomain: "elfaheem.firebaseapp.com",
+  storageBucket: "elfaheem.firebasestorage.app",
+  measurementId: "G-X65VJHH620",
 });
 
 const messaging = firebase.messaging();
@@ -51,7 +52,7 @@ messaging.onBackgroundMessage((payload) => {
   // A data-only push (silent event) shows nothing.
   if (!payload.notification) return;
 
-  const title = payload.notification.title || "NextBrain";
+  const title = payload.notification.title || "Alfaheem";
   const body = payload.notification.body || "";
 
   self.registration.showNotification(title, {

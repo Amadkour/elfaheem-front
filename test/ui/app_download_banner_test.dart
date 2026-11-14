@@ -22,7 +22,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../support/app_releases_samples.dart';
 import 'layout_harness.dart';
 
-const _api = 'https://nextbrain.site/api';
+const _api = 'https://alfheemacademy.com/api';
 
 GetAppEnv _web(GetAppOs os, {bool standalone = false, bool embedded = false, bool inApp = false}) =>
     GetAppEnv(isWeb: true, os: os, standalone: standalone, embedded: embedded, inAppBrowser: inApp, iosSafari: os == GetAppOs.ios);
@@ -64,7 +64,7 @@ void main() {
     ];
     final r = parseAppDownloads({'items': raw}, apiBase: _api);
     expect([for (final x in r) x.platform], ['android', 'windows', 'linux', 'ios'], reason: 'the sheet order; no web, no empty macOS');
-    expect(r.last.files.single.url, 'https://nextbrain.site/api/api/v1/app/downloads/ios/x.ipa');
+    expect(r.last.files.single.url, 'https://alfheemacademy.com/api/api/v1/app/downloads/ios/x.ipa');
     final android = r.first;
     expect(android.primary!.abi, 'universal');
     expect([for (final f in android.others) f.abi], ['arm64-v8a', 'armeabi-v7a']);
@@ -76,8 +76,8 @@ void main() {
         'platform': 'android',
         'version': '1.0.0',
         'files': [
-          {'name': 'NextBrain-1.0.0-1-arm64-v8a.apk', 'url': 'https://x/a.apk'},
-          {'name': 'NextBrain-1.0.0-1-universal.apk', 'url': 'https://x/u.apk'},
+          {'name': 'Alfaheem-1.0.0-1-arm64-v8a.apk', 'url': 'https://x/a.apk'},
+          {'name': 'Alfaheem-1.0.0-1-universal.apk', 'url': 'https://x/u.apk'},
         ],
       },
     ], apiBase: _api);
@@ -87,7 +87,7 @@ void main() {
   test('what each device is offered', () {
     final a = appDownloadOfferFor(_web(GetAppOs.android), list)!;
     expect(a.kind, AppDownloadOfferKind.file);
-    expect(a.file!.name, 'NextBrain-1.4.1-53-universal.apk');
+    expect(a.file!.name, 'Alfaheem-1.4.1-53-universal.apk');
     expect(a.stamp, 'android:1.4.1+53');
     expect(appDownloadOfferFor(_web(GetAppOs.windows), list)!.file!.kind, 'zip');
     expect(appDownloadOfferFor(_web(GetAppOs.linux), list)!.file!.kind, 'deb');
@@ -225,11 +225,11 @@ void main() {
     expect(find.text('Other downloads'), findsOneWidget);
     expect(find.byKey(const ValueKey('app_dl.platform.windows')), findsOneWidget);
     expect(find.byKey(const ValueKey('app_dl.platform.linux')), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('app_dl.file.NextBrain-1.4.1-53-universal.apk')));
-    final v7a = find.byKey(const ValueKey('app_dl.file.NextBrain-1.4.1-53-armeabi-v7a.apk'));
+    await tester.tap(find.byKey(const ValueKey('app_dl.file.Alfaheem-1.4.1-53-universal.apk')));
+    final v7a = find.byKey(const ValueKey('app_dl.file.Alfaheem-1.4.1-53-armeabi-v7a.apk'));
     await tester.ensureVisible(v7a);
     await tester.tap(v7a);
-    expect(downloaded, ['NextBrain-1.4.1-53-universal.apk', 'NextBrain-1.4.1-53-armeabi-v7a.apk']);
+    expect(downloaded, ['Alfaheem-1.4.1-53-universal.apk', 'Alfaheem-1.4.1-53-armeabi-v7a.apk']);
 
     // iPhone: the Add to Home Screen steps
     await tester.pumpWidget(layoutHost(

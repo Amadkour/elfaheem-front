@@ -223,7 +223,7 @@ void main() {
   testWidgets('release_store', (t) async {
     final api = FakeApi({
       'GET $b/21': (_) => codemagicReleaseJson(
-          channel: 'store', status: 'live', isLive: true, progress: 100, log: sampleLog(12), config: {'track': 'production', 'package_name': 'com.doubley.nextbrain'}),
+          channel: 'store', status: 'live', isLive: true, progress: 100, log: sampleLog(12), config: {'track': 'production', 'package_name': 'com.doubley.alfaheem'}),
       'GET $b/21/log': (_) => {'lines': []},
     }, latency: const Duration(milliseconds: 10))
       ..install();
@@ -252,7 +252,7 @@ void main() {
     await _render(t, 'list', () => AppReleasesPage(stream: _stream));
   });
 
-  final downloads = parseAppDownloads(downloadsJson(), apiBase: 'https://nextbrain.site/api');
+  final downloads = parseAppDownloads(downloadsJson(), apiBase: 'https://alfheemacademy.com/api');
   AppDownloadsService service(GetAppOs os) =>
       AppDownloadsService(env: () => GetAppEnv(isWeb: true, os: os, iosSafari: os == GetAppOs.ios), fetch: () async => null, disabled: (_) => false)
         ..debugSet(env: GetAppEnv(isWeb: true, os: os, iosSafari: os == GetAppOs.ios), releases: downloads);

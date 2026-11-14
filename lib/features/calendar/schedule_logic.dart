@@ -412,7 +412,7 @@ String calIcs(Iterable<CalEvent> events, {required String name, DateTime? stamp}
   final lines = <String>[
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//NextBrain//Schedule//EN',
+    'PRODID:-//Alfaheem//Schedule//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'X-WR-CALNAME:${icsEscape(name)}',

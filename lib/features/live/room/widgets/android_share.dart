@@ -43,8 +43,8 @@ String shareDeviceAudioScopeNote({required bool arabic}) => arabic
 class AndroidShareNative {
   const AndroidShareNative._();
 
-  static const _channel = MethodChannel('com.doubley.nextbrain/screen_share');
-  static const _events = EventChannel('com.doubley.nextbrain/live_events');
+  static const _channel = MethodChannel('com.doubley.alfaheem/screen_share');
+  static const _events = EventChannel('com.doubley.alfaheem/live_events');
 
   /// Whether device audio can be offered (see [shareDeviceAudioAvailable]).
   static Future<bool> deviceAudioSupported({bool micAllowed = true, bool shareAudioAllowed = true}) async {

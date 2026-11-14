@@ -95,7 +95,7 @@ class SetupTemplateRef {
   /// bubble · answer_table · auto_bubble / written_table (the teacher's own sheet, D-302).
   final String kind;
 
-  /// A sheet NextBrain does not print (an answer table or the teacher's own detected sheet): no printing, no live
+  /// A sheet Alfaheem does not print (an answer table or the teacher's own detected sheet): no printing, no live
   /// camera; papers come in as photos / scans.
   bool get ownSheet => kind != 'bubble';
 

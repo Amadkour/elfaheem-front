@@ -32,7 +32,7 @@ void showWebNotification(String? title, String? body) {
 /// and the popup shown once granted) or the browser refused (Android Chrome only allows notifications from a
 /// service worker, the constructor throws there) — the caller keeps its toast in those cases.
 bool showBrowserNotification(String? title, String? body, Map<String, dynamic> data) {
-  final notifTitle = (title == null || title.isEmpty) ? 'NextBrain' : title;
+  final notifTitle = (title == null || title.isEmpty) ? 'Alfaheem' : title;
   final notifBody = body ?? '';
   final payload = Map<String, dynamic>.from(data);
 

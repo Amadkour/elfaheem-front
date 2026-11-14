@@ -46,7 +46,7 @@ import 'package:flutter_education_app/design/app_display.dart' show syncMotionLo
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key, this.initialRole});
 
-  /// 'teacher' / 'student' / 'parent': preselects that role (the landing's "teach on NextBrain" link).
+  /// 'teacher' / 'student' / 'parent': preselects that role (the landing's "teach on Alfaheem" link).
   final String? initialRole;
 
   @override

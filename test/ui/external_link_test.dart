@@ -14,7 +14,7 @@ void main() {
   test('https goes out', () {
     expect(_out('https://example.com/a?b=1'), isTrue);
     expect(_out('  HTTPS://Example.com  '), isTrue);
-    expect(_out('https://nextbrain.site/s/material/12'), isTrue); // our own links: App Links bring them back
+    expect(_out('https://alfheemacademy.com/s/material/12'), isTrue); // our own links: App Links bring them back
   });
 
   test('javascript:, intent:, file:, data:, custom schemes and http are refused', () {

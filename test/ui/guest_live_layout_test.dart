@@ -14,7 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'layout_harness.dart';
 
 const _link = GuestLink(
-  url: 'https://nextbrain.site/live/3f9a1c2e7b8d4f6a9c0e1b2d3f4a5c6e7d8f9a0b1c2d3e4f',
+  url: 'https://alfheemacademy.com/live/3f9a1c2e7b8d4f6a9c0e1b2d3f4a5c6e7d8f9a0b1c2d3e4f',
   token: '3f9a1c2e7b8d4f6a9c0e1b2d3f4a5c6e7d8f9a0b1c2d3e4f',
   canPublish: true,
   maxGuests: 25,
@@ -23,7 +23,7 @@ const _link = GuestLink(
 );
 
 const _pinLink = GuestLink(
-  url: 'https://nextbrain.site/live/abc',
+  url: 'https://alfheemacademy.com/live/abc',
   token: 'abc',
   canPublish: false,
   maxGuests: null,
@@ -183,7 +183,7 @@ void main() {
     });
 
     testWidgets('link present with QR and the settings panel open, no limit, busy', (tester) async {
-      const noLimit = GuestLink(url: 'https://nextbrain.site/live/abc', token: 'abc', canPublish: false, maxGuests: null, guestsJoined: 0);
+      const noLimit = GuestLink(url: 'https://alfheemacademy.com/live/abc', token: 'abc', canPublish: false, maxGuests: null, guestsJoined: 0);
       await expectNoLayoutErrors(
         tester,
         () => _linkBody(link: noLimit, showQr: true, editing: true, busy: true, max: TextEditingController()),
@@ -395,7 +395,7 @@ void main() {
     test('guestLiveTokenFromRoute', () {
       expect(guestLiveTokenFromRoute('/live/abc123'), 'abc123');
       expect(guestLiveTokenFromRoute('/live/abc123?x=1'), 'abc123');
-      expect(guestLiveTokenFromRoute('https://nextbrain.site/live/t0k'), 't0k');
+      expect(guestLiveTokenFromRoute('https://alfheemacademy.com/live/t0k'), 't0k');
       expect(guestLiveTokenFromRoute('/live/'), isNull);
       expect(guestLiveTokenFromRoute('/live'), isNull);
       expect(guestLiveTokenFromRoute('/live/a/b'), isNull);
@@ -405,31 +405,31 @@ void main() {
     });
 
     test('guestLiveRouteFromUri: path and hash forms', () {
-      expect(guestLiveRouteFromUri(Uri.parse('https://nextbrain.site/live/abc')), '/live/abc');
-      expect(guestLiveRouteFromUri(Uri.parse('https://nextbrain.site/#/live/abc')), '/live/abc');
-      expect(guestLiveRouteFromUri(Uri.parse('https://nextbrain.site/live/abc#/live/abc')), '/live/abc');
-      expect(guestLiveRouteFromUri(Uri.parse('https://nextbrain.site/')), isNull);
-      expect(guestLiveRouteFromUri(Uri.parse('https://nextbrain.site/#/dashboard')), isNull);
+      expect(guestLiveRouteFromUri(Uri.parse('https://alfheemacademy.com/live/abc')), '/live/abc');
+      expect(guestLiveRouteFromUri(Uri.parse('https://alfheemacademy.com/#/live/abc')), '/live/abc');
+      expect(guestLiveRouteFromUri(Uri.parse('https://alfheemacademy.com/live/abc#/live/abc')), '/live/abc');
+      expect(guestLiveRouteFromUri(Uri.parse('https://alfheemacademy.com/')), isNull);
+      expect(guestLiveRouteFromUri(Uri.parse('https://alfheemacademy.com/#/dashboard')), isNull);
     });
 
     test('legacyHashRoute: only old `/#/route` links, with their query; clean paths are left to the engine', () {
-      expect(legacyHashRoute(Uri.parse('https://nextbrain.site/#/live/abc')), '/live/abc');
-      expect(legacyHashRoute(Uri.parse('https://nextbrain.site/#/c/12?ref=5')), '/c/12?ref=5');
-      expect(legacyHashRoute(Uri.parse('https://nextbrain.site/#/dashboard')), '/dashboard');
-      expect(legacyHashRoute(Uri.parse('https://nextbrain.site/index.html#/login')), '/login');
+      expect(legacyHashRoute(Uri.parse('https://alfheemacademy.com/#/live/abc')), '/live/abc');
+      expect(legacyHashRoute(Uri.parse('https://alfheemacademy.com/#/c/12?ref=5')), '/c/12?ref=5');
+      expect(legacyHashRoute(Uri.parse('https://alfheemacademy.com/#/dashboard')), '/dashboard');
+      expect(legacyHashRoute(Uri.parse('https://alfheemacademy.com/index.html#/login')), '/login');
       // Path strategy: the engine already starts on these.
-      expect(legacyHashRoute(Uri.parse('https://nextbrain.site/live/abc')), isNull);
-      expect(legacyHashRoute(Uri.parse('https://nextbrain.site/c/12?ref=5')), isNull);
-      expect(legacyHashRoute(Uri.parse('https://nextbrain.site/')), isNull);
-      expect(legacyHashRoute(Uri.parse('https://nextbrain.site/#/')), isNull);
-      expect(legacyHashRoute(Uri.parse('https://nextbrain.site/#section')), isNull);
+      expect(legacyHashRoute(Uri.parse('https://alfheemacademy.com/live/abc')), isNull);
+      expect(legacyHashRoute(Uri.parse('https://alfheemacademy.com/c/12?ref=5')), isNull);
+      expect(legacyHashRoute(Uri.parse('https://alfheemacademy.com/')), isNull);
+      expect(legacyHashRoute(Uri.parse('https://alfheemacademy.com/#/')), isNull);
+      expect(legacyHashRoute(Uri.parse('https://alfheemacademy.com/#section')), isNull);
       // The token helper agrees on a hash guest link, query included.
-      expect(guestLiveTokenFromRoute(legacyHashRoute(Uri.parse('https://nextbrain.site/#/live/x9?y=1'))), 'x9');
+      expect(guestLiveTokenFromRoute(legacyHashRoute(Uri.parse('https://alfheemacademy.com/#/live/x9?y=1'))), 'x9');
       // The clean URL main.dart rewrites the address bar to.
-      final base = Uri.parse('https://nextbrain.site/#/c/12?ref=5');
-      expect(base.removeFragment().resolve(legacyHashRoute(base)!.substring(1)).toString(), 'https://nextbrain.site/c/12?ref=5');
-      final indexBase = Uri.parse('https://nextbrain.site/index.html#/live/abc');
-      expect(indexBase.removeFragment().resolve(legacyHashRoute(indexBase)!.substring(1)).toString(), 'https://nextbrain.site/live/abc');
+      final base = Uri.parse('https://alfheemacademy.com/#/c/12?ref=5');
+      expect(base.removeFragment().resolve(legacyHashRoute(base)!.substring(1)).toString(), 'https://alfheemacademy.com/c/12?ref=5');
+      final indexBase = Uri.parse('https://alfheemacademy.com/index.html#/live/abc');
+      expect(indexBase.removeFragment().resolve(legacyHashRoute(indexBase)!.substring(1)).toString(), 'https://alfheemacademy.com/live/abc');
     });
   });
 }

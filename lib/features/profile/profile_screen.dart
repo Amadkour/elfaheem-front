@@ -225,7 +225,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
     // ── Messages & schedule ──────────────────────────────────
     final talk = <Widget>[
-      const ChatEntryTile(), // NextBrain Messages, every role (D-374)
+      const ChatEntryTile(), // Alfaheem Messages, every role (D-374)
       const CalendarEntryTile(),
       if (teacher) ...[
         AppSettingsTile(
@@ -234,7 +234,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           label: 'my_ads'.tr,
           onTap: () => _push(const TeacherAdsPage()),
         ),
-        // https://nextbrain.site/@name — confirmed usernames only (D-074)
+        // https://alfheemacademy.com/@name — confirmed usernames only (D-074)
         const ShareMyProfileTile(),
       ],
     ];

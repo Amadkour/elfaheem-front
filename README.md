@@ -1,8 +1,8 @@
-# NextBrain app (Flutter)
+# Alfaheem app (Flutter)
 
-The Flutter client of the NextBrain education platform for **Android, iOS and the web** — universities (credit-hour
+The Flutter client of the Alfaheem education platform for **Android, iOS and the web** — universities (credit-hour
 and traditional systems), training centers and an open course marketplace in one app, Arabic (RTL) by default and
-English. NextBrain by DoubleY, application id `com.doubley.nextbrain` on every platform (D-145); the Dart package
+English. Alfaheem by DoubleY, application id `com.doubley.alfaheem` on every platform (D-145); the Dart package
 stays `flutter_education_app` (internal, never shown; renaming it would rewrite every import). The backend is the sibling repository [`../back`](../back).
 
 - Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · decisions: [docs/DECISIONS.md](docs/DECISIONS.md)
@@ -30,7 +30,7 @@ flutter run -d chrome           # web
 ```
 
 By default the app talks to production (`AppConfig.baseUrl` in `lib/config/app_config.dart`,
-`https://nextbrain.site/api`). Use the demo accounts only against a local backend.
+`https://alfheemacademy.com/api`). Use the demo accounts only against a local backend.
 
 ### Against a local backend with demo data
 
@@ -86,7 +86,7 @@ Release signing reads the keystore from the environment / `android/key.propertie
 
 ### Direct app downloads (no stores, D-137)
 
-The apps are downloaded from our own site. `https://nextbrain.site/releases/releases.json` (the releases manifest)
+The apps are downloaded from our own site. `https://alfheemacademy.com/releases/releases.json` (the releases manifest)
 says what exists per platform; the web banner, the "Get the app" row and the apps' update prompt read only that file,
 so publishing never needs a web build.
 
@@ -103,9 +103,9 @@ D:/platform/nextbrain/back/.venv312/Scripts/python.exe scripts/release/publish_r
 2. Run the command. It builds, refuses a debug-signed APK or a wrong versionCode, uploads under temporary names,
    and lets the server write the manifest from the files it serves (size + SHA-256; the previous manifest is kept as
    `releases.json.bak-*`). iPhone / iPad, Windows and Mac offer the installable web app (`"pwa": true`).
-3. Check: `curl -s https://nextbrain.site/releases/releases.json`.
+3. Check: `curl -s https://alfheemacademy.com/releases/releases.json`.
 
-**The Android release key** is `C:\Users\ahmed\.nextbrain-keys\` (`nextbrain-release.jks` + `key.properties`),
+**The Android release key** is `C:\Users\ahmed\.alfaheem-keys\` (`alfaheem-release.jks` + `key.properties`),
 outside every repo (`NEXTBRAIN_KEY_PROPERTIES` points elsewhere). Back it up offline: without it no installed copy can
 ever be updated. Its certificate SHA-256 is in `web/.well-known/assetlinks.json` (Android App Links).
 

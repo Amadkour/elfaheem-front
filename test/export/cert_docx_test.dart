@@ -73,7 +73,7 @@ void main() {
         id: 1,
         serial: 'NB-2026-0042',
         recipientName: lang == 'ar' ? 'محمد أحمد علي' : 'Mohamed Ahmed Ali',
-        verifyUrl: 'https://nextbrain.site/verify/abc',
+        verifyUrl: 'https://alfheemacademy.com/verify/abc',
         createdAt: DateTime.utc(2026, 11, 1, 9),
         values: const {'grade': 'ممتاز', 'course_name': 'Data Science', 'email': 'x@y.z'},
       );

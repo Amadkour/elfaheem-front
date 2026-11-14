@@ -39,7 +39,7 @@ const String kGetAppEntryKey = 'get_app.entry';
 /// The manifest's path at the site root.
 const String kReleasesManifestPath = 'releases/releases.json';
 
-/// The manifest URL for the native apps: the API host's root (`https://nextbrain.site/api` → `https://nextbrain.site/
+/// The manifest URL for the native apps: the API host's root (`https://alfheemacademy.com/api` → `https://alfheemacademy.com/
 /// releases/releases.json`).
 Uri releasesManifestUriFor(String apiBaseUrl) => Uri.parse(apiBaseUrl).replace(path: '/$kReleasesManifestPath');
 

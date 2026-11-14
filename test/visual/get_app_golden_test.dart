@@ -60,9 +60,9 @@ final _manifest = parseReleasesManifest({
       'primary': 'arm64-v8a',
       'notes': {'ar': 'أول إصدار للتنزيل المباشر.', 'en': 'First direct-download release.'},
       'files': [
-        {'arch': 'arm64-v8a', 'kind': 'apk', 'url': 'https://nextbrain.site/releases/android/a.apk', 'size': 48700000, 'sha256': _sha},
-        {'arch': 'armeabi-v7a', 'kind': 'apk', 'url': 'https://nextbrain.site/releases/android/b.apk', 'size': 47000000},
-        {'arch': 'universal', 'kind': 'apk', 'url': 'https://nextbrain.site/releases/android/c.apk', 'size': 99000000},
+        {'arch': 'arm64-v8a', 'kind': 'apk', 'url': 'https://alfheemacademy.com/releases/android/a.apk', 'size': 48700000, 'sha256': _sha},
+        {'arch': 'armeabi-v7a', 'kind': 'apk', 'url': 'https://alfheemacademy.com/releases/android/b.apk', 'size': 47000000},
+        {'arch': 'universal', 'kind': 'apk', 'url': 'https://alfheemacademy.com/releases/android/c.apk', 'size': 99000000},
       ],
     },
     'ios': {'pwa': true},
@@ -74,8 +74,8 @@ final _manifest = parseReleasesManifest({
       'primary': 'pwa',
       'pwa': true,
       'files': [
-        {'arch': 'x64', 'kind': 'deb', 'url': 'https://nextbrain.site/releases/linux/a.deb', 'size': 31000000},
-        {'arch': 'x64', 'kind': 'tar.gz', 'url': 'https://nextbrain.site/releases/linux/a.tar.gz', 'size': 30000000},
+        {'arch': 'x64', 'kind': 'deb', 'url': 'https://alfheemacademy.com/releases/linux/a.deb', 'size': 31000000},
+        {'arch': 'x64', 'kind': 'tar.gz', 'url': 'https://alfheemacademy.com/releases/linux/a.tar.gz', 'size': 30000000},
       ],
     },
   },

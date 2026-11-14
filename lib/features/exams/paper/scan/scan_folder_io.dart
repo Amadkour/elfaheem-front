@@ -14,7 +14,7 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_education_app/features/exams/paper/scan/scan_files.dart';
 
-const _channel = MethodChannel('com.doubley.nextbrain/scan_folder');
+const _channel = MethodChannel('com.doubley.alfaheem/scan_folder');
 
 /// A folder that was picked: its name and its files (not read yet).
 typedef ScanFolder = ({String name, List<ScanSourceFile> files});

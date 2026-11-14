@@ -17,8 +17,8 @@ void main() {
     });
 
     test('links carrying the code', () {
-      expect(parseJoinQr('https://nextbrain.site/join?code=ABCD2345XY'), 'ABCD2345XY');
-      expect(parseJoinQr('https://nextbrain.site/#/org/join?join_code=abcd2345xy'), 'ABCD2345XY');
+      expect(parseJoinQr('https://alfheemacademy.com/join?code=ABCD2345XY'), 'ABCD2345XY');
+      expect(parseJoinQr('https://alfheemacademy.com/#/org/join?join_code=abcd2345xy'), 'ABCD2345XY');
       expect(parseJoinQr('nextbrain://join?code=ABCD-2345-XY'), 'ABCD2345XY');
       expect(parseJoinQr('https://example.com/some/page'), isNull);
     });

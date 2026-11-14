@@ -814,8 +814,8 @@ class CloudDrivesLayout extends StatelessWidget {
               ),
               const SizedBox(height: AppSpace.xs),
               Text(
-                t('تُحفظ تسجيلات اجتماعاتك في سحابتك أنت — في مجلد "NextBrain recordings".',
-                    'Your meeting recordings are saved to your own drive, in a "NextBrain recordings" folder.'),
+                t('تُحفظ تسجيلات اجتماعاتك في سحابتك أنت — في مجلد "Alfaheem recordings".',
+                    'Your meeting recordings are saved to your own drive, in an "Alfaheem recordings" folder.'),
                 style: AppType.body(context).copyWith(color: bc.muted, height: 1.5),
               ),
             ]),

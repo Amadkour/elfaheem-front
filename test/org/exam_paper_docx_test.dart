@@ -59,7 +59,7 @@ void main() {
   setUp(() => AppConfig.lang = 'ar');
 
   test('a QR png is the payload\'s matrix with a quiet zone and modules of at least 4 px', () {
-    for (final p in ['NB1.exam5.copy1.p1', 'https://nextbrain.site/x?a=1&b=2']) {
+    for (final p in ['NB1.exam5.copy1.p1', 'https://alfheemacademy.com/x?a=1&b=2']) {
       final png = qrPng(p);
       final m = qrMatrix(p);
       expect(_readMatrix(png, m.length), m);

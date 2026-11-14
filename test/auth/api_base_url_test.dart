@@ -6,7 +6,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const prod = 'https://nextbrain.site/api';
+  const prod = 'https://alfheemacademy.com/api';
 
   test('production is the default in every mode', () {
     expect(AppConfig.productionBaseUrl, prod);
@@ -24,19 +24,19 @@ void main() {
 
   test('a release build accepts an https override', () {
     expect(resolveApiBaseUrl('https://staging.example.org/api', release: true), 'https://staging.example.org/api');
-    expect(resolveApiBaseUrl(' https://nextbrain.site/api ', release: true), prod);
+    expect(resolveApiBaseUrl(' https://alfheemacademy.com/api ', release: true), prod);
   });
 
   test('a release build never ships plain http or a malformed URL', () {
     for (final bad in [
       'http://10.0.2.2:18080/api',
-      'HTTP://nextbrain.site/api',
-      'http://nextbrain.site/api',
-      'nextbrain.site/api',
-      'https:/nextbrain.site/api',
+      'HTTP://alfheemacademy.com/api',
+      'http://alfheemacademy.com/api',
+      'alfheemacademy.com/api',
+      'https:/alfheemacademy.com/api',
       'https://',
-      'ftp://nextbrain.site/api',
-      'ws://nextbrain.site/api',
+      'ftp://alfheemacademy.com/api',
+      'ws://alfheemacademy.com/api',
     ]) {
       expect(resolveApiBaseUrl(bad, release: true), prod, reason: bad);
     }

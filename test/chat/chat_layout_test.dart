@@ -1,4 +1,4 @@
-// NextBrain Messages (D-330): no overflow from 320 px to desktop, Arabic and English, large text.
+// Alfaheem Messages (D-330): no overflow from 320 px to desktop, Arabic and English, large text.
 import 'dart:convert';
 
 import 'package:flutter/material.dart';

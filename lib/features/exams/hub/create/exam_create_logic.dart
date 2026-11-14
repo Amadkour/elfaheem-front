@@ -212,7 +212,7 @@ class ExamCreatePlan {
     return exam.questions.any((q) => answerSheetCanHold(q.type) || (bubbleCanHold(q.type) && !l.bubbleTypes.contains(q.type)));
   }
 
-  /// NextBrain prints the bubble sheets (a sheet it can print, and the teacher does not have them already).
+  /// Alfaheem prints the bubble sheets (a sheet it can print, and the teacher does not have them already).
   bool get printsBubbleSheets => isBubble && bubbleSource == BubbleSource.print && !ownSheet;
 
   /// Every paper exam chooses its copies (D-697).
@@ -325,7 +325,7 @@ class ExamCreatePlan {
     if (!versionsAllowed) versions = 1;
   }
 
-  /// The sheet is the teacher's own: NextBrain neither prints it nor puts a QR on it.
+  /// The sheet is the teacher's own: Alfaheem neither prints it nor puts a QR on it.
   bool get ownSheet => isBubble && (template?.kind ?? 'bubble') != 'bubble';
 
   /// An uploaded file prints as it is, and an own sheet carries no version mark: one version in both cases.
@@ -345,9 +345,9 @@ class ExamCreatePlan {
   /// A bubble sheet numbers its rows in the exam's order too.
   bool get shuffleQuestionsAllowed => !isBubble && shuffleAllowed;
 
-  /// A copy named for each student: something NextBrain prints must carry the name (the question paper, or the bubble
+  /// A copy named for each student: something Alfaheem prints must carry the name (the question paper, or the bubble
   /// sheet beside an uploaded file). The students come from the course, or from a list without one. An own bubble form
-  /// (D-716) is not printed by NextBrain, but the question paper and the answer paper beside it are, so they carry the
+  /// (D-716) is not printed by Alfaheem, but the question paper and the answer paper beside it are, so they carry the
   /// name; the form itself is handed out blank and matched by the ID the student shades on it.
   bool get personalAllowed => !exam.isFile || printsBubbleSheets;
 
@@ -430,12 +430,12 @@ class QuestionEntry {
 
 enum CopyPartKind { questionPaper, answerSheet, booklet, bubbleSheet, ownBubbleForm, uploadedFile }
 
-/// One part of a printed copy: what it is, whether it carries the student's name and details, and whether NextBrain
+/// One part of a printed copy: what it is, whether it carries the student's name and details, and whether Alfaheem
 /// prints it.
 typedef CopyPart = ({CopyPartKind kind, bool named, bool printedByUs});
 
 /// The parts of one copy, in the order they are handed out. A named copy puts the student's name and the chosen details
-/// on every part NextBrain prints; the teacher's own bubble form is never printed here, so it is handed out blank and
+/// on every part Alfaheem prints; the teacher's own bubble form is never printed here, so it is handed out blank and
 /// read by the ID the student shades on it.
 List<CopyPart> copyPartsOf(ExamCreatePlan p, SheetCopies v) {
   final named = v == SheetCopies.personal;
@@ -464,8 +464,8 @@ String copyPartLabel(CopyPartKind k) => switch (k) {
 /// What the part says about the student.
 String copyPartNote(CopyPart part) {
   if (part.kind == CopyPartKind.ownBubbleForm) {
-    return t('لا تطبعها NextBrain: وزّع أوراقك كما هي، ويظلل الطالب رقمه عليها فتُطابق به',
-        'Not printed by NextBrain: hand out your sheets as they are; the student shades their ID on it, and that is how it is matched');
+    return t('لا تطبعها الفهيم: وزّع أوراقك كما هي، ويظلل الطالب رقمه عليها فتُطابق به',
+        'Not printed by Alfaheem: hand out your sheets as they are; the student shades their ID on it, and that is how it is matched');
   }
   if (part.kind == CopyPartKind.uploadedFile) return t('يُطبع كما هو، بلا اسم', 'Printed as it is, without a name');
   return part.named
@@ -486,7 +486,7 @@ bool needsAttributesStep(ExamCreatePlan p, {required bool identifiersOn}) => p.i
 /// (the exam identifier or the platform number).
 bool asksIdSource(ExamCreatePlan p) => p.isPaper && p.hasCourse && !p.personalSheets && p.layout != PaperLayout.questionsOnly;
 
-/// The Paper design step: a paper NextBrain draws (an uploaded file prints as it is).
+/// The Paper design step: a paper Alfaheem draws (an uploaded file prints as it is).
 bool needsDesignStep(ExamCreatePlan p) => p.isPaper && !p.exam.isFile;
 
 /// The Answer sheet step: a paper exam, while `exam.answer_sheet` is on (off, the best fit is taken without asking).

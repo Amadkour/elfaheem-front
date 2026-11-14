@@ -80,10 +80,10 @@ import 'package:flutter_education_app/features/records/records_notice.dart' show
 //   bool get isPaused => _isPaused;
 //
 //   static const _recChannel = MethodChannel(
-//     'com.doubley.nextbrain/native_recorder',
+//     'com.doubley.alfaheem/native_recorder',
 //   );
 //   static const _recEventChannel = EventChannel(
-//     'com.doubley.nextbrain/rec_events',
+//     'com.doubley.alfaheem/rec_events',
 //   );
 //
 //   StreamSubscription<dynamic>? _recEventSub;

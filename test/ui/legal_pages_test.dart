@@ -33,7 +33,7 @@ void main() {
           {'id': 'google', 'icon_name': 'verified', 'title': 'Google user data', 'body': '- drive.file'},
         ],
         'contact_email': 'nextbrain.2y@gmail.com',
-        'url': 'https://nextbrain.site/en/privacy/',
+        'url': 'https://alfheemacademy.com/en/privacy/',
       });
       expect(m.title, 'Privacy Policy');
       expect(m.highlights, ['One', 'Two']);
@@ -43,7 +43,7 @@ void main() {
       expect(m.meta!.lastUpdated, '8 November 2026');
       expect(m.meta!.version, '2.0');
       expect(m.contactEmail, 'nextbrain.2y@gmail.com');
-      expect(m.url, 'https://nextbrain.site/en/privacy/');
+      expect(m.url, 'https://alfheemacademy.com/en/privacy/');
     });
 
     test('missing fields never throw', () {

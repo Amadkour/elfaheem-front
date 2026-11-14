@@ -8,7 +8,7 @@
 //   * http only to the developer's own machine (localhost, 127.0.0.1, 10.0.2.2) and never in a release build — the
 //     same cleartext rule as the API client (D-010);
 //   * our own in-app routes (`/c/<id>`, `/s/<kind>/<id>`, `/s/page/<id>`, see app_links.dart) open in place through
-//     the app's router, like a deep link; our https links (`https://nextbrain.site/…`) are plain https and go out as
+//     the app's router, like a deep link; our https links (`https://alfheemacademy.com/…`) are plain https and go out as
 //     before, where App Links / Universal Links bring them back into the phone app;
 //   * always LaunchMode.externalApplication; a refused link is a bilingual notice, never an exception.
 //

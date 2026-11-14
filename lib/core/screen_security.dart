@@ -9,7 +9,7 @@
 // and a flag left on had no owner at all.
 //
 // A whole-screen share ([beginShare] / [endShare], room_screen_share.dart): MediaProjection (Android) and the
-// ReplayKit broadcast (iOS) draw a protected window BLACK — the "NextBrain area is a black screen" in the
+// ReplayKit broadcast (iOS) draw a protected window BLACK — the "Alfaheem area is a black screen" in the
 // presenter's share. While a share runs:
 //   - with no protected screen open, an ownerless protection is cleared (Android: ShareWindowGuard.kt, which also
 //     marks the Flutter view not sensitive on Android 15+; iOS: screen_protector switched off);
@@ -29,7 +29,7 @@ class ScreenSecurity {
 
   static final ScreenSecurity instance = ScreenSecurity._();
 
-  static const _channel = MethodChannel('com.doubley.nextbrain/share_window');
+  static const _channel = MethodChannel('com.doubley.alfaheem/share_window');
 
   final Set<Object> _owners = <Object>{};
   bool _sharing = false;

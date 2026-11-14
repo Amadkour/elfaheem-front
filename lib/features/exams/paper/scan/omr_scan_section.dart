@@ -4,7 +4,7 @@
 // With [OmrScanSection.bubble] false (an "Exam paper only" exam: handwritten answers on the engine's printed sheets)
 // it keeps only Review and Results: the written answers are reviewed on the same page, each next to its crop (D-160).
 // With [OmrScanSection.ownSheet] (an answer table or the teacher's own detected sheet, D-302) there is nothing to
-// print and no live camera (it looks for NextBrain's marks): papers come in through Upload (photos, scans, PDFs; a
+// print and no live camera (it looks for Alfaheem's marks): papers come in through Upload (photos, scans, PDFs; a
 // phone's gallery offers its camera too).
 library;
 
@@ -27,7 +27,7 @@ class OmrScanSection extends StatefulWidget {
   /// A bubble-sheet exam (bubble / both): print, camera, upload and the batches; false = Review and Results only.
   final bool bubble;
 
-  /// The exam's sheet is not printed by NextBrain (D-241 answer table, D-302 own sheet): no Print, no live camera.
+  /// The exam's sheet is not printed by Alfaheem (D-241 answer table, D-302 own sheet): no Print, no live camera.
   final bool ownSheet;
   final OmrScanApi? api;
 

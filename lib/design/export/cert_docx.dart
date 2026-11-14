@@ -229,7 +229,7 @@ Uint8List certificateDocx(
       '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>');
   put('docProps/core.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/">'
-      '<dc:title>${xmlEsc(title)}</dc:title><dc:creator>NextBrain</dc:creator></cp:coreProperties>');
+      '<dc:title>${xmlEsc(title)}</dc:title><dc:creator>Alfaheem</dc:creator></cp:coreProperties>');
   put('word/_rels/document.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'

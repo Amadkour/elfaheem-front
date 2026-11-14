@@ -75,10 +75,10 @@ abstract class NativeRecorderBackend {
   void Function(Map<dynamic, dynamic> event)? onBroadcastEvent;
 
   static const MethodChannel channel = MethodChannel(
-    'com.doubley.nextbrain/native_recorder',
+    'com.doubley.alfaheem/native_recorder',
   );
   static const EventChannel eventChannel = EventChannel(
-    'com.doubley.nextbrain/rec_events',
+    'com.doubley.alfaheem/rec_events',
   );
 
   StreamSubscription<dynamic>? _recEventSub;

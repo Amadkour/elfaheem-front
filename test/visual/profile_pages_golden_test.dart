@@ -103,7 +103,7 @@ Map<String, FakeHandler> _routes() => {
             'bank_transfer_enabled': true,
             'instapay_enabled': true,
             'bank_name': 'Banque Misr',
-            'account_name': 'NextBrain Education',
+            'account_name': 'Alfaheem Education',
             'iban': 'EG380019000500000000263180002',
           },
       'GET /api/v1/teacher/payout/status': (_) => {
@@ -188,7 +188,7 @@ Future<void> _render(WidgetTester tester, String name, Widget Function() build,
   await _storage.saveUser({
     'id': 7,
     'name': role == 'teacher' ? 'Ahmed Hamdy' : 'Mariam Adel',
-    'gmail': role == 'teacher' ? 'ahmed@nextbrain.site' : 'mariam.adel@example.test',
+    'gmail': role == 'teacher' ? 'ahmed@alfheemacademy.com' : 'mariam.adel@example.test',
     'role': role,
     'username': role == 'teacher' ? 'ahmed' : 'mariam',
     'username_confirmed': true,
@@ -292,7 +292,7 @@ void main() {
           child: ProfileHero(
             name: 'Ahmed Hamdy',
             role: 'teacher',
-            email: 'ahmed@nextbrain.site',
+            email: 'ahmed@alfheemacademy.com',
             username: 'ahmed',
             onEdit: () {},
             onShare: () {},

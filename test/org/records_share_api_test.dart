@@ -12,7 +12,7 @@ void main() {
       'record_id': 12,
       'mode': 'people',
       'token': 'abcDEF123_-xyz',
-      'link': 'https://nextbrain.site/s/record/abcDEF123_-xyz',
+      'link': 'https://alfheemacademy.com/s/record/abcDEF123_-xyz',
       'people': [
         {'id': 5, 'name': 'Mona', 'username': 'mona', 'added_at': '2026-11-08T09:00:00', 'opened_at': '2026-11-08T10:00:00'},
         {'id': 6, 'name': 'Omar', 'added_at': '2026-11-08T09:00:00', 'opened_at': null},
@@ -69,9 +69,9 @@ void main() {
   test('frames: ready with an absolute url, pending, unavailable', () {
     final r = RecordFrames.fromJson(
         {'status': 'ready', 'url': '/api/v1/me/records/stream/frames/tok', 'count': 24, 'tile_w': 160, 'tile_h': 90},
-        base: 'https://nextbrain.site/api/');
+        base: 'https://alfheemacademy.com/api/');
     expect(r.ready, isTrue);
-    expect(r.url, 'https://nextbrain.site/api/api/v1/me/records/stream/frames/tok');
+    expect(r.url, 'https://alfheemacademy.com/api/api/v1/me/records/stream/frames/tok');
     expect(r.count, 24);
     expect(RecordFrames.fromJson({'status': 'pending', 'count': 24}, base: '').pending, isTrue);
     expect(RecordFrames.fromJson({'status': 'ready', 'count': 0}, base: '').ready, isFalse);
@@ -81,8 +81,8 @@ void main() {
   test('the record link is by token: build, parse (also under /app/), refuse junk', () {
     const l = AppLink.record('abcDEF123_-xyz');
     expect(l.route, '/s/record/abcDEF123_-xyz');
-    expect(l.url(), 'https://nextbrain.site/s/record/abcDEF123_-xyz');
-    expect(AppLink.parse('https://nextbrain.site/s/record/abcDEF123_-xyz'), l);
+    expect(l.url(), 'https://alfheemacademy.com/s/record/abcDEF123_-xyz');
+    expect(AppLink.parse('https://alfheemacademy.com/s/record/abcDEF123_-xyz'), l);
     expect(AppLink.parse('/app/s/record/abcDEF123_-xyz')?.token, 'abcDEF123_-xyz');
     expect(AppLink.parse('/s/record/short'), isNull);
     expect(AppLink.parse('/s/record/has.dots.in.it'), isNull);

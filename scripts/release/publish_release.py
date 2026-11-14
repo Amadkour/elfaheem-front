@@ -7,14 +7,14 @@
                  armeabi-v7a: older 32-bit phones, universal: every device), checks the signer and the versionCode,
                  uploads them (temporary name, then rename) with release_manifest.py next to them, and lets the server
                  write the `android` entry of releases.json from the files it actually holds (size + SHA-256, compared
-                 with the local ones). NextBrain-latest.apk points to the universal APK.
+                 with the local ones). Alfaheem-latest.apk points to the universal APK.
   --linux        runs scripts/release/build_linux.sh on the server (builds, packages .deb + .tar.gz, updates `linux`).
   --no-build     publish the APKs already in build/releases/<version>-<build>/ (made by an earlier run).
   --dry-run      build and check only; print what would be published.
   --min-build N  installed builds below N must update (the app's "Please update to continue").
 
 Nothing else changes: publishing never needs a web build, the banner and the apps read the new manifest at once.
-Signing: the release keystore's key.properties, outside the repo (default ~/.nextbrain-keys/key.properties, or
+Signing: the release keystore's key.properties, outside the repo (default ~/.alfaheem-keys/key.properties, or
 NEXTBRAIN_KEY_PROPERTIES). A debug-signed APK is refused. Server access: the pipeline's SSH helpers
 (back/scripts/pipeline/pipeline.py, NEXTBRAIN_PIPELINE to point elsewhere; credentials as for the deploy pipeline).
 Debug symbols stay in build/debug-info/<version>/android-<arch>/ (keep them: they are the only way to read a crash).
@@ -32,9 +32,9 @@ import sys
 from pathlib import Path
 
 FRONT = Path(__file__).resolve().parents[2]
-SERVER_ROOT = os.environ.get("NEXTBRAIN_RELEASES_ROOT", "/root/nextbrain/releases")
-PUBLIC_URL = os.environ.get("NEXTBRAIN_RELEASES_URL", "https://nextbrain.site/releases")
-KEY_PROPS = Path(os.environ.get("NEXTBRAIN_KEY_PROPERTIES") or Path.home() / ".nextbrain-keys" / "key.properties")
+SERVER_ROOT = os.environ.get("NEXTBRAIN_RELEASES_ROOT", "/root/elfaheem/releases")
+PUBLIC_URL = os.environ.get("NEXTBRAIN_RELEASES_URL", "https://alfheemacademy.com/releases")
+KEY_PROPS = Path(os.environ.get("NEXTBRAIN_KEY_PROPERTIES") or Path.home() / ".alfaheem-keys" / "key.properties")
 MIN_OS_ANDROID = "Android 7.0"  # minSdk 24 (flutter.minSdkVersion, checked in the built APK below)
 
 # (manifest arch, flutter --target-platform)
@@ -138,7 +138,7 @@ def build_android(ver: str, build: int, out_dir: Path) -> None:
         if subprocess.run(cmd, cwd=FRONT, env=env).returncode != 0:
             raise SystemExit(f"build failed for {arch}")
         shutil.copy2(FRONT / "build" / "app" / "outputs" / "flutter-apk" / "app-release.apk",
-                     out_dir / f"NextBrain-{ver}-{build}-{arch}.apk")
+                     out_dir / f"Alfaheem-{ver}-{build}-{arch}.apk")
 
 
 def pipeline():
@@ -207,7 +207,7 @@ def main() -> int:
             build_android(ver, build, out_dir)
         say("check the APKs")
         for arch, _ in ANDROID_TARGETS:
-            apk = out_dir / f"NextBrain-{ver}-{build}-{arch}.apk"
+            apk = out_dir / f"Alfaheem-{ver}-{build}-{arch}.apk"
             if not apk.exists():
                 raise SystemExit(f"missing {apk} (run without --no-build)")
             cert = check_apk(apk, build)
@@ -224,7 +224,7 @@ def main() -> int:
         q = shlex.quote
         say(f"server: {SERVER_ROOT}")
         remote(client, f"set -e; mkdir -p {q(SERVER_ROOT)}/.tools {q(SERVER_ROOT)}/android {q(SERVER_ROOT)}/linux; "
-                       f"chmod o+x /root /root/nextbrain 2>/dev/null || true; chmod -R o+rX {q(SERVER_ROOT)}")
+                       f"chmod o+x /root /root/elfaheem 2>/dev/null || true; chmod -R o+rX {q(SERVER_ROOT)}")
         sftp = client.open_sftp()
         tool = f"{SERVER_ROOT}/.tools/release_manifest.py"
         upload(sftp, Path(__file__).with_name("release_manifest.py"), tool)
@@ -236,7 +236,7 @@ def main() -> int:
                 "python3", tool, "set", "--root", SERVER_ROOT, "--base-url", PUBLIC_URL, "--platform", "android",
                 "--version", ver, "--build", str(build), "--min-build", str(a.min_build), "--min-os", MIN_OS_ANDROID,
                 "--primary", PRIMARY_ANDROID, "--notes-en", a.notes_en, "--notes-ar", a.notes_ar, "--no-pwa",
-                "--latest", f"android/NextBrain-latest.apk=android/NextBrain-{ver}-{build}-universal.apk",
+                "--latest", f"android/Alfaheem-latest.apk=android/Alfaheem-{ver}-{build}-universal.apk",
             ]
             for arch, apk in files:
                 rel = f"android/{apk.name}"

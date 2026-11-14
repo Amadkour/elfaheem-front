@@ -4,7 +4,7 @@
 #   - no node / LANDING_BUILD_DOCKER=1 -> the same inside a pinned node image (the server has Docker only)
 # The previous build stays in landing/dist-prev for rollback. LANDING_API_ORIGIN (optional) bakes the
 # public stats and options in at build time; a failure to fetch them never fails the build.
-# PUBLIC_LANDING_API_BASE (optional, e.g. https://nextbrain.site) is the origin the page's own requests go to when it is
+# PUBLIC_LANDING_API_BASE (optional, e.g. https://alfheemacademy.com) is the origin the page's own requests go to when it is
 # served from another host (Firebase Hosting, scripts/build_firebase_hosting.sh); empty = the same origin.
 set -euo pipefail
 
@@ -33,7 +33,7 @@ fi
 
 [ -f dist-new/ar/index.html ] && [ -f dist-new/en/index.html ] && [ -f dist-new/index.html ] \
   || { echo "build output incomplete" >&2; exit 1; }
-# The legal pages (D-308): https://nextbrain.site/privacy and /terms are read by Google's OAuth verification and the
+# The legal pages (D-308): https://alfheemacademy.com/privacy and /terms are read by Google's OAuth verification and the
 # app stores, so a build without them (or with a near-empty one) never replaces the live site.
 for page in privacy terms ar/privacy ar/terms en/privacy en/terms; do
   f="dist-new/$page/index.html"

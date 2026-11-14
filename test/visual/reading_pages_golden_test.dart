@@ -91,8 +91,8 @@ Map<String, dynamic> _terms(String lang) {
     'meta': {'id': 1, 'last_updated': ar ? '6 أكتوبر 2026' : '6 October 2026', 'version': '3.0.0'},
     'sections': [
       s(1, 'gavel', 'قبول الشروط', 'Accepting these terms',
-          'باستخدامك لتطبيق NextBrain فإنك توافق على هذه الشروط والأحكام، وعلى سياسة الخصوصية المرفقة بها.\n\nإذا لم توافق على أي بند، يُرجى التوقف عن استخدام التطبيق والتواصل معنا.',
-          'By using NextBrain you agree to these terms and to the privacy policy that comes with them.\n\nIf you do not agree with any part, please stop using the app and get in touch with us.'),
+          'باستخدامك لتطبيق الفهيم فإنك توافق على هذه الشروط والأحكام، وعلى سياسة الخصوصية المرفقة بها.\n\nإذا لم توافق على أي بند، يُرجى التوقف عن استخدام التطبيق والتواصل معنا.',
+          'By using Alfaheem you agree to these terms and to the privacy policy that comes with them.\n\nIf you do not agree with any part, please stop using the app and get in touch with us.'),
       s(2, 'person', 'أهلية الاستخدام', 'Who can use the app',
           'يجب أن يكون عمر المستخدم 10 سنوات أو أكثر. ما دون ذلك يستخدم التطبيق بإشراف ولي الأمر.',
           'Users must be 10 years old or older. Younger learners use the app with a parent or guardian.'),
@@ -120,7 +120,7 @@ Map<String, dynamic> _about(String lang) {
   return {
     'info': {
       'id': 1,
-      'name': ar ? 'مركز NextBrain' : 'NextBrain Center',
+      'name': ar ? 'أكاديمية الفهيم' : 'Alfaheem Academy',
       'tagline': ar ? 'تعلّم بلا حدود' : 'Learning without limits',
       'mission': ar
           ? 'نسعى إلى تقديم تعليم عالي الجودة يصل إلى كل طالب في مكانه، بأدوات بسيطة ومعلمين يهتمون.'
@@ -144,9 +144,9 @@ Map<String, dynamic> _about(String lang) {
       {'id': 3, 'name': ar ? 'محمد نبيل' : 'Mohamed Nabil', 'role': ar ? 'الدعم الفني' : 'Support', 'emoji': '', 'image_url': null, 'order': 3},
     ],
     'contacts': [
-      {'id': 1, 'type': 'website', 'value': 'https://nextbrain.site', 'label': ar ? 'الموقع الإلكتروني' : 'Website', 'icon_name': 'website', 'order': 1},
+      {'id': 1, 'type': 'website', 'value': 'https://alfheemacademy.com', 'label': ar ? 'الموقع الإلكتروني' : 'Website', 'icon_name': 'website', 'order': 1},
       {'id': 2, 'type': 'whatsapp', 'value': '+20 104 497 5073', 'label': ar ? 'واتساب' : 'WhatsApp', 'icon_name': 'whatsapp', 'order': 2},
-      {'id': 3, 'type': 'email', 'value': 'support@nextbrain.site', 'label': null, 'icon_name': null, 'order': 3},
+      {'id': 3, 'type': 'email', 'value': 'support@alfheemacademy.com', 'label': null, 'icon_name': null, 'order': 3},
     ],
   };
 }

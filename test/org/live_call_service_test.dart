@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  const channel = MethodChannel('com.doubley.nextbrain/live_call');
+  const channel = MethodChannel('com.doubley.alfaheem/live_call');
   final calls = <MethodCall>[];
   var answer = true;
 

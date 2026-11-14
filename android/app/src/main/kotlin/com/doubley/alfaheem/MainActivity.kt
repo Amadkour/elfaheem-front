@@ -1,4 +1,4 @@
-package com.doubley.nextbrain
+package com.doubley.alfaheem
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MainActivity — single MediaProjection grant
@@ -54,12 +54,12 @@ class MainActivity : FlutterFragmentActivity() {
     companion object {
         private const val TAG = "MainActivity"
 
-        private const val CH_SCREEN_SHARE  = "com.doubley.nextbrain/screen_share"
-        private const val CH_RECORDER      = "com.doubley.nextbrain/native_recorder"
-        private const val CH_NOTIFICATIONS = "com.doubley.nextbrain/notifications"
-        private const val CH_REC_EVENTS    = "com.doubley.nextbrain/rec_events"
-        private const val CH_RADIOS        = "com.doubley.nextbrain/radios"   // attendance: switch radios on
-        private const val CH_LIVE_EVENTS   = "com.doubley.nextbrain/live_events" // share + phone-call events
+        private const val CH_SCREEN_SHARE  = "com.doubley.alfaheem/screen_share"
+        private const val CH_RECORDER      = "com.doubley.alfaheem/native_recorder"
+        private const val CH_NOTIFICATIONS = "com.doubley.alfaheem/notifications"
+        private const val CH_REC_EVENTS    = "com.doubley.alfaheem/rec_events"
+        private const val CH_RADIOS        = "com.doubley.alfaheem/radios"   // attendance: switch radios on
+        private const val CH_LIVE_EVENTS   = "com.doubley.alfaheem/live_events" // share + phone-call events
 
         // 1001: the one and only MediaProjection grant → ACTION_STORE_PROJECTION
         private const val REQUEST_MEDIA_PROJECTION = 1001

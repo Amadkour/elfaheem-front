@@ -3,36 +3,34 @@
     "platforms": {
       "android": {
         "default": {
-          "projectId": "nextbrain-2y",
-          "appId": "1:647242717565:android:b49304b99ce6da89d69414",
+          "projectId": "elfaheem",
+          "appId": "1:520907928286:android:c262d4fcaa8a4a4277884f",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "ios": {
         "default": {
-          "projectId": "nextbrain-2y",
-          "appId": "1:647242717565:ios:9e1944ca9c37d70bd69414",
+          "projectId": "elfaheem",
+          "appId": "1:520907928286:ios:0d8cb6a92aa79d6b77884f",
           "uploadDebugSymbols": false,
           "fileOutput": "ios/Runner/GoogleService-Info.plist"
         }
       },
       "macos": {
         "default": {
-          "projectId": "nextbrain-2y",
-          "appId": "1:647242717565:ios:9e1944ca9c37d70bd69414",
+          "projectId": "elfaheem",
+          "appId": "1:520907928286:ios:9fdc718bbf42415f77884f",
           "uploadDebugSymbols": false,
           "fileOutput": "macos/Runner/GoogleService-Info.plist"
         }
       },
       "dart": {
         "lib/firebase_options.dart": {
-          "projectId": "nextbrain-2y",
+          "projectId": "elfaheem",
           "configurations": {
-            "android": "1:647242717565:android:b49304b99ce6da89d69414",
-            "ios": "1:647242717565:ios:9e1944ca9c37d70bd69414",
-            "macos": "1:647242717565:ios:9e1944ca9c37d70bd69414",
-            "web": "1:647242717565:web:7c22c255a55be260d69414",
-            "windows": "1:647242717565:web:b5d10b704f2f574fd69414"
+            "android": "1:520907928286:android:c262d4fcaa8a4a4277884f",
+            "ios": "1:520907928286:ios:0d8cb6a92aa79d6b77884f",
+            "web": "1:520907928286:web:18b6dc8a8c5f9f5b77884f"
           }
         }
       }
@@ -112,7 +110,7 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.gstatic.com https://apis.google.com https://*.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://www.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://nextbrain.site wss://nextbrain.site https://*.googleapis.com https://*.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://*.google.com https://*.firebase.com https://*.firebaseapp.com; frame-src https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.gstatic.com https://apis.google.com https://*.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://www.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://alfheemacademy.com wss://alfheemacademy.com https://*.googleapis.com https://*.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://*.google.com https://*.firebase.com https://*.firebaseapp.com; frame-src https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
           }
         ]
       },

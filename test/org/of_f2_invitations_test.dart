@@ -166,12 +166,12 @@ void main() {
 
     test('create result and the lookup parse', () {
       final r = InviteResult.fromJson({
-        'created': [_inv(1, 'a@x.org', link: 'https://nextbrain.site/i/T1'), _inv(2, 'b@x.org', link: 'https://nextbrain.site/i/T2')],
+        'created': [_inv(1, 'a@x.org', link: 'https://alfheemacademy.com/i/T1'), _inv(2, 'b@x.org', link: 'https://alfheemacademy.com/i/T2')],
         'skipped': [{'contact': 'c@x.org', 'code': 'already_member'}],
       });
       expect(r.created.length, 2);
       expect(r.skipped.single.code, 'already_member');
-      expect(r.allLinks, 'a@x.org: https://nextbrain.site/i/T1\nb@x.org: https://nextbrain.site/i/T2');
+      expect(r.allLinks, 'a@x.org: https://alfheemacademy.com/i/T1\nb@x.org: https://alfheemacademy.com/i/T2');
       final l = InviteLookup.fromJson(_lookup());
       expect(l.orgId, 4);
       expect(l.pending, isTrue);
@@ -182,13 +182,13 @@ void main() {
 
   group('links', () {
     test('join links: parseJoinQr reads /j/<CODE>, joinLinkFor writes it, DeepLinkService is not needed for the parse', () {
-      expect(parseJoinQr('https://nextbrain.site/j/abcd2345xy'), 'ABCD2345XY');
-      expect(parseJoinQr('https://nextbrain.site/j/ABCD-2345-XY'), 'ABCD2345XY');
-      expect(parseJoinQr('https://nextbrain.site/j/AB'), isNull);
+      expect(parseJoinQr('https://alfheemacademy.com/j/abcd2345xy'), 'ABCD2345XY');
+      expect(parseJoinQr('https://alfheemacademy.com/j/ABCD-2345-XY'), 'ABCD2345XY');
+      expect(parseJoinQr('https://alfheemacademy.com/j/AB'), isNull);
       expect(parseJoinQr(joinLinkFor('abcd2345xy')), 'ABCD2345XY');
-      expect(joinLinkFor('abcd-2345'), 'https://nextbrain.site/j/ABCD2345?code=ABCD2345');
+      expect(joinLinkFor('abcd-2345'), 'https://alfheemacademy.com/j/ABCD2345?code=ABCD2345');
       // an installed app from before /j/ links reads only `?code=`: the same link must still give the code
-      expect(parseJoinQr('https://nextbrain.site/x?code=ABCD2345'), 'ABCD2345');
+      expect(parseJoinQr('https://alfheemacademy.com/x?code=ABCD2345'), 'ABCD2345');
     });
   });
 
@@ -254,7 +254,7 @@ void main() {
         'POST $_org/invitations': (o) {
           sent = _body(o.data);
           return FakeResponse(201, {
-            'created': [_inv(1, 'a@x.org', link: 'https://nextbrain.site/i/TOKEN1')],
+            'created': [_inv(1, 'a@x.org', link: 'https://alfheemacademy.com/i/TOKEN1')],
             'skipped': [{'contact': 'b@x.org', 'code': 'already_member'}],
           });
         },

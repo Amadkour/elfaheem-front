@@ -1,4 +1,4 @@
-// NextBrain Messages (D-375): the client's delivery logic against a fake server: sending order, the queue, retry, replayed
+// Alfaheem Messages (D-375): the client's delivery logic against a fake server: sending order, the queue, retry, replayed
 // events, one controller per chat, the read mark and the "new messages" count.
 import 'dart:convert';
 

@@ -10,8 +10,8 @@ import '../support/fake_api.dart';
 
 class _Flow extends PaymentFlowProvider {}
 
-const _prod = CheckoutOrigin(schemes: {'https'}, hosts: {'nextbrain.site', 'www.nextbrain.site'});
-const _dev = CheckoutOrigin(schemes: {'https', 'http'}, hosts: {'nextbrain.site', ...kDevCheckoutHosts});
+const _prod = CheckoutOrigin(schemes: {'https'}, hosts: {'alfheemacademy.com', 'www.alfheemacademy.com'});
+const _dev = CheckoutOrigin(schemes: {'https', 'http'}, hosts: {'alfheemacademy.com', ...kDevCheckoutHosts});
 
 bool _cb(String url, [CheckoutOrigin o = _prod]) => isCheckoutCallback(Uri.parse(url), o);
 bool _nav(String url, {bool main = true, CheckoutOrigin o = _prod}) =>
@@ -27,27 +27,27 @@ void main() {
 
   group('callback match', () {
     test('the result page\'s real URLs match (hash route, root or /app/, path strategy, www)', () {
-      expect(_cb('https://nextbrain.site/#/payment/callback?status=paid&course_id=4'), isTrue);
-      expect(_cb('https://nextbrain.site#/payment/callback?status=failed'), isTrue);
-      expect(_cb('https://nextbrain.site/app/#/payment/callback?status=initiated'), isTrue);
-      expect(_cb('https://nextbrain.site/app#/payment/callback?status=paid'), isTrue);
-      expect(_cb('https://www.nextbrain.site/#/payment/callback?status=paid'), isTrue);
-      expect(_cb('https://nextbrain.site/payment/callback?status=paid'), isTrue);
-      expect(_cb('https://nextbrain.site/app/payment/callback?status=paid'), isTrue);
+      expect(_cb('https://alfheemacademy.com/#/payment/callback?status=paid&course_id=4'), isTrue);
+      expect(_cb('https://alfheemacademy.com#/payment/callback?status=failed'), isTrue);
+      expect(_cb('https://alfheemacademy.com/app/#/payment/callback?status=initiated'), isTrue);
+      expect(_cb('https://alfheemacademy.com/app#/payment/callback?status=paid'), isTrue);
+      expect(_cb('https://www.alfheemacademy.com/#/payment/callback?status=paid'), isTrue);
+      expect(_cb('https://alfheemacademy.com/payment/callback?status=paid'), isTrue);
+      expect(_cb('https://alfheemacademy.com/app/payment/callback?status=paid'), isTrue);
       expect(_cb('https://NEXTBRAIN.site/#/payment/callback?status=paid'), isTrue);
     });
 
     test('a URL that only contains the words is not the callback', () {
       expect(_cb('https://evil.example/#/payment/callback?status=paid'), isFalse);
       expect(_cb('https://evil.example/payment/callback?status=paid'), isFalse);
-      expect(_cb('https://nextbrain.site.evil.example/#/payment/callback?status=paid'), isFalse);
-      expect(_cb('https://evil.example/?next=https://nextbrain.site/#/payment/callback'), isFalse);
+      expect(_cb('https://alfheemacademy.com.evil.example/#/payment/callback?status=paid'), isFalse);
+      expect(_cb('https://evil.example/?next=https://alfheemacademy.com/#/payment/callback'), isFalse);
       expect(_cb('https://api.moyasar.com/v1/payments?return=/payment/callback'), isFalse);
-      expect(_cb('https://nextbrain.site/x/#/payment/callback?status=paid'), isFalse);
-      expect(_cb('https://nextbrain.site/#/payment/callbackx?status=paid'), isFalse);
-      expect(_cb('https://nextbrain.site/#/other?r=/payment/callback&status=paid'), isFalse);
-      expect(_cb('https://nextbrain.site/api/v1/payments/callback?status=paid'), isFalse);
-      expect(_cb('http://nextbrain.site/#/payment/callback?status=paid'), isFalse, reason: 'plain http in a release');
+      expect(_cb('https://alfheemacademy.com/x/#/payment/callback?status=paid'), isFalse);
+      expect(_cb('https://alfheemacademy.com/#/payment/callbackx?status=paid'), isFalse);
+      expect(_cb('https://alfheemacademy.com/#/other?r=/payment/callback&status=paid'), isFalse);
+      expect(_cb('https://alfheemacademy.com/api/v1/payments/callback?status=paid'), isFalse);
+      expect(_cb('http://alfheemacademy.com/#/payment/callback?status=paid'), isFalse, reason: 'plain http in a release');
       expect(_cb('nextbrain://payment/callback?status=paid'), isFalse);
     });
 
@@ -61,11 +61,11 @@ void main() {
     });
 
     test('status: the hash route\'s query first, then the URL\'s own, failed when missing', () {
-      expect(checkoutStatusFrom(Uri.parse('https://nextbrain.site/#/payment/callback?status=paid&message=a%20b')), 'paid');
-      expect(checkoutStatusFrom(Uri.parse('https://nextbrain.site/app/payment/callback?status=initiated')), 'initiated');
-      expect(checkoutStatusFrom(Uri.parse('https://nextbrain.site/#/payment/callback?course_id=3')), 'failed');
-      expect(checkoutStatusFrom(Uri.parse('https://nextbrain.site/#/payment/callback')), 'failed');
-      expect(checkoutStatusFrom(Uri.parse('https://nextbrain.site/#/payment/callback?status=')), 'failed');
+      expect(checkoutStatusFrom(Uri.parse('https://alfheemacademy.com/#/payment/callback?status=paid&message=a%20b')), 'paid');
+      expect(checkoutStatusFrom(Uri.parse('https://alfheemacademy.com/app/payment/callback?status=initiated')), 'initiated');
+      expect(checkoutStatusFrom(Uri.parse('https://alfheemacademy.com/#/payment/callback?course_id=3')), 'failed');
+      expect(checkoutStatusFrom(Uri.parse('https://alfheemacademy.com/#/payment/callback')), 'failed');
+      expect(checkoutStatusFrom(Uri.parse('https://alfheemacademy.com/#/payment/callback?status=')), 'failed');
     });
   });
 
@@ -75,7 +75,7 @@ void main() {
       expect(_nav('https://accept.paymob.com/unifiedcheckout/?publicKey=x'), isTrue);
       for (final bad in [
         'http://api.moyasar.com/form',
-        'http://nextbrain.site/#/payment/callback?status=paid',
+        'http://alfheemacademy.com/#/payment/callback?status=paid',
         'javascript:alert(1)',
         'data:text/html,<b>paid</b>',
         'file:///etc/passwd',

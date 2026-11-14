@@ -13,8 +13,8 @@
 //     livekit_client 2.13.1 (SampleUploader.swift). That capturer feeds the
 //     LiveKit screen-share track, so viewers see the screen.
 //     The app side needs, in Runner/Info.plist,
-//       RTCAppGroupIdentifier     = group.com.doubley.nextbrain
-//       RTCScreenSharingExtension = com.doubley.nextbrain.BroadcastUploadExtension
+//       RTCAppGroupIdentifier     = group.com.doubley.alfaheem
+//       RTCScreenSharingExtension = com.doubley.alfaheem.BroadcastUploadExtension
 //     and the Dart side ScreenShareCaptureOptions(useiOSBroadcastExtension:
 //     true) (docs/live/ios_share_wiring.md).
 //
@@ -34,7 +34,7 @@
 //     asks for it through marker files in the App Group (see Wants below):
 //       • ext_wants_video_file → each encoded JPEG is also written to
 //         <App Group>/broadcast_frame.bin as [4B typeId=0][8B ptsNs][4B size]
-//         [JPEG] + Darwin "…nextbrain.frame" (AppDelegate's
+//         [JPEG] + Darwin "…alfaheem.frame" (AppDelegate's
 //         in-app recorder). The SAME JPEG bytes are used for the socket and
 //         the file: one encode per frame, no second copy (I1 trade-off: the
 //         recording keeps its existing path without doubling memory).
@@ -42,7 +42,7 @@
 //         <App Group>/broadcast_audio_queue/aud_NNNNNNNNNN.bin as
 //         [4B typeId=2][8B ptsNs][4B size][4B sampleRate][4B channels]
 //         [4B isFloat][interleaved native-endian PCM] + Darwin
-//         "…nextbrain.audioframe". AppDelegate uses it for the
+//         "…alfaheem.audioframe". AppDelegate uses it for the
 //         recording's system-audio track and for mixing the shared app's
 //         sound into the live microphone (ShareAppAudioMixer).
 //     Without the markers nothing is written, so no audio files pile up in
@@ -65,7 +65,7 @@ import CoreAudio
 import AudioToolbox
 import AVFoundation
 
-private let kAppGroup          = "group.com.doubley.nextbrain"
+private let kAppGroup          = "group.com.doubley.alfaheem"
 /// flutter_webrtc: FlutterBroadcastScreenCapturer.m kRTCScreensharingSocketFD.
 private let kSocketFileName    = "rtc_SSFD"
 private let kFrameFileName     = "broadcast_frame.bin"

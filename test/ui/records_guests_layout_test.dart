@@ -23,7 +23,7 @@ RecordGuest _g(int id, {bool expired = false, String? status = 'sent', bool open
       'id': id,
       'email': 'a.guest.with.a.very.long.address.number.$id@some-university.example.edu',
       'token': 'g_abcdefghijklmnop$id',
-      'link': 'https://nextbrain.site/s/record/g_abcdefghijklmnop$id',
+      'link': 'https://alfheemacademy.com/s/record/g_abcdefghijklmnop$id',
       'expires_at': expired ? '2026-11-01T00:00:00' : '2026-12-08T00:00:00',
       'expired': expired,
       'opened_at': opened ? '2026-11-08T10:00:00' : null,
@@ -129,7 +129,7 @@ void main() {
                 child: RecordShareLayout(
                   mode: RecordShareMode.people,
                   people: const [],
-                  link: 'https://nextbrain.site/s/record/abcdefghijklmnop',
+                  link: 'https://alfheemacademy.com/s/record/abcdefghijklmnop',
                   active: true,
                   showImages: false,
                   guestRows: [

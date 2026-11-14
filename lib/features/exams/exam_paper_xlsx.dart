@@ -141,7 +141,7 @@ Uint8List examPaperXlsx(ExamPaperDoc doc, {List<ExamPaperDoc> versions = const [
   }
   sheets.add(_Sheet(t('جدول الدرجات', 'Marks grid'), grid, widths: [6, 30, for (var j = 0; j < n; j++) 6, 10], headerRows: 2));
 
-  return _workbook(sheets, rtl: rtl, title: doc.title, creator: doc.institution.isEmpty ? 'NextBrain' : doc.institution);
+  return _workbook(sheets, rtl: rtl, title: doc.title, creator: doc.institution.isEmpty ? 'Alfaheem' : doc.institution);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════

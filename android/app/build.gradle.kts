@@ -26,7 +26,7 @@ plugins {
     id("com.google.firebase.crashlytics")          // ← NEW: Crashlytics
 }
 android {
-    namespace = "com.doubley.nextbrain"
+    namespace = "com.doubley.alfaheem"
     compileSdk = 37 // permission_handler_android 14 needs API 37 (AGP 9.1.1 supports it)
     ndkVersion = flutter.ndkVersion
 
@@ -37,7 +37,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.doubley.nextbrain"
+        applicationId = "com.doubley.alfaheem"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

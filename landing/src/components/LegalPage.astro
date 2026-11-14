@@ -22,7 +22,7 @@ const other_doc: LegalDocId = doc === 'privacy' ? 'terms' : 'privacy';
 const path = root ? `/${doc}/` : `/${lang}/${doc}/`;
 const L = {
   ar: {
-    name: 'نكست برين',
+    name: 'الفهيم',
     kicker: 'المستندات القانونية',
     effective: 'سارية منذ',
     version: 'الإصدار',
@@ -38,11 +38,11 @@ const L = {
     switchLabel: 'English',
     home: 'الرئيسية',
     rights: 'جميع الحقوق محفوظة',
-    by: 'نكست برين من DoubleY',
+    by: 'الفهيم من DoubleY',
     top: 'إلى الأعلى',
   },
   en: {
-    name: 'NextBrain',
+    name: 'Alfaheem',
     kicker: 'Legal',
     effective: 'Effective',
     version: 'Version',
@@ -58,7 +58,7 @@ const L = {
     switchLabel: 'العربية',
     home: 'Home',
     rights: 'All rights reserved',
-    by: 'NextBrain by DoubleY',
+    by: 'Alfaheem by DoubleY',
     top: 'Back to top',
   },
 }[lang];
@@ -84,7 +84,7 @@ const jsonLd = [
     url: SITE + path,
     inLanguage: lang,
     dateModified: d.effective_date,
-    publisher: { '@type': 'Organization', name: 'NextBrain', url: SITE, email: CONTACT_EMAIL },
+    publisher: { '@type': 'Organization', name: 'Alfaheem', url: SITE, email: CONTACT_EMAIL },
   },
 ];
 ---

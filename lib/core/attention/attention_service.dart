@@ -57,7 +57,7 @@ class AttentionTabs {
   /// The high-priority items of the teacher's automatic to-do list (D-303, services/teacher_todo_service.py).
   static const teacherTodo = 'teacher.todo';
 
-  /// Unread messages of NextBrain Messages (D-330, services/chat).
+  /// Unread messages of Alfaheem Messages (D-330, services/chat).
   static const chat = 'chat';
 
   /// Org dashboard section key ('people', 'academics', …) → tab key.

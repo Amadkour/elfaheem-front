@@ -837,7 +837,7 @@ class _ImportWizardState extends State<_ImportWizard> {
                     name: '${cr['name']}',
                     login: '${cr['login']}',
                     password: '${cr['password']}',
-                    link: '${cr['link'] ?? 'https://nextbrain.site/'}',
+                    link: '${cr['link'] ?? 'https://alfheemacademy.com/'}',
                     course: widget.p.grid?.title ?? '',
                   ),
                 )),

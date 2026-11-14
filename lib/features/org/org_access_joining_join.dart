@@ -413,7 +413,7 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
 //  /j/<CODE>: a shared join link
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// The page behind `https://nextbrain.site/j/<CODE>`: the Join page with the code filled in (not sent: the person
+/// The page behind `https://alfheemacademy.com/j/<CODE>`: the Join page with the code filled in (not sent: the person
 /// confirms). Signed out, it explains and sends to sign-in / sign-up; the link is remembered through
 /// [SignInReturn] (D-170) so the first signed-in page opens it again with the same code.
 class OrgJoinLinkPage extends StatelessWidget {

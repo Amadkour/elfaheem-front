@@ -124,7 +124,7 @@ void main() {
         ..steps = 4
         ..expected = 10
         ..step = 'offlineVideos'
-        ..appName = _tr('نكست برين', 'NextBrain')
+        ..appName = _tr('الفهيم', 'Alfaheem')
         ..tagline = _tr('تعلّم في أي مكان، في أي وقت', 'Learn anywhere, any time')
         ..version = '3.4.0'
         ..setFooter(text: _tr('من إنتاج Double Y', 'Powered by Double Y'))

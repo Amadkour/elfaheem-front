@@ -5,7 +5,7 @@
 //
 //   PublicProfileScreen(username:, fallback:)   a visitor: GET /api/v1/public/u/{username} (no token, ever). A guest
 //                                      gets it straight from the link, with no sign-in and no authenticated call,
-//                                      plus the soft "join NextBrain" card; a course opens its public preview
+//                                      plus the soft "join Alfaheem" card; a course opens its public preview
 //                                      (`/c/<id>`). Signed in as that very person → MyProfileScreen instead.
 //                                      [fallback] replaces "not found" (a course's instructor without a public page)
 //   MyProfileScreen                    the owner: GET /api/v1/me/public-profile — the page exactly as visitors see it
@@ -372,7 +372,7 @@ Future<void> openPersonProfile(BuildContext context, TeacherProfileData teacher)
   ));
 }
 
-/// Shares `https://nextbrain.site/@username`: the app's one share sheet (D-307): the link, Copy, the system share
+/// Shares `https://alfheemacademy.com/@username`: the app's one share sheet (D-307): the link, Copy, the system share
 /// sheet (apps) and a QR code.
 Future<void> shareProfileLink(BuildContext context, {required String username, required String name, bool teacher = true}) async {
   final (kind, icon) = appLinkKindLabel(AppLinkKind.teacher);
@@ -413,7 +413,7 @@ class ShareMyProfileTile extends StatelessWidget {
         icon: Icons.ios_share_rounded,
         color: context.colors.primary,
         label: t('مشاركة رابط ملفي', 'Share my profile link'),
-        subtitle: 'nextbrain.site/@$name',
+        subtitle: 'alfheemacademy.com/@$name',
         keywords: 'share profile link username مشاركة رابط ملف',
         onTap: () => shareProfileLink(context, username: name, name: u.name),
       ),

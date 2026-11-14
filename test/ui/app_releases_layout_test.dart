@@ -74,7 +74,7 @@ void main() {
       () => NewAppReleasePage(
           latest: latest,
           initialChannel: 'store',
-          config: ReleaseConfig.fromJson(releaseConfigJson(notReady: const {}, packageName: 'com.doubley.nextbrain')),
+          config: ReleaseConfig.fromJson(releaseConfigJson(notReady: const {}, packageName: 'com.doubley.alfaheem')),
           askPassword: (_) async => null),
       scaffold: false,
       act: (tester) async {
@@ -144,7 +144,7 @@ void main() {
   });
 
   testWidgets('detail: a Codemagic store release and a website release with its files', (tester) async {
-    final store = AppRelease.fromJson(codemagicReleaseJson(channel: 'store', status: 'live', isLive: true, progress: 100, config: {'track': 'production', 'package_name': 'com.doubley.nextbrain'}));
+    final store = AppRelease.fromJson(codemagicReleaseJson(channel: 'store', status: 'live', isLive: true, progress: 100, config: {'track': 'production', 'package_name': 'com.doubley.alfaheem'}));
     final site = AppRelease.fromJson(codemagicReleaseJson(status: 'uploading', progress: 92, artifacts: codemagicApkArtifacts, log: sampleLog(8)));
     for (final r in [store, site]) {
       await expectNoLayoutErrors(
@@ -152,7 +152,7 @@ void main() {
     }
   });
 
-  final downloads = parseAppDownloads(downloadsJson(), apiBase: 'https://nextbrain.site/api');
+  final downloads = parseAppDownloads(downloadsJson(), apiBase: 'https://alfheemacademy.com/api');
   for (final os in const [GetAppOs.android, GetAppOs.windows, GetAppOs.linux, GetAppOs.ios, GetAppOs.macos]) {
     testWidgets('download strip + sheet: ${os.name}', (tester) async {
       final offer = appDownloadOfferFor(GetAppEnv(isWeb: true, os: os, iosSafari: os == GetAppOs.ios), downloads)!;
@@ -190,13 +190,13 @@ void main() {
     final r = AppRelease.fromJson(releaseJson(
       status: 'ready',
       source: 'google_play',
-      storeUrl: 'https://play.google.com/store/apps/details?id=com.doubley.nextbrain',
+      storeUrl: 'https://play.google.com/store/apps/details?id=com.doubley.alfaheem',
       autoPublish: false,
       progress: 100,
       log: sampleLog(12),
-      artifacts: [...apkArtifacts, {'name': 'NextBrain-1.4.1-53.aab', 'size': 52000000, 'kind': 'aab'}],
+      artifacts: [...apkArtifacts, {'name': 'Alfaheem-1.4.1-53.aab', 'size': 52000000, 'kind': 'aab'}],
     ));
-    await expectNoLayoutErrors(tester, () => ReleaseDetailView(release: r, onPublish: () {}, onDownload: (_) {}, busy: 'artifact:NextBrain-1.4.1-53.aab'));
+    await expectNoLayoutErrors(tester, () => ReleaseDetailView(release: r, onPublish: () {}, onDownload: (_) {}, busy: 'artifact:Alfaheem-1.4.1-53.aab'));
   });
 
   testWidgets('detail: failed, live, record only', (tester) async {

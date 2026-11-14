@@ -160,7 +160,7 @@ void main() {
           host: PlaceholderParticipant(name: count.isEven ? _longAr : _longEn, isHost: true, micOn: count != 3, isSpeaking: true, audioLevel: 0.8),
           others: others(count),
           sessionTitle: 'المحاضرة الثالثة — مقدمة طويلة جدًا في الجبر الخطي والمصفوفات والتحويلات الخطية وتطبيقاتها',
-          platformName: 'NextBrain — منصة التعليم الذكي',
+          platformName: 'الفهيم — منصة التعليم الذكي',
           showLogo: count != 3,
           onTapHost: () {},
           onTapOther: (_) {},

@@ -10,7 +10,7 @@
 //         "version": "1.0.0", "build": 1, "min_build": 1, "released_at": "2026-10-31", "min_os": "Android 7.0",
 //         "notes": {"ar": "…", "en": "…"},
 //         "primary": "arm64-v8a",                    // the file the banner's button downloads ("pwa" = install the web app)
-//         "files": [{"arch": "arm64-v8a", "kind": "apk", "url": "https://…/NextBrain-1.0.0-1-arm64-v8a.apk",
+//         "files": [{"arch": "arm64-v8a", "kind": "apk", "url": "https://…/Alfaheem-1.0.0-1-arm64-v8a.apk",
 //                    "size": 48700000, "sha256": "…"}, …],
 //         "pwa": false                               // also offer installing the web app from the browser
 //       },

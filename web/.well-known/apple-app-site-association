@@ -3,8 +3,8 @@
     "apps": [],
     "details": [
       {
-        "appIDs": ["MVHKS8482X.com.doubley.nextbrain"],
-        "appID": "MVHKS8482X.com.doubley.nextbrain",
+        "appIDs": ["MVHKS8482X.com.doubley.alfaheem"],
+        "appID": "MVHKS8482X.com.doubley.alfaheem",
         "components": [
           { "/": "/c/*", "comment": "course share links" },
           { "/": "/@*", "comment": "profile links (D-074)" },

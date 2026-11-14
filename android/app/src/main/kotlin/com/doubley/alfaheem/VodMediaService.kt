@@ -1,4 +1,4 @@
-package com.doubley.nextbrain
+package com.doubley.alfaheem
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VodMediaService — a course lecture playing as sound (the listen bar, D-104)
@@ -44,11 +44,11 @@ class VodMediaService : Service() {
     companion object {
         private const val TAG = "VodMediaService"
 
-        const val CH_VOD_MEDIA = "com.doubley.nextbrain/vod_media"
+        const val CH_VOD_MEDIA = "com.doubley.alfaheem/vod_media"
         private const val CHANNEL_ID = "vod_listen_channel"
         private const val NOTIFICATION_ID = 1003 // 1001 ScreenCaptureService, 1002 LiveCallService
 
-        private const val ACTION_CMD = "com.doubley.nextbrain.VOD_CMD"
+        private const val ACTION_CMD = "com.doubley.alfaheem.VOD_CMD"
         private const val EXTRA_CMD = "cmd"
 
         // What Dart last said (read by the service on every refresh).

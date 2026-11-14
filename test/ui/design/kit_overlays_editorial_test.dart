@@ -110,7 +110,7 @@ void main() {
         tester,
         () => ListView(children: [
           AppShareSheetBody(
-            url: 'https://nextbrain.site/app/#/s/meeting/12?ref=1234567890abcdef',
+            url: 'https://alfheemacademy.com/app/#/s/meeting/12?ref=1234567890abcdef',
             title: _long,
             kind: 'Meeting',
             subtitle: _long,

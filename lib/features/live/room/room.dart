@@ -1065,7 +1065,7 @@ class _RoomPageState extends State<RoomPage>
   // case. iOS-only for now: Android's native recorder backend doesn't have
   // the corresponding handler yet.
   static const MethodChannel _audioFrameChannel =
-  MethodChannel('com.doubley.nextbrain/native_recorder');
+  MethodChannel('com.doubley.alfaheem/native_recorder');
   CancelListenFunc? _audioTapCancel;
   // The exact LocalAudioTrack instance _audioTapCancel is currently bound
   // to. WebRTC renegotiation (e.g. adding a screen-share track) can cause
@@ -2128,7 +2128,7 @@ class _RoomPageState extends State<RoomPage>
   // whether it is visible; its own frames below stay the fallback when the native copy does not work.
   bool _nativeRoomCapture = false;
   bool _nativeRoomCaptureUnsupported = false;
-  static const _recorderChannel = MethodChannel('com.doubley.nextbrain/native_recorder');
+  static const _recorderChannel = MethodChannel('com.doubley.alfaheem/native_recorder');
 
   void _startLiveScreenCapture() {
     if (!_recordsHere || !Platform.isAndroid) return; // D-306: a meeting creator's recording too
@@ -2245,7 +2245,7 @@ class _RoomPageState extends State<RoomPage>
       return;
     }
     _liveScreenCaptureInFlight = true;
-    const channel = MethodChannel('com.doubley.nextbrain/native_recorder');
+    const channel = MethodChannel('com.doubley.alfaheem/native_recorder');
     try {
       if (!_rawLiveFramesUnsupported) {
         final frame = await _captureLiveScreenRaw();
@@ -2687,7 +2687,7 @@ class _RoomPageState extends State<RoomPage>
     // Both platforms return true when capture is actively running.
     try {
       final granted = await const MethodChannel(
-        'com.doubley.nextbrain/screen_share',
+        'com.doubley.alfaheem/screen_share',
       ).invokeMethod<bool>('startScreenCaptureService');
 
       if (granted == true) {
@@ -8112,7 +8112,7 @@ class _AuroraPainter extends CustomPainter {
 
 class NotificationChannelHelper {
   static const _channel = MethodChannel(
-    'com.doubley.nextbrain/notifications',
+    'com.doubley.alfaheem/notifications',
   );
   static const String screenShareChannelId = 'livekit_screen_share';
   static const String screenShareChannelName = 'Screen Share';

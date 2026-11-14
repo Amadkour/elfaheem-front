@@ -1,9 +1,9 @@
 // lib/features/profile/public_profile/public_profile.dart
 //
-// Profile links by username (D-074): `https://nextbrain.site/@ahmed` opens that person's public profile, the way a
-// course share link `https://nextbrain.site/c/<id>?ref=<uid>` opens a course (DeepLinkService).
+// Profile links by username (D-074): `https://alfheemacademy.com/@ahmed` opens that person's public profile, the way a
+// course share link `https://alfheemacademy.com/c/<id>?ref=<uid>` opens a course (DeepLinkService).
 //
-//   ProfileLink / profileLinkFrom   `/@ahmed`, `@Ahmed`, `https://nextbrain.site/@ahmed` → the normalized username
+//   ProfileLink / profileLinkFrom   `/@ahmed`, `@Ahmed`, `https://alfheemacademy.com/@ahmed` → the normalized username
 //   profileUrl(username)            the link a person shares
 //   PublicProfile.fromJson          GET /api/v1/public/u/{username}, read defensively (missing keys never throw)
 //   PublicProfileApi.load           → PublicProfileResult (found · notFound · disabled · failed)
@@ -30,8 +30,8 @@ const kPublicStatsFeatureKey = 'profile.public_stats';
 const kMyProfileFeatureKey = 'profile.my_profile';
 
 /// The host a profile link may point at (the course links' `DeepLinkService.siteBase`).
-const kProfileSiteBase = 'https://nextbrain.site';
-const _siteHosts = {'nextbrain.site', 'www.nextbrain.site'};
+const kProfileSiteBase = 'https://alfheemacademy.com';
+const _siteHosts = {'alfheemacademy.com', 'www.alfheemacademy.com'};
 
 class ProfileLink {
   const ProfileLink(this.username);
@@ -49,8 +49,8 @@ class ProfileLink {
   String toString() => 'ProfileLink(@$username)';
 }
 
-/// `/@ahmed`, `@Ahmed`, `/@ahmed/`, `%40ahmed`, `https://nextbrain.site/@ahmed?x=1`, and the web app's own
-/// `/app/@ahmed` / `https://nextbrain.site/app/@ahmed` (D-270 base path, D-854) → ProfileLink('ahmed'); anything
+/// `/@ahmed`, `@Ahmed`, `/@ahmed/`, `%40ahmed`, `https://alfheemacademy.com/@ahmed?x=1`, and the web app's own
+/// `/app/@ahmed` / `https://alfheemacademy.com/app/@ahmed` (D-270 base path, D-854) → ProfileLink('ahmed'); anything
 /// else (a course link, `/ahmed`, another host, an invalid or reserved name, extra path segments) → null.
 ProfileLink? profileLinkFrom(String? routeName) {
   final raw = routeName?.trim();

@@ -1,4 +1,4 @@
-// web/sw.js — NextBrain's own service worker, registered by web/flutter_bootstrap.js at scope "/".
+// web/sw.js — Alfaheem's own service worker, registered by web/flutter_bootstrap.js at scope "/".
 //
 // Why it exists: a worker that handles navigations keeps the site installable on every Chrome / Edge version,
 // and an installed app should show a branded "you're offline" page instead of the browser's error page.

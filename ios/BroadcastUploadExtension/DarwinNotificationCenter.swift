@@ -14,7 +14,7 @@
 //     requestStop() (and AppDelegate's "requestBroadcastStop") posts
 //     RequestStop, which this extension answers with finishBroadcastWithError.
 //
-//   com.doubley.nextbrain.*  — this app's own recording IPC
+//   com.doubley.alfaheem.*  — this app's own recording IPC
 //     (frame / audioframe / stop, plus wants_changed); must match
 //     AppDelegate.swift.
 
@@ -25,11 +25,11 @@ enum DarwinNotification: String {
     case broadcastStopped     = "iOS_BroadcastStopped"
     case broadcastRequestStop = "iOS_BroadcastRequestStop"
     // App recording IPC (AppDelegate.swift kDarwin* constants).
-    case recordingFrame       = "com.doubley.nextbrain.frame"
-    case recordingAudio       = "com.doubley.nextbrain.audioframe"
-    case recordingStop        = "com.doubley.nextbrain.stop"
+    case recordingFrame       = "com.doubley.alfaheem.frame"
+    case recordingAudio       = "com.doubley.alfaheem.audioframe"
+    case recordingStop        = "com.doubley.alfaheem.stop"
     /// Posted by the app after it changed one of the ext_wants_* marker files.
-    case wantsChanged         = "com.doubley.nextbrain.wants_changed"
+    case wantsChanged         = "com.doubley.alfaheem.wants_changed"
 }
 
 final class DarwinNotificationCenter {

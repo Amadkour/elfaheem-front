@@ -77,7 +77,7 @@ void main() {
           role: LiveRoomRole.host,
           elapsed: Duration(hours: 1, minutes: 2, seconds: 3),
           participants: 3,
-          linkUrl: 'https://nextbrain.site/live/4f3b1c9e8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c',
+          linkUrl: 'https://alfheemacademy.com/live/4f3b1c9e8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c',
           linkDirect: true,
           admission: LiveAdmission.approve,
           guestAdmission: LiveGuestAdmission.approve,

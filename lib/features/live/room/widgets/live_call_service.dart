@@ -10,7 +10,7 @@
 // The room calls [LiveCallService.start] once connected with a microphone it publishes or may
 // publish, and [LiveCallService.stop] when it leaves. Every call is a no-op on other platforms.
 //
-// Channel `com.doubley.nextbrain/live_call`:
+// Channel `com.doubley.alfaheem/live_call`:
 //   Dart → native: start {title, text, leave, channelName} → bool · stop · isRunning → bool
 //   native → Dart: leaveRequested
 library;
@@ -25,7 +25,7 @@ import 'package:flutter_education_app/features/live/live_room_words.dart';
 class LiveCallService {
   LiveCallService._();
 
-  static const _channel = MethodChannel('com.doubley.nextbrain/live_call');
+  static const _channel = MethodChannel('com.doubley.alfaheem/live_call');
 
   static bool get supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 

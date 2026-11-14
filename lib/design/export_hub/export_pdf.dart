@@ -576,7 +576,7 @@ Future<Uint8List> exportPdf(ExportDesign d, ExportDataset data, ExportContent c,
         );
 
   // ── pages
-  final doc = pw.Document(compress: exportPdfCompress, theme: theme, title: data.title, author: values['org']?.isEmpty == false ? values['org'] : 'NextBrain', creator: 'NextBrain');
+  final doc = pw.Document(compress: exportPdfCompress, theme: theme, title: data.title, author: values['org']?.isEmpty == false ? values['org'] : 'Alfaheem', creator: 'Alfaheem');
   final segs = d.segments;
   final content = <pw.Widget>[];
   var cursor = 0.0; // the fraction already printed

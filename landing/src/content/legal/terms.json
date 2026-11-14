@@ -4,8 +4,8 @@
   "effective_date": "2026-11-08",
   "title": {"ar": "شروط الاستخدام", "en": "Terms of Service"},
   "intro": {
-    "ar": "هذه الشروط اتفاق بينك وبين DoubleY، مقدمة منصة نكست برين. تحدد حقوقك والتزاماتك عند استخدام التطبيق على أندرويد وآيفون والويب والموقع nextbrain.site. اقرأها مع سياسة الخصوصية.",
-    "en": "These terms are an agreement between you and DoubleY, the provider of the NextBrain platform. They set out your rights and obligations when you use the app on Android, iOS and the web, and the website nextbrain.site. Read them together with our Privacy Policy."
+    "ar": "هذه الشروط اتفاق بينك وبين DoubleY، مقدمة منصة الفهيم. تحدد حقوقك والتزاماتك عند استخدام التطبيق على أندرويد وآيفون والويب والموقع alfheemacademy.com. اقرأها مع سياسة الخصوصية.",
+    "en": "These terms are an agreement between you and DoubleY, the provider of the Alfaheem platform. They set out your rights and obligations when you use the app on Android, iOS and the web, and the website alfheemacademy.com. Read them together with our Privacy Policy."
   },
   "highlights": [
     {"ar": "حسابك لك وحدك: لا تشاركه مع غيرك.", "en": "Your account is yours alone: don't share it."},
@@ -19,8 +19,8 @@
       "icon": "gavel",
       "title": {"ar": "قبول الشروط", "en": "Accepting these terms"},
       "body": {
-        "ar": "بإنشاء حساب أو باستخدام نكست برين فإنك توافق على هذه الشروط وعلى سياسة الخصوصية. إذا كنت تستخدم المنصة باسم مؤسسة، فأنت تؤكد أن لديك صلاحية قبول هذه الشروط عنها. إذا لم توافق، فلا تستخدم المنصة.",
-        "en": "By creating an account or using NextBrain you agree to these terms and to the Privacy Policy. If you use the platform on behalf of an organization, you confirm that you are authorised to accept these terms for it. If you do not agree, do not use the platform."
+        "ar": "بإنشاء حساب أو باستخدام الفهيم فإنك توافق على هذه الشروط وعلى سياسة الخصوصية. إذا كنت تستخدم المنصة باسم مؤسسة، فأنت تؤكد أن لديك صلاحية قبول هذه الشروط عنها. إذا لم توافق، فلا تستخدم المنصة.",
+        "en": "By creating an account or using Alfaheem you agree to these terms and to the Privacy Policy. If you use the platform on behalf of an organization, you confirm that you are authorised to accept these terms for it. If you do not agree, do not use the platform."
       }
     },
     {
@@ -28,14 +28,14 @@
       "icon": "school",
       "title": {"ar": "ما تقدمه المنصة", "en": "What the platform offers"},
       "body": {
-        "ar": "نكست برين منصة تعليمية تتيح:\n- للطلاب: الدورات المسجلة والحصص المباشرة والاختبارات والحضور والمساعد الذكي.\n- للمعلمين: نشر الدورات وإدارة الطلاب وإنشاء الاختبارات وتصحيحها والبث المباشر.\n- لأولياء الأمور: متابعة تقدم الأبناء.\n- للمؤسسات التعليمية: إدارة الأقسام والجداول والقيد والدرجات والإرشاد.\n\nقد نطور الميزات أو نغيرها أو نوقف بعضها مع الوقت، وسنحاول إخبارك مسبقًا بأي تغيير يؤثر عليك بشكل كبير.",
-        "en": "NextBrain is an education platform that offers:\n- Students: recorded courses, live classes, exams, attendance and the AI assistant.\n- Teachers: publishing courses, managing students, creating and grading exams, and live teaching.\n- Parents: following their children's progress.\n- Educational organizations: managing departments, timetables, enrolment, grades and advising.\n\nWe may improve, change or retire features over time, and we will try to tell you beforehand about any change that affects you significantly."
+        "ar": "الفهيم منصة تعليمية تتيح:\n- للطلاب: الدورات المسجلة والحصص المباشرة والاختبارات والحضور والمساعد الذكي.\n- للمعلمين: نشر الدورات وإدارة الطلاب وإنشاء الاختبارات وتصحيحها والبث المباشر.\n- لأولياء الأمور: متابعة تقدم الأبناء.\n- للمؤسسات التعليمية: إدارة الأقسام والجداول والقيد والدرجات والإرشاد.\n\nقد نطور الميزات أو نغيرها أو نوقف بعضها مع الوقت، وسنحاول إخبارك مسبقًا بأي تغيير يؤثر عليك بشكل كبير.",
+        "en": "Alfaheem is an education platform that offers:\n- Students: recorded courses, live classes, exams, attendance and the AI assistant.\n- Teachers: publishing courses, managing students, creating and grading exams, and live teaching.\n- Parents: following their children's progress.\n- Educational organizations: managing departments, timetables, enrolment, grades and advising.\n\nWe may improve, change or retire features over time, and we will try to tell you beforehand about any change that affects you significantly."
       }
     },
     {
       "id": "eligibility",
       "icon": "person",
-      "title": {"ar": "أهلية الاستخدام", "en": "Who can use NextBrain"},
+      "title": {"ar": "أهلية الاستخدام", "en": "Who can use Alfaheem"},
       "body": {
         "ar": "- يجب أن يكون عمرك 10 سنوات أو أكثر.\n- إذا كان عمرك أقل من 18 عامًا، فاستخدم المنصة بموافقة ولي أمرك أو من خلال مدرستك أو مؤسستك.\n- يخضع المعلمون للتوثيق قبل نشر الدورات، وقد نطلب مستندات تثبت الهوية أو المؤهل.",
         "en": "- You must be 10 years old or older.\n- If you are under 18, use the platform with your parent's or guardian's consent, or through your school or organization.\n- Teachers are verified before they can publish courses, and we may ask for documents proving identity or qualifications."
@@ -163,8 +163,8 @@
       "icon": "email",
       "title": {"ar": "تواصل معنا", "en": "Contact us"},
       "body": {
-        "ar": "لأي سؤال عن هذه الشروط:\n- البريد الإلكتروني: nextbrain.2y@gmail.com\n- من داخل التطبيق: الإعدادات ← الشكاوى والدعم.\n\nنكست برين — DoubleY",
-        "en": "For any question about these terms:\n- Email: nextbrain.2y@gmail.com\n- In the app: Settings → Complaints & support.\n\nNextBrain — DoubleY"
+        "ar": "لأي سؤال عن هذه الشروط:\n- البريد الإلكتروني: nextbrain.2y@gmail.com\n- من داخل التطبيق: الإعدادات ← الشكاوى والدعم.\n\nالفهيم — DoubleY",
+        "en": "For any question about these terms:\n- Email: nextbrain.2y@gmail.com\n- In the app: Settings → Complaints & support.\n\nAlfaheem — DoubleY"
       }
     }
   ]

@@ -12,7 +12,7 @@ import 'package:timeago/timeago.dart' as timeago;
 /// Application configuration and context.colors.
 class AppConfig {
   /// The production API. Its leaf certificate is the one ApiClient pins on mobile.
-  static const String productionBaseUrl = 'https://nextbrain.site/api';
+  static const String productionBaseUrl = 'https://alfheemacademy.com/api';
 
   /// `--dart-define=API_BASE_URL=http://10.0.2.2:18080/api` points a debug/profile build at the local stack
   /// (back/scripts/dev/setup.*); without it every build talks to production. A release build accepts only an

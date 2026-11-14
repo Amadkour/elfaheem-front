@@ -719,7 +719,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
       onFollow: () => nav.pushReplacement(MaterialPageRoute(builder: (_) => ExamResultsScreen(examId: id, examTitle: q.title.trim(), courseId: q.courseId))),
       onShare: () async {
         await Clipboard.setData(ClipboardData(
-            text: t('الاختبار «${q.title.trim()}» متاح الآن في $where على NextBrain.', 'The exam "${q.title.trim()}" is now open in $where on NextBrain.')));
+            text: t('الاختبار «${q.title.trim()}» متاح الآن في $where على الفهيم.', 'The exam "${q.title.trim()}" is now open in $where on Alfaheem.')));
         showAppNotice(t('نسخنا الرسالة. الصقها حيث تكلّم طلابك.', 'Message copied. Paste it wherever you talk to your students.'));
       },
     );

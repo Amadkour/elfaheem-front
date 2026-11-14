@@ -86,7 +86,7 @@ class AppNavigator {
     ));
   }
 
-  /// A public profile by @username (profile links `https://nextbrain.site/@name`, D-074).
+  /// A public profile by @username (profile links `https://alfheemacademy.com/@name`, D-074).
   static Future<void> openProfile(String username) async {
     await _nav?.push(MaterialPageRoute(
       settings: RouteSettings(name: '/@$username'),

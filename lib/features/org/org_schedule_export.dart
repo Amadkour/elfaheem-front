@@ -776,7 +776,7 @@ PdfColor _pc(String hex) => PdfColor.fromInt(0xFF000000 | int.parse(hex, radix: 
 
 /// [regular] / [bold]: TTF bytes with Arabic glyphs (the app bundles Tajawal and Bahij).
 Future<Uint8List> timetablePdf(ExportBook book, {required ByteData regular, required ByteData bold}) async {
-  final doc = pw.Document(title: book.title, creator: 'NextBrain', theme: pw.ThemeData.withFont(base: pw.Font.ttf(regular), bold: pw.Font.ttf(bold)));
+  final doc = pw.Document(title: book.title, creator: 'Alfaheem', theme: pw.ThemeData.withFont(base: pw.Font.ttf(regular), bold: pw.Font.ttf(bold)));
   final dir = book.rtl ? pw.TextDirection.rtl : pw.TextDirection.ltr;
   final colours = courseColours(book.sheets.expand((s) => s.slots));
   final stamp = AppTime.dateTime(book.generatedAt.toUtc());

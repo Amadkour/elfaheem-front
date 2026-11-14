@@ -79,10 +79,10 @@ final Map<String, Object?> _manifestJson = {
       'notes': {'ar': 'تحسينات', 'en': 'Improvements'},
       'primary': 'arm64-v8a',
       'files': [
-        {'arch': 'arm64-v8a', 'kind': 'apk', 'url': 'https://nextbrain.site/releases/android/a64.apk', 'size': 48700000, 'sha256': _sha},
+        {'arch': 'arm64-v8a', 'kind': 'apk', 'url': 'https://alfheemacademy.com/releases/android/a64.apk', 'size': 48700000, 'sha256': _sha},
         {'arch': 'armeabi-v7a', 'kind': 'apk', 'url': 'android/a32.apk', 'size': 47000000, 'sha256': _sha.toUpperCase()},
-        {'arch': 'universal', 'kind': 'apk', 'url': 'https://nextbrain.site/releases/android/all.apk', 'size': 99000000},
-        {'arch': 'x86_64', 'kind': 'apk', 'url': 'http://nextbrain.site/releases/android/x.apk'},
+        {'arch': 'universal', 'kind': 'apk', 'url': 'https://alfheemacademy.com/releases/android/all.apk', 'size': 99000000},
+        {'arch': 'x86_64', 'kind': 'apk', 'url': 'http://alfheemacademy.com/releases/android/x.apk'},
         {'arch': 'bad', 'kind': 'apk', 'url': 'javascript:alert(1)'},
       ],
     },
@@ -95,14 +95,14 @@ final Map<String, Object?> _manifestJson = {
       'primary': 'pwa',
       'pwa': true,
       'files': [
-        {'arch': 'x64', 'kind': 'deb', 'url': 'https://nextbrain.site/releases/linux/nb.deb', 'size': 30000000, 'sha256': _sha},
+        {'arch': 'x64', 'kind': 'deb', 'url': 'https://alfheemacademy.com/releases/linux/nb.deb', 'size': 30000000, 'sha256': _sha},
       ],
     },
     'tvos': {'pwa': true},
   },
 };
 
-final Uri _base = Uri.parse('https://nextbrain.site/releases/releases.json');
+final Uri _base = Uri.parse('https://alfheemacademy.com/releases/releases.json');
 final ReleasesManifest _manifest = parseReleasesManifest(_manifestJson, base: _base);
 
 GetAppEnv _web(GetAppOs os,
@@ -203,7 +203,7 @@ void main() {
       expect(a.version, '1.0.0');
       expect((a.build, a.minBuild, a.minOs), (3, 2, 'Android 7.0'));
       expect(a.files.map((f) => f.arch).toList(), ['arm64-v8a', 'armeabi-v7a', 'universal']);
-      expect(a.files[1].url, 'https://nextbrain.site/releases/android/a32.apk');
+      expect(a.files[1].url, 'https://alfheemacademy.com/releases/android/a32.apk');
       expect(a.files[1].sha256, _sha, reason: 'upper-case hex is normalised');
       expect(a.files[2].sha256, isNull);
       expect(a.files[0].fileName, 'a64.apk');
@@ -351,8 +351,8 @@ void main() {
     });
 
     test('the manifest URL is the API host root', () {
-      expect(releasesManifestUriFor('https://nextbrain.site/api').toString(),
-          'https://nextbrain.site/releases/releases.json');
+      expect(releasesManifestUriFor('https://alfheemacademy.com/api').toString(),
+          'https://alfheemacademy.com/releases/releases.json');
       expect(releasesManifestUriFor('http://10.0.2.2:18080/api').toString(),
           'http://10.0.2.2:18080/releases/releases.json');
     });

@@ -7,7 +7,7 @@
 //
 // Payloads understood: the bare code the Codes panel encodes (QrImageView(data: code), maybe grouped
 // "ABCD-2345-XY"), the shared invitation text ("… الكود: CODE" / "… the code: CODE") and a link carrying
-// ?code= / ?join_code= (also inside a #/ fragment), or the share link https://nextbrain.site/j/<CODE>. Codes are normalised like the server does (upper-case,
+// ?code= / ?join_code= (also inside a #/ fragment), or the share link https://alfheemacademy.com/j/<CODE>. Codes are normalised like the server does (upper-case,
 // letters and digits only).
 library;
 
@@ -37,7 +37,7 @@ bool get joinScannerAvailable => !kIsWeb;
 /// printed QR works in old and new apps.
 String joinLinkFor(String code) {
   final c = code.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-  return 'https://nextbrain.site/j/$c?code=$c';
+  return 'https://alfheemacademy.com/j/$c?code=$c';
 }
 
 final _scheme = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.\-]*://');
@@ -56,7 +56,7 @@ String? parseJoinQr(String? raw) {
   if (_scheme.hasMatch(s)) {
     final uri = Uri.tryParse(s);
     if (uri == null) return null;
-    // a join link: https://nextbrain.site/j/<CODE>
+    // a join link: https://alfheemacademy.com/j/<CODE>
     final seg = uri.pathSegments;
     if (seg.length == 2 && seg[0] == 'j') return _norm(seg[1]);
     String? pick(Map<String, String> q) => q['code'] ?? q['join_code'];

@@ -350,7 +350,7 @@ class _RoomState extends State<_Room> {
 Widget _waiting() => RecordingPlaceholderFrame(
       host: PlaceholderParticipant(name: _me, isHost: true, isSpeaking: true, audioLevel: 0.4),
       sessionTitle: _tr('محاضرة الفيزياء — الأسبوع السابع', 'Physics lecture — week 7'),
-      platformName: 'NextBrain',
+      platformName: 'Alfaheem',
       live: false,
     );
 

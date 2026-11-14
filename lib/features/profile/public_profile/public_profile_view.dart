@@ -57,7 +57,7 @@ class PublicProfileView extends StatelessWidget {
   /// The owner's who-sees-what and actions, right under the hero (null for visitors).
   final Widget? ownerPanel;
 
-  /// The guest's soft "join NextBrain" card at the end of the page (null when signed in).
+  /// The guest's soft "join Alfaheem" card at the end of the page (null when signed in).
   final Widget? joinCard;
 
   @override
@@ -243,7 +243,7 @@ class _ProfileHero extends StatelessWidget {
         if (students > 0)
           _Figure(value: appCompactNumber(students), label: t('طالب درّسهم', 'Students taught'), memoryKey: '$key.students')
         else if (isNew)
-          _Figure(value: _newLabel(), label: t('على NextBrain', 'On NextBrain'), memoryKey: '$key.new'),
+          _Figure(value: _newLabel(), label: t('على الفهيم', 'On Alfaheem'), memoryKey: '$key.new'),
         if (st?.rating != null)
           _Figure(value: st!.rating!.toStringAsFixed(1), label: t('التقييم', 'Rating'), memoryKey: '$key.rating', star: true)
         else if (p.experienceYears > 0)
@@ -288,7 +288,7 @@ class _ProfileHero extends StatelessWidget {
       if (p.isTeacher) _PaperChip(icon: Icons.verified_rounded, label: t('معلم', 'Teacher')),
       if (p.isStudent) _PaperChip(icon: Icons.auto_stories_rounded, label: t('متعلّم', 'Learner')),
       if (spec != null) _PaperChip(icon: Icons.category_rounded, label: spec),
-      if (since != null) _PaperChip(icon: Icons.event_available_rounded, label: t('على NextBrain منذ $since', 'On NextBrain since $since')),
+      if (since != null) _PaperChip(icon: Icons.event_available_rounded, label: t('على الفهيم منذ $since', 'On Alfaheem since $since')),
     ];
     final chips = chipList.isEmpty
         ? null
@@ -472,7 +472,7 @@ class _StatTile extends StatelessWidget {
 }
 
 /// "In numbers": a teacher's aggregates (D-852). Zeros and unknowns are left out; an account with nothing to show
-/// yet gets one calm "New on NextBrain" card instead of a row of zeros.
+/// yet gets one calm "New on Alfaheem" card instead of a row of zeros.
 class _NumbersSection extends StatelessWidget {
   const _NumbersSection({required this.stats});
 
@@ -513,7 +513,7 @@ class _NumbersSection extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Text(
-              t('معلم جديد على NextBrain — كن من أوائل طلابه.', 'New on NextBrain — be one of the first students.'),
+              t('معلم جديد على الفهيم — كن من أوائل طلابه.', 'New on Alfaheem — be one of the first students.'),
               style: AppType.body(context),
             ),
           ),
@@ -740,7 +740,7 @@ class ProfileJoinCard extends StatelessWidget {
         final b = AppBlock.colorsOf(context);
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(
-            teacher ? t('تعلّم مع $name على NextBrain', 'Learn with $name on NextBrain') : t('انضم إلى $name على NextBrain', 'Join $name on NextBrain'),
+            teacher ? t('تعلّم مع $name على الفهيم', 'Learn with $name on Alfaheem') : t('انضم إلى $name على الفهيم', 'Join $name on Alfaheem'),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: AppType.section(context).copyWith(color: b.ink),

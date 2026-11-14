@@ -27,8 +27,8 @@ void main() {
 
   testWidgets('the chooser in every stage fits', (tester) async {
     await expectNoLayoutErrors(tester, () => scrollable(chooser(CompanionStage.idle, {CompanionSource.microphone})));
-    await expectNoLayoutErrors(tester, () => scrollable(chooser(CompanionStage.ringing, _all, qr: 'https://nextbrain.site/s/companion/abcdefgh')));
-    await expectNoLayoutErrors(tester, () => scrollable(chooser(CompanionStage.ringing, _all, noPhone: true, qr: 'https://nextbrain.site/s/companion/abcdefgh')));
+    await expectNoLayoutErrors(tester, () => scrollable(chooser(CompanionStage.ringing, _all, qr: 'https://alfheemacademy.com/s/companion/abcdefgh')));
+    await expectNoLayoutErrors(tester, () => scrollable(chooser(CompanionStage.ringing, _all, noPhone: true, qr: 'https://alfheemacademy.com/s/companion/abcdefgh')));
     await expectNoLayoutErrors(tester, () => scrollable(chooser(CompanionStage.active, _all, error: 'That did not work.')));
   });
 

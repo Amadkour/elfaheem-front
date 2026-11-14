@@ -1,6 +1,6 @@
 // lib/features/exports/export_link_open_page.dart
 //
-// What a share link opens (`https://nextbrain.site/e/<token>` → route `/e/<token>`, D-134): the file is downloaded
+// What a share link opens (`https://alfheemacademy.com/e/<token>` → route `/e/<token>`, D-134): the file is downloaded
 // through `GET /api/v1/exports/links/{token}` (signed in — the route guard handles sign-in) and saved on the device
 // at once; then "Download again". Expired / revoked / not allowed / another organization's links get a calm page
 // with Back.

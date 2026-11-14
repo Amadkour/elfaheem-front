@@ -840,7 +840,7 @@ class OmrSheetsInfo {
   final bool printable;
 
   /// The teacher's own sheet (taught from a photo, a written table, a learned layout): printed as its picture with the
-  /// exam's header, no NextBrain QR or model letter.
+  /// exam's header, no Alfaheem QR or model letter.
   final bool ownSheet;
   final String templateName;
   final int questions;

@@ -11,7 +11,7 @@
 # then the release is closed with
 #   POST $NB_API_URL/api/v1/app-releases/upload/$NB_RELEASE_ID/done   {"files": [{name, size, sha256}]}
 #
-# Environment (set by the server when it starts the Codemagic build): NB_API_URL (e.g. https://nextbrain.site/api, the
+# Environment (set by the server when it starts the Codemagic build): NB_API_URL (e.g. https://alfheemacademy.com/api, the
 # same base the app uses), NB_RELEASE_ID, NB_UPLOAD_TOKEN (per release and attempt, expires after 6 h).
 # A 5xx / network failure is retried 5 times with a growing pause; a 4xx stops at once (a wrong token, a name the
 # server refuses, a file too large, a release that is no longer building). The token is never printed: it reaches curl

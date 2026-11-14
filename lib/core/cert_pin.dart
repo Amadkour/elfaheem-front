@@ -84,20 +84,19 @@ enum PinVerdict {
 class CertPin {
   CertPin._();
 
+  // ALFAHEEM (sync/identity.env, A-002): the pin sets come from CERT_PIN_SPKI_SHA256 / CERT_PIN_LEGACY_SHA256.
+  // Both are empty until the alfheemacademy.com certificate exists, so only the Let's Encrypt backup rule
+  // accepts the API host. TODO(owner): add the server key's SPKI SHA-256 to identity.env and re-run apply.
   /// SPKI SHA-256 (base64) of the server's public key; read it on the server with
   ///   openssl x509 -in /etc/letsencrypt/live/nextbrain.site/cert.pem -pubkey -noout \
   ///     | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
   /// Hex of the same: e6c23fb6870c8479ea4cf0d78618f89df59abcdf9caf1b98bc35f5de4a0ba833 (EC P-256 key of the
   /// certificate valid 2026-09-24 .. 2026-12-23). The code compares the base64 form.
-  static const leafSpkiSha256 = <String>{
-    '5sI/tocMhHnqTPDXhhj4nfWavN+crxuYvDX13koLqDM=',
-  };
+  static const leafSpkiSha256 = <String>{};
 
   /// SHA-256 (hex) of the whole leaf certificate DER, the pin before D-946. Kept during the transition; drop it once
   /// that certificate has expired (2026-12-23).
-  static const legacyLeafCertSha256 = <String>{
-    '93d682e09f1a3f195d50f3ed70e80c4c45206e527f332d7bd36ea03045141402',
-  };
+  static const legacyLeafCertSha256 = <String>{};
 
   /// SPKI SHA-256 (base64) of the roots the backup intermediates chain to — not used at run time (dart:io never shows
   /// the chain), the test checks every backup intermediate's signature against these keys.

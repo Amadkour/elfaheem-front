@@ -54,7 +54,7 @@ Widget _share({bool loading = false, String? error, LiveLink? link, bool editing
     );
 
 const _link = LiveLink(
-  url: 'https://nextbrain.site/live/4f3b1c9e8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c',
+  url: 'https://alfheemacademy.com/live/4f3b1c9e8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c',
   token: '4f3b1c9e',
   canPublish: false,
   maxGuests: 10,
@@ -98,7 +98,7 @@ void main() {
             onToggleQr: () {},
           ),
         );
-    const direct = LiveLink(url: 'https://nextbrain.site/live/4f3b1c9e8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c', token: '4f3b', canPublish: true, direct: true);
+    const direct = LiveLink(url: 'https://alfheemacademy.com/live/4f3b1c9e8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c', token: '4f3b', canPublish: true, direct: true);
 
     testWidgets('loading · error · no link · not direct · direct with QR', (tester) async {
       await expectNoLayoutErrors(tester, () => card(loading: true));

@@ -1,4 +1,4 @@
-// lib/features/messaging/chat/chat_store.dart — NextBrain Messages (D-330, D-375): the one state behind every chat screen.
+// lib/features/messaging/chat/chat_store.dart — Alfaheem Messages (D-330, D-375): the one state behind every chat screen.
 //
 //   ChatHub.instance        the chat list, the real-time events (chat_* on LiveEvents), delivered acks, drafts, the outbox,
 //                           and ONE ChatThreadController per conversation (`acquire` / `release`, reference counted)

@@ -1,7 +1,7 @@
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  site: 'https://nextbrain.site',
+  site: 'https://alfheemacademy.com',
   output: 'static',
   trailingSlash: 'always',
   compressHTML: true,

@@ -305,8 +305,8 @@ Future<Uint8List> appTablePdf(AppTableExport e,
   final doc = pw.Document(
     compress: exportPdfCompress,
     title: e.title,
-    author: e.brand ?? 'NextBrain',
-    creator: 'NextBrain',
+    author: e.brand ?? 'Alfaheem',
+    creator: 'Alfaheem',
     theme: pw.ThemeData.withFont(
         base: baseFont, bold: identical(regular, bold) ? baseFont : pw.Font.ttf(bold), fontFallback: [for (final f in fallback) pw.Font.ttf(f), pw.Font.helvetica()]),
   );

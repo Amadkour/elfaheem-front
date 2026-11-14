@@ -31,7 +31,7 @@ const kCertPlaceholders = <CertPlaceholder>[
   CertPlaceholder('date', 'التاريخ', 'Date', '١٥ مارس ٢٠٢٦', '15 March 2026', type: 'date'),
   CertPlaceholder('serial', 'الرقم التسلسلي', 'Serial number', 'NB-2026-000123', 'NB-2026-000123'),
   CertPlaceholder('grade', 'الدرجة', 'Grade', '95%', '95%'),
-  CertPlaceholder('org_name', 'اسم المؤسسة', 'Organization name', 'أكاديمية نكست برين', 'NextBrain Academy'),
+  CertPlaceholder('org_name', 'اسم المؤسسة', 'Organization name', 'أكاديمية الفهيم', 'Alfaheem Academy'),
 ];
 
 /// Keys the studio knows without a declaration (the row, plus the verify link and the photo).
@@ -93,7 +93,7 @@ LayoutField? certFieldOf(String lang, String key) {
 /// Sample values for the canvas texts and the server preview.
 Map<String, String> certSampleValues(String lang, List<String> custom) => {
       for (final p in kCertPlaceholders) p.key: p.sample(lang),
-      'verify_url': 'https://nextbrain.site/v/NB-2026-000123',
+      'verify_url': 'https://alfheemacademy.com/v/NB-2026-000123',
       for (final k in custom) k: k == 'hours' ? (lang == 'ar' ? '٣٠' : '30') : k.replaceAll('_', ' '),
     };
 

@@ -2,7 +2,7 @@
 // page, ready to join or hand out — live now first, then the next ones by day, the last 7 days at the end.
 //
 // Each room: Join (its pre-join page, D-106) or Open (the meeting's detail / the course page), Copy and Share (the
-// share sheet with the QR code) of its member link `https://nextbrain.site/s/meeting|session/<id>` (D-307), and for
+// share sheet with the QR code) of its member link `https://alfheemacademy.com/s/meeting|session/<id>` (D-307), and for
 // the host the guest link (`/live/<token>`, no account needed; marked expired once the room ended). Filters (All ·
 // Live now · Upcoming · I host · Guest links · Past) and a search box; "Meet now" is the page's primary action.
 //

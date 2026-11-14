@@ -3,7 +3,7 @@
 // The Android whole-screen annotation overlay (D-079, D-083): while the presenter shares the WHOLE screen from
 // Android and has LEFT the app, a floating pen bubble stays over every app; tapping it opens a compact toolbar and
 // a transparent full-screen canvas over the app below (AnnotationOverlay.kt, TYPE_APPLICATION_OVERLAY). Nothing
-// is drawn over NextBrain itself: back in the app the windows go (the drawings are kept for the next time the
+// is drawn over Alfaheem itself: back in the app the windows go (the drawings are kept for the next time the
 // presenter leaves), and the share stopping clears everything. The ink is AnnotationInk.kt, the same rules as
 // annotation_ink.dart. MediaProjection captures overlay windows, so the strokes are
 // burned into the shared video and every recording; they are NOT also sent as vectors (the room's
@@ -13,7 +13,7 @@
 // Needs "Display over other apps" (SYSTEM_ALERT_WINDOW): [requestPermission] opens the system page and answers
 // once the person comes back. Refused → the in-app annotation on the share view is the fallback.
 //
-// Channel `com.doubley.nextbrain/annotation_overlay`:
+// Channel `com.doubley.alfaheem/annotation_overlay`:
 //   Dart → native: isPermitted · requestPermission · openSettings · show {labels, colors, color, thickness, rtl,
 //                  surface, accent} (arms it for the share) · hide · isShowing (armed)
 //   native → Dart: closed (the overlay could not be shown any more, e.g. the permission was revoked: the room
@@ -32,7 +32,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 class AndroidAnnotationOverlay {
   AndroidAnnotationOverlay._();
 
-  static const _channel = MethodChannel('com.doubley.nextbrain/annotation_overlay');
+  static const _channel = MethodChannel('com.doubley.alfaheem/annotation_overlay');
 
   static bool get supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
@@ -64,7 +64,7 @@ class AndroidAnnotationOverlay {
   static Future<bool> isShowing() => _bool('isShowing');
 
   /// Arms the overlay for the running share: the bubble, toolbar and canvas appear over other apps once the
-  /// presenter leaves NextBrain. [colors] are ARGB presets (annotPresetColors; the first is also
+  /// presenter leaves Alfaheem. [colors] are ARGB presets (annotPresetColors; the first is also
   /// the laser's), [color] the starting one, [thickness] 0..2, [surface] / [accent] the toolbar's background and
   /// selection (LivePalette.surfaceHi / accent). False when the permission is missing or the window could not be
   /// added.

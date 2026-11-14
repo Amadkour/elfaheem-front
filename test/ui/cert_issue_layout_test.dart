@@ -65,7 +65,7 @@ IssueBatch _batch(String status) => IssueBatch.fromJson({
 final _issued = [
   IssuedCert.fromJson({
     'id': 1, 'serial': 'NB-2026-ABCDEF', 'recipient_name': 'سارة علي محمود عبد الرحمن الطويل جدًا', 'status': 'issued',
-    'url_ar': 'https://x/a.png', 'verify_url': 'https://nextbrain.site/verify/abc', 'emailed': true,
+    'url_ar': 'https://x/a.png', 'verify_url': 'https://alfheemacademy.com/verify/abc', 'emailed': true,
     'created_at': '2026-10-31T09:31:00',
   }),
   IssuedCert.fromJson({

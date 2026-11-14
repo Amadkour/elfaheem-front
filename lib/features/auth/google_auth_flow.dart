@@ -945,8 +945,8 @@ class _GoogleRoleSheetState extends State<_GoogleRoleSheet> {
                               Text(
                                 _t(
                                   'google_role_title',
-                                  'How will you use NextBrain?',
-                                  'كيف ستستخدم NextBrain؟',
+                                  'How will you use Alfaheem?',
+                                  'كيف ستستخدم الفهيم؟',
                                 ),
                                 style: TextStyle(
                                   fontFamily: AppFonts.family,

@@ -12,13 +12,13 @@ void main() {
   test('MFA setup answer: the seed and the otpauth URI are masked', () {
     final out = redactForLog({
       'secret': 'JBSWY3DPEHPK3PXP',
-      'otpauth_uri': 'otpauth://totp/NextBrain:a@b.c?secret=JBSWY3DPEHPK3PXP&issuer=NextBrain',
-      'issuer': 'NextBrain',
+      'otpauth_uri': 'otpauth://totp/Alfaheem:a@b.c?secret=JBSWY3DPEHPK3PXP&issuer=Alfaheem',
+      'issuer': 'Alfaheem',
       'digits': 6,
     }) as Map;
     expect(out['secret'], '***');
     expect(out['otpauth_uri'], '***');
-    expect(out['issuer'], 'NextBrain');
+    expect(out['issuer'], 'Alfaheem');
     expect(out['digits'], 6);
     expect(jsonEncode(out), isNot(contains('JBSWY3DPEHPK3PXP')));
   });

@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "DoubleY" "\0"
-            VALUE "FileDescription", "NextBrain" "\0"
+            VALUE "FileDescription", "Alfaheem" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "nextbrain" "\0"
+            VALUE "InternalName", "alfaheem" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 DoubleY. All rights reserved." "\0"
-            VALUE "OriginalFilename", "nextbrain.exe" "\0"
-            VALUE "ProductName", "NextBrain" "\0"
+            VALUE "OriginalFilename", "alfaheem.exe" "\0"
+            VALUE "ProductName", "Alfaheem" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

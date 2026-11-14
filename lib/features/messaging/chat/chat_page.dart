@@ -1,4 +1,4 @@
-// lib/features/messaging/chat/chat_page.dart — NextBrain Messages (D-330, D-375): the one chat design for every role.
+// lib/features/messaging/chat/chat_page.dart — Alfaheem Messages (D-330, D-375): the one chat design for every role.
 //
 //   ChatHomePage(initialConversationId:, startPeerId:…)  the list; from 760 px of pane the list and the open chat side by
 //                                                        side, below that a chat opens as a full-screen ChatThreadPage

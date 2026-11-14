@@ -683,7 +683,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
     unawaited(_load());
   }
 
-  /// The meeting's member link (D-307, `https://nextbrain.site/s/meeting/<id>`): invitees open it after signing in.
+  /// The meeting's member link (D-307, `https://alfheemacademy.com/s/meeting/<id>`): invitees open it after signing in.
   Widget _sharePill(BuildContext context) => ParentComponent(
         featureKey: kShareLinksKey,
         child: AppPill(

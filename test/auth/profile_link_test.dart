@@ -81,18 +81,18 @@ void main() {
     });
 
     test('full URLs on the site only', () {
-      expect(profileLinkFrom('https://nextbrain.site/@ahmed'), const ProfileLink('ahmed'));
-      expect(profileLinkFrom('https://www.nextbrain.site/@Ahmed'), const ProfileLink('ahmed'));
-      expect(profileLinkFrom('http://nextbrain.site/@ahmed'), const ProfileLink('ahmed'));
+      expect(profileLinkFrom('https://alfheemacademy.com/@ahmed'), const ProfileLink('ahmed'));
+      expect(profileLinkFrom('https://www.alfheemacademy.com/@Ahmed'), const ProfileLink('ahmed'));
+      expect(profileLinkFrom('http://alfheemacademy.com/@ahmed'), const ProfileLink('ahmed'));
       expect(profileLinkFrom('https://evil.example/@ahmed'), isNull);
-      expect(profileLinkFrom('ftp://nextbrain.site/@ahmed'), isNull);
+      expect(profileLinkFrom('ftp://alfheemacademy.com/@ahmed'), isNull);
     });
 
     test('junk and other links are not profile links', () {
       for (final s in <String?>[
         null, '', '   ', '/', '/ahmed', 'ahmed', '/c/12?ref=5', '/live/abc', '/@', '/@@ahmed', '/@ab', '/@admin',
         '/@a..b', '/@ahmed/courses', '/u/@ahmed', '/@ahmed.com', '/@123', '/@${'a' * 31}', '/@%E0%A4%A', '/login',
-        'mailto:ahmed@nextbrain.site', 'https://nextbrain.site/', 'https://nextbrain.site/c/3',
+        'mailto:ahmed@alfheemacademy.com', 'https://alfheemacademy.com/', 'https://alfheemacademy.com/c/3',
       ]) {
         expect(profileLinkFrom(s), isNull, reason: '$s');
       }
@@ -100,8 +100,8 @@ void main() {
   });
 
   test('profileUrl', () {
-    expect(profileUrl('ahmed'), 'https://nextbrain.site/@ahmed');
-    expect(profileUrl('@Ahmed'), 'https://nextbrain.site/@ahmed');
+    expect(profileUrl('ahmed'), 'https://alfheemacademy.com/@ahmed');
+    expect(profileUrl('@Ahmed'), 'https://alfheemacademy.com/@ahmed');
     expect(profileLinkFrom(profileUrl('@Ahmed.Ali')), const ProfileLink('ahmed.ali'));
   });
 

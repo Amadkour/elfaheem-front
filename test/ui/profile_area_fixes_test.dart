@@ -49,11 +49,11 @@ void main() {
   });
 
   test('M10: an organization is listed once in the workspace sheet', () {
-    final live = [_entry(1, 'NextBrain University', 'approved')];
+    final live = [_entry(1, 'Alfaheem University', 'approved')];
     final all = [
       ...live,
-      _entry(2, 'NextBrain University', 'pending'), // a request for the same university
-      _entry(1, 'NextBrain University', 'pending'), // the same id again
+      _entry(2, 'Alfaheem University', 'pending'), // a request for the same university
+      _entry(1, 'Alfaheem University', 'pending'), // the same id again
       _entry(3, 'Other College', 'pending'),
       _entry(3, 'Other College', 'pending'),
     ];

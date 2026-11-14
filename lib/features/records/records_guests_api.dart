@@ -10,7 +10,7 @@
 //   guest   GET    /api/v1/public/records/guest/{token}               → GuestRecordCard   (no account, auth: false)
 //           POST   /api/v1/public/records/guest/{token}/play          → RecordPlay (a short-lived signed stream)
 //
-// A guest link is https://nextbrain.site/s/record/g_<secret> (the share link scheme of D-312, a `g_` token).
+// A guest link is https://alfheemacademy.com/s/record/g_<secret> (the share link scheme of D-312, a `g_` token).
 // Contract: ../back/FLUTTER_API_CHANGES.md "Studio on session materials + record guests by e-mail". Tests:
 // test/org/records_guests_api_test.dart.
 import 'package:flutter_education_app/config/app_config.dart';

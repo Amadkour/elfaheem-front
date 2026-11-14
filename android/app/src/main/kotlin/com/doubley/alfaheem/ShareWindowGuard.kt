@@ -1,4 +1,4 @@
-package com.doubley.nextbrain
+package com.doubley.alfaheem
 
 import android.app.Activity
 import android.os.Build
@@ -23,7 +23,7 @@ import java.lang.ref.WeakReference
  * and on [end] puts back exactly what it changed (a FLAG_SECURE that something set again meanwhile — a
  * protected screen opened during the share — is left alone: protection wins).
  *
- * `com.doubley.nextbrain/share_window`:
+ * `com.doubley.alfaheem/share_window`:
  *   begin {clearSecure} → {wasSecure, sensitivity}   ·   end → null   ·   state → {secure, active}
  * Registered by AnnotationOverlayChannel.register (no MainActivity change). ScreenCaptureService calls
  * [onShareStopped] too, so the window is restored even when Dart is not running.
@@ -32,7 +32,7 @@ class ShareWindowGuard private constructor(activity: Activity, messenger: Binary
 
     companion object {
         private const val TAG = "ShareWindowGuard"
-        const val CHANNEL = "com.doubley.nextbrain/share_window"
+        const val CHANNEL = "com.doubley.alfaheem/share_window"
 
         @Volatile private var instance: ShareWindowGuard? = null
 

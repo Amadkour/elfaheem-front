@@ -14,7 +14,7 @@ List<Map<String, dynamic>> sampleLog(int n, {int from = 1}) => [
             3 => 'Running Gradle task \'assembleRelease\'…',
             4 => '✓ Built build/app/outputs/flutter-apk/app-arm64-v8a-release.apk (48.7MB)',
             5 => '[test] 00:41 +812: test/org/org_dashboard_v3_test.dart: home loads once',
-            _ => '[upload] NextBrain-1.4.1-53-arm64-v8a.apk 32 % (15.6 MB / 48.7 MB)',
+            _ => '[upload] Alfaheem-1.4.1-53-arm64-v8a.apk 32 % (15.6 MB / 48.7 MB)',
           },
           'at': '2026-11-02T11:${(i % 60).toString().padLeft(2, '0')}:00',
         },
@@ -75,9 +75,9 @@ Map<String, dynamic> releaseJson({
     };
 
 const apkArtifacts = [
-  {'name': 'NextBrain-1.4.0-52-arm64-v8a.apk', 'size': 48700000, 'sha256': '9b1c0d3e5f7a9b1c0d3e5f7a9b1c0d3e5f7a9b1c'},
-  {'name': 'NextBrain-1.4.0-52-armeabi-v7a.apk', 'size': 44100000, 'sha256': 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2'},
-  {'name': 'NextBrain-1.4.0-52-universal.apk', 'size': 96300000, 'sha256': 'f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1'},
+  {'name': 'Alfaheem-1.4.0-52-arm64-v8a.apk', 'size': 48700000, 'sha256': '9b1c0d3e5f7a9b1c0d3e5f7a9b1c0d3e5f7a9b1c'},
+  {'name': 'Alfaheem-1.4.0-52-armeabi-v7a.apk', 'size': 44100000, 'sha256': 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2'},
+  {'name': 'Alfaheem-1.4.0-52-universal.apk', 'size': 96300000, 'sha256': 'f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1'},
 ];
 
 /// The list page's reply: every platform, every kind of state.
@@ -93,7 +93,7 @@ Map<String, dynamic> releasesListJson() => {
         releaseJson(id: 11, platform: 'linux', version: '1.4.0', build: 52, status: 'failed', progress: 18,
             error: 'The gate failed: flutter analyze found 2 warnings (lib/features/org/org_ui.dart:118).'),
         releaseJson(id: 3, platform: 'windows', version: '1.3.0', build: 40, status: 'live', isLive: true, gate: 'direct',
-            storeUrl: 'https://nextbrain.site/releases/NextBrain-1.3.0-setup.exe'),
+            storeUrl: 'https://alfheemacademy.com/releases/Alfaheem-1.3.0-setup.exe'),
       ],
       'total': 8,
       'page': 1,
@@ -194,7 +194,7 @@ Map<String, dynamic> releaseConfigJson({
         'store_url': 'https://play.google.com/store/apps/details?id=$packageName',
         'tracks': ['internal', 'alpha', 'beta', 'production'],
       },
-      'ios': {'branch': 'production', 'workflows': {'store': 'ios-store'}, 'bundle_id': 'com.doubley.nextbrain', 'app_store_app_id': '', 'store_url': ''},
+      'ios': {'branch': 'production', 'workflows': {'store': 'ios-store'}, 'bundle_id': 'com.doubley.alfaheem', 'app_store_app_id': '', 'store_url': ''},
       'web': {'branch': 'production', 'workflows': {'website': 'web-website'}},
       'linux': {'branch': 'production', 'workflows': {'website': 'linux-website'}},
       'windows': {'branch': 'production', 'workflows': {'website': 'windows-website'}},
@@ -229,7 +229,7 @@ Map<String, dynamic> codemagicReleaseJson({
         artifacts: artifacts,
         log: log,
         source: channel == 'store' ? (platform == 'android' ? 'google_play' : 'app_store') : 'website',
-        storeUrl: channel == 'store' ? 'https://play.google.com/store/apps/details?id=com.doubley.nextbrain' : null,
+        storeUrl: channel == 'store' ? 'https://play.google.com/store/apps/details?id=com.doubley.alfaheem' : null,
       ),
       'channel': channel,
       'executor': 'codemagic',
@@ -247,14 +247,14 @@ Map<String, dynamic> codemagicReleaseJson({
 
 /// The website channel's files of an Android release (names as codemagic.yaml writes them).
 const codemagicApkArtifacts = [
-  {'name': 'NextBrain-1.4.1-53-arm64-v8a.apk', 'size': 48700000, 'sha256': '9b1c0d3e5f7a9b1c0d3e5f7a9b1c0d3e5f7a9b1c0d3e5f7a9b1c0d3e5f7a9b1c', 'kind': 'apk', 'abi': 'arm64-v8a'},
-  {'name': 'NextBrain-1.4.1-53-armeabi-v7a.apk', 'size': 44100000, 'sha256': 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2', 'kind': 'apk', 'abi': 'armeabi-v7a'},
-  {'name': 'NextBrain-1.4.1-53-universal.apk', 'size': 96300000, 'sha256': 'f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1', 'kind': 'apk', 'abi': 'universal'},
+  {'name': 'Alfaheem-1.4.1-53-arm64-v8a.apk', 'size': 48700000, 'sha256': '9b1c0d3e5f7a9b1c0d3e5f7a9b1c0d3e5f7a9b1c0d3e5f7a9b1c0d3e5f7a9b1c', 'kind': 'apk', 'abi': 'arm64-v8a'},
+  {'name': 'Alfaheem-1.4.1-53-armeabi-v7a.apk', 'size': 44100000, 'sha256': 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2', 'kind': 'apk', 'abi': 'armeabi-v7a'},
+  {'name': 'Alfaheem-1.4.1-53-universal.apk', 'size': 96300000, 'sha256': 'f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1d2c3b4a5f0e1', 'kind': 'apk', 'abi': 'universal'},
 ];
 
 /// `GET /api/v1/app/downloads` (services/app_release_codemagic.py downloads()).
 List<Map<String, dynamic>> downloadsJson({String androidVersion = '1.4.1', int androidBuild = 53}) {
-  const base = 'https://nextbrain.site/api/api/v1/app/downloads';
+  const base = 'https://alfheemacademy.com/api/api/v1/app/downloads';
   Map<String, dynamic> file(String platform, String name, int size, String kind, {String? abi, bool primary = false}) => {
         'name': name,
         'size': size,
@@ -274,9 +274,9 @@ List<Map<String, dynamic>> downloadsJson({String androidVersion = '1.4.1', int a
       'policy': 'recommended',
       'released_at': '2026-11-02T11:28:02',
       'files': [
-        file('android', 'NextBrain-$androidVersion-$androidBuild-arm64-v8a.apk', 48700000, 'apk', abi: 'arm64-v8a'),
-        file('android', 'NextBrain-$androidVersion-$androidBuild-armeabi-v7a.apk', 44100000, 'apk', abi: 'armeabi-v7a'),
-        file('android', 'NextBrain-$androidVersion-$androidBuild-universal.apk', 96300000, 'apk', abi: 'universal', primary: true),
+        file('android', 'Alfaheem-$androidVersion-$androidBuild-arm64-v8a.apk', 48700000, 'apk', abi: 'arm64-v8a'),
+        file('android', 'Alfaheem-$androidVersion-$androidBuild-armeabi-v7a.apk', 44100000, 'apk', abi: 'armeabi-v7a'),
+        file('android', 'Alfaheem-$androidVersion-$androidBuild-universal.apk', 96300000, 'apk', abi: 'universal', primary: true),
       ],
     },
     {
@@ -286,7 +286,7 @@ List<Map<String, dynamic>> downloadsJson({String androidVersion = '1.4.1', int a
       'notes_ar': '',
       'notes_en': '',
       'policy': 'optional',
-      'files': [file('windows', 'NextBrain-1.4.1-53-windows-x64.zip', 61200000, 'zip', primary: true)],
+      'files': [file('windows', 'Alfaheem-1.4.1-53-windows-x64.zip', 61200000, 'zip', primary: true)],
     },
     {
       'platform': 'linux',
@@ -296,8 +296,8 @@ List<Map<String, dynamic>> downloadsJson({String androidVersion = '1.4.1', int a
       'notes_en': '',
       'policy': 'optional',
       'files': [
-        file('linux', 'NextBrain-1.4.0-52-x64.deb', 38800000, 'deb', primary: true),
-        file('linux', 'NextBrain-1.4.0-52-x64.tar.gz', 40100000, 'tar'),
+        file('linux', 'Alfaheem-1.4.0-52-x64.deb', 38800000, 'deb', primary: true),
+        file('linux', 'Alfaheem-1.4.0-52-x64.tar.gz', 40100000, 'tar'),
       ],
     },
   ];

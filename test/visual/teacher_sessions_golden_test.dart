@@ -253,7 +253,7 @@ void main() {
 
   testWidgets('guest link', (t) async {
     const link = GuestLink(
-      url: 'https://nextbrain.site/live/3f9a1c2e7b8d4f6a9c0e1b2d3f4a5c6e7d8f9a0b',
+      url: 'https://alfheemacademy.com/live/3f9a1c2e7b8d4f6a9c0e1b2d3f4a5c6e7d8f9a0b',
       token: '3f9a1c2e7b8d4f6a9c0e1b2d3f4a5c6e7d8f9a0b',
       canPublish: true,
       maxGuests: 25,

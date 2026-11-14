@@ -42,7 +42,7 @@
     <application
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:label="NextBrain"
+        android:label="الفهيم"
         android:networkSecurityConfig="@xml/network_security_config"
         android:allowBackup="false">
 
@@ -85,50 +85,50 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:host="nextbrain.site"
+                    android:host="alfheemacademy.com"
                     android:pathPrefix="/c/"
                     android:scheme="https" />
                 <data
-                    android:host="nextbrain.site"
+                    android:host="alfheemacademy.com"
                     android:pathPrefix="/live/"
                     android:scheme="https" />
-                <!-- profile links https://nextbrain.site/@name (D-074); same host, so the same domain verification -->
+                <!-- profile links https://alfheemacademy.com/@name (D-074); same host, so the same domain verification -->
                 <data
-                    android:host="nextbrain.site"
+                    android:host="alfheemacademy.com"
                     android:pathPrefix="/@"
                     android:scheme="https" />
-                <!-- certificate verification links / QR https://nextbrain.site/verify/<token> (D-132) -->
+                <!-- certificate verification links / QR https://alfheemacademy.com/verify/<token> (D-132) -->
                 <data
-                    android:host="nextbrain.site"
+                    android:host="alfheemacademy.com"
                     android:pathPrefix="/verify/"
                     android:scheme="https" />
-                <!-- expiring export download links https://nextbrain.site/e/<token> (D-134, sign-in required) -->
+                <!-- expiring export download links https://alfheemacademy.com/e/<token> (D-134, sign-in required) -->
                 <data
-                    android:host="nextbrain.site"
+                    android:host="alfheemacademy.com"
                     android:pathPrefix="/e/"
                     android:scheme="https" />
                 <!-- organization join links /j/<CODE> and invitations /i/<token> (D-283) -->
                 <data
-                    android:host="nextbrain.site"
+                    android:host="alfheemacademy.com"
                     android:pathPrefix="/j/"
                     android:scheme="https" />
                 <data
-                    android:host="nextbrain.site"
+                    android:host="alfheemacademy.com"
                     android:pathPrefix="/i/"
                     android:scheme="https" />
                 <!-- share links of everything /s/<kind>/<id> and /s/page/<pageId> (D-307) -->
                 <data
-                    android:host="nextbrain.site"
+                    android:host="alfheemacademy.com"
                     android:pathPrefix="/s/"
                     android:scheme="https" />
                 <!-- the same guest / share links copied from the web app's address bar (/app/…, D-270): the installed
                      app opens them too, straight to the video or the meeting (D-843) -->
                 <data
-                    android:host="nextbrain.site"
+                    android:host="alfheemacademy.com"
                     android:pathPrefix="/app/live/"
                     android:scheme="https" />
                 <data
-                    android:host="nextbrain.site"
+                    android:host="alfheemacademy.com"
                     android:pathPrefix="/app/s/"
                     android:scheme="https" />
             </intent-filter>

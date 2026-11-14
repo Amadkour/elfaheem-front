@@ -1,8 +1,8 @@
 // lib/core/deep_link_service.dart
 //
-// Share links:  https://nextbrain.site/c/<courseId>?ref=<sharerUserId>
+// Share links:  https://alfheemacademy.com/c/<courseId>?ref=<sharerUserId>
 // Opening one lands on `/c/<id>?ref=<uid>` (Flutter's default deep linking feeds it to onGenerateRoute).
-// Profile links (D-074): https://nextbrain.site/@<username> → `/@<username>` → the public profile page
+// Profile links (D-074): https://alfheemacademy.com/@<username> → `/@<username>` → the public profile page
 // (features/profile/public_profile/; parsed by `profileLinkFrom`).
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -25,7 +25,7 @@ class DeepLinkService {
   DeepLinkService._();
   static final DeepLinkService instance = DeepLinkService._();
 
-  static const siteBase = 'https://nextbrain.site';
+  static const siteBase = 'https://alfheemacademy.com';
 
   CourseLink? _pending;
   ProfileLink? _pendingProfile;
@@ -43,7 +43,7 @@ class DeepLinkService {
     return null;
   }
 
-  /// `/@ahmed`, `@Ahmed` or `https://nextbrain.site/@ahmed` → ProfileLink, else null (D-074).
+  /// `/@ahmed`, `@Ahmed` or `https://alfheemacademy.com/@ahmed` → ProfileLink, else null (D-074).
   static ProfileLink? parseProfile(String? routeName) => profileLinkFrom(routeName);
 
   /// Visitor isn't logged in: remember the link, open it right after login (see _Guard in main.dart).

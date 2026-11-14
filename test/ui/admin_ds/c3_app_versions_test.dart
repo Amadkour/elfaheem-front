@@ -24,7 +24,7 @@ Map<String, dynamic> _policy() => {
           'min_supported': '1.5.0',
           'message_ar': 'تحسينات',
           'message_en': 'Faster live classes',
-          'store_url': 'https://play.google.com/store/apps/details?id=com.doubley.nextbrain',
+          'store_url': 'https://play.google.com/store/apps/details?id=com.doubley.alfaheem',
           'link_ok': true,
           'history_count': 3,
           'release': {'version': '2.2.0', 'build_number': 31, 'notes_en': 'New home', 'channel': 'store', 'source': 'google_play'},
@@ -178,7 +178,7 @@ void main() {
       'min_supported': '1.5.0',
       'message_ar': 'تحسينات',
       'message_en': 'Faster live classes',
-      'store_url': 'https://play.google.com/store/apps/details?id=com.doubley.nextbrain',
+      'store_url': 'https://play.google.com/store/apps/details?id=com.doubley.alfaheem',
     });
     await close(tester);
   });

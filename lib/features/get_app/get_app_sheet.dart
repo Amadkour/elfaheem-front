@@ -17,7 +17,7 @@ import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, Ap
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
-/// "Get the Android app", "Install NextBrain on your iPhone", …
+/// "Get the Android app", "Install Alfaheem on your iPhone", …
 String getAppOfferTitle(GetAppOffer o) => switch (o.kind) {
       GetAppOfferKind.download => 'get_app_title_${o.os.name}'.tr,
       GetAppOfferKind.installIos => 'get_app_install_title_${o.os == GetAppOs.ipados ? 'ipados' : 'ios'}'.tr,

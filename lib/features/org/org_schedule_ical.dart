@@ -66,7 +66,7 @@ String timetableIcs(
   final out = StringBuffer()
     ..write('BEGIN:VCALENDAR\r\n')
     ..write('VERSION:2.0\r\n')
-    ..write('PRODID:-//NextBrain//Timetable//EN\r\n')
+    ..write('PRODID:-//Alfaheem//Timetable//EN\r\n')
     ..write('CALSCALE:GREGORIAN\r\n')
     ..write('METHOD:PUBLISH\r\n')
     ..write('${icsFold('X-WR-CALNAME:${icsEscape(calendarName)}')}\r\n');

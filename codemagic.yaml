@@ -16,7 +16,7 @@
 #   NB_PLAY_TRACK      internal | alpha | beta | production (android-store)
 #   NB_PACKAGE_NAME    the Play package name the version was created for (recorded only in phase 1, see android-store)
 #   NB_GATE            test_first (the analyzer + the CI test suites must pass before the build) | direct
-#   NB_API_URL         our API base (https://nextbrain.site/api): where the website workflows upload their files
+#   NB_API_URL         our API base (https://alfheemacademy.com/api): where the website workflows upload their files
 #   NB_UPLOAD_TOKEN    website channel only: the per-release upload token (scripts/release/upload_artifacts.sh)
 #
 # Channels: "store" workflows hand the build to the store (android-store → Google Play, ios-store → App Store
@@ -106,7 +106,7 @@ definitions:
 
 workflows:
   # ── Android → Google Play ────────────────────────────────────────────────────────────────────────────────────
-  # PACKAGE NAME: the applicationId is com.doubley.nextbrain (android/app/build.gradle.kts, D-145; it was
+  # PACKAGE NAME: the applicationId is com.doubley.alfaheem (android/app/build.gradle.kts, D-145; it was
   # com.example.flutter_education_app, which Google Play refuses). The server's PLAY_PACKAGE_NAME must say the same,
   # or it keeps this channel "not ready". NB_PACKAGE_NAME is NOT applied to the build: changing the applicationId
   # makes a different app (a new Firebase Android client / google-services.json, and everyone reinstalls), so it is
@@ -202,7 +202,7 @@ workflows:
         script: |
           set -euo pipefail
           mkdir -p build/nb-upload
-          name="NextBrain-${NB_BUILD_NAME}-${NB_BUILD_NUMBER}"
+          name="Alfaheem-${NB_BUILD_NAME}-${NB_BUILD_NUMBER}"
           for variant in arm64-v8a:android-arm64 armeabi-v7a:android-arm universal:; do
             abi="${variant%%:*}"; target="${variant#*:}"
             echo "==> $abi"
@@ -241,7 +241,7 @@ workflows:
         NB_NOTES_AR_LOCALE: ar-SA
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.doubley.nextbrain # = IOS_BUNDLE_ID on the server
+        bundle_identifier: com.doubley.alfaheem # = IOS_BUNDLE_ID on the server
     scripts:
       - *check_vars
       - name: Code signing settings on the Xcode project
@@ -291,16 +291,16 @@ workflows:
         script: |
           set -euo pipefail
           # dart2js minifies the web build; --obfuscate / --split-debug-info do not apply to web
-          # served at https://nextbrain.site/app/ (D-270); MSYS_NO_PATHCONV: Git Bash (the Windows runner) would rewrite /app/
+          # served at https://alfheemacademy.com/app/ (D-270); MSYS_NO_PATHCONV: Git Bash (the Windows runner) would rewrite /app/
           MSYS_NO_PATHCONV=1 flutter build web --release --base-href /app/ \
-            --dart-define=API_BASE_URL=https://nextbrain.site/api \
-            --dart-define=LIVEKIT_URL=wss://nextbrain.site/livekit \
+            --dart-define=API_BASE_URL=https://alfheemacademy.com/api \
+            --dart-define=LIVEKIT_URL=wss://alfheemacademy.com/livekit \
             --build-name="$NB_BUILD_NAME" --build-number="$NB_BUILD_NUMBER"
           # D-171: content-hashed main script (cached `immutable` by nginx) + .gz / .br copies for gzip_static /
           # brotli_static (.br only where the `brotli` command exists)
           dart run scripts/web/postbuild.dart build/web
           mkdir -p build/nb-upload
-          (cd build/web && zip -qr "$CM_BUILD_DIR/build/nb-upload/NextBrain-${NB_BUILD_NAME}-${NB_BUILD_NUMBER}-web.zip" .)
+          (cd build/web && zip -qr "$CM_BUILD_DIR/build/nb-upload/Alfaheem-${NB_BUILD_NAME}-${NB_BUILD_NUMBER}-web.zip" .)
           ls -la build/nb-upload
       - *upload
     artifacts:
@@ -387,7 +387,7 @@ workflows:
           flutter build windows --release --obfuscate "--split-debug-info=$symbols" "--build-name=$env:NB_BUILD_NAME" "--build-number=$env:NB_BUILD_NUMBER"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force build/nb-upload | Out-Null
-          $name = "NextBrain-$($env:NB_BUILD_NAME)-$($env:NB_BUILD_NUMBER)-windows-x64.zip"
+          $name = "Alfaheem-$($env:NB_BUILD_NAME)-$($env:NB_BUILD_NUMBER)-windows-x64.zip"
           Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "build/nb-upload/$name" -Force
           Compress-Archive -Path "$symbols/*" -DestinationPath "build/debug-info-$($env:NB_BUILD_NAME)+$($env:NB_BUILD_NUMBER)-windows.zip" -Force
           Get-ChildItem build/nb-upload

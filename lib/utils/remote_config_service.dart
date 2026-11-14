@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 /// ┌──────────────────────┬────────────────┬───────────────────────────────┐
 /// │ Key                  │ Default        │ Description                   │
 /// ├──────────────────────┼────────────────┼───────────────────────────────┤
-/// │ app_name             │ NextBrain      │ Displayed name in the UI      │
+/// │ app_name             │ Alfaheem      │ Displayed name in the UI      │
 /// │ maintenance_mode     │ false          │ Show maintenance banner        │
 /// │ force_update_version │ 0              │ Min version before hard block  │
 /// └──────────────────────┴────────────────┴───────────────────────────────┘
@@ -23,7 +23,7 @@ class RemoteConfigService {
   // ── Defaults — used before fetch or when offline ──────────────────────────
 
   static const Map<String, dynamic> _defaults = {
-    'app_name':             'NextBrain',
+    'app_name':             'Alfaheem',
     'maintenance_mode':     false,
     'force_update_version': 0,
   };
@@ -64,7 +64,7 @@ class RemoteConfigService {
 
   // ── Getters ───────────────────────────────────────────────────────────────
 
-  /// The app's display name — replaces the hardcoded "NextBrain" string.
+  /// The app's display name — replaces the hardcoded "Alfaheem" string.
   String get appName {
     final name = _rc?.getString('app_name') ?? '';
     return name.isNotEmpty ? name : _defaults['app_name'] as String;

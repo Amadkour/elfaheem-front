@@ -77,7 +77,7 @@ MyPublicProfile owner({bool student = false}) => MyPublicProfile.fromJson({
       'username': student ? null : 'abdulrahman.mohammed_alsharif',
       'username_confirmed': !student,
       'live': !student,
-      'link': student ? null : 'https://nextbrain.site/@abdulrahman.mohammed_alsharif',
+      'link': student ? null : 'https://alfheemacademy.com/@abdulrahman.mohammed_alsharif',
       'blocked': student ? 'username_unconfirmed' : null,
       'profile': student ? studentJson() : richTeacher(),
     })!;
@@ -86,7 +86,7 @@ void main() {
   group('parsing', () {
     test('/app/@name links (the web base path)', () {
       expect(profileLinkFrom('/app/@Ahmed'), const ProfileLink('ahmed'));
-      expect(profileLinkFrom('https://nextbrain.site/app/@ahmed'), const ProfileLink('ahmed'));
+      expect(profileLinkFrom('https://alfheemacademy.com/app/@ahmed'), const ProfileLink('ahmed'));
       expect(profileLinkFrom('/other/@ahmed'), isNull);
       expect(profileLinkFrom('/app/x/@ahmed'), isNull);
     });
@@ -197,7 +197,7 @@ void main() {
     expect(find.text('Most joined'), findsOneWidget);
     expect(find.text('78%'), findsOneWidget);
     expect(find.text('2 hours'), findsOneWidget);
-    expect(find.text('Learn with Ahmed on NextBrain'), findsOneWidget);
+    expect(find.text('Learn with Ahmed on Alfaheem'), findsOneWidget);
     await tester.tap(find.text('Create a free account'));
     expect(joined, isTrue);
 
@@ -207,7 +207,7 @@ void main() {
     ));
     await tester.pump(const Duration(seconds: 2));
     expect(find.text('New'), findsOneWidget);
-    expect(find.text('New on NextBrain — be one of the first students.'), findsOneWidget);
+    expect(find.text('New on Alfaheem — be one of the first students.'), findsOneWidget);
     expect(find.text('Growth'), findsNothing);
   });
 }

@@ -31,7 +31,7 @@ AppTableExport table({int n = 6, String? groupBy, bool rtl = false, List<AppExpo
       id: 'test.table',
       title: rtl ? 'تقرير المدفوعات' : 'Payments report',
       subtitle: 'October 2026',
-      brand: 'NextBrain Academy',
+      brand: 'Alfaheem Academy',
       filters: const {'Status': 'All'},
       columns: columns,
       groupBy: groupBy,

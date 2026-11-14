@@ -268,10 +268,10 @@ void main() {
       await _pump(tester, NewAppReleasePage(latest: latest, askPassword: (_) async => 'pw'));
       await _tapKey(tester, 'release.channel.store');
       expect(submit(tester).onPressed, isNull);
-      await tester.enterText(find.byKey(const ValueKey('release.package_name')), 'com.doubley.nextbrain');
+      await tester.enterText(find.byKey(const ValueKey('release.package_name')), 'com.doubley.alfaheem');
       await _frames(tester, 3);
       expect(submit(tester).onPressed, isNotNull, reason: 'the server re-checks with the same override');
-      await tester.enterText(find.byKey(const ValueKey('release.store_url')), 'https://play.google.com/store/apps/details?id=com.doubley.nextbrain');
+      await tester.enterText(find.byKey(const ValueKey('release.store_url')), 'https://play.google.com/store/apps/details?id=com.doubley.alfaheem');
       await _tapKey(tester, 'release.submit');
       await _frames(tester, 10);
       expect(sent, isNotNull);
@@ -281,8 +281,8 @@ void main() {
         'branch': 'production',
         'workflow': 'android-store',
         'track': 'internal',
-        'package_name': 'com.doubley.nextbrain',
-        'store_url': 'https://play.google.com/store/apps/details?id=com.doubley.nextbrain',
+        'package_name': 'com.doubley.alfaheem',
+        'store_url': 'https://play.google.com/store/apps/details?id=com.doubley.alfaheem',
       });
       expect(sent!.containsKey('password'), isTrue);
       await tester.pump(const Duration(seconds: 5));
@@ -395,9 +395,9 @@ void main() {
       expect(serverUpdateOffer({'should_update': true, 'channel': 'store', 'download_url': 'https://apps.apple.com/x'}, lang: 'en', platform: 'ios')!.source,
           'app_store');
       final site = serverUpdateOffer({'must_update': true, 'channel': 'website', 'source': 'website', 'download_url': '/api/v1/app/downloads/android/x-universal.apk'},
-          lang: 'en', platform: 'android', apiBase: 'https://nextbrain.site/api')!;
+          lang: 'en', platform: 'android', apiBase: 'https://alfheemacademy.com/api')!;
       expect(site.source, 'website');
-      expect(site.url, 'https://nextbrain.site/api/api/v1/app/downloads/android/x-universal.apk');
+      expect(site.url, 'https://alfheemacademy.com/api/api/v1/app/downloads/android/x-universal.apk');
       expect(updateSourceOf({'source': 'custom', 'channel': 'website'}), 'custom');
       expect(updateSourceOf({}), 'website', reason: 'nothing said: the old behaviour');
     });

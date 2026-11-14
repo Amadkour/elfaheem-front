@@ -69,7 +69,7 @@ void main() {
         expect(needsSignInFirst(entry), isFalse, reason: entry);
       }
       // the browser URL under the web app's folder
-      expect(webEntryRouteFromUri(Uri.parse('https://nextbrain.site/app/s/video/$_video'), basePath: '/app/'), '/s/video/$_video');
+      expect(webEntryRouteFromUri(Uri.parse('https://alfheemacademy.com/app/s/video/$_video'), basePath: '/app/'), '/s/video/$_video');
     });
   });
 
@@ -95,9 +95,9 @@ void main() {
       expect([for (final x in g) (x.id, x.openLink)], [(1, true), (2, false)]);
       final l = MaterialGuestLinks.fromJson({
         'links': [
-          {'id': 3, 'token': _video, 'link': 'https://nextbrain.site/s/video/$_video', 'expires_at': null, 'views': 2},
+          {'id': 3, 'token': _video, 'link': 'https://alfheemacademy.com/s/video/$_video', 'expires_at': null, 'views': 2},
         ],
-        'created': {'id': 3, 'token': _video, 'link': 'https://nextbrain.site/s/video/$_video'},
+        'created': {'id': 3, 'token': _video, 'link': 'https://alfheemacademy.com/s/video/$_video'},
       });
       expect((l.links.single.views, l.created?.id, l.enabled), (2, 3, true));
       expect(guestRecordErrorText(const ApiException(message: 'x', statusCode: 404, code: 'link_not_found')), contains('not available'));

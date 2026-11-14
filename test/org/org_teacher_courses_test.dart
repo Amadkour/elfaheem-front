@@ -35,8 +35,8 @@ import '../ui/layout_harness.dart';
 /// Computer Science department's rights only.
 const _uni = {
   'id': 1,
-  'name_ar': 'جامعة نكست برين التجريبية',
-  'name_en': 'NextBrain Demo University',
+  'name_ar': 'جامعة الفهيم التجريبية',
+  'name_en': 'Alfaheem Demo University',
   'type': 'university',
   'status': 'approved',
   'my_role': 'dept_staff',
@@ -83,7 +83,7 @@ OrgSession _session() => OrgSession()
 
 const _orgCounts = [
   CourseScopeCount(scope: CourseScope.personal, count: 0),
-  CourseScopeCount(scope: CourseScope.org(1), count: 2, org: CourseOrg(id: 1, nameAr: 'جامعة نكست برين', nameEn: 'NextBrain University', path: '/1/')),
+  CourseScopeCount(scope: CourseScope.org(1), count: 2, org: CourseOrg(id: 1, nameAr: 'جامعة الفهيم', nameEn: 'Alfaheem University', path: '/1/')),
 ];
 
 void main() {

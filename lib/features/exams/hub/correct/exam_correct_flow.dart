@@ -1,7 +1,7 @@
 // Exam Hub, F4: "Correct this exam". One calm start: import one PDF with every paper, or scan with the camera; what was
 // corrected so far, and the way back into it. An online exam goes straight to the marking screen and a paper exam without
 // bubble sheets to the written flow, so nobody lands on a dead end. A teacher's own sheet has no live camera (it looks for
-// NextBrain's corner marks).
+// Alfaheem's corner marks).
 library;
 
 import 'dart:typed_data';

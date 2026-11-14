@@ -292,7 +292,7 @@ void main() {
         'amount': 62.5,
         'currency': 'SAR',
         'points': 50,
-        'checkout_url': 'https://nextbrain.site/api/api/v1/payments/moyasar/form?t=abc',
+        'checkout_url': 'https://alfheemacademy.com/api/api/v1/payments/moyasar/form?t=abc',
       });
       expect(c.topupId, 31);
       expect(c.provider, 'moyasar');

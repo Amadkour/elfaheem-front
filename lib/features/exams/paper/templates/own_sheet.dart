@@ -1,4 +1,4 @@
-// "Use your own sheet" (D-302): any bubble sheet a teacher already has (round or square bubbles, no NextBrain
+// "Use your own sheet" (D-302): any bubble sheet a teacher already has (round or square bubbles, no Alfaheem
 // marks) or a table where students WRITE the number / letter of their answer. One photo, scan or PDF of it →
 // `POST /omr/auto-templates/detect` finds the questions, the options, the student-ID block (or a QR / barcode) →
 // the teacher checks it once on the picture (each block coloured by what it is, its question numbers on it) and
@@ -473,7 +473,7 @@ class OwnSheetIntro extends StatelessWidget {
           AppSpace.gapSm,
           AppBanner(
             icon: Icons.lightbulb_outline_rounded,
-            text: t('أوراق NextBrain المطبوعة لا تحتاج هذا: اخترها مباشرة من القائمة.', "NextBrain's printed sheets don't need this: pick them straight from the list."),
+            text: t('أوراق الفهيم المطبوعة لا تحتاج هذا: اخترها مباشرة من القائمة.', "Alfaheem's printed sheets don't need this: pick them straight from the list."),
           ),
         ]),
       ),

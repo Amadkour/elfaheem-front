@@ -260,7 +260,7 @@ class _SettingsPage extends StatelessWidget {
             AppSettingsTile(icon: Icons.logout_rounded, label: _tr('تسجيل الخروج', 'Sign out'), color: c.danger, onTap: () {}),
           ]),
         ],
-        footer: Text('NextBrain 2.4.0', textAlign: TextAlign.center, style: AppType.meta(context)),
+        footer: Text('Alfaheem 2.4.0', textAlign: TextAlign.center, style: AppType.meta(context)),
       ),
     );
   }

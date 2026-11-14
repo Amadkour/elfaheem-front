@@ -20,7 +20,7 @@ AppTableExport layoutTestExport({int rows = 120, String? dataset, int? orgId}) =
       id: 'test.students',
       title: 'Students',
       titles: const {'ar': 'الطلاب', 'en': 'Students'},
-      brand: 'NextBrain Academy',
+      brand: 'Alfaheem Academy',
       filters: const {'Course': 'Algebra'},
       orgId: orgId,
       serverDataset: dataset,

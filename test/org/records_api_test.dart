@@ -135,8 +135,8 @@ void main() {
 
   test('the play URL is made absolute on the API base', () {
     final p = RecordPlay.fromJson({'url': '/api/v1/me/records/stream/tok', 'mime': 'audio/mp4', 'expires_in': 7200},
-        base: 'https://nextbrain.site/api/');
-    expect(p.url, 'https://nextbrain.site/api/api/v1/me/records/stream/tok');
+        base: 'https://alfheemacademy.com/api/');
+    expect(p.url, 'https://alfheemacademy.com/api/api/v1/me/records/stream/tok');
     expect(p.audio, isTrue);
     expect(p.expiresIn, 7200);
     expect(RecordPlay.fromJson({'url': 'https://x.test/s'}, base: 'https://b').url, 'https://x.test/s');

@@ -15,7 +15,7 @@ import 'layout_harness.dart';
 MaterialGuestLink _link(int id, {String? expires = '2026-12-01T00:00:00', bool opened = false}) => MaterialGuestLink.fromJson({
       'id': id,
       'token': 'v_abcdefghijklmnopqrstuvwxyz012345$id',
-      'link': 'https://nextbrain.site/s/video/v_abcdefghijklmnopqrstuvwxyz012345$id',
+      'link': 'https://alfheemacademy.com/s/video/v_abcdefghijklmnopqrstuvwxyz012345$id',
       'expires_at': expires,
       'views': opened ? 12 : 0,
       'opened_at': opened ? '2026-11-10T10:00:00' : null,
@@ -99,7 +99,7 @@ void main() {
       'kind': 'link',
       'email': null,
       'token': 'g_openlinkopenlink',
-      'link': 'https://nextbrain.site/s/record/g_openlinkopenlink',
+      'link': 'https://alfheemacademy.com/s/record/g_openlinkopenlink',
       'email_status': 'link',
       'expires_at': null,
     })!;

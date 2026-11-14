@@ -49,7 +49,7 @@ enum RadioKind { gps, wifi, bluetooth }
 class AttendanceRadios {
   AttendanceRadios._();
 
-  static const _ch = MethodChannel('com.doubley.nextbrain/radios');
+  static const _ch = MethodChannel('com.doubley.alfaheem/radios');
   static int? _sdk;
 
   static bool get _android => !kIsWeb && Platform.isAndroid;

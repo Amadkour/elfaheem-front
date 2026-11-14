@@ -134,8 +134,8 @@ class _AdminLegalPanelState extends State<AdminLegalPanel> {
       AppBanner(
         icon: Icons.public_rounded,
         text: _t(
-            'يقرأ الجميع هذين المستندين في التطبيق (حتى قبل تسجيل الدخول) وعلى الموقع nextbrain.site/privacy و nextbrain.site/terms. يظهر تعديلك في التطبيق فورًا، وعلى الموقع عند بنائه التالي.',
-            'Everyone reads these two documents in the app (even before signing in) and on the website at nextbrain.site/privacy and nextbrain.site/terms. Your edit shows in the app at once, and on the website at its next build.'),
+            'يقرأ الجميع هذين المستندين في التطبيق (حتى قبل تسجيل الدخول) وعلى الموقع alfheemacademy.com/privacy و alfheemacademy.com/terms. يظهر تعديلك في التطبيق فورًا، وعلى الموقع عند بنائه التالي.',
+            'Everyone reads these two documents in the app (even before signing in) and on the website at alfheemacademy.com/privacy and alfheemacademy.com/terms. Your edit shows in the app at once, and on the website at its next build.'),
       ),
       const SizedBox(height: AppSpace.md),
       for (final doc in _docs)

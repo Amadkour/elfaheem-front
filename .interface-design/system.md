@@ -1,4 +1,4 @@
-# NextBrain — "Warm Editorial Blocks" design system (D-610 – D-629)
+# Alfaheem — "Warm Editorial Blocks" design system (D-610 – D-629)
 
 The locked decisions for the editorial theme overhaul (2026-11-10). Every agent reads this before touching UI and
 holds to it. Code is the source of truth for the token VALUES (`lib/design/app_tokens.dart`,

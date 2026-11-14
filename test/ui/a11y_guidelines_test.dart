@@ -87,7 +87,7 @@ final _blocked = <(String, String, bool Function(String label), String)>[
   // anti-aliased edge (171, 176, 208), not the background: 2.13:1. Still checked on every other platform.
   if (Platform.isLinux)
     for (final c in const ['login', 'register', 'verify', 'login_biometric'])
-      (c, 'text contrast', (l) => l == 'NextBrain', 'Linux: the test font edge on the hero gradient, not the colours'),
+      (c, 'text contrast', (l) => l == 'Alfaheem', 'Linux: the test font edge on the hero gradient, not the colours'),
   // Not a colour fault: a four-letter caption in an 872 px wide node on the page canvas, which wears the doodle
   // field (D-650 r3, the primary at AppBrandLayer.doodleAlpha). In that rect the doodles' pixels out-count the test
   // font's boxes, so the check pairs the canvas with a doodle and never sees the text; the caption's own colour is

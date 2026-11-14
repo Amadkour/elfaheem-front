@@ -823,7 +823,7 @@ class _Wordmark extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                AppIdentity.instance.name.isNotEmpty ? AppIdentity.instance.name : 'NextBrain',
+                AppIdentity.instance.name.isNotEmpty ? AppIdentity.instance.name : 'Alfaheem',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppType.section(context).copyWith(color: l.sideInk),

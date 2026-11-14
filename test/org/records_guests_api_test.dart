@@ -28,11 +28,11 @@ void main() {
         'record_id': 4,
         'mode': 'people',
         'token': 'shareToken123',
-        'link': 'https://nextbrain.site/s/record/shareToken123',
+        'link': 'https://alfheemacademy.com/s/record/shareToken123',
         'people': [],
         'views': 5,
         'guests': [
-          {'id': 1, 'email': 'a@example.com', 'token': 'g_abcdefghijklmnop', 'link': 'https://nextbrain.site/s/record/g_abcdefghijklmnop',
+          {'id': 1, 'email': 'a@example.com', 'token': 'g_abcdefghijklmnop', 'link': 'https://alfheemacademy.com/s/record/g_abcdefghijklmnop',
            'expires_at': '2026-11-15T09:00:00', 'expired': false, 'opened_at': '2026-11-08T10:00:00', 'views': 2, 'email_status': 'sent'},
           {'id': 2, 'email': 'b@example.com', 'token': 'g_qrstuvwxyz012345', 'expires_at': null, 'views': 0, 'email_status': 'unavailable'},
           {'id': 3, 'email': 'c@example.com', 'token': 'g_zzzzzzzzzzzzzzzz', 'expired': true, 'email_status': 'failed'},
@@ -136,8 +136,8 @@ void main() {
     });
 
     test('a frames answer keeps its absolute url', () {
-      final f = RecordFrames.fromJson({'status': 'ready', 'url': '/api/v1/studio/frames/tok', 'count': 24}, base: 'https://nextbrain.site/api');
-      expect(f.url, 'https://nextbrain.site/api/api/v1/studio/frames/tok');
+      final f = RecordFrames.fromJson({'status': 'ready', 'url': '/api/v1/studio/frames/tok', 'count': 24}, base: 'https://alfheemacademy.com/api');
+      expect(f.url, 'https://alfheemacademy.com/api/api/v1/studio/frames/tok');
     });
   });
 }

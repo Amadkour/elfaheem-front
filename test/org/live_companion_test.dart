@@ -41,7 +41,7 @@ void main() {
     test('the QR link goes through the one link scheme', () {
       const link = AppLink.companion('abcDEF_123-xy');
       expect(link.route, '/s/companion/abcDEF_123-xy');
-      expect(AppLink.parse(link.url('https://nextbrain.site')), link);
+      expect(AppLink.parse(link.url('https://alfheemacademy.com')), link);
       expect(AppLink.parse('/s/companion/short'), isNull);
     });
   });

@@ -131,7 +131,7 @@ class AuthBrandName extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              id.name.isNotEmpty ? id.name : 'NextBrain',
+              id.name.isNotEmpty ? id.name : 'Alfaheem',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: (large ? AppType.pageTitle(context) : AppType.section(context)).copyWith(color: ink ?? c.textDark, height: 1.1),

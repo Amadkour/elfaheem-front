@@ -1,7 +1,7 @@
 // The paper exam's answer sheets (D-687, contract B in ../back/docs/grading/AUTOGRADE_CONTRACT.md): the pure part.
 //
 // A paper exam can carry two machine-read sheets: the bubble sheet (multiple choice and true / false; printed by
-// NextBrain, or sheets the teacher already has) and the NB2 answer sheet (numbers, completions, short and long answers,
+// Alfaheem, or sheets the teacher already has) and the NB2 answer sheet (numbers, completions, short and long answers,
 // written in fixed boxes and lines). Both are personal (one per student: the course's roster with the academic ID or
 // the system number, or, without a course, a CSV / Excel list) or generic (a name line and ID boxes). The wizard saves
 // the choice in `settings.sheet_plan`; Deliver reads it back to print the NB2 sheets through `POST /exams/{id}/sheets`.
@@ -28,7 +28,7 @@ const kAnswerSheetTypes = <String>{'numeric', 'fill_blank', 'short_answer', 'ess
 
 bool answerSheetCanHold(String type) => kAnswerSheetTypes.contains(type);
 
-/// Bubble sheets printed by NextBrain, or sheets the teacher already has (only read, never printed here).
+/// Bubble sheets printed by Alfaheem, or sheets the teacher already has (only read, never printed here).
 enum BubbleSource { print, have }
 
 /// One sheet named for each student, or generic sheets with a name line and ID boxes.
@@ -63,7 +63,7 @@ String idSourceLabel(IdSource v) => v == IdSource.academic ? t('الرقم ال�
 
 String idSourceHint(IdSource v) => v == IdSource.academic
     ? t('معرّف الطالب الذي تختاره أدناه', 'The student identifier you choose below')
-    : t('رقم الطالب على NextBrain، لا يحتاج إعدادًا', 'The student\'s NextBrain number; nothing to set up');
+    : t('رقم الطالب على الفهيم، لا يحتاج إعدادًا', 'The student\'s Alfaheem number; nothing to set up');
 
 /// "3 written questions" for the sheets step.
 String writtenQuestionsText(int n) => countText(n,

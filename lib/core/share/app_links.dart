@@ -1,16 +1,16 @@
 // lib/core/share/app_links.dart — ONE link scheme for everything the app shares (D-307). Pure Dart, unit-tested
 // (test/org/app_links_test.dart).
 //
-//   https://nextbrain.site/c/<courseId>?ref=<sharer>   a course (kept: the referral counter reads `ref`)
-//   https://nextbrain.site/@<username>                 a public profile: a teacher (D-074)
-//   https://nextbrain.site/live/<token>                a live room's guest link (no account)
-//   https://nextbrain.site/s/<kind>/<id>               everything else: material · session · meeting · roadmap ·
+//   https://alfheemacademy.com/c/<courseId>?ref=<sharer>   a course (kept: the referral counter reads `ref`)
+//   https://alfheemacademy.com/@<username>                 a public profile: a teacher (D-074)
+//   https://alfheemacademy.com/live/<token>                a live room's guest link (no account)
+//   https://alfheemacademy.com/s/<kind>/<id>               everything else: material · session · meeting · roadmap ·
 //                                                      teacher (by id) · course (an alias of /c/)
-//   https://nextbrain.site/s/record/<token>            a shared meeting recording (D-312): by the share's TOKEN, not
+//   https://alfheemacademy.com/s/record/<token>            a shared meeting recording (D-312): by the share's TOKEN, not
 //                                                      the record id, so "anyone with the link" means exactly that
-//   https://nextbrain.site/s/video/v_<token>           a course video shared with guests (D-841): no account, the
+//   https://alfheemacademy.com/s/video/v_<token>           a course video shared with guests (D-841): no account, the
 //                                                      token is the only key (a material id never opens a video)
-//   https://nextbrain.site/s/page/<pageId>?<params>    a page of the route registry (D-170, core/routing/app_routes)
+//   https://alfheemacademy.com/s/page/<pageId>?<params>    a page of the route registry (D-170, core/routing/app_routes)
 //
 // Root form on purpose: nginx sends a person on to the web app under /app/ (D-270), the phone apps claim `/s/` with
 // App Links / Universal Links (android/app/src/main/AndroidManifest.xml, web/.well-known/*), and a chat app's
@@ -77,7 +77,7 @@ class AppLink {
       : this._(AppLinkKind.page, pageId: pageId, params: params);
 
   /// The public site every link is built on (the web build may pass its own origin, see [url]).
-  static const site = 'https://nextbrain.site';
+  static const site = 'https://alfheemacademy.com';
 
   final AppLinkKind kind;
   final int? id;

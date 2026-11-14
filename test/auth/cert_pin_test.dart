@@ -52,6 +52,11 @@ int _indexOf(List<int> hay, List<int> needle) {
 String _spkiPin(Uint8List der) =>
     base64Encode(crypto.sha256.convert(ParsedCert.parse(der).spki).bytes);
 
+// ALFAHEEM (A-002): NextBrain's pins, as test data only. The app ships Alfaheem's (sync/identity.env); these
+// fixtures are nextbrain.site's real chain, so the mechanism is still tested against them.
+const _nbLeafPins = {'5sI/tocMhHnqTPDXhhj4nfWavN+crxuYvDX13koLqDM='};
+const _nbLegacyPins = {'93d682e09f1a3f195d50f3ed70e80c4c45206e527f332d7bd36ea03045141402'};
+
 void main() {
   final leaf = _der('nextbrain_site_leaf.pem');
   final today = DateTime.utc(2026, 11, 14);
@@ -59,7 +64,7 @@ void main() {
   group('SPKI extraction', () {
     test('the leaf key hash is the primary pin', () {
       expect(_spkiPin(leaf), '5sI/tocMhHnqTPDXhhj4nfWavN+crxuYvDX13koLqDM=');
-      expect(CertPin.leafSpkiSha256, contains(_spkiPin(leaf)));
+      expect(CertPin.leafSpkiSha256, isNot(contains(_spkiPin(leaf))), reason: 'A-002');
     });
 
     test('the leaf fields', () {
@@ -73,7 +78,8 @@ void main() {
     });
 
     test('the legacy pin is the hash of the whole served leaf', () {
-      expect(CertPin.legacyLeafCertSha256, contains(crypto.sha256.convert(leaf).toString()));
+      expect(_nbLegacyPins, contains(crypto.sha256.convert(leaf).toString()));
+      expect(CertPin.legacyLeafCertSha256, isNot(contains(crypto.sha256.convert(leaf).toString())));
     });
 
     test('root key hashes', () {
@@ -119,8 +125,8 @@ void main() {
         CertPin.evaluate(der, host,
             apiHost: 'nextbrain.site',
             now: now ?? today,
-            leafPins: noPins ? const {} : null,
-            legacyPins: noPins ? const {} : null);
+            leafPins: noPins ? const {} : _nbLeafPins,
+            legacyPins: noPins ? const {} : _nbLegacyPins);
 
     test('the served leaf matches the primary key pin', () {
       expect(eval(leaf), PinVerdict.pinnedKey);
@@ -187,7 +193,7 @@ void main() {
     });
 
     test('the legacy leaf hash alone still accepts the old certificate', () {
-      expect(CertPin.evaluate(leaf, 'nextbrain.site', apiHost: 'nextbrain.site', now: today, leafPins: const {}),
+      expect(CertPin.evaluate(leaf, 'nextbrain.site', apiHost: 'nextbrain.site', now: today, leafPins: const {}, legacyPins: _nbLegacyPins),
           PinVerdict.legacyCert);
     });
   });

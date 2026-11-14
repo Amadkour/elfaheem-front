@@ -18,14 +18,14 @@ MeetingLinkItem _item(MeetingLinkStatus status, {bool host = true, bool guest = 
       subtitle: 'Advanced algebra and number theory for the second year',
       orgName: 'Cairo University · Faculty of Engineering',
       status: status,
-      appLink: 'https://nextbrain.site/s/meeting/7',
+      appLink: 'https://alfheemacademy.com/s/meeting/7',
       startsAt: _now.add(const Duration(minutes: 40)),
       endsAt: _now.add(const Duration(minutes: 100)),
       isHost: host,
       recurring: !host,
       myStatus: host ? 'owner' : 'pending',
       guest: guest
-          ? MeetingGuestLink(url: 'https://nextbrain.site/live/abcdefghijklmnopqrstuvwxyz012345', hasPin: true, direct: true, guestsJoined: 12, active: !expired)
+          ? MeetingGuestLink(url: 'https://alfheemacademy.com/live/abcdefghijklmnopqrstuvwxyz012345', hasPin: true, direct: true, guestsJoined: 12, active: !expired)
           : null,
     );
 
@@ -52,7 +52,7 @@ void main() {
     await expectNoLayoutErrors(tester, () => SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: AppShareSheetBody(
-            url: 'https://nextbrain.site/s/meeting/123456?some=very-long-parameter-value',
+            url: 'https://alfheemacademy.com/s/meeting/123456?some=very-long-parameter-value',
             title: 'Weekly planning meeting of the mathematics department with a very long title',
             subtitle: 'Tomorrow · 10:00 – 11:00',
             kind: 'Meeting',

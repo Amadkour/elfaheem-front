@@ -12,12 +12,12 @@
 # Exit codes: 0 deployed, 1 nothing changed (a step before the swap failed), 2 rolled back after the swap.
 set -uo pipefail
 export PATH="$PATH:$HOME/flutter/bin:$HOME/flutter/bin/cache/dart-sdk/bin"
-FRONT="${NB_FRONT_DIR:-/root/nextbrain/front}"
+FRONT="${NB_FRONT_DIR:-/root/elfaheem/front}"
 TS=$(date +%Y%m%d-%H%M%S)
 die() { echo "!! $*"; exit 1; }
 
 cd "$FRONT" || die "no $FRONT"
-LIVE=$(readlink -f /root/nextbrain/app_releases/web/current)
+LIVE=$(readlink -f /root/elfaheem/app_releases/web/current)
 echo "live web: $LIVE"
 [ "$LIVE" = "$FRONT/build/web" ] || die "app_releases/web/current -> $LIVE, not $FRONT/build/web: publish a web release instead"
 
@@ -35,8 +35,8 @@ grep -q "nb-landing:begin" /etc/nginx/sites-available/nextbrain && BASE=/app/
 echo "base href: $BASE"
 rm -rf build/web-next
 flutter build web --release --base-href "$BASE" -o build/web-next \
-  --dart-define=API_BASE_URL=https://nextbrain.site/api \
-  --dart-define=LIVEKIT_URL=wss://nextbrain.site/livekit > /tmp/nb-webbuild.log 2>&1 \
+  --dart-define=API_BASE_URL=https://alfheemacademy.com/api \
+  --dart-define=LIVEKIT_URL=wss://alfheemacademy.com/livekit > /tmp/nb-webbuild.log 2>&1 \
   || { tail -30 /tmp/nb-webbuild.log; die "web build failed; live site untouched"; }
 dart run scripts/web/postbuild.dart build/web-next --brotli-quality="${NB_BROTLI_QUALITY:-11}" "$@" > /tmp/nb-postbuild.log 2>&1 \
   || { tail -30 /tmp/nb-postbuild.log; die "postbuild failed; live site untouched"; }
@@ -62,9 +62,9 @@ rollback() {
   fi
   exit 2
 }
-R="--resolve nextbrain.site:443:127.0.0.1"
+R="--resolve alfheemacademy.com:443:127.0.0.1"
 code() { curl -s $R -o /dev/null -w "%{http_code}" "$1"; }
-U="https://nextbrain.site${BASE}"
+U="https://alfheemacademy.com${BASE}"
 HASH=$(echo "$MAIN" | cut -d. -f3)
 c=$(code "$U"); echo "index: $c"; [ "$c" = 200 ] || rollback "index $c"
 curl -s $R "$U" | grep -q flutter_bootstrap.js || rollback "index has no flutter_bootstrap.js"
@@ -77,7 +77,7 @@ PART=$(ls build/web | grep -E "^main\.dart\.$HASH\.js_[0-9]+\.part\.js$" | sort 
 c=$(code "${U}$PART"); echo "part $PART: $c"; [ "$c" = 200 ] || rollback "part $c"
 c=$(code "${U}assets/assets/tz/latest.tzf"); echo "tz data: $c"; [ "$c" = 200 ] || rollback "tz $c"
 c=$(code "${U}calendar"); echo "deep link /calendar: $c"; [ "$c" = 200 ] || rollback "deep link $c"
-c=$(code "https://nextbrain.site/api/api/v1/theme/web"); echo "api theme: $c"; [ "$c" = 200 ] || rollback "api theme $c"
+c=$(code "https://alfheemacademy.com/api/api/v1/theme/web"); echo "api theme: $c"; [ "$c" = 200 ] || rollback "api theme $c"
 # keep the two newest previous builds
 ls -d build/web-prev-* 2>/dev/null | sort | head -n -2 | xargs -r rm -rf
 echo "OK deployed $(git log --oneline -1)"

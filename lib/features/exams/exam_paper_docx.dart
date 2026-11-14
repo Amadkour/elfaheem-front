@@ -690,7 +690,7 @@ Map<String, List<int>> _docxParts(ExamPaperDoc d, PaperTemplate tpl) {
     'docProps/core.xml': utf8.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" '
         'xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
-        '<dc:title>${xmlEsc(d.title)}</dc:title><dc:creator>${xmlEsc(d.institution.isEmpty ? 'NextBrain' : d.institution)}</dc:creator>'
+        '<dc:title>${xmlEsc(d.title)}</dc:title><dc:creator>${xmlEsc(d.institution.isEmpty ? 'Alfaheem' : d.institution)}</dc:creator>'
         '<dcterms:created xsi:type="dcterms:W3CDTF">${now}Z</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}Z</dcterms:modified></cp:coreProperties>'),
     'word/_rels/document.xml.rels': utf8.encode('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'

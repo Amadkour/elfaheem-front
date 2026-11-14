@@ -33,11 +33,11 @@ anyway, so iPhone users keep the web app.
    use it and skip to `key.properties` below. Check a keystore with `keytool -list -v -keystore <file>`. Otherwise,
    create one once:
    ```
-   "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkey -v -keystore C:\nextbrain-keys\nextbrain-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias nextbrain
+   "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkey -v -keystore C:\alfaheem-keys\alfaheem-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias nextbrain
    ```
-   Next to it, create `C:\nextbrain-keys\key.properties`:
+   Next to it, create `C:\alfaheem-keys\key.properties`:
    ```
-   storeFile=nextbrain-release.jks
+   storeFile=alfaheem-release.jks
    storePassword=<the password you chose>
    keyAlias=nextbrain
    keyPassword=<the key password>

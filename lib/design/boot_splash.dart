@@ -299,7 +299,7 @@ abstract final class SplashTexts {
 /// frame already shows the logo (no blank flash between the native splash and
 /// Flutter's).
 abstract final class SplashArt {
-  static const asset = 'assets/images/splash.png';
+  static const asset = 'assets/images/splash_alfaheem.png';
 
   /// flutter_native_splash treats the source image as 4x (Android xxxhdpi,
   /// iOS @3x = ¾, web light-4x): assets/images/splash.png is 1040×1000 px →
@@ -355,8 +355,8 @@ abstract final class SplashArt {
 
 /// Brand colours of the native splash (must match pubspec `flutter_native_splash`): the warm cream canvas and the
 /// emerald the dark splash sits on. Frame 1 must equal the OS splash, so these two never follow the theme.
-const splashCream = Color(0xFFFBF7EC);
-const splashEmerald = Color(0xFF0F7B5F);
+const splashCream = Color(0xFFF4FBFF);
+const splashEmerald = Color(0xFF0D3B7A);
 
 /// The warm lights of the ambient field (D-622: one warm family — gold for the sparks, a peach light, a pale
 /// emerald — never a blue or a mint that turns the canvas cold).
@@ -500,7 +500,7 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
                 final verIn = _in(t, _versionAt, 0.8, reduce);
 
                 final tagline = s.tagline;
-                final wordmark = s.appName.isNotEmpty ? s.appName : AppIdentity.instance.name;
+                final wordmark = s.appName.isNotEmpty ? s.appName : (AppIdentity.instance.name.isNotEmpty ? AppIdentity.instance.name : (en ? 'Alfaheem' : 'الفهيم'));
                 final greeting = SplashTexts.greeting(name: s.userName, en: en);
                 final status = SplashTexts.status(step: s.step, stage: s.stage, offline: s.offline, elapsed: t, en: en);
 

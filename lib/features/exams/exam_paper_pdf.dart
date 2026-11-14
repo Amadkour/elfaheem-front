@@ -58,8 +58,8 @@ class PaperBuildControl {
 Future<PaperPdfResult> examPaperPdfMany(List<ExamPaperDoc> docs, PaperTemplate tpl, {required ByteData regular, required ByteData bold, PaperBuildControl? control}) async {
   final doc = pw.Document(
     title: docs.isEmpty ? '' : docs.first.title,
-    author: docs.isEmpty || docs.first.institution.isEmpty ? 'NextBrain' : docs.first.institution,
-    creator: 'NextBrain',
+    author: docs.isEmpty || docs.first.institution.isEmpty ? 'Alfaheem' : docs.first.institution,
+    creator: 'Alfaheem',
     theme: pw.ThemeData.withFont(base: pw.Font.ttf(regular), bold: pw.Font.ttf(bold), fontFallback: [pw.Font.helvetica()]),
   );
   // each paper's own page count first, in a throwaway document (layout happens in addPage): the footer of the real

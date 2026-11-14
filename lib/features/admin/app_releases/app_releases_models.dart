@@ -72,7 +72,7 @@ String releaseChannelKey(String platform, String channel) => '$platform:$channel
 /// The Play tracks a store version may go to.
 const List<String> kPlayTracks = ['internal', 'alpha', 'beta', 'production'];
 
-/// A Java-style package name with at least two parts (`com.doubley.nextbrain`).
+/// A Java-style package name with at least two parts (`com.doubley.alfaheem`).
 final RegExp kPackageNamePattern = RegExp(r'^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$');
 
 /// The env names of the Codemagic workflow ids (a workflow typed in the form covers them).

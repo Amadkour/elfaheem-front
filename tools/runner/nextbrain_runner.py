@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-NextBrain build runner (D-146, tools/runner/README.md) — builds app versions on a computer you already have, for free.
+Alfaheem build runner (D-146, tools/runner/README.md) — builds app versions on a computer you already have, for free.
 
 It asks our server for the versions the super admin created in Dashboard › App versions with "Build on: my computer",
 then runs the SAME workflow of codemagic.yaml that Codemagic would run — read from the commit being built — on this
@@ -16,7 +16,7 @@ A 409 on a job call means the super admin canceled it (or it was retried): the r
 
 Configuration — environment variables, or KEY=VALUE lines in tools/runner/runner.env (never committed):
     NB_BUILDER_TOKEN     the token from App versions › Build runner › New token (shown once)        [required]
-    NB_API_URL           default https://nextbrain.site/api
+    NB_API_URL           default https://alfheemacademy.com/api
     NB_REPO_URL          the app repository to clone (default: this checkout's `origin`)
     NB_RUNNER_NAME       how the dashboard names this machine (default: the computer name)
     NB_RUNNER_PLATFORMS  what it builds (default windows,android,web on Windows; linux,android,web on Linux)
@@ -94,7 +94,7 @@ class Config:
             return (env.get(k) or os.environ.get(k) or default).strip()
 
         self.token = get("NB_BUILDER_TOKEN")
-        self.api_url = get("NB_API_URL", "https://nextbrain.site/api").rstrip("/")
+        self.api_url = get("NB_API_URL", "https://alfheemacademy.com/api").rstrip("/")
         self.repo_url = get("NB_REPO_URL") or self._origin()
         self.name = get("NB_RUNNER_NAME", socket.gethostname())[:60]
         self.platforms = [p.strip().lower() for p in get("NB_RUNNER_PLATFORMS", DEFAULT_PLATFORMS[os_name()]).split(",")

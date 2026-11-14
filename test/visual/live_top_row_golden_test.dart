@@ -181,7 +181,7 @@ Widget _waiting() => RecordingPlaceholderFrame(
         PlaceholderParticipant(name: _tr('عمر خالد', 'Omar Khaled'), micOn: false),
       ],
       sessionTitle: _tr('اجتماع فريق المناهج', 'Curriculum team meeting'),
-      platformName: 'NextBrain',
+      platformName: 'Alfaheem',
       showLogo: false,
       live: false,
     );

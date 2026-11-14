@@ -522,7 +522,7 @@ class CreatePendingTemplates extends StatelessWidget {
   }
 }
 
-/// A sheet NextBrain does not print, in plain words.
+/// A sheet Alfaheem does not print, in plain words.
 class CreateOwnSheetNote extends StatelessWidget {
   const CreateOwnSheetNote({super.key});
 
@@ -530,8 +530,8 @@ class CreateOwnSheetNote extends StatelessWidget {
   Widget build(BuildContext context) => AppBanner(
         key: const ValueKey('create.ownsheet'),
         icon: Icons.info_outline_rounded,
-        text: t('هذه ورقتك أنت: لا تطبعها NextBrain. اطبعها كما اعتدت، ثم صوّر الأوراق أو ارفعها للتصحيح. تُطبع ورقة الأسئلة وحدها من هنا، بنموذج واحد.',
-            'This is your own sheet: NextBrain does not print it. Print it the way you normally do, then photograph or upload the sheets for marking. Only the question paper prints from here, in one version.'),
+        text: t('هذه ورقتك أنت: لا تطبعها الفهيم. اطبعها كما اعتدت، ثم صوّر الأوراق أو ارفعها للتصحيح. تُطبع ورقة الأسئلة وحدها من هنا، بنموذج واحد.',
+            'This is your own sheet: Alfaheem does not print it. Print it the way you normally do, then photograph or upload the sheets for marking. Only the question paper prints from here, in one version.'),
       );
 }
 
@@ -788,7 +788,7 @@ class CreatePublishBody extends StatelessWidget {
   String _personalWhyNot(ExamCreatePlan p) {
     if (!p.hasCourse) return t('يحتاج إلى مقرر لنعرف طلابه', 'Needs a course, so we know its students');
     if (p.exam.isFile) return t('الملف المرفوع يُطبع كما هو', 'An uploaded file prints as it is');
-    return t('ورقتك الخاصة لا تطبعها NextBrain', 'NextBrain does not print your own sheet');
+    return t('ورقتك الخاصة لا تطبعها الفهيم', 'Alfaheem does not print your own sheet');
   }
 }
 

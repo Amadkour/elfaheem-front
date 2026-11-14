@@ -253,7 +253,7 @@ String releaseErrorText(String? code, String fallback, {Map<String, dynamic> ext
       'upload_not_active' => t('انتهت محاولة البناء هذه؛ الرفع لمحاولة أحدث', 'This build attempt is over; the upload belongs to a newer one'),
       'download_not_found' => t('الملف غير موجود', 'No such download'),
       'workflow_invalid' => t('اسم سير العمل: حروف وأرقام و . _ - فقط', 'The workflow name: letters, digits and . _ - only'),
-      'package_name_invalid' => t('اسم الحزمة بالشكل com.doubley.nextbrain', 'The package name looks like com.doubley.nextbrain'),
+      'package_name_invalid' => t('اسم الحزمة بالشكل com.doubley.alfaheem', 'The package name looks like com.doubley.alfaheem'),
       'package_name_example' => t('Google Play يرفض الحزم التي تبدأ بـ com.example', 'Google Play refuses packages that start with com.example'),
       'track_invalid' => t('مسار غير معروف (internal أو alpha أو beta أو production)', 'Unknown track (internal, alpha, beta or production)'),
       'upload_token_invalid' || 'upload_token_expired' => t('رمز رفع الملفات غير صالح أو انتهت مدته', 'The upload token is not valid or has expired'),

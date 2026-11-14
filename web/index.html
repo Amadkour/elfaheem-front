@@ -10,28 +10,28 @@
 </script>
   <base href="$FLUTTER_BASE_HREF">
   <!-- CanvasKit (the renderer) comes from gstatic: open the connection while the page is still being parsed -->
-  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin="">
   <!-- after <base>: a relative src before it resolved against the page (e.g. /c/11 → /c/video_protection.js) -->
   <!-- defer: a blocking script in <head> holds the first paint (the splash below). It only patches createElement for the
        <video> elements the course player makes much later, and runs before DOMContentLoaded, long before Dart starts. -->
-  <script src="video_protection.js" defer></script>
+  <script src="video_protection.js" defer=""></script>
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="NextBrain — منصة تعليمية: دورات مسجّلة وجلسات مباشرة وحضور ومؤسسات. An education platform: recorded courses, live sessions, attendance and organizations.">
+  <meta name="description" content="الفهيم — منصة تعليمية: دورات مسجّلة وجلسات مباشرة وحضور ومؤسسات. An education platform: recorded courses, live sessions, attendance and organizations.">
 
   <!-- Installable app (PWA): Chrome / Edge install from the manifest, iPhone / iPad via Safari "Add to Home Screen".
        Keep these OUTSIDE the flutter_native_splash blocks (that tool rewrites this file).
        Status bar "default", never "black-translucent", and no viewport-fit=cover: Flutter web does not pad for the notch. -->
-  <meta name="theme-color" content="#FBF7EC" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0F7B5F" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F4FBFF" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0D3B7A" media="(prefers-color-scheme: dark)">
   <meta name="robots" content="noindex">
-  <meta name="application-name" content="NextBrain">
+  <meta name="application-name" content="الفهيم">
   <meta name="author" content="DoubleY">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="NextBrain">
+  <meta name="apple-mobile-web-app-title" content="الفهيم">
   <meta name="format-detection" content="telephone=no">
   <!-- 180x180, opaque (iOS paints transparent pixels black) -->
   <link rel="apple-touch-icon" sizes="180x180" href="icons/Icon-180.png">
@@ -102,7 +102,7 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
 
-  <title>NextBrain</title>
+  <title>الفهيم</title>
   <link rel="manifest" href="manifest.json">
 
 
@@ -110,7 +110,7 @@
   
   
   <!-- defer, like video_protection.js: Dart reaches window._elfaheemCompositor only when a teacher starts a recording -->
-  <script src="recorder_compositor.js" defer></script>
+  <script src="recorder_compositor.js" defer=""></script>
 
   
   
@@ -140,6 +140,8 @@
   
   
   
+  
+  
   <style id="splash-screen-style">
     html {
       height: 100%
@@ -148,7 +150,7 @@
     body {
       margin: 0;
       min-height: 100%;
-      background-color: #FBF7EC;
+      background-color: #F4FBFF;
           background-size: 100% 100%;
     }
 
@@ -200,7 +202,7 @@
 
     @media (prefers-color-scheme: dark) {
       body {
-        background-color: #0F7B5F;
+        background-color: #0D3B7A;
           }
     }
   </style>
@@ -218,6 +220,7 @@
       <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
       <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
   </picture>
+  
   
   
   

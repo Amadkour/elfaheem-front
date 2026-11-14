@@ -6,27 +6,27 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('base path /app/: stripped from the URL route and the guest live route', () {
     String? r(String u) => webEntryRouteFromUri(Uri.parse(u), basePath: '/app/');
-    expect(r('https://nextbrain.site/app/c/12?ref=5'), '/c/12?ref=5');
-    expect(r('https://nextbrain.site/app/live/x'), '/live/x');
-    expect(r('https://nextbrain.site/app/login'), '/login');
-    expect(r('https://nextbrain.site/app/'), isNull);
-    expect(r('https://nextbrain.site/app'), isNull);
-    expect(r('https://nextbrain.site/application'), '/application', reason: 'not under the base');
-    expect(webEntryRouteFromUri(Uri.parse('https://nextbrain.site/c/12?ref=5'), basePath: '/'), '/c/12?ref=5');
-    expect(guestLiveRouteFromUri(Uri.parse('https://nextbrain.site/app/live/abc'), basePath: '/app/'), '/live/abc');
-    expect(guestLiveRouteFromUri(Uri.parse('https://nextbrain.site/live/abc'), basePath: '/'), '/live/abc');
-    expect(guestLiveRouteFromUri(Uri.parse('https://nextbrain.site/app/#/live/abc'), basePath: '/app/'), '/live/abc');
-    expect(legacyHashRoute(Uri.parse('https://nextbrain.site/app/#/payment/callback?status=paid')),
+    expect(r('https://alfheemacademy.com/app/c/12?ref=5'), '/c/12?ref=5');
+    expect(r('https://alfheemacademy.com/app/live/x'), '/live/x');
+    expect(r('https://alfheemacademy.com/app/login'), '/login');
+    expect(r('https://alfheemacademy.com/app/'), isNull);
+    expect(r('https://alfheemacademy.com/app'), isNull);
+    expect(r('https://alfheemacademy.com/application'), '/application', reason: 'not under the base');
+    expect(webEntryRouteFromUri(Uri.parse('https://alfheemacademy.com/c/12?ref=5'), basePath: '/'), '/c/12?ref=5');
+    expect(guestLiveRouteFromUri(Uri.parse('https://alfheemacademy.com/app/live/abc'), basePath: '/app/'), '/live/abc');
+    expect(guestLiveRouteFromUri(Uri.parse('https://alfheemacademy.com/live/abc'), basePath: '/'), '/live/abc');
+    expect(guestLiveRouteFromUri(Uri.parse('https://alfheemacademy.com/app/#/live/abc'), basePath: '/app/'), '/live/abc');
+    expect(legacyHashRoute(Uri.parse('https://alfheemacademy.com/app/#/payment/callback?status=paid')),
         '/payment/callback?status=paid');
   });
 
   bool link(String r) => r.startsWith('/c/') || r.startsWith('/live/') || r.startsWith('/@');
 
   test('the URL route: path and query, nothing for the root', () {
-    expect(webEntryRouteFromUri(Uri.parse('https://nextbrain.site/')), isNull);
-    expect(webEntryRouteFromUri(Uri.parse('https://nextbrain.site')), isNull);
-    expect(webEntryRouteFromUri(Uri.parse('https://nextbrain.site/notifications')), '/notifications');
-    expect(webEntryRouteFromUri(Uri.parse('https://nextbrain.site/c/12?ref=5')), '/c/12?ref=5');
+    expect(webEntryRouteFromUri(Uri.parse('https://alfheemacademy.com/')), isNull);
+    expect(webEntryRouteFromUri(Uri.parse('https://alfheemacademy.com')), isNull);
+    expect(webEntryRouteFromUri(Uri.parse('https://alfheemacademy.com/notifications')), '/notifications');
+    expect(webEntryRouteFromUri(Uri.parse('https://alfheemacademy.com/c/12?ref=5')), '/c/12?ref=5');
   });
 
   test('signed in: argument-free pages open over the home; dashboards and unknown routes go home', () {

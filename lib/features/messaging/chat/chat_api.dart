@@ -1,4 +1,4 @@
-// lib/features/messaging/chat/chat_api.dart — NextBrain Messages (D-330): every call, through ApiClient.
+// lib/features/messaging/chat/chat_api.dart — Alfaheem Messages (D-330): every call, through ApiClient.
 library;
 
 import 'package:flutter_education_app/core/api_client.dart';

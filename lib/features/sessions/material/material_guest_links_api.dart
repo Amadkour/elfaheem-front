@@ -7,7 +7,7 @@
 //   guest   GET    /api/v1/public/videos/{token}                               → GuestRecordCard (auth: false)
 //           POST   /api/v1/public/videos/{token}/play                          → RecordPlay (a 2 h signed stream)
 //
-// A link is https://nextbrain.site/s/video/v_<secret> (AppLink.video, D-307's scheme): the token is the only key, a
+// A link is https://alfheemacademy.com/s/video/v_<secret> (AppLink.video, D-307's scheme): the token is the only key, a
 // material id never opens a video. Kill switch `materials.guest_link`. Contract: ../back/FLUTTER_API_CHANGES.md
 // "Guest share links open straight to the video". Tests: test/org/guest_share_test.dart.
 library;

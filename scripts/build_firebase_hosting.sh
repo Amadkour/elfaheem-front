@@ -14,9 +14,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-export PUBLIC_LANDING_API_BASE="${PUBLIC_LANDING_API_BASE:-https://nextbrain.site}"
-API_BASE_URL="${API_BASE_URL:-https://nextbrain.site/api}"
-LIVEKIT_URL="${LIVEKIT_URL:-wss://nextbrain.site/livekit}"
+export PUBLIC_LANDING_API_BASE="${PUBLIC_LANDING_API_BASE:-https://alfheemacademy.com}"
+API_BASE_URL="${API_BASE_URL:-https://alfheemacademy.com/api}"
+LIVEKIT_URL="${LIVEKIT_URL:-wss://alfheemacademy.com/livekit}"
 
 bash scripts/build_landing.sh
 
@@ -44,7 +44,7 @@ cat > build/hosting/404.html <<'HTML'
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>NextBrain</title>
+<title>Alfaheem</title>
 <script>
   // an old web-app URL from before the app moved to /app/ (D-270): the same path, query and hash under /app/
   (function () {
@@ -54,7 +54,7 @@ cat > build/hosting/404.html <<'HTML'
 </script>
 </head>
 <body>
-<p><a href="/app/">NextBrain</a></p>
+<p><a href="/app/">Alfaheem</a></p>
 </body>
 </html>
 HTML

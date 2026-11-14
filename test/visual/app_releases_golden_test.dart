@@ -184,11 +184,11 @@ void main() {
             id: 12,
             status: 'ready',
             source: 'google_play',
-            storeUrl: 'https://play.google.com/store/apps/details?id=com.doubley.nextbrain',
+            storeUrl: 'https://play.google.com/store/apps/details?id=com.doubley.alfaheem',
             autoPublish: false,
             progress: 100,
             log: sampleLog(30),
-            artifacts: [...apkArtifacts, {'name': 'NextBrain-1.4.1-53.aab', 'size': 52000000, 'kind': 'aab'}],
+            artifacts: [...apkArtifacts, {'name': 'Alfaheem-1.4.1-53.aab', 'size': 52000000, 'kind': 'aab'}],
           ),
     }, latency: const Duration(milliseconds: 10))
       ..install();
