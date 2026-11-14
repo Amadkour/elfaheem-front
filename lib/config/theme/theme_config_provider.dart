@@ -36,6 +36,7 @@ import 'app_theme.dart';
 import 'theme_config_model.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_contrast.dart';
+import 'package:flutter_education_app/design/alfaheem_canvas.dart'; // Alfaheem A-007 (sync/hooks.py)
 
 // v2: drops palettes cached before the new default theme, so offline users
 // get the new default instead of the old cached one.
@@ -199,7 +200,8 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   /// The canvas. Dark mode uses `dark_background` (D-610): it used to be the card tone at 90 %, so a card on the page
   /// had no tone step under it, and depth is tone first (canvas → paper card → tinted block).
-  Color get background => isDark
+  Color get background => AlfaheemCanvas.tint(this, dark: isDark, base: _nbBackground, paper: _model?.cardBg ?? AppTheme.cardBg); // Alfaheem A-007
+  Color get _nbBackground => isDark
       ? (_model?.darkBackground ?? AppTheme.darkBackground)
       : (_model?.background ?? AppTheme.background);
 
@@ -929,7 +931,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     final pLight = m?.primaryLight ?? AppTheme.primaryLight;
     final danger = m?.danger ?? AppTheme.danger;
     final accent2 = m?.accent2 ?? AppTheme.accent2;
-    final bg = dark ? (m?.darkBackground ?? AppTheme.darkBackground) : (m?.background ?? AppTheme.background);
+    final bg = AlfaheemCanvas.tint(this, dark: dark, base: dark ? (m?.darkBackground ?? AppTheme.darkBackground) : (m?.background ?? AppTheme.background), paper: m?.cardBg ?? AppTheme.cardBg); // Alfaheem A-007
     final card = dark ? (m?.darkCard ?? AppTheme.darkCard) : (m?.cardBg ?? AppTheme.cardBg);
     final surface = dark ? (m?.darkSurface ?? AppTheme.darkSurface) : (m?.surfaceCard ?? AppTheme.surfaceCard);
     final divider = dark ? (m?.darkDivider ?? AppTheme.darkDivider) : (m?.divider ?? AppTheme.divider);
