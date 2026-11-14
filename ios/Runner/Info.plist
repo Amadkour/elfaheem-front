@@ -33,6 +33,7 @@
 				<array>
 					<!-- Firebase Auth returns here after "Continue with Google" (the encoded iOS app id of alfaheem-d3c8f, A-006) -->
 					<string>app-1-887854198161-ios-ffa59d7c85f3ac430afe30</string>
+					<string>com.googleusercontent.apps.887854198161-50q8aajnaannqoml91q4244mg826ckcb</string>
 				</array>
 			</dict>
 		</array>

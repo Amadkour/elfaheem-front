@@ -92,7 +92,9 @@ class CertPin {
   ///     | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
   /// Hex of the same: e6c23fb6870c8479ea4cf0d78618f89df59abcdf9caf1b98bc35f5de4a0ba833 (EC P-256 key of the
   /// certificate valid 2026-09-24 .. 2026-12-23). The code compares the base64 form.
-  static const leafSpkiSha256 = <String>{};
+  static const leafSpkiSha256 = <String>{
+    'H/Cbms/WWS6LMgVcAQMAwcETwnleV0UNtcT3znv8V8o=',
+  };
 
   /// SHA-256 (hex) of the whole leaf certificate DER, the pin before D-946. Kept during the transition; drop it once
   /// that certificate has expired (2026-12-23).
