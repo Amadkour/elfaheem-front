@@ -552,13 +552,25 @@ const kApiReceiveTimeout = Duration(seconds: 30);
 /// Uploads (FormData, a byte stream) and binary downloads: a large file on a slow line may take this long.
 const kApiTransferTimeout = Duration(minutes: 60);
 
-/// A request that moves a file: FormData or a stream body, a bytes / stream answer, or `extra['transfer'] == true`.
+/// A request that moves a file: FormData or a stream body, a bytes / stream answer, `extra['transfer'] == true`
+/// (`post(..., transfer: true)`: a JSON body carrying a base64 file), or a JSON body with a string field over
+/// [kApiLargeBodyChars] (the safety net for a base64 post nobody marked; the encrypted envelope's `ct` counts).
 bool isTransferRequest(RequestOptions o) =>
     o.data is FormData ||
     o.data is Stream ||
     o.responseType == ResponseType.bytes ||
     o.responseType == ResponseType.stream ||
-    o.extra['transfer'] == true;
+    o.extra['transfer'] == true ||
+    _hasLargeString(o.data);
+
+/// A JSON string this long (about 192 KB of base64-encoded bytes) is a file, not a form.
+const kApiLargeBodyChars = 256 * 1024;
+
+bool _hasLargeString(Object? data) {
+  if (data is String) return data.length > kApiLargeBodyChars;
+  if (data is Map) return data.values.any((v) => v is String && v.length > kApiLargeBodyChars);
+  return false;
+}
 
 /// Gives a transfer request the long timeouts, unless its caller picked its own receive timeout. The send timeout
 /// stays unset on the web (a non-null one forces a CORS preflight, see `_buildDio`).
@@ -891,7 +903,10 @@ class ApiClient {
   // withTrustedRoots: false -> the OS/system CA list is NOT consulted at all, so a proxy's CA being "trusted" on
   // this device (rooted/test builds, a user CA) does not matter: every connection falls through to CertPin.check,
   // the only thing deciding whether the cert is accepted. EVERY client that talks to the API host is built here:
-  // the main one and the bare one of the encryption handshake (S2).
+  // the main one and the bare one of the encryption handshake (S2), and the Server-Sent Events stream
+  // (`LiveEventsClient`, through [pinnedHttpClient]).
+  static HttpClient pinnedHttpClient() => _pinnedHttpClient();
+
   static HttpClient _pinnedHttpClient() {
     CertPin.apiHost = Uri.parse(_base).host;
     final client = HttpClient(context: SecurityContext(withTrustedRoots: false));
@@ -1153,17 +1168,20 @@ class ApiClient {
   /// FastAPI's CORSMiddleware is expected to answer it.
   /// `headers`: extra request headers a feature needs (the Exam Engine's `X-Exam-Session`); auth / device headers
   /// are still added by the interceptors and win on conflict.
+  /// `transfer`: a JSON body that carries a file as base64 (an image, a PDF, a background): it takes the long
+  /// transfer timeouts like an upload, since a few MB on a phone line can outlast the 30 s send timeout.
   Options _jsonOpts({
     bool auth = true,
     required String method,
     Map<String, String>? headers,
+    bool transfer = false,
   }) =>
       Options(
         method: method,
         contentType: Headers.jsonContentType,
         receiveTimeout: const Duration(seconds: 30),
         headers: headers,
-        extra: {'auth': auth},
+        extra: {'auth': auth, if (transfer) 'transfer': true},
       );
 
   /// GET calls: no Content-Type (avoids needless preflight on public GETs).
@@ -1409,6 +1427,7 @@ class ApiClient {
         CancelToken? cancelToken,
         Map<String, String>? headers,
         ProgressCallback? onSendProgress,
+        bool transfer = false,
       }) =>
       _execute(
             () => _dio.post(
@@ -1417,7 +1436,7 @@ class ApiClient {
           queryParameters: queryParams,
           cancelToken: cancelToken,
           onSendProgress: onSendProgress,
-          options: _jsonOpts(auth: auth, method: 'POST', headers: headers),
+          options: _jsonOpts(auth: auth, method: 'POST', headers: headers, transfer: transfer),
         ),
       );
 
@@ -1430,6 +1449,7 @@ class ApiClient {
         bool auth = true,
         CancelToken? cancelToken,
         Map<String, String>? headers,
+        bool transfer = false,
       }) =>
       _execute(
             () => _dio.put(
@@ -1437,7 +1457,7 @@ class ApiClient {
           data: body,
           queryParameters: queryParams,
           cancelToken: cancelToken,
-          options: _jsonOpts(auth: auth, method: 'PUT', headers: headers),
+          options: _jsonOpts(auth: auth, method: 'PUT', headers: headers, transfer: transfer),
         ),
       );
 
@@ -1531,6 +1551,7 @@ class ApiClient {
         bool auth = true,
         CancelToken? cancelToken,
         Map<String, String>? headers,
+        bool transfer = false,
       }) =>
       _execute(
             () => _dio.patch(
@@ -1538,7 +1559,7 @@ class ApiClient {
           data: body,
           queryParameters: queryParams,
           cancelToken: cancelToken,
-          options: _jsonOpts(auth: auth, method: 'PATCH', headers: headers),
+          options: _jsonOpts(auth: auth, method: 'PATCH', headers: headers, transfer: transfer),
         ),
       );
 

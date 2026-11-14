@@ -79,7 +79,7 @@ class ExamTakingScreen extends StatefulWidget {
   State<ExamTakingScreen> createState() => _ExamTakingScreenState();
 }
 
-class _ExamTakingScreenState extends State<ExamTakingScreen> {
+class _ExamTakingScreenState extends State<ExamTakingScreen> with WidgetsBindingObserver {
   final _api = ExamEngineApi();
   late int _attemptId;
   late String _session;
@@ -116,10 +116,18 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
     _saver = Timer.periodic(const Duration(seconds: 4), (_) => _flush());
     _restorePending();
     _protectScreen(true);
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// Back from the background (the phone may have slept, its clock may have moved): the server's clock again.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _resyncClock();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     _saver?.cancel();
     _integrity.stop();
@@ -166,7 +174,40 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
     if (!mounted || _finished) return;
     final left = _clock.remaining();
     setState(() {});
-    if (left != null && left <= 0) _timeUp();
+    if (left == null || left > 0) return;
+    // zero on the wall clock only (a sleep, or a device clock set forward): the server decides, not this device
+    if (_clock.wallAhead()) {
+      _resyncClock();
+    } else {
+      _timeUp();
+    }
+  }
+
+  bool _resyncing = false;
+  final _sinceResync = Stopwatch();
+
+  /// Re-reads the attempt's `remaining_seconds` from the server and restarts the clock from it (at most every 10 s,
+  /// so an offline phone does not ask every tick; the server ends the attempt at its own deadline anyway).
+  Future<void> _resyncClock() async {
+    if (_resyncing || _finished || !_clock.timed) return;
+    if (_sinceResync.isRunning && _sinceResync.elapsed < const Duration(seconds: 10)) return;
+    _sinceResync..reset()..start();
+    _resyncing = true;
+    try {
+      final r = await _api.attempt(_attemptId);
+      if (!mounted || _finished || !r.ok) return;
+      if (r.map['result'] != null) {
+        _finished = true;
+        _showResult(asMap(r.map['result']));
+        return;
+      }
+      if (r.map['remaining_seconds'] == null) return;
+      setState(() => _clock = ServerClock(remainingSeconds: asInt(r.map['remaining_seconds']), receivedAt: DateTime.now(),
+          deadlineAt: _clock.deadlineAt, elapsed: ServerClock.monotonic()));
+      if ((_clock.remaining() ?? 1) <= 0) _timeUp();
+    } finally {
+      _resyncing = false;
+    }
   }
 
   Future<void> _timeUp() async {

@@ -25,6 +25,14 @@
 /// Nothing else is accepted: there is no fall back to the system's trusted roots, so a CA the device trusts (a
 /// proxy, a user-installed CA) still cannot read the traffic.
 ///
+/// The blocking "update the app" prompt ([CertPin.updateRequired]) is raised only by a refused leaf that looks like
+/// OUR real key rotation onto a Let's Encrypt intermediate this build does not carry: in date, for the API host,
+/// not signed by any bundled key, not self-signed, issuer exactly `C=US, O=Let's Encrypt` with a CN in Let's
+/// Encrypt's naming (E5, R12, YE1, …) that is NOT one of the bundled intermediates (a bundled name whose key does
+/// not verify the signature is a forgery), and a lifetime of at most 200 days. Anything else — a self-signed
+/// certificate with our host and "Let's Encrypt" written in it, a home-made CA called YE1, an expired leaf — is
+/// refused quietly, so a network in the middle cannot push the app into the update dialog with a few strings.
+///
 /// When Let's Encrypt starts a new generation of intermediates (Gen Y expires 2028-09-02, the 2024 set
 /// 2027-03-12), add them here; the primary key pin does not depend on the issuer at all.
 library;
@@ -148,8 +156,14 @@ class CertPin {
   static final Map<String, PinVerdict> _cache = {};
 
   /// The `HttpClient.badCertificateCallback` of every client that talks to the API host.
-  static bool check(X509Certificate cert, String host, int port) {
-    final verdict = evaluateCached(cert.der, host);
+  static bool check(X509Certificate cert, String host, int port) => checkDer(cert.der, host);
+
+  /// [check] on a DER leaf (tests pass [now] and empty pin sets to reach the backup rules).
+  @visibleForTesting
+  static bool checkDer(Uint8List der, String host, {DateTime? now, Set<String>? leafPins, Set<String>? legacyPins}) {
+    final verdict = leafPins == null && legacyPins == null
+        ? evaluateCached(der, host, now: now)
+        : evaluate(der, host, apiHost: apiHost, now: now, leafPins: leafPins, legacyPins: legacyPins);
     if (verdict.accepted) {
       updateRequired = false;
     } else if (verdict == PinVerdict.rejectedUnknownServerKey) {
@@ -187,10 +201,31 @@ class CertPin {
     final t = (now ?? DateTime.now()).toUtc();
     final inDates =
         !t.isBefore(cert.notBefore.subtract(const Duration(minutes: 5))) && !t.isAfter(cert.notAfter);
-    if (inDates && backupIssuers.any((i) => verifySignedBy(cert, base64Decode(i.spki)))) {
-      return PinVerdict.letsEncryptIssued;
+    if (!inDates) return PinVerdict.rejectedForeign;
+    if (backupIssuers.any((i) => verifySignedBy(cert, base64Decode(i.spki)))) return PinVerdict.letsEncryptIssued;
+    return looksLikeRotation(cert) ? PinVerdict.rejectedUnknownServerKey : PinVerdict.rejectedForeign;
+  }
+
+  /// Let's Encrypt's intermediate names: E5, R10, YE1, YR3, …
+  static final _leIntermediateName = RegExp(r'^(E|R|YE|YR)[0-9]{1,2}$');
+
+  /// A leaf already in date, for the API host and signed by none of the bundled keys: does it look like our server
+  /// moved to a Let's Encrypt intermediate this build does not know (see the library comment)?
+  static bool looksLikeRotation(ParsedCert cert) {
+    if (_sameBytes(cert.issuer, cert.subject) || verifySignedBy(cert, cert.spki)) return false; // self-signed
+    if (cert.issuerAttr('2.5.4.6') != 'US' || cert.issuerAttr('2.5.4.10') != "Let's Encrypt") return false;
+    final cn = cert.issuerAttr('2.5.4.3') ?? '';
+    if (!_leIntermediateName.hasMatch(cn)) return false;
+    if (backupIssuers.any((i) => i.name == cn)) return false; // a bundled name its own key does not verify: forged
+    return cert.notAfter.difference(cert.notBefore) <= const Duration(days: 200);
+  }
+
+  static bool _sameBytes(Uint8List a, Uint8List b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
     }
-    return cert.issuerMentions("Let's Encrypt") ? PinVerdict.rejectedUnknownServerKey : PinVerdict.rejectedForeign;
+    return true;
   }
 
   /// True when [error] (a Dio error's inner error) is a TLS handshake refused while [updateRequired] is set.
@@ -283,14 +318,17 @@ class _Der {
 
 /// The fields of a certificate the pin reads.
 class ParsedCert {
-  ParsedCert._(this.tbs, this.sigAlg, this.signature, this.issuer, this.notBefore, this.notAfter, this.spki,
-      this.dnsNames);
+  ParsedCert._(this.tbs, this.sigAlg, this.signature, this.issuer, this.subject, this.notBefore, this.notAfter,
+      this.spki, this.dnsNames);
 
   /// The signed part (`tbsCertificate`, whole DER element).
   final Uint8List tbs;
   final String sigAlg;
   final Uint8List signature;
   final Uint8List issuer;
+
+  /// The subject Name, whole DER element.
+  final Uint8List subject;
   final DateTime notBefore;
   final DateTime notAfter;
 
@@ -307,7 +345,7 @@ class ParsedCert {
     i++; // signature algorithm (repeated outside)
     final issuer = f[i++];
     final validity = f[i++].children;
-    i++; // subject
+    final subject = f[i++];
     final spki = f[i++];
     final names = <String>[];
     for (; i < f.length; i++) {
@@ -321,8 +359,8 @@ class ParsedCert {
         }
       }
     }
-    return ParsedCert._(tbsEl.whole, top[1].children.first.oid, top[2].bits, issuer.whole, validity[0].time,
-        validity[1].time, spki.whole, names);
+    return ParsedCert._(tbsEl.whole, top[1].children.first.oid, top[2].bits, issuer.whole, subject.whole,
+        validity[0].time, validity[1].time, spki.whole, names);
   }
 
   /// [host] matches a subjectAltName exactly, or one `*.` wildcard label.
@@ -334,6 +372,19 @@ class ParsedCert {
             host.endsWith(suffix) &&
             !host.substring(0, host.length - suffix.length).contains('.');
       });
+
+  /// The value of the issuer's attribute [oid] (`2.5.4.3` CN, `2.5.4.10` O, `2.5.4.6` C), or null.
+  String? issuerAttr(String oid) {
+    try {
+      for (final rdn in _Der.at(issuer, 0).children) {
+        for (final atv in rdn.children) {
+          final parts = atv.children;
+          if (parts.length == 2 && parts[0].oid == oid) return utf8.decode(parts[1].value, allowMalformed: true);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
 
   bool issuerMentions(String text) {
     final needle = utf8.encode(text);

@@ -531,6 +531,7 @@ class CertificateDesignerProvider extends BaseProvider {
     final up = await run(() => _api.post(
           '/api/v1/certificate-designs/background?orientation=$wizardOrientation',
           body: {'image_base64': base64Encode(bytes)},
+          transfer: true,
         ));
     if (up is! Map<String, dynamic>) {
       busy = false;
@@ -571,7 +572,7 @@ class CertificateDesignerProvider extends BaseProvider {
     busy = true;
     failed = false;
     notifyListeners();
-    final r = await run(() => _api.post(path, body: body));
+    final r = await run(() => _api.post(path, body: body, transfer: true)); // a base64 image: long timeouts
     busy = false;
     if (r is Map<String, dynamic> && r['url'] is String) {
       notifyListeners();

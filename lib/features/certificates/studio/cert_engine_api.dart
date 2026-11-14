@@ -182,7 +182,7 @@ class CertEngineApi {
   }
 
   Future<String> _upload(String path, Uint8List bytes, [Map<String, dynamic> extra = const {}]) async {
-    final r = _map(await api.post(path, body: {'image_base64': base64Encode(bytes), ...extra}));
+    final r = _map(await api.post(path, body: {'image_base64': base64Encode(bytes), ...extra}, transfer: true));
     final url = r['url'];
     if (url is! String || url.isEmpty) throw const ApiException(statusCode: 0, message: 'upload failed');
     return url;
