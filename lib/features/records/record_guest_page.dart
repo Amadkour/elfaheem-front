@@ -94,9 +94,15 @@ class _GuestRecordPageState extends State<GuestRecordPage> {
     try {
       final p = await _api.play(widget.token);
       final ctl = VideoPlayerController.networkUrl(Uri.parse(p.url));
-      await ctl.initialize();
-      if (at != null) await ctl.seekTo(at);
-      await ctl.play();
+      try {
+        await ctl.initialize();
+        if (at != null) await ctl.seekTo(at);
+        await ctl.play();
+      } catch (_) {
+        // a failed start must not leave the new controller behind
+        await ctl.dispose();
+        rethrow;
+      }
       final old = _player;
       if (!mounted) {
         await ctl.dispose();
