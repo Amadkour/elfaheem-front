@@ -7,7 +7,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/identity/identity_request_gate.dart';
+import 'package:flutter_education_app/features/exams/identity/identity_request_gate.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

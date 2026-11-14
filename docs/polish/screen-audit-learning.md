@@ -68,15 +68,15 @@ Not fixed:
 | `student/enrollment/transfer/transfer_payment_screen.dart` (+ provider) | branded spinner; provider failure text hard-coded Arabic + raw `$e` | `AppListSkeleton`; new keys `transfer_submit_failed` / `transfer_proof_required` + `apiErrorText` | — |
 | `student/enrollment/payment_flow_provider.dart` | `payment_open_failed: $e` (raw exception) | `apiErrorText(ApiException.from(e))` | — |
 | `student/enrollment/payment_callback_page.dart` | 5 colours | -> theme | unused (no importer) |
-| `student/analysis/exam/exam_ui.dart` | 28 colours; `GlassIcon` 40 px, no label; `ExamRing` default `Colors.white` | colours -> theme; `GlassIcon` 48 px target + `tooltip` (back gets the localized back tooltip); `ExamRing.color` nullable -> onHero; harness-tested | `kDeep / kDanger / kAmber / kViolet` consts kept for the teacher screens that import them (student screens no longer use them) |
-| `student/analysis/exam/student_exam_detail_screen.dart` | 10 colours + k* palette; hand-rolled `d/m/y hh:mm` | theme roles; `AppTime.dateTime` | — |
-| `student/analysis/exam/student_exam_quiz_screen.dart` | 9 colours + k* palette; page spinner | theme; `AppListSkeleton` | — |
-| `student/analysis/exam/student_exam_result_screen.dart` | 17 colours; divider grey.shade100 | theme (divider -> `c.divider`) | — |
-| `student/analysis/exam/student_exam_frozen_screen.dart` | 8 colours; hand-rolled deadline time; back IconButton without tooltip | theme; `AppTime.dateTime`; tooltip | — |
-| `student/analysis/exam/student_exam_list_screen.dart` | 3 colours + k*; spinner; RefreshIndicator; refresh glass button unlabelled; end date `d/m` by hand | theme; skeleton; `AppRefresh`; tooltip; `AppTime.date(.., 'd/M')` | — |
-| `student/analysis/exam/student_course_exams_widget.dart` | k* palette; spinner; end date `d/m` by hand | theme; skeleton; `AppTime.date` | — |
-| `student/analysis/exam/student_exam_provider.dart` | 5 x `e.toString()` shown to the student | `apiErrorText(ApiException.from(e))` | — |
-| `student/analysis/exam/student_active_exam_screen.dart`, `passcode_screen.dart` | 17 + 4 colours, raw `e.toString()` | colours -> theme, apiErrorText | both unused (no importer; the live quiz is `student_exam_quiz_screen.dart`, passcodes use `PasscodeSheet`) |
+| `features/exams/legacy/student/exam_ui.dart` | 28 colours; `GlassIcon` 40 px, no label; `ExamRing` default `Colors.white` | colours -> theme; `GlassIcon` 48 px target + `tooltip` (back gets the localized back tooltip); `ExamRing.color` nullable -> onHero; harness-tested | `kDeep / kDanger / kAmber / kViolet` consts kept for the teacher screens that import them (student screens no longer use them) |
+| `features/exams/legacy/student/student_exam_detail_screen.dart` | 10 colours + k* palette; hand-rolled `d/m/y hh:mm` | theme roles; `AppTime.dateTime` | — |
+| `features/exams/legacy/student/student_exam_quiz_screen.dart` | 9 colours + k* palette; page spinner | theme; `AppListSkeleton` | — |
+| `features/exams/legacy/student/student_exam_result_screen.dart` | 17 colours; divider grey.shade100 | theme (divider -> `c.divider`) | — |
+| `features/exams/legacy/student/student_exam_frozen_screen.dart` | 8 colours; hand-rolled deadline time; back IconButton without tooltip | theme; `AppTime.dateTime`; tooltip | — |
+| `features/exams/legacy/student/student_exam_list_screen.dart` | 3 colours + k*; spinner; RefreshIndicator; refresh glass button unlabelled; end date `d/m` by hand | theme; skeleton; `AppRefresh`; tooltip; `AppTime.date(.., 'd/M')` | — |
+| `features/exams/legacy/student/student_course_exams_widget.dart` | k* palette; spinner; end date `d/m` by hand | theme; skeleton; `AppTime.date` | — |
+| `features/exams/legacy/student/student_exam_provider.dart` | 5 x `e.toString()` shown to the student | `apiErrorText(ApiException.from(e))` | — |
+| `features/exams/legacy/student/student_active_exam_screen.dart`, `passcode_screen.dart` | 17 + 4 colours, raw `e.toString()` | colours -> theme, apiErrorText | both unused (no importer; the live quiz is `student_exam_quiz_screen.dart`, passcodes use `PasscodeSheet`) |
 | `student/analysis/flags/student_flags_screen.dart` (+ provider) | 2 colours + k*; spinner; 2 RefreshIndicators; raw error | theme; skeleton; `AppRefresh`; tooltip; apiErrorText | — |
 | `student/analysis/student_analytics_screen.dart` | 7 colours (white avatar on hero); spinner; RefreshIndicator; clear-search icon without tooltip | theme (avatar -> onHero); skeleton; `AppRefresh`; tooltip | — |
 | `student/analysis/student_course_analytics_screen.dart` (+ provider) | 29 colours; 4 spinners; 5 RefreshIndicators; glass buttons 40 px unlabelled; 3 raw errors in provider | theme; skeletons; `AppRefresh`; 48 px + tooltips; apiErrorText | attendance dates are pre-converted with `toLocal()` (AppTime would shift twice) |
@@ -107,7 +107,7 @@ Not fixed:
 | `teacher/certificates/designer/certificate_designer_screen.dart` | 19 colours; 7 icon-only buttons without tooltip | chrome colours → roles; tooltips (align / lines / show-hide / delete / close / remove) | signature ink palette (`_inks`), photo placeholder on the canvas, `hexToColor` fallback kept — certificate content, not UI chrome; ink swatches stay 30 px (wide-only side panel); designer loading spinner kept (canvas, not a list) |
 | `teacher/analysis/analytics_hub_screen.dart` | 12 colours; page spinner; RefreshIndicator; close IconButton without tooltip | roles; skeleton; `AppRefresh`; tooltip; `fromSTEB` | per-course load failure still shows shortcuts only (by design: "the hub still works") |
 | `teacher/analysis/attendance/teacher_attendance_screen.dart` (+ provider) | 10 colours; spinners; raw `e.toString()` errors; clear button without tooltip | roles (`heroTint` for hero stat); skeletons; `apiErrorText(ApiException.from(e))`; tooltip | — |
-| `teacher/analysis/exam/teacher_exam_hub_screen.dart` (+ provider) | 32 colours; tab spinners; 10 raw `e.toString()`; exam start time shown in UTC; picked dates HH:MM by hand; popup items colour without context; asymmetric LTRB; remove-option button without tooltip | roles; skeletons; `apiErrorText`; `_fmtDate` reads naive UTC → `AppTime.dateTime`; picked times `clockMinutes`; `fromSTEB`; tooltip | — |
+| `features/exams/legacy/teacher/teacher_exam_hub_screen.dart` (+ provider) | 32 colours; tab spinners; 10 raw `e.toString()`; exam start time shown in UTC; picked dates HH:MM by hand; popup items colour without context; asymmetric LTRB; remove-option button without tooltip | roles; skeletons; `apiErrorText`; `_fmtDate` reads naive UTC → `AppTime.dateTime`; picked times `clockMinutes`; `fromSTEB`; tooltip | — |
 | `teacher/analysis/flags/teacher_read_flags_screen.dart` | 5 colours (+ const hero gradient); spinner; raw error; RefreshIndicator | roles (`heroEnd(kDanger)`); skeleton; `apiErrorText`; `AppRefresh` | `kDanger` / `examT` come from student `exam_ui.dart` (other area) |
 | `teacher/schedules/schedules_screen.dart` | 32 colours (ring painter white); RefreshIndicator; slot times raw "HH:MM"; 38 / 40 px delete / add without labels; `only(left:)` | roles (painter takes the ink colour); `AppRefresh`; `AppTime.clock` for slots + delete prompt, picked time `clockMinutes`; 48 px targets + semantic labels; directional margin | decorative hero circles keep left/right |
 | `teacher/profile/payout/teacher_payouts_screen.dart` | 5 colours; page spinner; RefreshIndicator | roles; skeleton; `AppRefresh` | — |
@@ -164,19 +164,19 @@ Not fixed:
 | lib/features/shared/session/material/session_material_widget.dart | lerp to Colors.black, white ink | -> heroShade / onHero | - |
 | lib/features/shared/session/material/components/material_file_style.dart | 7 brand colours (Word/Excel/CSV/PowerPoint/Python) | - | left: file-type identity colours (Word blue, Excel green, …) must not follow the theme |
 | lib/features/shared/session/session_track_tabs.dart | only Colors.transparent | - | nothing to fix |
-| lib/features/shared/exam_engine/exam_paper_pdf.dart | 7 `PdfColors.*` matches | - | left: package:pdf print colours, not Flutter UI colours |
-| lib/features/shared/exam_engine/exam_paper_sheet.dart | 6 colours in PaperPreview | - | left: miniature of the printed (white) paper — must stay paper-white in dark mode |
-| lib/features/shared/exam_engine/exam_taking_screen.dart | white spinner on button; download error toast showed raw `$e` | -> onHero; toast -> apiErrorText | chevron icons already auto-mirror |
-| lib/features/shared/exam_engine/exam_results_screen.dart | 2 raw `$e` toasts; hand RefreshIndicator; asymmetric LTRB | apiErrorText; AppRefresh; fromSTEB | - |
-| lib/features/shared/exam_engine/exam_engine_api.dart | non-Api errors became `'$e'` messages | -> ApiException.from(e).message (safe text) | - |
-| lib/features/shared/exam_engine/exam_quick_screen.dart | 3 icon-only buttons without tooltip; asymmetric LTRB | tooltips (remove option / pick date / clear); fromSTEB | - |
-| lib/features/shared/exam_engine/exam_authoring_screen.dart | hand RefreshIndicator; 5 asymmetric LTRB | AppRefresh; fromSTEB | - |
-| lib/features/shared/exam_engine/exam_insights_screen.dart | 2 hand RefreshIndicators | AppRefresh | - |
-| lib/features/shared/exam_engine/exam_review_screen.dart | hand RefreshIndicator; asymmetric LTRB | AppRefresh; fromSTEB | - |
-| lib/features/shared/exam_engine/exam_scan_review.dart | hand RefreshIndicator | AppRefresh | OCR box Positioned(left:) is image coordinates — correct |
-| lib/features/shared/exam_engine/offline/offline_exam_screen.dart | hand RefreshIndicator | AppRefresh | - |
-| lib/features/shared/exam_engine/offline/offline_exam_teacher.dart | hand RefreshIndicator | AppRefresh | - |
-| lib/features/shared/exam_engine/(generate, paper_flow, consent, policy, offline core/service, other sheets) | checked: kit colours, AppTime, skeletons already | - | nothing to fix |
+| lib/features/exams/exam_paper_pdf.dart | 7 `PdfColors.*` matches | - | left: package:pdf print colours, not Flutter UI colours |
+| lib/features/exams/exam_paper_sheet.dart | 6 colours in PaperPreview | - | left: miniature of the printed (white) paper — must stay paper-white in dark mode |
+| lib/features/exams/exam_taking_screen.dart | white spinner on button; download error toast showed raw `$e` | -> onHero; toast -> apiErrorText | chevron icons already auto-mirror |
+| lib/features/exams/exam_results_screen.dart | 2 raw `$e` toasts; hand RefreshIndicator; asymmetric LTRB | apiErrorText; AppRefresh; fromSTEB | - |
+| lib/features/exams/exam_engine_api.dart | non-Api errors became `'$e'` messages | -> ApiException.from(e).message (safe text) | - |
+| lib/features/exams/exam_quick_screen.dart | 3 icon-only buttons without tooltip; asymmetric LTRB | tooltips (remove option / pick date / clear); fromSTEB | - |
+| lib/features/exams/exam_authoring_screen.dart | hand RefreshIndicator; 5 asymmetric LTRB | AppRefresh; fromSTEB | - |
+| lib/features/exams/exam_insights_screen.dart | 2 hand RefreshIndicators | AppRefresh | - |
+| lib/features/exams/exam_review_screen.dart | hand RefreshIndicator; asymmetric LTRB | AppRefresh; fromSTEB | - |
+| lib/features/exams/exam_scan_review.dart | hand RefreshIndicator | AppRefresh | OCR box Positioned(left:) is image coordinates — correct |
+| lib/features/exams/offline/offline_exam_screen.dart | hand RefreshIndicator | AppRefresh | - |
+| lib/features/exams/offline/offline_exam_teacher.dart | hand RefreshIndicator | AppRefresh | - |
+| lib/features/exams/(generate, paper_flow, consent, policy, offline core/service, other sheets) | checked: kit colours, AppTime, skeletons already | - | nothing to fix |
 | lib/features/teacher/data_lab/data_lab_widgets.dart (kit) | 19 colours; dlAgo printed device-local yyyy-mm-dd | white -> onHero (same alpha values: 0.70 / 0.12 kept so light mode is identical); dlAgo date -> AppTime.date (platform tz) | DlSwatches parses user hex (content colour) |
 | lib/features/teacher/data_lab/data_lab_screen.dart | 35 colours; raw `$e` toast; search clear button no tooltip; asymmetric LTRB | -> theme roles; apiErrorText; tooltip; fromSTEB | inline row spinners kept |
 | lib/features/teacher/data_lab/data_lab_history_sheet.dart | page spinner; old->new arrow double-mirrored in RTL (manual flip of an auto-mirrored icon) | AppListSkeleton; arrow fixed; apiErrorText | load-more spinner kept |

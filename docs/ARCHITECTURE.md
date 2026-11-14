@@ -56,7 +56,7 @@ flowchart TB
 ```
 
 Ports and services behind nginx: core `api` 8000 (everything under `/api/v1/…` except the two below), Exam Engine
-8001 (`/api/v1/exam/…`, client `lib/features/shared/exam_engine/exam_engine_api.dart`), RAG 8002 (`/api/v1/rag/…`,
+8001 (`/api/v1/exam/…`, client `lib/features/exams/exam_engine_api.dart`), RAG 8002 (`/api/v1/rag/…`,
 `lib/features/shared/rag/`). The app sends every path in full on top of `AppConfig.baseUrl`
 (`https://nextbrain.site/api`, or `--dart-define=API_BASE_URL=…` for a dev build), so requests reach nginx as
 `/api/api/v1/…`: `/api/api/v1/exam/…` and `/api/api/v1/rag/…` go to the engine and RAG with the extra `/api` cut, and

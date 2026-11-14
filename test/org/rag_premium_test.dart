@@ -3,8 +3,8 @@
 // generator's new options — pure parts unit-tested, presentational widgets under the layout harness.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_generate.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_generate_sheet.dart';
+import 'package:flutter_education_app/features/exams/exam_generate.dart';
+import 'package:flutter_education_app/features/exams/exam_generate_sheet.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_admin_console.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';

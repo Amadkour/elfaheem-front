@@ -1,13 +1,13 @@
 // The new-exam wizard's UX round (D-716, D-717): one copy per student on an own bubble form, what each copy holds, and
 // one list of questions from many sources (written, generated, Google Forms, Excel, the full editor).
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_quick.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_logic.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_parts.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_sync.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/create/offline_steps.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/create/question_sources.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
+import 'package:flutter_education_app/features/exams/exam_quick.dart';
+import 'package:flutter_education_app/features/exams/hub/create/exam_create_logic.dart';
+import 'package:flutter_education_app/features/exams/hub/create/exam_create_parts.dart';
+import 'package:flutter_education_app/features/exams/hub/create/exam_create_sync.dart';
+import 'package:flutter_education_app/features/exams/hub/create/offline_steps.dart';
+import 'package:flutter_education_app/features/exams/hub/create/question_sources.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

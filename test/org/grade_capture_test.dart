@@ -6,10 +6,10 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart' show FormData;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/mark_sessions_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_capture_logic.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_capture.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_camera.dart';
+import 'package:flutter_education_app/features/exams/marks/mark_sessions_api.dart';
+import 'package:flutter_education_app/features/exams/marks/review/grade_capture_logic.dart';
+import 'package:flutter_education_app/features/exams/marks/review/grade_review_capture.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_camera.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

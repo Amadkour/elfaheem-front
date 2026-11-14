@@ -1,4 +1,4 @@
-import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Dart port of back/exam_engine/services/questions.py `validate` (the contract), returning the server code or null.

@@ -1,0 +1,1210 @@
+// Quick exam UI (logic in exam_quick.dart): Online or Offline? → questions (multiple choice / essay, typed or generated
+// from the course documents — exam_generate_sheet.dart) or one uploaded file → Publish. Every other setting is a
+// default under "Advanced"; the full editor stays one tap away there.
+//
+// Entry points: `openQuickExam` (a course's "new exam", an exam-timetable slot) and `showSlotExamSheet` (tapping an
+// exam in a timetable: create it now / not now, or open the one already made from that slot).
+//
+// Track F: questions that came from the generator carry a review strip (Accept / Edit / Reject, GenReviewBar); a
+// rejection asks why and is reported at once, the rest are reported as one batch when the exam is saved (ExamGenReview).
+import 'dart:async' show unawaited;
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace;
+import 'package:flutter_education_app/utils/widget/base_page.dart';
+
+import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, t;
+import 'package:flutter_education_app/features/shared/rag/rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
+import 'package:flutter_education_app/features/exams/exam_authoring.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring_screen.dart' show ExamEditorScreen, SessionLockPicker, pickEngineDateTime;
+import 'package:flutter_education_app/features/exams/exam_forms_import.dart' show GoogleFormsImportSheet, createExamForForm, kGoogleFormsImportFeatureKey;
+import 'package:flutter_education_app/features/exams/exam_gen_api.dart' show genMetaOf;
+import 'package:flutter_education_app/features/exams/exam_generate.dart' show ExamGenReview, GenMark, deleteGenItem, regenerateGenItem, sendGenFeedback;
+import 'package:flutter_education_app/features/exams/exam_generate_sheet.dart' show GenRejectSheet, GenReviewBar, QuickGenerateCard, openExamGenerator;
+import 'package:flutter_education_app/features/exams/exam_gen_api.dart' show kExamAutoCreateKey;
+import 'package:flutter_education_app/features/exams/exam_open_key.dart';
+import 'package:flutter_education_app/features/exams/exam_open_key_widgets.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_sheet.dart' show openExamPaper;
+import 'package:flutter_education_app/features/exams/exam_quick.dart';
+import 'package:flutter_education_app/features/exams/exam_results_screen.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup.dart' show ExamSetup, ExamSetupApi;
+import 'package:flutter_education_app/features/exams/paper/exam_setup_wizard.dart' show openExamSetupWizard;
+import 'package:flutter_education_app/features/exams/paper/paper_exam_entry.dart' show isPaperExam, showPaperExamReady;
+import 'package:flutter_education_app/features/exams/paper/templates/omr_template_learn.dart' show openOmrTemplateLearn;
+
+const _numKeyboard = TextInputType.numberWithOptions(decimal: true);
+/// The builder's column on a wide window.
+const quickScreenMaxWidth = 820.0;
+
+/// Two fields side by side, or stacked where a number field's two buttons would leave no room to read the value.
+Widget _fieldPair(Widget a, Widget? b) => LayoutBuilder(builder: (context, box) {
+      if (box.maxWidth < 460) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [a, ?b]);
+      return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(child: a),
+        if (b != null) ...[const SizedBox(width: AppSpace.sm), Expanded(child: b)],
+      ]);
+    });
+const paperFileExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'];
+
+/// Opens the quick builder; returns the created exam's id (null when the creator left without creating).
+/// An offline exam with in-app questions goes straight on to its printable paper. When the paper setup was finished,
+/// the builder ends on "The paper exam is ready" instead: the paper section (print, scan, review, results) or the
+/// printable paper, from one sheet.
+///
+/// [sessionId] pre-selects the session whose lessons the exam locks ("Lock the lessons after …"). [onClassic] shows the
+/// chooser's quiet "Classic exam (live quiz in the room)" link: tapping it closes the builder and calls it (the caller
+/// opens the legacy create sheet), so the legacy path stays reachable wherever it exists. [api] is for tests.
+Future<int?> openQuickExam(BuildContext context, {int? courseId, int? orgId, QuickKind kind = QuickKind.quiz, int? scheduleSlotId, int? sessionId,
+    String? title, DateTime? startsAt, DateTime? endsAt, String course = '', VoidCallback? onClassic, ExamAuthoringApi? api}) async {
+  final q = QuickExam(
+      kind: kind, courseId: courseId, orgId: orgId, scheduleSlotId: scheduleSlotId, sessionId: sessionId, title: title, startsAt: startsAt, endsAt: endsAt);
+  var classic = false;
+  final id = await Navigator.of(context).push<int>(MaterialPageRoute(
+      builder: (_) => QuickExamScreen(
+          exam: q,
+          api: api,
+          onClassic: onClassic == null
+              ? null
+              : () {
+                  classic = true;
+                  Navigator.of(context).pop();
+                })));
+  if (classic) {
+    onClassic?.call();
+    return null;
+  }
+  var setUp = false;
+  if (id != null && q.mode == QuickMode.offline && q.courseId != null && context.mounted) {
+    setUp = await openExamSetupWizard(context, examId: id, initialDelivery: 'paper', onLearnTemplate: () => openOmrTemplateLearn(context).then((_) {})) == true;
+  }
+  if (id != null && setUp && context.mounted) {
+    final r = await ExamSetupApi().setup(id);
+    final s = r.ok ? ExamSetup.fromJson(r.map) : null;
+    if (isPaperExam(s) && context.mounted) {
+      await showPaperExamReady(context,
+          examId: id,
+          examTitle: q.title,
+          paperFormat: s!.paperFormat,
+          onExamPaper: q.isFile ? null : () => openExamPaper(context, examId: id, course: course));
+      return id;
+    }
+    // the wizard's "Online" step: the exam is taken in the app after all, so no printable paper
+    if (s != null && s.delivery == 'online') return id;
+  }
+  if (id != null && q.mode == QuickMode.offline && !q.isFile && context.mounted) await openExamPaper(context, examId: id, course: course);
+  return id;
+}
+
+/// Tapping an exam of a timetable. [exam] is the engine exam already made from this slot, if any.
+/// Returns true when something changed (an exam was created).
+Future<bool> showSlotExamSheet(BuildContext context, {required String courseName, required int courseId, int? orgId, required int slotId,
+    required String kind, DateTime? startsAt, DateTime? endsAt, Map<String, dynamic>? exam, VoidCallback? onChangeTime}) async {
+  final r = await showAppSheet<String>(
+      context,
+      (ctx) => SlotExamSheet(
+            courseName: courseName,
+            when: startsAt == null ? null : AppTime.dateTime(startsAt),
+            exam: exam,
+            canChangeTime: onChangeTime != null,
+            onPick: (v) => Navigator.pop(ctx, v),
+          ));
+  if (!context.mounted || r == null) return false;
+  switch (r) {
+    case 'create':
+      final id = await openQuickExam(context,
+          courseId: courseId, orgId: orgId, kind: quickKindOf(kind), scheduleSlotId: slotId, title: '${quickKindTitle(quickKindOf(kind))} — $courseName',
+          startsAt: startsAt, endsAt: endsAt, course: courseName);
+      return id != null;
+    case 'results':
+      await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ExamResultsScreen(examId: asInt(exam!['id']), examTitle: '${exam['title'] ?? ''}', courseId: courseId)));
+    case 'paper':
+      await openExamPaper(context, examId: asInt(exam!['id']), course: courseName);
+    case 'edit':
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamEditorScreen(examId: asInt(exam!['id']), courseId: courseId, orgId: orgId)));
+    case 'time':
+      onChangeTime?.call();
+  }
+  return false;
+}
+
+/// The sheet's content (plain values; under the layout harness).
+class SlotExamSheet extends StatelessWidget {
+  const SlotExamSheet({super.key, required this.courseName, this.when, this.exam, this.canChangeTime = false, required this.onPick});
+  final String courseName;
+  final String? when;
+  final Map<String, dynamic>? exam;
+  final bool canChangeTime;
+  final ValueChanged<String?> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final e = exam;
+    return AppSheetContent(title: courseName, children: [
+      if (when != null) Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: Text(when!, style: AppType.label(context))),
+      if (e == null) ...[
+        AppBanner(icon: Icons.edit_note_rounded, text: t('لم يُنشأ الاختبار بعد. تنشئه الآن؟', 'The exam isn\'t created yet. Create it now?')),
+        AppSpace.gapSm,
+        AppButton.primary(label: t('أنشئ الاختبار الآن', 'Create the exam now'), icon: Icons.add_task_rounded, expand: true, onPressed: () => onPick('create')),
+        AppButton.ghost(onPressed: () => onPick(null), expand: true, label: t('ليس الآن', 'Not now')),
+      ] else ...[
+        AppBanner(
+            icon: Icons.task_alt_rounded,
+            color: c.success,
+            text: '${e['title'] ?? ''} · ${examStatusLabel('${e['status'] ?? ''}')}'),
+        AppSpace.gapSm,
+        AppButton.primary(label: t('النتائج والتصحيح', 'Results and marking'), icon: Icons.leaderboard_rounded, expand: true, onPressed: () => onPick('results')),
+        AppSpace.gapXs,
+        AppButton.secondary(onPressed: () => onPick('paper'), icon: Icons.print_rounded, expand: true, label: t('ورقة الامتحان للطباعة', 'Printable exam paper')),
+        AppSpace.gapXs,
+        AppButton.secondary(onPressed: () => onPick('edit'), icon: Icons.edit_outlined, expand: true, label: t('تعديل الاختبار', 'Edit the exam')),
+      ],
+      if (canChangeTime)
+        AppButton.ghost(onPressed: () => onPick('time'), icon: Icons.schedule_rounded, expand: true, label: t('تغيير الموعد', 'Change the time')),
+    ]);
+  }
+}
+
+// ═══════════════════════════════════════ Online or Offline ═══════════════════════════════════════════════════════
+
+/// How the creator starts: write the questions, have them generated, upload a ready file, or bring a Google Form.
+enum QuickStart { manual, generate, file, forms }
+
+/// "Import from Google Forms" is offered: the kill switch is off (the server turns it on while the Picker key is unset).
+bool get quickFormsAvailable => !AppConfig.disableList.contains(kGoogleFormsImportFeatureKey);
+
+IconData quickTypeIcon(String type) => switch (type) {
+      'true_false' => Icons.rule_rounded,
+      'fill_blank' => Icons.space_bar_rounded,
+      'short_answer' => Icons.short_text_rounded,
+      'matching' => Icons.compare_arrows_rounded,
+      'essay' => Icons.notes_rounded,
+      _ => Icons.radio_button_checked_rounded,
+    };
+
+/// The first question of a new exam (plain values; under the layout harness).
+class QuickStartChooser extends StatelessWidget {
+  const QuickStartChooser({super.key, required this.onPick, required this.canGenerate, this.onClassic, this.canImportForms = false});
+  final ValueChanged<QuickStart> onPick;
+  final bool canGenerate;
+
+  /// Shows "Import from Google Forms" ([quickFormsAvailable] in the app).
+  final bool canImportForms;
+
+  /// The quiet "Classic exam (live quiz in the room)" link; null hides it (shown only where the legacy sheet exists).
+  final VoidCallback? onClassic;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppSectionTitle(t('كيف تريد إنشاء الاختبار؟', 'How do you want to create it?')),
+      _ModeCard(
+        icon: Icons.edit_note_rounded,
+        title: t('أنشئه يدوياً', 'Create manually'),
+        text: t('اكتب الأسئلة بنفسك: اختيار من متعدد، صح / خطأ، أكمل، مطابقة وغيرها', 'Write the questions yourself: multiple choice, true / false, complete, matching and more'),
+        onTap: () => onPick(QuickStart.manual),
+      ),
+      // D-301: the Super Admin's switch of automatic question generation hides the whole card
+      ParentComponent(
+        featureKey: kExamAutoCreateKey,
+        child: Padding(
+          padding: const EdgeInsets.only(top: AppSpace.sm),
+          child: _ModeCard(
+            icon: Icons.auto_awesome_rounded,
+            title: t('أنشئه لي', 'Generate for me'),
+            text: canGenerate
+                ? t('أسئلة من مستندات المقرر، تراجعها وتعدّلها قبل النشر', 'Questions written from the course documents; you review and edit them before publishing')
+                : t('يحتاج إلى مقرر: افتح الاختبار من داخل مقرر', 'Needs a course: start the exam from inside a course'),
+            onTap: canGenerate ? () => onPick(QuickStart.generate) : null,
+          ),
+        ),
+      ),
+      const SizedBox(height: AppSpace.sm),
+      _ModeCard(
+        icon: Icons.upload_file_rounded,
+        title: t('ارفع ملف امتحان جاهز', 'Upload a ready exam file'),
+        text: t('PDF أو Word أو صورة', 'A PDF, Word file or photo'),
+        onTap: () => onPick(QuickStart.file),
+      ),
+      if (canImportForms) ...[
+        const SizedBox(height: AppSpace.sm),
+        _ModeCard(
+          key: const ValueKey('exam.quick.forms'),
+          icon: Icons.dynamic_form_outlined,
+          title: t('استيراد من Google Forms', 'Import from Google Forms'),
+          text: t('اختر نموذجاً من حسابك: يصبح اختباراً باسمه وأسئلته ودرجاته وإجاباته الصحيحة',
+              'Pick a form from your account: it becomes an exam with its name, questions, points and correct answers'),
+          onTap: () => onPick(QuickStart.forms),
+        ),
+      ],
+      if (onClassic != null)
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpace.sm),
+          child: Center(
+            child: TextButton.icon(
+              key: const ValueKey('exam.quick.classic'),
+              onPressed: onClassic,
+              icon: Icon(Icons.sensors_rounded, size: AppIconSize.sm, color: context.colors.textMedium),
+              label: Text(t('اختبار تقليدي (مسابقة مباشرة في الغرفة)', 'Classic exam (live quiz in the room)'),
+                  textAlign: TextAlign.center, style: AppType.label(context)),
+            ),
+          ),
+        ),
+    ]);
+  }
+}
+
+/// The last question, once the questions are in: how will students take it (plain values; under the layout harness).
+class QuickDeliveryChooser extends StatelessWidget {
+  const QuickDeliveryChooser({super.key, required this.onPick});
+  final ValueChanged<QuickMode> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _ModeCard(
+        icon: Icons.devices_rounded,
+        title: quickModeTitle(QuickMode.online),
+        text: t('يجيب الطلاب في التطبيق، والتصحيح تلقائي', 'Students answer in the app, grading is automatic'),
+        onTap: () => onPick(QuickMode.online),
+      ),
+      const SizedBox(height: AppSpace.sm),
+      _ModeCard(
+        icon: Icons.print_outlined,
+        title: quickModeTitle(QuickMode.offline),
+        text: t('ورقة للقاعة، وتُدخل الدرجات أو تمسح الإجابات بعدها', 'A paper for the room; you enter the marks or scan the answers after'),
+        onTap: () => onPick(QuickMode.offline),
+      ),
+    ]);
+  }
+}
+
+class _ModeCard extends StatelessWidget {
+  const _ModeCard({super.key, required this.icon, required this.title, required this.text, required this.onTap});
+  final IconData icon;
+  final String title, text;
+  final VoidCallback? onTap;
+
+  /// A way that is not open here (no course to generate from) stays visible, faded.
+  static const double _disabledOpacity = .55;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tint = appTintOn(context, c.primary);
+    return Opacity(opacity: onTap == null ? _disabledOpacity : 1, child: AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpace.lg),
+      child: Row(children: [
+        Container(
+          width: AppTouch.primary, height: AppTouch.primary, alignment: Alignment.center,
+          decoration: BoxDecoration(color: tint, borderRadius: AppRadius.controlAll),
+          child: Icon(icon, color: appInkOn(context, c.primary, tint), size: AppIconSize.lg),
+        ),
+        const SizedBox(width: AppSpace.md),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: AppType.section(context)),
+            const SizedBox(height: AppSpace.xxs),
+            Text(text, style: AppType.body(context)),
+          ]),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        Icon(Icons.chevron_right_rounded, color: c.textLight),
+      ]),
+    ));
+  }
+}
+
+// ═══════════════════════════════════════ the builder ════════════════════════════════════════════════════════════
+
+class QuickExamScreen extends StatefulWidget {
+  const QuickExamScreen({super.key, required this.exam, this.api, this.onClassic});
+  final QuickExam exam;
+  final ExamAuthoringApi? api;
+
+  /// The chooser's "Classic exam" link (see [openQuickExam]); null hides it.
+  final VoidCallback? onClassic;
+
+  @override
+  State<QuickExamScreen> createState() => _QuickExamScreenState();
+}
+
+class _QuickExamScreenState extends State<QuickExamScreen> {
+  late final ExamAuthoringApi _api = widget.api ?? ExamAuthoringApi();
+  QuickExam get q => widget.exam;
+  late final _title = TextEditingController(text: q.title);
+  bool _busy = false;
+  String _genNotice = '';                // the generator's note about the whole batch (no model, and why)
+  bool _tried = false;
+  late bool _started = q.questions.isNotEmpty || q.isFile;
+  final _review = ExamGenReview();
+  late final _learning = LearningApi();
+  List<LockSession> _sessions = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    final cid = q.courseId;
+    if (cid != null) {
+      _api.courseSessions(cid).then((s) {
+        if (mounted) setState(() => _sessions = s);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    super.dispose();
+  }
+
+  /// The review strip shows on generated questions while the server takes the feedback and the feature is on.
+  bool _reviewing(QuickQuestion x) =>
+      _review.supported && _review.isGenerated(x) && !AppConfig.disableList.contains(kRagLearningFeatureKey);
+
+  /// Reject (or delete) a generated question: why → out of the exam, reported at once. A dismissed sheet keeps it.
+  Future<void> _reject(QuickQuestion x) async {
+    final reason = await showAppSheet<String>(context, (_) => const GenRejectSheet());
+    if (reason == null || !mounted) return;
+    final ref = _review.of(x);
+    final v2 = genMetaOf(x) != null;
+    final call = _review.reject(x, reason.isEmpty ? null : reason);
+    setState(() => q.questions.remove(x));
+    if (call != null) unawaited(sendGenFeedback(_learning, _review, [call]));
+    // generation v2 (D-194): the draft drops the item too, so a later regenerate never brings it back
+    if (ref != null && v2 && ref.serverN != null) unawaited(deleteGenItem(ref.draftId, ref.serverN!));
+  }
+
+  /// "Regenerate" on a generated question: the server writes another from a different idea of the same section; it
+  /// takes the old one's place in the list and in the review. Null = it could not (the old one stays).
+  Future<QuickQuestion?> _regenerate(QuickQuestion old) async {
+    final ref = _review.of(old);
+    if (ref == null || ref.serverN == null) return null;
+    final fresh = await regenerateGenItem(ref.draftId, ref.serverN!);
+    if (fresh == null || !mounted) return null;
+    setState(() {
+      final at = q.questions.indexOf(old);
+      if (at >= 0) q.questions[at] = fresh;
+      _review.replace(old, fresh);
+    });
+    return fresh;
+  }
+
+  Future<void> _pickFile() async {
+    final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: paperFileExtensions);
+    if (f == null) return;
+    final bytes = kIsWeb || f.path == null ? await f.readAsBytes() : null;
+    setState(() {
+      q.fileName = f.name;
+      q.fileBytes = bytes;
+      q.filePath = kIsWeb ? null : f.path;
+    });
+  }
+
+  /// Questions written from the course documents, added to the list as an editable draft.
+  Future<void> _generate() async {
+    // D-301: the questions already in the exam are never written again
+    final got = await openExamGenerator(context, courseId: q.courseId!, orgId: q.orgId, avoidPrompts: [for (final x in q.questions) x.prompt]);
+    if (got == null || got.items.isEmpty || !mounted) return;
+    _review.track(got);
+    setState(() {
+      q.questions.addAll(got.questions);
+      _genNotice = got.notice;
+    });
+    appToast(t('أُضيف ${got.items.length} سؤالاً — راجعها وعدّلها قبل النشر', '${got.items.length} questions added — review and edit them before publishing'));
+  }
+
+  /// "Import from Google Forms": pick a form → preview → the draft is created with the form's name and its questions,
+  /// then the full editor opens in this screen's place (the creator checks and publishes there).
+  Future<void> _importForms() async {
+    int? created;
+    await showAppSheet<bool>(
+        context,
+        (_) => GoogleFormsImportSheet(
+              api: _api,
+              createExam: (form) async {
+                final r = await createExamForForm(_api, q, form);
+                created = r.examId;
+                return r;
+              },
+            ));
+    final id = created;
+    if (id == null || !mounted) return;
+    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => ExamEditorScreen(examId: id, courseId: q.courseId, orgId: q.orgId)), result: id);
+  }
+
+  void _start(QuickStart s) {
+    if (s == QuickStart.forms) {
+      _importForms();
+      return;
+    }
+    setState(() {
+      _started = true;
+      if (s == QuickStart.file) q.source = QuickSource.file;
+    });
+    if (s == QuickStart.generate) _generate();
+  }
+
+  /// The last question: how will students take it.
+  Future<QuickMode?> _askDelivery() => showAppSheet<QuickMode>(
+      context,
+      (ctx) => AppSheetContent(
+          title: t('كيف سيؤدي الطلاب الاختبار؟', 'How will students take it?'),
+          children: [QuickDeliveryChooser(onPick: (m) => Navigator.pop(ctx, m))]));
+
+  /// [editor]: save a draft and continue in the full editor (questions may still be missing there).
+  Future<void> _save({required bool publish, bool editor = false}) async {
+    q.title = _title.text;
+    if (editor) q.mode ??= QuickMode.online;
+    final (all, perQ) = q.validate();
+    final errors = [
+      for (final e in all)
+        if (e != 'mode_required' && !(editor && (e == 'no_questions' || e == 'file_required'))) e
+    ];
+    if (editor && q.isFile && !q.hasFile) q.source = QuickSource.questions;
+    if (errors.isNotEmpty || perQ.isNotEmpty) {
+      setState(() => _tried = true);
+      return appToast(errors.isNotEmpty ? quickCodeText(errors.first) : t('أكمل الأسئلة المعلّمة', 'Complete the marked questions'), error: true);
+    }
+    if (q.mode == null) {
+      final m = await _askDelivery();
+      if (m == null || !mounted) return;
+      q.mode = m;
+    }
+    setState(() => _busy = true);
+    final r = await createQuickExam(_api, q, publish: publish);
+    // the exam exists: every generated question still in it counts as accepted, or edited with its final text
+    if (r.examId != null) unawaited(sendGenFeedback(_learning, _review, _review.onSave(q.questions)));
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (r.ok && editor) {
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => ExamEditorScreen(examId: r.examId, courseId: q.courseId, orgId: q.orgId)));
+      return;
+    }
+    if (r.ok) {
+      appToast(r.published ? t('نُشر الاختبار', 'The exam is published') : t('حُفظ كمسودة', 'Saved as a draft'));
+      Navigator.of(context).pop(r.examId);
+      return;
+    }
+    if (r.examId == null) return appToast(r.error!, error: true);
+    // the exam exists but a later step failed: finish it in the full editor
+    appToast('${r.error} — ${t('أكمل في المحرر', 'finish it in the editor')}', error: true);
+    final nav = Navigator.of(context);
+    nav.pop(r.examId);
+    nav.push(MaterialPageRoute(builder: (_) => ExamEditorScreen(examId: r.examId, courseId: q.courseId, orgId: q.orgId)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final (rawErrors, perQ) = _tried ? q.validate() : (const <String>[], const <int, List<String>>{});
+    final errors = rawErrors.where((e) => e != 'mode_required').toList();
+    return BasePage(
+      key: const ValueKey('exam.quick'),
+      appBar: AppHeader(title: t('اختبار جديد', 'New exam'), actions: const [HelpInfoButton(pageId: 'teacher.exam_quick')]),
+      // a desktop window: the builder reads as one column, not as 1400 px wide cards
+      child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: quickScreenMaxWidth), child: !_started
+          ? SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg),
+              child: QuickStartChooser(onPick: _start, canGenerate: q.courseId != null, onClassic: widget.onClassic, canImportForms: quickFormsAvailable))
+          : Column(children: [
+              Expanded(
+                child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md), children: [
+                  AppField(controller: _title, label: t('اسم الاختبار', 'Exam name'), onChanged: (v) => q.title = v),
+                  AppSpace.gapSm,
+                  Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                    AppChoiceChip(label: t('أسئلة في التطبيق', 'Questions in the app'), icon: Icons.quiz_outlined, selected: !q.isFile,
+                        onTap: () => setState(() => q.source = QuickSource.questions)),
+                    AppChoiceChip(label: t('رفع ملف الامتحان', 'Upload the exam file'), icon: Icons.upload_file_rounded, selected: q.isFile,
+                        onTap: () => setState(() => q.source = QuickSource.file)),
+                  ]),
+                  AppSpace.gapSm,
+                  if (q.isFile)
+                    QuickFilePanel(
+                      fileName: q.fileName,
+                      points: q.filePoints,
+                      offline: q.mode == QuickMode.offline,
+                      onPick: _busy ? null : _pickFile,
+                      onPoints: (v) => q.filePoints = v,
+                    )
+                  else ...[
+                    if (q.courseId != null)
+                      ParentComponent(
+                          featureKey: kExamAutoCreateKey,
+                          child: Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: QuickGenerateCard(onTap: _busy ? null : _generate))),
+                    if (_genNotice.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                        child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: _genNotice),
+                      ),
+                    for (var i = 0; i < q.questions.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          if (_reviewing(q.questions[i]))
+                            GenReviewBar(
+                              key: ObjectKey(_review.of(q.questions[i])),
+                              mark: _review.of(q.questions[i])!.mark,
+                              onAccept: () => setState(() => _review.mark(q.questions[i], GenMark.accepted)),
+                              onEdit: () => setState(() => _review.mark(q.questions[i], GenMark.edited)),
+                              onReject: () => _reject(q.questions[i]),
+                              meta: genMetaOf(q.questions[i]),
+                              onRegenerate: genMetaOf(q.questions[i]) == null ? null : () => _regenerate(q.questions[i]),
+                            ),
+                          QuickQuestionCard(
+                            key: ObjectKey(q.questions[i]),
+                            index: i,
+                            question: q.questions[i],
+                            orgId: q.orgId,
+                            courseId: q.courseId,
+                            errors: perQ[i] ?? const [],
+                            onChanged: () => setState(() {}),
+                            onRemove: _reviewing(q.questions[i]) ? () => _reject(q.questions[i]) : () => setState(() => q.questions.removeAt(i)),
+                          ),
+                        ]),
+                      ),
+                    if (q.questions.isEmpty)
+                      AppEmpty(icon: Icons.post_add_rounded, title: t('أضف أول سؤال', 'Add the first question'),
+                          message: t('اختر نوع السؤال من الأسفل', 'Pick a question type below')),
+                    const SizedBox(height: AppSpace.xs),
+                    Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                      for (final ty in quickQuestionTypes)
+                        AppPill(icon: quickTypeIcon(ty), label: quickTypeLabel(ty), onTap: () => setState(() => q.questions.add(QuickQuestion.ofType(ty)))),
+                    ]),
+                  ],
+                  AppSpace.gapMd,
+                  QuickAdvancedPanel(exam: q, sessions: _sessions, onChanged: () => setState(() {}), onFullEditor: _busy ? null : () => _save(publish: false, editor: true)),
+                  if (errors.isNotEmpty) ...[
+                    AppSpace.gapSm,
+                    AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: errors.map(quickCodeText).join('\n')),
+                  ],
+                ]),
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline))),
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+                    child: Row(children: [
+                      Flexible(child: AppButton.ghost(onPressed: _busy ? null : () => _save(publish: false), label: t('حفظ كمسودة', 'Save as draft'))),
+                      const SizedBox(width: AppSpace.xs),
+                      Expanded(
+                        flex: 2,
+                        child: AppButton.primary(
+                            label: t('نشر · ${fmtPoints(q.totalPoints)} درجة', 'Publish · ${fmtPoints(q.totalPoints)} pts'),
+                            icon: Icons.send_rounded,
+                            expand: true,
+                            busy: _busy,
+                            onPressed: _busy ? null : () => _save(publish: true)),
+                      ),
+                    ]),
+                  ),
+                ),
+              ),
+            ]))),
+    );
+  }
+}
+
+/// The uploaded-paper part (plain values; under the layout harness).
+class QuickFilePanel extends StatefulWidget {
+  const QuickFilePanel({super.key, this.fileName, required this.points, required this.offline, required this.onPick, required this.onPoints});
+  final String? fileName;
+  final double points;
+  final bool offline;
+  final VoidCallback? onPick;
+  final ValueChanged<double> onPoints;
+
+  @override
+  State<QuickFilePanel> createState() => _QuickFilePanelState();
+}
+
+class _QuickFilePanelState extends State<QuickFilePanel> {
+  late final _points = TextEditingController(text: fmtPoints(widget.points));
+
+  @override
+  void dispose() {
+    _points.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AppCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(widget.fileName == null ? Icons.upload_file_rounded : Icons.insert_drive_file_rounded, color: c.primary),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Text(widget.fileName ?? t('PDF أو Word أو صورة', 'PDF, Word or a photo'),
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: widget.fileName == null ? c.textMedium : c.textDark)),
+          ),
+          const SizedBox(width: AppSpace.xs),
+          AppButton.secondary(onPressed: widget.onPick, size: AppButtonSize.sm, label: widget.fileName == null ? t('اختر ملفاً', 'Choose a file') : t('تغيير', 'Change')),
+        ]),
+        AppSpace.gapSm,
+        Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _points, label: t('الدرجة الكاملة', 'Full mark'), min: 0, step: 0.5, decimals: 2, onChanged: (v) => widget.onPoints(v?.toDouble() ?? 0))),
+        AppSpace.gapXs,
+        Text(
+          widget.offline
+              ? t('اطبع الملف للقاعة، ثم أدخل درجة كل طالب من النتائج.', 'Print it for the room, then enter each student\'s mark from the results.')
+              : t('يفتح الطلاب الملف ويرفعون ملف إجابتهم، وتصححها أنت من النتائج.', 'Students open the file and upload their answer; you mark it from the results.'),
+          style: AppType.meta(context),
+        ),
+      ]),
+    );
+  }
+}
+
+// ═══════════════════════════════════════ one question ═══════════════════════════════════════════════════════════
+
+/// One question of the quick builder; edits [question] in place and calls [onChanged] (under the layout harness).
+class QuickQuestionCard extends StatefulWidget {
+  const QuickQuestionCard(
+      {super.key, required this.index, required this.question, this.errors = const [], required this.onChanged, required this.onRemove, this.orgId, this.courseId, this.deriveApi});
+  final int index;
+  final QuickQuestion question;
+
+  /// Where the exam goes: the derived-key preview is asked with the teacher's rights there.
+  final int? orgId, courseId;
+
+  /// Tests pass a fake.
+  final DeriveKeyApi? deriveApi;
+  final List<String> errors;
+  final VoidCallback onChanged;
+  final VoidCallback onRemove;
+
+  @override
+  State<QuickQuestionCard> createState() => _QuickQuestionCardState();
+}
+
+class _QuickQuestionCardState extends State<QuickQuestionCard> {
+  QuickQuestion get q => widget.question;
+
+  /// The points box beside the type: room for "12.5" and its label.
+  static const double _pointsWidth = AppTouch.min * 1.75;
+  late final _prompt = TextEditingController(text: q.prompt);
+  late final _points = TextEditingController(text: fmtPoints(q.points));
+  late final _key = TextEditingController(text: q.keyText);
+  DeriveKeyPreview? _preview;
+  late final Map<int, TextEditingController> _opts = {for (final o in q.options) o.uid: TextEditingController(text: o.text)};
+
+  final Map<String, TextEditingController> _more = {};
+  TextEditingController _ctl(String key, String init) => _more.putIfAbsent(key, () => TextEditingController(text: init));
+
+  @override
+  void dispose() {
+    for (final x in [_prompt, _points, _key, ..._opts.values, ..._more.values]) {
+      x.dispose();
+    }
+    super.dispose();
+  }
+
+  void _addOption() {
+    final o = QOption(nextOptionId(q.options.map((o) => o.id)));
+    setState(() {
+      q.options.add(o);
+      _opts[o.uid] = TextEditingController();
+    });
+  }
+
+  void _removeOption(QOption o) {
+    setState(() {
+      q.options.remove(o);
+      _opts.remove(o.uid)?.dispose();
+      if (q.correct == o.id) q.correct = null;
+    });
+    widget.onChanged();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AppCard(
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xs, AppSpace.md),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Text('${widget.index + 1}', style: AppType.headline(context).copyWith(height: 1, fontFeatures: const [FontFeature.liningFigures()])),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+              child: Text(q.isOpenKind ? t('إجابة مفتوحة', 'Open answer') : quickTypeLabel(q.type),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600))),
+          SizedBox(
+            width: _pointsWidth,
+            child: TextField(
+              controller: _points,
+              keyboardType: _numKeyboard,
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(isDense: true, labelText: t('الدرجة', 'Points')),
+              onChanged: (v) {
+                q.points = parseNum(v) ?? 0;
+                widget.onChanged();
+              },
+            ),
+          ),
+          AppIconButton(onPressed: widget.onRemove, icon: Icons.delete_outline_rounded, tooltip: t('حذف', 'Delete')),
+        ]),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+          child: TextField(
+            controller: _prompt,
+            minLines: 1,
+            maxLines: 5,
+            decoration: InputDecoration(
+                hintText: q.type == 'fill_blank' ? t('اكتب السؤال وضع ___ مكان كل فراغ', 'Write the text and put ___ where each blank goes') : t('اكتب السؤال', 'Write the question')),
+            onChanged: (v) {
+              q.prompt = v;
+              if (q.type == 'fill_blank') setState(() {});
+            },
+          ),
+        ),
+        AppSpace.gapXs,
+        ...switch (q.type) {
+          'true_false' => _trueFalse(context),
+          'fill_blank' => _blanks(context),
+          'matching' => _pairs(context),
+          'mcq_single' => _options(context),
+          'numeric' => _numeric(context),
+          _ => _essay(context),
+        },
+        _difficulty(context),
+        if (widget.errors.isNotEmpty)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(top: AppSpace.xs, end: AppSpace.xs),
+            child: Text(widget.errors.map(quickCodeText).join(' · '), style: AppType.meta(context).copyWith(color: c.danger)),
+          ),
+      ]),
+    );
+  }
+
+  Widget _difficulty(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(top: AppSpace.sm, end: AppSpace.xs),
+      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Text(t('الصعوبة', 'Difficulty'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
+        for (var i = 1; i <= 5; i++)
+          AppChoiceChip(
+              label: '$i',
+              selected: q.difficulty == i,
+              onTap: () {
+                setState(() => q.difficulty = i);
+                widget.onChanged();
+              }),
+      ]),
+    );
+  }
+
+  List<Widget> _trueFalse(BuildContext context) {
+    final d = q.engine!;
+    void pick(bool v) {
+      setState(() => d.tfCorrect = v);
+      widget.onChanged();
+    }
+
+    return [
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        AppChoiceChip(label: t('صح', 'True'), icon: Icons.check_rounded, selected: d.tfCorrect == true, onTap: () => pick(true)),
+        AppChoiceChip(label: t('خطأ', 'False'), icon: Icons.close_rounded, selected: d.tfCorrect == false, onTap: () => pick(false)),
+      ]),
+    ];
+  }
+
+  List<Widget> _blanks(BuildContext context) {
+    final c = context.colors;
+    final d = q.engine!;
+    final marks = blankMarkers(q.prompt);
+    return [
+      if (marks > 0 && marks != d.blanks.length)
+        Padding(
+          padding: const EdgeInsetsDirectional.only(bottom: AppSpace.xs, end: AppSpace.xs),
+          child: Text(t('في النص $marks فراغات و${d.blanks.length} إجابات', 'The text has $marks blanks and ${d.blanks.length} answer lists'),
+              style: AppType.meta(context).copyWith(color: appInkOn(context, c.warning, c.cardBg))),
+        ),
+      for (var i = 0; i < d.blanks.length; i++)
+        Row(key: ValueKey('blank.${d.blanks[i].uid}'), children: [
+          Expanded(
+            child: TextField(
+              controller: _ctl('blank.${d.blanks[i].uid}', d.blanks[i].text),
+              decoration: InputDecoration(isDense: true, labelText: t('الفراغ ${i + 1}: الإجابات المقبولة', 'Blank ${i + 1}: accepted answers')),
+              onChanged: (v) {
+                d.blanks[i].text = v;
+                widget.onChanged();
+              },
+            ),
+          ),
+          if (d.blanks.length > 1)
+            IconButton(
+                onPressed: () {
+                  setState(() => _more.remove('blank.${d.blanks[i].uid}')?.dispose());
+                  setState(() => d.blanks.removeAt(i));
+                  widget.onChanged();
+                },
+                tooltip: t('حذف', 'Remove'),
+                icon: Icon(Icons.close_rounded, size: AppIconSize.sm, color: c.textLight)),
+        ]),
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TextButton.icon(onPressed: () => setState(() => d.blanks.add(TextItem())), icon: const Icon(Icons.add_rounded, size: AppIconSize.sm), label: Text(t('فراغ', 'Blank'))),
+      ),
+      Text(t('افصل الإجابات المقبولة بفواصل', 'Separate accepted answers with commas'), style: AppType.meta(context)),
+    ];
+  }
+
+  List<Widget> _pairs(BuildContext context) {
+    final c = context.colors;
+    final d = q.engine!;
+    return [
+      for (final p in d.pairs)
+        Row(key: ValueKey('pair.${p.uid}'), children: [
+          Expanded(
+            child: TextField(
+              controller: _ctl('pl.${p.uid}', p.left),
+              decoration: InputDecoration(isDense: true, hintText: t('العنصر', 'Item')),
+              onChanged: (v) {
+                p.left = v;
+                widget.onChanged();
+              },
+            ),
+          ),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs), child: Icon(Icons.swap_horiz_rounded, size: AppIconSize.sm, color: c.textLight)),
+          Expanded(
+            child: TextField(
+              controller: _ctl('pr.${p.uid}', p.right),
+              decoration: InputDecoration(isDense: true, hintText: t('يطابق', 'Matches')),
+              onChanged: (v) {
+                p.right = v;
+                widget.onChanged();
+              },
+            ),
+          ),
+          if (d.pairs.length > 2)
+            IconButton(
+                onPressed: () {
+                  setState(() {
+                    d.pairs.remove(p);
+                    _more.remove('pl.${p.uid}')?.dispose();
+                    _more.remove('pr.${p.uid}')?.dispose();
+                  });
+                  widget.onChanged();
+                },
+                tooltip: t('حذف', 'Remove'),
+                icon: Icon(Icons.close_rounded, size: AppIconSize.sm, color: c.textLight)),
+        ]),
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TextButton.icon(onPressed: () => setState(() => d.pairs.add(MatchPair())), icon: const Icon(Icons.add_rounded, size: AppIconSize.sm), label: Text(t('زوج', 'Pair'))),
+      ),
+    ];
+  }
+
+  List<Widget> _options(BuildContext context) {
+    final c = context.colors;
+    return [
+      for (final o in q.options)
+        Padding(padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs), child: Row(children: [
+          IconButton(
+            tooltip: t('الإجابة الصحيحة', 'The right answer'),
+            onPressed: () {
+              setState(() => q.correct = o.id);
+              widget.onChanged();
+            },
+            icon: Icon(q.correct == o.id ? Icons.check_circle_rounded : Icons.radio_button_off_rounded, color: q.correct == o.id ? c.success : c.textLight),
+          ),
+          Expanded(
+            child: TextField(
+              controller: _opts[o.uid],
+              decoration: InputDecoration(isDense: true, hintText: t('خيار', 'Choice')),
+              onChanged: (v) => o.text = v,
+            ),
+          ),
+          if (q.options.length > 2) IconButton(onPressed: () => _removeOption(o), tooltip: t('حذف الخيار', 'Remove option'), icon: Icon(Icons.close_rounded, size: AppIconSize.sm, color: c.textLight)),
+        ])),
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TextButton.icon(onPressed: _addOption, icon: const Icon(Icons.add_rounded, size: AppIconSize.sm), label: Text(t('خيار', 'Choice'))),
+      ),
+      Text(t('اضغط الدائرة بجانب الإجابة الصحيحة', 'Tap the circle next to the right answer'), style: AppType.meta(context)),
+    ];
+  }
+
+  void _pickKind(OpenKind k) {
+    setState(() => q.setOpenKind(k));
+    widget.onChanged();
+  }
+
+  Future<void> _advanced() async {
+    final x = await showOpenKeyAdvanced(context, kind: q.openKind, extras: q.extras, preview: _preview);
+    if (x == null || !mounted) return;
+    setState(() => q.extras = x);
+    widget.onChanged();
+  }
+
+  Future<void> _numericAdvanced() async {
+    final done = await showNumericAdvanced(context, q.engine!);
+    if (done != true || !mounted) return;
+    setState(() {});
+    widget.onChanged();
+  }
+
+  /// A number: the right value; the margin and units under Advanced (D-686).
+  List<Widget> _numeric(BuildContext context) {
+    final d = q.engine!;
+    final tol = parseNum(d.numTolerance);
+    final notes = [
+      if (tol != null && tol > 0) d.toleranceKind == 'pct' ? t('هامش ±${fmtPoints(tol)}٪', 'Margin ±${fmtPoints(tol)}%') : t('هامش ±${fmtPoints(tol)}', 'Margin ±${fmtPoints(tol)}'),
+      if (d.units.isNotEmpty) t('الوحدات: ${d.units.map((u) => u.name).join('، ')}', 'Units: ${d.units.map((u) => u.name).join(', ')}'),
+    ];
+    return [
+      OpenKindChips(value: OpenKind.numeric, onPick: _pickKind),
+      AppSpace.gapXs,
+      Padding(
+        padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+        child: TextField(
+          key: const ValueKey('open.number'),
+          controller: _ctl('num', d.numValue),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+          decoration: InputDecoration(isDense: true, labelText: t('الرقم الصحيح', 'The right number')),
+          onChanged: (v) {
+            d.numValue = v;
+            widget.onChanged();
+          },
+        ),
+      ),
+      if (notes.isNotEmpty) Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(notes.join(' · '), style: AppType.meta(context))),
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TextButton.icon(
+          key: const ValueKey('open.advanced'),
+          onPressed: _numericAdvanced,
+          icon: const Icon(Icons.tune_outlined, size: AppIconSize.sm),
+          label: Text(t('متقدم', 'Advanced')),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _essay(BuildContext context) {
+    final kind = q.openKind;
+    final byModel = q.keyBy == EssayKey.model;
+    return [
+      OpenKindChips(value: kind, auto: q.extras.kind == null && q.type == 'short_answer', onPick: _pickKind),
+      AppSpace.gapXs,
+      Padding(
+        padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+        child: AppSwitchTile(
+          title: t('تصحيح تلقائي', 'Auto-grading'),
+          subtitle: q.autoGrade ? t('يقترح النظام الدرجة وتراجعها أنت', 'The system grades it; you can review') : t('تصححه أنت يدوياً', 'You mark it by hand'),
+          value: q.autoGrade,
+          dense: true,
+          onChanged: (v) {
+            setState(() => q.autoGrade = v);
+            widget.onChanged();
+          },
+        ),
+      ),
+      if (q.autoGrade) ...[
+        // a generated question may come graded by key points or words: kept as it came, one tap back to a model answer
+        if (!byModel)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(bottom: AppSpace.xxs, end: AppSpace.xs),
+            child: Wrap(spacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              Text(essayKeyLabel(q.keyBy), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
+              TextButton(
+                onPressed: () {
+                  setState(() => q.keyBy = EssayKey.model);
+                  widget.onChanged();
+                },
+                child: Text(t('استخدم إجابة نموذجية', 'Use a model answer instead')),
+              ),
+            ]),
+          ),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+          child: TextField(
+            key: const ValueKey('open.model'),
+            controller: _key,
+            minLines: kind == OpenKind.word ? 1 : (byModel ? 3 : 2),
+            maxLines: 8,
+            decoration: InputDecoration(
+                labelText: byModel ? t('الإجابة النموذجية', 'Model answer') : null, hintText: byModel ? openModelHint(kind) : essayKeyHint(q.keyBy)),
+            onChanged: (v) {
+              setState(() => q.keyText = v);
+              widget.onChanged();
+            },
+          ),
+        ),
+        if (byModel)
+          OpenKeyAutoPanel(
+            type: q.type,
+            prompt: q.prompt,
+            answer: q.toDraft().answer(),
+            kind: kind,
+            orgId: widget.orgId,
+            courseId: widget.courseId,
+            api: widget.deriveApi,
+            overridden: q.extras.hasOverrides,
+            onAdvanced: _advanced,
+            onPreview: (p) => _preview = p,
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
+            child: Text(essayKeyHint(q.keyBy), style: AppType.meta(context)),
+          ),
+      ],
+    ];
+  }
+}
+
+// ═══════════════════════════════════════ Advanced ═══════════════════════════════════════════════════════════════
+
+/// The defaults, closed until opened (under the layout harness).
+class QuickAdvancedPanel extends StatefulWidget {
+  const QuickAdvancedPanel({super.key, required this.exam, required this.onChanged, this.onFullEditor, this.sessions = const []});
+  final QuickExam exam;
+
+  /// The course's sessions for "Lock the lessons after …" (empty hides the picker).
+  final List<LockSession> sessions;
+  final VoidCallback onChanged;
+
+  /// Saves a draft and opens the full editor (sections, question bank, proctoring, accommodations …).
+  final VoidCallback? onFullEditor;
+
+  @override
+  State<QuickAdvancedPanel> createState() => _QuickAdvancedPanelState();
+}
+
+class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
+  QuickExam get q => widget.exam;
+  late final _duration = TextEditingController(text: '${q.durationMinutes}');
+  late final _attempts = TextEditingController(text: '${q.maxAttempts}');
+  late final _passing = TextEditingController(text: fmtPoints(q.passingPercent));
+  late final _passcode = TextEditingController(text: q.passcode);
+  late final _description = TextEditingController(text: q.description);
+  late final _pool = TextEditingController(text: q.poolSize?.toString() ?? '');
+
+  @override
+  void dispose() {
+    for (final x in [_duration, _attempts, _passing, _passcode, _description, _pool]) {
+      x.dispose();
+    }
+    super.dispose();
+  }
+
+  void _set(VoidCallback f) {
+    setState(f);
+    widget.onChanged();
+  }
+
+  String _summary() {
+    final parts = <String>[
+      t('${q.durationMinutes} دقيقة', '${q.durationMinutes} min'),
+      q.maxAttempts == 0 ? t('محاولات بلا حد', 'unlimited attempts') : t('${q.maxAttempts} محاولة', '${q.maxAttempts} attempt(s)'),
+      if (q.sessionId != null) t('يقفل ما بعد جلسة', 'locks after a session'),
+      if (q.startsAt != null) AppTime.dateTime(q.startsAt!),
+      resultsPolicyLabel(q.resultsPolicy),
+    ];
+    return parts.join(' · ');
+  }
+
+  Widget _when(String label, DateTime? v, ValueChanged<DateTime?> set) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(children: [
+        Expanded(
+          child: Text('$label: ${v == null ? t('غير محدد', 'not set') : AppTime.dateTime(v)}', style: AppType.row(context)),
+        ),
+        IconButton(
+            onPressed: () async {
+              final d = await pickEngineDateTime(context, v);
+              if (d != null) _set(() => set(d));
+            },
+            tooltip: t('اختيار الموعد', 'Pick a date'),
+            icon: Icon(Icons.edit_calendar_rounded, color: c.primary)),
+        if (v != null) IconButton(onPressed: () => _set(() => set(null)), tooltip: t('مسح', 'Clear'), icon: Icon(Icons.close_rounded, size: AppIconSize.sm, color: c.textLight)),
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final online = q.mode != QuickMode.offline;
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: Icon(Icons.tune_rounded, color: c.textMedium),
+          title: Text(t('متقدم', 'Advanced'), style: AppType.section(context)),
+          subtitle: Text(_summary(), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+          // the top gap keeps the first row's floating labels inside the tile, which clips its children
+          childrenPadding: const EdgeInsets.fromLTRB(14, AppSpace.xs, 14, 14),
+          expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _fieldPair(
+              Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _duration, label: t('المدة (دقيقة)', 'Duration (min)'), min: 0, step: 5, onChanged: (v) => _set(() => q.durationMinutes = v?.toInt() ?? 0))),
+              Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _attempts, label: t('المحاولات', 'Attempts'), hint: t('0 = بلا حد', '0 = unlimited'), min: 0, onChanged: (v) => _set(() => q.maxAttempts = v?.toInt() ?? 0))),
+            ),
+            const SizedBox(height: 10),
+            AppField(controller: _description, label: t('وصف (اختياري)', 'Description (optional)'), maxLines: 2, onChanged: (v) => q.description = v),
+            const SizedBox(height: 10),
+            SessionLockPicker(sessions: widget.sessions, selected: q.sessionId, onChanged: (v) => _set(() => q.sessionId = v)),
+            if (!q.isFile && q.mode != QuickMode.offline) ...[
+              Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _pool, label: t('عدد الأسئلة لكل طالب', 'Questions per student'), hint: t('فارغ = كل الأسئلة؛ أقل من ذلك يعني سحباً عشوائياً', 'Empty = all of them; fewer means a random draw'), min: 1, onChanged: (v) => _set(() => q.poolSize = v?.toInt()))),
+              const SizedBox(height: 10),
+            ],
+            _when(t('يبدأ', 'Opens'), q.startsAt, (d) => q.startsAt = d),
+            _when(t('ينتهي', 'Closes'), q.endsAt, (d) => q.endsAt = d),
+            if (online)
+              AppSwitchTile(
+                  title: t('ترتيب عشوائي للأسئلة والخيارات', 'Shuffle questions and choices'),
+                  value: q.shuffle,
+                  dense: true,
+                  onChanged: (v) => _set(() => q.shuffle = v)),
+            AppSwitchTile(
+                title: t('أراجع كل درجة قبل اعتمادها', 'I approve every grade first'),
+                subtitle: t('للامتحانات المهمة: الدرجات الآلية تنتظر موافقتك', 'For important exams: automatic grades wait for you'),
+                value: q.highStakes,
+                dense: true,
+                onChanged: (v) => _set(() => q.highStakes = v)),
+            const SizedBox(height: 6),
+            Text(t('متى يرى الطالب نتيجته؟', 'When does a student see the result?'), style: AppType.bodyStrong(context)),
+            const SizedBox(height: 6),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+              for (final p in resultsPolicies)
+                AppChoiceChip(label: resultsPolicyLabel(p), selected: q.resultsPolicy == p, onTap: () => _set(() => q.resultsPolicy = p)),
+            ]),
+            const SizedBox(height: 10),
+            _fieldPair(
+              Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: AppNumberField(controller: _passing, label: t('نسبة النجاح %', 'Pass mark %'), min: 0, max: 100, step: 5, decimals: 2, onChanged: (v) => _set(() => q.passingPercent = v?.toDouble() ?? 50))),
+              online ? AppField(controller: _passcode, label: t('رمز دخول (اختياري)', 'Passcode (optional)'), ltr: true,
+                  onChanged: (v) => q.passcode = v) : null,
+            ),
+            AppSpace.gapXs,
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: widget.onFullEditor,
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                label: Text(t('المحرر الكامل (أقسام، بنك أسئلة، مراقبة)', 'Full editor (sections, question bank, proctoring)')),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

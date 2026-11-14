@@ -23,7 +23,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asStr, shortDateTime, t;
 import '../../admin/admin_money_p8.dart' show draftErrorText, p8SaveBytes;
-import '../exam_engine/exam_engine_api.dart' show EngineResult;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
 import '../../admin/admin_feature_guide.dart' show AdminFeatureGuidePage;
 import 'admin/rag_feedback_review.dart' show RagFeedbackReviewPage;
 import 'library/rag_doc_status.dart';

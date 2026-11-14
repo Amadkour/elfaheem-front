@@ -8,17 +8,17 @@ import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_insights.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_booklet.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_docx.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_pdf.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/create/answer_format.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/deliver/deliver_logic.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/deliver/deliver_summary_card.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/result/key_fix.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/result/key_fix_sheet.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring.dart';
+import 'package:flutter_education_app/features/exams/exam_insights.dart';
+import 'package:flutter_education_app/features/exams/exam_paper.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_booklet.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_docx.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_pdf.dart';
+import 'package:flutter_education_app/features/exams/hub/create/answer_format.dart';
+import 'package:flutter_education_app/features/exams/hub/deliver/deliver_logic.dart';
+import 'package:flutter_education_app/features/exams/hub/deliver/deliver_summary_card.dart';
+import 'package:flutter_education_app/features/exams/hub/result/key_fix.dart';
+import 'package:flutter_education_app/features/exams/hub/result/key_fix_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

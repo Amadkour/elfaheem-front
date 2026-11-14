@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppPrimaryButton;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart' show EngineResult;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
 import 'package:flutter_education_app/features/admin/admin_feedback_settings.dart';
 import 'package:flutter_education_app/features/admin/admin_money_p8.dart';
 import 'package:flutter_education_app/features/org/org_feedback_risk.dart';

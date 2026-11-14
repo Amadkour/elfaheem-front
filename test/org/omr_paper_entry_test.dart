@@ -16,16 +16,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_result_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_results_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_review_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_scan_review.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/paper_exam_entry.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_results_parts.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_routes.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_sheets_sheet.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_result_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_results_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_review_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_scan_review.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup.dart';
+import 'package:flutter_education_app/features/exams/paper/paper_exam_entry.dart';
+import 'package:flutter_education_app/features/exams/paper/review/omr_results_parts.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_routes.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_sheets_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/features/student/analysis/exam/exam_ui.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/exam_ui.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';

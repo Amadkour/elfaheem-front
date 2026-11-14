@@ -49,7 +49,7 @@ import 'package:flutter_education_app/design/app_table_export.dart' show showApp
 import 'admin_models.dart';
 import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppCard, AppDropdown, AppEmpty, AppListSkeleton;
-import '../shared/exam_engine/exam_review_screen.dart' show EngineReviewSection;
+import 'package:flutter_education_app/features/exams/exam_review_screen.dart' show EngineReviewSection;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 

@@ -13,7 +13,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
-import '../exam_engine/exam_engine_api.dart' show EngineResult;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
 import 'rag_alerts.dart';
 
 String _when(DateTime? utc) => utc == null ? '' : AppTime.dateTime(utc.toUtc());

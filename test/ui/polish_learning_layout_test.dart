@@ -13,7 +13,7 @@ import 'package:flutter_education_app/features/shared/course/private_flag.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
 import 'package:flutter_education_app/features/shared/session/material/components/session_exam_tile.dart';
 import 'package:flutter_education_app/features/shared/session/material/components/session_shared_widgets.dart';
-import 'package:flutter_education_app/features/student/analysis/exam/exam_ui.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/exam_ui.dart';
 import 'package:flutter_education_app/features/student/courses/details/components/about.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_access_sheet.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_screen.dart';

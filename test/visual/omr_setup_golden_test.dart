@@ -20,10 +20,10 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup_wizard.dart';
-import 'package:flutter_education_app/features/shared/identity/identity_request_gate.dart';
-import 'package:flutter_education_app/features/shared/identity/identity_requests.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup_wizard.dart';
+import 'package:flutter_education_app/features/exams/identity/identity_request_gate.dart';
+import 'package:flutter_education_app/features/exams/identity/identity_requests.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;

@@ -1,0 +1,420 @@
+// "Generate this exam for me from the course documents": the RAG service writes draft questions from the course's
+// documents (grouped by topic, a few questions per group — rag_service/examgen.py), and they land in the quick exam
+// builder as ordinary editable questions. The teacher reviews and edits them before publishing.
+//
+//   POST /api/v1/rag/exam-drafts {course_id, org_id?, types: mcq|essay|mixed, count, difficulty: mixed|easy|medium|hard,
+//        focus?: "chapter 3", lang: auto|ar|en}  → 202 the draft (queued)
+//        409 no_course_documents {busy}: no ready course document yet (busy = still being read)
+//   GET  /api/v1/rag/exam-drafts/{id}  → {state, questions[{type, prompt, options[{id, text}], correct, answer,
+//        key_points[], points, source{title, section, page_from}, evidence, difficulty, bloom, writer, score?}],
+//        generator, review{chunks, filtered_chunks, planner{topics, skipped}, written, kept, fixed, dropped, extractive}}
+//        (D-012: the server's planner picks the topics, the writer cites its evidence, the reviewer fixes or drops)
+//
+// Pure (unit-tested): GenTypes, GenDifficulty, GenLang, ExamGenDraft, examGenSummary, quickQuestionsOf,
+// ragFormatAdvice, examGenCodeText, ExamGenStep; Track F: genItemsOf, ExamGenResult, genFinalOf, genChanged, ExamGenReview
+// (the creator's Accept / Edit / Reject per generated question → POST /api/v1/rag/learning/exam-drafts/{id}/items/{n}/
+// feedback, rag_learning.dart; a rejection at once, the rest as one batch when the exam is saved).
+library;
+
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
+
+import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t;
+import 'package:flutter_education_app/features/shared/rag/rag_chat.dart' show RagApi;
+import 'package:flutter_education_app/features/shared/rag/rag_learning.dart' show ExamItemAction, LearningApi, examItemBody, learningOlderServer;
+import 'package:flutter_education_app/features/shared/rag/rag_library.dart' show RagDocument, ragLibraryCodeText;
+import 'package:flutter_education_app/features/exams/exam_authoring.dart' show QOption;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult, engineCall;
+import 'package:flutter_education_app/features/exams/exam_gen_api.dart';
+import 'package:flutter_education_app/features/exams/exam_quick.dart';
+
+/// The only two questions asked: which kind of questions, and how many.
+enum GenTypes { mixed, mcq, essay }
+
+const genDefaultCount = 10;
+const genMaxCount = 40;
+
+String genTypesLabel(GenTypes g) => switch (g) {
+      GenTypes.mixed => t('مختلط', 'Mixed'),
+      GenTypes.mcq => t('اختيار من متعدد', 'Multiple choice'),
+      GenTypes.essay => t('مقالي', 'Essay'),
+    };
+
+/// How hard the questions should be: recall only (easy), understanding (medium), application and comparison (hard),
+/// or a spread (mixed).
+enum GenDifficulty { mixed, easy, medium, hard }
+
+String genDifficultyLabel(GenDifficulty d) => switch (d) {
+      GenDifficulty.mixed => t('متنوّع', 'Mixed'),
+      GenDifficulty.easy => t('سهل', 'Easy'),
+      GenDifficulty.medium => t('متوسط', 'Medium'),
+      GenDifficulty.hard => t('صعب', 'Hard'),
+    };
+
+/// The questions' language: the course text's own, or a fixed one.
+enum GenLang { auto, ar, en }
+
+String genLangLabel(GenLang l) => switch (l) {
+      GenLang.auto => t('لغة المستند', 'The document\'s'),
+      GenLang.ar => t('العربية', 'Arabic'),
+      GenLang.en => t('الإنجليزية', 'English'),
+    };
+
+/// The teacher's focus text, trimmed to what the server takes (300 characters).
+const genMaxFocusChars = 300;
+
+class ExamGenDraft {
+  const ExamGenDraft({required this.id, required this.state, this.questions = const [], this.generator, this.error, this.review = const {}});
+  final int id;
+  final String state;
+  final List<Map<String, dynamic>> questions;
+  final String? generator;
+  final String? error;
+
+  /// The server's review summary (D-012): chunks, filtered_chunks, planner{topics, skipped}, written, kept, fixed,
+  /// dropped, extractive. Empty on an older server.
+  final Map<String, dynamic> review;
+
+  bool get done => state == 'done' || state == 'failed';
+
+  /// Written by the model (as opposed to the extractive fallback only).
+  bool get byModel => (generator ?? '').startsWith('llm');
+
+  factory ExamGenDraft.fromJson(Map<String, dynamic> j) => ExamGenDraft(
+      id: asInt(j['id']),
+      state: asStr(j['state'], 'queued'),
+      questions: asMapList(j['questions']),
+      generator: j['generator']?.toString(),
+      error: j['error']?.toString(),
+      review: asMap(j['review']));
+}
+
+/// One line on what the generator did, for the toast after the questions land in the builder: how many questions,
+/// how many topics the planner picked, what the reviewer dropped, how many fell back to quoting. Null when the
+/// server sent no review (older server) or nothing worth saying.
+String? examGenSummary(ExamGenDraft d) {
+  if (d.review.isEmpty) return null;
+  final r = d.review;
+  final topics = asInt(asMap(r['planner'])['topics']);
+  final dropped = asInt(r['dropped']);
+  final extractive = asInt(r['extractive']);
+  final parts = <String>[
+    t('${d.questions.length} سؤالاً', '${d.questions.length} questions'),
+    if (topics > 0) t('$topics موضوعات اختارها المخطِّط', '$topics topics picked by the planner'),
+    if (dropped > 0) t('حذف المراجع $dropped', 'reviewer dropped $dropped'),
+    if (extractive > 0 && d.byModel) t('$extractive مقتبسة مباشرة', '$extractive quoted directly'),
+  ];
+  return parts.join(' · ');
+}
+
+/// The draft's questions as quick-builder questions: multiple choice keeps its choices and right answer; an essay is
+/// auto-graded against its key points (or its model answer when it has none).
+List<QuickQuestion> quickQuestionsOf(List<Map<String, dynamic>> questions) => [for (final (_, q) in genItemsOf(questions)) q];
+
+/// As [quickQuestionsOf], each with its index in the draft's `questions` (the `n` of the item feedback route; the
+/// questions that cannot be used are skipped, so the indexes may have gaps).
+List<(int, QuickQuestion)> genItemsOf(List<Map<String, dynamic>> questions) {
+  final out = <(int, QuickQuestion)>[];
+  for (var n = 0; n < questions.length; n++) {
+    final q = _quickOf(questions[n]);
+    if (q != null) out.add((n, q));
+  }
+  return out;
+}
+
+QuickQuestion? _quickOf(Map<String, dynamic> g) {
+  // generation v2 (exam_gen_api.dart): all six types, each with its source; the old draft only knows mcq and essay
+  if (genIsV2(g)) return quickOfV2(g);
+  final prompt = asStr(g['prompt']).trim();
+  if (prompt.isEmpty) return null;
+  if (g['type'] == 'mcq') {
+    final opts = [for (final o in asMapList(g['options'])) if (asStr(o['text']).trim().isNotEmpty) QOption(asStr(o['id']), asStr(o['text']))];
+    if (opts.length < 2) return null;
+    final q = QuickQuestion.mcq()
+      ..prompt = prompt
+      ..options = opts
+      ..correct = opts.any((o) => o.id == g['correct']) ? asStr(g['correct']) : null;
+    if (g['points'] is num) q.points = (g['points'] as num).toDouble();
+    return q;
+  }
+  if (g['type'] == 'essay') {
+    final points = [for (final p in (g['key_points'] is List ? g['key_points'] as List : const [])) '$p'.trim()]..removeWhere((p) => p.isEmpty);
+    final answer = asStr(g['answer']).trim();
+    final q = QuickQuestion.essay()..prompt = prompt;
+    if (points.isNotEmpty) {
+      q
+        ..keyBy = EssayKey.points
+        ..keyText = points.join('\n');
+    } else if (answer.isNotEmpty) {
+      q
+        ..keyBy = EssayKey.model
+        ..keyText = answer;
+    } else {
+      q.autoGrade = false;
+    }
+    if (g['points'] is num) q.points = (g['points'] as num).toDouble();
+    return q;
+  }
+  return null;
+}
+
+// ── the creator's verdict on each generated question (Track F) ──────────────────────────────────────────────────
+
+/// What the sheet hands the quick builder: the draft and its questions with their indexes in the draft.
+class ExamGenResult {
+  const ExamGenResult(this.draftId, this.items, {this.notice = ''});
+  final int draftId;
+  final List<(int, QuickQuestion)> items;
+
+  /// What the teacher should know about the whole batch (written without a model, and why); '' = nothing.
+  final String notice;
+
+  List<QuickQuestion> get questions => [for (final (_, q) in items) q];
+}
+
+/// The creator's mark on a generated question in the builder (none yet · accepted · editing · rejected).
+enum GenMark { none, accepted, edited, rejected }
+
+/// A question as the item feedback's `final` carries it: the text, the choices `{id, text}` (multiple choice) and the
+/// answer (the right choice's id, or the essay's key).
+Map<String, dynamic> genFinalOf(QuickQuestion q) => {
+      'question': q.prompt.trim(),
+      'options': q.isEssay ? const <Map<String, dynamic>>[] : [for (final o in q.options) if (o.text.trim().isNotEmpty) {'id': o.id, 'text': o.text.trim()}],
+      'answer': _engineAnswer(q) ?? (q.isEssay ? q.keyText.trim() : (q.correct ?? '')),
+    };
+
+/// The answer of a true / false, complete or matching question as one comparable text (null for the other types).
+String? _engineAnswer(QuickQuestion q) {
+  final e = q.engine;
+  if (e == null) return null;
+  return switch (q.type) {
+    'true_false' => '${e.tfCorrect ?? ''}',
+    'fill_blank' => e.blanks.map((b) => b.text.trim()).join(' | '),
+    'matching' => e.pairs.map((p) => '${p.left.trim()} = ${p.right.trim()}').join(' | '),
+    _ => null,
+  };
+}
+
+String _norm(Object? v) => '$v'.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+/// Whether the creator changed the question (text, choices or answer) since it was generated; spaces do not count.
+bool genChanged(Map<String, dynamic> original, Map<String, dynamic> now) {
+  if (_norm(original['question']) != _norm(now['question']) || _norm(original['answer']) != _norm(now['answer'])) return true;
+  final a = asMapList(original['options']), b = asMapList(now['options']);
+  if (a.length != b.length) return true;
+  for (var i = 0; i < a.length; i++) {
+    if (_norm(a[i]['id']) != _norm(b[i]['id']) || _norm(a[i]['text']) != _norm(b[i]['text'])) return true;
+  }
+  return false;
+}
+
+class GenItemRef {
+  GenItemRef(this.draftId, this.n, this.original, {this.serverN});
+  final int draftId;
+
+  /// The index in the draft's `questions`: what the FEEDBACK route takes.
+  final int n;
+
+  /// The item number the server gave a v2 question (from 1): what regenerate and delete take. Null for the old
+  /// generator's items (no such routes).
+  final int? serverN;
+
+  /// [genFinalOf] as generated.
+  final Map<String, dynamic> original;
+  GenMark mark = GenMark.none;
+  String? reason;
+
+  /// Sent already (a rejection goes at once; the rest when the exam is saved).
+  bool sent = false;
+}
+
+/// One call of the item feedback route: draft, index, body.
+typedef GenFeedbackCall = (int draftId, int n, Map<String, dynamic> body);
+
+/// The generated questions of one quick exam and the creator's verdict on each (pure; the screen sends the calls).
+/// Rejected questions leave the exam at once and are reported then; when the exam is saved, every generated
+/// question still in it that was not rejected counts as accepted — or as edited, with its final text, when the
+/// creator changed it.
+class ExamGenReview {
+  final Map<QuickQuestion, GenItemRef> _items = Map.identity();
+
+  /// False once the server turned out older (no learning routes): the review bar hides, nothing more is sent.
+  bool supported = true;
+
+  bool get isEmpty => _items.isEmpty;
+
+  void track(ExamGenResult r) {
+    for (final (n, q) in r.items) {
+      _items[q] = GenItemRef(r.draftId, n, genFinalOf(q), serverN: genMetaOf(q)?.n);
+    }
+  }
+
+  GenItemRef? of(QuickQuestion q) => _items[q];
+  bool isGenerated(QuickQuestion q) => _items.containsKey(q);
+
+  /// Accepted / Edit: a visual mark only (what counts is the question's state when the exam is saved).
+  void mark(QuickQuestion q, GenMark m) {
+    final r = _items[q];
+    if (r != null && !r.sent) r.mark = m;
+  }
+
+  /// [fresh] took the place of [old] (the review bar's "Regenerate"): the same slot of the draft, a new original, a
+  /// fresh verdict. False when [old] is not a tracked question.
+  bool replace(QuickQuestion old, QuickQuestion fresh) {
+    final r = _items.remove(old);
+    if (r == null) return false;
+    _items[fresh] = GenItemRef(r.draftId, r.n, genFinalOf(fresh), serverN: genMetaOf(fresh)?.n ?? r.serverN);
+    return true;
+  }
+
+  /// The creator rejected [q] (it leaves the exam): the call to send now, null when it is not a generated question.
+  GenFeedbackCall? reject(QuickQuestion q, String? reason) {
+    final r = _items[q];
+    if (r == null || r.sent) return null;
+    r
+      ..mark = GenMark.rejected
+      ..reason = reason
+      ..sent = true;
+    return (r.draftId, r.n, examItemBody(ExamItemAction.reject, reason: reason));
+  }
+
+  /// The batch to send when the exam is saved: each generated question still in [inExam], not sent yet, as accept or
+  /// edit (with its final text). Marks them sent.
+  List<GenFeedbackCall> onSave(List<QuickQuestion> inExam) {
+    final out = <GenFeedbackCall>[];
+    for (final q in inExam) {
+      final r = _items[q];
+      if (r == null || r.sent) continue;
+      final now = genFinalOf(q);
+      final edited = genChanged(r.original, now);
+      out.add((r.draftId, r.n, edited ? examItemBody(ExamItemAction.edit, finalItem: now) : examItemBody(ExamItemAction.accept)));
+      r
+        ..mark = edited ? GenMark.edited : GenMark.accepted
+        ..sent = true;
+    }
+    return out;
+  }
+}
+
+/// "Regenerate" on a generated question: another question for item [n] of job [jobId] (the `n` of [GenItemRef]), or
+/// null when the server could not (the old question stays). The quick builder swaps it in with [ExamGenReview.replace].
+Future<QuickQuestion?> regenerateGenItem(int jobId, int n, {String? hint}) async {
+  try {
+    return await regenerateGenItemWith(ExamGenV2Api(), jobId, n, hint: hint);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Deletes item [n] of the job on the server (v2 jobs; fire-and-forget, after the reject feedback).
+Future<void> deleteGenItem(int jobId, int n) => removeGenItem(ExamGenV2Api(), jobId, n);
+
+/// Sends [calls] fire-and-forget (all at once); an older server switches [review] off. Never throws.
+Future<void> sendGenFeedback(LearningApi api, ExamGenReview review, List<GenFeedbackCall> calls) async {
+  if (!review.supported || calls.isEmpty) return;
+  try {
+    final rs = await Future.wait([for (final (d, n, body) in calls) api.examItemFeedback(d, n, body)]);
+    if (rs.any(learningOlderServer)) review.supported = false;
+  } catch (_) {/* feedback must never get in the creator's way */}
+}
+
+/// One line on which file to give, chosen for the picked file (or the general advice when none is picked yet).
+String ragFormatAdvice(String? fileName) {
+  final ext = fileName == null || !fileName.contains('.') ? '' : fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+  return switch (ext) {
+    'docx' || 'txt' || 'md' || 'markdown' || 'html' || 'htm' =>
+      t('ممتاز: النص يُقرأ كما هو، فتخرج الأسئلة أدق.', 'Great: the text is read exactly as written, so the questions come out more accurate.'),
+    'pdf' => t('جيد إن كان PDF نصياً (يمكن تحديد كلماته)؛ الممسوح ضوئياً يُقرأ بالتعرف الضوئي وقد يفقد كلمات.',
+        'Good if it is a text PDF (you can select its words); a scanned one goes through OCR and may lose words.'),
+    'png' || 'jpg' || 'jpeg' => t('الصور تُقرأ بالتعرف الضوئي وقد تفقد كلمات — ملف Word أو PDF نصي أفضل.',
+        'Photos go through OCR and may lose words — a Word file or a text PDF works better.'),
+    _ => t('الأفضل ملف Word أو PDF نصي: يُقرأ النص بدقة، بخلاف الصور والملفات الممسوحة والشرائح.',
+        'Best: a Word file or a text PDF — the text is read exactly, unlike photos, scans or slides.'),
+  };
+}
+
+/// A scanned PDF was read by OCR: say so once it is processed (the questions may be weaker).
+String? ragOcrWarning(RagDocument d) => d.ocrPages > 0
+    ? t('قُرئت ${d.ocrPages} صفحة بالتعرف الضوئي — قد تكون بعض الأسئلة أضعف. ملف Word أو PDF نصي يعطي نتيجة أدق.',
+        '${d.ocrPages} pages were read by OCR — some questions may be weaker. A Word file or a text PDF gives better results.')
+    : null;
+
+String examGenCodeText(String? code, String fallback) => switch (code) {
+      'not_course_staff' => t('إنشاء الأسئلة لمعلمي المقرر فقط', 'Only the course\'s teachers can generate questions'),
+      'no_course_documents' => t('ارفع مستند المقرر أولاً', 'Upload the course document first'),
+      'bad_question_count' => t('عدد الأسئلة من 1 إلى $genMaxCount', 'Between 1 and $genMaxCount questions'),
+      'bad_difficulty' => t('مستوى الصعوبة غير صالح', 'Invalid difficulty'),
+      'bad_lang' => t('لغة الأسئلة غير صالحة', 'Invalid question language'),
+      'bad_focus' => t('نص التركيز غير مقبول', 'The focus text is not accepted'),
+      'draft_not_found' => t('المسودة غير موجودة', 'The draft was not found'),
+      'no_questions' => t('لم نجد في المستند نصاً كافياً لكتابة أسئلة — جرّب ملفاً آخر', 'The document did not have enough text to write questions — try another file'),
+      'too_many_requests' => t('طلبات كثيرة في وقت قصير — انتظر دقيقة', 'Too many requests — wait a minute'),
+      _ => ragLibraryCodeText(code, fallback),
+    };
+
+/// Where the sheet is: reading the course's documents · none yet (ask for one) · being processed · ready (the two
+/// questions) · writing the questions.
+enum ExamGenStep { loading, needDocument, processing, ready, generating }
+
+/// The step for the course's documents as the library lists them (course documents only; archived ones are left out).
+ExamGenStep examGenStepOf(List<RagDocument> docs, int courseId) {
+  final mine = docs.where((d) => d.scope == 'course' && d.courseId == courseId && !d.archived).toList();
+  if (mine.any((d) => d.status == 'ready')) return ExamGenStep.ready;
+  if (mine.any((d) => d.busy)) return ExamGenStep.processing;
+  return ExamGenStep.needDocument;
+}
+
+class ExamGenApi {
+  ExamGenApi([ApiClient? api]) : _api = api ?? ApiClient();
+  final ApiClient _api;
+  static const base = RagApi.base;
+
+  Future<EngineResult> create(
+          {required int courseId,
+          int? orgId,
+          required GenTypes types,
+          required int count,
+          GenDifficulty difficulty = GenDifficulty.mixed,
+          String focus = '',
+          GenLang lang = GenLang.auto}) =>
+      engineCall(() => _api.post('$base/exam-drafts', body: createBody(courseId: courseId, orgId: orgId, types: types, count: count, difficulty: difficulty, focus: focus, lang: lang)));
+
+  /// The POST body (pure): the focus only when given, trimmed to [genMaxFocusChars].
+  static Map<String, dynamic> createBody(
+      {required int courseId, int? orgId, required GenTypes types, required int count, GenDifficulty difficulty = GenDifficulty.mixed, String focus = '', GenLang lang = GenLang.auto}) {
+    final f = focus.trim();
+    return {
+      'course_id': courseId,
+      'org_id': ?orgId,
+      'types': types.name,
+      'count': count,
+      'difficulty': difficulty.name,
+      if (f.isNotEmpty) 'focus': f.length > genMaxFocusChars ? f.substring(0, genMaxFocusChars) : f,
+      'lang': lang.name,
+    };
+  }
+
+  Future<EngineResult> get(int id) => engineCall(() => _api.get('$base/exam-drafts/$id'));
+
+  /// The poll while the live stream is connected: `job_updated{kind: exam_draft, id}` fetches at once then.
+  static const waitLive = Duration(seconds: 15);
+
+  /// Polls until the draft is written (or [timeout]): every 1.5 s, then slower (every [waitLive] while the live
+  /// stream carries the draft's events).
+  Future<EngineResult> waitFor(int id, {Duration timeout = const Duration(minutes: 4)}) async {
+    final end = DateTime.now().add(timeout);
+    var every = const Duration(milliseconds: 1500);
+    var r = await get(id);
+    final watch = JobWatch(kind: 'exam_draft', id: '$id');
+    try {
+      while (r.ok && !ExamGenDraft.fromJson(asMap(r.map)).done && DateTime.now().isBefore(end)) {
+        await watch.next(every, fallbackEvery: waitLive);
+        if (every < const Duration(seconds: 5)) every += const Duration(milliseconds: 500);
+        r = await get(id);
+      }
+    } finally {
+      watch.dispose();
+    }
+    return r;
+  }
+}

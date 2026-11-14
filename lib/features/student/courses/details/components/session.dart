@@ -4,9 +4,9 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton,
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
-import '../../../analysis/exam/student_course_exams_widget.dart'
+import 'package:flutter_education_app/features/exams/legacy/student/student_course_exams_widget.dart'
     show openStudentExam;
-import '../../../analysis/exam/student_exam_provider.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/student_exam_provider.dart';
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../shared/course/course_space/course_space.dart';

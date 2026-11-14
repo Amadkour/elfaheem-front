@@ -7,10 +7,10 @@ import 'dart:io';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/models_hub/models_hub_api.dart';
 import 'package:flutter_education_app/features/admin/models/ai_models_bench.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_autograde.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_review.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/grade/essay_run.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review.dart';
+import 'package:flutter_education_app/features/exams/exam_autograde.dart';
+import 'package:flutter_education_app/features/exams/exam_review.dart';
+import 'package:flutter_education_app/features/exams/hub/grade/essay_run.dart';
+import 'package:flutter_education_app/features/exams/paper/review/omr_review.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -3,11 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_all.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_all_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_forms_import.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_quick.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_quick_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_all.dart';
+import 'package:flutter_education_app/features/exams/exam_all_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_forms_import.dart';
+import 'package:flutter_education_app/features/exams/exam_quick.dart';
+import 'package:flutter_education_app/features/exams/exam_quick_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

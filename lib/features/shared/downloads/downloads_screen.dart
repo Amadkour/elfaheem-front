@@ -23,7 +23,7 @@ import 'package:flutter_education_app/utils/helpers.dart';
 import '../../../core/offline/offline_strings.dart';
 import '../attendance/attendance_strings.dart';
 import '../attendance/offline_attendance_tab.dart';
-import '../exam_engine/offline/offline_exam_screen.dart';
+import 'package:flutter_education_app/features/exams/offline/offline_exam_screen.dart';
 import '../../admin/admin_common.dart' show t;
 import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';

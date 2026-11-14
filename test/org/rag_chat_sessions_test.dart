@@ -6,7 +6,7 @@ import 'dart:io';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_flow.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_flow.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

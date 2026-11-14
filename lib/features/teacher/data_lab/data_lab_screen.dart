@@ -52,10 +52,10 @@ import 'package:flutter_education_app/design/app_kit.dart'
     show AppBackButton, AppGradients, showAppSideSheet, AppHeaderStrip, AppWidthBox, AppWidth, AppBlock, AppBlockTone, AppBlockColors,
         AppButton, AppElevation, AppType, AppSpace, AppRadius, AppTouch, AppIconSize, AppBorder,
         AppMotion, appFieldDecoration, appFieldTextStyle, appInk;
-import '../../shared/exam_engine/marks/marks_links.dart' show markTemplatePicker;
-import '../../shared/exam_engine/marks/review/grade_review_entry.dart';
+import 'package:flutter_education_app/features/exams/marks/marks_links.dart' show markTemplatePicker;
+import 'package:flutter_education_app/features/exams/marks/review/grade_review_entry.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal, AppCountUp, AppPressScale;
-import '../../shared/exam_engine/marks/review/grade_review_start.dart' show GradeColumn;
+import 'package:flutter_education_app/features/exams/marks/review/grade_review_start.dart' show GradeColumn;
 import 'package:flutter_education_app/core/api_error_text.dart';
 
 // Base sizes at 100% zoom. Everything in the sheet is multiplied by the zoom factor,

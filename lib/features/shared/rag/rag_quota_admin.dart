@@ -17,7 +17,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, t;
 import '../../admin/admin_money_p8.dart' show numText, parseNum;
-import '../exam_engine/exam_engine_api.dart' show EngineResult;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
 import 'rag_library.dart';
 import 'rag_library_screen.dart' show RagQuotaBar;
 

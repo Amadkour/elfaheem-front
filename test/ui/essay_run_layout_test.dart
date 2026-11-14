@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/grade/essay_run.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/grade/essay_run_widgets.dart';
+import 'package:flutter_education_app/features/exams/hub/grade/essay_run.dart';
+import 'package:flutter_education_app/features/exams/hub/grade/essay_run_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

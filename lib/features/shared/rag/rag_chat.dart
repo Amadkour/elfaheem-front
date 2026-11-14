@@ -44,7 +44,7 @@ import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/core/offline/downloads_availability.dart' show kDownloadsAvailable, linkAvailableHere;
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t, trp;
-import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult, engineCall;
 import 'chat/rag_payload.dart';
 import 'chat/rag_stream.dart';
 import 'rag_library.dart' show ragOrgStatusText;

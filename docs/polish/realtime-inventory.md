@@ -16,8 +16,8 @@ Kind: **ND** = checks for new data · **JP** = progress of a job the user waits 
 | org/org_providers.dart:422 `OrgScheduleProvider._follow` | GET …/schedules/{sid}/runs/{rid} | 2 s; stops after 5 misses / 4 min | while a run is followed | JP | none |
 | org/org_registrar_member.dart:160 | GET …/register-requests/{id} | server `poll_after_ms` | after cart submit | JP | none (outbox `registration.processed` not fanned out) |
 | shared/rag/rag_chat.dart:287 `RagApi.waitFor` | GET /rag/queries/{id} | 1 s → 4 s, 3 min | per question | JP | none |
-| shared/exam_engine/exam_generate.dart:222 `waitFor` | GET /rag/exam-drafts/{id} | 1.5 s → 5 s, 4 min | per draft | JP | none |
-| shared/exam_engine/exam_insights_screen.dart:415 | GET …/exams/{id}/analytics | 2 s × ≤ 30 | after Refresh | JP | none |
+| features/exams/exam_generate.dart:222 `waitFor` | GET /rag/exam-drafts/{id} | 1.5 s → 5 s, 4 min | per draft | JP | none |
+| features/exams/exam_insights_screen.dart:415 | GET …/exams/{id}/analytics | 2 s × ≤ 30 | after Refresh | JP | none |
 | shared/rag/rag_library_screen.dart:89 | GET /rag/documents | 5 s while a document is busy | screen open | JP | none |
 | shared/profile/privacy_export.dart:289 | GET data-export status | 5 s while processing | page open | JP | none |
 | features/live/meeting_recording_sheets.dart:332, 753 | GET /me/cloud (OAuth wait) | 3 s | sheet open | JP | none |

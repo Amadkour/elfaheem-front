@@ -6,8 +6,8 @@ import 'dart:io';
 
 import 'package:flutter/services.dart' show TextInputType;
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
-import 'package:flutter_education_app/features/shared/identity/identity_requests.dart';
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
+import 'package:flutter_education_app/features/exams/identity/identity_requests.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _p(String name) =>

@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart' show EngineResult;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
 import 'package:flutter_education_app/features/shared/rag/library/rag_doc_status.dart';
 import 'package:flutter_education_app/features/shared/rag/library/rag_upload_scope.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_library.dart';

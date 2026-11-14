@@ -5,9 +5,9 @@ import 'package:cryptography/cryptography.dart';
 import 'package:crypto/crypto.dart' as dc;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_taking.dart' show Paper;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_taking_screen.dart' show ExamQuestionCard;
-import 'package:flutter_education_app/features/shared/exam_engine/offline/offline_exam_core.dart';
+import 'package:flutter_education_app/features/exams/exam_taking.dart' show Paper;
+import 'package:flutter_education_app/features/exams/exam_taking_screen.dart' show ExamQuestionCard;
+import 'package:flutter_education_app/features/exams/offline/offline_exam_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

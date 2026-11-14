@@ -17,9 +17,9 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../admin/admin_common.dart';
-import '../shared/exam_engine/exam_authoring.dart' show ExamAuthoringApi;
-import '../shared/exam_engine/exam_quick.dart' show examsBySlot;
-import '../shared/exam_engine/exam_quick_screen.dart' show showSlotExamSheet;
+import 'package:flutter_education_app/features/exams/exam_authoring.dart' show ExamAuthoringApi;
+import 'package:flutter_education_app/features/exams/exam_quick.dart' show examsBySlot;
+import 'package:flutter_education_app/features/exams/exam_quick_screen.dart' show showSlotExamSheet;
 import 'org_my_exams.dart' show examPauseText;
 import 'org_providers.dart';
 import 'org_schedule_copies.dart' show timetableNamesOf;

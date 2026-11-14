@@ -15,7 +15,7 @@ import '../features/shared/category/categories_provider.dart';
 import '../features/shared/notification/notifications_provider.dart';
 import '../features/shared/profile/about/about_terms_provider.dart';
 import '../features/shared/profile/profile_provider.dart';
-import '../features/student/analysis/exam/student_exam_provider.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/student_exam_provider.dart';
 import '../features/student/courses/list/courses_provider.dart';
 import '../features/student/courses/my_courses/my_courses_provider.dart';
 import '../features/student/home/home_provider.dart';

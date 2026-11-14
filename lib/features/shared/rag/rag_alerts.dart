@@ -15,7 +15,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../admin/admin_common.dart' show asBool, asDouble, asInt, asMap, asMapList, asStr, t;
 import '../../admin/admin_home_data.dart' show AdminAlert;
-import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult, engineCall;
 
 /// The rules the console edits, in the order it shows them.
 const ragAlertRuleKeys = ['p95_latency', 'not_found_rate', 'thumbs_down_rate', 'ingest_failures', 'polling_share', 'model_fallback'];

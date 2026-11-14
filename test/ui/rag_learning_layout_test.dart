@@ -5,9 +5,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_generate.dart' show GenMark;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_generate_sheet.dart';
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
+import 'package:flutter_education_app/features/exams/exam_generate.dart' show GenMark;
+import 'package:flutter_education_app/features/exams/exam_generate_sheet.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_learning.dart';

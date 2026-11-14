@@ -22,7 +22,7 @@ Date: 2026-10-24. Branch: `feature/platform-rbac-exams-rag`. Method: an independ
 | H3 | `android/app/build.gradle.kts:35` and signing config | Release build: `isMinifyEnabled=false`, `isShrinkResources=false`, **signed with the debug key**, `applicationId = "com.example.flutter_education_app"`; no `--obfuscate`/`--split-debug-info` anywhere. |
 | H4 | `lib/config/app_config.dart:13` | `AppConfig.testMode` is hard-coded `true`, so `_ApiLogInterceptor` (`api_client.dart:819`) logs decrypted request/response bodies in release builds. |
 | H5 | `student_active_exam_screen.dart:38`, `student_course_exams_widget.dart:36-37` | Exam **passcode is checked on the client only** (the server never validates it, see backend H12). |
-| H6 | `student_active_exam_screen.dart:265-272`, `student_exam_provider.dart:402-407,263-276` | Exam timer is a local `Timer.periodic` from `duration*60`, not anchored to a server deadline; no autosave; submit posts one request per question and continues when one fails (partial submissions). `Question.fromJson` accepts `correct_answer` (`shared/models/exam_model.dart:168-177`). |
+| H6 | `student_active_exam_screen.dart:265-272`, `student_exam_provider.dart:402-407,263-276` | Exam timer is a local `Timer.periodic` from `duration*60`, not anchored to a server deadline; no autosave; submit posts one request per question and continues when one fails (partial submissions). `Question.fromJson` accepts `correct_answer` (`features/exams/legacy/exam_model.dart:168-177`). |
 | H7 | `lib/main.dart:1196-1223` | `_Guard` checks login only, not role; on web any signed-in user can open `/admin_dashboard` or `/org_dashboard` by URL (server-side checks are the only protection). |
 
 ## 2. Medium findings

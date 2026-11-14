@@ -6,11 +6,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/mark_sessions_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_capture.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_rows.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_start.dart';
+import 'package:flutter_education_app/features/exams/marks/mark_sessions_api.dart';
+import 'package:flutter_education_app/features/exams/marks/review/grade_review_capture.dart';
+import 'package:flutter_education_app/features/exams/marks/review/grade_review_screen.dart';
+import 'package:flutter_education_app/features/exams/marks/review/grade_review_rows.dart';
+import 'package:flutter_education_app/features/exams/marks/review/grade_review_start.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

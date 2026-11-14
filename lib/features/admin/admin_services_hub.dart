@@ -22,7 +22,7 @@ import '../shared/attendance/admin_data_lab_page.dart';
 import '../shared/rag/rag_admin_console.dart' show RagAdminConsole;
 import 'models/ai_models_page.dart' show AiModelsPage;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredExamHub;
-import '../shared/exam_engine/paper/templates/omr_template_library.dart' show openOmrTemplateLibrary;
+import 'package:flutter_education_app/features/exams/paper/templates/omr_template_library.dart' show openOmrTemplateLibrary;
 import 'admin_admins_page.dart';
 import 'admin_auth_settings_page.dart';
 import 'admin_username_stats.dart' show AdminUsernameStatsPage, kUsernameStatsFeatureKey;
@@ -60,7 +60,7 @@ import 'enrollment_request/teacher_transfers_provider.dart';
 import 'enrollment_request/teacher_transfers_screen.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart';
-import '../shared/exam_engine/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
+import 'package:flutter_education_app/features/exams/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
 import 'landing/admin_landing_page.dart' show AdminLandingPage, landingTitle;
 import 'landing/landing_admin_api.dart' show kLandingAdminFeatureKey;
 

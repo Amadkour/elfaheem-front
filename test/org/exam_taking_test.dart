@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/engine_exams_section.dart' show EngineExamCard;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_consent_screen.dart' show ConsentBody;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_integrity.dart' show IntegrityDedupe;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_result_screen.dart' show ExamResultBody;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_taking.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_taking_screen.dart'
+import 'package:flutter_education_app/features/exams/engine_exams_section.dart' show EngineExamCard;
+import 'package:flutter_education_app/features/exams/exam_consent_screen.dart' show ConsentBody;
+import 'package:flutter_education_app/features/exams/exam_integrity.dart' show IntegrityDedupe;
+import 'package:flutter_education_app/features/exams/exam_result_screen.dart' show ExamResultBody;
+import 'package:flutter_education_app/features/exams/exam_taking.dart';
+import 'package:flutter_education_app/features/exams/exam_taking_screen.dart'
     show ExamNavBar, ExamProgressBar, ExamQuestionCard, ExamQuestionGrid, ExamTimerChip;
 import 'package:flutter_test/flutter_test.dart';
 

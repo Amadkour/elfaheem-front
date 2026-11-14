@@ -22,7 +22,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../admin/admin_common.dart' show asBool, asInt, asMap, asMapList, asStr, asStrOrNull, t;
 import '../../admin/admin_money_p8.dart' show parseNum;
-import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult, engineCall;
 import 'library/rag_doc_status.dart';
 import 'library/rag_upload_scope.dart' show RagCourseChoice, ragRolesField;
 import 'rag_chat.dart' show RagApi, ragCodeText;

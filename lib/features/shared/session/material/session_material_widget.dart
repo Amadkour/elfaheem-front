@@ -21,14 +21,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 
-import 'package:flutter_education_app/features/student/analysis/exam/student_course_exams_widget.dart'
+import 'package:flutter_education_app/features/exams/legacy/student/student_course_exams_widget.dart'
     show SessionExamButton;
-import 'package:flutter_education_app/features/student/analysis/exam/student_exam_provider.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/student_exam_provider.dart';
 import '../../../admin/admin_common.dart' show asInt, asMapList;
-import '../../exam_engine/exam_authoring.dart' show ExamAuthoringApi;
-import '../../exam_engine/exam_engine_api.dart' show ExamEngineApi;
-import '../../exam_engine/exam_taking_screen.dart' show openEngineExam;
-import '../../exam_engine/exam_quick_screen.dart' show openQuickExam;
+import 'package:flutter_education_app/features/exams/exam_authoring.dart' show ExamAuthoringApi;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show ExamEngineApi;
+import 'package:flutter_education_app/features/exams/exam_taking_screen.dart' show openEngineExam;
+import 'package:flutter_education_app/features/exams/exam_quick_screen.dart' show openQuickExam;
 
 import '../../../../config/app_config.dart';
 import '../../../../core/course_access.dart';

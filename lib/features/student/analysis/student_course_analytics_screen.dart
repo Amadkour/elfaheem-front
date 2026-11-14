@@ -27,8 +27,8 @@ import 'student_analytics_profile_screen.dart';
 import 'student_analytics_widgets.dart';
 import '../../shared/analytics/analytics_summary.dart' show anExamsWord, anSessionsWord;
 import 'flags/student_flags_screen.dart';
-import 'exam/student_exam_list_screen.dart';
-import 'exam/student_exam_provider.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/student_exam_list_screen.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/student_exam_provider.dart';
 
 String _level(double v) => anLevel(v);
 

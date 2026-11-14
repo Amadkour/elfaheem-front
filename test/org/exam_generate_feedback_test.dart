@@ -2,9 +2,9 @@
 // draft, a rejection is reported at once with its reason, saving the exam reports the rest in one batch — accepted
 // when unchanged, edited (with the final text) when changed — and an older server switches the review off.
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart' show QOption;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_generate.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring.dart' show QOption;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
+import 'package:flutter_education_app/features/exams/exam_generate.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_learning.dart';
 import 'package:flutter_test/flutter_test.dart';
 

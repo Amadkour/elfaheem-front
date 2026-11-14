@@ -16,7 +16,7 @@ import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_entry.dart';
+import 'package:flutter_education_app/features/exams/hub/hub_entry.dart';
 import 'package:flutter_education_app/features/shared/downloads/downloads_screen.dart';
 import 'package:flutter_education_app/design/app_settings.dart';
 import 'package:flutter_education_app/features/shared/profile/student_favorite_screen.dart';

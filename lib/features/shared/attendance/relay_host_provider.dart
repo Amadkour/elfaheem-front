@@ -12,7 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../exam_engine/offline/offline_exam_relay.dart';
+import 'package:flutter_education_app/features/exams/offline/offline_exam_relay.dart';
 
 import 'attendance_crypto.dart';
 import 'attendance_permissions.dart';

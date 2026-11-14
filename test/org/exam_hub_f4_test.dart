@@ -2,12 +2,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/correct/exam_correct_flow.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/correct/sheet_models.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/correct/sheet_review_parts.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_camera.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan_widgets.dart';
+import 'package:flutter_education_app/features/exams/hub/correct/exam_correct_flow.dart';
+import 'package:flutter_education_app/features/exams/hub/correct/sheet_models.dart';
+import 'package:flutter_education_app/features/exams/hub/correct/sheet_review_parts.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_camera.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_scan.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_scan_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

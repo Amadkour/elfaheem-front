@@ -5,8 +5,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppTime;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_grade_log_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_grading.dart';
+import 'package:flutter_education_app/features/exams/exam_grade_log_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_grading.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

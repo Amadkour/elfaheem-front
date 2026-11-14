@@ -2,10 +2,10 @@
 // a row tile in each list, the row detail (with a sum error and bad marks), the apply / fix / assign sheets and the
 // capture overlay (plain values; the camera stays out of the tested widget).
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/mark_sessions_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_capture.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_rows.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/review/grade_review_start.dart';
+import 'package:flutter_education_app/features/exams/marks/mark_sessions_api.dart';
+import 'package:flutter_education_app/features/exams/marks/review/grade_review_capture.dart';
+import 'package:flutter_education_app/features/exams/marks/review/grade_review_rows.dart';
+import 'package:flutter_education_app/features/exams/marks/review/grade_review_start.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

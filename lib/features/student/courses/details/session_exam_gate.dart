@@ -7,7 +7,7 @@
 // (GET /api/v1/courses/{id}/sessions → items[i]["exams"]), so SessionModel
 // itself does not need to change.
 
-import '../../../shared/exam_engine/engine_exams_section.dart' show engineExamStartable;
+import 'package:flutter_education_app/features/exams/engine_exams_section.dart' show engineExamStartable;
 
 /// Where tapping an engine gate goes: straight into the engine exam, or to the course's Exams tab (a passcode to ask
 /// for, a paper / offline exam, not startable yet, or the exam is not in the student's engine list), which explains why.

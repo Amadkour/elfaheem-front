@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan_issues.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_scan_issues.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

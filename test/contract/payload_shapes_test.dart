@@ -19,7 +19,7 @@ import 'package:flutter_education_app/features/org/advising/adv_appt_models.dart
 import 'package:flutter_education_app/features/org/org_dashboard_model.dart';
 import 'package:flutter_education_app/features/parent/parent_overview.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart' show EngineResult;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
 import 'package:flutter_education_app/features/shared/rag/rag_admin_console.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_qa_admin.dart';

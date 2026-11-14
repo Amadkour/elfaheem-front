@@ -4,14 +4,14 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/mark_templates_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_canvas.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_editor_model.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_editor_panel.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_field_form.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_template_editor.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_template_library.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/marks/templates/mark_template_test.dart';
+import 'package:flutter_education_app/features/exams/marks/mark_templates_api.dart';
+import 'package:flutter_education_app/features/exams/marks/templates/mark_canvas.dart';
+import 'package:flutter_education_app/features/exams/marks/templates/mark_editor_model.dart';
+import 'package:flutter_education_app/features/exams/marks/templates/mark_editor_panel.dart';
+import 'package:flutter_education_app/features/exams/marks/templates/mark_field_form.dart';
+import 'package:flutter_education_app/features/exams/marks/templates/mark_template_editor.dart';
+import 'package:flutter_education_app/features/exams/marks/templates/mark_template_library.dart';
+import 'package:flutter_education_app/features/exams/marks/templates/mark_template_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 

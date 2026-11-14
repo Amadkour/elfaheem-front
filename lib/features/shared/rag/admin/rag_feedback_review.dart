@@ -23,7 +23,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../../admin/admin_common.dart' show asBool, asInt, asMap, asMapList, asStr, shortDateTime, t;
-import '../../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult, engineCall;
 import '../rag_library.dart' show ragLibraryCodeText;
 
 // ── models ───────────────────────────────────────────────────────────────────────────────────────────────────

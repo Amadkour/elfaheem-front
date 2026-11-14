@@ -37,7 +37,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../admin/admin_common.dart' show asBool, asInt, asMap, asMapList, asStr, t;
-import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult, engineCall;
 import 'rag_chat.dart' show RagAnswer;
 import 'rag_library.dart' show ragLibraryCodeText;
 import 'rag_qa_admin.dart' show QaPair, qaLangOf;

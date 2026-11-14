@@ -10,8 +10,8 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/features/student/analysis/exam/exam_tr.dart';
-import 'package:flutter_education_app/features/student/analysis/exam/exam_ui.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/exam_tr.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/exam_ui.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_profile_screen.dart';
 
 import '../../../../utils/widget/base_page.dart';

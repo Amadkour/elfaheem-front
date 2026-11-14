@@ -5,9 +5,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/templates/omr_template_learn.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/templates/omr_template_library.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/templates/omr_templates.dart';
+import 'package:flutter_education_app/features/exams/paper/templates/omr_template_learn.dart';
+import 'package:flutter_education_app/features/exams/paper/templates/omr_template_library.dart';
+import 'package:flutter_education_app/features/exams/paper/templates/omr_templates.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

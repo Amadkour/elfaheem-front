@@ -6,8 +6,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
-import 'package:flutter_education_app/features/student/analysis/exam/student_exam_list_screen.dart';
-import 'package:flutter_education_app/features/student/analysis/exam/student_exam_provider.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/student_exam_list_screen.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/student_exam_provider.dart';
 import 'package:flutter_education_app/features/teacher/certificates/certificate_requests_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/sessions/students/course_student_provider.dart';

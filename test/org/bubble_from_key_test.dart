@@ -5,8 +5,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/bubble/bubble_flow.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/bubble/bubble_widgets.dart';
+import 'package:flutter_education_app/features/exams/paper/bubble/bubble_flow.dart';
+import 'package:flutter_education_app/features/exams/paper/bubble/bubble_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

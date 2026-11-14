@@ -39,7 +39,7 @@ import '../../admin/admin_common.dart' show asBool, asDouble, asInt, asMap, asMa
 import '../../admin/admin_home_data.dart' show halfDelta;
 import '../../admin/models/ai_models_page.dart' show AiModelsPage;
 import '../../auth/auth_provider.dart' show MyAuthProvider;
-import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult, engineCall;
 import 'admin/rag_cache_card.dart' show RagCacheApi, RagCacheSection;
 import 'admin/rag_console_settings.dart' show RagExtraSettings, RagExtraSettingsCard;
 import 'admin/rag_feedback_review.dart' show FeedbackReviewApi, FeedbackReviewBody;

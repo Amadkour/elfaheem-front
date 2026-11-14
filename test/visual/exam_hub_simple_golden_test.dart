@@ -14,9 +14,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_all.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/exam_hub_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_logic.dart';
+import 'package:flutter_education_app/features/exams/exam_all.dart';
+import 'package:flutter_education_app/features/exams/hub/exam_hub_screen.dart';
+import 'package:flutter_education_app/features/exams/hub/hub_logic.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

@@ -26,7 +26,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/providers.dart';
 import 'package:flutter_education_app/design/app_keyboard.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart' show EngineResult;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';

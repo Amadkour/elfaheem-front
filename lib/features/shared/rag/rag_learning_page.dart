@@ -27,7 +27,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../admin/admin_common.dart' show t;
-import '../exam_engine/exam_engine_api.dart' show EngineResult;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
 import 'rag_chat.dart' show kRagPageMaxWidth, ragGutter, ragParseUtc;
 import 'rag_learning.dart';
 import 'rag_qa_admin.dart' show QaApi, QaPair, QaPairSheet;

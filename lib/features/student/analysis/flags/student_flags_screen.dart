@@ -9,8 +9,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
-import '../exam/exam_tr.dart';
-import '../exam/exam_ui.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/exam_tr.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/exam_ui.dart';
 import 'student_flags_api.dart';
 import 'student_flags_provider.dart';
 

@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/attendance/relay_link.dart' show isReply, isRequest;
-import 'package:flutter_education_app/features/shared/exam_engine/engine_exams_section.dart' show EngineExamCard;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_taking.dart' show Paper;
-import 'package:flutter_education_app/features/shared/exam_engine/offline/offline_exam_core.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/offline/offline_exam_screen.dart' show OfflineExamCard, OfflineStepsView;
-import 'package:flutter_education_app/features/shared/exam_engine/offline/offline_exam_teacher.dart'
+import 'package:flutter_education_app/features/exams/engine_exams_section.dart' show EngineExamCard;
+import 'package:flutter_education_app/features/exams/exam_taking.dart' show Paper;
+import 'package:flutter_education_app/features/exams/offline/offline_exam_core.dart';
+import 'package:flutter_education_app/features/exams/offline/offline_exam_screen.dart' show OfflineExamCard, OfflineStepsView;
+import 'package:flutter_education_app/features/exams/offline/offline_exam_teacher.dart'
     show OfflineSubmissionTile, OfflineSummaryRow, offlineFlagText, offlineStepText;
 import 'package:flutter_test/flutter_test.dart';
 

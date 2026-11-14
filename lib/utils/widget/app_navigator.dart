@@ -44,10 +44,10 @@ import '../../features/shared/records/records_page.dart' show RecordsPage;
 import '../../features/shared/records/records_share.dart' show SharedRecordPage;
 import '../../features/shared/records/records_share_api.dart' show kRecordsShareFeatureKey;
 import '../../features/shared/rag/rag_admin_links.dart' deferred as rag_admin_links;
-import '../../features/shared/identity/identity_request_gate.dart' show openIdentityRequestsFromLink;
-import '../../features/shared/exam_engine/paper/exam_setup_wizard.dart' deferred as exam_setup_wizard;
-import '../../features/shared/exam_engine/exam_notice.dart' deferred as exam_notice;
-import '../../features/shared/exam_engine/hub/result/parent_grades_link.dart' deferred as parent_grades_link;
+import 'package:flutter_education_app/features/exams/identity/identity_request_gate.dart' show openIdentityRequestsFromLink;
+import 'package:flutter_education_app/features/exams/paper/exam_setup_wizard.dart' deferred as exam_setup_wizard;
+import 'package:flutter_education_app/features/exams/exam_notice.dart' deferred as exam_notice;
+import 'package:flutter_education_app/features/exams/hub/result/parent_grades_link.dart' deferred as parent_grades_link;
 import '../../features/admin/app_releases/app_releases_page.dart' show AppReleasesPage, kAppReleasesFeatureKey;
 
 class AppNavigator {

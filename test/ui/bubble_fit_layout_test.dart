@@ -4,12 +4,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppPrimaryButton;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/bubble_fit.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/bubble_fit_panel.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_sheets_sheet.dart';
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/bubble_fit.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/bubble_fit_panel.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_scan.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_sheets_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../org/bubble_fit_test.dart' show fitJson;

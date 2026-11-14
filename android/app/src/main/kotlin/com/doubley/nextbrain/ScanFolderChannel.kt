@@ -13,7 +13,7 @@ import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.Executors
 
 /**
- * A document scanner's output folder for the paper-exam upload (Dart: lib/features/shared/exam_engine/paper/scan/
+ * A document scanner's output folder for the paper-exam upload (Dart: lib/features/exams/paper/scan/
  * scan_folder_io.dart). Android gives an app no path access to another app's files (scoped storage: a scanner's PDFs
  * are invisible to java.io / dart:io without MANAGE_EXTERNAL_STORAGE), so the folder goes through the Storage Access
  * Framework: the system folder picker grants this activity read access to the tree it returns, and the tree is
