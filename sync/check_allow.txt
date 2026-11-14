@@ -1,0 +1,7 @@
+# Allowed brand lines: path-regex<TAB>line-regex<TAB>reason. check_identity.py notes a rule that matches nothing.
+^docs/(?!guides/)	.	upstream NextBrain history (D-nnn notes, audits, plans, release notes); not shipped, renamed only in docs/guides
+^CLAUDE\.md$	NextBrain	the Alfaheem fork note (built from NextBrain)
+^lib/core/cert_pin\.dart$	nextbrain\.site	how NextBrain's pin was measured (history); Alfaheem's pins come from sync/identity.env (A-002)
+^lib/features/(calendar/schedule_logic|org/org_schedule_ical)\.dart$	UID:.*@nextbrain\.site	calendar UIDs must never change: a new UID duplicates every imported event (plan 4.2)
+^test/auth/cert_pin_test\.dart$	.	the fixture certificates ARE nextbrain.site's; the test checks the pin mechanism (A-002)
+^test/fixtures/	.	real server payloads captured from NextBrain (contract fixtures)

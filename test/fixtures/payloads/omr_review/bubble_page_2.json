@@ -1,0 +1,36 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/pages/2 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "page": {
+   "id": 2,
+   "page_no": 1,
+   "page_label": "1",
+   "status": "purged",
+   "file_name": "s12.png",
+   "batch_id": 2,
+   "student_id": 12,
+   "attempt_id": 2,
+   "codes": [],
+   "en": null,
+   "ar": null
+  },
+  "image_url": null,
+  "size": null,
+  "overlay": [],
+  "alignment": {},
+  "answers": [],
+  "identifier": {},
+  "form": {},
+  "reading_id": null,
+  "items": [
+   {
+    "id": 4,
+    "kind": "bubble",
+    "code": "uncertain",
+    "question_id": 5,
+    "status": "resolved"
+   }
+  ]
+ }
+}

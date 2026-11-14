@@ -1,0 +1,31 @@
+{
+ "_source": {
+  "route": "POST /api/v1/models/38/activate",
+  "status": 200,
+  "request": {
+   "confirm": true,
+   "reindex": "later"
+  },
+  "how": "back tests/modelhub/e2e_modelhub.py (MODELHUB_MODE=test, inline), reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "stage": "reindex_later",
+  "chunks": 1200,
+  "qa": 30,
+  "missing_chunks": 1200,
+  "missing_qa": 30,
+  "items": 1230,
+  "vectors_ready": false,
+  "estimated_seconds": null,
+  "estimate": {
+   "basis": "none",
+   "seconds": null,
+   "items": 1230
+  },
+  "reindex_required": true,
+  "choices": [
+   "now",
+   "later"
+  ]
+ }
+}

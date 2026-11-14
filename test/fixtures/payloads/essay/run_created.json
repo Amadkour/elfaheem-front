@@ -1,0 +1,49 @@
+{
+ "id": 1,
+ "title": "Biology essays",
+ "course_id": 100,
+ "org_id": 1,
+ "questions": [
+  {
+   "n": 1,
+   "question_id": 1,
+   "prompt": "Question 1",
+   "points": 5.0,
+   "model_answer": "Plants make glucose and oxygen from light",
+   "rubric": [],
+   "keywords": [
+    "glucose",
+    "oxygen"
+   ]
+  },
+  {
+   "n": 2,
+   "question_id": 2,
+   "prompt": "السؤال 2",
+   "points": 4.0,
+   "model_answer": null,
+   "rubric": [
+    {
+     "criterion": "يذكر أن الماء يتبخر",
+     "points": 2.0,
+     "model": "الماء يتبخر بالحرارة"
+    },
+    {
+     "criterion": "يذكر التكاثف",
+     "points": 2.0
+    }
+   ],
+   "keywords": []
+  }
+ ],
+ "max_score": 9.0,
+ "students": [],
+ "counts": {
+  "students": 0,
+  "pages": 0,
+  "waiting": 0,
+  "open": 0,
+  "done": 0
+ },
+ "published_at": null
+}

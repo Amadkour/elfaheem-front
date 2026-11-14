@@ -1,0 +1,199 @@
+{
+ "_source": "GET /api/v1/exam/exams/2/review-items?status=open -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "items": [
+   {
+    "id": 8,
+    "scan_page_id": 19,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "identifier_unclear",
+    "reading": {
+     "kind": "handwritten",
+     "status": "review",
+     "value": "2024000109",
+     "reason": "low_confidence",
+     "low": [
+      3
+     ],
+     "gaps": [],
+     "columns_to_check": null,
+     "digits": [
+      {
+       "index": 0,
+       "digit": "2",
+       "confidence": 0.99
+      },
+      {
+       "index": 1,
+       "digit": "0",
+       "confidence": 0.99
+      },
+      {
+       "index": 2,
+       "digit": "2",
+       "confidence": 0.99
+      },
+      {
+       "index": 3,
+       "digit": "4",
+       "confidence": 0.42
+      },
+      {
+       "index": 4,
+       "digit": "0",
+       "confidence": 0.99
+      },
+      {
+       "index": 5,
+       "digit": "0",
+       "confidence": 0.99
+      },
+      {
+       "index": 6,
+       "digit": "0",
+       "confidence": 0.99
+      },
+      {
+       "index": 7,
+       "digit": "1",
+       "confidence": 0.99
+      },
+      {
+       "index": 8,
+       "digit": "0",
+       "confidence": 0.99
+      },
+      {
+       "index": 9,
+       "digit": "9",
+       "confidence": 0.99
+      }
+     ],
+     "en": "The student ID could not be read with confidence",
+     "ar": "تعذّرت قراءة رقم الطالب بثقة"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T05:36:35.387353",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": true,
+    "en": "The student ID could not be read with confidence",
+    "ar": "تعذّرت قراءة رقم الطالب بثقة",
+    "crop_url": "/api/v1/exam/omr/images/crop/8?exp=1793598397&sig=23e5a0cde83a7e4d9a80d84efd7bf47b"
+   },
+   {
+    "id": 9,
+    "scan_page_id": 20,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "identifier_unclear",
+    "reading": {
+     "kind": "handwritten",
+     "status": "review",
+     "value": "??????????",
+     "reason": "low_confidence",
+     "low": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "gaps": [],
+     "columns_to_check": null,
+     "digits": [
+      {
+       "index": 0,
+       "digit": "?",
+       "confidence": 0.0
+      },
+      {
+       "index": 1,
+       "digit": "?",
+       "confidence": 0.0
+      },
+      {
+       "index": 2,
+       "digit": "?",
+       "confidence": 0.0
+      },
+      {
+       "index": 3,
+       "digit": "?",
+       "confidence": 0.0
+      },
+      {
+       "index": 4,
+       "digit": "?",
+       "confidence": 0.0
+      },
+      {
+       "index": 5,
+       "digit": "?",
+       "confidence": 0.0
+      },
+      {
+       "index": 6,
+       "digit": "?",
+       "confidence": 0.0
+      },
+      {
+       "index": 7,
+       "digit": "?",
+       "confidence": 0.0
+      },
+      {
+       "index": 8,
+       "digit": "?",
+       "confidence": 0.0
+      },
+      {
+       "index": 9,
+       "digit": "?",
+       "confidence": 0.0
+      }
+     ],
+     "en": "The student ID could not be read with confidence",
+     "ar": "تعذّرت قراءة رقم الطالب بثقة"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T05:36:35.962110",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": true,
+    "en": "The student ID could not be read with confidence",
+    "ar": "تعذّرت قراءة رقم الطالب بثقة",
+    "crop_url": "/api/v1/exam/omr/images/crop/9?exp=1793598397&sig=68a1aba841941ca8a5f8e01cd7ce70bd"
+   }
+  ],
+  "total": 2,
+  "open_by_kind": {
+   "identifier": 2
+  }
+ }
+}

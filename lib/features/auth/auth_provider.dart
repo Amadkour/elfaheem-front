@@ -1,5 +1,10 @@
 library;
 
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show StudySettings;
+import 'package:flutter_education_app/features/messaging/chat/chat_store.dart' show ChatHub;
+import 'package:flutter_education_app/core/entities/entities_api.dart';
+import 'package:flutter_education_app/core/entities/entity_access.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer';
 
 import 'package:flutter/cupertino.dart';
@@ -10,8 +15,15 @@ import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
 import '../../utils/helpers.dart';
 import '../../utils/widget/view_as_state.dart';
-import '../category/categories_provider.dart';
-import '../shared/notification/notification_service.dart';
+import '../../core/app_mode.dart';
+import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notification_service.dart';
+import '../../config/app_config.dart' show AppConfig;
+import 'package:flutter_education_app/features/exams/exam_media.dart' show MediaBytesCache;
+import 'biometric.dart';
+import 'mfa.dart';
+import 'teacher_onboarding_token.dart';
+import 'username.dart';
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -28,6 +40,16 @@ class UserModel {
   final String? registrationStep;
   final DateTime lastLogin;
 
+  /// The optional @username (lowercase, without the "@"); null when the account has none (D-071).
+  final String? username;
+
+  /// False for a name the server filled in from the e-mail and the person never chose: the app asks once after
+  /// sign-in whether to keep it (POST /auth/me/username/confirm). An older server sends no key → true (never ask).
+  final bool usernameConfirmed;
+
+  /// When the username may be changed again (UTC); null = now. Removing it is always allowed (D-071 v2).
+  final DateTime? usernameChangeAvailableAt;
+
   const UserModel({
     required this.id,
     required this.name,
@@ -40,7 +62,20 @@ class UserModel {
     this.imageUrl,
     this.registrationStep,
     required this.lastLogin,
+    this.username,
+    this.usernameConfirmed = true,
+    this.usernameChangeAvailableAt,
   });
+
+  /// The end of the change cooldown when it is still running at [now] (default: the clock), else null.
+  DateTime? usernameLockedUntil([DateTime? now]) {
+    final at = usernameChangeAvailableAt;
+    if (at == null || username == null) return null;
+    return at.isAfter((now ?? DateTime.now()).toUtc()) ? at : null;
+  }
+
+  /// The account holds a name it never confirmed: the keep / change / remove sheet may be offered.
+  bool get needsUsernameConfirm => username != null && !usernameConfirmed;
 
   factory UserModel.fromJson(Map<String, dynamic> j) => UserModel(
     id: j['id'] as int,
@@ -56,6 +91,11 @@ class UserModel {
     bio: j['bio'] as String?,
     imageUrl: j['image_url'] as String?,
     registrationStep: j['registration_step'] as String?,
+    // an older server sends no key; an empty string means "none" too
+    username: j['username'] is String && (j['username'] as String).isNotEmpty ? j['username'] as String : null,
+    // missing (older server, older cache) = confirmed: never prompt for a name the server did not flag
+    usernameConfirmed: j['username_confirmed'] is bool ? j['username_confirmed'] as bool : true,
+    usernameChangeAvailableAt: usernameParseUtc(j['username_change_available_at']),
   );
 
   /// Convert back to JSON for caching in SharedPreferences.
@@ -71,16 +111,218 @@ class UserModel {
     'last_login': lastLogin.toIso8601String(),
     'image_url': imageUrl,
     'registration_step': registrationStep,
+    'username': username,
+    'username_confirmed': usernameConfirmed,
+    'username_change_available_at': usernameChangeAvailableAt?.toUtc().toIso8601String(),
   };
+}
+
+/// A phone-verification-by-link session (Telegram / WhatsApp), from POST /auth/phone-link/start.
+class PhoneLinkSession {
+  final String token;
+  final bool verified;
+
+  /// Methods the admin allowed and the server configured, highest priority first
+  /// ("telegram" always comes before "whatsapp").
+  final List<String> methods;
+  final int expiresIn;
+  final String? telegramUrl; // https://t.me/<bot>?start=<token>
+  final String? telegramAppUrl; // tg://resolve?... (opens the app directly)
+  final String? whatsappUrl; // https://wa.me/<number>?text=...
+
+  const PhoneLinkSession({
+    required this.token,
+    required this.verified,
+    required this.methods,
+    required this.expiresIn,
+    this.telegramUrl,
+    this.telegramAppUrl,
+    this.whatsappUrl,
+  });
+
+  factory PhoneLinkSession.fromJson(Map j) {
+    final tg = j['telegram'] is Map ? j['telegram'] as Map : const {};
+    final wa = j['whatsapp'] is Map ? j['whatsapp'] as Map : const {};
+    return PhoneLinkSession(
+      token: (j['token'] ?? '').toString(),
+      verified: j['verified'] == true,
+      methods: j['methods'] is List
+          ? (j['methods'] as List).map((e) => e.toString()).toList()
+          : const [],
+      expiresIn: (j['expires_in'] as num?)?.toInt() ?? 600,
+      telegramUrl: tg['url']?.toString(),
+      telegramAppUrl: tg['app_url']?.toString(),
+      whatsappUrl: wa['url']?.toString(),
+    );
+  }
+}
+
+/// A way a password-reset code can be sent by, with the masked destination
+/// (from POST /auth/forgot-password -> `ways`).
+class ResetWay {
+  final String way; // email | whatsapp | sms
+  final String? masked;
+
+  const ResetWay(this.way, this.masked);
+}
+
+/// Outcome of [MyAuthProvider.googleAuth].
+enum GoogleAuthResult {
+  /// Signed in (account created first when the e-mail was new).
+  success,
+
+  /// New e-mail: the app must ask for a role, then call again with it.
+  roleRequired,
+
+  /// Account exists but a channel (usually the phone) still needs verifying.
+  needsVerification,
+
+  /// Google was fine, the account needs its second factor ([MyAuthProvider.mfaStep]: a code, or an enrollment).
+  mfa,
+
+  failed,
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-class AuthProvider extends BaseProvider {
+class MyAuthProvider extends BaseProvider {
   final ApiClient _api;
   final StorageService _storage;
 
-  AuthProvider({ApiClient? api, required StorageService storage})
+  // ── Admin-controlled auth policy (GET /auth/policy) ────────────────────────
+  /// email | phone | both  — what a new account must verify.
+  String verificationMethod = 'email';
+  /// email | phone | either — what the login form accepts.
+  String loginIdentifier = 'email';
+  /// sms | whatsapp | telegram | whatsapp_link | telegram_whatsapp — how the phone is verified.
+  /// sms / whatsapp send a code; the others make the student message us through a link.
+  String otpPhoneChannel = 'sms';
+  bool policyLoaded = false;
+
+  /// Every way the admin allows AND the server can send, in offering order
+  /// (Telegram > E-mail > WhatsApp > SMS, or the admin's default first).
+  List<String> verificationWays = const ['email'];
+
+  /// The way offered first.
+  String defaultWay = 'email';
+
+  /// E-mail AND phone must both be verified (otherwise any one way is enough).
+  bool requireAll = false;
+
+  /// What the login form accepts: any of "email" / "phone".
+  List<String> loginIdentifiers = const ['email'];
+
+  /// How WhatsApp is verified: "link" (student messages us) or "code" (we send a code).
+  String whatsappDelivery = 'link';
+
+  /// True when [way] ("telegram" | "whatsapp" | "email" | "sms") is verified by a link, not a code.
+  bool wayIsLink(String way) =>
+      way == 'telegram' || (way == 'whatsapp' && whatsappDelivery == 'link');
+
+  bool get hasPhoneWays => verificationWays.any((w) => w != 'email');
+
+  /// True when at least one phone way is verified by a Telegram / WhatsApp link.
+  bool get phoneUsesLink =>
+      verificationWays.any((w) => w != 'email' && wayIsLink(w));
+
+  /// Password-reset ways of the account that is resetting (filled by [forgotPassword]).
+  List<ResetWay> resetWays = const [];
+
+  /// The way the reset code was sent by.
+  String? resetSentVia;
+
+  /// Where a password-reset code really went when the student asked by phone number
+  /// but phone verification is link-based (the code goes to the e-mail). Null otherwise.
+  String? resetEmailMasked;
+
+  /// A phone is ALWAYS required to register (e-mail is not a way, or both are required).
+  /// When it is only needed for the picked way, the register screen decides.
+  bool get verifyByPhone =>
+      hasPhoneWays && (requireAll || !verificationWays.contains('email'));
+  bool get loginAllowsEmail => loginIdentifiers.contains('email');
+  bool get loginAllowsPhone => loginIdentifiers.contains('phone');
+
+  /// The admin lets people sign in with their @username (`username_login` of the policy). Missing from an older
+  /// server = false, so it is never sent an identifier it cannot resolve (D-071).
+  bool usernameLogin = false;
+
+  /// The super admin's study-data settings (`study_profile` of the policy, D-794): the sign-up's study step for a
+  /// new student, the required fields. An older server = off (no step).
+  StudySettings studySettings = StudySettings.off;
+
+  /// The sign-in / reset forms say "or username": the policy allows it and the kill switch is on.
+  bool get loginAllowsUsername =>
+      usernameLogin && !AppConfig.disableList.contains(kUsernameFeatureKey);
+
+  /// Label / keyboard of the single identifier field of the login and forgot-password forms.
+  IdentifierFieldSpec get identifierSpec => identifierFieldSpec(
+        email: loginAllowsEmail,
+        phone: loginAllowsPhone,
+        username: loginAllowsUsername,
+      );
+
+  /// A USERNAME_* error of the last [register] (shown on the username field with its suggestions).
+  UsernameError? usernameError;
+
+  /// Filled by register/login/verify: channels still to verify ("email"/"phone")
+  /// and the data the OTP screen needs.
+  List<String> pendingChannels = const ['email'];
+  String? pendingGmail;
+  String? pendingPhoneMasked;
+
+  Future<void> loadPolicy() async {
+    try {
+      final r = await _api.get('/api/v1/auth/policy', auth: false);
+      if (r is Map) {
+        verificationMethod = (r['verification_method'] ?? 'email').toString();
+        loginIdentifier = (r['login_identifier'] ?? 'email').toString();
+        otpPhoneChannel = (r['otp_phone_channel'] ?? 'sms').toString();
+        // New checkbox policy (an older server only sends the three values above).
+        if (r['verification_ways'] is List &&
+            (r['verification_ways'] as List).isNotEmpty) {
+          verificationWays =
+              (r['verification_ways'] as List).map((e) => e.toString()).toList();
+          defaultWay = (r['default_way'] ?? verificationWays.first).toString();
+          requireAll = r['require_all'] == true;
+          whatsappDelivery = (r['whatsapp_delivery'] ?? 'link').toString();
+        } else {
+          final both = verificationMethod == 'both';
+          final phone = verificationMethod != 'email';
+          verificationWays = [
+            if (verificationMethod != 'phone') 'email',
+            if (phone)
+              ...switch (otpPhoneChannel) {
+                'telegram' => ['telegram'],
+                'whatsapp_link' || 'whatsapp' => ['whatsapp'],
+                'telegram_whatsapp' => ['telegram', 'whatsapp'],
+                _ => ['sms'],
+              },
+          ];
+          defaultWay = verificationWays.first;
+          requireAll = both;
+          whatsappDelivery = otpPhoneChannel == 'whatsapp' ? 'code' : 'link';
+        }
+        loginIdentifiers = r['login_identifiers'] is List
+            ? (r['login_identifiers'] as List).map((e) => e.toString()).toList()
+            : switch (loginIdentifier) {
+                'phone' => ['phone'],
+                'either' => ['email', 'phone'],
+                _ => ['email'],
+              };
+        usernameLogin = r['username_login'] == true;
+        studySettings = StudySettings.fromJson(r['study_profile']);
+        policyLoaded = true;
+        notifyListeners();
+      }
+    } catch (e) {
+      log('loadPolicy failed: $e'); // keep defaults (email / email)
+    }
+  }
+
+  List<String> _channelsFrom(dynamic v, List<String> fallback) =>
+      v is List ? v.map((e) => e.toString()).toList() : fallback;
+
+  MyAuthProvider({ApiClient? api, required StorageService storage})
       : _api = api ?? ApiClient(),
         _storage = storage {
     // Restore the user from disk immediately so role/isTeacher are ready
@@ -109,8 +351,11 @@ class AuthProvider extends BaseProvider {
   List<Map<String, String>> roles = [
     {'text': 'student'},
     {'text': 'teacher'},
+    {'text': 'parent'},
   ];
-  late List<Map<String, dynamic>> specializations;
+  /// Empty until [loadSpecialization] answers (a `late` field here threw LateInitializationError on the teacher's
+  /// edit-account page, H11).
+  List<Map<String, dynamic>> specializations = [];
   Map<String, dynamic>? selectedTeachingType;
   Map<String, dynamic>? selectedPaymentType;
   Map<String, dynamic>? selectedSpecialization;
@@ -125,34 +370,132 @@ class AuthProvider extends BaseProvider {
   /// Set by login() when the server answers 403 (account inactive / unverified).
   bool needsVerification = false;
   String? pendingRole; // role from the 403 body, if the backend sends it
+
+  /// From the login answer: an account a teacher created by importing a sheet must first be completed
+  /// (new password, missing e-mail / phone / name). Read by DataLabGate right after login. null = nothing to do.
+  Map<String, dynamic>? accountSetup;
+
+  /// Set by [login] / [googleAuth] when the server asks for the second factor (or for an enrollment) instead of
+  /// handing out tokens. Cleared by every new login and by [logout].
+  MfaLoginStep mfaStep = MfaLoginStep.none;
+
+  /// Text of the last failed [verifyMfa], and how many codes the step still accepts.
+  String? mfaError;
+  int? mfaAttemptsLeft;
+  bool isVerifyingMfa = false;
+
+  /// True when the step token is dead (expired, used, 5 wrong codes): the user must sign in again.
+  bool mfaStepDead = false;
+
+  /// Second login step: an authenticator [code] or a [recoveryCode]. On success the session is saved exactly like
+  /// a normal login. Not wrapped in run(): the error code and the attempts left matter here.
+  Future<bool> verifyMfa({String? code, String? recoveryCode}) async {
+    final token = mfaStep.token;
+    if (mfaStep.kind != MfaStepKind.verify || token == null) return false;
+    isVerifyingMfa = true;
+    mfaError = null;
+    notifyListeners();
+    try {
+      final r = await _api.post('/api/v1/auth/mfa/verify', auth: false, body: {
+        'mfa_token': token,
+        if (code != null && code.trim().isNotEmpty) 'code': normalizeTotp(code),
+        if (recoveryCode != null && recoveryCode.trim().isNotEmpty) 'recovery_code': recoveryCode.trim(),
+      });
+      if (r is! Map || r['access_token'] == null) throw ApiException.from('empty answer');
+      await completeSession(r);
+      mfaStep = MfaLoginStep.none;
+      return true;
+    } catch (e) {
+      final ex = ApiException.from(e);
+      mfaAttemptsLeft = attemptsLeftOf(ex);
+      mfaStepDead = mfaFailureEndsStep(ex.code, mfaAttemptsLeft);
+      // the last wrong code burned the step: say so ("sign in again"), not just "the code is not correct"
+      final burned = mfaStepDead && !mfaStepIsDead(ex.code);
+      mfaError = burned ? mfaCodeText('mfa_token_locked', ex.message) : mfaCodeText(ex.code, ex.message);
+      return false;
+    } finally {
+      isVerifyingMfa = false;
+      notifyListeners();
+    }
+  }
+
+  /// Saves a login answer (tokens + user) and registers the push token: used by [login], [googleAuth], the second
+  /// step and the MFA confirmation (which rotates the token pair).
+  Future<void> completeSession(Map<dynamic, dynamic> result) async {
+    await _persistTokens(result);
+    TeacherOnboardingToken.readFrom(result);
+    _readAccountSetup(result);
+    BiometricAuth.instance.noteLoginAnswer(result); // the enrol token for the "fingerprint next time?" offer (D-082)
+    final userJson = result['user'];
+    if (userJson is Map) {
+      final m = Map<String, dynamic>.from(userJson);
+      _currentUser = UserModel.fromJson(m);
+      await _storage.saveUser(m);
+      await BiometricAuth.instance
+          .refreshProfile(userId: _currentUser!.id, name: _currentUser!.name, imageUrl: _currentUser!.imageUrl);
+    }
+    await NotificationService.instance.registerWithBackend(_api);
+    notifyListeners();
+  }
+
+  void _resetMfa() {
+    mfaStep = MfaLoginStep.none;
+    mfaError = null;
+    mfaAttemptsLeft = null;
+    mfaStepDead = false;
+  }
+
+  void _readAccountSetup(Map result) {
+    final s = result['account_setup'];
+    accountSetup = (s is Map && s['required'] == true) ? Map<String, dynamic>.from(s) : null;
+  }
   UserModel? get currentUser => _currentUser;
 
   bool get isStudent => currentUser?.role == 'student';
 
   bool get selectedRoleIsStudent => selectedRole!['text'] == 'student';
 
+  /// Teacher-only registration extras (specialization, teaching type …) must key off THIS,
+  /// not off `!selectedRoleIsStudent`, now that a third role (parent) exists.
+  bool get selectedRoleIsTeacher => selectedRole!['text'] == 'teacher';
+
   bool get isTeacher => currentUser?.role == 'teacher';
+
+  bool get isParent => currentUser?.role == 'parent';
 
   bool get isAdmin => currentUser?.role == 'admin';
 
   bool get isSuper => currentUser?.role == 'super-admin';
 
-  bool get isAuthenticated => _storage.isAuthenticated();
+  /// A cached user AND a stored session: logout, a rejected refresh or a wipe of secure storage all end it.
+  bool get isAuthenticated => _currentUser != null && _api.hasSession;
 
   String get homeRoute => switch (currentUser?.role ?? 'student') {
     'admin' => '/admin_dashboard',
     'super-admin' => '/admin_dashboard',
     'developer' => '/admin_dashboard',
     'teacher' => '/teacher_dashboard',
+    'parent' => '/parent_dashboard',
+    // organizations: org admins and their staff (admin assistants, department staff, members without any right)
+    // open the ONE organization dashboard (D-103 — staff who manage nothing no longer hop to '/org_member', which
+    // stays the student's organization page); the personal dashboard instead when they left their organization
+    // last time (remembered per user)
+    'org-admin' || 'org-staff' => AppModeController.orgRoleHome('/org_dashboard', personal: _personalHome),
     _ => '/dashboard',
   };
+
+  bool? get _personalHome =>
+      currentUser == null ? null : _storage.getFlag(AppModeController.personalHomeKey(currentUser!.id));
 
   // ── Cold-start restore ────────────────────────────────────────────────────────
 
   void loadCachedUser() {
     final saved = _storage.savedUser;
-    if (saved != null) {
+    if (saved == null) return;
+    try {
       _currentUser = UserModel.fromJson(saved);
+    } catch (_) {
+      _currentUser = null; // a cached user this build cannot read (no role, edited prefs): signed out, not a crash at start-up
     }
   }
 
@@ -165,25 +508,46 @@ class AuthProvider extends BaseProvider {
     String? phone,
     String? country,
     String? dob,
+    String? way,
+    String? username,
+    Map<String, dynamic>? studyProfile,
   }) async {
     isLoadingRegistration = true;
+    usernameError = null;
     notifyListeners();
-    final result = await run(
-          () => _api.post(
-        '/api/v1/auth/register',
-        body: {
-      'name': name,
-      'gmail': gmail,
-      'password': password,
-      'role': selectedRole!['text'],
-      'phone': ?phone,
-      'country': ?country,
-      'dob': ?dob,
-      },
-        auth: false,
-      ),
-    );
+    final handle = UsernameRules.normalize(username ?? '');
+    final result = await run(() async {
+      try {
+        return await _api.post(
+          '/api/v1/auth/register',
+          body: {
+            'name': name,
+            'gmail': gmail,
+            'password': password,
+            'role': selectedRole!['text'],
+            'phone': ?phone,
+            'country': ?country,
+            'dob': ?dob,
+            'way': ?way,
+            if (handle.isNotEmpty) 'username': handle,
+            'study_profile': ?studyProfile, // the student's study step (D-790)
+          },
+          auth: false,
+        );
+      } on ApiException catch (e) {
+        usernameError = UsernameError.from(e, submitted: handle); // lands on the username field
+        rethrow;
+      }
+    });
 
+    if (result is Map) {
+      pendingGmail = result['gmail']?.toString() ?? gmail;
+      pendingChannels = _channelsFrom(result['pending_channels'], const ['email']);
+      pendingPhoneMasked = phone;
+      if (result['otp_phone_channel'] != null) {
+        otpPhoneChannel = result['otp_phone_channel'].toString();
+      }
+    }
     isLoadingRegistration = false;
     notifyListeners();
     return result != null;
@@ -194,16 +558,25 @@ class AuthProvider extends BaseProvider {
   /// On success the server returns the same shape as login:
   ///   { registration_step, ... }
   /// We save the user here so teachers know they need step 3.
-  Future<bool> verifyOtp({required String gmail, required String code}) async {
+  /// [channel] = "email" | "phone". After a success, [pendingChannels] holds what is
+  /// still left (e.g. ["phone"] when the admin requires both) — empty = fully verified.
+  Future<bool> verifyOtp({
+    required String gmail,
+    required String code,
+    String? channel,
+    String? way,
+  }) async {
     final result = await run(
           () => _api.post(
         '/api/v1/auth/verify-otp',
-        body: {'gmail': gmail, 'code': code},
+        body: {'gmail': gmail, 'code': code, 'channel': ?channel, 'way': ?way},
         auth: false,
       ),
     );
 
     if (result != null && result is Map) {
+      TeacherOnboardingToken.readFrom(result); // a teacher who still owes profile / documents
+      pendingChannels = _channelsFrom(result['pending_channels'], const []);
       // The verify-otp response does NOT return tokens — the user still
       // needs to log in (or the server returns tokens — adapt if needed).
       // If your server returns user data here, save it:
@@ -218,16 +591,63 @@ class AuthProvider extends BaseProvider {
     return false;
   }
 
-  // ── Resend OTP ────────────────────────────────────────────────────────────────
+  // ── Phone verification by Telegram / WhatsApp link ──────────────────────────
 
-  Future<bool> resendOtp(String gmail, {bool reset = false}) async {
+  /// Creates a link session for [gmail] (e-mail or phone). Null on error (see errorMessage).
+  Future<PhoneLinkSession?> startPhoneLink(String gmail) async {
     final result = await run(
           () => _api.post(
-        reset ? '/api/v1/auth/forgot-password' : '/api/v1/auth/resend-otp',
+        '/api/v1/auth/phone-link/start',
         body: {'gmail': gmail},
         auth: false,
       ),
     );
+    if (result is Map) return PhoneLinkSession.fromJson(result);
+    return null;
+  }
+
+  /// Polls a link session: 'pending' | 'verified' | 'expired' | 'error'.
+  /// On 'verified', [pendingChannels] holds what is still left (e.g. ["email"]).
+  /// Deliberately not wrapped in run(): it fires every 2 seconds and must stay silent.
+  Future<String> checkPhoneLink(String token) async {
+    try {
+      final r = await _api.get(
+        '/api/v1/auth/phone-link/status?token=${Uri.encodeQueryComponent(token)}',
+        auth: false,
+      );
+      if (r is Map) {
+        final state = (r['state'] ?? 'pending').toString();
+        if (state == 'verified') {
+          pendingChannels = _channelsFrom(r['pending_channels'], const []);
+          notifyListeners();
+        }
+        return state;
+      }
+    } catch (e) {
+      log('checkPhoneLink failed: $e');
+      if (e is ApiException && e.statusCode == 404) return 'expired';
+    }
+    return 'error';
+  }
+
+  // ── Resend OTP ────────────────────────────────────────────────────────────────
+
+  /// Sends a code again. [way] = email | telegram | whatsapp | sms | null (the server picks).
+  /// For a password reset ([reset] = true) it hits forgot-password with the chosen way.
+  Future<bool> resendOtp(
+      String gmail, {
+        bool reset = false,
+        String? channel,
+        String? way,
+      }) async {
+    final result = await run(
+          () => _api.post(
+        reset ? '/api/v1/auth/forgot-password' : '/api/v1/auth/resend-otp',
+        body: {'gmail': gmail, if (!reset) 'channel': ?channel, 'way': ?way},
+        auth: false,
+      ),
+    );
+    if (reset && result is Map) _readResetInfo(result);
     return result != null;
   }
 
@@ -252,8 +672,10 @@ class AuthProvider extends BaseProvider {
           'specialization_id': selectedSpecialization!['id'],
           if (bio != null && bio.trim().isNotEmpty) 'about': bio.trim(),
         },
+        headers: TeacherOnboardingToken.headers,
       ),
     );
+    TeacherOnboardingToken.readFrom(result); // the documents step uses the renewed token
 
     isLoadingAdditionalRegistration = false;
     notifyListeners();
@@ -335,12 +757,14 @@ class AuthProvider extends BaseProvider {
   // ── Login ─────────────────────────────────────────────────────────────────────
 
   /// Authenticates the user, saves tokens + user object to disk.
+  /// [gmail] is the e-mail OR the phone number, depending on the admin's login policy.
   Future<bool> login({required String gmail, required String password}) async {
     isLoadingLogin = true;
     // Reset from any previous attempt, otherwise a stale flag from an earlier
     // unverified login would send a later wrong-password attempt to the OTP screen.
     needsVerification = false;
     pendingRole = null;
+    _resetMfa();
     notifyListeners();
     final previousUser = _currentUser;
     _currentUser = UserModel(
@@ -364,20 +788,32 @@ class AuthProvider extends BaseProvider {
           needsVerification = true;
           final b = ApiException.asMap(e.body);
           final d = b?['detail'];
-          if (d is Map) pendingRole = d['role']?.toString();
+          if (d is Map) {
+            pendingRole = d['role']?.toString();
+            pendingGmail = d['gmail']?.toString();
+            pendingChannels = _channelsFrom(d['pending_channels'], const ['email']);
+            pendingPhoneMasked = d['phone_masked']?.toString();
+            if (d['otp_phone_channel'] != null) {
+              otpPhoneChannel = d['otp_phone_channel'].toString();
+            }
+          }
         }
         rethrow;
       }
     });
+    // Two-factor accounts: no tokens yet, the login screen opens the code (or enrollment) screen.
+    final step = MfaLoginStep.fromLogin(result);
+    if (step.kind != MfaStepKind.none) {
+      mfaStep = step;
+      mfaAttemptsLeft = step.attemptsLeft;
+      _currentUser = previousUser;
+      isLoadingLogin = false;
+      notifyListeners();
+      return false;
+    }
     if (result != null && result is Map) {
-      // 1. Save tokens
-      await _persistTokens(result);
-
-      // 2. Build and cache the user model
-      final userJson = result['user'] as Map<String, dynamic>;
-      _currentUser = UserModel.fromJson(userJson);
-      await _storage.saveUser(userJson); // ← persisted to SharedPreferences
-      await NotificationService.instance.registerWithBackend(_api);
+      // Tokens + cached user (SharedPreferences) + push token
+      await completeSession(result);
       isLoadingLogin = false;
       notifyListeners();
       return true;
@@ -388,13 +824,140 @@ class AuthProvider extends BaseProvider {
     notifyListeners();
     return false;
   }
+  // ── Fingerprint / Face ID sign-in (D-082) ─────────────────────────────────────
+
+  bool isLoadingBiometric = false;
+
+  /// The server's sentence of the last failed fingerprint sign-in (null = a generic text).
+  String? biometricError;
+
+  /// The system prompt, then the device key's signed challenge (BiometricAuth.signIn). A session is saved exactly
+  /// like a password login; an MFA account sets [mfaStep] (the login screen opens the code screen); [biometricError]
+  /// carries the server's sentence for [BiometricOutcome.failed].
+  Future<BiometricOutcome> loginWithBiometric() async {
+    if (isLoadingBiometric) return BiometricOutcome.cancelled;
+    isLoadingBiometric = true;
+    needsVerification = false;
+    pendingRole = null;
+    biometricError = null;
+    _resetMfa();
+    notifyListeners();
+    try {
+      final r = await BiometricAuth.instance.signIn();
+      switch (r.outcome) {
+        case BiometricOutcome.session:
+          await completeSession(r.body!);
+        case BiometricOutcome.mfa:
+          final step = MfaLoginStep.fromLogin(r.body);
+          mfaStep = step;
+          mfaAttemptsLeft = step.attemptsLeft;
+        case BiometricOutcome.failed:
+          biometricError = r.message;
+        default:
+          break;
+      }
+      return r.outcome;
+    } finally {
+      isLoadingBiometric = false;
+      notifyListeners();
+    }
+  }
+
+  // ── Google sign-in / sign-up ──────────────────────────────────────────────────
+
+  bool isLoadingGoogle = false;
+
+  /// Filled when the server answers "new account, pick a role" (shown in the role sheet).
+  String? googleName;
+  String? googleEmail;
+
+  void setGoogleBusy(bool v) {
+    if (isLoadingGoogle == v) return;
+    isLoadingGoogle = v;
+    notifyListeners();
+  }
+
+  /// [idToken] is the Firebase ID token of a Google sign-in. [role] is only needed for a
+  /// brand-new account; [phone] only when the admin verifies accounts by phone.
+  /// Same session handling as [login] (tokens + cached user + push token).
+  /// [username]: the optional @username of a NEW account (the server ignores it for an existing one, D-071 v2); a
+  /// refused name fails the call with [usernameError] set, before any account is created.
+  Future<GoogleAuthResult> googleAuth({
+    required String idToken,
+    String? role,
+    String? phone,
+    String? username,
+  }) async {
+    isLoadingGoogle = true;
+    needsVerification = false;
+    pendingRole = null;
+    usernameError = null;
+    _resetMfa();
+    var roleRequired = false;
+    notifyListeners();
+    final handle = UsernameRules.normalize(username ?? '');
+
+    final result = await run(() async {
+      try {
+        return await _api.post(
+          '/api/v1/auth/google',
+          body: {'id_token': idToken, 'role': ?role, 'phone': ?phone, if (handle.isNotEmpty) 'username': handle},
+          auth: false,
+        );
+      } on ApiException catch (e) {
+        if (handle.isNotEmpty) usernameError = UsernameError.from(e, submitted: handle);
+        final d = ApiException.asMap(e.body)?['detail'];
+        if (e.statusCode == 409 && e.code == 'GOOGLE_ROLE_REQUIRED') {
+          roleRequired = true;
+          if (d is Map) {
+            googleName = d['name']?.toString();
+            googleEmail = d['gmail']?.toString();
+          }
+        } else if (e.statusCode == 403 && e.code == 'ACCOUNT_NOT_VERIFIED') {
+          needsVerification = true;
+          if (d is Map) {
+            pendingRole = d['role']?.toString();
+            pendingGmail = d['gmail']?.toString();
+            pendingChannels = _channelsFrom(d['pending_channels'], const ['email']);
+            pendingPhoneMasked = d['phone_masked']?.toString();
+            if (d['otp_phone_channel'] != null) {
+              otpPhoneChannel = d['otp_phone_channel'].toString();
+            }
+          }
+        }
+        rethrow;
+      }
+    });
+
+    final step = MfaLoginStep.fromLogin(result);
+    if (step.kind != MfaStepKind.none) {
+      mfaStep = step;
+      mfaAttemptsLeft = step.attemptsLeft;
+      isLoadingGoogle = false;
+      notifyListeners();
+      return GoogleAuthResult.mfa;
+    }
+    if (result != null && result is Map) {
+      await completeSession(result);
+      isLoadingGoogle = false;
+      notifyListeners();
+      return GoogleAuthResult.success;
+    }
+
+    isLoadingGoogle = false;
+    notifyListeners();
+    if (roleRequired) return GoogleAuthResult.roleRequired;
+    if (needsVerification) return GoogleAuthResult.needsVerification;
+    return GoogleAuthResult.failed;
+  }
+
   // ── Refresh Token ─────────────────────────────────────────────────────────────
 
   Future<bool> refreshToken(String refreshToken) async {
     final result = await run(
           () => _api.post(
         '/api/v1/auth/refresh',
-        queryParams: {'refresh_token': refreshToken},
+        body: {'refresh_token': refreshToken},
         auth: false,
       ),
     );
@@ -468,48 +1031,67 @@ class AuthProvider extends BaseProvider {
   // ── Forgot Password ───────────────────────────────────────────────────────────
   bool isLoadingForget = false;
 
-  Future<bool> forgotPassword(String gmail) async {
+  Future<bool> forgotPassword(String gmail, {String? way}) async {
     isLoadingForget = true;
+    resetEmailMasked = null;
+    resetWays = const [];
+    resetSentVia = null;
     notifyListeners();
     final result = await run(
           () => _api.post(
         '/api/v1/auth/forgot-password',
-        body: {'gmail': gmail},
+        body: {'gmail': gmail, 'way': ?way},
         auth: false,
       ),
     );
+    if (result is Map) _readResetInfo(result, typed: gmail);
     isLoadingForget = false;
     notifyListeners();
     return result != null;
   }
 
-  // ── Reset Password ────────────────────────────────────────────────────────────
-
-  Future<bool> resetPassword({
-    required String gmail,
-    required String code,
-    required String newPassword,
-  }) async {
-    final result = await run(
-          () => _api.post(
-        '/api/v1/auth/reset-password',
-        body: {'gmail': gmail, 'code': code, 'new_password': newPassword},
-        auth: false,
-      ),
-    );
-    return result != null;
+  /// Reads `sent_via` + `ways` of a forgot-password answer.
+  void _readResetInfo(Map result, {String? typed}) {
+    resetSentVia = result['sent_via']?.toString();
+    if (result['ways'] is List) {
+      resetWays = (result['ways'] as List)
+          .whereType<Map>()
+          .map((m) => ResetWay(m['way'].toString(), m['masked']?.toString()))
+          .toList();
+    }
+    if (resetSentVia == 'email' && typed != null && !identifierLooksLikeEmail(typed)) {
+      resetEmailMasked = result['email_masked']?.toString();
+    }
+    notifyListeners();
   }
 
   // ── Logout ────────────────────────────────────────────────────────────────────
 
   Future<void> logout() async {
     ViewAsState.instance.stop(); // never carry view-as into the next session
+    AppModeController.instance.reset(); // Organization/Individual mode belongs to the user who chose it
+    EntitiesApi.instance.invalidate(); // a cached detail or access answer is this user's, never the next one's (D-290)
+    EntityAccess.instance.clear();
+    // the fingerprint key survives a sign-out (D-082), but the login screen that follows must not prompt by itself
+    BiometricAuth.instance.suppressAutoPrompt();
     // Unregister the push token BEFORE the tokens are wiped — afterwards the DELETE had no auth header,
     // failed with 401, and this device kept receiving the previous user's pushes.
     try {
       await NotificationService.instance.unregisterFromBackend(_api);
     } catch (_) {}
+    await _api.signOutServer(); // revoke the refresh family (S15); never blocks on a network failure
     await _storage.clearAll(); // wipes tokens + user JSON
+    try {                       // unsent exam answers kept for crash recovery never outlive the session (shared devices)
+      final p = await SharedPreferences.getInstance();
+      for (final k in p.getKeys().where((k) => k.startsWith('exam.pending.')).toList()) {
+        await p.remove(k);
+      }
+    } catch (_) {}
+    accountSetup = null;
+    _resetMfa();
+    TeacherOnboardingToken.clear();
+    MediaBytesCache.instance.clear(); // question images of the previous user's exams
+    await ChatHub.instance.signedOut(); // unsent messages and drafts are plain text on this device
     _currentUser = null;
     notifyListeners();
   }
@@ -549,8 +1131,7 @@ class AuthProvider extends BaseProvider {
     final access = data['access_token'] as String?;
     final refresh = data['refresh_token'] as String?;
     if (access != null && refresh != null) {
-      await _storage.saveTokens(accessToken: access, refreshToken: refresh);
-      await _api.saveTokens(access: access, refresh: refresh);
+      await _api.saveTokens(access: access, refresh: refresh); // secure storage (lib/core/token_storage.dart)
     }
   }
 }

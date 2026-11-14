@@ -1,0 +1,140 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items/1 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "id": 1,
+  "scan_page_id": 1,
+  "attempt_id": 1,
+  "question_id": 2,
+  "kind": "completion",
+  "code": "handwriting_always_reviewed",
+  "reading": {
+   "kind": "completion",
+   "status": "suggestion",
+   "final": false,
+   "needs_review": true,
+   "max": 1.0,
+   "suggested_score": 1.0,
+   "blanks": [
+    {
+     "status": "exact",
+     "given": "القاهرة",
+     "normalised": "القاهره",
+     "matched": "القاهرة",
+     "distance": 0,
+     "budget": 0,
+     "suggested_credit": 1.0,
+     "final": false,
+     "reading": {
+      "text": "القاهرة",
+      "confidence": 0.97,
+      "engine": "paddleocr-rec-ar@pp-ocrv5-14aaedc",
+      "review": true
+     },
+     "crop": {
+      "page_id": 1,
+      "box": [
+       0.07,
+       0.4866666666666667,
+       0.8600000000000001,
+       0.20666666666666667
+      ],
+      "has_crop": true
+     },
+     "reason": "handwriting_always_reviewed",
+     "prefill": true
+    }
+   ],
+   "text": "القاهرة",
+   "texts": [
+    "القاهرة"
+   ],
+   "corrected": false,
+   "lang": "ar",
+   "points": 1.0,
+   "pending": false,
+   "en": "Arabic handwriting is always checked by the teacher",
+   "ar": "الخط العربي المكتوب باليد يراجعه المعلم دائمًا"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T08:42:23.975224",
+  "actions": [
+   "accept",
+   "set_score",
+   "fix_text"
+  ],
+  "has_crop": true,
+  "en": "Arabic handwriting is always checked by the teacher",
+  "ar": "الخط العربي المكتوب باليد يراجعه المعلم دائمًا",
+  "crop_url": "/api/v1/exam/omr/images/crop/1?exp=1793609545&sig=6ae678e6e8ad17a823ddde1d79eadb24",
+  "system_reading": {
+   "reading_id": 1,
+   "unit": "word",
+   "lang": "ar",
+   "reading": {
+    "text": "القاهرة",
+    "confidence": 0.97,
+    "engine": "paddleocr-rec-ar@pp-ocrv5-14aaedc",
+    "review": true,
+    "reasons": [
+     "low_confidence"
+    ],
+    "blank": false,
+    "lang": "ar",
+    "unit": "word",
+    "threshold": 1.01,
+    "lines": 1,
+    "words": [],
+    "ms": 41.1
+   },
+   "blanks": [
+    {
+     "text": "القاهرة",
+     "confidence": 0.97,
+     "engine": "paddleocr-rec-ar@pp-ocrv5-14aaedc",
+     "review": true,
+     "reasons": [
+      "low_confidence"
+     ],
+     "blank": false,
+     "lang": "ar",
+     "unit": "word",
+     "threshold": 1.01,
+     "lines": 1,
+     "words": [],
+     "ms": 41.1
+    }
+   ],
+   "box": [
+    0.07,
+    0.4866666666666667,
+    0.8600000000000001,
+    0.20666666666666667
+   ]
+  },
+  "question": {
+   "question_id": 2,
+   "type": "fill_blank",
+   "points": 1.0,
+   "lang": "ar",
+   "step": 0.5,
+   "blanks": 1,
+   "key": {
+    "blanks": [
+     [
+      "القاهرة"
+     ]
+    ]
+   }
+  },
+  "page": {
+   "id": 1,
+   "page_label": null,
+   "status": "review",
+   "url": "/api/v1/exam/exams/1/omr/pages/1"
+  }
+ }
+}

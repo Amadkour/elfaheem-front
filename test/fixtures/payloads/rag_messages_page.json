@@ -1,0 +1,85 @@
+{
+ "_source": {
+  "route": "GET /api/v1/rag/conversations/10/messages?limit=2",
+  "uid": 11
+ },
+ "payload": {
+  "items": [
+   {
+    "id": 14,
+    "state": "done",
+    "stage": null,
+    "question": "How do I download lecture number 3 for offline viewing?",
+    "found": true,
+    "answer": "Download lecture videos to your phone to watch without a connection. They are stored encrypted inside the app only, and when you are offline the app opens Downloads by itself. Available in the phone app, not on the web.\n\nWhere: Download button in the video player; downloads are in Profile › Downloads\n\n1. Open the video in the player.\n2. Tap Download to watch offline and wait for the download to finish.\n3. Open Profile › Downloads to watch downloaded videos.\n4. To free space tap Delete; you can download it again later.",
+    "citations": [
+     {
+      "n": 1,
+      "kind": "qa",
+      "id": null,
+      "rule": "guide:offline_downloads",
+      "document_id": null,
+      "title": "Download lectures to watch offline",
+      "section": "",
+      "heading": "",
+      "page_from": null,
+      "page_to": null,
+      "chunk_id": null,
+      "quote": "Download lecture videos to your phone to watch without a connection. They are stored encrypted inside the app only, and when you are offline the app opens Downloads by itself. Available in the phone app, not on the web.\n\nWhere: Download button in the video player; downloads are in Profile › Downloads\n\n1. Open the video in the player.\n2. Tap Download to watch offline and wait for the download to fi",
+      "deep_link": "/downloads"
+     }
+    ],
+    "generator": "rule",
+    "latency_ms": 12,
+    "org_id": null,
+    "course_id": null,
+    "app": true,
+    "error": null,
+    "helpful": null,
+    "feedback_comment": null,
+    "follow_ups": [],
+    "created_at": "2026-10-28T11:32:29.864814Z",
+    "conversation_id": 10,
+    "answer_partial": null
+   },
+   {
+    "id": 15,
+    "state": "done",
+    "stage": null,
+    "question": "How do I download lecture number 4 for offline viewing?",
+    "found": true,
+    "answer": "Download lecture videos to your phone to watch without a connection. They are stored encrypted inside the app only, and when you are offline the app opens Downloads by itself. Available in the phone app, not on the web.\n\nWhere: Download button in the video player; downloads are in Profile › Downloads\n\n1. Open the video in the player.\n2. Tap Download to watch offline and wait for the download to finish.\n3. Open Profile › Downloads to watch downloaded videos.\n4. To free space tap Delete; you can download it again later.",
+    "citations": [
+     {
+      "n": 1,
+      "kind": "qa",
+      "id": null,
+      "rule": "guide:offline_downloads",
+      "document_id": null,
+      "title": "Download lectures to watch offline",
+      "section": "",
+      "heading": "",
+      "page_from": null,
+      "page_to": null,
+      "chunk_id": null,
+      "quote": "Download lecture videos to your phone to watch without a connection. They are stored encrypted inside the app only, and when you are offline the app opens Downloads by itself. Available in the phone app, not on the web.\n\nWhere: Download button in the video player; downloads are in Profile › Downloads\n\n1. Open the video in the player.\n2. Tap Download to watch offline and wait for the download to fi",
+      "deep_link": "/downloads"
+     }
+    ],
+    "generator": "rule",
+    "latency_ms": 12,
+    "org_id": null,
+    "course_id": null,
+    "app": true,
+    "error": null,
+    "helpful": null,
+    "feedback_comment": null,
+    "follow_ups": [],
+    "created_at": "2026-10-28T11:32:29.926389Z",
+    "conversation_id": 10,
+    "answer_partial": null
+   }
+  ],
+  "has_more": true
+ }
+}

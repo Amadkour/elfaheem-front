@@ -1,0 +1,62 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items/4 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "id": 4,
+  "scan_page_id": 5,
+  "attempt_id": null,
+  "question_id": null,
+  "kind": "identifier",
+  "code": "identifier_no_match",
+  "reading": {
+   "kind": "shaded",
+   "status": "clear",
+   "value": "9999999999",
+   "reason": null,
+   "low": null,
+   "gaps": null,
+   "columns_to_check": null,
+   "candidates": [],
+   "en": "No student has this ID",
+   "ar": "لا يوجد طالب بهذا الرقم"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T05:36:16.133834",
+  "actions": [
+   "assign",
+   "accept",
+   "fix",
+   "replace",
+   "dismiss"
+  ],
+  "has_crop": true,
+  "en": "No student has this ID",
+  "ar": "لا يوجد طالب بهذا الرقم",
+  "crop_url": "/api/v1/exam/omr/images/crop/4?exp=1793598376&sig=9e4eb5df1fbca6814a7bc5080e77f95e",
+  "system_reading": {
+   "reading_id": 5,
+   "engine_version": "nb-omr-engine/1 mlkit.omr thresholds:94796afbb463",
+   "identifier": {
+    "kind": "shaded",
+    "box": [
+     118,
+     263,
+     452,
+     409
+    ],
+    "status": "clear",
+    "value": "9999999999",
+    "blank_columns": []
+   }
+  },
+  "page": {
+   "id": 5,
+   "page_label": "1",
+   "status": "review",
+   "url": "/api/v1/exam/exams/1/omr/pages/5"
+  }
+ }
+}

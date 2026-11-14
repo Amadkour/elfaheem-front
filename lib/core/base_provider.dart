@@ -25,6 +25,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'api_client.dart';
+import 'api_error_text.dart';
 
 /// Possible states for any async API operation.
 enum ProviderState { idle, loading, success, error }
@@ -74,8 +75,8 @@ enum ProviderState { idle, loading, success, error }
 
       } on ApiException catch (e) {
         // Server responded with a proper HTTP error — do NOT retry.
-        _errorMessage = e.message;
-        debugPrint('⛔ ApiException (attempt $attempt): ${e.message}');
+        _errorMessage = apiErrorText(e);           // bilingual text for coded errors, the server's text otherwise
+        debugPrint('⛔ ApiException (attempt $attempt): ${e.code ?? ''} ${e.message}');
         _setProviderState(ProviderState.error);
         return null;
 

@@ -1,6 +1,6 @@
 // lib/utils/widget/app_loading_indicator.dart
 //
-// App-branded loading indicator: the ElFaheem logo sitting inside a
+// App-branded loading indicator: the Alfaheem logo sitting inside a
 // rotating accent ring, with a gentle pulse. Drop-in replacement for
 // CircularProgressIndicator anywhere the app shows a loading state —
 // splash screen, full-page loaders, list loading states, etc.
@@ -99,7 +99,7 @@ class _AppLoadingIndicatorState extends State<AppLoadingIndicator>
                           child: Image.asset(
                             'assets/images/logo.png',
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Icon(
+                            errorBuilder: (_, _, _) => Icon(
                               Icons.school_rounded,
                               size: widget.size * 0.5,
                               color: context.colors.primary,

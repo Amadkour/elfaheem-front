@@ -1,0 +1,30 @@
+{
+ "_source": {
+  "route": "POST /api/v1/admin/points/topups/1/approve",
+  "status": 200,
+  "uid": 4
+ },
+ "payload": {
+  "id": 1,
+  "points": 50,
+  "amount": 50.0,
+  "currency": "SAR",
+  "method": "instapay",
+  "status": "approved",
+  "note": "ok",
+  "has_receipt": true,
+  "decided_at": "2026-10-28T16:13:56.803860",
+  "created_at": "2026-10-28T16:13:56.446744",
+  "provider": null,
+  "payment_id": null,
+  "failure_reason": null,
+  "user": {
+   "id": 1,
+   "name": "Student",
+   "email": "student@capture.test",
+   "phone": "+201007897215",
+   "username": null,
+   "role": "student"
+  }
+ }
+}

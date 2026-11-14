@@ -1,0 +1,25 @@
+{
+ "_source": {
+  "route": "POST /api/v1/public/live/oZMSHOVXL-vOxCeW_5Bvy8RHAyEukASE/join",
+  "status": 200,
+  "uid": null
+ },
+ "payload": {
+  "status": "admitted",
+  "ws_url": "ws://localhost:7880",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiVmlzaXRvciIsIm1ldGFkYXRhIjoie1wicm9sZVwiOiBcImd1ZXN0XCJ9IiwidmlkZW8iOnsicm9vbUFkbWluIjpmYWxzZSwicm9vbUpvaW4iOnRydWUsInJvb20iOiJtZWV0XzFfMjE5ZGY4MjY5OSIsImNhblB1Ymxpc2giOmZhbHNlLCJjYW5TdWJzY3JpYmUiOnRydWUsImNhblB1Ymxpc2hEYXRhIjp0cnVlLCJjYW5VcGRhdGVPd25NZXRhZGF0YSI6ZmFsc2V9LCJzdWIiOiJndWVzdDpkZDBjN2Q4YjMxYzUiLCJpc3MiOiJkZXZrZXkiLCJuYmYiOjE3OTMyMDQwNDEsImV4cCI6MTc5MzIyOTIzOX0.HvGfa4kMu5y0XM7AMKGRmRl0l7BO5bUszuAuQbRXTR8",
+  "kind": "meeting",
+  "id": 1,
+  "can_publish": false,
+  "identity": "guest:dd0c7d8b31c5",
+  "meeting_id": 1,
+  "recording_enabled": false,
+  "time_limit": {
+   "ends_at": "2026-10-28T16:29:01.069986",
+   "free_minutes": 15,
+   "daily_minutes": 15,
+   "daily_left": 0
+  },
+  "live_started_at": "2026-10-28T16:14:01.069986"
+ }
+}

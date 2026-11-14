@@ -1,0 +1,74 @@
+{
+ "_source": {
+  "route": "POST /api/v1/models/43/activate",
+  "status": 200,
+  "request": {},
+  "how": "back tests/modelhub/e2e_modelhub.py (MODELHUB_MODE=test, inline), reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "stage": "ready_to_confirm",
+  "pending": {
+   "model_id": 43,
+   "ref": "emb-kept@v1",
+   "stage": "ready_to_confirm",
+   "at": "2026-11-02T16:45:39.538542",
+   "checks": [
+    {
+     "name": "ram",
+     "estimate_mb": 100,
+     "limit_mb": 0,
+     "ok": true,
+     "available_mb": 10669
+    },
+    {
+     "name": "cpu",
+     "provider": "onnx",
+     "ok": true,
+     "needs": [],
+     "problems": []
+    }
+   ],
+   "test": {
+    "dim": 384,
+    "speed": 1495.63,
+    "checks": [
+     {
+      "name": "paraphrase_en",
+      "ok": true,
+      "close": 0.3536,
+      "far": 0.0
+     },
+     {
+      "name": "paraphrase_ar",
+      "ok": true,
+      "close": 0.3651,
+      "far": 0.0
+     }
+    ],
+    "ok": true,
+    "load_ms": 0,
+    "ms": 22,
+    "rss_mb": 163,
+    "at": "2026-11-02T16:45:39.568189"
+   },
+   "reindex": {
+    "known": true,
+    "current": "emb-sixth@v1",
+    "chunks": 1200,
+    "qa": 30,
+    "missing_chunks": 0,
+    "missing_qa": 0,
+    "items": 0,
+    "reindex_required": false,
+    "vectors_ready": true,
+    "estimated_seconds": null,
+    "estimate": {
+     "basis": "nothing_to_build",
+     "seconds": 0,
+     "items": 0
+    },
+    "rate_per_s": 1495.63
+   }
+  }
+ }
+}

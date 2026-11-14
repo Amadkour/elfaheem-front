@@ -1,0 +1,20 @@
+{
+ "source": "back tests/org_v2/e2e_course_students.py (CS_DUMP)",
+ "payload": {
+  "sent": 1,
+  "parents": 1,
+  "skipped": [
+   {
+    "student_id": 4,
+    "code": "nudged_recently",
+    "nudged_at": "2026-11-13T14:41:17.503732",
+    "next_at": "2026-11-14T14:41:17.503732"
+   },
+   {
+    "student_id": 8,
+    "code": "not_enrolled"
+   }
+  ],
+  "nudged_at": "2026-11-13T14:41:17.552323"
+ }
+}

@@ -1,0 +1,11 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/review-items/4/resolve -> 409, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 409,
+ "payload": {
+  "detail": {
+   "code": "review_item_resolved",
+   "message": "تمت مراجعة هذا العنصر بالفعل",
+   "message_en": "This item was already resolved."
+  }
+ }
+}

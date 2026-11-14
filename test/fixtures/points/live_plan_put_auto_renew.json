@@ -1,0 +1,20 @@
+{
+ "_source": {
+  "route": "PUT /api/v1/me/live-plan",
+  "status": 200,
+  "uid": 1
+ },
+ "payload": {
+  "active": true,
+  "ends_at": "2026-11-27T16:13:57.457546",
+  "price_points": 30,
+  "days": 30,
+  "free_minutes": 15,
+  "balance": 40,
+  "needed": true,
+  "daily_free_minutes": 15,
+  "daily_free_left": 15,
+  "auto_renew": true,
+  "days_left": 29
+ }
+}

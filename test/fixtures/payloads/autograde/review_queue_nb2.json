@@ -1,0 +1,1165 @@
+{
+ "_source": {
+  "route": "GET /api/v1/exam/exams/1/review?state=all",
+  "uid": 10
+ },
+ "payload": {
+  "items": [
+   {
+    "answer_id": 3,
+    "attempt_id": 1,
+    "question_id": 3,
+    "type": "short_answer",
+    "student_id": 11,
+    "student_code": null,
+    "prompt": "The basic unit of life is the ___ (one word)",
+    "answer": {
+     "source": "handwriting",
+     "layout": "NB2",
+     "scan_page_id": 1,
+     "text": "cell",
+     "ocr_confidence": 1.0,
+     "nb2": {
+      "unit": "chars",
+      "chars": [
+       {
+        "ch": "c",
+        "conf": 0.9969,
+        "alt": "e",
+        "alt_conf": 0.0028,
+        "ok": true
+       },
+       {
+        "ch": "e",
+        "conf": 0.9996,
+        "alt": "c",
+        "alt_conf": 0.0003,
+        "ok": true
+       },
+       {
+        "ch": "l",
+        "conf": 0.997,
+        "alt": "i",
+        "alt_conf": 0.0011,
+        "ok": true
+       },
+       {
+        "ch": "l",
+        "conf": 0.9898,
+        "alt": "1",
+        "alt_conf": 0.0071,
+        "ok": true
+       },
+       {
+        "ch": "",
+        "conf": 1.0,
+        "alt": "",
+        "alt_conf": 0.0,
+        "ok": true
+       },
+       {
+        "ch": "",
+        "conf": 1.0,
+        "alt": "",
+        "alt_conf": 0.0,
+        "ok": true
+       }
+      ],
+      "low_chars": [],
+      "engine": "nb-chars/1 chars-cnn@c1-2de0e0c3",
+      "read": "cell",
+      "crop_key": "omr/1/1/w3.png",
+      "cells": 6
+     }
+    },
+    "points": 2.0,
+    "key": {
+     "model": "cell",
+     "kind": "word",
+     "keywords": [
+      "cell"
+     ],
+     "derived": {
+      "v": 1,
+      "kind": "word",
+      "kind_source": "teacher",
+      "alternatives": [
+       "cell"
+      ],
+      "keywords": [
+       {
+        "term": "cell",
+        "weight": 1.0,
+        "synonyms": []
+       }
+      ],
+      "points": [
+       {
+        "text": "cell",
+        "weight": 1.0
+       }
+      ],
+      "points_source": "model",
+      "keywords_source": "teacher",
+      "model_hash": "a0c4e833e4a575ff"
+     }
+    },
+    "review_state": "proposed",
+    "proposal": {
+     "score": 2.0,
+     "max": 2.0,
+     "confidence": 0.964,
+     "abstain": false,
+     "criteria": [
+      {
+       "id": "c1",
+       "criterion": "cell",
+       "points": 2.0,
+       "score": 2.0,
+       "fraction": 0.982,
+       "evidence": {
+        "text": "cell",
+        "start": 0,
+        "end": 4
+       },
+       "keywords_found": [
+        "cell"
+       ],
+       "flags": [],
+       "justification": "Stated in «cell» (keywords: cell)"
+      }
+     ],
+     "flags": [],
+     "grader_version": "emb:hash-test@0|cal:test-1",
+     "scale": 1.0
+    },
+    "proposed_score": 2.0,
+    "confidence": 0.9642,
+    "final_score": null,
+    "grader_version": "emb:hash-test@0|cal:test-1",
+    "marks": []
+   },
+   {
+    "answer_id": 4,
+    "attempt_id": 1,
+    "question_id": 4,
+    "type": "short_answer",
+    "student_id": 11,
+    "student_code": null,
+    "prompt": "ماذا يصنع النبات في عملية البناء الضوئي؟",
+    "answer": {
+     "source": "handwriting",
+     "layout": "NB2",
+     "scan_page_id": 1,
+     "text": "يصنع النبات الغذاء والأكسجين",
+     "ocr_confidence": 0.0,
+     "nb2": {
+      "unit": "line",
+      "engine": "scripted",
+      "confidence": 0.6,
+      "reasons": [
+       "low_confidence"
+      ],
+      "read": "يصنع النبات الغذاء والاكسجن",
+      "crop_key": "omr/1/1/w4.png",
+      "cells": 0,
+      "near_miss": {
+       "from": "يصنع النبات الغذاء والاكسجن",
+       "to": "يصنع النبات الغذاء والأكسجين",
+       "target": "model",
+       "edits": 1,
+       "applied": true
+      }
+     }
+    },
+    "points": 3.0,
+    "key": {
+     "model": "يصنع النبات الغذاء والأكسجين",
+     "keywords": [
+      "الغذاء",
+      "الأكسجين"
+     ],
+     "derived": {
+      "v": 1,
+      "kind": "short",
+      "kind_source": "inferred",
+      "alternatives": [
+       "يصنع النبات الغذاء والاكسجين",
+       "يصنع نبات غذاء والاكسجين",
+       "يصنع نبات غذاء اكسج"
+      ],
+      "keywords": [
+       {
+        "term": "والاكسجين",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "الغذاء",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "النبات",
+        "weight": 0.5,
+        "synonyms": []
+       },
+       {
+        "term": "يصنع",
+        "weight": 0.5,
+        "synonyms": []
+       }
+      ],
+      "points": [
+       {
+        "text": "يصنع النبات الغذاء والأكسجين",
+        "weight": 1.0
+       }
+      ],
+      "points_source": "model",
+      "keywords_source": "teacher",
+      "model_hash": "0bfa8b95db10c0d2"
+     }
+    },
+    "review_state": "proposed",
+    "proposal": {
+     "score": 3.0,
+     "max": 3.0,
+     "confidence": 0.964,
+     "abstain": true,
+     "criteria": [
+      {
+       "id": "c1",
+       "criterion": "يصنع النبات الغذاء والأكسجين",
+       "points": 3.0,
+       "score": 3.0,
+       "fraction": 0.982,
+       "evidence": {
+        "text": "يصنع النبات الغذاء والأكسجين",
+        "start": 0,
+        "end": 28
+       },
+       "keywords_found": [
+        "الأكسجين",
+        "الغذاء"
+       ],
+       "flags": [],
+       "justification": "ورد المعنى في «يصنع النبات الغذاء والأكسجين» (الكلمات: الأكسجين، الغذاء)"
+      }
+     ],
+     "flags": [
+      "ocr_low_confidence"
+     ],
+     "grader_version": "emb:hash-test@0|cal:test-1",
+     "scale": 1.0
+    },
+    "proposed_score": 3.0,
+    "confidence": 0.9642,
+    "final_score": null,
+    "grader_version": "emb:hash-test@0|cal:test-1",
+    "marks": []
+   },
+   {
+    "answer_id": 5,
+    "attempt_id": 1,
+    "question_id": 5,
+    "type": "essay",
+    "student_id": 11,
+    "student_code": null,
+    "prompt": "اشرح أهمية الماء للكائنات الحية",
+    "answer": {
+     "source": "handwriting",
+     "layout": "NB2",
+     "scan_page_id": 2,
+     "text": "الماء ضروري للحياة",
+     "ocr_confidence": 1.0,
+     "nb2": {
+      "unit": "line",
+      "engine": "scripted",
+      "confidence": 0.97,
+      "reasons": [],
+      "read": "الماء ضروري للحياة",
+      "crop_key": "omr/1/2/w5.png",
+      "cells": 0
+     }
+    },
+    "points": 5.0,
+    "key": {
+     "model": "الماء ضروري للحياة لأنه يدخل في تركيب الخلايا وينقل الغذاء",
+     "keywords": [
+      "الخلايا",
+      "الغذاء"
+     ],
+     "derived": {
+      "v": 1,
+      "kind": "long",
+      "kind_source": "inferred",
+      "alternatives": [
+       "الماء ضروري للحياه لانه يدخل في تركيب الخلايا وينقل الغذاء",
+       "ماء ضروري للحياه لانه يدخل في تركيب خلايا وينقل غذاء",
+       "ماء ضرور حيا انه يدخل في تركيب خلايا ينقل غذاء",
+       "ماء ضرور حيا انه يدخل تركيب خلايا ينقل غذاء"
+      ],
+      "keywords": [
+       {
+        "term": "لانه",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "تركيب",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "للحياه",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "الخلايا",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "ضروري",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "الغذاء",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "يدخل",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "وينقل",
+        "weight": 1.0,
+        "synonyms": []
+       }
+      ],
+      "points": [
+       {
+        "text": "الماء ضروري للحياة لأنه يدخل في تركيب الخلايا وينقل الغذاء",
+        "weight": 1.0
+       }
+      ],
+      "points_source": "model",
+      "keywords_source": "teacher",
+      "model_hash": "cfbf2f9cbde6061f"
+     }
+    },
+    "review_state": "proposed",
+    "proposal": {
+     "score": 0.0,
+     "max": 5.0,
+     "confidence": 0.964,
+     "abstain": false,
+     "criteria": [
+      {
+       "id": "c1",
+       "criterion": "الماء ضروري للحياة لأنه يدخل في تركيب الخلايا وينقل الغذاء",
+       "points": 5.0,
+       "score": 0.0,
+       "fraction": 0.018,
+       "evidence": {
+        "text": "الماء ضروري للحياة",
+        "start": 0,
+        "end": 18
+       },
+       "keywords_found": [],
+       "flags": [],
+       "justification": "لم يرد هذا المعنى بوضوح"
+      }
+     ],
+     "flags": [],
+     "grader_version": "emb:hash-test@0|cal:test-1",
+     "scale": 1.0
+    },
+    "proposed_score": 0.0,
+    "confidence": 0.9642,
+    "final_score": null,
+    "grader_version": "emb:hash-test@0|cal:test-1",
+    "marks": []
+   },
+   {
+    "answer_id": 8,
+    "attempt_id": 2,
+    "question_id": 3,
+    "type": "short_answer",
+    "student_id": 12,
+    "student_code": null,
+    "prompt": "The basic unit of life is the ___ (one word)",
+    "answer": {
+     "source": "handwriting",
+     "layout": "NB2",
+     "scan_page_id": 3,
+     "text": "cell",
+     "ocr_confidence": 1.0,
+     "nb2": {
+      "unit": "chars",
+      "chars": [
+       {
+        "ch": "c",
+        "conf": 0.996,
+        "alt": "e",
+        "alt_conf": 0.0011,
+        "ok": true
+       },
+       {
+        "ch": "e",
+        "conf": 0.9999,
+        "alt": "r",
+        "alt_conf": 0.0001,
+        "ok": true
+       },
+       {
+        "ch": "l",
+        "conf": 0.9969,
+        "alt": "i",
+        "alt_conf": 0.0014,
+        "ok": true
+       },
+       {
+        "ch": "l",
+        "conf": 0.9974,
+        "alt": "i",
+        "alt_conf": 0.0009,
+        "ok": true
+       },
+       {
+        "ch": "",
+        "conf": 1.0,
+        "alt": "",
+        "alt_conf": 0.0,
+        "ok": true
+       },
+       {
+        "ch": "",
+        "conf": 1.0,
+        "alt": "",
+        "alt_conf": 0.0,
+        "ok": true
+       }
+      ],
+      "low_chars": [],
+      "engine": "nb-chars/1 chars-cnn@c1-2de0e0c3",
+      "read": "cell",
+      "crop_key": "omr/1/3/w3.png",
+      "cells": 6
+     }
+    },
+    "points": 2.0,
+    "key": {
+     "model": "cell",
+     "kind": "word",
+     "keywords": [
+      "cell"
+     ],
+     "derived": {
+      "v": 1,
+      "kind": "word",
+      "kind_source": "teacher",
+      "alternatives": [
+       "cell"
+      ],
+      "keywords": [
+       {
+        "term": "cell",
+        "weight": 1.0,
+        "synonyms": []
+       }
+      ],
+      "points": [
+       {
+        "text": "cell",
+        "weight": 1.0
+       }
+      ],
+      "points_source": "model",
+      "keywords_source": "teacher",
+      "model_hash": "a0c4e833e4a575ff"
+     }
+    },
+    "review_state": "proposed",
+    "proposal": {
+     "score": 2.0,
+     "max": 2.0,
+     "confidence": 0.964,
+     "abstain": false,
+     "criteria": [
+      {
+       "id": "c1",
+       "criterion": "cell",
+       "points": 2.0,
+       "score": 2.0,
+       "fraction": 0.982,
+       "evidence": {
+        "text": "cell",
+        "start": 0,
+        "end": 4
+       },
+       "keywords_found": [
+        "cell"
+       ],
+       "flags": [],
+       "justification": "Stated in «cell» (keywords: cell)"
+      }
+     ],
+     "flags": [],
+     "grader_version": "emb:hash-test@0|cal:test-1",
+     "scale": 1.0
+    },
+    "proposed_score": 2.0,
+    "confidence": 0.9642,
+    "final_score": null,
+    "grader_version": "emb:hash-test@0|cal:test-1",
+    "marks": []
+   },
+   {
+    "answer_id": 9,
+    "attempt_id": 2,
+    "question_id": 4,
+    "type": "short_answer",
+    "student_id": 12,
+    "student_code": null,
+    "prompt": "ماذا يصنع النبات في عملية البناء الضوئي؟",
+    "answer": {
+     "source": "handwriting",
+     "layout": "NB2",
+     "scan_page_id": 3,
+     "text": "يصنع النبات الغذاء والأكسجين",
+     "ocr_confidence": 0.0,
+     "nb2": {
+      "unit": "line",
+      "engine": "scripted",
+      "confidence": 0.6,
+      "reasons": [
+       "low_confidence"
+      ],
+      "read": "يصنع النبات الغذاء والاكسجن",
+      "crop_key": "omr/1/3/w4.png",
+      "cells": 0,
+      "near_miss": {
+       "from": "يصنع النبات الغذاء والاكسجن",
+       "to": "يصنع النبات الغذاء والأكسجين",
+       "target": "model",
+       "edits": 1,
+       "applied": true
+      }
+     }
+    },
+    "points": 3.0,
+    "key": {
+     "model": "يصنع النبات الغذاء والأكسجين",
+     "keywords": [
+      "الغذاء",
+      "الأكسجين"
+     ],
+     "derived": {
+      "v": 1,
+      "kind": "short",
+      "kind_source": "inferred",
+      "alternatives": [
+       "يصنع النبات الغذاء والاكسجين",
+       "يصنع نبات غذاء والاكسجين",
+       "يصنع نبات غذاء اكسج"
+      ],
+      "keywords": [
+       {
+        "term": "والاكسجين",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "الغذاء",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "النبات",
+        "weight": 0.5,
+        "synonyms": []
+       },
+       {
+        "term": "يصنع",
+        "weight": 0.5,
+        "synonyms": []
+       }
+      ],
+      "points": [
+       {
+        "text": "يصنع النبات الغذاء والأكسجين",
+        "weight": 1.0
+       }
+      ],
+      "points_source": "model",
+      "keywords_source": "teacher",
+      "model_hash": "0bfa8b95db10c0d2"
+     }
+    },
+    "review_state": "proposed",
+    "proposal": {
+     "score": 3.0,
+     "max": 3.0,
+     "confidence": 0.964,
+     "abstain": true,
+     "criteria": [
+      {
+       "id": "c1",
+       "criterion": "يصنع النبات الغذاء والأكسجين",
+       "points": 3.0,
+       "score": 3.0,
+       "fraction": 0.982,
+       "evidence": {
+        "text": "يصنع النبات الغذاء والأكسجين",
+        "start": 0,
+        "end": 28
+       },
+       "keywords_found": [
+        "الأكسجين",
+        "الغذاء"
+       ],
+       "flags": [],
+       "justification": "ورد المعنى في «يصنع النبات الغذاء والأكسجين» (الكلمات: الأكسجين، الغذاء)"
+      }
+     ],
+     "flags": [
+      "ocr_low_confidence"
+     ],
+     "grader_version": "emb:hash-test@0|cal:test-1",
+     "scale": 1.0
+    },
+    "proposed_score": 3.0,
+    "confidence": 0.9642,
+    "final_score": null,
+    "grader_version": "emb:hash-test@0|cal:test-1",
+    "marks": []
+   },
+   {
+    "answer_id": 10,
+    "attempt_id": 2,
+    "question_id": 5,
+    "type": "essay",
+    "student_id": 12,
+    "student_code": null,
+    "prompt": "اشرح أهمية الماء للكائنات الحية",
+    "answer": {
+     "source": "handwriting",
+     "layout": "NB2",
+     "scan_page_id": 4,
+     "text": "الماء ضروري للحياة",
+     "ocr_confidence": 1.0,
+     "nb2": {
+      "unit": "line",
+      "engine": "scripted",
+      "confidence": 0.97,
+      "reasons": [],
+      "read": "الماء ضروري للحياة",
+      "crop_key": "omr/1/4/w5.png",
+      "cells": 0
+     }
+    },
+    "points": 5.0,
+    "key": {
+     "model": "الماء ضروري للحياة لأنه يدخل في تركيب الخلايا وينقل الغذاء",
+     "keywords": [
+      "الخلايا",
+      "الغذاء"
+     ],
+     "derived": {
+      "v": 1,
+      "kind": "long",
+      "kind_source": "inferred",
+      "alternatives": [
+       "الماء ضروري للحياه لانه يدخل في تركيب الخلايا وينقل الغذاء",
+       "ماء ضروري للحياه لانه يدخل في تركيب خلايا وينقل غذاء",
+       "ماء ضرور حيا انه يدخل في تركيب خلايا ينقل غذاء",
+       "ماء ضرور حيا انه يدخل تركيب خلايا ينقل غذاء"
+      ],
+      "keywords": [
+       {
+        "term": "لانه",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "تركيب",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "للحياه",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "الخلايا",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "ضروري",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "الغذاء",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "يدخل",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "وينقل",
+        "weight": 1.0,
+        "synonyms": []
+       }
+      ],
+      "points": [
+       {
+        "text": "الماء ضروري للحياة لأنه يدخل في تركيب الخلايا وينقل الغذاء",
+        "weight": 1.0
+       }
+      ],
+      "points_source": "model",
+      "keywords_source": "teacher",
+      "model_hash": "cfbf2f9cbde6061f"
+     }
+    },
+    "review_state": "proposed",
+    "proposal": {
+     "score": 0.0,
+     "max": 5.0,
+     "confidence": 0.964,
+     "abstain": false,
+     "criteria": [
+      {
+       "id": "c1",
+       "criterion": "الماء ضروري للحياة لأنه يدخل في تركيب الخلايا وينقل الغذاء",
+       "points": 5.0,
+       "score": 0.0,
+       "fraction": 0.018,
+       "evidence": {
+        "text": "الماء ضروري للحياة",
+        "start": 0,
+        "end": 18
+       },
+       "keywords_found": [],
+       "flags": [],
+       "justification": "لم يرد هذا المعنى بوضوح"
+      }
+     ],
+     "flags": [],
+     "grader_version": "emb:hash-test@0|cal:test-1",
+     "scale": 1.0
+    },
+    "proposed_score": 0.0,
+    "confidence": 0.9642,
+    "final_score": null,
+    "grader_version": "emb:hash-test@0|cal:test-1",
+    "marks": []
+   },
+   {
+    "answer_id": 11,
+    "attempt_id": 3,
+    "question_id": 5,
+    "type": "essay",
+    "student_id": 14,
+    "student_code": null,
+    "prompt": "اشرح أهمية الماء للكائنات الحية",
+    "answer": {
+     "source": "handwriting",
+     "layout": "NB2",
+     "scan_page_id": 6,
+     "text": "الماء ضروري للحياة",
+     "ocr_confidence": 1.0,
+     "nb2": {
+      "unit": "line",
+      "engine": "scripted",
+      "confidence": 0.97,
+      "reasons": [],
+      "read": "الماء ضروري للحياة",
+      "crop_key": "omr/1/6/w5.png",
+      "cells": 0
+     }
+    },
+    "points": 5.0,
+    "key": {
+     "model": "الماء ضروري للحياة لأنه يدخل في تركيب الخلايا وينقل الغذاء",
+     "keywords": [
+      "الخلايا",
+      "الغذاء"
+     ],
+     "derived": {
+      "v": 1,
+      "kind": "long",
+      "kind_source": "inferred",
+      "alternatives": [
+       "الماء ضروري للحياه لانه يدخل في تركيب الخلايا وينقل الغذاء",
+       "ماء ضروري للحياه لانه يدخل في تركيب خلايا وينقل غذاء",
+       "ماء ضرور حيا انه يدخل في تركيب خلايا ينقل غذاء",
+       "ماء ضرور حيا انه يدخل تركيب خلايا ينقل غذاء"
+      ],
+      "keywords": [
+       {
+        "term": "لانه",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "تركيب",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "للحياه",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "الخلايا",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "ضروري",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "الغذاء",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "يدخل",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "وينقل",
+        "weight": 1.0,
+        "synonyms": []
+       }
+      ],
+      "points": [
+       {
+        "text": "الماء ضروري للحياة لأنه يدخل في تركيب الخلايا وينقل الغذاء",
+        "weight": 1.0
+       }
+      ],
+      "points_source": "model",
+      "keywords_source": "teacher",
+      "model_hash": "cfbf2f9cbde6061f"
+     }
+    },
+    "review_state": "proposed",
+    "proposal": {
+     "score": 0.0,
+     "max": 5.0,
+     "confidence": 0.964,
+     "abstain": false,
+     "criteria": [
+      {
+       "id": "c1",
+       "criterion": "الماء ضروري للحياة لأنه يدخل في تركيب الخلايا وينقل الغذاء",
+       "points": 5.0,
+       "score": 0.0,
+       "fraction": 0.018,
+       "evidence": {
+        "text": "الماء ضروري للحياة",
+        "start": 0,
+        "end": 18
+       },
+       "keywords_found": [],
+       "flags": [],
+       "justification": "لم يرد هذا المعنى بوضوح"
+      }
+     ],
+     "flags": [],
+     "grader_version": "emb:hash-test@0|cal:test-1",
+     "scale": 1.0
+    },
+    "proposed_score": 0.0,
+    "confidence": 0.9642,
+    "final_score": null,
+    "grader_version": "emb:hash-test@0|cal:test-1",
+    "marks": []
+   },
+   {
+    "answer_id": 14,
+    "attempt_id": 3,
+    "question_id": 3,
+    "type": "short_answer",
+    "student_id": 14,
+    "student_code": null,
+    "prompt": "The basic unit of life is the ___ (one word)",
+    "answer": {
+     "source": "handwriting",
+     "layout": "NB2",
+     "scan_page_id": 5,
+     "text": "cell",
+     "ocr_confidence": 1.0,
+     "nb2": {
+      "unit": "chars",
+      "chars": [
+       {
+        "ch": "c",
+        "conf": 0.9952,
+        "alt": "e",
+        "alt_conf": 0.0017,
+        "ok": true
+       },
+       {
+        "ch": "e",
+        "conf": 0.9995,
+        "alt": "c",
+        "alt_conf": 0.0003,
+        "ok": true
+       },
+       {
+        "ch": "l",
+        "conf": 0.9967,
+        "alt": "1",
+        "alt_conf": 0.0017,
+        "ok": true
+       },
+       {
+        "ch": "l",
+        "conf": 0.997,
+        "alt": "i",
+        "alt_conf": 0.0011,
+        "ok": true
+       },
+       {
+        "ch": "",
+        "conf": 1.0,
+        "alt": "",
+        "alt_conf": 0.0,
+        "ok": true
+       },
+       {
+        "ch": "",
+        "conf": 1.0,
+        "alt": "",
+        "alt_conf": 0.0,
+        "ok": true
+       }
+      ],
+      "low_chars": [],
+      "engine": "nb-chars/1 chars-cnn@c1-2de0e0c3",
+      "read": "cell",
+      "crop_key": "omr/1/5/w3.png",
+      "cells": 6
+     }
+    },
+    "points": 2.0,
+    "key": {
+     "model": "cell",
+     "kind": "word",
+     "keywords": [
+      "cell"
+     ],
+     "derived": {
+      "v": 1,
+      "kind": "word",
+      "kind_source": "teacher",
+      "alternatives": [
+       "cell"
+      ],
+      "keywords": [
+       {
+        "term": "cell",
+        "weight": 1.0,
+        "synonyms": []
+       }
+      ],
+      "points": [
+       {
+        "text": "cell",
+        "weight": 1.0
+       }
+      ],
+      "points_source": "model",
+      "keywords_source": "teacher",
+      "model_hash": "a0c4e833e4a575ff"
+     }
+    },
+    "review_state": "proposed",
+    "proposal": {
+     "score": 2.0,
+     "max": 2.0,
+     "confidence": 0.964,
+     "abstain": false,
+     "criteria": [
+      {
+       "id": "c1",
+       "criterion": "cell",
+       "points": 2.0,
+       "score": 2.0,
+       "fraction": 0.982,
+       "evidence": {
+        "text": "cell",
+        "start": 0,
+        "end": 4
+       },
+       "keywords_found": [
+        "cell"
+       ],
+       "flags": [],
+       "justification": "Stated in «cell» (keywords: cell)"
+      }
+     ],
+     "flags": [],
+     "grader_version": "emb:hash-test@0|cal:test-1",
+     "scale": 1.0
+    },
+    "proposed_score": 2.0,
+    "confidence": 0.9642,
+    "final_score": null,
+    "grader_version": "emb:hash-test@0|cal:test-1",
+    "marks": []
+   },
+   {
+    "answer_id": 15,
+    "attempt_id": 3,
+    "question_id": 4,
+    "type": "short_answer",
+    "student_id": 14,
+    "student_code": null,
+    "prompt": "ماذا يصنع النبات في عملية البناء الضوئي؟",
+    "answer": {
+     "source": "handwriting",
+     "layout": "NB2",
+     "scan_page_id": 5,
+     "text": "يصنع النبات الغذاء والأكسجين",
+     "ocr_confidence": 0.0,
+     "nb2": {
+      "unit": "line",
+      "engine": "scripted",
+      "confidence": 0.6,
+      "reasons": [
+       "low_confidence"
+      ],
+      "read": "يصنع النبات الغذاء والاكسجن",
+      "crop_key": "omr/1/5/w4.png",
+      "cells": 0,
+      "near_miss": {
+       "from": "يصنع النبات الغذاء والاكسجن",
+       "to": "يصنع النبات الغذاء والأكسجين",
+       "target": "model",
+       "edits": 1,
+       "applied": true
+      }
+     }
+    },
+    "points": 3.0,
+    "key": {
+     "model": "يصنع النبات الغذاء والأكسجين",
+     "keywords": [
+      "الغذاء",
+      "الأكسجين"
+     ],
+     "derived": {
+      "v": 1,
+      "kind": "short",
+      "kind_source": "inferred",
+      "alternatives": [
+       "يصنع النبات الغذاء والاكسجين",
+       "يصنع نبات غذاء والاكسجين",
+       "يصنع نبات غذاء اكسج"
+      ],
+      "keywords": [
+       {
+        "term": "والاكسجين",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "الغذاء",
+        "weight": 1.0,
+        "synonyms": []
+       },
+       {
+        "term": "النبات",
+        "weight": 0.5,
+        "synonyms": []
+       },
+       {
+        "term": "يصنع",
+        "weight": 0.5,
+        "synonyms": []
+       }
+      ],
+      "points": [
+       {
+        "text": "يصنع النبات الغذاء والأكسجين",
+        "weight": 1.0
+       }
+      ],
+      "points_source": "model",
+      "keywords_source": "teacher",
+      "model_hash": "0bfa8b95db10c0d2"
+     }
+    },
+    "review_state": "proposed",
+    "proposal": {
+     "score": 3.0,
+     "max": 3.0,
+     "confidence": 0.964,
+     "abstain": true,
+     "criteria": [
+      {
+       "id": "c1",
+       "criterion": "يصنع النبات الغذاء والأكسجين",
+       "points": 3.0,
+       "score": 3.0,
+       "fraction": 0.982,
+       "evidence": {
+        "text": "يصنع النبات الغذاء والأكسجين",
+        "start": 0,
+        "end": 28
+       },
+       "keywords_found": [
+        "الأكسجين",
+        "الغذاء"
+       ],
+       "flags": [],
+       "justification": "ورد المعنى في «يصنع النبات الغذاء والأكسجين» (الكلمات: الأكسجين، الغذاء)"
+      }
+     ],
+     "flags": [
+      "ocr_low_confidence"
+     ],
+     "grader_version": "emb:hash-test@0|cal:test-1",
+     "scale": 1.0
+    },
+    "proposed_score": 3.0,
+    "confidence": 0.9642,
+    "final_score": null,
+    "grader_version": "emb:hash-test@0|cal:test-1",
+    "marks": []
+   }
+  ],
+  "total": 9,
+  "counts": {
+   "proposed": 9
+  },
+  "policy": {
+   "auto_accept": false,
+   "accept_threshold": null,
+   "double_marking": false,
+   "moderation_tolerance": null,
+   "show_feedback": false
+  },
+  "accept_threshold": 1.01
+ }
+}

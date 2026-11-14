@@ -1,0 +1,11 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/omr/results/publish -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "exam_id": 1,
+  "published_at": "2026-11-02T05:37:23.315041",
+  "graded_only": true,
+  "visible_attempts": 1,
+  "open_review_items": 3
+ }
+}

@@ -4,6 +4,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import '../../design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_side_sheet.dart';
+import 'package:flutter_education_app/design/app_number_field.dart';
+import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
@@ -14,14 +18,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../../config/theme/app_theme.dart';
 import '../../utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-import '../../utils/widget/base_page.dart';
-import '../../utils/widget/primary_button.dart';
 import 'auth_provider.dart';
+import 'auth_shell.dart';
 import 'auth_widgets.dart';
 import 'login_screen.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdditionalRegisterScreen extends StatefulWidget {
   const AdditionalRegisterScreen({super.key, required this.email});
@@ -61,7 +64,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
   Future<void> _submitProfile({required String email}) async {
     if (!_formKey.currentState!.validate()) return;
 
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<MyAuthProvider>();
     final docProvider = context.read<TeacherDocumentProvider>();
 
     final success = await auth.completeTeacherProfile(
@@ -114,69 +117,28 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 800;
-    return Consumer2<AuthProvider, TeacherDocumentProvider>(
+    return Consumer2<MyAuthProvider, TeacherDocumentProvider>(
       builder: (context, auth, docs, _) {
-        final content = isWide
-            ? _buildWideLayout(auth, docs)
-            : _buildNarrowLayout(auth, docs);
-        return BasePage(key: const ValueKey('additional_register'), child: content);
+        return AuthScaffold(
+          title: 'complete_profile'.tr,
+          subtitle: 'additional_registration_welcome'.tr.trim(),
+          pageKey: const ValueKey('additional_register'),
+          maxWidth: 600,
+          builder: (context, isWide) => _buildForm(auth, docs),
+        );
       },
     );
   }
 
-  Widget _buildWideLayout(AuthProvider auth, TeacherDocumentProvider docs) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AuthSidebar(),
-        Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
-              child: _buildForm(auth, docs),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNarrowLayout(AuthProvider auth, TeacherDocumentProvider docs) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
-        child: _buildForm(auth, docs),
-      ),
-    );
-  }
-
-  Widget _buildForm(AuthProvider auth, TeacherDocumentProvider docs) {
+  Widget _buildForm(MyAuthProvider auth, TeacherDocumentProvider docs) {
     final c = context.colors;
-    return Container(
-      width: context.width > 800 ? 560 : double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(c.radiusXL),
-        boxShadow: c.cardShadow,
-      ),
-      child: Form(
+    return Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ProgressBar(currentStep: 2, totalSteps: 3),
-            const SizedBox(height: 28),
-            ScreenIcon(icon: Icons.badge_outlined),
-            const SizedBox(height: 16),
-            Text('complete_profile'.tr, style: c.h1.copyWith(fontSize: 26)),
-            const SizedBox(height: 6),
-            Text(
-              'additional_registration_welcome'.tr,
-              style: c.caption.copyWith(height: 1.6),
-            ),
-            const SizedBox(height: 28),
+            const ProgressBar(currentStep: 2, totalSteps: 3),
+            const SizedBox(height: AppSpace.lg),
 
             // ── Profile fields ──────────────────────────────────────────────
             IgnorePointer(
@@ -186,18 +148,16 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ParentComponent(featureKey: 'additional_register.experience', child: IconTextField(
+                    ParentComponent(featureKey: 'additional_register.experience', child: AppNumberField(
                       controller: _yearCtrl,
                       label: 'experience'.tr,
-                      icon: Icons.schedule_rounded,
-                      keyboard: TextInputType.number,
-                      // validator: (v) =>
-                      // (v == null || v.isEmpty) ? 'field_required'.tr : null,
+                      min: 0,
+                      max: 80,
                     )),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: AppSpace.md),
 
                     ParentComponent(featureKey: 'additional_register.specialization', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'specialization'.tr),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpace.xs),
                       auth.isLoading
                           ? const Center(
                         child: AppLoadingIndicator(),
@@ -211,10 +171,10 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                         onChange: (i) =>
                             auth.onChangeSpecialization(i, _specCtrl),
                       ),
-                      const SizedBox(height: 20)])),
+                      const SizedBox(height: AppSpace.md)])),
 
                     ParentComponent(featureKey: 'additional_register.payment_method', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'payment_method'.tr),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpace.xs),
                       StyledDropdown(
                         icon: Icons.credit_card_outlined,
                         label: 'payment_method'.tr,
@@ -223,10 +183,10 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                         options: auth.paymentTypes,
                         onChange: (i) => auth.onChangePaymentMethod(i, _payCtrl),
                       ),
-                      const SizedBox(height: 20)])),
+                      const SizedBox(height: AppSpace.md)])),
 
                     ParentComponent(featureKey: 'additional_register.teaching_style', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'teaching_style'.tr),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpace.xs),
                       StyledDropdown(
                         icon: Icons.cast_for_education_outlined,
                         label: 'teaching_style'.tr,
@@ -235,10 +195,10 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                         options: auth.teachingTypes,
                         onChange: (i) => auth.onChangeTeachingType(i, _teachCtrl),
                       ),
-                      const SizedBox(height: 20)])),
+                      const SizedBox(height: AppSpace.md)])),
 
                     ParentComponent(featureKey: 'additional_register.bio', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'bio_label'.tr),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpace.xs),
                       IconTextField(
                         controller: _bioCtrl,
                         label: 'bio_optional_hint'.tr,
@@ -248,7 +208,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpace.xl),
 
             // ── Documents section ─────────────────────────────────────────────
             // Only reachable once the profile row exists server-side, since
@@ -256,13 +216,13 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
             // profile first").
             if (_profileSubmitted) ...[
               ParentComponent(featureKey: 'additional_register.documents', child: _DocumentsSection(provider: docs, email: widget.email)),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpace.xl),
             ] else ...[
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: c.inputBg,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.controlAll,
                 ),
                 child: Row(
                   children: [
@@ -271,7 +231,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                       size: 16,
                       color: c.textLight,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpace.xs),
                     Expanded(
                       child: Text(
                         'finish_profile_to_unlock_docs'.tr,
@@ -281,12 +241,12 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpace.xl),
             ],
 
             // ── Submit ──────────────────────────────────────────────────────
-            PrimaryButton(
-              isLoading: _profileSubmitted
+            AuthButton(
+              loading: _profileSubmitted
                   ? docs.isFinalized
                   : auth.isLoadingAdditionalRegistration,
               label: _profileSubmitted
@@ -301,7 +261,6 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -331,26 +290,21 @@ class _DocumentsSection extends StatelessWidget {
               width: 3,
               height: 20,
               decoration: BoxDecoration(
-                gradient: c.primaryGradient,
-                borderRadius: BorderRadius.circular(2),
+                color: c.primary,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.xs),
             Icon(Icons.folder_open_outlined, color: c.primary, size: 18),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.xs),
             Text('required_documents'.tr, style: c.h3),
             const Spacer(),
             if (overview != null) ...[
               Text(
                 '${overview.fulfilledRequiredCount}/${overview.requiredCount}',
-                style: TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: overview.allRequiredFulfilled ? c.success : c.primary,
-                ),
+                style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: overview.allRequiredFulfilled ? c.success : c.primary),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: AppSpace.xs),
               Icon(
                 overview.allRequiredFulfilled
                     ? Icons.check_circle_rounded
@@ -361,12 +315,12 @@ class _DocumentsSection extends StatelessWidget {
             ],
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.xs),
         Text(
           'documents_section_hint'.tr,
           style: c.caption.copyWith(color: c.textLight),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpace.md),
 
         // ── Loading ───────────────────────────────────────────────────────────
         if (provider.isLoadingOverview)
@@ -388,7 +342,7 @@ class _DocumentsSection extends StatelessWidget {
 
           // ── Custom documents already uploaded ─────────────────────────────
           if (overview.customDocuments.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.sm),
             ...overview.customDocuments.map(
                   (doc) => _UploadedCustomDocRow(
                 doc: doc,
@@ -408,7 +362,7 @@ class _DocumentsSection extends StatelessWidget {
           ),
 
           // ── Add another document button ────────────────────────────────────
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           ParentComponent(featureKey: 'additional_register.add_document', child: _AddAnotherButton(provider: provider)),
         ],
       ],
@@ -456,7 +410,7 @@ class _RequirementRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.controlAll,
         border: Border.all(
           color: fulfilled
               ? statusColor.withValues(alpha: 0.35)
@@ -483,7 +437,7 @@ class _RequirementRow extends StatelessWidget {
                     color: (fulfilled ? statusColor : c.primary).withValues(
                       alpha: 0.1,
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.controlAll,
                   ),
                   child: Icon(
                     _materialIcon(requirement.iconName),
@@ -491,7 +445,7 @@ class _RequirementRow extends StatelessWidget {
                     color: fulfilled ? statusColor : c.primary,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.sm),
 
                 // Title + status
                 Expanded(
@@ -503,28 +457,23 @@ class _RequirementRow extends StatelessWidget {
                           Expanded(
                             child: Text(
                               requirement.title,
-                              style: c.bodyBold.copyWith(fontSize: 13),
+                              style: AppType.bodyStrong(context),
                             ),
                           ),
                           if (requirement.isRequired)
                             Container(
-                              margin: const EdgeInsets.only(right: 6),
+                              margin: const EdgeInsetsDirectional.only(start: 6),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 7,
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
                                 color: c.danger.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(AppRadius.pill),
                               ),
                               child: Text(
                                 'required'.tr,
-                                style: TextStyle(
-                                  fontFamily: 'bahji',
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
-                                  color: c.danger,
-                                ),
+                                style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.danger),
                               ),
                             ),
                         ],
@@ -533,23 +482,18 @@ class _RequirementRow extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           requirement.description!,
-                          style: c.caption.copyWith(fontSize: 11),
+                          style: AppType.meta(context),
                         ),
                       ],
                       if (doc != null) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpace.xxs),
                         Row(
                           children: [
                             Icon(statusIcon, size: 12, color: statusColor),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: AppSpace.xxs),
                             Text(
                               _statusLabel(doc.status, context),
-                              style: TextStyle(
-                                fontFamily: 'bahji',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: statusColor,
-                              ),
+                              style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: statusColor),
                             ),
                           ],
                         ),
@@ -559,7 +503,7 @@ class _RequirementRow extends StatelessWidget {
                 ),
 
                 // Action button
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.xs),
                 uploading
                     ? const SizedBox(
                   width: 32,
@@ -607,7 +551,7 @@ class _RequirementRow extends StatelessWidget {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: context.colors.danger.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppRadius.chipAll,
               ),
               child: Row(
                 children: [
@@ -616,15 +560,11 @@ class _RequirementRow extends StatelessWidget {
                     size: 14,
                     color: context.colors.danger,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpace.xs),
                   Expanded(
                     child: Text(
                       doc!.rejectionReason!,
-                      style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 11,
-                        color: context.colors.danger,
-                      ),
+                      style: AppType.meta(context).copyWith(color: context.colors.danger),
                     ),
                   ),
                 ],
@@ -672,19 +612,19 @@ class _UploadButton extends StatelessWidget {
             height: 38,
             decoration: BoxDecoration(
               color: fulfilled ? c.primaryTint : c.primary,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppRadius.chipAll,
             ),
             child: Icon(
               fulfilled ? Icons.refresh_rounded : Icons.cloud_upload_outlined,
               size: 18,
-              color: fulfilled ? c.primary : Colors.white,
+              color: fulfilled ? c.primary : context.colors.onHero,
             ),
           ),
         ),
 
         // Delete
         if (onDelete != null) ...[
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpace.xs),
           GestureDetector(
             onTap: onDelete,
             child: Container(
@@ -692,7 +632,7 @@ class _UploadButton extends StatelessWidget {
               height: 38,
               decoration: BoxDecoration(
                 color: c.danger.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadius.chipAll,
               ),
               child: Icon(
                 Icons.delete_outline_rounded,
@@ -708,27 +648,15 @@ class _UploadButton extends StatelessWidget {
 
   void _showPicker(BuildContext context) {
     final c = context.colors;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: c.cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    showAppSideSheet(
+      context,
+      withCloseBar: true,
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: c.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
               // Gallery/camera don't make sense as separate concepts on
               // web — the browser file picker (below) already covers it.
               if (!kIsWeb)
@@ -741,7 +669,7 @@ class _UploadButton extends StatelessWidget {
                   title: Text(
                     'pick_from_gallery'.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontWeight: FontWeight.w600,
                       color: c.textDark,
                     ),
@@ -761,7 +689,7 @@ class _UploadButton extends StatelessWidget {
                   title: Text(
                     'take_photo'.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontWeight: FontWeight.w600,
                       color: c.textDark,
                     ),
@@ -780,7 +708,7 @@ class _UploadButton extends StatelessWidget {
                 title: Text(
                   'browse_file_pdf_or_image'.tr,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontWeight: FontWeight.w600,
                     color: c.textDark,
                   ),
@@ -802,7 +730,7 @@ class _UploadButton extends StatelessWidget {
     height: 40,
     decoration: BoxDecoration(
       color: bg,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: AppRadius.chipAll,
     ),
     child: Icon(icon, color: fg),
   );
@@ -829,7 +757,7 @@ class _UploadedCustomDocRow extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.controlAll,
         border: Border.all(color: c.accentTint, width: 1.5),
         boxShadow: c.cardShadow,
       ),
@@ -840,7 +768,7 @@ class _UploadedCustomDocRow extends StatelessWidget {
             height: 42,
             decoration: BoxDecoration(
               color: c.accentTint,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadius.controlAll,
             ),
             child: Icon(
               Icons.insert_drive_file_outlined,
@@ -848,23 +776,23 @@ class _UploadedCustomDocRow extends StatelessWidget {
               color: c.accent,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(doc.title, style: c.bodyBold.copyWith(fontSize: 13)),
+                Text(doc.title, style: AppType.bodyStrong(context)),
                 const SizedBox(height: 2),
                 Text(
                   doc.isPdf ? 'pdf_doc'.tr : 'image_doc'.tr,
-                  style: c.caption.copyWith(fontSize: 11),
+                  style: AppType.meta(context),
                 ),
               ],
             ),
           ),
           if (doc.isImage)
             _DocThumbnail(url: doc.fileUrl, fileType: doc.fileType, size: 48),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           GestureDetector(
             onTap: () => provider.deleteDocument(doc.id, email: email),
             child: Container(
@@ -872,7 +800,7 @@ class _UploadedCustomDocRow extends StatelessWidget {
               height: 36,
               decoration: BoxDecoration(
                 color: c.danger.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(9),
+                borderRadius: AppRadius.chipAll,
               ),
               child: Icon(
                 Icons.delete_outline_rounded,
@@ -911,7 +839,7 @@ class _CustomDocEntryRow extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.controlAll,
         border: Border.all(
           color: c.accent.withValues(alpha: 0.35),
           width: 1.5,
@@ -930,14 +858,14 @@ class _CustomDocEntryRow extends StatelessWidget {
                 height: 28,
                 decoration: BoxDecoration(
                   color: c.accentTint,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppRadius.chipAll,
                 ),
                 child: Icon(Icons.post_add_outlined, size: 15, color: c.accent),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.xs),
               Text(
                 'additional_document'.tr,
-                style: c.bodyBold.copyWith(fontSize: 13),
+                style: AppType.bodyStrong(context),
               ),
               const Spacer(),
               GestureDetector(
@@ -946,26 +874,22 @@ class _CustomDocEntryRow extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
 
           // Title input
           Container(
             decoration: BoxDecoration(
               color: c.inputBg,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppRadius.chipAll,
               border: Border.all(color: c.divider),
             ),
             child: TextField(
               onChanged: (v) => provider.setCustomEntryTitle(index, v),
-              style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 13,
-                color: c.textDark,
-              ),
+              style: AppType.label(context).copyWith(color: c.textDark),
               decoration: InputDecoration(
                 hintText: 'document_title_hint'.tr,
                 hintStyle: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   color: c.textLight,
                   fontSize: 13,
                 ),
@@ -982,7 +906,7 @@ class _CustomDocEntryRow extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.xs),
 
           // Upload button — active only when title typed
           AnimatedOpacity(
@@ -995,10 +919,8 @@ class _CustomDocEntryRow extends StatelessWidget {
               child: Container(
                 height: 42,
                 decoration: BoxDecoration(
-                  gradient: entry.title.trim().isNotEmpty
-                      ? c.primaryGradient
-                      : LinearGradient(colors: [c.divider, c.divider]),
-                  borderRadius: BorderRadius.circular(10),
+                  color: entry.title.trim().isNotEmpty ? c.primary : c.divider,
+                  borderRadius: AppRadius.chipAll,
                 ),
                 child: Center(
                   child: uploading
@@ -1010,20 +932,15 @@ class _CustomDocEntryRow extends StatelessWidget {
                       : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.upload_file_outlined,
                         size: 16,
-                        color: Colors.white,
+                        color: context.colors.onHero,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpace.xs),
                       Text(
                         'upload_document'.tr,
-                        style: const TextStyle(
-                          fontFamily: 'bahji',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
+                        style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: context.colors.onHero),
                       ),
                     ],
                   ),
@@ -1038,27 +955,15 @@ class _CustomDocEntryRow extends StatelessWidget {
 
   void _showPicker(BuildContext context, {required String email}) {
     final c = context.colors;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: c.cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    showAppSideSheet(
+      context,
+      withCloseBar: true,
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: c.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
               // Gallery doesn't make sense as a separate concept on web —
               // the browser file picker (below) already covers it.
               if (!kIsWeb)
@@ -1067,7 +972,7 @@ class _CustomDocEntryRow extends StatelessWidget {
                   title: Text(
                     'pick_from_gallery'.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontWeight: FontWeight.w600,
                       color: c.textDark,
                     ),
@@ -1082,7 +987,7 @@ class _CustomDocEntryRow extends StatelessWidget {
                 title: Text(
                   'browse_file_pdf_or_image'.tr,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontWeight: FontWeight.w600,
                     color: c.textDark,
                   ),
@@ -1116,7 +1021,7 @@ class _AddAnotherButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: c.primaryTint,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppRadius.controlAll,
           border: Border.all(
             color: c.primary.withValues(alpha: 0.3),
             width: 1.5,
@@ -1135,15 +1040,10 @@ class _AddAnotherButton extends StatelessWidget {
               ),
               child: Icon(Icons.add_rounded, size: 16, color: c.primary),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.xs),
             Text(
               'add_another_document'.tr,
-              style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: c.primary,
-              ),
+              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.primary),
             ),
           ],
         ),
@@ -1174,7 +1074,7 @@ class _DocThumbnail extends StatelessWidget {
       child: Hero(
         tag: url,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppRadius.chipAll,
           child: Image.network(
             url,
             width: size,
@@ -1198,10 +1098,10 @@ class _DocThumbnail extends StatelessWidget {
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: context.colors.heroShade,
           appBar: AppBar(
-            backgroundColor: Colors.black,
-            iconTheme: const IconThemeData(color: Colors.white),
+            backgroundColor: context.colors.heroShade,
+            leading: const AppBackButton(onHero: true),
           ),
           body: Center(
             child: InteractiveViewer(
@@ -1226,22 +1126,18 @@ class _PdfChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: c.danger.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.chipAll,
         border: Border.all(color: c.danger.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.picture_as_pdf_rounded, size: 16, color: c.danger),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Flexible(
             child: Text(
               fileName,
-              style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 12,
-                color: c.textDark,
-              ),
+              style: AppType.label(context).copyWith(color: c.textDark),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -1265,10 +1161,4 @@ IconData _materialIcon(String token) => switch (token) {
   'star' => Icons.star_outline_rounded,
   'verified' => Icons.verified_outlined,
   _ => Icons.insert_drive_file_outlined,
-};
-
-String _statusLabel(String status) => switch (status) {
-  'approved' => 'doc_approved'.tr,
-  'rejected' => 'doc_rejected'.tr,
-  _ => 'doc_pending'.tr,
 };

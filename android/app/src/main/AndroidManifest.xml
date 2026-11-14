@@ -1,56 +1,50 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
     <!-- Camera & Microphone -->
     <uses-feature android:name="android.hardware.camera" />
     <uses-feature android:name="android.hardware.camera.autofocus" />
-
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-
+    <!-- Fingerprint / face sign-in (local_auth, D-082) -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
-
     <!-- Bluetooth -->
-    <uses-permission
-        android:name="android.permission.BLUETOOTH"
-        android:maxSdkVersion="30" />
+    <uses-permission  android:name="android.permission.BLUETOOTH"  android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_ADMIN"
-        android:maxSdkVersion="30" />
-
-    <!--
-        Foreground Service permissions.
-
-        MICROPHONE: for audio recording in ScreenCaptureService.
-        MEDIA_PROJECTION: required on Android 14+ when using MediaProjection API.
-            The user sees the standard "Allow screen capture?" dialog once.
-            ScreenCaptureService declares foregroundServiceType="mediaProjection|microphone".
-    -->
+    <uses-permission  android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <!-- Relay attendance (Google Nearby Connections: BLE + Wi-Fi Direct) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"   android:usesPermissionFlags="neverForLocation" tools:targetApi="tiramisu" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
-
-    <!-- Screen always-on + battery -->
+    <!-- D-094: the presenter's camera keeps streaming while they share from another app (ScreenCaptureService). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <!-- D-104: a course lecture keeps playing as sound with the screen off / in another app (VodMediaService). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- D-079: the whole-screen annotation overlay draws over other apps while the presenter shares -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-
-    <!-- Notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Exact alarms -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:label="flutter_education_app"
-        android:usesCleartextTraffic="true">
+        android:label="الفهيم"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:allowBackup="false">
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
@@ -73,6 +67,8 @@
 
         <activity
             android:name=".MainActivity"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:exported="true"
             android:hardwareAccelerated="true"
@@ -89,8 +85,51 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:host="nextbrain.site"
+                    android:host="alfheemacademy.com"
                     android:pathPrefix="/c/"
+                    android:scheme="https" />
+                <data
+                    android:host="alfheemacademy.com"
+                    android:pathPrefix="/live/"
+                    android:scheme="https" />
+                <!-- profile links https://alfheemacademy.com/@name (D-074); same host, so the same domain verification -->
+                <data
+                    android:host="alfheemacademy.com"
+                    android:pathPrefix="/@"
+                    android:scheme="https" />
+                <!-- certificate verification links / QR https://alfheemacademy.com/verify/<token> (D-132) -->
+                <data
+                    android:host="alfheemacademy.com"
+                    android:pathPrefix="/verify/"
+                    android:scheme="https" />
+                <!-- expiring export download links https://alfheemacademy.com/e/<token> (D-134, sign-in required) -->
+                <data
+                    android:host="alfheemacademy.com"
+                    android:pathPrefix="/e/"
+                    android:scheme="https" />
+                <!-- organization join links /j/<CODE> and invitations /i/<token> (D-283) -->
+                <data
+                    android:host="alfheemacademy.com"
+                    android:pathPrefix="/j/"
+                    android:scheme="https" />
+                <data
+                    android:host="alfheemacademy.com"
+                    android:pathPrefix="/i/"
+                    android:scheme="https" />
+                <!-- share links of everything /s/<kind>/<id> and /s/page/<pageId> (D-307) -->
+                <data
+                    android:host="alfheemacademy.com"
+                    android:pathPrefix="/s/"
+                    android:scheme="https" />
+                <!-- the same guest / share links copied from the web app's address bar (/app/…, D-270): the installed
+                     app opens them too, straight to the video or the meeting (D-843) -->
+                <data
+                    android:host="alfheemacademy.com"
+                    android:pathPrefix="/app/live/"
+                    android:scheme="https" />
+                <data
+                    android:host="alfheemacademy.com"
+                    android:pathPrefix="/app/s/"
                     android:scheme="https" />
             </intent-filter>
             <meta-data
@@ -107,11 +146,33 @@
             foregroundServiceType must include mediaProjection on Android 14+
             because MediaProjection.getMediaProjection() is called from within
             this service's context.
+            camera (D-094): added only while a projection is held and CAMERA is
+            granted, so the presenter's camera keeps streaming while they share
+            from another app (Android 11+ cuts a background camera otherwise).
         -->
         <service
             android:name=".ScreenCaptureService"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection|microphone" />
+            android:foregroundServiceType="mediaProjection|microphone|camera" />
+
+        <!--
+            LiveCallService: the live room's microphone in the background for a participant who
+            neither records nor shares (Android 14+ cuts a background mic without a microphone FGS).
+            Steps aside while ScreenCaptureService holds the microphone type.
+        -->
+        <service
+            android:name=".LiveCallService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <!--
+            VodMediaService (D-104): the listen bar's lecture as sound in the background - media notification,
+            lock-screen controls, wake + Wi-Fi locks while it plays.
+        -->
+        <service
+            android:name=".VodMediaService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <!--
             flutter_webrtc screen share FGS — required on Android 14.

@@ -6,34 +6,48 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/utils/widget/date_picker_widget.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
-import '../../utils/widget/primary_button.dart';
-import '../shared/profile/about/about_terms_model.dart';
-import '../shared/profile/about/about_terms_provider.dart';
-import '../shared/profile/change_password_widget.dart';
+import 'package:flutter_education_app/features/profile/legal/legal_links.dart' show openLegalPage;
+import 'package:flutter_education_app/features/profile/about/about_terms_model.dart';
+import 'package:flutter_education_app/features/profile/about/about_terms_provider.dart';
 import 'auth_provider.dart';
 import '../../utils/helpers.dart';
+import 'auth_shell.dart';
+import '../../design/app_tokens.dart';
 import 'auth_widgets.dart';
+import 'google_auth_flow.dart';
+import 'verify_way.dart';
+import 'username.dart';
+import 'username_field.dart';
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_pages.dart' show StudyProfileStepPage;
+import 'package:flutter_education_app/design/app_charts.dart' show appInk;
+import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_buttons.dart' show AppButton, AppButtonSize;
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Register Screen
 // ══════════════════════════════════════════════════════════════════════════════
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({super.key, this.initialRole});
+
+  /// 'teacher' / 'student' / 'parent': preselects that role (the landing's "teach on Alfaheem" link).
+  final String? initialRole;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -47,13 +61,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmedPasswordController = TextEditingController();
   final _dobController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _rolController = ExpansibleController();
+
+  /// The optional @username: where its check stands, and the submit's USERNAME_* error (shown on the field).
+  UsernameStatus _usernameStatus = UsernameStatus.empty;
+  UsernameError? _usernameError;
+
+  /// The username field is shown (kill switch `auth.username` off).
+  bool get _usernameOn => !AppConfig.disableList.contains(kUsernameFeatureKey);
+
+  /// A typed username that is still being checked, or is taken / reserved / invalid.
+  bool get _usernameBlocks => _usernameOn && _usernameStatus.blocksSubmit;
 
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
   /// Whether the user has ticked the "I accept" checkbox after reading terms.
   bool _termsAccepted = false;
+
+  /// The verification way the student picked (null = the first one the admin allows).
+  VerifyWay? _pickedWay;
+
+  /// The study step's values (D-790), kept when the student goes back to the form; and the submit's busy state the
+  /// step page shows.
+  StudyProfile _study = StudyProfile.empty;
+  final _busy = ValueNotifier<bool>(false);
 
   DateTime selectedDate = DateTime.now().subtract(
     const Duration(days: 360 * 20),
@@ -63,7 +96,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthProvider>().loadSpecialization(context);
+      final pre = widget.initialRole;
+      if (pre != null) {
+        final a = context.read<MyAuthProvider>();
+        final i = a.roles.indexWhere((r) => r['text'] == pre);
+        if (i >= 0) setState(() => a.selectedRole = a.roles[i]);
+      }
+      context.read<MyAuthProvider>().loadSpecialization(context);
+      context.read<MyAuthProvider>().loadPolicy();
       context.read<AboutTermsProvider>().loadTerms(context);
     });
   }
@@ -76,25 +116,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordController.dispose();
     _confirmedPasswordController.dispose();
     _dobController.dispose();
+    _usernameController.dispose();
+    _busy.dispose();
     super.dispose();
   }
 
   // ── Open terms bottom-sheet ───────────────────────────────────────────────
   Future<void> _openTerms() async {
     context.read<AboutTermsProvider>().clearSelection();
-    final accepted = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+    final accepted = await showAppSideSheet<bool>(
+      context,
+      withCloseBar: false, // the sheet's own header carries the close button
       builder: (_) => ChangeNotifierProvider.value(
         value: context.read<AboutTermsProvider>(),
         child: const _TermsBottomSheet(),
       ),
     );
     if (mounted &&
-        (context.read<AboutTermsProvider>().terms!.sections.every(
+            (context.read<AboutTermsProvider>().terms!.sections.every(
               (e) => e.accept,
-        )) ||
+            )) ||
         accepted == true) {
       setState(() => _termsAccepted = true);
     }
@@ -107,7 +148,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Fluttertoast.showToast(
         msg: 'password must be identical',
         timeInSecForIosWeb: 3,
-        backgroundColor: context.colors.danger,
+        backgroundColor: context.colors.dangerBase,
       );
       return;
     }
@@ -115,16 +156,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Fluttertoast.showToast(
         msg: 'please select your birth of date',
         timeInSecForIosWeb: 3,
-        backgroundColor: context.colors.danger,
+        backgroundColor: context.colors.dangerBase,
       );
       return;
     }
-    final authProvider = context.read<AuthProvider>();
+    if (_usernameBlocks) {
+      showAppNotice(
+        _usernameStatus == UsernameStatus.checking
+            ? 'username_wait_check'.tr
+            : 'username_fix_first'.tr,
+        error: _usernameStatus != UsernameStatus.checking,
+      );
+      return;
+    }
+    final authProvider = context.read<MyAuthProvider>();
     if (authProvider.selectedRole == null) {
       Fluttertoast.showToast(
         msg: 'please select your role',
         timeInSecForIosWeb: 3,
-        backgroundColor: context.colors.danger,
+        backgroundColor: context.colors.dangerBase,
       );
       return;
     }
@@ -132,28 +182,91 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Fluttertoast.showToast(
         msg: 'يجب قراءة والموافقة على الشروط والأحكام',
         timeInSecForIosWeb: 3,
-        backgroundColor: context.colors.danger,
+        backgroundColor: context.colors.dangerBase,
       );
       return;
     }
+    // The way the student picked (or the first one of the priority list).
+    final allWays = verifyWaysForChannels(
+      authProvider,
+      policyChannels(authProvider),
+    );
+    final pickedWay = allWays.contains(_pickedWay)
+        ? _pickedWay
+        : (allWays.isEmpty ? null : allWays.first);
+    // A phone is needed when the picked way uses it, or when the admin requires it anyway.
+    final mustPhone =
+        authProvider.verifyByPhone || (pickedWay?.isPhone ?? false);
+    if (mustPhone && _phoneController.text.trim().isEmpty) {
+      Fluttertoast.showToast(
+        msg: 'phone_required'.tr,
+        timeInSecForIosWeb: 3,
+        backgroundColor: context.colors.dangerBase,
+      );
+      return;
+    }
+    // A new student answers ONE short study step first (stage + grade, D-790), unless the super admin switched it off
+    // or the kill switch hides it; its button creates the account.
+    final studyStep = authProvider.selectedRole!['text'] == 'student' &&
+        authProvider.studySettings.signupStep &&
+        !AppConfig.disableList.contains(kStudyProfileFeatureKey);
+    if (studyStep) {
+      await Navigator.of(context).push(MaterialPageRoute(
+        settings: const RouteSettings(name: '/register/study'),
+        builder: (_) => StudyProfileStepPage(
+          initial: _study,
+          settings: authProvider.studySettings,
+          busy: _busy,
+          onChanged: (v) => _study = v,
+          onSubmit: (v) => _submit(authProvider, pickedWay, study: v),
+        ),
+      ));
+      return;
+    }
+    await _submit(authProvider, pickedWay);
+  }
+
+  Future<void> _submit(MyAuthProvider authProvider, VerifyWay? pickedWay, {StudyProfile? study}) async {
+    _busy.value = true;
     final success = await authProvider.register(
       gmail: _emailController.text.trim(),
       phone: _phoneController.text.trim(),
       dob: _dobController.text.trim(),
       password: _passwordController.text,
       name: _fullNameController.text.trim(),
+      way: pickedWay?.name,
+      username: _usernameOn ? _usernameController.text : null,
+      studyProfile: study?.toJson(withDob: false),
     );
+    _busy.value = false;
     if (!mounted) return;
+    // D-800: a refusal sent from the study step is about the form underneath (a taken username or e-mail, a weak
+    // password): back to the form, where its inline error shows; the step's values are kept (onChanged)
+    if (!success && study != null) {
+      Navigator.of(context).popUntil((r) => r.settings.name != '/register/study');
+    }
+    // taken / reserved / invalid at submit: the field shows why, with the server's suggestions
+    if (!success && authProvider.usernameError != null) {
+      setState(() => _usernameError = authProvider.usernameError);
+    }
     if (success) {
+      // Open the verification page on the way the student chose (they can still switch there).
+      final pendingWays = verifyWaysForChannels(
+        authProvider,
+        authProvider.pendingChannels,
+      );
+      final chosen = pendingWays.contains(_pickedWay) ? _pickedWay : null;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => OtpVerificationScreen(
+            initialWay: chosen,
+            channels: authProvider.pendingChannels,
             phoneNumber: _phoneController.text.trim(),
             email: _emailController.text.trim(),
             role: authProvider.selectedRole!['text'],
           ),
         ),
-            (route) => false,
+        (route) => false,
       );
     } else {
       Helpers.showMessage(
@@ -165,236 +278,268 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 800;
-    return Consumer<AuthProvider>(
+    return Consumer<MyAuthProvider>(
       builder: (context, provider, _) {
-        return Scaffold(
-          body: BasePage(key: const ValueKey('register'), child: isWide
-              ? _buildWideLayout(provider)
-              : _buildNarrowLayout(provider),
-          ),
+        return AuthScaffold(
+          title: 'auth_register_title'.tr,
+          subtitle: 'auth_register_sub'.tr,
+          pageKey: const ValueKey('register'),
+          // the longest form of the module: a wider card on desktop (phones are limited by the screen anyway)
+          maxWidth: 640,
+          builder: (context, isWide) => _buildForm(provider),
         );
       },
     );
   }
 
-  Widget _buildWideLayout(AuthProvider provider) => Row(
-    children: [
-      AuthSidebar(),
-      Expanded(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
-            child: SizedBox(width: 800, child: _buildForm(provider)),
-          ),
-        ),
-      ),
-    ],
-  );
-
-  Widget _buildNarrowLayout(AuthProvider provider) => Center(
-    child: SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-        child: _buildForm(provider),
-      ),
-    ),
-  );
-
-  Widget _buildForm(AuthProvider provider) {
+  Widget _buildForm(MyAuthProvider provider) {
     final c = context.colors;
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ProgressBar(currentStep: 0, totalSteps: 3),
-          const SizedBox(height: 28),
+    // Every verification way the admin allows, and the one currently selected.
+    final ways = provider.policyLoaded
+        ? verifyWaysForChannels(provider, policyChannels(provider))
+        : const <VerifyWay>[];
+    final selectedWay = ways.contains(_pickedWay)
+        ? _pickedWay
+        : (ways.isEmpty ? null : ways.first);
+    const gap = SizedBox(height: AppSpace.md);
+    return AutofillGroup(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const ProgressBar(currentStep: 0, totalSteps: 3),
+            const SizedBox(height: AppSpace.lg),
 
-          // Back
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.arrow_back_ios_rounded, size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  'login'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: c.textDark,
+            // Join with Google: role sheet -> account created -> signed in
+            const GoogleAuthSection(joining: true),
+
+            // Full name
+            IconTextField(
+              controller: _fullNameController,
+              label: 'full_name'.tr,
+              icon: Icons.person_outline_rounded,
+              autofillHints: const [AutofillHints.name],
+              textInputAction: TextInputAction.next,
+              textCapitalization: TextCapitalization.words,
+            ),
+            gap,
+
+            // Email
+            AuthEmailField(controller: _emailController, label: 'email'.tr),
+            gap,
+
+            // @username — optional, checked while typing (kill switch auth.username)
+            ParentComponent(
+              featureKey: kUsernameFeatureKey,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.md),
+                child: UsernameField(
+                  controller: _usernameController,
+                  error: _usernameError,
+                  onStatusChanged: (s) => setState(() => _usernameStatus = s),
+                ),
+              ),
+            ),
+
+            // Phone — always shown when the admin verifies accounts by phone,
+            // otherwise only if the 'register.phone' feature is enabled.
+            Builder(
+              builder: (context) {
+                final needsPhone =
+                    provider.verifyByPhone || (selectedWay?.isPhone ?? false);
+                final phoneField = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PhoneInputField(
+                      controller: _phoneController,
+                      label: needsPhone
+                          ? 'phone_with_country_code'.tr
+                          : 'phone'.tr,
+                      required: needsPhone,
+                    ),
+                    gap,
+                  ],
+                );
+                // shown whenever a phone way is allowed (required only when the picked way needs it)
+                return provider.hasPhoneWays
+                    ? phoneField
+                    : ParentComponent(
+                        featureKey: 'register.phone',
+                        child: phoneField,
+                      );
+              },
+            ),
+            // Date of birth
+            ParentComponent(
+              featureKey: 'register.dob',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SectionLabel(label: 'dob'.tr),
+                  const SizedBox(height: AppSpace.xs),
+                  AuthDateField(
+                    onChange: (picked) => setState(() {
+                      selectedDate = picked;
+                      _dobController.text = "${selectedDate.toLocal()}".split(
+                        ' ',
+                      )[0];
+                    }),
+                    selectedDate: selectedDate,
+                    controller: _dobController,
+                    label: 'dob'.tr,
                   ),
+                  gap,
+                ],
+              ),
+            ),
+
+            // Role
+            ParentComponent(
+              featureKey: 'register.role',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SectionLabel(label: 'auth_i_am'.tr),
+                  const SizedBox(height: AppSpace.xs),
+                  RolePicker(provider: provider, rolController: _rolController),
+                  const SizedBox(height: AppSpace.lg),
+                ],
+              ),
+            ),
+
+            // Password
+            IconPasswordField(
+              controller: _passwordController,
+              label: 'password'.tr,
+              obscure: _obscurePassword,
+              autofillHints: const [AutofillHints.newPassword],
+              textInputAction: TextInputAction.next,
+              onChange: (v) {
+                setState(() {});
+              },
+              onToggle: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
+            ),
+            AnimatedSize(
+              duration: AppMotion.of(context).base,
+              curve: AppMotion.curve,
+              alignment: Alignment.topCenter,
+              child: _passwordController.text.isEmpty
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      padding: const EdgeInsets.only(top: AppSpace.sm),
+                      child: ParentComponent(
+                        featureKey: 'register.password_strength',
+                        child: AuthPasswordStrength(
+                          strength: _strength,
+                          color: _strengthColor(c),
+                          label: _strengthLabel(),
+                          title: 'pw_strength_title'.tr,
+                        ),
+                      ),
+                    ),
+            ),
+            gap,
+
+            // Confirm password
+            IconPasswordField(
+              controller: _confirmedPasswordController,
+              label: 'auth_confirm_password'.tr,
+              obscure: _obscureConfirm,
+              autofillHints: const [AutofillHints.newPassword],
+              textInputAction: TextInputAction.done,
+              onChange: (v) {
+                setState(() {});
+              },
+              onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
+            ),
+            const SizedBox(height: AppSpace.sm),
+            ParentComponent(
+              featureKey: 'register.password_requirements',
+              // a paper checklist with a warm hairline (the wells above are the input fill)
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
+                decoration: BoxDecoration(
+                  color: c.cardBg,
+                  borderRadius: AppRadius.cardAll,
+                  border: Border.all(color: c.divider, width: AppBorder.hairline),
                 ),
-              ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('pw_req_title'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: AppSpace.xxs),
+                    AuthRequirement(met: _reqMinLength, label: 'pw_req_min8'.tr),
+                    AuthRequirement(met: _reqUppercase, label: 'pw_req_upper'.tr),
+                    AuthRequirement(met: _reqDigit, label: 'pw_req_digit'.tr),
+                    AuthRequirement(met: _reqMatch, label: 'pw_req_match'.tr),
+                  ],
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: AppSpace.lg),
 
-          Text(
-            'create_account'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: c.textDark,
+            // Verification way — everything the admin allows; the student picks one here
+            // and can still switch on the verification page.
+            AnimatedSize(
+              duration: AppMotion.of(context).slow,
+              curve: AppMotion.curve,
+              alignment: Alignment.topCenter,
+              child: ways.isEmpty
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpace.lg),
+                      child: VerifyWayPicker(
+                        ways: ways,
+                        selected: selectedWay,
+                        provider: provider,
+                        requireAll: provider.requireAll,
+                        onChanged: (w) => setState(() => _pickedWay = w),
+                      ),
+                    ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'registration_welcome'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 14,
-              color: c.secondText,
-              height: 1.5,
+
+            // ── Terms acceptance row ─────────────────────────────────────
+            AuthTermsRow(
+              accepted: _termsAccepted,
+              onReadTap: _openTerms,
+              onPrivacyTap: () => openLegalPage(context, privacy: true),
+              onCheckChanged: (v) {
+                // Only allow manual un-tick; tick only via reading the sheet
+                if (!v) setState(() => _termsAccepted = false);
+              },
             ),
-          ),
-          const SizedBox(height: 28),
+            const SizedBox(height: AppSpace.lg),
 
-          // Full name
-          IconTextField(
-            controller: _fullNameController,
-            label: 'full_name'.tr,
-            icon: Icons.person_outline_rounded,
-          ),
-          const SizedBox(height: 20),
-
-          // Email
-          IconTextField(
-            controller: _emailController,
-            label: 'email'.tr,
-            icon: Icons.email_outlined,
-            keyboard: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 20),
-
-          // Phone
-          ParentComponent(featureKey: 'register.phone', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [IconTextField(
-            controller: _phoneController,
-            label: 'phone'.tr,
-            icon: Icons.phone_outlined,
-            keyboard: TextInputType.phone,
-          ),
-            const SizedBox(height: 20)])),
-
-          // Date of birth
-          ParentComponent(featureKey: 'register.dob', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'dob'.tr),
-            const SizedBox(height: 8),
-            MyDatePicker(
-              onChange: (picked) => setState(() {
-                selectedDate = picked;
-                _dobController.text = "${selectedDate.toLocal()}".split(' ')[0];
-              }),
-              selectedDate: selectedDate,
-              controller: _dobController,
-              label: 'dob'.tr,
+            // Submit
+            AuthButton(
+              loading: provider.isLoadingRegistration,
+              label: 'auth_create_my_account'.tr,
+              onPressed: _register,
+              enabled: _canSubmit,
             ),
-            const SizedBox(height: 20)])),
+            const SizedBox(height: AppSpace.sm),
 
-          // Role
-          ParentComponent(featureKey: 'register.role', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'role'.tr),
-            const SizedBox(height: 10),
-            RolePicker(provider: provider, rolController: _rolController),
-            const SizedBox(height: 20)])),
-
-          // Password
-          IconPasswordField(
-            controller: _passwordController,
-            label: 'password'.tr,
-            obscure: _obscurePassword,
-            onToggle: () =>
-                setState(() => _obscurePassword = !_obscurePassword),
-          ),
-          const SizedBox(height: 20),
-          if (_passwordController.text.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            ParentComponent(featureKey: 'register.password_strength', child: StrengthBar(
-              strength: _strength,
-              strengthColor: _strengthColor(c),
-              strengthLabel: _strengthLabel(),
-              c: c,
-            )),
+            ParentComponent(
+              featureKey: 'register.login_link',
+              child: LinkRow(
+                message: 'have_account'.tr,
+                linkText: 'auth_sign_in'.tr,
+                onTap: () => Navigator.pop(context),
+              ),
+            ),
           ],
-
-          // Confirm password
-          IconPasswordField(
-            controller: _confirmedPasswordController,
-            label: 'confirmed_password'.tr,
-            obscure: _obscureConfirm,
-            onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
-          ),
-          ParentComponent(featureKey: 'register.password_requirements', child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: c.inputBg,
-              borderRadius: c.brMedium,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('المتطلبات', style: c.label.copyWith(fontSize: 12)),
-                const SizedBox(height: 10),
-                PasswordReq(
-                  met: _reqMinLength,
-                  label: '٦ أحرف على الأقل',
-                  c: c,
-                ),
-                PasswordReq(
-                  met: _reqUppercase,
-                  label: 'حرف كبير واحد على الأقل (A-Z)',
-                  c: c,
-                ),
-                PasswordReq(
-                  met: _reqDigit,
-                  label: 'رقم واحد على الأقل (0-9)',
-                  c: c,
-                ),
-                PasswordReq(
-                  met: _reqMatch,
-                  label: 'تطابق كلمة المرور الجديدة',
-                  c: c,
-                ),
-              ],
-            ),
-          )),
-          const SizedBox(height: 24),
-
-          // ── Terms acceptance row ─────────────────────────────────────
-          _TermsAcceptRow(
-            accepted: _termsAccepted,
-            onReadTap: _openTerms,
-            onCheckChanged: (v) {
-              // Only allow manual un-tick; tick only via reading the sheet
-              if (!v) setState(() => _termsAccepted = false);
-            },
-          ),
-          const SizedBox(height: 20),
-
-          // Submit
-          PrimaryButton(
-            isLoading: provider.isLoadingRegistration,
-            label: 'confirm'.tr,
-            icon: Icons.check_rounded,
-            onPressed: _register,
-            enable: _canSubmit,
-          ),
-          const SizedBox(height: 20),
-
-          ParentComponent(featureKey: 'register.login_link', child: LinkRow(
-            message: 'have_account'.tr,
-            linkText: 'login'.tr,
-            onTap: () => Navigator.pop(context),
-          )),
-        ],
+        ),
       ),
     );
   }
 
   // ── Password helpers ──────────────────────────────────────────────────────
-  bool get _reqMinLength => _passwordController.text.length >= 6;
+  bool get _reqMinLength => _passwordController.text.length >= 8;
 
   bool get _reqUppercase => _passwordController.text.contains(RegExp(r'[A-Z]'));
 
@@ -402,9 +547,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool get _reqMatch =>
       _passwordController.text.isNotEmpty &&
-          _passwordController.text == _confirmedPasswordController.text;
+      _passwordController.text == _confirmedPasswordController.text;
 
-  bool get _canSubmit => _reqMinLength && _reqMatch && _termsAccepted;
+  bool get _canSubmit =>
+      _reqMinLength && _reqMatch && _termsAccepted && !_usernameBlocks;
 
   int get _strength {
     if (_passwordController.text.isEmpty) return 0;
@@ -420,126 +566,149 @@ class _RegisterScreenState extends State<RegisterScreen> {
     1 => c.danger,
     2 => c.warning,
     3 => c.success,
-    4 => c.primary,
+    4 => c.success,
     _ => c.divider,
   };
 
   String _strengthLabel() => switch (_strength) {
-    1 => 'ضعيف',
-    2 => 'مقبول',
-    3 => 'قوي',
-    4 => 'قوي جداً',
+    1 => 'pw_strength_weak'.tr,
+    2 => 'pw_strength_fair'.tr,
+    3 => 'pw_strength_strong'.tr,
+    4 => 'pw_strength_very_strong'.tr,
     _ => '',
   };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  Terms Accept Row  (inside the form)
+//  Terms Accept Row  (inside the form) — plain values, pumped by the layout tests
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _TermsAcceptRow extends StatelessWidget {
-  const _TermsAcceptRow({
+class AuthTermsRow extends StatelessWidget {
+  const AuthTermsRow({
+    super.key,
     required this.accepted,
     required this.onReadTap,
     required this.onCheckChanged,
+    this.onPrivacyTap,
   });
 
   final bool accepted;
   final VoidCallback onReadTap;
   final ValueChanged<bool> onCheckChanged;
 
+  /// "… and the Privacy policy" (D-308): the privacy link after the terms link.
+  final VoidCallback? onPrivacyTap;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    final link = appInk(context, c.primary); // AA on the row and on the Read button's tint, both modes
+    final text = AppType.label(context).copyWith(height: 1.5);
+    return AnimatedContainer(
+      duration: AppMotion.of(context).base,
+      curve: AppMotion.curve,
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.xs, AppSpace.xs, AppSpace.xs),
+      // accepted = done: the success tint and line (emerald means done, D-610); otherwise paper on a hairline
       decoration: BoxDecoration(
-        color: accepted
-            ? c.success.withValues(alpha: 0.07)
-            : c.primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(14),
+        color: accepted ? c.successTint : c.cardBg,
+        borderRadius: AppRadius.cardAll,
         border: Border.all(
-          color: accepted
-              ? c.success.withValues(alpha: 0.35)
-              : c.primary.withValues(alpha: 0.2),
-          width: 1.5,
+          color: accepted ? c.success.withValues(alpha: 0.45) : c.divider,
+          width: AppBorder.hairline,
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Checkbox
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: Checkbox(
-              value: accepted,
-              onChanged: (v) => onCheckChanged(v ?? false),
-              activeColor: c.success,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5),
-              ),
-              side: BorderSide(
-                color: accepted ? c.success : c.textLight,
-                width: 1.5,
+          // Checkbox (48 dp target), named for screen readers
+          MergeSemantics(
+            child: Semantics(
+              label: AppConfig.lang == 'ar' ? 'أوافق على الشروط والأحكام' : 'I agree to the terms and conditions',
+              child: Checkbox(
+                value: accepted,
+                onChanged: (v) => onCheckChanged(v ?? false),
+                activeColor: c.success,
+                checkColor: c.onHero,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSpace.xxs + 2)),
+                side: BorderSide(color: accepted ? c.success : c.textLight, width: AppBorder.strong),
               ),
             ),
           ),
-          const SizedBox(width: 10),
           // Text + link
           Expanded(
             child: Text.rich(
               TextSpan(
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 13,
-                  color: c.textMedium,
-                  height: 1.5,
-                ),
+                style: text,
                 children: [
-                  const TextSpan(text: 'أوافق على '),
+                  TextSpan(text: 'terms_agree_prefix'.tr),
                   WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: GestureDetector(
-                      onTap: onReadTap,
-                      child: Text(
-                        'الشروط والأحكام',
-                        style: TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 13,
-                          color: c.primary,
-                          fontWeight: FontWeight.w700,
-                          decoration: TextDecoration.underline,
-                          decorationColor: c.primary,
+                    alignment: PlaceholderAlignment.baseline,
+                    baseline: TextBaseline.alphabetic,
+                    // a link (D-308, like the privacy link): an inline link is exempt from the 48 dp target rule
+                    child: Semantics(
+                      link: true,
+                      child: GestureDetector(
+                        onTap: onReadTap,
+                        child: Text(
+                          'terms_link'.tr,
+                          style: text.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: link,
+                            decoration: TextDecoration.underline,
+                            decorationColor: link,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const TextSpan(text: ' الخاصة بالمنصة'),
+                  if (onPrivacyTap == null)
+                    TextSpan(text: 'terms_agree_suffix'.tr)
+                  else ...[
+                    TextSpan(text: 'terms_agree_and'.tr),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: Semantics(
+                        link: true,
+                        child: GestureDetector(
+                          onTap: onPrivacyTap,
+                          child: Text(
+                            'privacy_policy'.tr,
+                            style: text.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: link,
+                              decoration: TextDecoration.underline,
+                              decorationColor: link,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.xs),
           // Read button
-          GestureDetector(
-            onTap: onReadTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                gradient: c.primaryGradient,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                accepted ? 'إعادة القراءة' : 'اقرأ الآن',
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 112),
+            child: TextButton(
+            onPressed: onReadTap,
+            style: TextButton.styleFrom(
+              minimumSize: const Size(AppTouch.min, AppTouch.min - AppSpace.xs),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+              backgroundColor: c.primaryTint,
+              foregroundColor: link,
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
             ),
+            child: Text(
+              accepted ? 'terms_read_again'.tr : 'terms_read_now'.tr,
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: link, height: 1.2),
+            ),
+          ),
           ),
         ],
       ),
@@ -577,7 +746,7 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
     // Consider "read" when within 48 px of the bottom
     if ((pos.pixels >= pos.maxScrollExtent - 48) ||
         context.read<AboutTermsProvider>().terms!.sections.every(
-              (e) => e.accept,
+          (e) => e.accept,
         )) {
       setState(() => _hasReadAll = true);
     }
@@ -597,93 +766,68 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
     final screenH = MediaQuery.of(context).size.height;
 
     return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Container(
+      textDirection: pageDirection,
+      child: SizedBox(
         height: screenH * 0.88,
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
         child: Column(
           children: [
-            // ── Drag handle ─────────────────────────────────────────────
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: c.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.md),
 
             // ── Header ──────────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
               child: Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      gradient: c.primaryGradient,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: c.primaryShadow,
-                    ),
-                    child: const Icon(
-                      Icons.description_outlined,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
+                  const AuthMark(icon: Icons.description_outlined, size: AppTouch.min - AppSpace.xxs),
+                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'الشروط والأحكام',
-                          style: c.h2.copyWith(fontSize: 17),
+                          'terms_and_conditions'.tr,
+                          style: AppType.pageTitle(context),
                         ),
                         if (p.terms?.meta != null)
                           Text(
-                            'آخر تحديث: ${p.terms!.meta!.lastUpdated}',
-                            style: c.caption.copyWith(fontSize: 11),
+                            '${'terms_last_updated'.tr}: ${p.terms!.meta!.lastUpdated}',
+                            style: AppType.meta(context),
                           ),
                       ],
                     ),
                   ),
                   // Close
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context, false),
-                    child: Container(
-                      width: 34,
-                      height: 34,
+                  IconButton(
+                    tooltip: 'close'.tr,
+                    onPressed: () => Navigator.pop(context, false),
+                    icon: Container(
+                      width: AppTouch.min - AppSpace.xs,
+                      height: AppTouch.min - AppSpace.xs,
                       decoration: BoxDecoration(
-                        color: c.background,
-                        shape: BoxShape.circle,
+                        color: c.cardBg,
+                        borderRadius: AppRadius.chipAll,
+                        border: Border.all(color: c.divider, width: AppBorder.hairline),
                       ),
                       child: Icon(
                         Icons.close_rounded,
-                        size: 18,
-                        color: c.textMedium,
+                        size: AppIconSize.md,
+                        color: c.textDark,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xxs),
 
             // ── "Scroll to read" hint ────────────────────────────────────
             if (!_hasReadAll)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xs, AppSpace.lg, 0),
                 child: _ScrollHint(),
               ),
 
-            Divider(color: c.divider, height: 16),
+            Divider(color: c.divider, height: AppSpace.md, thickness: AppBorder.hairline),
 
             // ── Content ──────────────────────────────────────────────────
             Expanded(child: _buildContent(p, c)),
@@ -711,21 +855,18 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.wifi_off_rounded, size: 48, color: c.textLight),
-            const SizedBox(height: 12),
+            Icon(Icons.wifi_off_rounded, size: AppIconSize.hero, color: c.textLight),
+            const SizedBox(height: AppSpace.sm),
             Text(
               p.termsError!,
-              style: c.body.copyWith(color: c.textMedium),
+              style: AppType.body(context),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
+            const SizedBox(height: AppSpace.md),
+            AppButton.secondary(
               onPressed: () => p.loadTerms(context, forceRefresh: true),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text(
-                'إعادة المحاولة',
-                style: TextStyle(fontFamily: 'tajawal'),
-              ),
+              icon: Icons.refresh_rounded,
+              label: 'retry'.tr,
             ),
           ],
         ),
@@ -735,17 +876,17 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
     if (p.terms == null || p.terms!.sections.isEmpty) {
       return Center(
         child: Text(
-          'لا توجد شروط وأحكام متاحة حالياً',
-          style: c.body.copyWith(color: c.textMedium),
+          'terms_empty'.tr,
+          style: AppType.body(context),
         ),
       );
     }
 
     return ListView.separated(
       controller: _scrollCtrl,
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
       itemCount: p.terms!.sections.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
       itemBuilder: (_, i) => _SectionCard(
         section: p.terms!.sections[i],
         index: i,
@@ -760,8 +901,8 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
   void _scrollToEnd() {
     _scrollCtrl.animateTo(
       _scrollCtrl.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOut,
+      duration: authReduceMotion(context) ? const Duration(milliseconds: 1) : const Duration(milliseconds: 600),
+      curve: AppMotion.emphasized,
     );
   }
 }
@@ -800,11 +941,11 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.md),
       decoration: BoxDecoration(
         color: c.background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: c.divider),
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -813,50 +954,47 @@ class _SectionCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: AppTouch.min - AppSpace.sm,
+                height: AppTouch.min - AppSpace.sm,
                 decoration: BoxDecoration(
-                  color: c.primaryTint,
-                  borderRadius: BorderRadius.circular(10),
+                  color: c.inputBg,
+                  borderRadius: AppRadius.chipAll,
                 ),
                 child: Icon(
                   _icon(section.iconName),
-                  size: 17,
-                  color: c.primary,
+                  size: AppIconSize.sm,
+                  color: c.textDark,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.sm),
               Expanded(
-                child: Text(section.title, style: c.h3.copyWith(fontSize: 14)),
+                child: Text(section.title, style: AppType.bodyStrong(context)),
               ),
               InkWell(
                 onTap: () {
                   onTap.call(section);
                 },
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: c.successTint,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                borderRadius: AppRadius.chipAll,
+                child: SizedBox(
+                  width: AppTouch.min,
+                  height: AppTouch.min,
                   child: Icon(
                     section.accept
-                        ? Icons.check_circle
-                        : Icons.radio_button_unchecked,
-                    size: 17,
-                    color: c.success,
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    size: AppIconSize.md,
+                    color: section.accept ? c.success : c.textLight,
                   ),
                 ),
               ),
               // Section number
             ],
           ),
-          Divider(color: c.divider, height: 20),
+          Divider(color: c.divider, height: AppSpace.md, thickness: AppBorder.hairline),
           // Body
           Text(
             section.body,
-            style: c.body.copyWith(height: 1.85, fontSize: 13.5),
+            style: AppType.body(context).copyWith(height: 1.75),
           ),
         ],
       ),
@@ -882,11 +1020,17 @@ class _ScrollHintState extends State<_ScrollHint>
     _anim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
+    );
     _bounce = Tween<double>(
       begin: 0,
       end: 6,
     ).animate(CurvedAnimation(parent: _anim, curve: Curves.easeInOut));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _anim, reverse: true, rest: 0);
   }
 
   @override
@@ -897,13 +1041,13 @@ class _ScrollHintState extends State<_ScrollHint>
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final tone = AppBlockColors.of(context, AppBlockTone.sky);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
       decoration: BoxDecoration(
-        color: c.primary.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: c.primary.withValues(alpha: 0.2)),
+        color: tone.surface,
+        borderRadius: AppRadius.controlAll,
+        border: tone.border == null ? null : Border.all(color: tone.border!, width: AppBorder.hairline),
       ),
       child: Row(
         children: [
@@ -913,21 +1057,16 @@ class _ScrollHintState extends State<_ScrollHint>
               offset: Offset(0, _bounce.value),
               child: Icon(
                 Icons.keyboard_double_arrow_down_rounded,
-                size: 18,
-                color: c.primary,
+                size: AppIconSize.md,
+                color: tone.ink,
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: Text(
-              'يرجى قراءة جميع الشروط والتمرير إلى الأسفل لتفعيل زر القبول',
-              style: TextStyle(
-                fontFamily: 'tajawal',
-                fontSize: 12,
-                color: c.primary,
-                fontWeight: FontWeight.w600,
-              ),
+              'terms_scroll_hint'.tr,
+              style: AppType.label(context).copyWith(color: tone.ink, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -955,118 +1094,69 @@ class _BottomBar extends StatelessWidget {
     final bottom = MediaQuery.of(context).padding.bottom;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(20, 12, 20, 12 + bottom),
+      padding: EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.sm + bottom),
+      // a warm hairline over the bar (tone first, no shadow)
       decoration: BoxDecoration(
         color: c.cardBg,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
-            blurRadius: 10,
-            offset: const Offset(0, -3),
-          ),
-        ],
+        border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline)),
       ),
       child:
-      hasReadAll ||
-          context.read<AboutTermsProvider>().terms!.sections.every(
+          hasReadAll ||
+              context.read<AboutTermsProvider>().terms!.sections.every(
                 (e) => e.accept,
-          )
-      // ── Unlocked: show accept button ─────────────────────────────
+              )
+          // ── Unlocked: show accept button ─────────────────────────────
           ? Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Success hint
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 8,
-            ),
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: c.successTint,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: c.success.withValues(alpha: 0.35),
-              ),
-            ),
-            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.check_circle_outline_rounded,
-                  size: 18,
-                  color: c.success,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'لقد قرأت جميع الشروط، يمكنك الموافقة الآن',
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 12,
-                      color: c.success,
-                      fontWeight: FontWeight.w600,
-                    ),
+                // Success hint
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpace.sm,
+                    vertical: AppSpace.xs,
+                  ),
+                  margin: const EdgeInsets.only(bottom: AppSpace.sm),
+                  decoration: BoxDecoration(
+                    color: c.successTint,
+                    borderRadius: AppRadius.controlAll,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: AppIconSize.md,
+                        color: c.success,
+                      ),
+                      const SizedBox(width: AppSpace.xs),
+                      Expanded(
+                        child: Text(
+                          'terms_read_all_done'.tr,
+                          style: AppType.label(context).copyWith(
+                            color: appInk(context, c.success),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+                // Accept button: the sheet's one primary action
+                AuthButton(
+                  onPressed: onAccept,
+                  icon: Icons.verified_outlined,
+                  iconBefore: true,
+                  label: 'terms_accept_button'.tr,
+                ),
               ],
+            )
+          // ── Locked: nudge user to scroll ─────────────────────────────
+          : AppButton.secondary(
+              onPressed: onScrollToEnd,
+              expand: true,
+              size: AppButtonSize.lg,
+              icon: Icons.keyboard_double_arrow_down_rounded,
+              label: 'terms_jump_to_end'.tr,
             ),
-          ),
-          // Accept button
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: onAccept,
-              style: FilledButton.styleFrom(
-                backgroundColor: c.success,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              icon: const Icon(
-                Icons.verified_outlined,
-                color: Colors.white,
-              ),
-              label: const Text(
-                'أوافق على الشروط والأحكام',
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      )
-      // ── Locked: nudge user to scroll ─────────────────────────────
-          : SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
-          onPressed: onScrollToEnd,
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 13),
-            side: BorderSide(color: c.primary, width: 1.5),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-          icon: Icon(
-            Icons.keyboard_double_arrow_down_rounded,
-            color: c.primary,
-          ),
-          label: Text(
-            'انتقل إلى نهاية الشروط',
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: c.primary,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

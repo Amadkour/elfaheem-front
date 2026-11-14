@@ -1,6 +1,6 @@
 /// ─────────────────────────────────────────────────────────────────────────────
 /// app_theme.dart
-/// Premium Theme — Indigo Brand & Gold Accents (built-in DEFAULT theme)
+/// Warm Editorial — the built-in DEFAULT palette (D-610, `.interface-design/system.md` §2)
 ///
 /// This file holds only:
 ///   • Raw static design tokens (colours, radii, text styles, gradients,
@@ -8,18 +8,20 @@
 ///   • ThemeData factories (themeData / darkThemeData) for MaterialApp.
 ///
 /// This file IS the default theme: it is what the app shows on first launch,
-/// offline, or whenever the API / cache has no value for a token. The live
+/// offline, or whenever the API / cache has no value for a token. The values are
+/// the server's built-in preset `warm_editorial` (back services/theme_presets.py),
+/// so a first launch looks like the platform after its first theme fetch. The live
 /// palette (fetched from the API, cached in SharedPreferences) overrides it —
 /// see theme_config_provider.dart.
 ///
-/// There is no `context.colors` / ThemeConfigProvider anymore — the single theme
-/// accessor across the whole app is `context.themeConfig`, defined in
-/// theme_config_provider.dart. Nothing outside this file and that one
-/// should ever reference `AppTheme.*` directly.
+/// The single theme accessor across the whole app is `context.colors`, defined in
+/// theme_config_provider.dart. Nothing outside this file and that one should ever
+/// reference `AppTheme.*` colours directly.
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // AppTheme — raw design tokens + ThemeData factories
@@ -28,83 +30,87 @@ import 'package:flutter/material.dart';
 class AppTheme {
   AppTheme._();
 
-  // ── Brand palette (DEFAULT theme) ─────────────────────────────────────────
-  static const Color primary         = Color(0xFF2F3E9E);   // Indigo
-  static const Color primaryDark     = Color(0xFF1B2466);
-  static const Color primaryLight    = Color(0xFF5C6BD6);
-  static const Color lightPrimary    = Color(0x1F2F3E9E);   // primary @ ~12 %
+  // ── Brand palette (DEFAULT theme: warm_editorial) ─────────────────────────
+  static const Color primary         = Color(0xFF0B6B4F);   // deep emerald: the primary action, success / correct
+  static const Color primaryDark     = Color(0xFF064733);
+  static const Color primaryLight    = Color(0xFF3E9C78);
+  static const Color lightPrimary    = Color(0x0F0B6B4F);   // primary @ 6 % (D-728: was 12 %)
 
-  static const Color charcoal        = Color(0xFF2A2D45);
-  static const Color charcoalLight   = Color(0xFF4B4F6B);
-  static const Color charcoalDark    = Color(0xFF1B1E33);
+  static const Color charcoal        = Color(0xFF2A251F);   // warm charcoal: ink, the shadow tone
+  static const Color charcoalLight   = Color(0xFF4D463E);
+  static const Color charcoalDark    = Color(0xFF211D18);
 
-  static const Color accent          = Color(0xFFF6E3B4);   // Soft gold
-  static const Color accent2         = Color(0xFFC9A227);   // Gold
-  static const Color success         = Color(0xFF2FB67C);
-  static const Color danger          = Color(0xFFF0435F);
-  static const Color warning         = Color(0xFFF2A93B);
-  static const Color secondText      = Color(0xFF8A8EA8);
-  static const Color purple          = Color(0xFF7C5CFF);
+  static const Color accent          = Color(0xFFFBE2D3);   // block peach (accent1): learning / progress blocks
+  static const Color accent2         = Color(0xFFD46A4C);   // terracotta (D-860): streaks, achievements, top marks; text via context.colors.accent2 (D-740 ink)
+  static const Color accent3         = Color(0xFFE4ECE3);   // block sage (the `sky` tone, D-630): schedule / information blocks
+  static const Color success         = Color(0xFF12805C);
+  static const Color danger          = Color(0xFFE0245E);   // raspberry red (D-861): cooler than the terracotta accent2
+  static const Color warning         = Color(0xFFB7791F);   // 2.9 – 3.6:1: icons and fills, never small text
+  static const Color secondText      = Color(0xFF6E655A);   // light mode; 4.5:1+ on every light surface and block
+  static const Color darkSecondText  = Color(0xFFA99C8A);   // dark mode; 4.5:1+ on every dark surface (WCAG AA)
+  static const Color purple          = Color(0xFF6F58C9);
 
   // ── Tints & shadow base colours ───────────────────────────────────────────
-  static const Color primaryTint            = Color(0x1F2F3E9E);
-  static const Color primaryTintDark        = Color(0x335C6BD6);
-  static const Color primaryShadowColor     = Color(0x4C2F3E9E);   // light mode
-  static const Color primaryShadowColorDark = Color(0x262F3E9E);   // dark mode
-  static const Color cardShadowColor        = Color(0xFF1B2040);   // light mode
+  static const Color primaryTint            = Color(0x0F0B6B4F);   // 6 % (D-728: 12 % was too heavy behind components)
+  static const Color primaryTintDark        = Color(0x330B6B4F);   // 20 %
+  static const Color primaryShadowColor     = Color(0x4D0B6B4F);   // light mode, 30 %
+  static const Color primaryShadowColorDark = Color(0x260B6B4F);   // dark mode, 15 %
+  static const Color cardShadowColor        = Color(0xFF2A251F);   // light mode: the warm charcoal shadow tone
   static const Color cardShadowColorDark    = Color(0xFF000000);   // dark mode
 
   // ── Light surfaces ────────────────────────────────────────────────────────
-  static const Color background           = Color(0xFFF2F4FF);
-  static const Color surfaceCard          = Color(0xFFFFFFFF);
+  static const Color background           = Color(0xFFF1F4F0);   // canvas: pale sage-grey (D-632), white cards lift off it
+  static const Color surfaceCard          = Color(0xFFFFFFFF);   // the card: pure white
   static const Color cardBg               = Color(0xFFFFFFFF);
-  static const Color textFieldBackground  = Color(0xFFF6F7FC);
-  static const Color inputBg              = Color(0xFFF6F7FC);
-  static const Color divider              = Color(0xFFE6E8F2);
+  static const Color textFieldBackground  = Color(0xFFF4F6F2);
+  static const Color inputBg              = Color(0xFFF4F6F2);
+  static const Color divider              = Color(0xFFE6EAE3);   // neutral sage hairline
 
   // ── Light text ────────────────────────────────────────────────────────────
-  static const Color textDark     = Color(0xFF1B1E33);
-  static const Color textMedium   = Color(0xFF4B4F6B);
-  static const Color textLight    = Color(0xFF8A8EA8);
-  static const Color textAction   = Color(0xFF2F3E9E);
+  static const Color textDark     = Color(0xFF211D18);   // 15.4:1 on canvas
+  static const Color textMedium   = Color(0xFF4D463E);
+  static const Color textLight    = Color(0xFF6E655A);   // 4.5:1+ on canvas / paper / input / peach / sage (WCAG AA)
+  static const Color textAction   = Color(0xFF0B6B4F);
 
-  // ── Dark surfaces ─────────────────────────────────────────────────────────
-  static const Color darkBackground  = Color(0xFF0F1224);
-  static const Color darkSurface     = Color(0xFF161A33);
-  static const Color darkCard        = Color(0xFF1E2342);
-  static const Color darkInput       = Color(0xFF262B4D);
-  static const Color inputBgDark     = Color(0xFF262B4D);
-  static const Color darkDivider     = Color(0xFF2F3560);
+  // ── Dark surfaces (D-650: neutral grey, the brown read muddy) ─────────────
+  static const Color darkBackground  = Color(0xFF121414);
+  static const Color darkSurface     = Color(0xFF181A1B);
+  static const Color darkCard        = Color(0xFF1E2021);
+  static const Color darkInput       = Color(0xFF2A2D2E);   // raised card, input
+  static const Color inputBgDark     = Color(0xFF2A2D2E);
+  static const Color darkDivider     = Color(0xFF34383A);
 
   // ── Dark text ─────────────────────────────────────────────────────────────
-  static const Color darkTextPrimary  = Color(0xFFF4F5FB);
-  static const Color darkTextMuted    = Color(0xFFA9AECC);
-  static const Color darkTextLight    = Color(0xFF6B7099);
+  static const Color darkTextPrimary  = Color(0xFFF5EFE6);
+  static const Color darkTextMuted    = Color(0xFFCBBFAE);
+  static const Color darkTextLight    = Color(0xFFA99C8A);   // 4.5:1+ on every dark surface (WCAG AA)
 
-  // ── Radii ─────────────────────────────────────────────────────────────────
-  static const double radiusSmall  = 10;
-  static const double radiusMedium = 16;
-  static const double radiusLarge  = 24;
-  static const double radiusXL     = 32;
+  // ── Radii (D-612: by hierarchy) ───────────────────────────────────────────
+  static const double radiusSmall   = 10;   // chip
+  static const double radiusControl = 14;   // button, input
+  static const double radiusMedium  = 16;   // card
+  static const double radiusLarge   = 24;   // block
+  static const double radiusSheet   = 28;   // bottom sheet, dialog
+  static const double radiusXL      = 32;   // hero
 
   // ── Gradients (derived from the palette above) ───────────────────────────
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF2F3E9E), Color(0xFF5C6BD6), Color(0xFF2F3E9E)],
+    colors: [primary, primaryLight, primary],
   );
   static const LinearGradient disableGradient = LinearGradient(
-    colors: [Color(0x501B1E33), Color(0x504B4F6B)],
+    colors: [Color(0x4F211D18), Color(0x4F4D463E)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient backgroundGradient = LinearGradient(
-    colors: [Color(0xFFF2F4FF), Color(0xFFFFFFFF)],
+    colors: [background, surfaceCard],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
   static const LinearGradient darkBackgroundGradient = LinearGradient(
-    colors: [Color(0xFF0F1224), Color(0xFF161A33)],
+    colors: [darkBackground, darkSurface],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
@@ -116,40 +122,40 @@ class AppTheme {
   static const LinearGradient lightSlideBarGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF2A2D45), Color(0xFF4B4F6B), Color(0xFF2A2D45)],
+    colors: [charcoal, charcoalLight, charcoal],
   );
   static const LinearGradient accentGradient = LinearGradient(
-    colors: [Color(0xFFC9A227), Color(0xFFF6E3B4)],
+    colors: [accent2, Color(0xFFE39E8B)],   // terracotta → a lighter terracotta (D-864; was a cream)
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient sliderGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF2A2D45), Color(0xFF4B4F6B), Color(0xFF2A2D45)],
+    colors: [charcoal, charcoalLight, charcoal],
   );
   static const LinearGradient tealGradient = LinearGradient(
-    colors: [Color(0xFF2F3E9E), Color(0xFF5C6BD6)],
+    colors: [charcoal, charcoalLight],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient successGradient = LinearGradient(
-    colors: [success, Color(0xFF5FD8A3)],
+    colors: [success, Color(0xFF3E9C78)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient dangerGradient = LinearGradient(
-    colors: [Color(0xFFF0435F), Color(0xFFFF7A90)],
+    colors: [danger, Color(0xFFD9606A)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient purpleGradient = LinearGradient(
-    colors: [Color(0xFF7C5CFF), Color(0xFFA992FF)],
+    colors: [purple, Color(0xFF9A87DE)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient goldCharcoalGradient = LinearGradient(
-    colors: [Color(0xFFC9A227), Color(0xFF2A2D45)],
+    colors: [accent2, charcoal],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -161,7 +167,7 @@ class AppTheme {
         blurRadius: 24,
         offset: const Offset(0, 8)),
     BoxShadow(
-        color: const Color(0xFF000000).withValues(alpha: 0.02),
+        color: cardShadowColor.withValues(alpha: 0.03),
         blurRadius: 4,
         offset: const Offset(0, 2)),
   ];
@@ -231,82 +237,82 @@ class AppTheme {
   ];
 
   // ── Text styles (color from light palette; ThemeConfigProvider overrides per mode) ──
-  static const TextStyle h1 = TextStyle(
+  static TextStyle get h1 => TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.w800,
     color: textDark,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
     letterSpacing: -0.5,
     height: 1.2,
   );
-  static const TextStyle h2 = TextStyle(
+  static TextStyle get h2 => TextStyle(
     fontSize: 22,
     color: textDark,
     fontWeight:FontWeight.normal,
-    fontFamily: 'bahji',
+    fontFamily: AppFonts.display,
     letterSpacing: -0.3,
   );
-  static const TextStyle h3 = TextStyle(
+  static TextStyle get h3 => TextStyle(
     fontSize: 17,
     fontWeight: FontWeight.w700,
     color: textDark,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
     letterSpacing: -0.2,
   );
-  static const TextStyle h4 = TextStyle(
+  static TextStyle get h4 => TextStyle(
     fontSize: 15,
     fontWeight: FontWeight.w600,
     color: textDark,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
   );
-  static const TextStyle small = TextStyle(
+  static TextStyle get small => TextStyle(
     fontSize: 8,
     fontWeight: FontWeight.w600,
     color: textDark,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
   );
-  static const TextStyle body = TextStyle(
+  static TextStyle get body => TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: textMedium,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
     height: 1.65,
   );
-  static const TextStyle bodyBold = TextStyle(
+  static TextStyle get bodyBold => TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w700,
     color: textDark,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
     height: 1.65,
   );
-  static const TextStyle caption = TextStyle(
+  static TextStyle get caption => TextStyle(
     fontSize: 12,
     color: textLight,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
     height: 1.4,
   );
-  static const TextStyle label = TextStyle(
+  static TextStyle get label => TextStyle(
     fontSize: 13,
     fontWeight: FontWeight.w600,
     color: textMedium,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
   );
-  static const TextStyle navLabelSelected = TextStyle(
-    fontFamily: 'tajawal',
+  static TextStyle get navLabelSelected => TextStyle(
+    fontFamily: AppFonts.family,
     fontWeight: FontWeight.w700,
     fontSize: 11,
   );
-  static const TextStyle navLabelUnselected = TextStyle(
-    fontFamily: 'tajawal',
+  static TextStyle get navLabelUnselected => TextStyle(
+    fontFamily: AppFonts.family,
     fontSize: 11,
   );
-  static const TextStyle button = TextStyle(
-    fontFamily: 'tajawal',
+  static TextStyle get button => TextStyle(
+    fontFamily: AppFonts.family,
     fontWeight: FontWeight.w700,
     fontSize: 16,
   );
-  static const TextStyle buttonSmall = TextStyle(
-    fontFamily: 'tajawal',
+  static TextStyle get buttonSmall => TextStyle(
+    fontFamily: AppFonts.family,
     fontWeight: FontWeight.w600,
     fontSize: 14,
   );
@@ -319,7 +325,7 @@ class AppTheme {
   static ThemeData _build(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     return ThemeData(
-      fontFamily: 'tajawal',
+      fontFamily: AppFonts.family,
       useMaterial3: true,
       brightness: brightness,
       scaffoldBackgroundColor: dark ? darkBackground : background,
@@ -351,13 +357,13 @@ class AppTheme {
         labelColor: primary,
         unselectedLabelColor: dark ? darkTextMuted : textMedium,
         indicatorColor: primary,
-        labelStyle: const TextStyle(
+        labelStyle: TextStyle(
           fontWeight: FontWeight.w700,
-          fontFamily: 'tajawal',
+          fontFamily: AppFonts.family,
           fontSize: 14,
         ),
         unselectedLabelStyle:
-        const TextStyle(fontFamily: 'tajawal', fontSize: 14),
+        TextStyle(fontFamily: AppFonts.family, fontSize: 14),
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith((s) =>
@@ -405,13 +411,13 @@ class AppTheme {
     ),
     labelStyle: TextStyle(
       color: dark ? darkTextLight : textLight,
-      fontFamily: 'tajawal',
+      fontFamily: AppFonts.family,
     ),
     floatingLabelStyle:
-    const TextStyle(color: primary, fontFamily: 'tajawal'),
+    TextStyle(color: primary, fontFamily: AppFonts.family),
     hintStyle: TextStyle(
       color: dark ? darkTextLight : textLight,
-      fontFamily: 'tajawal',
+      fontFamily: AppFonts.family,
     ),
   );
 
@@ -419,7 +425,7 @@ class AppTheme {
     style: ElevatedButton.styleFrom(
       elevation: 0,
       backgroundColor: primary,
-      foregroundColor: Colors.white,   // White text on the indigo primary
+      foregroundColor: Colors.white,   // white ink on the emerald primary (6.5:1)
       disabledBackgroundColor: divider,
       disabledForegroundColor: textLight,
       shape: RoundedRectangleBorder(

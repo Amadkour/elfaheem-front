@@ -1,0 +1,61 @@
+// M20: a browser URL opened directly (or refreshed) starts the web app on that page when the person may open it.
+import 'package:flutter_education_app/features/guest/guest_live_api.dart' show guestLiveRouteFromUri, legacyHashRoute;
+import 'package:flutter_education_app/utils/web_entry_route.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test('base path /app/: stripped from the URL route and the guest live route', () {
+    String? r(String u) => webEntryRouteFromUri(Uri.parse(u), basePath: '/app/');
+    expect(r('https://alfheemacademy.com/app/c/12?ref=5'), '/c/12?ref=5');
+    expect(r('https://alfheemacademy.com/app/live/x'), '/live/x');
+    expect(r('https://alfheemacademy.com/app/login'), '/login');
+    expect(r('https://alfheemacademy.com/app/'), isNull);
+    expect(r('https://alfheemacademy.com/app'), isNull);
+    expect(r('https://alfheemacademy.com/application'), '/application', reason: 'not under the base');
+    expect(webEntryRouteFromUri(Uri.parse('https://alfheemacademy.com/c/12?ref=5'), basePath: '/'), '/c/12?ref=5');
+    expect(guestLiveRouteFromUri(Uri.parse('https://alfheemacademy.com/app/live/abc'), basePath: '/app/'), '/live/abc');
+    expect(guestLiveRouteFromUri(Uri.parse('https://alfheemacademy.com/live/abc'), basePath: '/'), '/live/abc');
+    expect(guestLiveRouteFromUri(Uri.parse('https://alfheemacademy.com/app/#/live/abc'), basePath: '/app/'), '/live/abc');
+    expect(legacyHashRoute(Uri.parse('https://alfheemacademy.com/app/#/payment/callback?status=paid')),
+        '/payment/callback?status=paid');
+  });
+
+  bool link(String r) => r.startsWith('/c/') || r.startsWith('/live/') || r.startsWith('/@');
+
+  test('the URL route: path and query, nothing for the root', () {
+    expect(webEntryRouteFromUri(Uri.parse('https://alfheemacademy.com/')), isNull);
+    expect(webEntryRouteFromUri(Uri.parse('https://alfheemacademy.com')), isNull);
+    expect(webEntryRouteFromUri(Uri.parse('https://alfheemacademy.com/notifications')), '/notifications');
+    expect(webEntryRouteFromUri(Uri.parse('https://alfheemacademy.com/c/12?ref=5')), '/c/12?ref=5');
+  });
+
+  test('signed in: argument-free pages open over the home; dashboards and unknown routes go home', () {
+    ({String route, bool overHome})? r(String e) => resolveWebEntry(e, signedIn: true, home: '/dashboard', isLink: link);
+    expect(r('/notifications'), (route: '/notifications', overHome: true));
+    expect(r('/edit-account'), (route: '/edit-account', overHome: true));
+    expect(r('/profile'), isNull, reason: 'N10: the home, switched to its account tab (webEntryTab)');
+    expect(r('/dashboard'), isNull, reason: 'already the home');
+    expect(r('/admin_dashboard'), isNull, reason: "never another role's home");
+    expect(r('/login'), isNull, reason: 'signed in: the home');
+    expect(r('/course-detail'), isNull, reason: 'needs arguments');
+    expect(r('/nope'), isNull);
+    expect(r('/c/12?ref=5'), (route: '/c/12?ref=5', overHome: false), reason: 'share links resolve themselves');
+    expect(resolveWebEntry(null, signedIn: true, home: '/dashboard', isLink: link), isNull);
+  });
+
+  test('N10: /profile names the account tab of the home, not the edit-account form', () {
+    expect(webEntryTab('/profile'), 'profile');
+    expect(webEntryTab('/profile?x=1'), 'profile');
+    expect(webEntryTab('/edit-account'), isNull);
+    expect(webEntryTab('/notifications'), isNull);
+    expect(webEntryTab(null), isNull);
+  });
+
+  test('signed out: sign-in pages and share links; a page that needs an account → the login', () {
+    ({String route, bool overHome})? r(String e) => resolveWebEntry(e, signedIn: false, home: '/dashboard', isLink: link);
+    expect(r('/register'), (route: '/register', overHome: false));
+    expect(r('/forgot-password'), (route: '/forgot-password', overHome: false));
+    expect(r('/notifications'), isNull);
+    expect(r('/live/abc'), (route: '/live/abc', overHome: false));
+  });
+}

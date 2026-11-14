@@ -15,8 +15,8 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/utils/live_events.dart';
 
-import '../../utils/live_events.dart';
 import 'admin_common.dart';
 
 const _base = '/api/v1/admin/finance';
@@ -127,6 +127,9 @@ class FinanceList {
   bool loadingMore = false;
   bool loaded = false;
   String? error;
+
+  /// Why the last "load more" failed (the list below keeps what it has and shows Retry), or null.
+  String? moreError;
 
   /// Sum of EVERY row matching the filters (not just this page), per currency.
   Map<String, double> totals = {};
@@ -262,6 +265,7 @@ class AdminFinanceProvider extends ChangeNotifier {
     if (more) {
       if (l.loading || l.loadingMore || !l.hasMore) return;
       l.loadingMore = true;
+      l.moreError = null;
     } else if (!silent) {
       l.loading = true;
       l.error = null;
@@ -303,10 +307,12 @@ class AdminFinanceProvider extends ChangeNotifier {
       };
       l.loaded = true;
       l.error = null;
+      l.moreError = null;
       if (t == 0 && filters(0).search.isEmpty) pendingBadge = l.total;
     } catch (e) {
       log('finance load($t) ❌ $e');
-      if (req == l._req && !silent && !more) l.error = '$e';
+      if (req == l._req && !silent && !more) l.error = ApiException.from(e).message;
+      if (req == l._req && more) l.moreError = ApiException.from(e).message;
     } finally {
       if (req == l._req) {
         l.loading = false;
@@ -317,6 +323,24 @@ class AdminFinanceProvider extends ChangeNotifier {
   }
 
   Future<void> loadMore(int t) => load(t, more: true);
+
+  /// Every row of tab [t] matching the current search and filters (the server allows 50 per page), for the export.
+  Future<List<Map<String, dynamic>>> fetchEvery(int t, {void Function(int loaded, int total)? onProgress, bool Function()? cancelled, int maxRows = 20000}) async {
+    final out = <Map<String, dynamic>>[];
+    for (var page = 1;; page++) {
+      if (cancelled?.call() ?? false) break;
+      final res = asMap(await _api.get(
+        t == 2 ? '$_base/payouts' : '$_base/payments',
+        queryParams: {...filters(t).query(payouts: t == 2), 'page': page, 'size': 50},
+      ));
+      final items = asMapList(res['items']);
+      out.addAll(items);
+      final pages = asInt(res['pages'], 1);
+      onProgress?.call(out.length, asInt(res['total']));
+      if (items.isEmpty || page >= pages || out.length >= maxRows) break;
+    }
+    return out;
+  }
 
   Future<void> setSearch(int t, String q) async {
     if (filters(t).search == q) return;
@@ -361,7 +385,7 @@ class AdminFinanceProvider extends ChangeNotifier {
       await _api.post('$_base/transfers/$paymentId/approve', body: {});
       return true;
     } catch (e) {
-      lastError = '$e';
+      lastError = ApiException.from(e).message;
       log('approve ❌ $e');
       return false;
     }
@@ -375,7 +399,7 @@ class AdminFinanceProvider extends ChangeNotifier {
       );
       return true;
     } catch (e) {
-      lastError = '$e';
+      lastError = ApiException.from(e).message;
       log('reject ❌ $e');
       return false;
     }

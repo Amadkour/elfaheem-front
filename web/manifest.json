@@ -1,12 +1,23 @@
 {
-    "name": "flutter_education_app",
-    "short_name": "flutter_education_app",
+    "id": "/",
+    "name": "الفهيم",
+    "short_name": "الفهيم",
+    "description": "منصة تعليمية: دورات مسجّلة وجلسات مباشرة وحضور ومؤسسات — An education platform: recorded courses, live sessions, attendance and organizations.",
+    "lang": "ar",
+    "dir": "auto",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "display_override": [
+        "standalone",
+        "minimal-ui"
+    ],
+    "orientation": "any",
+    "background_color": "#F4FBFF",
+    "theme_color": "#F4FBFF",
+    "categories": [
+        "education"
+    ],
     "prefer_related_applications": false,
     "icons": [
         {

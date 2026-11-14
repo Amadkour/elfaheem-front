@@ -1,0 +1,405 @@
+{
+ "_source": "Recorded 2026-11-02 from the real routes of wt-back-omr-v (branch omr/v-id-fit): tests/exam_engine/e2e_omr_id_fit.py run unchanged with every TestClient reply recorded (scratch record_fit.py). Do not edit by hand; re-record after a payload change.",
+ "payloads": {
+  "templates": {
+   "items": [
+    {
+     "id": 4,
+     "family_id": "3b17db08-f39e-521e-acad-1c43be92f228",
+     "version": 1,
+     "name": "100 questions, 5 options (A-E) · handwritten student ID",
+     "description": "100 questions, 5 options (A-E) · handwritten student ID\n100 سؤال، 5 اختيارات (A-E) · رقم طالب مكتوب بخط اليد",
+     "status": "published",
+     "owner_id": 0,
+     "owner_role": "system",
+     "questions": 100,
+     "validation_ok": true,
+     "approved_by": null,
+     "approved_at": "2026-11-02T11:47:39.312429",
+     "review_note": null,
+     "created_at": "2026-11-02T11:47:39.882868",
+     "options": 5,
+     "option_labels": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E"
+     ],
+     "id_kind": "handwritten",
+     "id_digits": 10,
+     "forms_on_sheet": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "builtin": "mcq100_5",
+     "printable": true,
+     "name_en": "100 questions, 5 options (A-E) · handwritten student ID",
+     "name_ar": "100 سؤال، 5 اختيارات (A-E) · رقم طالب مكتوب بخط اليد",
+     "learning_state": "done",
+     "preview_url": "/api/v1/exam/omr/templates/4/image?kind=preview"
+    },
+    {
+     "id": 3,
+     "family_id": "fda7ff6e-fe09-54e8-8d89-f4d8c0e67ee0",
+     "version": 1,
+     "name": "100 questions, 5 options (A-E) · shaded student ID",
+     "description": "100 questions, 5 options (A-E) · shaded student ID\n100 سؤال، 5 اختيارات (A-E) · رقم طالب بالتظليل",
+     "status": "published",
+     "owner_id": 0,
+     "owner_role": "system",
+     "questions": 100,
+     "validation_ok": true,
+     "approved_by": null,
+     "approved_at": "2026-11-02T11:47:37.954546",
+     "review_note": null,
+     "created_at": "2026-11-02T11:47:38.614802",
+     "options": 5,
+     "option_labels": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E"
+     ],
+     "id_kind": "shaded",
+     "id_digits": 10,
+     "forms_on_sheet": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "builtin": "mcq100_5",
+     "printable": true,
+     "name_en": "100 questions, 5 options (A-E) · shaded student ID",
+     "name_ar": "100 سؤال، 5 اختيارات (A-E) · رقم طالب بالتظليل",
+     "learning_state": "done",
+     "preview_url": "/api/v1/exam/omr/templates/3/image?kind=preview"
+    },
+    {
+     "id": 2,
+     "family_id": "2a56e1e1-0f36-54b8-a6b3-bbd528a2d5dc",
+     "version": 1,
+     "name": "50 questions, 4 options (A-D) · handwritten student ID",
+     "description": "50 questions, 4 options (A-D) · handwritten student ID\n50 سؤالًا، 4 اختيارات (A-D) · رقم طالب مكتوب بخط اليد",
+     "status": "published",
+     "owner_id": 0,
+     "owner_role": "system",
+     "questions": 50,
+     "validation_ok": true,
+     "approved_by": null,
+     "approved_at": "2026-11-02T11:47:36.441276",
+     "review_note": null,
+     "created_at": "2026-11-02T11:47:36.957618",
+     "options": 4,
+     "option_labels": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "id_kind": "handwritten",
+     "id_digits": 10,
+     "forms_on_sheet": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "builtin": "mcq50_4",
+     "printable": true,
+     "name_en": "50 questions, 4 options (A-D) · handwritten student ID",
+     "name_ar": "50 سؤالًا، 4 اختيارات (A-D) · رقم طالب مكتوب بخط اليد",
+     "learning_state": "done",
+     "preview_url": "/api/v1/exam/omr/templates/2/image?kind=preview"
+    },
+    {
+     "id": 1,
+     "family_id": "4de28b97-18df-5d9c-aa82-d156eba2c8e4",
+     "version": 1,
+     "name": "50 questions, 4 options (A-D) · shaded student ID",
+     "description": "50 questions, 4 options (A-D) · shaded student ID\n50 سؤالًا، 4 اختيارات (A-D) · رقم طالب بالتظليل",
+     "status": "published",
+     "owner_id": 0,
+     "owner_role": "system",
+     "questions": 50,
+     "validation_ok": true,
+     "approved_by": null,
+     "approved_at": "2026-11-02T11:47:35.391192",
+     "review_note": null,
+     "created_at": "2026-11-02T11:47:35.893725",
+     "options": 4,
+     "option_labels": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "id_kind": "shaded",
+     "id_digits": 10,
+     "forms_on_sheet": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ],
+     "builtin": "mcq50_4",
+     "printable": true,
+     "name_en": "50 questions, 4 options (A-D) · shaded student ID",
+     "name_ar": "50 سؤالًا، 4 اختيارات (A-D) · رقم طالب بالتظليل",
+     "learning_state": "done",
+     "preview_url": "/api/v1/exam/omr/templates/1/image?kind=preview"
+    }
+   ],
+   "require_approval": true
+  },
+  "setup_block": {
+   "exam_id": 1,
+   "delivery": "paper",
+   "online_available": false,
+   "paper_format": "bubble",
+   "identifier": {
+    "source": "national_id",
+    "key": null
+   },
+   "omr_template_id": 1,
+   "omr_template_version": 1,
+   "template": {
+    "id": 1,
+    "family_id": "4de28b97-18df-5d9c-aa82-d156eba2c8e4",
+    "version": 1,
+    "name": "50 questions, 4 options (A-D) · shaded student ID",
+    "status": "published",
+    "id_zone": {
+     "kind": "shaded",
+     "digits": 10
+    }
+   },
+   "omr_policy": {
+    "blank": "review",
+    "multiple": "review",
+    "uncertain": "review"
+   },
+   "form_markers": [],
+   "forms": 0,
+   "paper_sections": 1,
+   "identifier_fit": {
+    "zone_kind": "shaded",
+    "zone_digits": 10,
+    "kind": "digits",
+    "min_len": 14,
+    "max_len": 14,
+    "too_long": 5,
+    "non_digit": 0,
+    "missing": 1,
+    "longest": 14,
+    "status": "block",
+    "reason": "too_long",
+    "label_ar": "الرقم القومي",
+    "label_en": "National ID"
+   },
+   "warnings": [
+    "identifier_zone_mismatch"
+   ]
+  },
+  "identifiers_nid": {
+   "source": "national_id",
+   "key": null,
+   "label_ar": "الرقم القومي",
+   "label_en": "National ID",
+   "kind": "digits",
+   "min_len": 14,
+   "max_len": 14,
+   "collectable": true,
+   "total": 6,
+   "ready": 5,
+   "missing": [
+    {
+     "user_id": 106,
+     "name": "Student 106"
+    }
+   ],
+   "duplicates": [],
+   "value_lengths": {
+    "14": 5
+   },
+   "non_digit": 0,
+   "requests": {
+    "pending": 0,
+    "done": 0,
+    "cancelled": 0
+   }
+  },
+  "sheets_info_block": {
+   "template_id": 1,
+   "template_version": 1,
+   "printable": true,
+   "questions": 2,
+   "sheet_questions": 50,
+   "forms": [],
+   "sheet_forms": [
+    "A",
+    "B",
+    "C",
+    "D"
+   ],
+   "form_markers": [],
+   "id_kind": "shaded",
+   "identifier_fit": {
+    "zone_kind": "shaded",
+    "zone_digits": 10,
+    "kind": "digits",
+    "min_len": 14,
+    "max_len": 14,
+    "too_long": 5,
+    "non_digit": 0,
+    "missing": 1,
+    "longest": 14,
+    "status": "block",
+    "reason": "too_long",
+    "label_ar": "الرقم القومي",
+    "label_en": "National ID"
+   }
+  },
+  "sheets_409": {
+   "detail": {
+    "code": "identifier_zone_mismatch",
+    "message": "الرقم القومي من 14 رقمًا ومنطقة رقم الطالب في هذه الورقة 10 أرقام فقط: لا يستطيع أي طالب كتابته على ورقة فارغة. اختر نوع ورقة بمنطقة 14 أرقام على الأقل، أو عرّف الطلاب بقيمة أقصر، أو اطبع ورقة باسم كل طالب (رمز QR عليها يحدد الطالب، فلا تظليل).",
+    "message_en": "National ID has 14 digits but this sheet's ID zone has 10: no student can put it on a blank sheet. Choose a sheet type with at least 14 ID digits, identify students by a shorter value, or print a named sheet per student (its QR identifies the student, nothing to shade).",
+    "reason": "too_long",
+    "zone_kind": "shaded",
+    "zone_digits": 10,
+    "min_len": 14,
+    "max_len": 14,
+    "kind": "digits",
+    "fixes": [
+     "template",
+     "identifier",
+     "named_sheets"
+    ]
+   }
+  },
+  "setup_warn": {
+   "exam_id": 1,
+   "delivery": "paper",
+   "online_available": false,
+   "paper_format": "bubble",
+   "identifier": {
+    "source": "academic_id",
+    "key": null
+   },
+   "omr_template_id": 1,
+   "omr_template_version": 1,
+   "template": {
+    "id": 1,
+    "family_id": "4de28b97-18df-5d9c-aa82-d156eba2c8e4",
+    "version": 1,
+    "name": "50 questions, 4 options (A-D) · shaded student ID",
+    "status": "published",
+    "id_zone": {
+     "kind": "shaded",
+     "digits": 10
+    }
+   },
+   "omr_policy": {
+    "blank": "review",
+    "multiple": "review",
+    "uncertain": "review"
+   },
+   "form_markers": [],
+   "forms": 0,
+   "paper_sections": 1,
+   "identifier_fit": {
+    "zone_kind": "shaded",
+    "zone_digits": 10,
+    "kind": "text",
+    "min_len": 1,
+    "max_len": 32,
+    "too_long": 1,
+    "non_digit": 1,
+    "missing": 1,
+    "longest": 12,
+    "status": "warn",
+    "reason": "values",
+    "label_ar": "الرقم الأكاديمي",
+    "label_en": "Academic ID"
+   },
+   "warnings": [
+    "identifier_zone_may_not_fit"
+   ]
+  },
+  "setup_ok": {
+   "exam_id": 1,
+   "delivery": "paper",
+   "online_available": false,
+   "paper_format": "bubble",
+   "identifier": {
+    "source": "academic_id",
+    "key": null
+   },
+   "omr_template_id": 1,
+   "omr_template_version": 1,
+   "template": {
+    "id": 1,
+    "family_id": "4de28b97-18df-5d9c-aa82-d156eba2c8e4",
+    "version": 1,
+    "name": "50 questions, 4 options (A-D) · shaded student ID",
+    "status": "published",
+    "id_zone": {
+     "kind": "shaded",
+     "digits": 10
+    }
+   },
+   "omr_policy": {
+    "blank": "review",
+    "multiple": "review",
+    "uncertain": "review"
+   },
+   "form_markers": [],
+   "forms": 0,
+   "paper_sections": 1,
+   "identifier_fit": {
+    "zone_kind": "shaded",
+    "zone_digits": 10,
+    "kind": "text",
+    "min_len": 1,
+    "max_len": 32,
+    "too_long": 0,
+    "non_digit": 0,
+    "missing": 0,
+    "longest": 7,
+    "status": "ok",
+    "reason": null,
+    "label_ar": "الرقم الأكاديمي",
+    "label_en": "Academic ID"
+   },
+   "warnings": []
+  },
+  "identifiers_academic": {
+   "source": "academic_id",
+   "key": null,
+   "label_ar": "الرقم الأكاديمي",
+   "label_en": "Academic ID",
+   "kind": "text",
+   "min_len": 1,
+   "max_len": 32,
+   "collectable": true,
+   "total": 6,
+   "ready": 6,
+   "missing": [],
+   "duplicates": [],
+   "value_lengths": {
+    "7": 6
+   },
+   "non_digit": 0,
+   "requests": {
+    "pending": 0,
+    "done": 0,
+    "cancelled": 0
+   }
+  }
+ }
+}

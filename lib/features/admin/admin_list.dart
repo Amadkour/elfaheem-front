@@ -7,14 +7,19 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
-import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/paged_progress.dart';
 import 'admin_common.dart';
+import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
+import 'admin_table_export.dart' show AppExportPill, exportPagedList;
+import '../../design/app_table_export.dart' show AppTableExport;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Paged list (same pagination progress as the user lists)
@@ -29,6 +34,8 @@ class PagedList<P extends AdminPagedProvider> extends StatefulWidget {
     this.emptyText,
     this.countIcon,
     this.showCountFrom = 20,
+    this.export,
+    this.minTileWidth,
   }) : assert(
   itemBuilder != null || indexedBuilder != null,
   'give itemBuilder or indexedBuilder',
@@ -48,6 +55,13 @@ class PagedList<P extends AdminPagedProvider> extends StatefulWidget {
 
   /// The progress card appears once the total is bigger than this (one page).
   final int showCountFrom;
+
+  /// Builds the export table from EVERY row (all pages are fetched first) — shows an Excel · Word · PDF pill.
+  final AppTableExport Function(List<Map<String, dynamic>> rows)? export;
+
+  /// Rows as cards side by side once each can have this width (two on a desktop, up to three on a very wide one);
+  /// null = one row per line. A list of short cards uses the window instead of one long column (D-573).
+  final double? minTileWidth;
 
   @override
   State<PagedList<P>> createState() => _PagedListState<P>();
@@ -95,17 +109,19 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
 
     Widget body;
     if (!p.loaded && p.isLoading) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (p.error != null && p.rows.isEmpty) {
       body = ErrorRetry(message: p.error!, onRetry: p.refresh);
     } else if (p.rows.isEmpty) {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: p.refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            SizedBox(
-              height: 320,
+            // at least 320 px, taller when a long message at a large text size needs it (it overflowed on a phone)
+            Container(
+              constraints: const BoxConstraints(minHeight: 320),
+              alignment: Alignment.center,
               child: EmptyState(widget.emptyText ?? 'admin_nothing_here_yet'.tr),
             ),
           ],
@@ -113,44 +129,73 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
       );
     } else {
       _fillViewport(p);
-      body = RefreshIndicator(
+      Widget item(BuildContext ctx, int i) =>
+          widget.indexedBuilder != null ? widget.indexedBuilder!(ctx, p, i) : widget.itemBuilder!(ctx, p.rows[i]);
+      body = AppRefresh(
         onRefresh: p.refresh,
-        child: ListView.builder(
-          controller: _scroll,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(14, 6, 14, 90),
-          itemCount: p.rows.length + 1,
-          itemBuilder: (ctx, i) {
-            if (i == p.rows.length) {
-              return PagedListFooter(
-                loadingMore: p.loadingMore,
-                hasMore: p.hasMore,
+        child: LayoutBuilder(builder: (context, box) {
+          final min = widget.minTileWidth;
+          final cols = min == null ? 1 : ((box.maxWidth - 28) / min).floor().clamp(1, 3);
+          final lines = (p.rows.length / cols).ceil();
+          return ListView.builder(
+            controller: _scroll,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 90),
+            itemCount: lines + 1,
+            itemBuilder: (ctx, line) {
+              if (line == lines) {
+                return PagedListFooter(
+                  loadingMore: p.loadingMore,
+                  hasMore: p.hasMore,
+                );
+              }
+              if (cols == 1) return item(ctx, line);
+              // one line of cards with the same height (the tallest one's)
+              return IntrinsicHeight(
+                child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  for (var k = 0; k < cols; k++)
+                    Expanded(child: line * cols + k < p.rows.length ? item(ctx, line * cols + k) : const SizedBox.shrink()),
+                ]),
               );
-            }
-            return widget.indexedBuilder != null
-                ? widget.indexedBuilder!(ctx, p, i)
-                : widget.itemBuilder!(ctx, p.rows[i]);
-          },
-        ),
+            },
+          );
+        }),
       );
     }
 
-    return Column(
-      children: [
-        if (widget.header != null) widget.header!,
-        // pinned "Showing 20 of 134" progress
-        if (p.rows.isNotEmpty && p.total > widget.showCountFrom)
-          PagedCountCard(
-            loaded: p.rows.length,
-            total: p.total,
-            loadingMore: p.loadingMore,
-            done: !p.hasMore,
-            icon: widget.countIcon ?? Icons.format_list_numbered_rounded,
-            margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-          ),
-        Expanded(child: body),
-      ],
-    );
+    // The pinned top (header, export pill, progress card) may take at most 40 % of the height and scrolls inside
+    // that, so a tall header can never push the list off a small phone.
+    final top = <Widget>[
+      if (widget.header != null) widget.header!,
+      if (widget.export != null && p.rows.isNotEmpty)
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 2, AppSpace.md, AppSpace.xs),
+          child: Align(alignment: AlignmentDirectional.centerEnd, child: AppExportPill(onTap: () => exportPagedList(context, p, widget.export!))),
+        ),
+      // pinned "Showing 20 of 134" progress
+      if (p.rows.isNotEmpty && p.total > widget.showCountFrom)
+        PagedCountCard(
+          loaded: p.rows.length,
+          total: p.total,
+          loadingMore: p.loadingMore,
+          done: !p.hasMore,
+          icon: widget.countIcon ?? Icons.format_list_numbered_rounded,
+          margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+        ),
+    ];
+    return LayoutBuilder(builder: (context, box) {
+      final cap = box.maxHeight.isFinite ? box.maxHeight * 0.4 : double.infinity;
+      return Column(
+        children: [
+          if (top.isNotEmpty)
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: cap),
+              child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: top)),
+            ),
+          Expanded(child: body),
+        ],
+      );
+    });
   }
 }
 
@@ -186,25 +231,29 @@ class AdminSimpleList extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget body;
     if (isEmpty && loading) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (isEmpty && error != null) {
       body = ErrorRetry(message: error!, onRetry: onRefresh);
     } else if (isEmpty) {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: onRefresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            SizedBox(height: 320, child: EmptyState(emptyText, icon: emptyIcon)),
+            Container(
+              constraints: const BoxConstraints(minHeight: 320),
+              alignment: Alignment.center,
+              child: EmptyState(emptyText, icon: emptyIcon),
+            ),
           ],
         ),
       );
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: onRefresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(14, 6, 14, 90),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 90),
           children: [
             ...children,
             const PagedListFooter(loadingMore: false, hasMore: false),
@@ -214,7 +263,7 @@ class AdminSimpleList extends StatelessWidget {
     }
     return Column(
       children: [
-        if (header != null) header!,
+        ?header,
         if (children.length > 20)
           PagedCountCard(
             loaded: children.length,
@@ -222,7 +271,7 @@ class AdminSimpleList extends StatelessWidget {
             loadingMore: false,
             done: true,
             icon: countIcon ?? Icons.format_list_numbered_rounded,
-            margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+            margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
           ),
         Expanded(child: body),
       ],
@@ -246,21 +295,15 @@ class RowCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final radius = BorderRadius.circular(18);
+    final radius = BorderRadius.circular(c.radiusLarge - 4);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Container(
         decoration: BoxDecoration(
           color: c.cardBg,
           borderRadius: radius,
           border: Border.all(color: c.divider),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          boxShadow: c.cardShadow,
         ),
         child: ClipRRect(
           borderRadius: radius,
@@ -275,7 +318,7 @@ class RowCard extends StatelessWidget {
                     if (accent != null) Container(width: 4, color: accent),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.all(AppSpace.md),
                         child: child,
                       ),
                     ),
@@ -299,14 +342,11 @@ class IconBadge extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.13),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Icon(icon, color: color, size: size * 0.5),
+  Widget build(BuildContext context) => ServiceIcon(
+    icon: icon,
+    size: size,
+    // light → your theme colour (the colour passed in is already a theme colour)
+    colors: AdminPalette.soft(color),
   );
 }
 
@@ -327,19 +367,15 @@ class AdminAvatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [c.primary.withValues(alpha: 0.22), c.primary.withValues(alpha: 0.10)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: c.primary.withValues(alpha: 0.16),
       ),
       child: Text(
         name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase(),
         style: TextStyle(
-          fontFamily: 'tajawal',
+          fontFamily: AppFonts.family,
           fontWeight: FontWeight.w800,
           fontSize: size * 0.4,
-          color: c.primary,
+          color: Theme.of(context).brightness == Brightness.dark ? c.textDark : c.primary,
         ),
       ),
     );
@@ -368,27 +404,23 @@ class InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.10),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      border: Border.all(color: color.withValues(alpha: 0.22)),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 13, color: color),
-        const SizedBox(width: 4),
+        const SizedBox(width: AppSpace.xxs),
         Flexible(
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
+            style: AppType.overline(context).copyWith(color: color),
           ),
         ),
       ],
@@ -420,11 +452,11 @@ class FilterChips<T> extends StatelessWidget {
       height: 42,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
         children: [
           for (final e in options.entries)
             Padding(
-              padding: const EdgeInsetsDirectional.only(end: 8),
+              padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
               child: ChoiceChip(
                 showCheckmark: false,
                 shape: const StadiumBorder(),
@@ -434,12 +466,7 @@ class FilterChips<T> extends StatelessWidget {
                 backgroundColor: c.cardBg,
                 label: Text(
                   e.value,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 12.5,
-                    fontWeight: e.key == value ? FontWeight.w800 : FontWeight.w600,
-                    color: e.key == value ? Colors.white : c.textDark,
-                  ),
+                  style: AppType.meta(context).copyWith(color: e.key == value ? c.onHero : c.textDark, fontWeight: FontWeight.w600),
                 ),
                 selected: e.key == value,
                 selectedColor: c.primary,

@@ -1,0 +1,80 @@
+{
+ "_source": "job_updated events published by the engine (services/omr_review.notify) during tests/exam_engine/e2e_omr_written.py, recorded 2026-11-02",
+ "_status": 200,
+ "payload": {
+  "events": [
+   {
+    "kind": "omr_review",
+    "id": 1,
+    "exam_id": 1,
+    "item_id": 1,
+    "status": "resolved",
+    "item_kind": "completion",
+    "open_count": 8
+   },
+   {
+    "kind": "omr_review",
+    "id": 2,
+    "exam_id": 1,
+    "item_id": 2,
+    "status": "resolved",
+    "item_kind": "completion",
+    "open_count": 7
+   },
+   {
+    "kind": "omr_review",
+    "id": 3,
+    "exam_id": 1,
+    "item_id": 3,
+    "status": "resolved",
+    "item_kind": "short_answer",
+    "open_count": 6
+   },
+   {
+    "kind": "omr_review",
+    "id": 4,
+    "exam_id": 1,
+    "item_id": 4,
+    "status": "resolved",
+    "item_kind": "completion",
+    "open_count": 5
+   },
+   {
+    "kind": "omr_review",
+    "id": 8,
+    "exam_id": 1,
+    "item_id": 8,
+    "status": "open",
+    "item_kind": "short_answer",
+    "open_count": 5
+   },
+   {
+    "kind": "omr_review",
+    "id": 8,
+    "exam_id": 1,
+    "item_id": 8,
+    "status": "resolved",
+    "item_kind": "short_answer",
+    "open_count": 4
+   },
+   {
+    "kind": "omr_review",
+    "id": 5,
+    "exam_id": 1,
+    "item_id": 5,
+    "status": "resolved",
+    "item_kind": "completion",
+    "open_count": 3
+   },
+   {
+    "kind": "omr_review",
+    "id": 9,
+    "exam_id": 1,
+    "item_id": 9,
+    "status": "open",
+    "item_kind": "completion",
+    "open_count": 3
+   }
+  ]
+ }
+}

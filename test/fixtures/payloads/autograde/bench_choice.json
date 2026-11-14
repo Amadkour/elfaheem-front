@@ -1,0 +1,124 @@
+{
+ "_source": {
+  "route": "PUT /api/v1/models/benchmarks/roles/reranker/choice",
+  "uid": 1
+ },
+ "payload": {
+  "role": "reranker",
+  "choice": {
+   "model_id": 30,
+   "by": 1,
+   "at": "2026-11-12T12:04:58.524974"
+  },
+  "effective_id": 30,
+  "activation": {
+   "stage": "ready_to_confirm",
+   "pending": {
+    "model_id": 30,
+    "ref": "gte-multilingual-reranker-base@int8-ee64367",
+    "stage": "ready_to_confirm",
+    "at": "2026-11-12T12:04:58.576670",
+    "checks": [
+     {
+      "name": "ram",
+      "estimate_mb": 815,
+      "limit_mb": 0,
+      "ok": true,
+      "available_mb": 17444
+     },
+     {
+      "name": "cpu",
+      "provider": "onnx",
+      "ok": true,
+      "needs": [],
+      "problems": []
+     },
+     {
+      "name": "ram_all_roles",
+      "need_mb": 6517,
+      "budget_mb": 34186,
+      "margin_mb": 0,
+      "items": [
+       {
+        "ref": "qwen3-1.7b@int4-3231b52",
+        "roles": [
+         "generation.chat",
+         "generation.exam"
+        ],
+        "ram_mb": 3186
+       },
+       {
+        "ref": "multilingual-e5-small@fp32-761b726",
+        "roles": [
+         "grading"
+        ],
+        "ram_mb": 1074
+       },
+       {
+        "ref": "gte-multilingual-reranker-base@int8-ee64367",
+        "roles": [
+         "reranker"
+        ],
+        "ram_mb": 815
+       },
+       {
+        "ref": "trocr-small-handwritten@fp32-2432e24",
+        "roles": [
+         "handwriting_en"
+        ],
+        "ram_mb": 727
+       },
+       {
+        "ref": "multilingual-e5-small@int8-761b726",
+        "roles": [
+         "embedding"
+        ],
+        "ram_mb": 370
+       },
+       {
+        "ref": "paddleocr-rec-ar@pp-ocrv5-14aaedc",
+        "roles": [
+         "ocr_rec_ar"
+        ],
+        "ram_mb": 120
+       },
+       {
+        "ref": "paddleocr-rec-en@pp-ocrv5-7b02d0a",
+        "roles": [
+         "ocr_rec_en"
+        ],
+        "ram_mb": 119
+       },
+       {
+        "ref": "paddleocr-det@pp-ocrv3-7b02d0a",
+        "roles": [
+         "ocr_det"
+        ],
+        "ram_mb": 106
+       }
+      ],
+      "ok": true
+     }
+    ],
+    "test": {
+     "speed": 77220.05,
+     "checks": [
+      {
+       "name": "relevant_first",
+       "ok": true,
+       "scores": [
+        5.0,
+        1.0
+       ]
+      }
+     ],
+     "ok": true,
+     "load_ms": 0,
+     "ms": 0,
+     "rss_mb": 145,
+     "at": "2026-11-12T12:04:58.580987"
+    }
+   }
+  }
+ }
+}

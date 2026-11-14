@@ -1,0 +1,383 @@
+{
+ "_source": {
+  "how": "modelhub.events sink during the same run (event, data)"
+ },
+ "payload": [
+  {
+   "event": "model_download",
+   "data": {
+    "id": 1,
+    "model_id": 23,
+    "ref": "gen-next@v1",
+    "role": "generation",
+    "status": "running",
+    "bytes_done": 0,
+    "bytes_total": 6000000,
+    "percent": 0.0,
+    "speed_bps": 0.0,
+    "eta_s": null,
+    "error": null,
+    "files": {
+     "model": {
+      "done": 1212416,
+      "total": 6000000,
+      "status": "running"
+     }
+    },
+    "activate_after": true,
+    "created_at": "2026-11-02T03:18:16.451191",
+    "finished_at": null
+   }
+  },
+  {
+   "event": "model_changed",
+   "data": {
+    "role": "generation",
+    "action": "downloading",
+    "ref": "gen-next@v1",
+    "pending": {
+     "model_id": 23,
+     "ref": "gen-next@v1",
+     "stage": "downloading",
+     "at": "2026-11-02T03:18:16.439105",
+     "download_id": 1
+    }
+   }
+  },
+  {
+   "event": "model_download",
+   "data": {
+    "id": 1,
+    "model_id": 23,
+    "ref": "gen-next@v1",
+    "role": "generation",
+    "status": "running",
+    "bytes_done": 16384,
+    "bytes_total": 6000000,
+    "percent": 0.3,
+    "speed_bps": 0.0,
+    "eta_s": null,
+    "error": null,
+    "files": {
+     "model": {
+      "done": 16384,
+      "total": 6000000,
+      "status": "running"
+     }
+    },
+    "activate_after": true,
+    "created_at": "2026-11-02T03:18:16.451191",
+    "finished_at": null
+   }
+  },
+  {
+   "event": "model_download",
+   "data": {
+    "id": 1,
+    "model_id": 23,
+    "ref": "gen-next@v1",
+    "role": "generation",
+    "status": "running",
+    "bytes_done": 294912,
+    "bytes_total": 6000000,
+    "percent": 4.9,
+    "speed_bps": 270153.2,
+    "eta_s": 21,
+    "error": null,
+    "files": {
+     "model": {
+      "done": 294912,
+      "total": 6000000,
+      "status": "running"
+     }
+    },
+    "activate_after": true,
+    "created_at": "2026-11-02T03:18:16.451191",
+    "finished_at": null
+   }
+  },
+  {
+   "event": "model_download",
+   "data": {
+    "id": 1,
+    "model_id": 23,
+    "ref": "gen-next@v1",
+    "role": "generation",
+    "status": "running",
+    "bytes_done": 573440,
+    "bytes_total": 6000000,
+    "percent": 9.6,
+    "speed_bps": 270022.3,
+    "eta_s": 20,
+    "error": null,
+    "files": {
+     "model": {
+      "done": 573440,
+      "total": 6000000,
+      "status": "running"
+     }
+    },
+    "activate_after": true,
+    "created_at": "2026-11-02T03:18:16.451191",
+    "finished_at": null
+   }
+  },
+  {
+   "event": "model_download",
+   "data": {
+    "id": 1,
+    "model_id": 23,
+    "ref": "gen-next@v1",
+    "role": "generation",
+    "status": "running",
+    "bytes_done": 835584,
+    "bytes_total": 6000000,
+    "percent": 13.9,
+    "speed_bps": 266146.8,
+    "eta_s": 19,
+    "error": null,
+    "files": {
+     "model": {
+      "done": 835584,
+      "total": 6000000,
+      "status": "running"
+     }
+    },
+    "activate_after": true,
+    "created_at": "2026-11-02T03:18:16.451191",
+    "finished_at": null
+   }
+  },
+  {
+   "event": "model_download",
+   "data": {
+    "id": 1,
+    "model_id": 23,
+    "ref": "gen-next@v1",
+    "role": "generation",
+    "status": "running",
+    "bytes_done": 1081344,
+    "bytes_total": 6000000,
+    "percent": 18.0,
+    "speed_bps": 258172.1,
+    "eta_s": 19,
+    "error": null,
+    "files": {
+     "model": {
+      "done": 1081344,
+      "total": 6000000,
+      "status": "running"
+     }
+    },
+    "activate_after": true,
+    "created_at": "2026-11-02T03:18:16.451191",
+    "finished_at": null
+   }
+  },
+  {
+   "event": "model_download",
+   "data": {
+    "id": 1,
+    "model_id": 23,
+    "ref": "gen-next@v1",
+    "role": "generation",
+    "status": "paused",
+    "bytes_done": 1081344,
+    "bytes_total": 6000000,
+    "percent": 18.0,
+    "speed_bps": 0.0,
+    "eta_s": null,
+    "error": null,
+    "files": {
+     "model": {
+      "done": 1081344,
+      "total": 6000000,
+      "status": "running"
+     }
+    },
+    "activate_after": true,
+    "created_at": "2026-11-02T03:18:16.451191",
+    "finished_at": null
+   }
+  },
+  {
+   "event": "model_download",
+   "data": {
+    "id": 1,
+    "model_id": 23,
+    "ref": "gen-next@v1",
+    "role": "generation",
+    "status": "running",
+    "bytes_done": 1081344,
+    "bytes_total": 6000000,
+    "percent": 18.0,
+    "speed_bps": 0.0,
+    "eta_s": null,
+    "error": null,
+    "files": {
+     "model": {
+      "done": 6000000,
+      "total": 6000000,
+      "status": "done"
+     }
+    },
+    "activate_after": true,
+    "created_at": "2026-11-02T03:18:16.451191",
+    "finished_at": null
+   }
+  },
+  {
+   "event": "model_download",
+   "data": {
+    "id": 1,
+    "model_id": 23,
+    "ref": "gen-next@v1",
+    "role": "generation",
+    "status": "running",
+    "bytes_done": 1884160,
+    "bytes_total": 6000000,
+    "percent": 31.4,
+    "speed_bps": 0.0,
+    "eta_s": null,
+    "error": null,
+    "files": {
+     "model": {
+      "done": 1884160,
+      "total": 6000000,
+      "status": "running"
+     }
+    },
+    "activate_after": true,
+    "created_at": "2026-11-02T03:18:16.451191",
+    "finished_at": null
+   }
+  },
+  {
+   "event": "model_download",
+   "data": {
+    "id": 1,
+    "model_id": 23,
+    "ref": "gen-next@v1",
+    "role": "generation",
+    "status": "running",
+    "bytes_done": 6000000,
+    "bytes_total": 6000000,
+    "percent": 100.0,
+    "speed_bps": 52099240.5,
+    "eta_s": 0,
+    "error": null,
+    "files": {
+     "model": {
+      "done": 6000000,
+      "total": 6000000,
+      "status": "done"
+     }
+    },
+    "activate_after": true,
+    "created_at": "2026-11-02T03:18:16.451191",
+    "finished_at": null
+   }
+  },
+  {
+   "event": "model_download",
+   "data": {
+    "id": 1,
+    "model_id": 23,
+    "ref": "gen-next@v1",
+    "role": "generation",
+    "status": "done",
+    "bytes_done": 6000000,
+    "bytes_total": 6000000,
+    "percent": 100.0,
+    "speed_bps": 0.0,
+    "eta_s": null,
+    "error": null,
+    "files": {
+     "model": {
+      "done": 6000000,
+      "total": 6000000,
+      "status": "done"
+     }
+    },
+    "activate_after": true,
+    "created_at": "2026-11-02T03:18:16.451191",
+    "finished_at": "2026-11-02T03:18:21.947319"
+   }
+  },
+  {
+   "event": "model_changed",
+   "data": {
+    "role": "generation",
+    "action": "testing",
+    "ref": "gen-next@v1",
+    "pending": {
+     "model_id": 23,
+     "ref": "gen-next@v1",
+     "stage": "testing",
+     "at": "2026-11-02T03:18:21.995242",
+     "checks": [
+      {
+       "name": "ram",
+       "estimate_mb": 113,
+       "limit_mb": 0,
+       "ok": true,
+       "available_mb": 9789
+      },
+      {
+       "name": "cpu",
+       "provider": "onnx-genai",
+       "ok": true,
+       "needs": [],
+       "problems": []
+      }
+     ]
+    }
+   }
+  },
+  {
+   "event": "model_changed",
+   "data": {
+    "role": "generation",
+    "action": "ready_to_confirm",
+    "ref": "gen-next@v1",
+    "pending": {
+     "model_id": 23,
+     "ref": "gen-next@v1",
+     "stage": "ready_to_confirm",
+     "at": "2026-11-02T03:18:21.995242",
+     "checks": [
+      {
+       "name": "ram",
+       "estimate_mb": 113,
+       "limit_mb": 0,
+       "ok": true,
+       "available_mb": 9789
+      },
+      {
+       "name": "cpu",
+       "provider": "onnx-genai",
+       "ok": true,
+       "needs": [],
+       "problems": []
+      }
+     ],
+     "test": {
+      "speed": 500.0,
+      "checks": [
+       {
+        "name": "says_ok",
+        "ok": true,
+        "text": "OK"
+       }
+      ],
+      "ok": true,
+      "load_ms": 0,
+      "ms": 0,
+      "rss_mb": 132,
+      "at": "2026-11-02T03:18:22.018202"
+     }
+    }
+   }
+  }
+ ]
+}

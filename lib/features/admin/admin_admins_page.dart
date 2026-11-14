@@ -6,35 +6,86 @@
 // Uses the EXISTING admin_panel.py endpoints (super-admin rules are enforced there):
 //   GET    /api/v1/admin/users?role=admin&search=&page=1&size=20  -> {items, total, page, size, pages}
 //   POST   /api/v1/admin/users        {role:"admin", name, gmail, password, phone?, country?}
-//   PUT    /api/v1/admin/users/{id}   {name, gmail, phone, country, is_active, password?}
+//   PUT    /api/v1/admin/users/{id}   {name, gmail, phone, country, is_active, password?, username? (null = remove)}
 //   DELETE /api/v1/admin/users/{id}
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:provider/provider.dart';
 
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/app_loading_indicator.dart';
-import '../../utils/widget/base_page.dart';
-import '../../utils/widget/paged_progress.dart';
+import '../../utils/widget/phone_field.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
-import 'admin_list.dart' show RowCard;
+import 'admin_filter_models.dart';
+import 'admin_filters.dart';
+import 'admin_list.dart' show AdminAvatar;
+import 'admin_models.dart' show AdminUser;
+import 'admin_page.dart';
 import 'admin_view_as_page.dart' show startViewAs;
+import 'admin_mfa_page.dart' show confirmResetUserMfa, mfaResetLabel;
+import '../auth/auth_provider.dart' show MyAuthProvider;
+import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/design/app_badges.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_data_table.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppBanner, AppEmpty;
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_username.dart';
+import '../auth/username.dart' show UsernameError;
+import '../auth/username_field.dart' show UsernameStatus;
+import 'admin_username_field.dart';
+import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
 class _AdminsApi {
   static const list = '/api/v1/admin/users';
   static String one(int id) => '/api/v1/admin/users/$id';
 }
 
+// ── premium filters ─────────────────────────────────────────────────────────
+
+const _adminSort = SortSpec({
+  'newest': 'admin_sort_newest',
+  'oldest': 'admin_sort_oldest',
+  'name_asc': 'admin_sort_name_asc',
+  'name_desc': 'admin_sort_name_desc',
+  'last_login': 'admin_sort_last_login',
+  'most_logins': 'admin_sort_most_logins',
+});
+
+const _adminSpecs = <FilterSpec>[
+  FilterSpec.choice('admin_role', 'admin_filter_admin_role', {
+    'admin': 'admin_filter_role_admin',
+    'super_admin': 'admin_filter_role_super',
+  }),
+  FilterSpec.choice('status', 'admin_filter_status', {
+    'active': 'exam_status_active',
+    'inactive': 'admin_inactive',
+  }),
+  FilterSpec.tri('verified', 'admin_filter_verified'),
+  FilterSpec.tri('has_phone', 'admin_filter_has_phone'),
+  FilterSpec.dateRange('created_from', 'created_to', 'admin_filter_created'),
+  FilterSpec.choice('last_login', 'admin_filter_last_login', {
+    'today': 'admin_filter_today',
+    '7d': 'admin_filter_last_7_days',
+    '30d': 'admin_filter_last_30_days',
+    '90d': 'admin_filter_last_90_days',
+    'inactive_30d': 'admin_filter_inactive_30d',
+    'never': 'admin_filter_never_logged_in',
+  }),
+];
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  Provider
 // ═════════════════════════════════════════════════════════════════════════════
 
-class AdminAdminsProvider extends ChangeNotifier {
+class AdminAdminsProvider extends ChangeNotifier implements AdminQueryHost {
   static const pageSize = 20;
 
   final _api = ApiClient();
@@ -46,24 +97,83 @@ class AdminAdminsProvider extends ChangeNotifier {
   bool hasMore = true;
   int _total = 0;
   int get total => _total;
+  @override
   String search = '';
+  @override
+  final Map<String, Object?> adv = {};
+  @override
+  String? sort;
+  Timer? _debounce;
   bool _disposed = false;
   int _gen = 0; // drops stale responses when the search changes mid-flight
 
   @override
+  bool get hasActiveQuery => search.isNotEmpty || adv.isNotEmpty || sort != null;
+
+  @override
+  int? get resultCount => (loading && items.isEmpty) || failed ? null : total;
+
+  @override
   void dispose() {
     _disposed = true;
+    _debounce?.cancel();
     super.dispose();
   }
+
+  Map<String, dynamic> get _query => {
+    'role': 'admin',
+    ...encodeFilters(adv),
+    if (search.isNotEmpty) 'search': search,
+    if (sort != null) 'sort': sort,
+  };
 
   void _notify() {
     if (!_disposed) notifyListeners();
   }
 
-  void setSearch(String v) {
-    if (v == search) return;
-    search = v;
-    refresh();
+  /// Debounced: typing fires one request, not one per letter.
+  @override
+  Future<void> setSearch(String v) async {
+    final t = v.trim();
+    if (t == search) return;
+    search = t;
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      if (!_disposed) refresh();
+    });
+  }
+
+  @override
+  Future<void> applyAdv(Map<String, Object?> values, {String? sortKey}) {
+    adv
+      ..clear()
+      ..addAll({
+        for (final e in values.entries)
+          if (e.value != null) e.key: e.value,
+      });
+    sort = sortKey;
+    return refresh();
+  }
+
+  @override
+  Future<void> removeAdv(Iterable<String> keys) {
+    keys.forEach(adv.remove);
+    return refresh();
+  }
+
+  @override
+  Future<void> setSort(String? v) {
+    sort = v;
+    return refresh();
+  }
+
+  @override
+  Future<void> clearAll() {
+    _debounce?.cancel();
+    search = '';
+    adv.clear();
+    sort = null;
+    return refresh();
   }
 
   List<Map<String, dynamic>> _rows(dynamic data) {
@@ -74,16 +184,22 @@ class AdminAdminsProvider extends ChangeNotifier {
     return [];
   }
 
+  /// The server's message of the last failed load (null while the list is good).
+  String? errorMessage;
+
+  /// Reloads page 1. A FAILED reload keeps the rows already on screen (the page shows [errorMessage] with Retry);
+  /// only a successful one replaces them.
   Future<void> refresh() async {
+    _debounce?.cancel();
     final gen = ++_gen;
     loading = true;
     failed = false;
-    hasMore = true;
+    errorMessage = null;
+    loadingMore = false; // a load-more of the previous query is dropped below: it must not leave this flag set
     _notify();
     try {
       final data = await _api.get(_AdminsApi.list, queryParams: {
-        'role': 'admin',
-        if (search.isNotEmpty) 'search': search,
+        ..._query,
         'page': 1,
         'size': pageSize,
       });
@@ -94,7 +210,7 @@ class AdminAdminsProvider extends ChangeNotifier {
     } catch (e) {
       if (gen != _gen) return;
       failed = true;
-      items = [];
+      errorMessage = ApiException.from(e).message;
     }
     loading = false;
     _notify();
@@ -107,20 +223,20 @@ class AdminAdminsProvider extends ChangeNotifier {
     _notify();
     try {
       final data = await _api.get(_AdminsApi.list, queryParams: {
-        'role': 'admin',
-        if (search.isNotEmpty) 'search': search,
+        ..._query,
         'page': items.length ~/ pageSize + 1,
         'size': pageSize,
       });
-      if (gen != _gen) return;
+      if (gen != _gen) return; // a search / filter replaced the list meanwhile (refresh() reset loadingMore)
       final next = _rows(data);
       final known = items.map((e) => asInt(e['id'])).toSet();
       items = [...items, ...next.where((e) => !known.contains(asInt(e['id'])))];
       _total = asInt(asMap(data)['total'], items.length);
       hasMore = next.isNotEmpty && items.length < _total;
     } catch (e) {
-      toast(ApiException.from(e).message, error: true);
+      if (gen == _gen) toast(ApiException.from(e).message, error: true);
     }
+    if (gen != _gen) return;
     loadingMore = false;
     _notify();
   }
@@ -137,14 +253,17 @@ class AdminAdminsProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> update(int id, Map<String, dynamic> body) async {
+  /// [onError] also gets the server's error (a USERNAME_* code lands on the form's username field).
+  Future<bool> update(int id, Map<String, dynamic> body, {ValueChanged<ApiException>? onError}) async {
     try {
       await _api.put(_AdminsApi.one(id), body: body);
       toast('admin_admin_saved'.tr);
       await refresh();
       return true;
     } catch (e) {
-      toast(ApiException.from(e).message, error: true);
+      final err = ApiException.from(e);
+      onError?.call(err);
+      toast(err.message, error: true);
       return false;
     }
   }
@@ -170,16 +289,18 @@ class AdminAdminsProvider extends ChangeNotifier {
 class AdminAdminsPage extends StatelessWidget {
   const AdminAdminsPage({super.key, this.embedded = false});
 
-  /// true when shown as a tab inside the dashboard shell (no AppBar).
+  /// true when shown as a tab inside the dashboard shell (no Back).
   final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     // Defence in depth: the server enforces super-admin on every call anyway.
     if (!isSuperNow(context)) {
-      return BasePage(
-        appBar: embedded ? null : ScreenAppBar(title: 'admin_admins'.tr),
-        child: EmptyState('admin_super_admin_only'.tr, icon: Icons.lock_rounded),
+      return AdminPage(
+        title: 'admin_admins'.tr,
+        icon: Icons.admin_panel_settings_rounded,
+        showBack: !embedded,
+        body: Center(child: EmptyState('admin_super_admin_only'.tr, icon: Icons.lock_rounded)),
       );
     }
     return ChangeNotifierProvider(
@@ -199,218 +320,203 @@ class _AdminsView extends StatefulWidget {
 }
 
 class _AdminsViewState extends State<_AdminsView> {
-  final _scroll = ScrollController();
-  int _fillRows = -1;
-
   @override
-  void initState() {
-    super.initState();
-    _scroll.addListener(_onScroll);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // the shell's Refresh reloads in place: filters, search text and scroll stay
+    AdminRefreshScope.register(context, context.read<AdminAdminsProvider>().refresh);
   }
 
-  @override
-  void dispose() {
-    _scroll.removeListener(_onScroll);
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scroll.hasClients && _scroll.position.extentAfter < 320) {
-      context.read<AdminAdminsProvider>().loadMore();
-    }
-  }
-
-  /// Too few rows to scroll → keep loading until the screen is full (once per row-count).
-  void _fillViewport(AdminAdminsProvider p) {
-    if (!p.hasMore || p.loadingMore || p.loading || p.failed) return;
-    if (p.items.length == _fillRows) return;
-    _fillRows = p.items.length;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scroll.hasClients) return;
-      if (_scroll.position.maxScrollExtent <= 0) p.loadMore();
-    });
+  String? _sortKey(String? s) {
+    if (s == null) return null;
+    if (s.startsWith('name')) return 'name';
+    if (s == 'newest' || s == 'oldest') return 'joined';
+    if (s == 'last_login') return 'last_login';
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminAdminsProvider>();
-    final c = context.colors;
+    final me = context.read<MyAuthProvider>().currentUser?.id;
+    final wide = MediaQuery.sizeOf(context).width >= 600;
+    final rows = [for (final r in p.items) AdminUser(r)];
 
-    final search = Padding(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-      child: SearchBox(
-        hint: 'admin_search_name_email_or_phone'.tr,
-        onChanged: p.setSearch,
-      ),
-    );
+    // a failed reload keeps the rows (a banner with Retry sits above them); only a first load can fail empty
+    final state = p.failed && p.items.isEmpty
+        ? AppTableState.error
+        : (p.loading && p.items.isEmpty ? AppTableState.loading : AppTableState.ready);
 
-    Widget body;
-    if (p.loading && p.items.isEmpty) {
-      body = const Center(child: AppLoadingIndicator());
-    } else if (p.failed) {
-      body = ErrorRetry(
-        message: 'admin_could_not_load_data'.tr,
-        onRetry: p.refresh,
-      );
-    } else if (p.items.isEmpty) {
-      body = EmptyState('admin_no_admins_found'.tr, icon: Icons.shield_outlined);
-    } else {
-      _fillViewport(p);
-      body = RefreshIndicator(
-        onRefresh: p.refresh,
-        child: ListView.builder(
-          controller: _scroll,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(14, 6, 14, 90),
-          itemCount: p.items.length + 1,
-          itemBuilder: (ctx, i) {
-            if (i == p.items.length) {
-              return PagedListFooter(
-                loadingMore: p.loadingMore,
-                hasMore: p.hasMore,
-              );
-            }
-            return _AdminTile(p.items[i]);
+    final table = AppDataTable<AdminUser>(
+      state: state,
+      errorText: p.errorMessage,
+      onRetry: p.refresh,
+      rows: rows,
+      rowId: (u) => u.id,
+      searchHint: 'admin_search_name_email_or_phone'.tr,
+      onSearch: p.setSearch,
+      toolbarTrailing: Row(mainAxisSize: MainAxisSize.min, children: [
+        AdminFilterButton(host: p, specs: _adminSpecs, sort: _adminSort),
+      ]),
+      columns: [
+        AppTableColumn<AdminUser>(
+          key: 'name',
+          label: 'name_label'.tr,
+          primary: true,
+          sortable: true,
+          flex: 3,
+          cell: (ctx, u) => Row(children: [
+            AdminAvatar(name: u.name, url: u.imageUrl, size: 36),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: Text(u.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(ctx))),
+          ]),
+        ),
+        AppTableColumn<AdminUser>(
+          key: 'contact',
+          label: 'admin_email'.tr,
+          flex: 3,
+          cell: (ctx, u) {
+            final uname = usernameFrom(u.j);
+            return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text(u.gmail.isEmpty ? '—' : u.gmail,
+                  maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.row(ctx)),
+              if (uname != null)
+                Text('@$uname',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.meta(ctx)),
+            ]);
           },
         ),
-      );
-    }
-
-    return BasePage(
-      useWebCard: !widget.embedded,
-      maxWith: 1100,
-      enableFooterWidget: !widget.embedded,
-      appBar: widget.embedded ? null : ScreenAppBar(title: 'admin_admins'.tr),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "admins_float",
-        key: ValueKey("admins_float"),
-        backgroundColor: c.primary,
-        onPressed: () => _openAdminForm(context, p),
-        icon: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white),
-        label: Text(
-          'admin_add_admin'.tr,
-          style: const TextStyle(fontFamily: 'tajawal', color: Colors.white),
+        AppTableColumn<AdminUser>(
+          key: 'status',
+          label: 'status'.tr,
+          flex: 2,
+          cell: (ctx, u) {
+            final isSuperRow = u.role == 'super-admin';
+            final active = asBool(u.j['is_active'], true);
+            return Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
+              AppStatusBadge(
+                label: isSuperRow ? 'admin_role_super_admin'.tr : 'admin_role_admin'.tr,
+                tone: isSuperRow ? AppTone.brand : AppTone.info,
+                dense: true,
+              ),
+              AppStatusBadge(
+                label: active ? 'exam_status_active'.tr : 'admin_inactive'.tr,
+                tone: active ? AppTone.success : AppTone.warning,
+                dense: true,
+              ),
+            ]);
+          },
         ),
-      ),
-      child: Column(
-        children: [
-          search,
-          if (p.items.isNotEmpty && p.total > 20)
-            PagedCountCard(
-              loaded: p.items.length,
-              total: p.total,
-              loadingMore: p.loadingMore,
-              done: !p.hasMore,
-              icon: Icons.admin_panel_settings_rounded,
-              margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-            ),
-          Expanded(child: body),
-        ],
-      ),
-    );
-  }
-}
-
-class _AdminTile extends StatelessWidget {
-  const _AdminTile(this.row);
-
-  final Map<String, dynamic> row;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final p = context.read<AdminAdminsProvider>();
-    final id = asInt(row['id']);
-    final name = asStr(row['name']);
-    final active = asBool(row['is_active'], true);
-    final isSuperRow = asStr(row['role']) == 'super-admin';
-
-    return RowCard(
-      onTap: () => _openAdminForm(context, p, existing: row),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: c.primary.withValues(alpha: 0.15),
-            child: Text(
-              name.isEmpty ? '?' : name.characters.first.toUpperCase(),
-              style: TextStyle(color: c.primary, fontWeight: FontWeight.w800),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w800,
-                    color: c.textDark,
-                  ),
-                ),
-                Text(
-                  asStr(row['gmail']),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textDirection: TextDirection.ltr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 12,
-                    color: c.textLight,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Wrap(spacing: 6, runSpacing: 4, children: [
-                  StatusChip(
-                    isSuperRow
-                        ? 'admin_role_super_admin'.tr
-                        : 'admin_role_admin'.tr,
-                    isSuperRow ? c.warning : c.primary,
-                  ),
-                  StatusChip(
-                    active ? 'exam_status_active'.tr : 'admin_inactive'.tr,
-                    active ? c.success : c.warning,
-                  ),
-                ]),
-              ],
-            ),
-          ),
+        AppTableColumn<AdminUser>.text(
+          key: 'joined',
+          label: 'admin_joined'.tr,
+          sortable: true,
+          flex: 2,
+          showOnPhone: false,
+          text: (u) => shortDate(u.createdAt),
+        ),
+        AppTableColumn<AdminUser>.text(
+          key: 'last_login',
+          label: 'admin_last_login'.tr,
+          sortable: true,
+          flex: 2,
+          showOnPhone: false,
+          text: (u) => shortDateTime(u.lastLogin),
+        ),
+      ],
+      sortKey: _sortKey(p.sort),
+      sortAscending: p.sort == 'name_asc' || p.sort == 'oldest',
+      onSort: (k, asc) => p.setSort(switch (k) {
+        'name' => asc ? 'name_asc' : 'name_desc',
+        'joined' => asc ? 'oldest' : 'newest',
+        _ => 'last_login',
+      }),
+      onRowTap: (u) => _openAdminForm(context, p, existing: u.j),
+      rowActions: (u) {
+        final isSuperRow = u.role == 'super-admin';
+        return [
           // Super-admin: open this admin's dashboard (read-only). Never another super-admin.
           if (!isSuperRow)
-            IconButton(
-              tooltip: 'view_as_user'.tr,
-              icon: Icon(Icons.visibility_rounded, color: c.warning),
-              onPressed: () => startViewAs(
-                Navigator.of(context, rootNavigator: true),
-                id: id,
-                name: name,
-                role: 'admin',
-              ),
+            AppRowAction<AdminUser>(
+              icon: Icons.visibility_rounded,
+              label: 'view_as_user'.tr,
+              onTap: () => startViewAs(Navigator.of(context, rootNavigator: true), id: u.id, name: u.name, role: 'admin'),
             ),
-          IconButton(
-            tooltip: 'btn_edit'.tr,
-            icon: Icon(Icons.edit_rounded, color: c.primary),
-            onPressed: () => _openAdminForm(context, p, existing: row),
+          AppRowAction<AdminUser>(
+            icon: Icons.edit_rounded,
+            label: 'btn_edit'.tr,
+            onTap: () => _openAdminForm(context, p, existing: u.j),
           ),
+          // Lost phone AND recovery codes: remove their two-step verification (not your own: turn it off instead)
+          if (me != u.id)
+            AppRowAction<AdminUser>(
+              icon: Icons.phonelink_erase_rounded,
+              label: mfaResetLabel(),
+              onTap: () => confirmResetUserMfa(context, userId: u.id, name: u.name),
+            ),
           // A super-admin row can't be deleted from here (server also refuses).
           if (!isSuperRow)
-            IconButton(
-              tooltip: 'delete'.tr,
-              icon: Icon(Icons.delete_outline_rounded, color: c.danger),
-              onPressed: () async {
+            AppRowAction<AdminUser>(
+              icon: Icons.delete_outline_rounded,
+              label: 'delete'.tr,
+              danger: true,
+              onTap: () async {
                 final ok = await confirm(
                   context,
-                  message: trp('admin_delete_admin_confirm', {'name': name}),
+                  message: trp('admin_delete_admin_confirm', {'name': u.name}),
                   danger: true,
                 );
-                if (ok) await p.remove(id);
+                if (ok) await p.remove(u.id);
               },
             ),
-        ],
+        ];
+      },
+      empty: p.hasActiveQuery
+          ? AppEmpty(
+              icon: Icons.search_off_rounded,
+              title: 'admin_filter_no_results'.tr,
+              actionLabel: 'ds_clear_filters'.tr,
+              onAction: p.clearAll,
+            )
+          : AppEmpty(icon: Icons.shield_outlined, title: 'admin_no_admins_found'.tr),
+      onClearFilters: p.clearAll,
+      onLoadMore: p.loadMore,
+      hasMore: p.hasMore,
+      loadingMore: p.loadingMore,
+    );
+
+    return AdminPage(
+      title: 'admin_admins'.tr,
+      icon: Icons.admin_panel_settings_rounded,
+      subtitle: wide && !p.failed && !p.loading
+          ? countText(p.total,
+              ar1: 'مشرف واحد', ar2: 'مشرفان', arFew: '{n} مشرفين', arMany: '{n} مشرفاً', en1: '1 admin', en: '{n} admins')
+          : null,
+      showBack: !widget.embedded,
+      maxWidth: double.infinity,
+      onRefresh: p.refresh,
+      primaryAction: AppButton.primary(
+        key: const ValueKey('admins_add'),
+        label: 'admin_add_admin'.tr,
+        icon: Icons.admin_panel_settings_rounded,
+        onPressed: () => _openAdminForm(context, p),
+      ),
+      body: Padding(
+        padding: AdminPage.bodyPadding(context),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (p.failed && p.items.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
+              child: AppBanner(
+                icon: Icons.error_outline_rounded,
+                text: p.errorMessage ?? 'admin_could_not_load_data'.tr,
+                color: context.colors.danger,
+                action: AppButton.ghost(label: 'retry'.tr, size: AppButtonSize.sm, onPressed: p.refresh),
+              ),
+            ),
+          AdminActiveFilterChips(host: p, specs: _adminSpecs, sort: _adminSort),
+          Expanded(child: table),
+        ]),
       ),
     );
   }
@@ -426,7 +532,7 @@ Future<void> _openAdminForm(
       Map<String, dynamic>? existing,
     }) {
   return showAdminSheet(
-    context,
+    context, mode: AppSheetMode.side,
         (ctx) => _AdminForm(provider: p, existing: existing),
   );
 }
@@ -446,20 +552,20 @@ class _AdminFormState extends State<_AdminForm> {
   late final _name = TextEditingController(text: asStr(widget.existing?['name']));
   late final _email = TextEditingController(text: asStr(widget.existing?['gmail']));
   late final _phone = TextEditingController(text: asStr(widget.existing?['phone']));
-  late final _country = TextEditingController(
-    text: asStr(widget.existing?['country']).isEmpty
-        ? 'EG'
-        : asStr(widget.existing?['country']),
-  );
   final _password = TextEditingController();
   late bool _active = asBool(widget.existing?['is_active'], true);
+  // the row's @username: a super-admin may set, change or remove it (D-071, admin edit)
+  late final String? _currentUsername = usernameFrom(widget.existing);
+  late final _username = TextEditingController(text: _currentUsername ?? '');
+  UsernameError? _usernameError;
+  UsernameStatus _usernameStatus = UsernameStatus.current;
   bool busy = false;
 
   bool get editing => widget.existing != null;
 
   @override
   void dispose() {
-    for (final c in [_name, _email, _phone, _country, _password]) {
+    for (final c in [_name, _email, _phone, _password, _username]) {
       c.dispose();
     }
     super.dispose();
@@ -467,18 +573,30 @@ class _AdminFormState extends State<_AdminForm> {
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
+    final uname = editing
+        ? adminUsernameBody(current: _currentUsername, text: _username.text, enabled: adminUsernameOn)
+        : const <String, Object?>{};
+    final hold = adminUsernameHold(uname, _usernameStatus);
+    if (hold != null) {
+      toast(hold, error: _usernameStatus != UsernameStatus.checking);
+      return;
+    }
     setState(() => busy = true);
     final phone = _phone.text.trim();
-    final country = _country.text.trim();
     final bool ok;
     if (editing) {
       ok = await widget.provider.update(asInt(widget.existing!['id']), {
         'name': _name.text.trim(),
         'gmail': _email.text.trim(),
         'phone': phone.isEmpty ? null : phone,
-        'country': country.isEmpty ? null : country,
+        // no known dial code (or no phone): leave the stored country alone instead of throwing
+        if (kPhoneCountries.where((e) => _phone.text.contains(e.dial)).firstOrNull case final pc?) 'country': pc.flag,
         'is_active': _active,
         if (_password.text.isNotEmpty) 'password': _password.text,
+        ...uname,
+      }, onError: (e) {
+        final err = UsernameError.from(e, submitted: _username.text);
+        if (err != null && mounted) setState(() => _usernameError = err);
       });
     } else {
       ok = await widget.provider.create({
@@ -487,7 +605,8 @@ class _AdminFormState extends State<_AdminForm> {
         'password': _password.text,
         'role': 'admin',
         'phone': phone.isEmpty ? null : phone,
-        'country': country.isEmpty ? null : country,
+        // no known dial code (or no phone): leave the stored country alone instead of throwing
+        if (kPhoneCountries.where((e) => _phone.text.contains(e.dial)).firstOrNull case final pc?) 'country': pc.flag,
       });
     }
     if (!mounted) return;
@@ -497,14 +616,13 @@ class _AdminFormState extends State<_AdminForm> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SheetHeader(editing ? 'admin_edit_admin'.tr : 'admin_add_admin'.tr),
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
             child: Form(
               key: _form,
               child: Column(
@@ -516,52 +634,29 @@ class _AdminFormState extends State<_AdminForm> {
                         ? 'admin_name_is_required'.tr
                         : null,
                   ),
-                  Field(
-                    controller: _email,
-                    label: 'admin_email'.tr,
-                    keyboard: TextInputType.emailAddress,
-                    ltr: true,
-                    validator: (v) =>
-                    (v == null || !v.contains('@') || !v.contains('.'))
-                        ? 'admin_invalid_email'.tr
-                        : null,
-                  ),
-                  Field(
+                  AppEmailField(controller: _email, label: 'admin_email'.tr),
+                  PhoneInputField(
                     controller: _phone,
                     label: 'admin_phone'.tr,
-                    keyboard: TextInputType.phone,
-                    ltr: true,
-                  ),
-                  Field(
-                    controller: _country,
-                    label: 'admin_country_code'.tr,
-                    ltr: true,
-                  ),
-                  Field(
-                    controller: _password,
-                    label: editing
-                        ? 'admin_new_password_optional'.tr
-                        : 'password'.tr,
-                    obscure: true,
-                    validator: (v) {
-                      if (editing && (v == null || v.isEmpty)) return null;
-                      return (v == null || v.length < 6)
-                          ? 'admin_at_least_6_characters'.tr
-                          : null;
-                    },
                   ),
                   if (editing)
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      activeThumbColor: c.primary,
-                      title: Text(
-                        'exam_status_active'.tr,
-                        style: TextStyle(fontFamily: 'tajawal', color: c.textDark),
-                      ),
+                    AdminUsernameField(
+                      controller: _username,
+                      currentUsername: _currentUsername,
+                      error: _usernameError,
+                      onStatusChanged: (s) => setState(() => _usernameStatus = s),
+                    ),
+                  AppPasswordField(controller: _password, label: editing
+                        ? 'admin_new_password_optional'.tr
+                        : 'password'.tr, required: !editing),
+                  if (editing)
+                    AppSwitchTile(
+                      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+                      title: 'exam_status_active'.tr,
                       value: _active,
                       onChanged: (v) => setState(() => _active = v),
                     ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpace.xs),
                   PrimaryButton(
                     label: 'save'.tr,
                     isLoading: busy,
@@ -575,4 +670,4 @@ class _AdminFormState extends State<_AdminForm> {
       ],
     );
   }
-}
+}

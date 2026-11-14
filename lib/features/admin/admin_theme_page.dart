@@ -2,18 +2,20 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_contrast.dart';
 import 'package:provider/provider.dart';
 
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/app_loading_indicator.dart';
-import '../../utils/widget/base_page.dart';
-import '../../utils/widget/outline_button.dart';
-import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_page.dart';
 import 'admin_models.dart';
 import 'admin_providers.dart';
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppListSkeleton, AppRefresh, AppButton, AppIconButton, AppCard, AppSpace, AppType, AppStatusBadge, AppTone, AppErrorState, AppUnsavedGuard, AppTouch, AppRadius, AppGrid, AppBorder, AppIconSize, appInk, appFieldDecoration, appFieldTextStyle;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal, AppTilt;
 
 Color? _parseHex(String s) {
   final h = s.trim().replaceFirst('#', '');
@@ -37,57 +39,50 @@ class AdminThemePage extends StatelessWidget {
 class _View extends StatelessWidget {
   const _View();
 
+  /// A preset card is never narrower than this: the mock screen and its three actions stay readable.
+  static const double _cardMinWidth = AppSpace.xxxl * 5;
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminThemesProvider>();
-    final c = context.colors;
 
     Widget body;
     if (p.items.isEmpty && p.isLoading) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (p.items.isEmpty) {
-      body = ErrorRetry(
-        message: p.error ?? 'admin_could_not_load_data'.tr,
-        onRetry: p.load,
-      );
+      body = AppErrorState(message: p.error ?? 'admin_could_not_load_data'.tr, onRetry: p.load);
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: p.load,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 90),
+          padding: AdminPage.bodyPadding(context),
           children: [
-            Text(
-              'admin_pick_a_ready_theme_or_build_your_own'.tr,
-              style: TextStyle(
-                fontFamily: 'tajawal',
-                fontSize: 12.5,
-                color: c.textMedium,
-              ),
+            // the presets side by side on wide screens, so they compare at a glance; one column on phones
+            AppGrid(
+              minTile: _View._cardMinWidth,
+              padding: EdgeInsets.zero,
+              children: [
+                for (final (i, th) in p.items.indexed)
+                  AppReveal(index: i, group: 'admin_themes', child: _ThemeCard(th, active: th.key == p.activeKey)),
+              ],
             ),
-            const SizedBox(height: 12),
-            for (final th in p.items)
-              _ThemeCard(th, active: th.key == p.activeKey),
           ],
         ),
       );
     }
 
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
-      appBar: ScreenAppBar(title: 'theme'.tr),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "theme_float",
-        key: ValueKey("theme_float"),
-        backgroundColor: c.primary,
+    return AdminPage(
+      title: 'theme'.tr,
+      subtitle: 'admin_pick_a_ready_theme_or_build_your_own'.tr,
+      icon: Icons.palette_rounded,
+      onRefresh: p.load,
+      primaryAction: AppButton.primary(
+        key: const ValueKey('theme_float'),
+        label: 'admin_custom_theme'.tr,
+        icon: Icons.palette_rounded,
         onPressed: p.items.isEmpty ? null : () => _openEditor(context, p),
-        icon: const Icon(Icons.palette_rounded, color: Colors.white),
-        label: Text(
-          'admin_custom_theme'.tr,
-          style: const TextStyle(fontFamily: 'tajawal', color: Colors.white),
-        ),
       ),
-      child: body,
+      body: body,
     );
   }
 }
@@ -100,43 +95,33 @@ class _ThemeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final p = context.read<AdminThemesProvider>();
     final col = th.colors;
-    Color sw(String k) => _parseHex(col[k] ?? '') ?? Colors.grey;
+    Color sw(String k) => _parseHex(col[k] ?? '') ?? context.colors.textLight;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+    final card = DecoratedBox(
+      position: DecorationPosition.foreground,
       decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: active ? c.primary : c.divider,
-          width: active ? 2 : 1,
-        ),
+        borderRadius: AppRadius.cardAll,
+        border: active ? Border.all(color: context.colors.primary, width: AppBorder.focus) : null,
       ),
+      child: AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(
-                child: Text(
-                  th.name,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color: c.textDark,
-                  ),
-                ),
+                child: Text(th.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
               ),
-              if (active) StatusChip('admin_active_2'.tr, c.success),
-              if (!th.isBuiltin) StatusChip('admin_custom'.tr, c.purple),
+              if (active) AppStatusBadge(label: 'admin_active_2'.tr, tone: AppTone.success),
+              if (!th.isBuiltin) ...[
+                AppSpace.gapXs,
+                AppStatusBadge(label: 'admin_custom'.tr, tone: AppTone.brand),
+              ],
             ],
           ),
-          const SizedBox(height: 10),
+          AppSpace.gapSm,
           _Preview(
             primary: sw('primary_hex'),
             dark: sw('primary_dark_hex'),
@@ -147,46 +132,35 @@ class _ThemeCard extends StatelessWidget {
             text: sw('text_dark'),
             card: sw('surface_card'),
           ),
-          const SizedBox(height: 10),
-          Row(
+          AppSpace.gapSm,
+          // wraps: three actions never overflow a 320 px phone
+          Wrap(
+            spacing: AppSpace.xs,
+            runSpacing: AppSpace.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: active ? c.textLight : c.primary,
-                  ),
-                  icon: const Icon(Icons.check_rounded, color: Colors.white),
-                  label: Text(
-                    active ? 'admin_currently_active'.tr : 'admin_activate'.tr,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'tajawal',
-                    ),
-                  ),
-                  onPressed: active
-                      ? null
-                      : () async {
-                          final ok = await confirm(
-                            context,
-                            message: trp('admin_activate_for_all_users', {
-                              'name': th.name,
-                            }),
-                          );
-                          if (ok) await p.activate(th.id);
-                        },
-                ),
+              AppButton.primary(
+                icon: Icons.check_rounded,
+                label: active ? 'admin_currently_active'.tr : 'admin_activate'.tr,
+                onPressed: active
+                    ? null
+                    : () async {
+                        final ok = await confirm(
+                          context,
+                          message: trp('admin_activate_for_all_users', {'name': th.name}),
+                        );
+                        if (ok) await p.activate(th.id);
+                      },
               ),
-              const SizedBox(width: 8),
-              OutlineButton(
+              AppButton.secondary(
                 icon: th.isBuiltin ? Icons.copy_rounded : Icons.edit_rounded,
                 label: th.isBuiltin ? 'admin_copy'.tr : 'btn_edit'.tr,
-                onPressed: () =>
-                    _openEditor(context, p, base: th, edit: !th.isBuiltin),
-                color: context.colors.primary,
+                onPressed: () => _openEditor(context, p, base: th, edit: !th.isBuiltin),
               ),
               if (!th.isBuiltin && !active)
-                IconButton(
-                  icon: Icon(Icons.delete_outline_rounded, color: c.danger),
+                AppIconButton(
+                  tooltip: t('حذف', 'Delete'),
+                  icon: Icons.delete_outline_rounded,
                   onPressed: () async {
                     final ok = await confirm(
                       context,
@@ -200,11 +174,14 @@ class _ThemeCard extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
+    return active ? AppTilt.subtle(radius: AppRadius.card, child: card) : card;
   }
 }
 
-/// Mini mock screen painted with the theme colours (used in the list and the editor).
+/// A mini editorial screen painted with the theme's colours (used in the list and the editor): the canvas, a tinted
+/// block (accent 1) with a headline, a paper card with an achievement dot (accent 2) and the solid primary button,
+/// then the primary family as swatches.
 class _Preview extends StatelessWidget {
   const _Preview({
     required this.primary,
@@ -219,85 +196,124 @@ class _Preview extends StatelessWidget {
 
   final Color primary, dark, light, accent1, accent2, background, text, card;
 
+  static const double _height = AppSpace.xxxl * 2 + AppSpace.lg;
+  static const double _bar = AppSpace.xxs + 2;
+
+  Widget _line(Color color, double widthFactor, [double height = _bar]) => FractionallySizedBox(
+        alignment: AlignmentDirectional.centerStart,
+        widthFactor: widthFactor,
+        child: Container(
+          height: height,
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppRadius.pill)),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 110,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: card,
-                borderRadius: BorderRadius.circular(10),
-              ),
+    final muted = text.withValues(alpha: 0.35);
+    return ExcludeSemantics(
+      child: Container(
+        height: _height,
+        padding: const EdgeInsets.all(AppSpace.sm),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: AppRadius.controlAll,
+          border: Border.all(color: context.colors.divider, width: AppBorder.hairline),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 3,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    height: 8,
-                    width: 70,
-                    decoration: BoxDecoration(
-                      color: text,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    height: 6,
-                    width: 110,
-                    decoration: BoxDecoration(
-                      color: text.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    height: 24,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [primary, accent2]),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                  // the block: headline + one line in the theme's ink
+                  Expanded(
                     child: Container(
-                      height: 5,
-                      width: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(3),
+                      padding: const EdgeInsets.all(AppSpace.xs + AppSpace.xxs),
+                      decoration: BoxDecoration(color: accent1, borderRadius: AppRadius.controlAll),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _line(text, 0.7, AppSpace.xs),
+                          const SizedBox(height: AppSpace.xxs + 2),
+                          _line(muted, 0.45),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpace.xs),
+                  // the primary button
+                  Container(
+                    height: AppSpace.lg,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: primary, borderRadius: AppRadius.chipAll),
+                    child: FractionallySizedBox(
+                      widthFactor: 0.4,
+                      child: Container(
+                        height: AppSpace.xxs + 1,
+                        decoration: BoxDecoration(
+                          color: context.colors.onHero,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Column(
-              children: [
-                for (final col in [primary, dark, light, accent1, accent2])
+            const SizedBox(width: AppSpace.xs),
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // a paper card: a gold achievement dot and two lines
                   Expanded(
                     child: Container(
-                      margin: const EdgeInsets.only(bottom: 3),
-                      decoration: BoxDecoration(
-                        color: col,
-                        borderRadius: BorderRadius.circular(5),
+                      padding: const EdgeInsets.all(AppSpace.xs),
+                      decoration: BoxDecoration(color: card, borderRadius: AppRadius.chipAll),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: AppSpace.sm,
+                            height: AppSpace.sm,
+                            decoration: BoxDecoration(color: accent2, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(height: AppSpace.xs),
+                          _line(muted, 0.85),
+                          const SizedBox(height: AppSpace.xxs),
+                          _line(muted, 0.55),
+                        ],
                       ),
                     ),
                   ),
-              ],
+                  const SizedBox(height: AppSpace.xs),
+                  // the primary family
+                  SizedBox(
+                    height: AppSpace.lg,
+                    child: Row(
+                      children: [
+                        for (final (i, col) in [dark, primary, light].indexed) ...[
+                          if (i > 0) const SizedBox(width: AppSpace.xxs),
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(color: col, borderRadius: AppRadius.chipAll),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -320,6 +336,31 @@ const _editable = <String, String>{
   'dark_background': 'admin_color_dark_background',
   'dark_card': 'admin_color_dark_card',
 };
+
+/// A secondary text colour of a theme that misses WCAG AA (4.5:1) on one of its surfaces.
+typedef MutedContrastIssue = ({bool dark, String hex, double ratio, Color adjusted});
+
+/// The secondary text colours (`text_light`, `dark_text_light`) of the flat theme [colors] that read below 4.5:1 on a
+/// surface they are drawn on, with the colour the app will use instead (the live palette is guarded the same way,
+/// `ThemeConfigModel.readableText`). Surfaces the theme does not carry are skipped.
+List<MutedContrastIssue> mutedContrastIssues(Map<String, String> colors) {
+  List<Color> on(List<String> keys) => [for (final k in keys) ?_parseHex(colors[k] ?? '')];
+  const light = ['background_hex', 'surface_card', 'card_bg_hexa', 'card_bg', 'text_field_background', 'input_bg'];
+  const dark = ['dark_background', 'dark_surface', 'dark_card', 'dark_input', 'input_bg_dark'];
+  return [
+    for (final (isDark, key, surfaces) in [(false, 'text_light', on(light)), (true, 'dark_text_light', on(dark))])
+      if (_parseHex(colors[key] ?? '') case final fg?)
+        if (surfaces.isNotEmpty && !passesContrast(fg, surfaces))
+          (
+            dark: isDark,
+            hex: colors[key]!.trim().toUpperCase(),
+            ratio: minContrast(fg, surfaces),
+            adjusted: ensureContrast(fg, surfaces),
+          ),
+  ];
+}
+
+String _hexOf(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
 Future<void> _openEditor(
   BuildContext context,
@@ -365,9 +406,22 @@ class _EditorState extends State<_Editor> {
   final Map<String, TextEditingController> _ctrls = {};
   bool busy = false;
 
+  /// Unsaved edits: the names or any colour differ from the theme this editor started from.
+  bool get _dirty {
+    final src = widget.source;
+    if (_ar.text != (widget.edit ? src.nameAr : '${src.nameAr} (نسخة)')) return true;
+    if (_en.text != (widget.edit ? src.nameEn : '${src.nameEn} copy')) return true;
+    for (final e in _ctrls.entries) {
+      if (e.value.text.trim().toUpperCase() != (src.colors[e.key] ?? '#000000').toUpperCase()) return true;
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
+    _ar.addListener(_redraw);
+    _en.addListener(_redraw);
     for (final k in _editable.keys) {
       _ctrls[k] = TextEditingController(text: colors[k] ?? '#000000');
     }
@@ -383,7 +437,11 @@ class _EditorState extends State<_Editor> {
     super.dispose();
   }
 
-  Color col(String k) => _parseHex(_ctrls[k]!.text) ?? Colors.grey;
+  void _redraw() {
+    if (mounted) setState(() {});
+  }
+
+  Color col(String k) => _parseHex(_ctrls[k]!.text) ?? context.colors.textLight;
 
   Future<void> _save() async {
     if (_ar.text.trim().isEmpty || _en.text.trim().isEmpty) {
@@ -414,6 +472,13 @@ class _EditorState extends State<_Editor> {
 
   @override
   Widget build(BuildContext context) {
+    return AppUnsavedGuard(
+      dirty: _dirty && !busy,
+      child: _body(context),
+    );
+  }
+
+  Widget _body(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -422,7 +487,7 @@ class _EditorState extends State<_Editor> {
         ),
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -434,9 +499,9 @@ class _EditorState extends State<_Editor> {
                   accent2: col('accent2_hex'),
                   background: col('background_hex'),
                   text: col('text_dark'),
-                  card: _parseHex(colors['surface_card'] ?? '') ?? Colors.white,
+                  card: _parseHex(colors['surface_card'] ?? '') ?? AppTheme.surfaceCard,
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpace.lg),
                 Field(controller: _ar, label: 'admin_arabic_name_2'.tr),
                 Field(
                   controller: _en,
@@ -445,38 +510,64 @@ class _EditorState extends State<_Editor> {
                 ),
                 for (final e in _editable.entries)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.only(bottom: AppSpace.sm),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        GestureDetector(
-                          onTap: () => _pickPalette(e.key),
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: col(e.key),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.black26),
+                        Semantics(
+                          button: true,
+                          label: '${e.value.tr} ${_ctrls[e.key]!.text}',
+                          child: InkWell(
+                            borderRadius: AppRadius.controlAll,
+                            onTap: () => _pickPalette(e.key),
+                            child: Container(
+                              width: AppTouch.min,
+                              height: AppTouch.min,
+                              decoration: BoxDecoration(
+                                color: col(e.key),
+                                borderRadius: AppRadius.controlAll,
+                                border: Border.all(color: context.colors.divider, width: AppBorder.hairline),
+                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: AppSpace.sm),
                         Expanded(
                           child: TextField(
                             controller: _ctrls[e.key],
                             textDirection: TextDirection.ltr,
                             onChanged: (_) => setState(() {}),
-                            decoration: InputDecoration(
-                              labelText: e.value.tr,
-                              hintText: '#RRGGBB',
-                              errorText: _validHex(_ctrls[e.key]!.text)
-                                  ? null
-                                  : 'admin_use_rrggbb'.tr,
-                              isDense: true,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                            style: appFieldTextStyle(context),
+                            decoration: appFieldDecoration(
+                              context,
+                              hint: '#RRGGBB',
+                              errorText: _validHex(_ctrls[e.key]!.text) ? null : 'admin_use_rrggbb'.tr,
+                              dense: true,
+                            ).copyWith(labelText: e.value.tr),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                for (final w in mutedContrastIssues({
+                  ...colors,
+                  for (final e in _ctrls.entries)
+                    if (_validHex(e.value.text)) e.key: e.value.text.trim(),
+                }))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.contrast_rounded, size: AppIconSize.sm, color: appInk(context, context.colors.warning)),
+                        const SizedBox(width: AppSpace.xs),
+                        Expanded(
+                          child: Text(
+                            t(
+                              'النص الثانوي ${w.dark ? '(الوضع الداكن) ' : ''}${w.hex} تباينه ${w.ratio.toStringAsFixed(1)}:1 فقط مع الخلفية (المطلوب 4.5:1) — سيعرضه التطبيق بلون ${_hexOf(w.adjusted)}',
+                              'Secondary text ${w.dark ? '(dark mode) ' : ''}${w.hex} reaches only ${w.ratio.toStringAsFixed(1)}:1 on its background (4.5:1 needed) — the app will show it as ${_hexOf(w.adjusted)}',
                             ),
+                            style: AppType.meta(context),
                           ),
                         ),
                       ],
@@ -484,14 +575,10 @@ class _EditorState extends State<_Editor> {
                   ),
                 Text(
                   'admin_all_other_colours_success_danger_dark'.tr,
-                  style: const TextStyle(fontFamily: 'tajawal', fontSize: 12),
+                  style: AppType.meta(context),
                 ),
-                const SizedBox(height: 14),
-                PrimaryButton(
-                  label: 'save'.tr,
-                  isLoading: busy,
-                  onPressed: _save,
-                ),
+                const SizedBox(height: AppSpace.lg),
+                AppButton.primary(label: 'save'.tr, busy: busy, expand: true, onPressed: _save),
               ],
             ),
           ),
@@ -529,24 +616,27 @@ class _EditorState extends State<_Editor> {
       builder: (ctx) => Directionality(
         textDirection: dir,
         child: AlertDialog(
-          title: Text(
-            'admin_pick_a_colour'.tr,
-            style: const TextStyle(fontFamily: 'tajawal'),
-          ),
+          scrollable: true,
+          title: Text('admin_pick_a_colour'.tr),
           content: Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: AppSpace.xs,
+            runSpacing: AppSpace.xs,
             children: [
               for (final c in _swatches)
-                GestureDetector(
-                  onTap: () => Navigator.pop(ctx, c),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: c,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.black26),
+                Semantics(
+                  button: true,
+                  label: _hexOf(c),
+                  child: InkWell(
+                    borderRadius: AppRadius.controlAll,
+                    onTap: () => Navigator.pop(ctx, c),
+                    child: Container(
+                      width: AppTouch.min,
+                      height: AppTouch.min,
+                      decoration: BoxDecoration(
+                        color: c,
+                        borderRadius: AppRadius.controlAll,
+                        border: Border.all(color: context.colors.divider, width: AppBorder.hairline),
+                      ),
                     ),
                   ),
                 ),

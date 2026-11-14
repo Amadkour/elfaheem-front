@@ -11,6 +11,7 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+documents/
 
 # IntelliJ / Android Studio
 *.iml
@@ -63,3 +64,43 @@ app.*.symbols
 
 # Obfuscation
 app.*.map.json
+# Widget Preview related
+.widget_preview/
+
+# release signing (never committed)
+android/key.properties
+*.jks
+*.keystore
+build/debug-info/
+
+# secrets and signing material (never committed; Phase 10, A02 / D1)
+.env*
+*firebase-adminsdk*.json
+*service-account*.json
+*.p12
+*.p8
+*.pem
+# public TLS certificates (server leaf, Let's Encrypt intermediates and roots), fixtures of test/auth/cert_pin_test.dart (D-946)
+!test/fixtures/tls/*.pem
+!test/fixtures/tls/le/*.pem
+*.mobileprovision
+
+# developer-documents toolchain (D1)
+.docvenv/
+documents/_build/__pycache__/
+
+# visual QA renders (flutter test test/visual --update-goldens); regenerated on demand, not diffed
+test/visual/goldens/
+
+# real-app QA screenshots + ISSUES.md (web build driven by playwright-core); regenerated on demand
+screenshots/
+
+# D-146 build runner: its local settings (token, key path) — never committed
+tools/runner/runner.env
+
+# Local agent state and third-party agent skills (reinstall from skills-lock.json: npx skills experimental_install)
+.claude/
+.agents/skills/*
+!.agents/skills/extension-to-functions-codebase/
+!.agents/skills/firebase-*/
+!.agents/skills/xcode-project-setup/

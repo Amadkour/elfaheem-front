@@ -15,10 +15,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Swipe card
@@ -142,19 +142,17 @@ class _SwipeRequestCardState extends State<SwipeRequestCard>
       resizeDuration: const Duration(milliseconds: 320),
       background: _SwipeBackground(
         color: c.success,
+        tint: c.successTint,
         icon: Icons.check_circle_rounded,
         label: widget.approveLabel ?? 'request_accept'.tr,
         alignment: AlignmentDirectional.centerStart,
-        begin: AlignmentDirectional.centerStart,
-        end: AlignmentDirectional.centerEnd,
       ),
       secondaryBackground: _SwipeBackground(
         color: c.danger,
+        tint: c.dangerTint,
         icon: Icons.cancel_rounded,
         label: widget.rejectLabel ?? 'request_reject'.tr,
         alignment: AlignmentDirectional.centerEnd,
-        begin: AlignmentDirectional.centerEnd,
-        end: AlignmentDirectional.centerStart,
       ),
       onUpdate: (d) {
         // Tiny tick when the drag passes the "will be dismissed" threshold.
@@ -167,7 +165,7 @@ class _SwipeRequestCardState extends State<SwipeRequestCard>
       ),
       onDismissed: (_) => widget.onRemoved(),
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.only(bottom: AppSpace.sm),
         child: widget.builder(context, ctl),
       ),
     );
@@ -200,52 +198,41 @@ class _SwipeRequestCardState extends State<SwipeRequestCard>
   }
 }
 
+/// What a drag reveals under the card: the decision's own tint (success / danger) with its mark and word in ink
+/// that reads on it, never a gradient.
 class _SwipeBackground extends StatelessWidget {
   const _SwipeBackground({
     required this.color,
+    required this.tint,
     required this.icon,
     required this.label,
     required this.alignment,
-    required this.begin,
-    required this.end,
   });
 
   final Color color;
+  final Color tint;
   final IconData icon;
   final String label;
   final AlignmentGeometry alignment;
-  final AlignmentGeometry begin;
-  final AlignmentGeometry end;
 
   @override
   Widget build(BuildContext context) {
+    final ink = appInkOn(context, color, tint);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Container(
-        alignment: alignment,
-        padding: const EdgeInsets.symmetric(horizontal: 28),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: begin,
-            end: end,
-            colors: [color, color.withValues(alpha: 0.55)],
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(AppRadius.card)),
+        child: Container(
+          alignment: alignment,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: ink, size: AppIconSize.xl),
+              const SizedBox(height: AppSpace.xxs),
+              Text(label, style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
+            ],
           ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white, size: 34),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -253,10 +240,10 @@ class _SwipeBackground extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Premium card pieces
+// Card pieces
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// The card surface: rounded, soft shadow, gradient accent strip on top.
+/// The card surface: paper on a warm hairline (no resting shadow), a thin solid accent line on top.
 class RequestCardShell extends StatelessWidget {
   const RequestCardShell({
     super.key,
@@ -274,39 +261,29 @@ class RequestCardShell extends StatelessWidget {
     final c = context.colors;
     final accent = this.accent ?? c.primary;
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 200),
+      duration: AppMotion.of(context).base,
       opacity: busy ? 0.65 : 1,
-      child: Container(
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: c.divider),
-          boxShadow: c.cardShadow,
+      child: Material(
+        color: c.cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: BorderSide(color: c.divider, width: AppBorder.hairline),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(19),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                height: 4,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [accent, accent.withValues(alpha: 0.3)],
-                  ),
-                ),
-              ),
-              Padding(padding: const EdgeInsets.all(16), child: child),
-            ],
-          ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ColoredBox(color: accent, child: const SizedBox(height: AppBorder.focus)),
+            Padding(padding: AppSpace.card, child: child),
+          ],
         ),
       ),
     );
   }
 }
 
-/// Round gradient avatar with the first letter of the name.
+/// A round mark with the first letter of the name, on the person's own block tone (stable per name).
 class RequestAvatar extends StatelessWidget {
   const RequestAvatar({super.key, required this.name});
 
@@ -314,26 +291,19 @@ class RequestAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final trimmed = name.trim();
     final initial = trimmed.isEmpty
         ? '?'
         : String.fromCharCode(trimmed.runes.first);
+    final block = AppBlockColors.of(context, AppBlockTone.forKey('person-$trimmed'));
     return Container(
-      width: 46,
-      height: 46,
+      width: AppTouch.min,
+      height: AppTouch.min,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [c.primary, c.primary.withValues(alpha: 0.6)],
-        ),
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: block.surface),
       child: Text(
         initial,
-        style: c.h3.copyWith(color: Colors.white, fontSize: 18),
+        style: AppType.section(context).copyWith(color: block.ink, height: 1),
       ),
     );
   }
@@ -354,62 +324,51 @@ class RequestInfoRow extends StatelessWidget {
   final String value;
   final bool copyable;
 
+  /// The icon well's side.
+  static const double _well = AppIconSize.xl;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final row = Row(
       children: [
         Container(
-          width: 30,
-          height: 30,
+          width: _well,
+          height: _well,
           decoration: BoxDecoration(
-            color: c.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(9),
+            color: c.inputBg,
+            borderRadius: BorderRadius.circular(AppRadius.chip),
           ),
-          child: Icon(icon, size: 16, color: c.primary),
+          child: Icon(icon, size: AppIconSize.sm, color: c.textMedium),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: c.caption),
-              Text(
-                value,
-                style: c.body.copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: c.textDark,
-                ),
-              ),
+              Text(label, style: AppType.meta(context)),
+              Text(value, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
             ],
           ),
         ),
-        if (copyable) Icon(Icons.copy_rounded, size: 16, color: c.textLight),
+        if (copyable) Icon(Icons.copy_rounded, size: AppIconSize.sm, color: c.textLight),
       ],
     );
 
     if (!copyable) return row;
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppRadius.chip),
       onTap: () async {
         await Clipboard.setData(ClipboardData(text: value));
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text('copied_to_clipboard'.tr),
-              duration: const Duration(seconds: 1),
-            ),
-          );
+        showAppNotice('copied_to_clipboard'.tr);
       },
-      child: row,
+      child: ConstrainedBox(constraints: const BoxConstraints(minHeight: AppTouch.min), child: row),
     );
   }
 }
 
-/// Reject (outlined) + Approve (filled) buttons wired to the swipe flow.
+/// Reject (danger outline) + Approve (the solid primary) wired to the swipe flow.
 class RequestActionButtons extends StatelessWidget {
   const RequestActionButtons({
     super.key,
@@ -424,45 +383,25 @@ class RequestActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14),
-    );
-    const textStyle = TextStyle(fontWeight: FontWeight.w700, fontSize: 14);
-
     return Row(
       children: [
         Expanded(
-          child: OutlinedButton.icon(
+          child: AppButton.danger(
+            dangerOutline: true,
+            expand: true,
             onPressed: ctl.busy ? null : ctl.reject,
-            icon: const Icon(Icons.close_rounded, size: 18),
-            label: Text(rejectLabel ?? 'request_reject'.tr),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: c.danger,
-              side: BorderSide(color: c.danger.withValues(alpha: 0.6)),
-              minimumSize: const Size(0, 46),
-              shape: shape,
-              textStyle: textStyle,
-            ),
+            icon: Icons.close_rounded,
+            label: rejectLabel ?? 'request_reject'.tr,
           ),
         ),
-        const SizedBox(width: 10),
+        AppSpace.gapSm,
         Expanded(
-          child: FilledButton.icon(
-            onPressed: ctl.busy ? null : ctl.approve,
-            icon: ctl.busy
-                ? const SizedBox(
-              height: 16,
-              child: AppLoadingIndicator(showLogo: false),
-            )
-                : const Icon(Icons.check_rounded, size: 18),
-            label: Text(approveLabel ?? 'request_accept'.tr),
-            style: FilledButton.styleFrom(
-              backgroundColor: c.success,
-              minimumSize: const Size(0, 46),
-              shape: shape,
-              textStyle: textStyle,
-            ),
+          child: AppButton.primary(
+            expand: true,
+            busy: ctl.busy,
+            onPressed: ctl.approve,
+            icon: Icons.check_rounded,
+            label: approveLabel ?? 'request_accept'.tr,
           ),
         ),
       ],
@@ -470,8 +409,8 @@ class RequestActionButtons extends StatelessWidget {
   }
 }
 
-/// List header: pending count + which way to drag. The sides are computed
-/// from the current text direction, so the wording is right in RTL and LTR.
+/// List header: pending count + which way to drag, on the sky (information) block. The sides are computed from the
+/// current text direction, so the wording is right in RTL and LTR.
 class SwipeHintBanner extends StatelessWidget {
   const SwipeHintBanner({super.key, required this.count});
 
@@ -479,42 +418,37 @@ class SwipeHintBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final rtl = Directionality.of(context) == TextDirection.rtl;
     // Approve = drag from start towards end (physically left in RTL).
     final hint = rtl ? 'swipe_hint_accept_left'.tr : 'swipe_hint_accept_right'.tr;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: c.primary.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: c.primary.withValues(alpha: 0.18)),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.swipe_rounded, color: c.primary, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$count ${'requests_pending_review'.tr}',
-                    style: c.label.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    hint,
-                    style: c.caption,
-                  ),
-                ],
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: AppBlock(
+        tone: AppBlockTone.sky,
+        padding: AppSpace.card,
+        child: Builder(builder: (context) {
+          final ink = AppBlock.colorsOf(context);
+          return Row(
+            children: [
+              Icon(Icons.swipe_rounded, color: ink.ink, size: AppIconSize.lg),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$count ${'requests_pending_review'.tr}',
+                      style: AppType.bodyStrong(context).copyWith(color: ink.ink),
+                    ),
+                    const SizedBox(height: AppSpace.xxs / 2),
+                    Text(hint, style: AppType.meta(context).copyWith(color: ink.muted)),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        }),
       ),
     );
   }
@@ -533,38 +467,26 @@ class RequestStateView extends StatelessWidget {
 
   final IconData icon;
   final String message;
+
+  /// Kept for existing callers: the drawn plate carries the state (the danger colour reads as an error state).
   final Color? color;
   final String? actionLabel;
   final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final color = this.color ?? c.primary;
+    final error = color != null && color == context.colors.danger;
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.xxl),
       children: [
-        const SizedBox(height: 90),
-        Center(
-          child: Container(
-            width: 84,
-            height: 84,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: 0.1),
-            ),
-            child: Icon(icon, size: 40, color: color),
-          ),
+        AppEmpty(
+          icon: icon,
+          title: message,
+          actionLabel: actionLabel,
+          onAction: onAction,
+          tone: error ? AppBlockTone.paper : AppBlockTone.peach,
         ),
-        const SizedBox(height: 16),
-        Text(message, textAlign: TextAlign.center, style: c.body),
-        if (actionLabel != null) ...[
-          const SizedBox(height: 14),
-          Center(
-            child: OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
-          ),
-        ],
       ],
     );
   }
@@ -587,6 +509,7 @@ Future<String?> showReasonDialog(
   final dir = Directionality.of(context);
   return showDialog<String>(
     context: context,
+    barrierColor: appScrimColor(context),
     builder: (_) => Directionality(
       textDirection: dir,
       child: _ReasonDialog(
@@ -631,12 +554,14 @@ class _ReasonDialogState extends State<_ReasonDialog> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: c.cardBg,
+      surfaceTintColor: c.cardBg,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sheet)),
       title: Row(
         children: [
-          Icon(Icons.report_gmailerrorred_rounded, color: c.danger),
-          const SizedBox(width: 10),
-          Expanded(child: Text(widget.title)),
+          Icon(Icons.report_gmailerrorred_rounded, color: c.danger, size: AppIconSize.lg),
+          AppSpace.gapSm,
+          Expanded(child: Text(widget.title, style: AppType.pageTitle(context))),
         ],
       ),
       content: SingleChildScrollView(
@@ -646,13 +571,14 @@ class _ReasonDialogState extends State<_ReasonDialog> {
           children: [
             if (widget.quickReasons.isNotEmpty) ...[
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: AppSpace.xs,
+                runSpacing: AppSpace.xs,
                 children: [
                   for (final q in widget.quickReasons)
-                    ActionChip(
-                      label: Text(q, style: const TextStyle(fontSize: 12)),
-                      onPressed: () {
+                    AppChoiceChip(
+                      label: q,
+                      selected: _ctrl.text.trim() == q,
+                      onTap: () {
                         _ctrl.text = q;
                         _ctrl.selection = TextSelection.collapsed(
                           offset: q.length,
@@ -662,69 +588,39 @@ class _ReasonDialogState extends State<_ReasonDialog> {
                     ),
                 ],
               ),
-              const SizedBox(height: 12),
+              AppSpace.gapSm,
             ],
             TextField(
               controller: _ctrl,
               maxLines: 3,
               onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                hintText: widget.hint,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
+              style: appFieldTextStyle(context),
+              decoration: appFieldDecoration(context, hint: widget.hint),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(
+        AppButton.ghost(
           onPressed: () => Navigator.pop(context),
-          child: Text('cancel'.tr),
+          label: 'cancel'.tr,
         ),
-        FilledButton(
+        AppButton.danger(
           onPressed: _valid
               ? () => Navigator.pop(context, _ctrl.text.trim())
               : null,
-          style: FilledButton.styleFrom(backgroundColor: c.danger),
-          child: Text('request_reject'.tr),
+          label: 'request_reject'.tr,
         ),
       ],
     );
   }
 }
 
-/// Floating result toast. Pass a messenger captured BEFORE any `await`.
+/// The result toast (the kit's notice, drawn above every sheet and dialog). [icon] is kept for existing callers.
 void showRequestSnack(
-    ScaffoldMessengerState messenger,
     String message, {
-      required Color color,
+      required bool error,
       IconData icon = Icons.info_outline_rounded,
     }) {
-  messenger
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: color,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        content: Row(
-          children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  showAppNotice(message, error: error);
 }

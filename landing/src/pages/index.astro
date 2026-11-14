@@ -1,0 +1,69 @@
+---
+import Base from '../layouts/Base.astro';
+import { ar } from '../i18n/ar';
+import { en } from '../i18n/en';
+---
+
+<Base
+  lang="en"
+  title="الفهيم | الفهيم"
+  description={`${ar.description} ${en.description}`}
+  path="/"
+  ogAlt="Alfaheem"
+>
+  <script is:inline>
+    (function () {
+      try {
+        // Installed PWA: straight into the Flutter app.
+        var standalone =
+          (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+        if (standalone) {
+          location.replace('/app/');
+          return;
+        }
+      } catch (e) {}
+      var lang = null;
+      try {
+        var s = localStorage.getItem('nb_lang');
+        if (s === 'ar' || s === 'en') lang = s;
+      } catch (e) {}
+      if (!lang) {
+        var l = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'ar'];
+        for (var i = 0; i < l.length; i++) {
+          var c = String(l[i]).toLowerCase();
+          if (c.indexOf('ar') === 0) { lang = 'ar'; break; }
+          if (c.indexOf('en') === 0) { lang = 'en'; break; }
+        }
+      }
+      location.replace('/' + (lang || 'ar') + '/');
+    })();
+  </script>
+  <main class="chooser">
+    <h1>الفهيم · Alfaheem</h1>
+    <p>اختر لغتك · Choose your language</p>
+    <p class="chooser__links">
+      <a class="btn" href="/ar/" lang="ar" hreflang="ar">العربية</a>
+      <a class="btn btn--ghost" href="/en/" lang="en" hreflang="en">English</a>
+    </p>
+    <noscript>
+      <p><a href="/ar/">العربية</a> · <a href="/en/">English</a></p>
+    </noscript>
+  </main>
+  <style>
+    .chooser {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px 16px;
+    }
+    .chooser__links {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  </style>
+</Base>

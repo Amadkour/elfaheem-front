@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
-import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../core/api_client.dart'; // adjust import path as needed
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+
+import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/plural.dart';
 // ══════════════════════════════════════════════
 //  ENUM  (mirrors Python RateType)
 // ══════════════════════════════════════════════
@@ -19,21 +24,21 @@ enum RateType {
   String get value => name.toUpperCase(); // 'course' | 'session' | 'material' | 'doctor'
 
   String get label => switch (this) {
-        RateType.course => 'Course',
-        RateType.session => 'Session',
-        RateType.material => 'Material',
-        RateType.doctor => 'Doctor',
-      };
+    RateType.course => 'Course',
+    RateType.session => 'Session',
+    RateType.material => 'Material',
+    RateType.doctor => 'Doctor',
+  };
 
   /// The GET endpoint for fetching summary + ratings list
   String ratingPath(String sourceId) => switch (this) {
-        RateType.course => '/api/v1/courses/$sourceId/ratings',
-        RateType.session => '/api/v1/sessions/$sourceId/ratings',
-        // material & doctor use the generic session endpoint pattern —
-        // adjust to your actual backend paths if they differ
-        RateType.material => '/api/v1/materials/$sourceId/ratings',
-        RateType.doctor => '/api/v1/doctors/$sourceId/ratings',
-      };
+    RateType.course => '/api/v1/courses/$sourceId/ratings',
+    RateType.session => '/api/v1/sessions/$sourceId/ratings',
+  // material & doctor use the generic session endpoint pattern —
+  // adjust to your actual backend paths if they differ
+    RateType.material => '/api/v1/materials/$sourceId/ratings',
+    RateType.doctor => '/api/v1/doctors/$sourceId/ratings',
+  };
 }
 
 // ══════════════════════════════════════════════
@@ -60,14 +65,14 @@ class RateResponse {
   });
 
   factory RateResponse.fromJson(Map<String, dynamic> j) => RateResponse(
-        id: j['id'] as int,
-        studentId: j['student_id'] as int,
-        sourceId: j['source_id'] as int,
-        type: RateType.values.firstWhere((e) => e.value == j['type']),
-        value: j['value'] as int,
-        review: j['review'] as String?,
-        createdAt: (j['created_at'] as String).toLocalSaTime,
-      );
+    id: j['id'] as int,
+    studentId: j['student_id'] as int,
+    sourceId: j['source_id'] as int,
+    type: RateType.values.firstWhere((e) => e.value == j['type']),
+    value: j['value'] as int,
+    review: j['review'] as String?,
+    createdAt: (j['created_at'] as String).toLocalSaTime,
+  );
 }
 
 class RatingSummary {
@@ -82,12 +87,12 @@ class RatingSummary {
   });
 
   factory RatingSummary.fromJson(Map<String, dynamic> j) => RatingSummary(
-        ratings: (j['ratings'] as List)
-            .map((e) => RateResponse.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        total: (j['total'] as int)+200,
-        average:( (j['average'] as num).toDouble())+4,
-      );
+    ratings: (j['ratings'] as List)
+        .map((e) => RateResponse.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    total: (j['total'] as num?)?.toInt() ?? 0,
+    average: (j['average'] as num?)?.toDouble() ?? 0,
+  );
 
   /// Distribution: how many ratings per star value (1–5)
   Map<int, int> get distribution {
@@ -117,12 +122,6 @@ class RatingService {
     required int value,
     String? review,
   }) async {
-    print({
-      'source_id': sourceId,
-      'type': type.name.toUpperCase(),
-      'value': value,
-      if (review != null && review.isNotEmpty) 'review': review,
-    });
     final data = await _api.post(
       '/api/v1/rates',
       body: {
@@ -231,11 +230,11 @@ class _RatingWidgetState extends State<RatingWidget>
       final summary = await _service.fetchSummary(widget.type, widget.sourceId);
       // Try to find current user's existing rating
       RateResponse? mine;
-      int? studentId=context.read<AuthProvider>().currentUser?.id;
+      int? studentId=context.read<MyAuthProvider>().currentUser?.id;
       if (studentId != null) {
         try {
           mine = summary.ratings.firstWhere(
-              (r) => r.studentId == studentId);
+                  (r) => r.studentId == studentId);
         } catch (_) {}
       } else if (summary.ratings.isNotEmpty) {
         // If only one rating is returned (user-scoped endpoint), use it
@@ -258,6 +257,7 @@ class _RatingWidgetState extends State<RatingWidget>
 
   Future<void> _submit() async {
     if (_selected == 0 || _submitting) return;
+    if (!GuestGuard.ensure(context, reasonKey: 'guest_reason_rate')) return;
     if(mounted) setState(() => _submitting = true);
     try {
       final result = await _service.submitRate(
@@ -279,13 +279,7 @@ class _RatingWidgetState extends State<RatingWidget>
     } catch (e) {
       if(mounted) setState(() => _submitting = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: context.colors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        showAppNotice(e.toString(), error: true);
       }
     }
   }
@@ -295,13 +289,13 @@ class _RatingWidgetState extends State<RatingWidget>
   int get _displayValue => _hovered > 0 ? _hovered : _selected;
 
   String _starLabel(int v) => switch (v) {
-        1 => 'Poor',
-        2 => 'Fair',
-        3 => 'Good',
-        4 => 'Very Good',
-        5 => 'Excellent',
-        _ => '',
-      };
+    1 => 'Poor',
+    2 => 'Fair',
+    3 => 'Good',
+    4 => 'Very Good',
+    5 => 'Excellent',
+    _ => '',
+  };
 
   // ══════════════════════════════════════════════
   //  BUILD
@@ -330,26 +324,30 @@ class _RatingWidgetState extends State<RatingWidget>
           canEdit: widget.canEdit,
           hovered: _hovered,
           selected: _selected,
-          size: 14,
+          size: AppIconSize.xs,
           onHover: (v) { if(mounted) setState(() => _hovered = v);},
           onTap: widget.canEdit
               ? (v) {
-                  setState(() {
-                    _selected = v;
-                    _showReview = true;
-                  });
-                }
+            setState(() {
+              _selected = v;
+              _showReview = true;
+            });
+          }
               : null,
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: AppSpace.xxs + AppSpace.xxs / 2),
         Text(
           avg.toStringAsFixed(1),
-          style: c.bodyBold.copyWith(color: AppTheme.primary, fontSize: 13),
+          style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600, fontFeatures: _tabular),
         ),
-        const SizedBox(width: 4),
-        Text(
-          '($total)',
-          style: c.caption.copyWith(fontSize: 11),
+        const SizedBox(width: AppSpace.xxs),
+        Flexible(
+          child: Text(
+            '($total)',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.meta(context).copyWith(fontFeatures: _tabular),
+          ),
         ),
         if (widget.canEdit && _showReview) ...[
           _SubmitButton(
@@ -364,150 +362,105 @@ class _RatingWidgetState extends State<RatingWidget>
 
   // ── Full mode ──────────────────────────────────────────────────────
 
+  /// A paper card: the average as the card's one large editorial figure beside the five distribution bars, then (when
+  /// the person may rate) the stars to pick, the word for the pick and the review well under a hairline.
   Widget _buildFull() {
     final c = context.colors;
     final summary = _summary!;
+    final motion = AppMotion.of(context);
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: c.brMedium,
-        boxShadow: c.cardShadow,
-      ),
+    return AppCard(
+      padding: AppSpace.block,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Header row ────────────────────────────────────────
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: c.accentTint,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.star_rounded, color: AppTheme.accent, size: 14),
-                    const SizedBox(width: 4),
-                    Text(
-                      widget.type.label,
-                      style: c.caption.copyWith(
-                        color: AppTheme.primary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+              Icon(Icons.star_rounded, color: c.primary, size: AppIconSize.sm),
+              const SizedBox(width: AppSpace.xxs),
+              Flexible(
+                child: Text(
+                  widget.type.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.label(context).copyWith(color: c.textMedium),
                 ),
               ),
               const Spacer(),
               if (_submitted > 0)
                 ScaleTransition(
                   scale: _popScale,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: c.successTint,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.check_circle_rounded,
-                            color: c.success, size: 12),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Rated',
-                          style: c.caption.copyWith(
-                            color: c.success,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  child: const AppStatusBadge(label: 'Rated', icon: Icons.check_circle_rounded, tone: AppTone.success, dense: true),
                 ),
             ],
           ),
 
-          const SizedBox(height: 16),
+          AppSpace.gapMd,
 
-          // ── Score + bars ──────────────────────────────────────
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Big average score
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    summary.average.toStringAsFixed(1),
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 48,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.primary,
-                      height: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  _StarRow(
-                    value: summary.average.round().clamp(0, 5),
-                    displayValue: summary.average,
-                    canEdit: false,
-                    hovered: 0,
-                    selected: 0,
-                    size: 16,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${summary.total} ratings',
-                    style: c.caption.copyWith(fontSize: 11),
-                  ),
-                ],
-              ),
-
-              const SizedBox(width: 20),
-
-              // Star distribution bars
-              Expanded(
-                child: Column(
-                  children: List.generate(5, (i) {
-                    final star = 5 - i;
-                    final count = summary.distribution[star] ?? 0;
-                    final fraction = summary.total > 0
-                        ? count / summary.total
-                        : 0.0;
-                    return _DistributionBar(
-                      star: star,
-                      fraction: fraction,
-                      count: count,
-                    );
-                  }),
+          // ── Score + bars (side by side; stacked in a narrow card so the bars keep their length) ──
+          LayoutBuilder(builder: (context, box) {
+            final score = Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Big average score: the card's one editorial figure.
+                AppCountUp(
+                  summary.average.toStringAsFixed(1),
+                  memoryKey: 'rating-${widget.type.name}-${widget.sourceId}',
+                  style: AppType.display(context).copyWith(color: c.textDark, height: 1, fontFeatures: _tabular),
                 ),
-              ),
-            ],
-          ),
+                AppSpace.gapXs,
+                _StarRow(
+                  value: summary.average.round().clamp(0, 5),
+                  displayValue: summary.average,
+                  canEdit: false,
+                  hovered: 0,
+                  selected: 0,
+                  size: AppIconSize.sm,
+                ),
+                const SizedBox(height: AppSpace.xxs),
+                Text(
+                  countText(summary.total, ar1: 'تقييم واحد', ar2: 'تقييمان', arFew: '{n} تقييمات', arMany: '{n} تقييمًا', en1: '1 rating', en: '{n} ratings'),
+                  style: AppType.meta(context),
+                ),
+              ],
+            );
+            final bars = Column(
+              children: List.generate(5, (i) {
+                final star = 5 - i;
+                final count = summary.distribution[star] ?? 0;
+                final fraction = summary.total > 0
+                    ? count / summary.total
+                    : 0.0;
+                return _DistributionBar(
+                  star: star,
+                  fraction: fraction,
+                  count: count,
+                );
+              }),
+            );
+            if (box.maxWidth < _stackBelow) {
+              return Column(children: [score, AppSpace.gapMd, bars]);
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [score, const SizedBox(width: AppSpace.lg), Expanded(child: bars)],
+            );
+          }),
 
           // ── Divider ───────────────────────────────────────────
           if (widget.canEdit) ...[
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Divider(color: c.divider, height: 1),
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+              child: Divider(color: c.divider, height: AppBorder.hairline, thickness: AppBorder.hairline),
             ),
 
             // ── Interactive stars ────────────────────────────
             Text(
-              _submitted > 0 ? 'Update your rating' : 'Rate this ${widget.type.label.toLowerCase()}',
-              style: c.h4,
+              _submitted > 0 ? _t('حدّث تقييمك', 'Update your rating') : _t('أضف تقييمك', 'Rate this ${widget.type.label.toLowerCase()}'),
+              style: AppType.section(context),
             ),
-            const SizedBox(height: 12),
+            AppSpace.gapSm,
 
             Center(
               child: Column(
@@ -518,7 +471,7 @@ class _RatingWidgetState extends State<RatingWidget>
                     canEdit: true,
                     hovered: _hovered,
                     selected: _selected,
-                    size: 36,
+                    size: AppIconSize.xl,
                     onHover: (v) { if(mounted) setState(() => _hovered = v);},
                     onLeave: () { if(mounted) setState(() => _hovered = 0);},
                     onTap: (v) => setState(() {
@@ -527,16 +480,13 @@ class _RatingWidgetState extends State<RatingWidget>
                     }),
                   ),
                   if (_displayValue > 0) ...[
-                    const SizedBox(height: 8),
+                    AppSpace.gapXs,
                     AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
+                      duration: motion.fast,
                       child: Text(
                         _starLabel(_displayValue),
                         key: ValueKey(_displayValue),
-                        style: c.bodyBold.copyWith(
-                          color: _starColor(_displayValue),
-                          fontSize: 14,
-                        ),
+                        style: AppType.bodyStrong(context).copyWith(color: _starColor(c, _displayValue)),
                       ),
                     ),
                   ],
@@ -546,25 +496,27 @@ class _RatingWidgetState extends State<RatingWidget>
 
             // ── Review text box ─────────────────────────────
             AnimatedSize(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInOutCubic,
+              duration: motion.slow,
+              curve: AppEase.out,
+              alignment: AlignmentDirectional.topStart,
               child: _showReview
                   ? Padding(
-                      padding: const EdgeInsets.only(top: 14),
-                      child: Column(
-                        children: [
-                          _ReviewField(
-                            controller: _reviewController,
-                            focusNode: _reviewFocus,
-                          ),
-                          const SizedBox(height: 12),
-                          _SubmitButton(
-                            onTap: _submit,
-                            loading: _submitting,
-                          ),
-                        ],
-                      ),
-                    )
+                padding: const EdgeInsets.only(top: AppSpace.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _ReviewField(
+                      controller: _reviewController,
+                      focusNode: _reviewFocus,
+                    ),
+                    AppSpace.gapSm,
+                    _SubmitButton(
+                      onTap: _submit,
+                      loading: _submitting,
+                    ),
+                  ],
+                ),
+              )
                   : const SizedBox.shrink(),
             ),
           ],
@@ -573,12 +525,18 @@ class _RatingWidgetState extends State<RatingWidget>
     );
   }
 
-  Color _starColor(int v) => switch (v) {
-        1 || 2 => AppTheme.danger,
-        3 => AppTheme.warning,
-        _ => AppTheme.primary,
-      };
+  /// The word for a pick: danger for 1–2, warning (as text-safe ink) for 3, the primary above.
+  Color _starColor(ThemeConfigProvider c, int v) => switch (v) {
+    1 || 2 => c.danger,
+    3 => appInkOn(context, c.warning, c.cardBg),
+    _ => c.primary,
+  };
 }
+
+const List<FontFeature> _tabular = [FontFeature.tabularFigures()];
+
+/// Below this card width the average sits above the distribution bars instead of beside them.
+const double _stackBelow = 320;
 
 // ══════════════════════════════════════════════
 //  STAR ROW
@@ -609,6 +567,8 @@ class _StarRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final motion = AppMotion.of(context);
     return MouseRegion(
       onExit: onLeave != null ? (_) => onLeave!() : null,
       child: Row(
@@ -618,25 +578,44 @@ class _StarRow extends StatelessWidget {
           final active = hovered > 0
               ? starNum <= hovered
               : starNum <= (canEdit ? selected : displayValue.round());
-
-          return GestureDetector(
-            onTap: canEdit ? () => onTap?.call(starNum) : null,
-            child: MouseRegion(
-              onEnter: canEdit ? (_) => onHover?.call(starNum) : null,
-              cursor: canEdit
-                  ? SystemMouseCursors.click
-                  : SystemMouseCursors.basic,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 120),
-                padding: EdgeInsets.symmetric(horizontal: size * 0.08),
-                child: Icon(
-                  active ? Icons.star_rounded : Icons.star_outline_rounded,
-                  size: size,
-                  color: active
-                      ? AppTheme.primary
-                      : Theme.of(context).brightness == Brightness.dark
-                          ? AppTheme.darkTextLight
-                          : AppTheme.textLight,
+          final star = AnimatedScale(
+            scale: canEdit && active ? 1 : (canEdit ? 0.92 : 1),
+            duration: motion.fast,
+            curve: AppEase.out,
+            child: Icon(
+              active ? Icons.star_rounded : Icons.star_outline_rounded,
+              size: size,
+              color: active ? c.primary : c.textLight,
+            ),
+          );
+          if (!canEdit || size < AppIconSize.lg) {
+            // Read-only and the compact inline row (inside cards of a fixed height) keep the star's own size.
+            if (canEdit) {
+              return GestureDetector(
+                onTap: () => onTap?.call(starNum),
+                child: MouseRegion(
+                  onEnter: (_) => onHover?.call(starNum),
+                  cursor: SystemMouseCursors.click,
+                  child: Padding(padding: EdgeInsets.symmetric(horizontal: size * 0.08), child: star),
+                ),
+              );
+            }
+            return Padding(padding: EdgeInsets.symmetric(horizontal: size * 0.08), child: star);
+          }
+          // A star to pick is a full 48 px target.
+          return Semantics(
+            button: true,
+            selected: starNum <= selected,
+            label: '$starNum / 5',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onTap?.call(starNum),
+              child: MouseRegion(
+                onEnter: (_) => onHover?.call(starNum),
+                cursor: SystemMouseCursors.click,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: size < AppTouch.min ? AppTouch.min * 0.75 : size, minHeight: AppTouch.min),
+                  child: Center(widthFactor: 1, child: star),
                 ),
               ),
             ),
@@ -662,38 +641,37 @@ class _DistributionBar extends StatelessWidget {
     required this.count,
   });
 
+  /// The bar's thickness and the count column's width.
+  static const double _bar = 6, _countWidth = 28;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final radius = BorderRadius.circular(AppRadius.pill);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
       child: Row(
         children: [
           Text(
             '$star',
-            style: c.caption.copyWith(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: AppTheme.primary,
-            ),
+            style: AppType.meta(context).copyWith(color: c.textMedium, fontWeight: FontWeight.w600, fontFeatures: _tabular),
           ),
-          const SizedBox(width: 4),
-          Icon(Icons.star_rounded, color: AppTheme.primary, size: 10),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpace.xxs / 2),
+          Icon(Icons.star_rounded, color: c.textLight, size: AppIconSize.xs * 0.8),
+          const SizedBox(width: AppSpace.xs),
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: radius,
               child: Stack(
                 children: [
-                  Container(height: 6, color: c.divider),
-                  FractionallySizedBox(
-                    widthFactor: fraction,
-                    child: Container(
-                      height: 6,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors:[AppTheme.primary,Colors.white]),
-
-                      borderRadius: BorderRadius.circular(4),
+                  Container(height: _bar, color: c.inputBg),
+                  AppFill(
+                    value: fraction,
+                    builder: (context, v) => FractionallySizedBox(
+                      widthFactor: v.clamp(0.0, 1.0),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(color: c.primary, borderRadius: radius),
+                        child: const SizedBox(height: _bar),
                       ),
                     ),
                   ),
@@ -701,13 +679,14 @@ class _DistributionBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpace.xs),
           SizedBox(
-            width: 20,
+            width: _countWidth,
             child: Text(
               '$count',
-              style: c.caption.copyWith(fontSize: 10),
-              textAlign: TextAlign.right,
+              maxLines: 1,
+              style: AppType.meta(context).copyWith(fontFeatures: _tabular),
+              textAlign: TextAlign.end,
             ),
           ),
         ],
@@ -731,33 +710,13 @@ class _ReviewField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return TextField(
       controller: controller,
       focusNode: focusNode,
       maxLines: 3,
       minLines: 2,
-      style: c.body.copyWith(fontSize: 13),
-      decoration: InputDecoration(
-        hintText: 'Share your experience (optional)...',
-        hintStyle: c.caption,
-        filled: true,
-        fillColor: c.inputBg,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-          borderSide: BorderSide(color: c.divider),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-          borderSide: BorderSide(color: c.divider),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-          borderSide: BorderSide(color: AppTheme.primary, width: 1.5),
-        ),
-      ),
+      style: appFieldTextStyle(context),
+      decoration: appFieldDecoration(context, hint: _t('شاركنا تجربتك (اختياري)…', 'Share your experience (optional)…')),
     );
   }
 }
@@ -779,37 +738,35 @@ class _SubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: loading ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        height: compact ? 28 : 48,
-        padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 24),
-        decoration: BoxDecoration(
-          gradient: loading
-              ? AppTheme.disableGradient
-              : AppTheme.accentGradient,
-             shape: BoxShape.circle,
-          boxShadow: loading ? null : AppTheme.primaryShadow,
+    if (compact) {
+      // Inline beside the stars inside a card of a fixed height: a small solid send mark, not a full button.
+      final c = context.colors;
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(start: AppSpace.xs),
+        child: Tooltip(
+          message: 'send_btn'.tr,
+          child: SizedBox.square(
+            dimension: AppIconSize.xl,
+            child: Material(
+              color: loading ? c.divider : c.primary,
+              shape: const CircleBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: loading ? null : onTap,
+                child: Center(
+                  child: loading
+                      ? const SizedBox.square(dimension: AppIconSize.xs, child: AppLoadingIndicator())
+                      : Icon(Icons.send_rounded, color: c.onHero, size: AppIconSize.xs),
+                ),
+              ),
+            ),
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: loading
-              ? [
-                  SizedBox(
-                    width: compact ? 14 : 18,
-                    height: compact ? 14 : 18,
-                    child: const AppLoadingIndicator(),
-                  ),
-                ]
-              : [
-                  Icon(Icons.send_rounded,
-                      color: Colors.white, size: compact ? 14 : 16),
-
-                ],
-        ),
-      ),
+      );
+    }
+    return Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: AppButton.primary(label: 'send_btn'.tr, icon: Icons.send_rounded, busy: loading, onPressed: onTap),
     );
   }
 }
@@ -818,98 +775,50 @@ class _SubmitButton extends StatelessWidget {
 //  SKELETON LOADER
 // ══════════════════════════════════════════════
 
-class _Skeleton extends StatefulWidget {
+class _Skeleton extends StatelessWidget {
   final bool compact;
   const _Skeleton({required this.compact});
 
-  @override
-  State<_Skeleton> createState() => _SkeletonState();
-}
-
-class _SkeletonState extends State<_Skeleton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _anim;
-  late Animation<double> _shimmer;
-
-  @override
-  void initState() {
-    super.initState();
-    _anim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-    _shimmer = CurvedAnimation(parent: _anim, curve: Curves.easeInOut);
-  }
-
-  @override
-  void dispose() {
-    _anim.dispose();
-    super.dispose();
-  }
+  /// The bones' sizes: a compact star, the full card's label, figure and bar.
+  static const double _star = 16, _label = 80, _figure = 64, _bar = 6;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return AnimatedBuilder(
-      animation: _shimmer,
-      builder: (_, _) {
-        final color = Color.lerp(c.divider, c.inputBg, _shimmer.value)!;
-        if (widget.compact) {
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(
-              5,
-              (_) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: Container(
-                  width: 16, height: 16,
-                  decoration: BoxDecoration(
-                      color: color, shape: BoxShape.circle),
-                ),
-              ),
-            ),
-          );
-        }
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: c.brMedium,
-            boxShadow: c.cardShadow,
+    if (compact) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(
+          5,
+          (_) => const Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpace.xxs / 2),
+            child: AppSkeletonBox(width: _star, height: _star, radius: AppRadius.pill),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+      );
+    }
+    return AppCard(
+      padding: AppSpace.block,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppSkeletonBox(width: _label),
+          AppSpace.gapMd,
+          Row(
             children: [
-              Container(width: 80, height: 12,
-                  decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(6))),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(width: 64, height: 64,
-                      decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(8))),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Column(
-                      children: List.generate(5, (_) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Container(
-                            height: 6,
-                            decoration: BoxDecoration(
-                                color: color,
-                                borderRadius: BorderRadius.circular(3))),
-                      )),
-                    ),
-                  ),
-                ],
+              const AppSkeletonBox(width: _figure, height: _figure, radius: AppRadius.card),
+              const SizedBox(width: AppSpace.lg),
+              Expanded(
+                child: Column(
+                  children: List.generate(5, (_) => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: AppSpace.xxs),
+                    child: AppSkeletonBox(height: _bar, radius: AppRadius.pill),
+                  )),
+                ),
               ),
             ],
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
@@ -927,43 +836,30 @@ class _ErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(16),
+    return DecoratedBox(
       decoration: BoxDecoration(
         color: c.dangerTint,
-        borderRadius: c.brMedium,
-        border: Border.all(color: c.danger.withValues(alpha:0.2)),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.danger.withValues(alpha: 0.2), width: AppBorder.hairline),
       ),
-      child: Row(
-        children: [
-          Icon(Icons.wifi_off_rounded, color: c.danger, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Could not load ratings',
-              style: c.body.copyWith(color: c.danger, fontSize: 13),
-            ),
-          ),
-          GestureDetector(
-            onTap: onRetry,
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: c.danger.withValues(alpha:0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xxs, AppSpace.xxs, AppSpace.xxs),
+        child: Row(
+          children: [
+            Icon(Icons.wifi_off_rounded, color: c.danger, size: AppIconSize.md),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(
               child: Text(
-                'Retry',
-                style: c.caption.copyWith(
-                  color: c.danger,
-                  fontWeight: FontWeight.w700,
-                ),
+                _t('تعذّر تحميل التقييمات', 'Could not load ratings'),
+                style: AppType.body(context).copyWith(color: appInkOn(context, c.danger, c.dangerTint)),
               ),
             ),
-          ),
-        ],
+            AppButton.ghost(label: 'Retry', icon: Icons.refresh_rounded, size: AppButtonSize.sm, onPressed: onRetry),
+          ],
+        ),
       ),
     );
   }
 }
+
+String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;

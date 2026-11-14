@@ -1,0 +1,12 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/omr/results/publish -> 409, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 409,
+ "payload": {
+  "detail": {
+   "code": "review_items_open",
+   "message": "3 عنصر ينتظر المراجعة — راجعها أو انشر المصحّح فقط",
+   "open": 3,
+   "message_en": "3 item(s) still need review. Review them, or publish the graded results only."
+  }
+ }
+}

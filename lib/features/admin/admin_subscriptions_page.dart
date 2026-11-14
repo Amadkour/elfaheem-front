@@ -5,18 +5,27 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_number_field.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
+import '../../design/app_switch.dart';
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_filter_models.dart';
+import 'admin_filters.dart';
 import 'admin_labels.dart';
 import 'admin_list.dart';
+import 'admin_table_export.dart' show adminSubscriptionsExport;
 import 'admin_models.dart';
 import 'admin_providers.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminSubscriptionsPage extends StatelessWidget {
   const AdminSubscriptionsPage({super.key});
@@ -38,29 +47,24 @@ class _View extends StatelessWidget {
 
     final header = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
         // Material (not Container) paints the card colour, so the ListTiles inside can show ink splashes.
         child: Material(
           color: c.cardBg,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(AppRadius.card),
             side: BorderSide(color: p.required ? c.primary : c.divider, width: p.required ? 1.5 : 1),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(AppSpace.md),
             child: Column(children: [
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('admin_subscription_required'.tr,
-                    style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-                subtitle: Text(
-                  p.required
-                      ? 'admin_students_without_an_active'.tr
-                      : 'admin_default_the_app_is_free_for_every'.tr,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight),
-                ),
+              AppSwitchTile(
+                title: 'admin_subscription_required'.tr,
+                subtitle: p.required
+                    ? 'admin_students_without_an_active'.tr
+                    : 'admin_default_the_app_is_free_for_every'.tr,
                 value: p.required,
-                activeTrackColor: c.primary,
+                activeColor: c.primary,
                 onChanged: !p.settingsLoaded
                     ? null
                     : (v) async {
@@ -78,7 +82,14 @@ class _View extends StatelessWidget {
           ),
         ),
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: AppSpace.xxs),
+      AdminFilterBar(
+        host: p,
+        hintKey: 'admin_search_subscriptions',
+        specs: _subSpecs,
+        sort: _subSort,
+        quickKeys: const {'status'},
+      ),
       FilterChips<String>(
         value: p.statusFilter ?? 'all',
         options: {
@@ -91,15 +102,16 @@ class _View extends StatelessWidget {
         },
         onChanged: (v) => p.setStatusFilter(v == 'all' ? null : v),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppSpace.xs),
     ]);
 
     return BasePage(
 
       useWebCard: true,
-      maxWith: 1100,
+      width: AppWidth.wide,
       appBar: ScreenAppBar(title: 'subscriptions'.tr),
       child: PagedList<AdminSubscriptionsProvider>(
+        export: adminSubscriptionsExport,
         header: header,
         countIcon: Icons.card_membership_rounded,
         emptyText: 'admin_no_subscription_requests'.tr,
@@ -108,6 +120,41 @@ class _View extends StatelessWidget {
     );
   }
 }
+
+// ── premium filters ─────────────────────────────────────────────────────────
+
+const _subSort = SortSpec({
+  'newest': 'admin_sort_newest',
+  'oldest': 'admin_sort_oldest',
+  'ends_soon': 'admin_sort_ends_soon',
+  'amount_desc': 'admin_sort_amount_desc',
+  'amount_asc': 'admin_sort_amount_asc',
+  'name_asc': 'admin_sort_name_asc',
+});
+
+const _subSpecs = <FilterSpec>[
+  FilterSpec.choice('status', 'admin_filter_status', {
+    'pending': 'admin_pending_4',
+    'active': 'admin_active',
+    'expired': 'admin_expired',
+    'rejected': 'admin_rejected',
+    'cancelled': 'admin_cancelled_2',
+  }),
+  FilterSpec.remoteChoice('plan_code', 'admin_filter_plan', 'plans'),
+  FilterSpec.choice('payment_method', 'admin_filter_payment_method', {
+    'bank_transfer': 'admin_filter_method_bank_transfer',
+    'instapay': 'admin_filter_method_instapay',
+    'card': 'admin_filter_method_card',
+  }),
+  FilterSpec.tri('granted_by_admin', 'admin_filter_granted_by_admin'),
+  FilterSpec.tri('has_receipt', 'admin_filter_has_receipt'),
+  FilterSpec.choice('expiring_in', 'admin_filter_expiring', {
+    '7': 'admin_filter_expiring_7',
+    '14': 'admin_filter_expiring_14',
+    '30': 'admin_filter_expiring_30',
+  }),
+  FilterSpec.dateRange('created_from', 'created_to', 'admin_filter_created'),
+];
 
 class _PlanRow extends StatelessWidget {
   const _PlanRow({required this.plan});
@@ -120,20 +167,21 @@ class _PlanRow extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(plan.code == 'yearly' ? Icons.calendar_month_rounded : Icons.calendar_today_rounded, color: c.primary),
-      title: Text(plan.name, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
+      title: Text(plan.name, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, color: c.textDark)),
       subtitle: Text(
         plan.price <= 0
             ? 'admin_free'.tr
             : '${money(plan.price, plan.currency)} • ${plan.durationDays} ${'admin_days'.tr}',
-        style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium),
+        style: AppType.meta(context).copyWith(color: c.textMedium),
       ),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        Switch(
+        AppSwitch(
           value: plan.isActive,
-          activeTrackColor: c.primary,
+          activeColor: c.primary,
           onChanged: (v) => p.savePlan(plan.code, {'is_active': v}),
+          semanticLabel: plan.name,
         ),
-        IconButton(icon: const Icon(Icons.edit_rounded), onPressed: () => _editPlan(context, p, plan)),
+        IconButton(tooltip: t('تعديل', 'Edit'), icon: const Icon(Icons.edit_rounded), onPressed: () => _editPlan(context, p, plan)),
       ]),
     );
   }
@@ -151,12 +199,11 @@ Future<void> _editPlan(BuildContext context, AdminSubscriptionsProvider p, Plan 
         SheetHeader(plan.name),
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Field(
-                controller: price,
-                label: 'admin_price_empty_or_0_free'.tr,
-                keyboard: const TextInputType.numberWithOptions(decimal: true),
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                child: AppNumberField(controller: price, label: 'admin_price_empty_or_0_free'.tr, min: 0, decimals: 2),
               ),
               ChoiceRow<String>(
                 label: 'currency_label'.tr,
@@ -164,7 +211,10 @@ Future<void> _editPlan(BuildContext context, AdminSubscriptionsProvider p, Plan 
                 value: currency,
                 onChanged: (v) => setS(() => currency = v),
               ),
-              Field(controller: days, label: 'admin_duration_days'.tr, keyboard: TextInputType.number),
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                child: AppNumberField(controller: days, label: 'admin_duration_days'.tr, min: 0),
+              ),
               PrimaryButton(
                 label: 'save'.tr,
                 isLoading: busy,
@@ -228,36 +278,25 @@ class _SubTile extends StatelessWidget {
         // ── who · how much ──────────────────────────────────────────────
         Row(children: [
           AdminAvatar(name: s.studentName),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(s.studentName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14.5,
-                      color: c.textDark)),
+              adminEntityCell(context, EntityKind.student, {'id': s.studentId, 'name': s.studentName}),
               Text(s.studentGmail,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+                  style: AppType.meta(context).copyWith(color: c.textLight)),
             ]),
           ),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text(money(s.amount, s.currency),
-                style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    color: c.textDark)),
-            const SizedBox(height: 4),
+                style: AppType.section(context).copyWith(color: c.textDark)),
+            const SizedBox(height: AppSpace.xxs),
             StatusChip(subscriptionStatusLabel(s.status), color),
           ]),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppSpace.sm),
 
         // ── plan · method · end date ─────────────────────────────────────
         Wrap(spacing: 6, runSpacing: 6, children: [
@@ -272,13 +311,13 @@ class _SubTile extends StatelessWidget {
 
         // ── transfer details ─────────────────────────────────────────────
         if (s.senderName != null || s.transferReference != null || s.rejectionReason != null) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.sm),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(AppSpace.sm),
             decoration: BoxDecoration(
               color: c.inputBg,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.control),
             ),
             child: Column(children: [
               if (s.senderName != null)
@@ -294,7 +333,7 @@ class _SubTile extends StatelessWidget {
         // ── receipt ──────────────────────────────────────────────────────
         if (s.proofImageUrl != null)
           Padding(
-            padding: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.only(top: AppSpace.sm),
             child: GestureDetector(
               onTap: () => showDialog(
                 context: context,
@@ -303,7 +342,7 @@ class _SubTile extends StatelessWidget {
                 ),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.control),
                 child: Image.network(
                   s.proofImageUrl!,
                   height: 120,
@@ -322,13 +361,14 @@ class _SubTile extends StatelessWidget {
 
         // ── actions ──────────────────────────────────────────────────────
         if (s.status == 'pending') ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Row(children: [
             Expanded(
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(foregroundColor: c.danger),
-                icon: const Icon(Icons.close_rounded, size: 18),
-                label: Text('request_reject'.tr),
+              child: AppButton.danger(
+                label: 'request_reject'.tr,
+                icon: Icons.close_rounded,
+                dangerOutline: true,
+                expand: true,
                 onPressed: () async {
                   final reason = await askText(context,
                       title: 'rejection_reason_title'.tr, multiline: true);
@@ -336,13 +376,12 @@ class _SubTile extends StatelessWidget {
                 },
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: AppSpace.sm),
             Expanded(
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: c.success),
-                icon: const Icon(Icons.check_rounded, size: 18, color: Colors.white),
-                label: Text('admin_approve'.tr,
-                    style: const TextStyle(color: Colors.white, fontFamily: 'tajawal')),
+              child: AppButton.primary(
+                label: 'admin_approve'.tr,
+                icon: Icons.check_rounded,
+                expand: true,
                 onPressed: () async {
                   final ok = await confirm(context, message: 'admin_approve_this_subscription'.tr);
                   if (ok) await p.approve(s.id);

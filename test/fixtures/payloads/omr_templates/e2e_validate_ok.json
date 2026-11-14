@@ -1,0 +1,20 @@
+{
+ "_source": {
+  "route": "POST /api/v1/exam/omr/templates/5/validate",
+  "status": 200,
+  "request": null,
+  "how": "back tests/exam_engine/e2e_omr_templates.py run unchanged (inline jobs, SQLite, 2026-11-02); reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "ok": true,
+  "errors": [],
+  "warnings": [
+   {
+    "code": "unassigned",
+    "en": "3 printed circles were not assigned to any zone",
+    "ar": "3 دائرة مطبوعة لم تُنسب إلى أي منطقة"
+   }
+  ],
+  "checked_at": "2026-11-02T05:30:53.137248"
+ }
+}

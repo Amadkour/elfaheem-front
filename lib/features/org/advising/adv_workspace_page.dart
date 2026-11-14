@@ -1,0 +1,813 @@
+// lib/features/org/advising/adv_workspace_page.dart — the advisor's workspace (docs/advising/PHASE4.md "Workspace
+// list", #21): my students (a director: every student), sorted by risk; a debounced search and ONE filter control (a
+// sheet with cohort, level, program, standing, category, priority, flags, the order, and — directors — one advisor's
+// students); each card shows the risk score as a calm meter with its top reason, the highest open-flag priority and
+// the last contact. Tapping a card opens the student 360 (adv_student_page.dart). The registrar's advising cases keep
+// their screen (OrgAdvisingScreen), linked here as "Registration cases"; directors also reach the categories.
+// Phase 9: whoever may send group messages (status `me.outreach`) selects students — a long press on a card, or
+// "Select students to message" under More — and "Message selected" opens the outreach composer with exactly them.
+//
+//   AdvCaseCard             one student                  AdvWorkspaceView     the list (plain values)
+//   AdvWorkspaceFilterForm  the filter sheet's content   AdvFiltersButton     the one filter control
+//   AdvSelection            the chosen students (pure)   AdvSelectionBar      "3 students selected" · this page · Done
+//   AdvSelectionActions     "Message 3 selected students" under the list
+//   AdvWorkspacePage        loads `GET …/workspace`
+library;
+
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/offline/app_connectivity.dart';
+import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
+import 'package:flutter_education_app/utils/live_events.dart';
+
+import '../../admin/admin_common.dart' show t;
+import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage;
+import '../org_page_kit.dart';
+import '../org_registrar.dart' show standingText;
+import '../org_registrar_member.dart' show openAdvising;
+import '../org_v3.dart' show orgCall;
+import 'adv_analytics_models.dart' show AdvAudience, advOutreachMaxRecipients;
+import 'adv_api.dart';
+import 'adv_case_parts.dart';
+import 'adv_comm_entries.dart' show AdvCommStrip;
+import 'adv_categories_page.dart';
+import 'adv_draft_store.dart';
+import 'adv_models.dart';
+import 'adv_outreach.dart' show advOutreachOn, showAdvOutreachComposer;
+import 'adv_parts.dart';
+import 'adv_student_page.dart';
+
+/// A standing's label (the registrar's, else the value itself).
+String advStandingLabel(String s) {
+  final l = standingText(s);
+  return l.isEmpty ? s : l;
+}
+
+class AdvCaseCard extends StatelessWidget {
+  const AdvCaseCard({super.key, required this.item, this.categoryNames = const {}, this.showAdvisor = false, this.onTap, this.onLongPress, this.selected, this.now});
+  final AdvCaseItem item;
+
+  /// Category key → name (the categories list); an unknown key shows its built-in name.
+  final Map<String, String> categoryNames;
+
+  /// Directors: the student's primary advisor under the card.
+  final bool showAdvisor;
+  final VoidCallback? onTap, onLongPress;
+
+  /// null: the list is not selecting; else whether this student is chosen (a check mark instead of the avatar).
+  final bool? selected;
+
+  /// The clock for "last contact" (tests pin it).
+  final DateTime? now;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final s = item;
+    final top = s.topReason;
+    final reason = top == null ? null : advRiskReasonText(top, flags: s.openFlags);
+    final highest = s.openFlags.highest;
+    final days = advDaysSince(s.lastContactAt, now: now);
+    final stale = days == null || days > 30;
+    final cats = [for (final k in s.categories) categoryNames[k] ?? advCategoryKeyLabel(k)];
+    final contact = advLastContactText(s.lastContactAt, now: now);
+    return AdvRowCard(
+      title: s.shown,
+      subtitle: s.subtitle.isEmpty ? null : s.subtitle,
+      avatarName: s.shown,
+      semanticLabel: [
+        s.shown,
+        t('درجة الخطر ${s.riskScore}', 'risk ${s.riskScore}'),
+        ?reason,
+        if (highest != null) t('أعلى تنبيه ${advPriorityLabel(highest)}', 'highest flag ${advPriorityLabel(highest)}'),
+        contact,
+      ].join('، '),
+      trailing: highest == null ? null : AdvPriorityPill(priority: highest, count: s.openFlags.of(highest)),
+      onTap: onTap,
+      onLongPress: onLongPress,
+      selected: selected,
+      below: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AdvRiskMeter(score: s.riskScore, reason: reason),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          _Fact(icon: Icons.forum_outlined, text: contact, tone: stale ? c.warning : null),
+          if (s.cgpa != null) _Fact(icon: Icons.school_outlined, text: t('المعدل ${advGpa(s.cgpa)}', 'CGPA ${advGpa(s.cgpa)}')),
+          if (showAdvisor)
+            _Fact(icon: Icons.co_present_outlined, text: s.primary == null ? t('بلا مرشد', 'No advisor') : s.primary!.shown, tone: s.primary == null ? c.warning : null),
+        ]),
+        if (cats.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+            for (final n in cats.take(3)) AppTag(n, c.textMedium),
+            if (cats.length > 3) AppTag('+${cats.length - 3}', c.textMedium),
+          ]),
+        ],
+      ]),
+    );
+  }
+}
+
+class _Fact extends StatelessWidget {
+  const _Fact({required this.icon, required this.text, this.tone});
+  final IconData icon;
+  final String text;
+  final Color? tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = tone == null ? c.textMedium : appInk(context, tone!);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      ExcludeSemantics(child: Icon(icon, size: AppIconSize.sm, color: ink)),
+      const SizedBox(width: AppSpace.xxs),
+      Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: tone == null ? null : ink))),
+    ]);
+  }
+}
+
+/// The one filter control of the toolbar: "Filters · 2" (tinted while any is on); opens the filter sheet.
+class AdvFiltersButton extends StatelessWidget {
+  const AdvFiltersButton({super.key, required this.count, required this.onTap, this.sortLabel});
+  final int count;
+  final VoidCallback onTap;
+
+  /// The current order when it is not the default ("Name").
+  final String? sortLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final active = count > 0 || sortLabel != null;
+    final ink = active ? orgInk(context) : c.textMedium;
+    final label = [
+      count > 0 ? t('التصفية · $count', 'Filters · $count') : t('التصفية', 'Filters'),
+      ?sortLabel,
+    ].join(' · ');
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: Material(
+        color: active ? c.primaryTint : c.cardBg,
+        borderRadius: AppRadius.chipAll,
+        child: InkWell(
+          key: const ValueKey('adv.workspace.filters'),
+          borderRadius: AppRadius.chipAll,
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: AppTouch.min),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+            decoration: BoxDecoration(borderRadius: AppRadius.chipAll, border: Border.all(color: active ? orgInk(context).withValues(alpha: 0.45) : c.divider)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.tune_rounded, size: AppIconSize.sm, color: ink),
+              const SizedBox(width: AppSpace.xs),
+              Flexible(
+                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: active ? orgInk(context) : c.textDark)),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The filter sheet's content (plain values). Every change goes to [onChanged]; [onApply] closes the sheet.
+class AdvWorkspaceFilterForm extends StatelessWidget {
+  const AdvWorkspaceFilterForm({
+    super.key,
+    required this.query,
+    required this.choices,
+    required this.manage,
+    required this.onChanged,
+    this.onPickAdvisor,
+    this.onApply,
+  });
+
+  final AdvWorkspaceQuery query;
+  final AdvWorkspaceChoices choices;
+  final bool manage;
+  final ValueChanged<AdvWorkspaceQuery> onChanged;
+  final VoidCallback? onPickAdvisor, onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    final q = query;
+    Widget dropdown<T>({required String label, required T? value, required List<(T, String)> options, required ValueChanged<T?> onPick}) => Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
+          child: AppDropdown<T?>(
+            value: value,
+            decoration: InputDecoration(labelText: label),
+            items: [
+              DropdownMenuItem<T?>(value: null, child: Text(t('الكل', 'All'))),
+              for (final (v, l) in options) DropdownMenuItem<T?>(value: v, child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis)),
+            ],
+            onChanged: onPick,
+          ),
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      AdvFieldLabel(t('الترتيب', 'Order')),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        for (final s in advWorkspaceSorts)
+          AppChoiceChip(label: advWorkspaceSortLabel(s), selected: q.sort == s, onTap: () => onChanged(q.copyWith(sort: s, page: 1))),
+      ]),
+      const SizedBox(height: AppSpace.md),
+      AdvFieldLabel(t('التنبيهات', 'Flags')),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        for (final f in advFlagFilters) AppChoiceChip(label: advFlagFilterLabel(f), selected: q.flag == f, onTap: () => onChanged(q.copyWith(flag: f, page: 1))),
+      ]),
+      const SizedBox(height: AppSpace.md),
+      AdvFieldLabel(t('الأولوية', 'Priority')),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        AppChoiceChip(label: t('الكل', 'Any'), selected: q.priority == null, onTap: () => onChanged(q.copyWith(priority: () => null, page: 1))),
+        for (final p in advPriorities)
+          AppChoiceChip(label: advPriorityLabel(p), selected: q.priority == p, onTap: () => onChanged(q.copyWith(priority: () => p, page: 1))),
+      ]),
+      const SizedBox(height: AppSpace.md),
+      if (manage) ...[
+        AdvPersonField(
+          label: t('المرشد', 'Advisor'),
+          name: q.advisor?.shown,
+          placeholder: t('كل المرشدين', 'Every advisor'),
+          onPick: onPickAdvisor,
+          onClear: () => onChanged(q.copyWith(advisor: () => null, page: 1)),
+        ),
+        const SizedBox(height: AppSpace.sm),
+      ],
+      if (choices.categories.isNotEmpty)
+        dropdown<int>(
+          label: t('تصنيف تنبيه مفتوح', 'Category of an open flag'),
+          value: q.categoryId,
+          options: [for (final c in choices.categories) (c.id, c.name)],
+          onPick: (v) => onChanged(q.copyWith(categoryId: () => v, page: 1)),
+        ),
+      if (choices.programs.isNotEmpty)
+        dropdown<int>(
+          label: t('البرنامج', 'Program'),
+          value: q.programId,
+          options: [for (final p in choices.programs) (p.id, p.name)],
+          onPick: (v) => onChanged(q.copyWith(programId: () => v, page: 1)),
+        ),
+      if (choices.levels.isNotEmpty)
+        dropdown<String>(
+          label: t('المستوى', 'Level'),
+          value: q.level,
+          options: [for (final l in choices.levels) (l, l)],
+          onPick: (v) => onChanged(q.copyWith(level: () => v, page: 1)),
+        ),
+      if (choices.cohorts.isNotEmpty)
+        dropdown<String>(
+          label: t('الدفعة', 'Cohort'),
+          value: q.cohort,
+          options: [for (final c in choices.cohorts) (c, c)],
+          onPick: (v) => onChanged(q.copyWith(cohort: () => v, page: 1)),
+        ),
+      dropdown<String>(
+        label: t('الوضع الأكاديمي', 'Academic standing'),
+        value: q.standing,
+        options: [for (final s in choices.standings) (s, advStandingLabel(s))],
+        onPick: (v) => onChanged(q.copyWith(standing: () => v, page: 1)),
+      ),
+      const SizedBox(height: AppSpace.xs),
+      if (onApply != null) AppPrimaryButton(icon: Icons.check_rounded, label: t('عرض النتائج', 'Show results'), onPressed: onApply),
+      if (q.activeFilters > 0 || q.sort != 'risk')
+        TextButton.icon(
+          style: TextButton.styleFrom(minimumSize: const Size(0, AppTouch.min)),
+          onPressed: () => onChanged(AdvWorkspaceQuery(q: q.q, size: q.size)),
+          icon: const Icon(Icons.filter_alt_off_rounded, size: AppIconSize.md),
+          label: Text(t('مسح التصفية والترتيب', 'Clear the filters and the order')),
+        ),
+    ]);
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Selection (Phase 9)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// The students chosen in the workspace, across pages, searches and filters (member id → the card). Pure and
+/// immutable; at most [max] (one group message's limit).
+class AdvSelection {
+  const AdvSelection([this.items = const {}, this.max = advOutreachMaxRecipients]);
+  final Map<int, AdvCaseItem> items;
+  final int max;
+
+  int get count => items.length;
+  bool get isEmpty => items.isEmpty;
+  bool get full => items.length >= max;
+  bool has(int memberId) => items.containsKey(memberId);
+  List<int> get memberIds => items.keys.toList()..sort();
+
+  /// Adds or removes one student; adding past [max] answers this same object.
+  AdvSelection toggle(AdvCaseItem s) {
+    if (has(s.memberId)) return AdvSelection({...items}..remove(s.memberId), max);
+    if (full) return this;
+    return AdvSelection({...items, s.memberId: s}, max);
+  }
+
+  /// The check box of a page: true every student on it is chosen · false none · null some.
+  bool? pageState(Iterable<AdvCaseItem> page) {
+    var on = 0, all = 0;
+    for (final s in page) {
+      all++;
+      if (has(s.memberId)) on++;
+    }
+    if (on == 0) return false;
+    return on == all ? true : null;
+  }
+
+  /// Every student of the page chosen → they are all removed; else the missing ones are added (up to [max]).
+  AdvSelection togglePage(Iterable<AdvCaseItem> page) {
+    final ids = {for (final s in page) s.memberId};
+    if (pageState(page) == true) return AdvSelection({...items}..removeWhere((k, _) => ids.contains(k)), max);
+    final next = {...items};
+    for (final s in page) {
+      if (next.length >= max) break;
+      next[s.memberId] = s;
+    }
+    return AdvSelection(next, max);
+  }
+
+  /// The outreach audience: exactly these students.
+  AdvAudience get audience => AdvAudience.members(memberIds);
+}
+
+/// "3 students selected".
+String advSelectedText(int n) => countText(n,
+    ar1: 'طالب واحد مختار', ar2: 'طالبان مختاران', arFew: '$n طلاب مختارون', arMany: '$n طالباً مختاراً', en1: '1 student selected', en: '$n students selected');
+
+/// The bar above the list while selecting: the page's check box, how many are chosen, and Done.
+class AdvSelectionBar extends StatelessWidget {
+  const AdvSelectionBar({super.key, required this.count, required this.pageState, this.onTogglePage, required this.onDone, this.full = false});
+  final int count;
+
+  /// The page's check box (AdvSelection.pageState).
+  final bool? pageState;
+  final VoidCallback? onTogglePage;
+  final VoidCallback onDone;
+
+  /// The selection reached one message's limit.
+  final bool full;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = orgInk(context);
+    final pageLabel = pageState == true ? t('إلغاء اختيار طلاب هذه الصفحة', 'Unselect the students on this page') : t('اختيار طلاب هذه الصفحة', 'Select the students on this page');
+    return Container(
+      constraints: const BoxConstraints(minHeight: AppTouch.min),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
+      decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.chipAll, border: Border.all(color: ink.withValues(alpha: 0.35))),
+      child: Row(children: [
+        Tooltip(
+          message: pageLabel,
+          child: Semantics(
+            label: pageLabel,
+            child: Checkbox(
+              key: const ValueKey('adv.workspace.select.page'),
+              tristate: true,
+              value: pageState,
+              onChanged: onTogglePage == null ? null : (_) => onTogglePage!(),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text(count == 0 ? t('اختر الطلاب', 'Select students') : advSelectedText(count),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w700, color: ink)),
+              Text(
+                full
+                    ? t('بلغت الحد: $advOutreachMaxRecipients طالب في الرسالة الواحدة', 'Limit reached: $advOutreachMaxRecipients students per message')
+                    : t('المس البطاقات لتختار أو تلغي الاختيار', 'Tap the cards to select or unselect'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.meta(context).copyWith(color: full ? appInk(context, c.warning) : null),
+              ),
+            ]),
+          ),
+        ),
+        TextButton(
+          key: const ValueKey('adv.workspace.select.done'),
+          style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: ink),
+          onPressed: onDone,
+          child: Text(t('تم', 'Done')),
+        ),
+      ]),
+    );
+  }
+}
+
+/// The action under the list while selecting: "Message 3 selected students" (off while nobody is chosen).
+class AdvSelectionActions extends StatelessWidget {
+  const AdvSelectionActions({super.key, required this.count, this.onMessage});
+  final int count;
+  final VoidCallback? onMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider))),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: AppPrimaryButton(
+                key: const ValueKey('adv.workspace.select.message'),
+                icon: Icons.campaign_outlined,
+                label: count == 0
+                    ? t('راسل المختارين', 'Message selected')
+                    : countText(count,
+                        ar1: 'راسل الطالب المختار', ar2: 'راسل الطالبين المختارين', arFew: 'راسل $count طلاب مختارين', arMany: 'راسل $count طالباً مختاراً',
+                        en1: 'Message the selected student', en: 'Message $count selected students'),
+                onPressed: count == 0 ? null : onMessage,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The calm counts above the list: how many students, open flags, urgent, no contact in 30 days.
+class _Facets extends StatelessWidget {
+  const _Facets({required this.page});
+  final AdvPage<AdvCaseItem> page;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = page.facets.containsKey('total') ? page.facet('total') : page.total;
+    final open = page.facet('open'), urgent = page.facet('urgent'), quiet = page.facet('no_contact_30d');
+    // the caseload at a glance: the workspace's one tinted block (sky = information), the count in the editorial
+    // section face, the facets as opaque pills (a translucent tint would lose its contrast on the block)
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.md),
+      child: AppBlock(
+        tone: AppBlockTone.sky,
+        padding: const EdgeInsets.all(AppSpace.md),
+        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+            child: Text(
+              countText(page.total, ar1: 'طالب واحد', ar2: 'طالبان', arFew: '${page.total} طلاب', arMany: '${page.total} طالباً', en1: '1 student', en: '${page.total} students') +
+                  (total != page.total ? t(' من $total', ' of $total') : ''),
+              style: AppType.section(context).copyWith(color: AppBlock.colorsOf(context).ink),
+            ),
+          ),
+          if (urgent > 0) AppStatusBadge(label: t('عاجل · $urgent', 'Urgent · $urgent'), tone: AppTone.danger, icon: Icons.priority_high_rounded),
+          if (open > 0) AppStatusBadge(label: t('لهم تنبيهات · $open', 'With open flags · $open'), tone: AppTone.warning, icon: Icons.flag_rounded),
+          if (quiet > 0) AppStatusBadge(label: t('بلا تواصل منذ 30 يوماً · $quiet', 'No contact in 30 days · $quiet'), icon: Icons.forum_outlined),
+        ]),
+      ),
+    );
+  }
+}
+
+class AdvWorkspaceView extends StatelessWidget {
+  const AdvWorkspaceView({
+    super.key,
+    required this.load,
+    required this.manage,
+    required this.query,
+    this.page,
+    this.errorText,
+    this.categoryNames = const {},
+    this.now,
+    this.onRetry,
+    this.onSearch,
+    this.onFilters,
+    this.onClearFilters,
+    this.onPage,
+    this.onOpen,
+    this.onRegistrationCases,
+    this.onCategories,
+    this.comm,
+    this.selection,
+    this.onSelectStart,
+    this.onToggle,
+    this.onTogglePage,
+    this.onSelectDone,
+    this.onMessageSelected,
+  });
+
+  final AdvLoad load;
+
+  /// A director (every student; the advisor shows on each card).
+  final bool manage;
+  final AdvWorkspaceQuery query;
+  final AdvPage<AdvCaseItem>? page;
+  final String? errorText;
+  final Map<String, String> categoryNames;
+  final DateTime? now;
+  final VoidCallback? onRetry, onFilters, onClearFilters, onRegistrationCases, onCategories;
+  final ValueChanged<String>? onSearch;
+  final ValueChanged<int>? onPage;
+  final ValueChanged<AdvCaseItem>? onOpen;
+
+  /// Phase 5: unread messages · today's appointments (AdvCommStrip).
+  final Widget? comm;
+
+  /// Phase 9: non-null while selecting students for a group message.
+  final AdvSelection? selection;
+
+  /// Starts selecting: a long press on a card (that student) or "Select students to message" under More (null).
+  /// Null: I may not send group messages.
+  final ValueChanged<AdvCaseItem?>? onSelectStart;
+  final ValueChanged<AdvCaseItem>? onToggle;
+  final VoidCallback? onTogglePage, onSelectDone, onMessageSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = page;
+    final sel = selection;
+    final filtered = query.activeFilters > 0 || query.q.trim().isNotEmpty;
+    Widget body;
+    if (load != AdvLoad.ready || p == null) {
+      body = AdvLoadState(state: load == AdvLoad.ready ? AdvLoad.loading : load, errorText: errorText, onRetry: onRetry);
+    } else if (p.items.isEmpty) {
+      body = filtered
+          ? AppEmpty(
+              icon: Icons.filter_alt_off_rounded,
+              title: t('لا طلاب يطابقون', 'No students match'),
+              message: t('جرّب بحثاً آخر أو امسح التصفية.', 'Try another search or clear the filters.'),
+              actionLabel: query.activeFilters > 0 && onClearFilters != null ? t('مسح التصفية', 'Clear the filters') : null,
+              onAction: query.activeFilters > 0 ? onClearFilters : null,
+            )
+          : AppEmpty(
+              icon: Icons.groups_rounded,
+              title: manage ? t('لا طلاب بعد', 'No students yet') : t('لم يُسند إليك طلاب بعد', 'No students are assigned to you yet'),
+              message: manage
+                  ? t('يظهر الطلاب هنا بعد توزيعهم على المرشدين.', 'Students show here once they are assigned to advisors.')
+                  : t('يظهر طلابك هنا حين يسندهم إليك مدير الإرشاد.', 'Your students show here when the advising director assigns them to you.'),
+            );
+    } else {
+      // ONE orchestrated entrance: the caseload block, then the first cards (AppReveal moves only the first 8)
+      body = AdvPageFrame(maxWidth: AppWidth.wide.max, children: [
+        AppReveal(index: 0, group: 'adv.workspace', child: _Facets(page: p)),
+        for (final (i, s) in p.items.indexed)
+          AppReveal(index: i + 1, group: 'adv.workspace', child: AdvCaseCard(
+            item: s,
+            categoryNames: categoryNames,
+            showAdvisor: manage,
+            now: now,
+            selected: sel?.has(s.memberId),
+            onTap: sel != null ? (onToggle == null ? null : () => onToggle!(s)) : (onOpen == null ? null : () => onOpen!(s)),
+            onLongPress: sel == null && onSelectStart != null ? () => onSelectStart!(s) : null,
+          )),
+        if (p.pages > 1 && onPage != null) ...[
+          const SizedBox(height: AppSpace.sm),
+          AppPagination(page: p.page, pageCount: p.pages, total: p.total, pageSize: p.size, onPage: onPage!),
+        ],
+      ]);
+    }
+    return OrgPageBody(
+      top: sel != null
+          ? AdvSelectionBar(
+              count: sel.count,
+              full: sel.full,
+              pageState: p == null ? false : sel.pageState(p.items),
+              onTogglePage: p == null || p.items.isEmpty ? null : onTogglePage,
+              onDone: onSelectDone ?? () {},
+            )
+          : comm,
+      search: onSearch == null ? null : OrgSearchField(hint: t('ابحث بالاسم أو الرقم', 'Search by name or ID'), onChanged: onSearch!),
+      filter: onFilters == null
+          ? null
+          : AdvFiltersButton(count: query.activeFilters, sortLabel: query.sort == 'risk' ? null : advWorkspaceSortLabel(query.sort), onTap: onFilters!),
+      more: [
+        if (onRegistrationCases != null) OrgMenuItem(icon: Icons.assignment_outlined, label: t('حالات التسجيل', 'Registration cases'), onTap: onRegistrationCases!),
+        if (onCategories != null) OrgMenuItem(icon: Icons.label_outline_rounded, label: t('التصنيفات', 'Categories'), onTap: onCategories!),
+        if (sel == null && onSelectStart != null && (p?.items.isNotEmpty ?? false))
+          OrgMenuItem(icon: Icons.checklist_rounded, label: t('اختيار طلاب لمراسلتهم', 'Select students to message'), onTap: () => onSelectStart!(null)),
+      ],
+      child: sel == null ? body : Column(children: [Expanded(child: body), AdvSelectionActions(count: sel.count, onMessage: onMessageSelected)]),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Page
+// ═════════════════════════════════════════════════════════════════════════════
+
+class AdvWorkspacePage extends StatelessWidget {
+  const AdvWorkspacePage({super.key, required this.orgId, required this.manage, this.sort = 'risk', this.outreach = false});
+  final int orgId;
+
+  /// I may send group messages (status `me.outreach`): students can be selected and messaged.
+  final bool outreach;
+
+  /// An org admin / advising director (else an advisor's own students).
+  final bool manage;
+
+  /// The first order (Phase 6: a "no contact" reminder opens it by last contact).
+  final String sort;
+
+  @override
+  Widget build(BuildContext context) => OrgPushedPage(
+        title: manage ? t('مساحة الإرشاد', 'Advising workspace') : t('طلابي', 'My students'),
+        helpPageId: 'org.advising',
+        maxWidth: AppWidth.wide.max,
+        child: _AdvWorkspaceBody(orgId: orgId, manage: manage, sort: sort, outreach: outreach),
+      );
+}
+
+class _AdvWorkspaceBody extends StatefulWidget {
+  const _AdvWorkspaceBody({required this.orgId, required this.manage, this.sort = 'risk', this.outreach = false});
+  final int orgId;
+  final bool manage;
+  final String sort;
+  final bool outreach;
+
+  @override
+  State<_AdvWorkspaceBody> createState() => _AdvWorkspaceBodyState();
+}
+
+class _AdvWorkspaceBodyState extends State<_AdvWorkspaceBody> {
+  late final AdvApi _api = AdvApi(widget.orgId);
+  OrgPageRefresh? _refresh;
+  StreamSubscription<LiveEvent>? _live;
+  AdvPage<AdvCaseItem>? _page;
+  AdvLoad _load = AdvLoad.loading;
+  String? _error;
+  late AdvWorkspaceQuery _query = AdvWorkspaceQuery(sort: advWorkspaceSorts.contains(widget.sort) ? widget.sort : 'risk');
+  int _seq = 0;
+  List<AdvCategory> _categories = const [];
+  AdvPolicyOptions? _options;
+
+  /// Every student listed so far (an advisor's filter choices come from them).
+  final Map<int, AdvCaseItem> _seen = {};
+
+  /// Non-null while selecting students for a group message.
+  AdvSelection? _selection;
+
+  /// Group messages are allowed here: the status said so and the kill switch is on.
+  bool get _canMessage => widget.outreach && advOutreachOn();
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh = OrgPageRefresh.register(context, _reload);
+    _live = LiveEvents.instance.listen({LiveEvents.connectivity}, (_) {
+      if (mounted && AppConnectivity.instance.isOnline && _load != AdvLoad.ready) _reload();
+    });
+    _reload();
+    _loadChoices();
+    AdvDraftStore.instance.flush();
+  }
+
+  @override
+  void dispose() {
+    _refresh?.unregister(_reload);
+    _live?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadChoices() async {
+    final cats = await orgCall(() => _api.categories(), quiet: true);
+    if (mounted && cats.ok) setState(() => _categories = cats.data as List<AdvCategory>);
+    if (!widget.manage) return;
+    final pol = await orgCall(() => _api.policy(), quiet: true);
+    if (mounted && pol.ok) setState(() => _options = (pol.data as AdvPolicyBundle).options);
+  }
+
+  Future<void> _reload() async {
+    final seq = ++_seq;
+    if (!AppConnectivity.instance.isOnline && _page == null) {
+      setState(() => _load = AdvLoad.offline);
+      return;
+    }
+    final r = await orgCall(() => _api.workspace(_query, manage: widget.manage), quiet: true);
+    if (!mounted || seq != _seq) return;
+    setState(() {
+      if (r.ok) {
+        final p = r.data as AdvPage<AdvCaseItem>;
+        _page = p;
+        _load = AdvLoad.ready;
+        for (final s in p.items) {
+          _seen[s.memberId] = s;
+        }
+      } else {
+        _load = advFailLoad(r);
+        _error = advErrorText(r.error!);
+        _page = null;
+      }
+    });
+    if (r.ok && mounted) OrgPageRefresh.reportUpdated(context);
+  }
+
+  void _set(AdvWorkspaceQuery q) {
+    setState(() {
+      _query = q;
+      _load = AdvLoad.loading;
+    });
+    _reload();
+  }
+
+  AdvWorkspaceChoices get _choices => AdvWorkspaceChoices.from(options: _options, seen: _seen.values, categories: _categories);
+
+  Future<void> _filters() async {
+    var draft = _query;
+    final apply = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+          Future<void> pickAdvisor() async {
+            final a = await pickAdvAdvisor(ctx, _api, title: t('طلاب مرشد', 'One advisor\'s students'), allowAway: true);
+            if (a != null) set(() => draft = draft.copyWith(advisor: () => AdvRef(userId: a.userId, name: a.name), page: 1));
+          }
+
+          return AppSheetContent(tone: AppTone.neutral, icon: Icons.tune_rounded, 
+            title: t('التصفية والترتيب', 'Filter and order'),
+            children: [
+              AdvWorkspaceFilterForm(
+                query: draft,
+                choices: _choices,
+                manage: widget.manage,
+                onChanged: (q) => set(() => draft = q),
+                onPickAdvisor: widget.manage ? pickAdvisor : null,
+                onApply: () => Navigator.pop(ctx, true),
+              ),
+            ],
+          );
+        }));
+    if (apply == true && mounted) _set(draft.copyWith(page: 1));
+  }
+
+  Future<void> _open(AdvCaseItem s) async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvStudentPage(orgId: widget.orgId, memberId: s.memberId, name: s.shown)));
+    if (mounted) _reload();
+  }
+
+  void _startSelect(AdvCaseItem? first) {
+    if (!_canMessage) return;
+    const empty = AdvSelection();
+    setState(() => _selection = first == null ? empty : empty.toggle(first));
+  }
+
+  void _toggle(AdvCaseItem s) {
+    final sel = _selection;
+    if (sel == null) return;
+    final next = sel.toggle(s);
+    if (identical(next, sel)) {
+      showAppNotice(t('الحد الأقصى $advOutreachMaxRecipients طالب في الرسالة الواحدة.', 'At most $advOutreachMaxRecipients students per message.'), error: true);
+      return;
+    }
+    setState(() => _selection = next);
+  }
+
+  void _togglePage() {
+    final p = _page, sel = _selection;
+    if (p == null || sel == null) return;
+    final next = sel.togglePage(p.items);
+    if (next.full && sel.pageState(p.items) != true && next.pageState(p.items) != true) {
+      showAppNotice(t('الحد الأقصى $advOutreachMaxRecipients طالب في الرسالة الواحدة.', 'At most $advOutreachMaxRecipients students per message.'), error: true);
+    }
+    setState(() => _selection = next);
+  }
+
+  /// The composer with exactly the chosen students; once it sent (it says so itself), selecting ends.
+  Future<void> _messageSelected() async {
+    final sel = _selection;
+    if (sel == null || sel.isEmpty) return;
+    final sent = await showAdvOutreachComposer(context, orgId: widget.orgId, audience: sel.audience, audienceTitle: advSelectedText(sel.count));
+    if (sent != null && mounted) setState(() => _selection = null);
+  }
+
+  Future<void> _openCategories() async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => AdvCategoriesPage(orgId: widget.orgId)));
+    if (mounted) _loadChoices();
+  }
+
+  @override
+  Widget build(BuildContext context) => AdvWorkspaceView(
+        load: _load,
+        manage: widget.manage,
+        query: _query,
+        page: _page,
+        errorText: _error,
+        categoryNames: {for (final c in _categories) c.key: c.name},
+        onRetry: () => _set(_query),
+        onSearch: (q) => _set(_query.copyWith(q: q, page: 1)),
+        onFilters: _filters,
+        onClearFilters: () => _set(_query.cleared()),
+        onPage: (p) => _set(_query.copyWith(page: p)),
+        onOpen: _open,
+        onRegistrationCases: () => openAdvising(context, widget.orgId),
+        onCategories: widget.manage ? _openCategories : null,
+        comm: AdvCommStrip(orgId: widget.orgId),
+        selection: _selection,
+        onSelectStart: _canMessage ? _startSelect : null,
+        onToggle: _toggle,
+        onTogglePage: _togglePage,
+        onSelectDone: () => setState(() => _selection = null),
+        onMessageSelected: _messageSelected,
+      );
+}

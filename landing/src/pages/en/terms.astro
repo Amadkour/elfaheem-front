@@ -1,0 +1,8 @@
+---
+import LegalPage from '../../components/LegalPage.astro';
+import '../../styles/fonts-en.css';
+import latin400 from '@fontsource/inter/files/inter-latin-400-normal.woff2?url';
+import latin700 from '@fontsource/inter/files/inter-latin-700-normal.woff2?url';
+---
+
+<LegalPage lang="en" doc="terms" preload={[latin400, latin700]} />

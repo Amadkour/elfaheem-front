@@ -1,0 +1,13 @@
+{
+ "_source": "GET /api/v1/exam/scans/5/image -> 409, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_hardening.py (back worktree wt-back-omr)",
+ "_status": 409,
+ "payload": {
+  "detail": {
+   "code": "omr_page_use_review",
+   "message": "هذه ورقة تظليل: افتحها وراجعها من قائمة مراجعة الأوراق",
+   "what": "image",
+   "use": "/api/v1/exam/exams/3/omr/pages/5",
+   "message_en": "This is a bubble-sheet page: open it from the OMR page view and fix it in the review queue."
+  }
+ }
+}

@@ -12,45 +12,137 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-
+import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind;
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:provider/provider.dart';
 
-import '../../utils/widget/app_loading_indicator.dart';
-import '../../utils/widget/base_page.dart';
 import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
-import '../teacher/profile/payout/teacher_payouts_screen.dart';
+import 'package:flutter_education_app/features/profile/teacher/payout/teacher_payouts_screen.dart' as tp show statusLabel;
 import 'admin_common.dart';
 import 'admin_list.dart';
 import 'admin_models.dart';
-import 'receipt_viewer.dart';
+import 'admin_money_p8.dart' show numText, parseAmountLoose;
+import 'admin_page.dart';
 import 'admin_providers.dart';
+import 'admin_table_export.dart' show adminWithdrawalsExport, exportFetched;
+import 'receipt_viewer.dart';
 
-class AdminPayoutsPage extends StatelessWidget {
+class AdminPayoutsPage extends StatefulWidget {
   const AdminPayoutsPage({super.key});
 
   @override
+  State<AdminPayoutsPage> createState() => _AdminPayoutsPageState();
+}
+
+class _AdminPayoutsPageState extends State<AdminPayoutsPage> {
+  final _requests = AdminPayoutRequestsProvider();
+  final _teachers = AdminPayoutTeachersProvider();
+  final _settings = AdminPayoutSettingsProvider();
+  final _visited = <int>{0};
+  int _tab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _requests.refresh();
+  }
+
+  @override
+  void dispose() {
+    _requests.dispose();
+    _teachers.dispose();
+    _settings.dispose();
+    super.dispose();
+  }
+
+  void _go(int i) {
+    if (i == _tab) return;
+    setState(() {
+      _tab = i;
+      if (_visited.add(i)) _load(i);
+    });
+  }
+
+  void _load(int i) {
+    switch (i) {
+      case 0:
+        _requests.refresh();
+      case 1:
+        _teachers.refresh();
+      default:
+        _settings.load();
+    }
+  }
+
+  Future<void> _export() async {
+    await exportFetched(
+      context,
+      fetch: (job) => _requests.fetchEvery(),
+      build: adminWithdrawalsExport,
+      filters: {if (_requests.status != null) t('الحالة', 'Status'): _requests.status!},
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return DefaultTabController(
-      length: 3,
-      child: BasePage(
-        useWebCard: true,
-        appBar: AppBar(
-          title: Text(
-            'admin_teacher_payouts'.tr,
-            style: const TextStyle(fontFamily: 'tajawal'),
-          ),
-          bottom: TabBar(
-            tabs: [
-              Tab(text: 'admin_requests'.tr),
-              Tab(text: 'admin_teachers'.tr),
-              Tab(text: 'admin_settings'.tr),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AdminPayoutRequestsProvider>.value(value: _requests),
+        ChangeNotifierProvider<AdminPayoutTeachersProvider>.value(value: _teachers),
+        ChangeNotifierProvider<AdminPayoutSettingsProvider>.value(value: _settings),
+      ],
+      child: ListenableBuilder(
+        listenable: _requests,
+        builder: (context, _) => AdminPage(
+          width: AppWidth.wide,
+          title: 'admin_teacher_payouts'.tr,
+          icon: Icons.account_balance_wallet_rounded,
+          onRefresh: () => _load(_tab),
+          updatedAt: _tab == 0 ? _requests.loadedAt : null,
+          primaryAction: _tab == 0
+              ? AppButton.primary(
+                  label: t('تصدير', 'Export'),
+                  icon: Icons.ios_share_rounded,
+                  onPressed: _requests.loaded && _requests.rows.isNotEmpty ? _export : null,
+                )
+              : null,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  AppSpace.gutter(MediaQuery.sizeOf(context).width),
+                  AppSpace.md,
+                  AppSpace.gutter(MediaQuery.sizeOf(context).width),
+                  AppSpace.xs,
+                ),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: AppTabs(
+                    index: _tab,
+                    onChanged: _go,
+                    items: [
+                      AppTabItem('admin_requests'.tr, count: _requests.pendingCount > 0 ? _requests.pendingCount : null),
+                      AppTabItem('admin_teachers'.tr),
+                      AppTabItem('admin_settings'.tr),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: IndexedStack(
+                  index: _tab,
+                  children: [
+                    const _RequestsView(),
+                    _visited.contains(1) ? const _TeachersView() : const SizedBox.shrink(),
+                    _visited.contains(2) ? const _SettingsView() : const SizedBox.shrink(),
+                  ],
+                ),
+              ),
             ],
           ),
-        ),
-        child: const TabBarView(
-          children: [_RequestsTab(), _TeachersTab(), _SettingsTab()],
         ),
       ),
     );
@@ -61,15 +153,31 @@ class AdminPayoutsPage extends StatelessWidget {
 //  Requests
 // ═════════════════════════════════════════════════════════════════════════════
 
-class _RequestsTab extends StatelessWidget {
-  const _RequestsTab();
+AppTone _statusTone(String s) => switch (s) {
+      'paid' => AppTone.success,
+      'rejected' => AppTone.danger,
+      'approved' => AppTone.brand,
+      _ => AppTone.warning,
+    };
 
-  @override
-  Widget build(BuildContext context) => ChangeNotifierProvider(
-    create: (_) => AdminPayoutRequestsProvider()..refresh(),
-    child: const _RequestsView(),
-  );
-}
+String _stateLabel(String state) => switch (state) {
+      'paid' => 'admin_provider_paid'.tr,
+      'processing' => 'admin_processing_at_provider'.tr,
+      'failed' => 'admin_transfer_failed'.tr,
+      'unknown' => 'admin_unconfirmed'.tr,
+      _ => '',
+    };
+
+AppTone _stateTone(String state) => switch (state) {
+      'paid' => AppTone.success,
+      'processing' => AppTone.brand,
+      'failed' => AppTone.danger,
+      'unknown' => AppTone.warning,
+      _ => AppTone.neutral,
+    };
+
+/// "1,200 EGP": the amount of a withdrawal with the currency the server pays it out in.
+String _amountText(Withdrawal w) => money(w.amount, w.currency);
 
 class _RequestsView extends StatelessWidget {
   const _RequestsView();
@@ -77,366 +185,288 @@ class _RequestsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminPayoutRequestsProvider>();
+    final rows = p.visible;
+    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
 
-    return PagedList<AdminPayoutRequestsProvider>(
-      countIcon: Icons.account_balance_wallet_rounded,
-      emptyText: 'admin_no_requests'.tr,
-      header: Column(
-        children: [
-          const SizedBox(height: 8),
-          FilterChips<String>(
-            value: p.status ?? 'all',
-            options: {
-              'pending': 'admin_pending_3'.tr,
-              'approved': 'admin_approved'.tr,
-              'paid': 'admin_paid_2'.tr,
-              'rejected': 'admin_rejected'.tr,
-              'all': 'filter_all'.tr,
-            },
-            onChanged: (v) => p.setStatus(v == 'all' ? null : v),
+    final summary = p.pendingCount > 0
+        ? Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.xs, gutter, AppSpace.xs),
+            child: _PendingSummary(p),
+          )
+        : const SizedBox.shrink();
+
+    Widget table() => Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.xs, gutter, AppSpace.md),
+            child: AppDataTable<Withdrawal>(
+              state: (!p.loaded && p.isLoading)
+                  ? AppTableState.loading
+                  : (p.error != null && p.rows.isEmpty)
+                      ? AppTableState.error
+                      : AppTableState.ready,
+              errorText: p.error,
+              onRetry: p.refresh,
+              rows: rows,
+              searchHint: t('ابحث عن معلم…', 'Search a teacher…'),
+              onSearch: p.setQuery,
+              filters: [
+                AppTableFilter(
+                  label: t('الحالة', 'Status'),
+                  value: p.status,
+                  options: [
+                    ('pending', 'admin_pending_3'.tr),
+                    ('approved', 'admin_approved'.tr),
+                    ('paid', 'admin_paid_2'.tr),
+                    ('rejected', 'admin_rejected'.tr),
+                  ],
+                  onChanged: p.setStatus,
+                ),
+              ],
+              onClearFilters: () => p.setStatus(null),
+              empty: AppEmpty(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'admin_no_requests'.tr,
+              ),
+              columns: [
+                AppTableColumn<Withdrawal>(
+                  key: 'teacher',
+                  label: 'admin_teachers'.tr,
+                  primary: true,
+                  flex: 3,
+                  cell: (ctx, w) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      adminEntityCell(ctx, EntityKind.teacher, {'id': w.teacherId, 'name': w.teacherName}),
+                      if (w.teacherGmail.isNotEmpty)
+                        Text(
+                          w.teacherGmail,
+                          textDirection: TextDirection.ltr,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.meta(ctx),
+                        ),
+                    ],
+                  ),
+                ),
+                AppTableColumn<Withdrawal>(
+                  key: 'amount',
+                  label: t('المبلغ', 'Amount'),
+                  numeric: true,
+                  align: AppColAlignment.end,
+                  cell: (ctx, w) => Text(_amountText(w), style: AppType.figure(ctx), textDirection: TextDirection.ltr),
+                ),
+                AppTableColumn<Withdrawal>.text(
+                  key: 'method',
+                  label: t('الطريقة', 'Method'),
+                  text: (w) => payoutMethodLabel(w.method),
+                ),
+                AppTableColumn<Withdrawal>(
+                  key: 'status',
+                  label: t('الحالة', 'Status'),
+                  flex: 2,
+                  cell: (ctx, w) => Wrap(
+                    spacing: AppSpace.xxs,
+                    runSpacing: AppSpace.xxs,
+                    children: [
+                      AppStatusBadge(label: tp.statusLabel(w.status), tone: _statusTone(w.status), dense: true),
+                      if (w.state != 'none' && _stateLabel(w.state).isNotEmpty)
+                        AppStatusBadge(label: _stateLabel(w.state), tone: _stateTone(w.state), dense: true),
+                      if (p.busy.contains(w.id))
+                        AppStatusBadge(label: t('جارٍ التنفيذ…', 'Working…'), tone: AppTone.info, dense: true),
+                    ],
+                  ),
+                ),
+                AppTableColumn<Withdrawal>.text(
+                  key: 'requested',
+                  label: 'admin_requested'.tr,
+                  text: (w) => shortDateTime(w.requestedAt),
+                ),
+              ],
+              onRowTap: (w) => _showDetails(context, w),
+              rowActions: (w) => _actionsFor(context, p, w),
+              onLoadMore: p.loadMore,
+              hasMore: p.hasMore,
+              loadingMore: p.loadingMore,
+            ),
+          );
+
+    // A tall window: the money waiting on top, the table fills the rest. A short one (a phone) scrolls the page and
+    // gives the table a fixed height, so the summary never squeezes the table to nothing.
+    return LayoutBuilder(builder: (context, box) {
+      if (box.maxHeight >= 760) {
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [summary, Expanded(child: table())]);
+      }
+      return SingleChildScrollView(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [summary, SizedBox(height: 560, child: table())]),
+      );
+    });
+  }
+}
+
+/// The money waiting for the admin: how many requests and, per currency, how much.
+class _PendingSummary extends StatelessWidget {
+  const _PendingSummary(this.p);
+
+  final AdminPayoutRequestsProvider p;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = p.pendingMoney.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    return AppKpiGrid(
+      maxColumns: 3,
+      children: [
+        AppKpiCard(
+          label: t('طلبات بانتظار القرار', 'Requests waiting'),
+          value: '${p.pendingCount}',
+          icon: Icons.pending_actions_rounded,
+        ),
+        for (var i = 0; i < entries.length; i++)
+          AppKpiCard(
+            label: entries[i].key.isEmpty
+                ? t('مبالغ بانتظار الاعتماد', 'Money waiting')
+                : '${t('مبالغ بانتظار الاعتماد', 'Money waiting')} · ${entries[i].key}',
+            value: money(entries[i].value, entries[i].key),
+            icon: Icons.payments_rounded,
+            highlight: i == 0,
+            footnote: p.pendingCount > 200 ? t('أول ٢٠٠ طلب', 'First 200 requests') : null,
           ),
-          const SizedBox(height: 6),
-        ],
-      ),
-      indexedBuilder: (ctx, pr, i) => _RequestCard(pr.items[i]),
+      ],
     );
   }
 }
 
-class _RequestCard extends StatelessWidget {
-  const _RequestCard(this.w);
-
-  final Withdrawal w;
-
-  Color _stateColor(BuildContext context) {
-    final c = context.colors;
-    switch (w.state) {
-      case 'paid':
-        return c.success;
-      case 'processing':
-        return c.primary;
-      case 'failed':
-        return c.danger;
-      case 'unknown':
-        return c.warning;
-    }
-    return c.textLight;
-  }
-
-  String get _stateLabel {
-    switch (w.state) {
-      case 'paid':
-        return 'admin_provider_paid'.tr;
-      case 'processing':
-        return 'admin_processing_at_provider'.tr;
-      case 'failed':
-        return 'admin_transfer_failed'.tr;
-      case 'unknown':
-        return 'admin_unconfirmed'.tr;
-    }
-    return '';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final p = context.read<AdminPayoutRequestsProvider>();
-    final busy = p.busy.contains(w.id);
-    final approvedAuto = w.status == 'approved' && w.provider != null;
-
-    return RowCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  w.teacherName.isEmpty ? '#${w.teacherId}' : w.teacherName,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w800,
-                    color: c.textDark,
-                  ),
-                ),
-              ),
-              Text(
-                money(w.amount),
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontWeight: FontWeight.w900,
-                  fontSize: 17,
-                  color: c.primary,
-                ),
-              ),
-            ],
-          ),
-          Text(
-            w.teacherGmail,
-            textDirection: TextDirection.ltr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 12,
-              color: c.textLight,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: [
-              StatusChip(
-                statusLabel(w.status),
-                w.status == 'paid'
-                    ? c.success
-                    : (w.status == 'rejected'
-                    ? c.danger
-                    : (w.status == 'approved' ? c.primary : c.warning)),
-              ),
-              StatusChip(payoutMethodLabel(w.method), c.charcoal),
-              if (w.state != 'none')
-                StatusChip(_stateLabel, _stateColor(context)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          KeyValue('account'.tr, payoutDestinationSummary(w.destination)),
-          if (w.providerStatus != null)
-            KeyValue('admin_provider'.tr, w.providerStatus!),
-          if (w.providerReference != null)
-            KeyValue('admin_reference'.tr, w.providerReference!),
-          if (w.bankReference != null)
-            KeyValue('admin_transfer_ref'.tr, w.bankReference!),
-          if (w.receiptUrl != null)
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
-                icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                label: Text('admin_view_receipt'.tr),
-                onPressed: () async {
-                  final p = context.read<AdminPayoutRequestsProvider>();
-                  final link = await p.receiptLink(w.id);
-                  if (!context.mounted) return;
-                  await openReceipt(context, link);
-                },
-              ),
-            ),
-          if (w.note != null) KeyValue('admin_teacher_note'.tr, w.note!),
-          if (w.rejectedReason != null)
-            KeyValue('admin_reason'.tr, w.rejectedReason!),
-          if (w.error != null && w.state != 'paid')
-            Container(
-              margin: const EdgeInsets.only(top: 6),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: c.danger.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                w.error!,
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 12,
-                  color: c.danger,
-                ),
-              ),
-            ),
-          KeyValue('admin_requested'.tr, shortDateTime(w.requestedAt)),
-          const SizedBox(height: 10),
-          if (busy)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(6),
-                child: AppLoadingIndicator(),
-              ),
-            )
-          else ...[
-            if (w.status == 'pending')
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: c.success,
-                      ),
-                      icon: const Icon(
-                        Icons.check_rounded,
-                        color: Colors.white,
-                      ),
-                      label: Text(
-                        w.automatic
-                            ? 'admin_approve_send'.tr
-                            : 'request_approve'.tr,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontFamily: 'tajawal',
-                        ),
-                      ),
-                      onPressed: () async {
-                        final ok = await confirm(
-                          context,
-                          message: w.automatic
-                              ? trp(
-                            'admin_approving_sends_right_now_via_continue',
-                            {
-                              'amount': money(w.amount),
-                              'method': payoutMethodLabel(w.method),
-                            },
-                          )
-                              : 'admin_approve_this_request_you_will_transfer'
-                              .tr,
-                          confirmLabel: 'request_approve'.tr,
-                        );
-                        if (ok) await p.approve(w.id);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlineButton(
-                    color: context.colors.danger,
-                    label: 'request_reject'.tr,
-                    onPressed: () async {
-                      final reason = await askText(
-                        context,
-                        title: 'rejection_reason_title'.tr,
-                        multiline: true,
-                      );
-                      if (reason != null && reason.isNotEmpty)
-                        await p.reject(w.id, reason);
-                    },
-                    icon: Icons.close_rounded,
-                  ),
-                ],
-              ),
-            if (w.status == 'approved' && w.state == 'processing')
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.sync_rounded),
-                      label: Text('admin_sync_status'.tr),
-                      onPressed: () => p.sync(w.id),
-                    ),
-                  ),
-                ],
-              ),
-            if (approvedAuto &&
-                (w.state == 'failed' ||
-                    w.state == 'unknown' ||
-                    w.state == 'none'))
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(
-                        Icons.replay_rounded,
-                        color: Colors.white,
-                      ),
-                      label: Text(
-                        'retry'.tr,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontFamily: 'tajawal',
-                        ),
-                      ),
-                      onPressed: () async {
-                        final ok = await confirm(
-                          context,
-                          message: w.state == 'unknown'
-                              ? 'admin_it_is_re_sent_with_the_same'.tr
-                              : 'admin_send_the_transfer_again'.tr,
-                        );
-                        if (ok) await p.retry(w.id);
-                      },
-                    ),
-                  ),
-                  if (w.state == 'unknown') ...[
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _resolveDialog(context, p),
-                        child: Text('admin_resolve'.tr),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            if (w.status == 'approved' && w.state != 'processing')
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Row(
-                  children: [
-                    OutlineButton(
-                      color: context.colors.primary,
-                      label: 'admin_mark_paid_manual'.tr,
-                      onPressed: () async {
-                        await _markPaid(context, p);
-                      },
-                      icon: Icons.price_check_rounded,
-                    ),
-
-                    if (w.state != 'unknown') ...[
-                      const SizedBox(width: 8),
-                      OutlineButton(
-                        color: context.colors.danger,
-                        label: 'request_reject'.tr,
-                        onPressed: () async {
-                          final reason = await askText(
-                            context,
-                            title: 'rejection_reason_title'.tr,
-                            multiline: true,
-                          );
-                          if (reason != null && reason.isNotEmpty) {
-                            await p.reject(w.id, reason);
-                          }
-                        },
-                        icon: Icons.close_rounded,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-          ],
-        ],
+List<AppRowAction<Withdrawal>> _actionsFor(BuildContext context, AdminPayoutRequestsProvider p, Withdrawal w) {
+  if (p.busy.contains(w.id)) return const [];
+  final approvedAuto = w.status == 'approved' && w.provider != null;
+  return [
+    if (w.status == 'pending')
+      AppRowAction(
+        icon: Icons.check_rounded,
+        label: w.automatic ? 'admin_approve_send'.tr : 'request_approve'.tr,
+        onTap: () => _approve(context, p, w),
       ),
-    );
-  }
+    if (w.status == 'pending')
+      AppRowAction(icon: Icons.close_rounded, label: 'request_reject'.tr, danger: true, onTap: () => _reject(context, p, w)),
+    if (w.status == 'approved' && w.state == 'processing')
+      AppRowAction(icon: Icons.sync_rounded, label: 'admin_sync_status'.tr, onTap: () => p.sync(w.id)),
+    if (approvedAuto && (w.state == 'failed' || w.state == 'unknown' || w.state == 'none'))
+      AppRowAction(icon: Icons.replay_rounded, label: 'retry'.tr, onTap: () => _retry(context, p, w)),
+    if (approvedAuto && w.state == 'unknown')
+      AppRowAction(icon: Icons.rule_rounded, label: 'admin_resolve'.tr, onTap: () => _resolve(context, p, w)),
+    if (w.status == 'approved' && w.state != 'processing')
+      AppRowAction(icon: Icons.price_check_rounded, label: 'admin_mark_paid_manual'.tr, onTap: () => _markPaid(context, p, w)),
+    if (w.status == 'approved' && w.state != 'processing' && w.state != 'unknown')
+      AppRowAction(icon: Icons.close_rounded, label: 'request_reject'.tr, danger: true, onTap: () => _reject(context, p, w)),
+    if (w.receiptUrl != null)
+      AppRowAction(icon: Icons.receipt_long_rounded, label: 'admin_view_receipt'.tr, onTap: () => _openReceipt(context, p, w)),
+  ];
+}
 
-  Future<void> _markPaid(
-      BuildContext context,
-      AdminPayoutRequestsProvider p,
-      ) async {
-    final result = await showDialog<_PaidInput>(
-      context: context,
-      builder: (_) => const _MarkPaidDialog(),
-    );
-    if (result == null) return;
-    // 1) upload the receipt first — if it fails nothing is marked paid
-    final uploaded = await p.uploadReceipt(
-      w.id,
-      fileName: result.fileName,
-      filePath: result.filePath,
-      bytes: result.bytes,
-    );
-    if (!uploaded) return;
-    // 2) then confirm the transfer
-    await p.markPaid(w.id, result.reference);
-  }
+String _who(Withdrawal w) => w.teacherName.isEmpty ? '#${w.teacherId}' : w.teacherName;
 
-  Future<void> _resolveDialog(
-      BuildContext context,
-      AdminPayoutRequestsProvider p,
-      ) async {
-    final r = await showDialog<_ResolveInput>(
-      context: context,
-      builder: (_) => const _ResolveDialog(),
-    );
-    if (r == null) return;
-    if (!r.sent) {
-      await p.resolve(w.id, sent: false);
-    } else {
-      await p.resolve(w.id, sent: true, reference: r.reference);
-    }
+/// Approve. This moves REAL money for an automatic method, so the question names the teacher, the amount WITH its
+/// currency and the method.
+Future<void> _approve(BuildContext context, AdminPayoutRequestsProvider p, Withdrawal w) async {
+  final head = '${_who(w)} · ${_amountText(w)} · ${payoutMethodLabel(w.method)}';
+  final body = w.automatic
+      ? trp('admin_approving_sends_right_now_via_continue', {
+          'amount': _amountText(w),
+          'method': payoutMethodLabel(w.method),
+        })
+      : 'admin_approve_this_request_you_will_transfer'.tr;
+  final ok = await appConfirm(context, message: '$head\n\n$body', confirmLabel: 'request_approve'.tr);
+  if (ok) await p.approve(w.id);
+}
+
+Future<void> _reject(BuildContext context, AdminPayoutRequestsProvider p, Withdrawal w) async {
+  final reason = await askText(context, title: 'rejection_reason_title'.tr, multiline: true);
+  if (reason != null && reason.isNotEmpty) await p.reject(w.id, reason);
+}
+
+Future<void> _retry(BuildContext context, AdminPayoutRequestsProvider p, Withdrawal w) async {
+  final head = '${_who(w)} · ${_amountText(w)} · ${payoutMethodLabel(w.method)}';
+  final ok = await appConfirm(
+    context,
+    message: '$head\n\n${w.state == 'unknown' ? 'admin_it_is_re_sent_with_the_same'.tr : 'admin_send_the_transfer_again'.tr}',
+  );
+  if (ok) await p.retry(w.id);
+}
+
+Future<void> _openReceipt(BuildContext context, AdminPayoutRequestsProvider p, Withdrawal w) async {
+  final link = await p.receiptLink(w.id);
+  if (!context.mounted) return;
+  await openReceipt(context, link);
+}
+
+Future<void> _markPaid(BuildContext context, AdminPayoutRequestsProvider p, Withdrawal w) async {
+  final result = await showDialog<_PaidInput>(
+    context: context,
+    builder: (_) => const _MarkPaidDialog(),
+  );
+  if (result == null) return;
+  // 1) upload the receipt first — if it fails nothing is marked paid
+  final uploaded = await p.uploadReceipt(
+    w.id,
+    fileName: result.fileName,
+    filePath: result.filePath,
+    bytes: result.bytes,
+  );
+  if (!uploaded) return;
+  // 2) then confirm the transfer
+  await p.markPaid(w.id, result.reference);
+}
+
+Future<void> _resolve(BuildContext context, AdminPayoutRequestsProvider p, Withdrawal w) async {
+  final r = await showDialog<_ResolveInput>(
+    context: context,
+    builder: (_) => const _ResolveDialog(),
+  );
+  if (r == null) return;
+  if (!r.sent) {
+    await p.resolve(w.id, sent: false);
+  } else {
+    await p.resolve(w.id, sent: true, reference: r.reference);
   }
+}
+
+/// Everything about one request that does not fit a row (account, provider status and references, notes, errors).
+void _showDetails(BuildContext context, Withdrawal w) {
+  final c = context.colors;
+  showAppSheet<void>(
+    context,
+    (ctx) => AppSheetContent(
+      title: _who(w),
+      children: [
+        Wrap(
+          spacing: AppSpace.xs,
+          runSpacing: AppSpace.xxs,
+          children: [
+            AppStatusBadge(label: tp.statusLabel(w.status), tone: _statusTone(w.status)),
+            AppStatusBadge(label: payoutMethodLabel(w.method), tone: AppTone.neutral),
+            if (w.state != 'none' && _stateLabel(w.state).isNotEmpty)
+              AppStatusBadge(label: _stateLabel(w.state), tone: _stateTone(w.state)),
+          ],
+        ),
+        AppSpace.gapSm,
+        KeyValue(t('المبلغ', 'Amount'), _amountText(w)),
+        if (w.teacherGmail.isNotEmpty) KeyValue('admin_teachers'.tr, w.teacherGmail),
+        KeyValue('account'.tr, payoutDestinationSummary(w.destination)),
+        if (w.providerStatus != null) KeyValue('admin_provider'.tr, w.providerStatus!),
+        if (w.providerReference != null) KeyValue('admin_reference'.tr, w.providerReference!),
+        if (w.bankReference != null) KeyValue('admin_transfer_ref'.tr, w.bankReference!),
+        if (w.note != null) KeyValue('admin_teacher_note'.tr, w.note!),
+        if (w.rejectedReason != null) KeyValue('admin_reason'.tr, w.rejectedReason!),
+        KeyValue('admin_requested'.tr, shortDateTime(w.requestedAt)),
+        if (w.error != null && w.state != 'paid')
+          Container(
+            margin: const EdgeInsets.only(top: AppSpace.xs),
+            padding: const EdgeInsets.all(AppSpace.xs),
+            decoration: BoxDecoration(color: c.dangerTint, borderRadius: AppRadius.chipAll),
+            child: Text(w.error!, style: AppType.meta(ctx).copyWith(color: c.danger)),
+          ),
+      ],
+    ),
+  );
 }
 
 class _ResolveInput {
@@ -470,18 +500,19 @@ class _ResolveDialogState extends State<_ResolveDialog> {
     return Directionality(
       textDirection: dir,
       child: AlertDialog(
+        scrollable: true,
         title: Text(
           'admin_resolve_unconfirmed_transfer'.tr,
-          style: const TextStyle(fontFamily: 'tajawal'),
+          style: TextStyle(fontFamily: AppFonts.family),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'admin_check_the_provider_dashboard_did_the'.tr,
-              style: const TextStyle(fontFamily: 'tajawal'),
+              style: TextStyle(fontFamily: AppFonts.family),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.sm),
             TextField(
               controller: _ctrl,
               decoration: InputDecoration(
@@ -538,6 +569,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
   static const _maxBytes = 10 * 1024 * 1024;
   final _ref = TextEditingController();
   PlatformFile? _file;
+  Uint8List? _bytes; // web only (no file path there)
 
   @override
   void dispose() {
@@ -548,31 +580,45 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
   bool get _isPdf => (_file?.extension ?? '').toLowerCase() == 'pdf';
 
   Future<void> _pick() async {
-    final res = await FilePicker.pickFiles(
+    // file_picker v12+: pickFile() returns PlatformFile? (null if cancelled).
+    final f = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
-      withData:
-      kIsWeb, // web has no file path — the bytes are the only way to read it
     );
-    final f = res?.files.single;
     if (f == null) return;
-    if (kIsWeb ? f.bytes == null : f.path == null) {
+
+    // Web has no file path — the bytes are the only way to read it.
+    Uint8List? bytes;
+    if (kIsWeb) {
+      try {
+        bytes = await f.readAsBytes();
+      } catch (_) {
+        bytes = null;
+      }
+    }
+    if (kIsWeb ? bytes == null : f.path == null) {
       toast('admin_receipt_read_failed'.tr, error: true);
       return;
     }
-    if (f.size > _maxBytes) {
+
+    // PlatformFile.size was removed in v12 — length is now a method.
+    final size = bytes?.length ?? f.lengthSync() ?? await f.length() ?? 0;
+    if (size > _maxBytes) {
       toast('admin_receipt_too_large'.tr, error: true);
       return;
     }
-    setState(() => _file = f);
+    setState(() {
+      _file = f;
+      _bytes = bytes;
+    });
   }
 
   Widget _preview(PlatformFile f) {
-    Widget broken(BuildContext _, Object __, StackTrace? ___) =>
+    Widget broken(BuildContext _, Object _, StackTrace? _) =>
         const Center(child: Icon(Icons.broken_image_rounded, size: 40));
     if (kIsWeb) {
       return Image.memory(
-        f.bytes!,
+        _bytes!,
         fit: BoxFit.cover,
         cacheWidth: 600,
         errorBuilder: broken,
@@ -599,7 +645,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
     Navigator.pop(
       context,
       kIsWeb
-          ? _PaidInput(_ref.text.trim(), f.name, bytes: f.bytes)
+          ? _PaidInput(_ref.text.trim(), f.name, bytes: _bytes)
           : _PaidInput(_ref.text.trim(), f.name, filePath: f.path),
     );
   }
@@ -612,7 +658,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
       child: AlertDialog(
         title: Text(
           'admin_transfer_reference_bank_instapay'.tr,
-          style: const TextStyle(fontFamily: 'tajawal'),
+          style: TextStyle(fontFamily: AppFonts.family),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -623,7 +669,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
                 controller: _ref,
                 decoration: InputDecoration(hintText: 'admin_transfer_ref'.tr),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpace.md),
               Row(
                 children: [
                   OutlineButton(
@@ -639,7 +685,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
               ),
               if (_file != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.only(top: AppSpace.xs),
                   child: Row(
                     children: [
                       Icon(
@@ -648,17 +694,14 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
                             : Icons.image_rounded,
                         color: c.primary,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpace.xs),
                       Expanded(
                         child: Text(
                           _file!.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textDirection: TextDirection.ltr,
-                          style: const TextStyle(
-                            fontFamily: 'tajawal',
-                            fontSize: 12,
-                          ),
+                          style: AppType.meta(context),
                         ),
                       ),
                     ],
@@ -666,7 +709,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
                 ),
               if (_file != null && !_isPdf)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.only(top: AppSpace.xs),
                   // FIXED size on purpose: AlertDialog measures its content with IntrinsicWidth, and an
                   // Image with width: double.infinity (or a full-resolution photo decode) there is what
                   // blanked the screen. cacheWidth keeps a 12 MP camera photo from being decoded in full.
@@ -674,7 +717,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
                     width: 232,
                     height: 140,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
                       child: _preview(_file!),
                     ),
                   ),
@@ -701,16 +744,6 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
 //  Teachers (who may withdraw)
 // ═════════════════════════════════════════════════════════════════════════════
 
-class _TeachersTab extends StatelessWidget {
-  const _TeachersTab();
-
-  @override
-  Widget build(BuildContext context) => ChangeNotifierProvider(
-    create: (_) => AdminPayoutTeachersProvider()..refresh(),
-    child: const _TeachersView(),
-  );
-}
-
 class _TeachersView extends StatelessWidget {
   const _TeachersView();
 
@@ -721,7 +754,7 @@ class _TeachersView extends StatelessWidget {
       header: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
             child: SearchBox(
               hint: 'admin_search_teachers'.tr,
               onChanged: p.setSearch,
@@ -736,7 +769,7 @@ class _TeachersView extends StatelessWidget {
             },
             onChanged: (v) => p.setOnly(v == 'all' ? null : v),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.xs),
         ],
       ),
       emptyText: 'admin_no_teachers'.tr,
@@ -768,7 +801,7 @@ class _TeacherTile extends StatelessWidget {
             allowed ? Icons.check_circle_rounded : Icons.block_rounded,
             color: allowed ? c.success : c.danger,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -776,7 +809,7 @@ class _TeacherTile extends StatelessWidget {
                 Text(
                   asStr(row['name']),
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w800,
                     color: c.textDark,
                   ),
@@ -784,13 +817,9 @@ class _TeacherTile extends StatelessWidget {
                 Text(
                   asStr(row['gmail']),
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 12,
-                    color: c.textLight,
-                  ),
+                  style: AppType.meta(context).copyWith(color: c.textLight),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xxs),
                 Wrap(
                   spacing: 6,
                   runSpacing: 4,
@@ -845,7 +874,7 @@ class _TeacherTile extends StatelessWidget {
               SheetHeader(asStr(row['name'])),
               Flexible(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.lg),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -859,12 +888,9 @@ class _TeacherTile extends StatelessWidget {
                         value: enabled,
                         onChanged: (v) => setS(() => enabled = v),
                       ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          'admin_custom_methods_for_this_teacher'.tr,
-                          style: const TextStyle(fontFamily: 'tajawal'),
-                        ),
+                      AppSwitchTile(
+                        padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+                        title: 'admin_custom_methods_for_this_teacher'.tr,
                         value: restrict,
                         onChanged: (v) => setS(() => restrict = v),
                       ),
@@ -876,7 +902,7 @@ class _TeacherTile extends StatelessWidget {
                               FilterChip(
                                 label: Text(
                                   payoutMethodLabel(m),
-                                  style: const TextStyle(fontFamily: 'tajawal'),
+                                  style: TextStyle(fontFamily: AppFonts.family),
                                 ),
                                 selected: chosen.contains(m),
                                 onSelected: (s) => setS(
@@ -885,7 +911,7 @@ class _TeacherTile extends StatelessWidget {
                               ),
                           ],
                         ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpace.md),
                       PrimaryButton(
                         label: 'save'.tr,
                         isLoading: busy,
@@ -927,16 +953,6 @@ class _TeacherTile extends StatelessWidget {
 //  Settings
 // ═════════════════════════════════════════════════════════════════════════════
 
-class _SettingsTab extends StatelessWidget {
-  const _SettingsTab();
-
-  @override
-  Widget build(BuildContext context) => ChangeNotifierProvider(
-    create: (_) => AdminPayoutSettingsProvider()..load(),
-    child: const _SettingsView(),
-  );
-}
-
 class _SettingsView extends StatefulWidget {
   const _SettingsView();
 
@@ -946,8 +962,8 @@ class _SettingsView extends StatefulWidget {
 
 class _SettingsViewState extends State<_SettingsView> {
   final _min = TextEditingController();
-  bool _filled = false;
-  bool busy = false;
+  String? _filledFrom; // the server's minimum the field was last filled with
+  bool _busy = false; // a save is in flight: the switches ignore taps (no double fire)
 
   @override
   void dispose() {
@@ -955,156 +971,148 @@ class _SettingsViewState extends State<_SettingsView> {
     super.dispose();
   }
 
+  /// One save at a time; the settings provider replaces its data with the server's answer.
+  Future<void> _save(AdminPayoutSettingsProvider p, Map<String, dynamic> body) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await p.save(body);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _toggleAll(AdminPayoutSettingsProvider p, bool v) async {
+    final ok = await appConfirm(
+      context,
+      message: v
+          ? t('سيتمكن كل المعلمين من إضافة حساب وطلب سحب أرباحهم. متابعة؟',
+              'Every teacher will be able to add an account and withdraw their earnings. Continue?')
+          : t('لن يتمكن إلا المعلمون الذين تسمح لهم واحدًا واحدًا من طلب السحب. متابعة؟',
+              'Only the teachers you allow one by one will be able to request a withdrawal. Continue?'),
+    );
+    if (ok) await _save(p, {'payouts_enabled_for_all': v});
+  }
+
+  Future<void> _toggleAuto(AdminPayoutSettingsProvider p, bool v) async {
+    final ok = await appConfirm(
+      context,
+      danger: v,
+      message: v
+          ? t('عند اعتماد طلب سحب عبر Moyasar أو Paymob سيُرسل المال للمعلم تلقائيًا فورًا. تفعيل التحويل التلقائي؟',
+              'Approving a Moyasar or Paymob request will send the money to the teacher right away, automatically. Turn automatic transfer on?')
+          : t('سيكتفي اعتماد الطلب بتسجيله، وتحوّل المبلغ بنفسك ثم تؤكد التحويل. إيقاف التحويل التلقائي؟',
+              'Approving a request will only record it; you transfer the money yourself and then confirm. Turn automatic transfer off?'),
+    );
+    if (ok) await _save(p, {'payout_auto_enabled': v});
+  }
+
+  Future<void> _saveMin(AdminPayoutSettingsProvider p) async {
+    final txt = _min.text.trim();
+    final v = txt.isEmpty ? null : parseAmountLoose(txt);
+    if (txt.isNotEmpty && (v == null || v < 0)) {
+      toast('admin_invalid_amount'.tr, error: true);
+      return;
+    }
+    await _save(p, {'payout_min_amount': v});
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminPayoutSettingsProvider>();
-    final c = context.colors;
     if (p.data.isEmpty) {
       return p.isLoading
-          ? const Center(child: AppLoadingIndicator())
-          : ErrorRetry(
-        message: p.error ?? 'admin_could_not_load'.tr,
-        onRetry: p.load,
-      );
+          ? const AppLoadingState(shape: AppLoadingShape.form)
+          : AppErrorState(message: p.error ?? 'admin_could_not_load'.tr, onRetry: p.load);
     }
-    if (!_filled) {
-      _filled = true;
-      _min.text = p.minAmount?.toString() ?? '';
+    // (re)fill the field whenever the server's value changed: first load, a reload, or the answer to a save
+    final serverMin = numText(p.minAmount);
+    if (_filledFrom != serverMin) {
+      _filledFrom = serverMin;
+      _min.text = serverMin;
     }
+    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
 
     return ListView(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.md, gutter, AppSpace.lg),
       children: [
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: c.cardBg,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: p.all ? c.primary : c.divider,
-              width: p.all ? 1.5 : 1,
-            ),
-          ),
+        AppCard(
           child: Column(
             children: [
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  'admin_allow_all_teachers_to_withdraw'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w800,
-                    color: c.textDark,
-                  ),
-                ),
-                subtitle: Text(
-                  p.all
-                      ? 'admin_every_teacher_can_add_an_account_and'.tr
-                      : 'admin_off_only_teachers_you_allow_one_by_one'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 12,
-                    color: c.textLight,
-                  ),
-                ),
+              AppSwitchTile(
+                title: 'admin_allow_all_teachers_to_withdraw'.tr,
+                subtitle: p.all
+                    ? 'admin_every_teacher_can_add_an_account_and'.tr
+                    : 'admin_off_only_teachers_you_allow_one_by_one'.tr,
                 value: p.all,
-                activeTrackColor: c.primary,
-                onChanged: (v) => p.save({'payouts_enabled_for_all': v}),
+                onChanged: _busy ? null : (v) => _toggleAll(p, v),
               ),
               const Divider(),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  'admin_automatic_transfer_moyasar_paymob'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w800,
-                    color: c.textDark,
-                  ),
-                ),
-                subtitle: Text(
-                  'admin_on_approval_the_money_is_sent'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 12,
-                    color: c.textLight,
-                  ),
-                ),
+              AppSwitchTile(
+                title: 'admin_automatic_transfer_moyasar_paymob'.tr,
+                subtitle: 'admin_on_approval_the_money_is_sent'.tr,
                 value: p.auto,
-                activeTrackColor: c.primary,
-                onChanged: (v) => p.save({'payout_auto_enabled': v}),
+                onChanged: _busy ? null : (v) => _toggleAuto(p, v),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 14),
-        Section(
+        AppSpace.gapMd,
+        AppSection(
           title: 'admin_available_payout_methods'.tr,
-          child: Column(
-            children: [
-              for (final m in p.methods)
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: p.allowed.contains(asStr(m['id'])),
-                  title: Text(
-                    t(asStr(m['label_ar']), asStr(m['label_en'])),
-                    style: const TextStyle(fontFamily: 'tajawal'),
+          child: AppCard(
+            child: Column(
+              children: [
+                for (final m in p.methods)
+                  AppSwitchTile(
+                    title: t(asStr(m['label_ar']), asStr(m['label_en'])),
+                    subtitle: asBool(m['automatic'])
+                        ? (asBool(m['configured'])
+                            ? '${'admin_ready'.tr} • ${asStr(m['currency'])}'
+                            : 'admin_not_configured_on_the_server_falls'.tr)
+                        : null,
+                    value: p.allowed.contains(asStr(m['id'])),
+                    onChanged: _busy
+                        ? null
+                        : (v) {
+                            final next = <String>{...p.allowed};
+                            v ? next.add(asStr(m['id'])) : next.remove(asStr(m['id']));
+                            if (next.isEmpty) {
+                              toast('admin_keep_at_least_one_method'.tr, error: true);
+                              return;
+                            }
+                            _save(p, {'payout_allowed_methods': next.toList()});
+                          },
                   ),
-                  subtitle: asBool(m['automatic'])
-                      ? Text(
-                    asBool(m['configured'])
-                        ? '${'admin_ready'.tr} • ${asStr(m['currency'])}'
-                        : 'admin_not_configured_on_the_server_falls'.tr,
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 12,
-                      color: asBool(m['configured'])
-                          ? c.success
-                          : c.warning,
-                    ),
-                  )
-                      : null,
-                  onChanged: (v) {
-                    final next = <String>{...p.allowed};
-                    v == true
-                        ? next.add(asStr(m['id']))
-                        : next.remove(asStr(m['id']));
-                    if (next.isEmpty) {
-                      toast('admin_keep_at_least_one_method'.tr, error: true);
-                      return;
-                    }
-                    p.save({'payout_allowed_methods': next.toList()});
-                  },
-                ),
-            ],
+              ],
+            ),
           ),
         ),
-        Section(
+        AppSpace.gapMd,
+        AppSection(
           title: 'admin_minimum_withdrawal'.tr,
-          child: Column(
-            children: [
-              Field(
-                controller: _min,
-                label:
-                '${'admin_amount_empty_default'.tr} ${money(p.defaultMin)})',
-                keyboard: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              PrimaryButton(
-                label: 'save'.tr,
-                isLoading: busy,
-                onPressed: () async {
-                  final txt = _min.text.trim();
-                  final v = txt.isEmpty ? null : double.tryParse(txt);
-                  if (txt.isNotEmpty && (v == null || v < 0)) {
-                    toast('admin_invalid_amount'.tr, error: true);
-                    return;
-                  }
-                  setState(() => busy = true);
-                  await p.save({'payout_min_amount': v});
-                  if (mounted) setState(() => busy = false);
-                },
-              ),
-            ],
+          child: AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppNumberField(
+                  controller: _min,
+                  label: '${'admin_amount_empty_default'.tr} ${money(p.defaultMin)})',
+                  min: 0,
+                  decimals: 2,
+                  onSubmitted: (_) => _saveMin(p),
+                ),
+                AppSpace.gapSm,
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: AppButton.primary(
+                    label: 'save'.tr,
+                    busy: _busy,
+                    onPressed: _busy ? null : () => _saveMin(p),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],

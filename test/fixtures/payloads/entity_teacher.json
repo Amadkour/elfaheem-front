@@ -1,0 +1,52 @@
+{
+ "_source": {
+  "route": "GET /api/v1/entities/teachers/6",
+  "uid": 6
+ },
+ "payload": {
+  "kind": "teacher",
+  "id": 6,
+  "header": {
+   "id": 6,
+   "name": "Mr Teacher",
+   "username": "teacher",
+   "image_url": null,
+   "bio": "Physics teacher",
+   "is_active": true,
+   "specialization": {
+    "id": 1,
+    "name_ar": "علوم",
+    "name_en": "Science"
+   },
+   "created_at": "2026-11-06T06:32:04.977358",
+   "organizations": []
+  },
+  "stats": {
+   "courses": 2,
+   "published_courses": 1,
+   "students": 3,
+   "active_students_30d": 1,
+   "rating_avg": 4.0,
+   "teacher_rating_avg": 5.0,
+   "completion_rate": 0.0,
+   "revenue": [
+    {
+     "currency": "EGP",
+     "amount": 250.0
+    }
+   ]
+  },
+  "badges": [],
+  "sections": [
+   "courses",
+   "students",
+   "submissions",
+   "reviews"
+  ],
+  "can": {
+   "manage": false,
+   "message": false,
+   "see_money": true
+  }
+ }
+}

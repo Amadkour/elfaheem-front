@@ -1,8 +1,7 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 class ClickableText extends StatelessWidget {
   const ClickableText({super.key, required this.text});
   final String text;
@@ -24,13 +23,13 @@ class ClickableText extends StatelessWidget {
           text: url,
           style: context.colors.caption.copyWith(
             height: 1.8,
-            color: Colors.orange,
+            color: context.colors.warning,
             decoration: TextDecoration.underline,
-            decorationColor: Colors.orangeAccent,
+            decorationColor: context.colors.warning,
             decorationThickness: 2
           ),
           recognizer: TapGestureRecognizer()
-            ..onTap = () => launchUrl(Uri.parse(url!)),
+            ..onTap = () => openExternalLink(url),
         ),
       );
 

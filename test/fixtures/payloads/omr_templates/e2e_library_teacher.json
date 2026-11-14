@@ -1,0 +1,163 @@
+{
+ "_source": {
+  "route": "GET /api/v1/exam/omr/templates",
+  "status": 200,
+  "request": null,
+  "how": "back tests/exam_engine/e2e_omr_templates.py run unchanged (inline jobs, SQLite, 2026-11-02); reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "items": [
+   {
+    "id": 4,
+    "family_id": "3b17db08-f39e-521e-acad-1c43be92f228",
+    "version": 1,
+    "name": "100 questions, 5 options (A-E) · handwritten student ID",
+    "description": "100 questions, 5 options (A-E) · handwritten student ID\n100 سؤال، 5 اختيارات (A-E) · رقم طالب مكتوب بخط اليد",
+    "status": "published",
+    "owner_id": 0,
+    "owner_role": "system",
+    "questions": 100,
+    "validation_ok": true,
+    "approved_by": null,
+    "approved_at": "2026-11-02T05:30:43.482947",
+    "review_note": null,
+    "created_at": "2026-11-02T05:30:44.210518",
+    "options": 5,
+    "option_labels": [
+     "A",
+     "B",
+     "C",
+     "D",
+     "E"
+    ],
+    "id_kind": "handwritten",
+    "id_digits": 10,
+    "forms_on_sheet": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "builtin": "mcq100_5",
+    "printable": true,
+    "name_en": "100 questions, 5 options (A-E) · handwritten student ID",
+    "name_ar": "100 سؤال، 5 اختيارات (A-E) · رقم طالب مكتوب بخط اليد",
+    "learning_state": "done",
+    "preview_url": "/api/v1/exam/omr/templates/4/image?kind=preview"
+   },
+   {
+    "id": 3,
+    "family_id": "fda7ff6e-fe09-54e8-8d89-f4d8c0e67ee0",
+    "version": 1,
+    "name": "100 questions, 5 options (A-E) · shaded student ID",
+    "description": "100 questions, 5 options (A-E) · shaded student ID\n100 سؤال، 5 اختيارات (A-E) · رقم طالب بالتظليل",
+    "status": "published",
+    "owner_id": 0,
+    "owner_role": "system",
+    "questions": 100,
+    "validation_ok": true,
+    "approved_by": null,
+    "approved_at": "2026-11-02T05:30:41.882668",
+    "review_note": null,
+    "created_at": "2026-11-02T05:30:42.570388",
+    "options": 5,
+    "option_labels": [
+     "A",
+     "B",
+     "C",
+     "D",
+     "E"
+    ],
+    "id_kind": "shaded",
+    "id_digits": 10,
+    "forms_on_sheet": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "builtin": "mcq100_5",
+    "printable": true,
+    "name_en": "100 questions, 5 options (A-E) · shaded student ID",
+    "name_ar": "100 سؤال، 5 اختيارات (A-E) · رقم طالب بالتظليل",
+    "learning_state": "done",
+    "preview_url": "/api/v1/exam/omr/templates/3/image?kind=preview"
+   },
+   {
+    "id": 2,
+    "family_id": "2a56e1e1-0f36-54b8-a6b3-bbd528a2d5dc",
+    "version": 1,
+    "name": "50 questions, 4 options (A-D) · handwritten student ID",
+    "description": "50 questions, 4 options (A-D) · handwritten student ID\n50 سؤالًا، 4 اختيارات (A-D) · رقم طالب مكتوب بخط اليد",
+    "status": "published",
+    "owner_id": 0,
+    "owner_role": "system",
+    "questions": 50,
+    "validation_ok": true,
+    "approved_by": null,
+    "approved_at": "2026-11-02T05:30:40.317188",
+    "review_note": null,
+    "created_at": "2026-11-02T05:30:40.802989",
+    "options": 4,
+    "option_labels": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "id_kind": "handwritten",
+    "id_digits": 10,
+    "forms_on_sheet": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "builtin": "mcq50_4",
+    "printable": true,
+    "name_en": "50 questions, 4 options (A-D) · handwritten student ID",
+    "name_ar": "50 سؤالًا، 4 اختيارات (A-D) · رقم طالب مكتوب بخط اليد",
+    "learning_state": "done",
+    "preview_url": "/api/v1/exam/omr/templates/2/image?kind=preview"
+   },
+   {
+    "id": 1,
+    "family_id": "4de28b97-18df-5d9c-aa82-d156eba2c8e4",
+    "version": 1,
+    "name": "50 questions, 4 options (A-D) · shaded student ID",
+    "description": "50 questions, 4 options (A-D) · shaded student ID\n50 سؤالًا، 4 اختيارات (A-D) · رقم طالب بالتظليل",
+    "status": "published",
+    "owner_id": 0,
+    "owner_role": "system",
+    "questions": 50,
+    "validation_ok": true,
+    "approved_by": null,
+    "approved_at": "2026-11-02T05:30:38.987016",
+    "review_note": null,
+    "created_at": "2026-11-02T05:30:39.658911",
+    "options": 4,
+    "option_labels": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "id_kind": "shaded",
+    "id_digits": 10,
+    "forms_on_sheet": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "builtin": "mcq50_4",
+    "printable": true,
+    "name_en": "50 questions, 4 options (A-D) · shaded student ID",
+    "name_ar": "50 سؤالًا، 4 اختيارات (A-D) · رقم طالب بالتظليل",
+    "learning_state": "done",
+    "preview_url": "/api/v1/exam/omr/templates/1/image?kind=preview"
+   }
+  ],
+  "require_approval": true
+ }
+}

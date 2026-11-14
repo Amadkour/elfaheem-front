@@ -1,0 +1,24 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["MVHKS8482X.com.doubley.alfaheem"],
+        "appID": "MVHKS8482X.com.doubley.alfaheem",
+        "components": [
+          { "/": "/c/*", "comment": "course share links" },
+          { "/": "/@*", "comment": "profile links (D-074)" },
+          { "/": "/live/*", "comment": "live guest links" },
+          { "/": "/verify/*", "comment": "certificate verification links / QR (D-132)" },
+          { "/": "/e/*", "comment": "expiring export download links (D-134)" },
+          { "/": "/j/*", "comment": "organization join links (D-283)" },
+          { "/": "/i/*", "comment": "organization invitations (D-283)" },
+          { "/": "/s/*", "comment": "share links of everything: lessons, sessions, meetings, paths, teachers, pages (D-307)" },
+          { "/": "/app/live/*", "comment": "a live guest link copied from the web app's address bar (D-843)" },
+          { "/": "/app/s/*", "comment": "a share / guest video link copied from the web app's address bar (D-843)" }
+        ],
+        "paths": ["/c/*", "/@*", "/live/*", "/verify/*", "/e/*", "/j/*", "/i/*", "/s/*", "/app/live/*", "/app/s/*"]
+      }
+    ]
+  }
+}

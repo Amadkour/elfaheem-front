@@ -1,0 +1,184 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items/7 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr); read by the recorder right after the script, as the exam's teacher",
+ "_status": 200,
+ "payload": {
+  "id": 7,
+  "scan_page_id": 3,
+  "attempt_id": 2,
+  "question_id": 3,
+  "kind": "completion",
+  "code": "blank_count_mismatch",
+  "reading": {
+   "kind": "completion",
+   "status": "suggestion",
+   "final": false,
+   "needs_review": true,
+   "max": 2.0,
+   "suggested_score": 0.0,
+   "blanks": [
+    {
+     "status": "empty",
+     "given": "",
+     "normalised": "",
+     "matched": null,
+     "distance": null,
+     "budget": 0,
+     "suggested_credit": 0.0,
+     "final": false,
+     "reading": {
+      "text": "",
+      "confidence": 0.95,
+      "engine": "trocr-small-handwritten@fp32-2432e24|line",
+      "review": true
+     },
+     "crop": {
+      "page_id": 3,
+      "box": [
+       0.07,
+       0.7433333333333334,
+       0.8600000000000001,
+       0.20666666666666667
+      ],
+      "has_crop": true
+     },
+     "reason": "no_completion_rule",
+     "prefill": true
+    },
+    {
+     "status": "empty",
+     "given": "",
+     "normalised": "",
+     "matched": null,
+     "distance": null,
+     "budget": 0,
+     "suggested_credit": 0.0,
+     "final": false,
+     "reading": {
+      "text": "",
+      "confidence": 0.95,
+      "engine": "trocr-small-handwritten@fp32-2432e24|line",
+      "review": true
+     },
+     "crop": {
+      "page_id": 3,
+      "box": [
+       0.07,
+       0.7433333333333334,
+       0.8600000000000001,
+       0.20666666666666667
+      ],
+      "has_crop": true
+     },
+     "reason": "no_completion_rule",
+     "prefill": true
+    }
+   ],
+   "text": "Cairo Nile",
+   "texts": [
+    "",
+    ""
+   ],
+   "corrected": false,
+   "lang": "en",
+   "points": 2.0,
+   "pending": false,
+   "en": "The number of lines does not match the number of blanks",
+   "ar": "عدد الأسطر لا يطابق عدد الفراغات"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T08:42:24.791673",
+  "actions": [
+   "accept",
+   "set_score",
+   "fix_text"
+  ],
+  "has_crop": true,
+  "en": "The number of lines does not match the number of blanks",
+  "ar": "عدد الأسطر لا يطابق عدد الفراغات",
+  "crop_url": "/api/v1/exam/omr/images/crop/7?exp=1793609550&sig=01b0739559e2f6e534db98e1c09a1716",
+  "system_reading": {
+   "reading_id": 3,
+   "unit": "line",
+   "lang": "en",
+   "reading": {
+    "text": "Cairo Nile",
+    "confidence": 0.95,
+    "engine": "trocr-small-handwritten@fp32-2432e24",
+    "review": false,
+    "reasons": [],
+    "blank": false,
+    "lang": "en",
+    "unit": "line",
+    "threshold": 0.876,
+    "lines": 1,
+    "words": [],
+    "ms": 43.9
+   },
+   "blanks": [
+    {
+     "text": "",
+     "confidence": 0.95,
+     "engine": "trocr-small-handwritten@fp32-2432e24|line",
+     "review": true,
+     "reasons": [
+      "blank_count_mismatch"
+     ],
+     "blank": false,
+     "lang": "en",
+     "unit": "line",
+     "threshold": 0.876,
+     "lines": 1,
+     "ms": 43.9
+    },
+    {
+     "text": "",
+     "confidence": 0.95,
+     "engine": "trocr-small-handwritten@fp32-2432e24|line",
+     "review": true,
+     "reasons": [
+      "blank_count_mismatch"
+     ],
+     "blank": false,
+     "lang": "en",
+     "unit": "line",
+     "threshold": 0.876,
+     "lines": 1,
+     "ms": 43.9
+    }
+   ],
+   "box": [
+    0.07,
+    0.7433333333333334,
+    0.8600000000000001,
+    0.20666666666666667
+   ]
+  },
+  "question": {
+   "question_id": 3,
+   "type": "fill_blank",
+   "points": 2.0,
+   "lang": "en",
+   "step": 0.5,
+   "blanks": 2,
+   "key": {
+    "blanks": [
+     [
+      "Cairo"
+     ],
+     [
+      "Nile"
+     ]
+    ]
+   }
+  },
+  "page": {
+   "id": 3,
+   "page_label": null,
+   "status": "review",
+   "url": "/api/v1/exam/exams/1/omr/pages/3"
+  }
+ }
+}

@@ -1,0 +1,171 @@
+{
+  "doc": "terms",
+  "version": "2.0",
+  "effective_date": "2026-11-08",
+  "title": {"ar": "شروط الاستخدام", "en": "Terms of Service"},
+  "intro": {
+    "ar": "هذه الشروط اتفاق بينك وبين DoubleY، مقدمة منصة الفهيم. تحدد حقوقك والتزاماتك عند استخدام التطبيق على أندرويد وآيفون والويب والموقع alfheemacademy.com. اقرأها مع سياسة الخصوصية.",
+    "en": "These terms are an agreement between you and DoubleY, the provider of the Alfaheem platform. They set out your rights and obligations when you use the app on Android, iOS and the web, and the website alfheemacademy.com. Read them together with our Privacy Policy."
+  },
+  "highlights": [
+    {"ar": "حسابك لك وحدك: لا تشاركه مع غيرك.", "en": "Your account is yours alone: don't share it."},
+    {"ar": "محتوى الدورات ملك لمعلميها: شاهده وتعلم منه، ولا تسجله أو تعيد نشره.", "en": "Course content belongs to its teachers: watch and learn, don't record or republish it."},
+    {"ar": "النزاهة في الاختبارات والاحترام في الحصص المباشرة شرط للاستخدام.", "en": "Honesty in exams and respect in live classes are a condition of use."},
+    {"ar": "يمكنك حذف حسابك في أي وقت من الإعدادات.", "en": "You can delete your account at any time from Settings."}
+  ],
+  "sections": [
+    {
+      "id": "acceptance",
+      "icon": "gavel",
+      "title": {"ar": "قبول الشروط", "en": "Accepting these terms"},
+      "body": {
+        "ar": "بإنشاء حساب أو باستخدام الفهيم فإنك توافق على هذه الشروط وعلى سياسة الخصوصية. إذا كنت تستخدم المنصة باسم مؤسسة، فأنت تؤكد أن لديك صلاحية قبول هذه الشروط عنها. إذا لم توافق، فلا تستخدم المنصة.",
+        "en": "By creating an account or using Alfaheem you agree to these terms and to the Privacy Policy. If you use the platform on behalf of an organization, you confirm that you are authorised to accept these terms for it. If you do not agree, do not use the platform."
+      }
+    },
+    {
+      "id": "service",
+      "icon": "school",
+      "title": {"ar": "ما تقدمه المنصة", "en": "What the platform offers"},
+      "body": {
+        "ar": "الفهيم منصة تعليمية تتيح:\n- للطلاب: الدورات المسجلة والحصص المباشرة والاختبارات والحضور والمساعد الذكي.\n- للمعلمين: نشر الدورات وإدارة الطلاب وإنشاء الاختبارات وتصحيحها والبث المباشر.\n- لأولياء الأمور: متابعة تقدم الأبناء.\n- للمؤسسات التعليمية: إدارة الأقسام والجداول والقيد والدرجات والإرشاد.\n\nقد نطور الميزات أو نغيرها أو نوقف بعضها مع الوقت، وسنحاول إخبارك مسبقًا بأي تغيير يؤثر عليك بشكل كبير.",
+        "en": "Alfaheem is an education platform that offers:\n- Students: recorded courses, live classes, exams, attendance and the AI assistant.\n- Teachers: publishing courses, managing students, creating and grading exams, and live teaching.\n- Parents: following their children's progress.\n- Educational organizations: managing departments, timetables, enrolment, grades and advising.\n\nWe may improve, change or retire features over time, and we will try to tell you beforehand about any change that affects you significantly."
+      }
+    },
+    {
+      "id": "eligibility",
+      "icon": "person",
+      "title": {"ar": "أهلية الاستخدام", "en": "Who can use Alfaheem"},
+      "body": {
+        "ar": "- يجب أن يكون عمرك 10 سنوات أو أكثر.\n- إذا كان عمرك أقل من 18 عامًا، فاستخدم المنصة بموافقة ولي أمرك أو من خلال مدرستك أو مؤسستك.\n- يخضع المعلمون للتوثيق قبل نشر الدورات، وقد نطلب مستندات تثبت الهوية أو المؤهل.",
+        "en": "- You must be 10 years old or older.\n- If you are under 18, use the platform with your parent's or guardian's consent, or through your school or organization.\n- Teachers are verified before they can publish courses, and we may ask for documents proving identity or qualifications."
+      }
+    },
+    {
+      "id": "account",
+      "icon": "lock",
+      "title": {"ar": "حسابك وأمانه", "en": "Your account and its security"},
+      "body": {
+        "ar": "- قدّم بيانات صحيحة وحدّثها عند تغيرها.\n- الحساب لشخص واحد فقط؛ لا تشاركه ولا تبعه ولا تنقله.\n- حافظ على سرية كلمة المرور، وفعّل التحقق بخطوتين إن أمكن، وأخبرنا فورًا إذا اشتبهت في دخول غيرك.\n- يُربط حساب الطالب بعدد محدود من الأجهزة يحدده مسؤول المنصة، ويخضع تغيير الجهاز لمدة انتظار. محاولة تجاوز ذلك مخالفة لهذه الشروط.\n- أنت مسؤول عن كل ما يحدث من خلال حسابك.",
+        "en": "- Give accurate information and keep it up to date.\n- An account is for one person only: don't share, sell or transfer it.\n- Keep your password secret, turn on two-step verification where available, and tell us at once if you suspect someone else got in.\n- A student account is bound to a limited number of devices set by the platform administrator, and switching devices has a waiting period. Trying to get around this breaks these terms.\n- You are responsible for everything that happens through your account."
+      }
+    },
+    {
+      "id": "roles",
+      "icon": "groups",
+      "title": {"ar": "التزامات المعلمين والمؤسسات وأولياء الأمور", "en": "Teachers, organizations and parents"},
+      "body": {
+        "ar": "- المعلم مسؤول عن دقة محتواه وعن امتلاكه حق نشره، وعن احترام خصوصية طلابه وعدم استخدام بياناتهم خارج المنصة.\n- المؤسسة مسؤولة عن البيانات التي تدخلها عن أعضائها، وعن حصولها على الموافقات اللازمة (ومنها موافقة أولياء أمور القاصرين)، وعن تصرفات موظفيها على المنصة.\n- ولي الأمر يربط حسابه بحساب ابنه فقط، ويستخدم ما يراه لمتابعة تعليمه.",
+        "en": "- A teacher is responsible for the accuracy of their content and for having the right to publish it, for respecting their students' privacy, and for not using students' data outside the platform.\n- An organization is responsible for the data it enters about its members, for obtaining the necessary consents (including parents' consent for minors), and for what its staff do on the platform.\n- A parent links their account only to their own child's, and uses what they see to follow their child's education."
+      }
+    },
+    {
+      "id": "content",
+      "icon": "copyright",
+      "title": {"ar": "المحتوى والملكية الفكرية", "en": "Content and intellectual property"},
+      "body": {
+        "ar": "- محتوى الدورات (الفيديو والملفات والاختبارات) ملك لمعلميه أو لمؤسساته. يمنحك الاشتراك حق مشاهدته واستخدامه لتعلمك الشخصي فقط.\n- لا يجوز تنزيل المحتوى خارج ميزة التنزيل في التطبيق، أو تصويره أو تسجيله أو نسخه أو بيعه أو إعادة نشره.\n- برمجيات المنصة وتصميمها وعلامتها التجارية ملك لـ DoubleY.\n- ما ترفعه أنت يبقى ملكك، وتمنحنا ترخيصًا محدودًا لحفظه وعرضه لمن يحق لهم رؤيته بقدر ما يلزم لتشغيل المنصة.\n- إذا رأيت محتوى ينتهك حقوقك، راسلنا وسنراجعه ونزيله إذا ثبت ذلك.",
+        "en": "- Course content (videos, files and exams) belongs to its teachers or organizations. A subscription gives you the right to watch and use it for your own learning only.\n- You may not download content outside the app's download feature, or film, record, copy, sell or republish it.\n- The platform's software, design and brand belong to DoubleY.\n- What you upload stays yours; you give us a limited licence to store it and show it to the people entitled to see it, as far as needed to run the platform.\n- If you see content that infringes your rights, write to us and we will review it and remove it if the claim holds."
+      }
+    },
+    {
+      "id": "conduct",
+      "icon": "block",
+      "title": {"ar": "الاستخدام المقبول", "en": "Acceptable use"},
+      "body": {
+        "ar": "يُمنع:\n- مشاركة الحساب أو بيع الوصول إلى الدورات.\n- الغش في الاختبارات أو مساعدة غيرك على الغش.\n- الإساءة أو التنمر أو التحرش أو نشر محتوى غير لائق أو مخالف للقانون، في الحصص أو الرسائل أو التعليقات.\n- انتحال شخصية غيرك أو جهة أخرى.\n- محاولة تجاوز حماية المحتوى أو ربط الأجهزة أو أنظمة الأمان، أو رفع برمجيات ضارة، أو جمع البيانات آليًا من المنصة.\n- استخدام المنصة في الإعلانات غير المرغوبة أو الاحتيال.",
+        "en": "You must not:\n- Share your account or sell access to courses.\n- Cheat in exams or help others cheat.\n- Abuse, bully or harass anyone, or post inappropriate or unlawful content, in classes, messages or comments.\n- Impersonate another person or organization.\n- Try to get around content protection, device binding or security systems, upload malware, or scrape the platform.\n- Use the platform for spam or fraud."
+      }
+    },
+    {
+      "id": "payments",
+      "icon": "payments",
+      "title": {"ar": "الأسعار والدفع والاسترداد", "en": "Prices, payment and refunds"},
+      "body": {
+        "ar": "- تظهر أسعار الدورات والباقات قبل الدفع، وتشمل ما يُذكر فيها فقط.\n- يتم الدفع عبر مزودي دفع معتمدين، وتنطبق شروطهم على عملية الدفع.\n- يبدأ الوصول إلى المحتوى بعد تأكيد الدفع ويستمر المدة المعلنة للدورة أو الباقة.\n- المدفوعات نهائية ما لم يُذكر غير ذلك في صفحة الدورة أو يفرض القانون الاسترداد. لطلب استرداد راسلنا من «الشكاوى والدعم».\n- نقاط المحفظة رصيد استخدام داخل المنصة، ليست نقودًا ولا تُحوّل إلى نقد ما لم يُذكر غير ذلك.",
+        "en": "- Course and plan prices are shown before you pay, and include only what is stated.\n- Payment is made through approved payment providers, whose terms apply to the payment itself.\n- Access to content starts once the payment is confirmed and lasts for the period stated for the course or plan.\n- Payments are final unless the course page says otherwise or the law requires a refund. To ask for a refund, write to us from Complaints & support.\n- Wallet points are usage credit inside the platform; they are not money and cannot be cashed out unless stated otherwise."
+      }
+    },
+    {
+      "id": "live",
+      "icon": "play_circle",
+      "title": {"ar": "الحصص المباشرة والاجتماعات", "en": "Live classes and meetings"},
+      "body": {
+        "ar": "- التزم بالاحترام وتعليمات مقدم الحصة؛ يمكنه كتم الصوت أو إيقاف الكاميرا أو إخراج من يخالف.\n- قد يسجل مقدم الحصة الحصة، ويظهر مؤشر للجميع أثناء التسجيل. بانضمامك إلى حصة مسجلة توافق على ظهور ما تشاركه فيها.\n- لا تسجل الحصة بنفسك أو تنشر محتواها دون إذن مقدمها.\n- روابط الاجتماعات قد تسمح بدخول ضيوف؛ شاركها مع من تريد دعوته فقط.",
+        "en": "- Be respectful and follow the host's instructions; the host can mute, turn off cameras or remove anyone who breaks the rules.\n- The host may record a class, and everyone sees an indicator while recording is on. By joining a recorded class you agree that what you share in it appears in the recording.\n- Do not record a class yourself or publish its content without the host's permission.\n- Meeting links may let guests in: share them only with the people you mean to invite."
+      }
+    },
+    {
+      "id": "exams",
+      "icon": "quiz",
+      "title": {"ar": "الاختبارات والدرجات", "en": "Exams and grades"},
+      "body": {
+        "ar": "قد تُصحح بعض الاختبارات آليًا أو بمساعدة الذكاء الاصطناعي، ويراجع المعلم أو المؤسسة النتائج ويعتمدها. إذا اعترضت على درجة، اطلب مراجعتها من داخل التطبيق أو من معلمك أو مؤسستك. يحق للمعلم أو المؤسسة إلغاء نتيجة يثبت فيها الغش.",
+        "en": "Some exams may be graded automatically or with the help of AI; the teacher or organization reviews and confirms the results. If you disagree with a grade, ask for a review in the app or from your teacher or organization. A teacher or organization may cancel a result where cheating is proven."
+      }
+    },
+    {
+      "id": "ai",
+      "icon": "bolt",
+      "title": {"ar": "المساعد الذكي", "en": "The AI assistant"},
+      "body": {
+        "ar": "يقدم المساعد الذكي والأدوات المعتمدة على الذكاء الاصطناعي إجابات واقتراحات قد تكون غير دقيقة أحيانًا. استخدمها للمساعدة في التعلم، وتحقق من المعلومات المهمة مع معلمك. لا تُعد إجاباته نصيحة مهنية أو طبية أو قانونية.",
+        "en": "The AI assistant and AI-based tools give answers and suggestions that can sometimes be wrong. Use them to help you learn, and check important information with your teacher. Their answers are not professional, medical or legal advice."
+      }
+    },
+    {
+      "id": "third_party",
+      "icon": "handshake",
+      "title": {"ar": "خدمات الأطراف الخارجية", "en": "Third-party services"},
+      "body": {
+        "ar": "تتكامل المنصة مع خدمات خارجية مثل تسجيل الدخول بحساب Google وGoogle Drive ونماذج Google ومزودي الدفع. استخدامك لها يخضع أيضًا لشروطها وسياسات خصوصيتها، ونحن غير مسؤولين عن توفرها أو عن تصرفاتها.",
+        "en": "The platform works with external services such as Sign in with Google, Google Drive, Google Forms and payment providers. Your use of them is also governed by their own terms and privacy policies, and we are not responsible for their availability or conduct."
+      }
+    },
+    {
+      "id": "termination",
+      "icon": "shield",
+      "title": {"ar": "إيقاف الحساب وإنهاؤه", "en": "Suspension and termination"},
+      "body": {
+        "ar": "- يمكنك حذف حسابك في أي وقت من الإعدادات؛ يُوقف فورًا ويُحذف نهائيًا بعد 14 يومًا ما لم تسجل الدخول لإلغاء الحذف.\n- قد نوقف حسابًا أو نقيده أو نحذفه إذا خالف هذه الشروط أو عرّض المستخدمين أو المنصة للخطر، وسنخبرك بالسبب ما لم يمنعنا القانون.\n- لا يعني إيقاف الحساب بسبب مخالفة استرداد المبالغ المدفوعة.",
+        "en": "- You can delete your account at any time from Settings: it is switched off at once and permanently deleted after 14 days, unless you sign in to cancel.\n- We may suspend, limit or delete an account that breaks these terms or puts users or the platform at risk, and we will tell you why unless the law prevents us.\n- An account suspended for a violation is not entitled to a refund."
+      }
+    },
+    {
+      "id": "liability",
+      "icon": "info",
+      "title": {"ar": "إخلاء المسؤولية وحدودها", "en": "Disclaimers and liability"},
+      "body": {
+        "ar": "نبذل جهدنا لتكون المنصة متاحة وآمنة ودقيقة، لكننا نقدمها «كما هي» دون ضمان ألا تنقطع أو تخلو من الأخطاء. المعلمون والمؤسسات مسؤولون عن محتواهم ونتائجهم الأكاديمية. في الحدود التي يسمح بها القانون، لا تتحمل DoubleY المسؤولية عن الأضرار غير المباشرة، ولا تتجاوز مسؤوليتها ما دفعته للمنصة خلال الأشهر الاثني عشر السابقة للمطالبة.",
+        "en": "We work to keep the platform available, secure and accurate, but we provide it “as is”, without a promise that it will never be interrupted or free of errors. Teachers and organizations are responsible for their content and academic results. As far as the law allows, DoubleY is not liable for indirect damages, and its liability never exceeds what you paid the platform in the twelve months before the claim."
+      }
+    },
+    {
+      "id": "changes",
+      "icon": "update",
+      "title": {"ar": "تعديل الشروط", "en": "Changes to these terms"},
+      "body": {
+        "ar": "قد نحدّث هذه الشروط. نغيّر رقم الإصدار وتاريخ السريان، ونخبرك داخل التطبيق قبل أي تغيير جوهري. استمرارك في الاستخدام بعد السريان يعني موافقتك على الشروط المحدثة.",
+        "en": "We may update these terms. We change the version and effective date, and we tell you in the app before any significant change. Continuing to use the platform after the change takes effect means you accept the updated terms."
+      }
+    },
+    {
+      "id": "disputes",
+      "icon": "flag",
+      "title": {"ar": "حل الخلافات", "en": "Disputes"},
+      "body": {
+        "ar": "إذا كانت لديك شكوى، راسلنا أولًا وسنحاول حلها وديًا خلال 30 يومًا. ما لم يُتفق على غير ذلك، تخضع هذه الشروط للقانون المعمول به في البلد الذي تعمل فيه DoubleY، دون أن يحرمك ذلك من أي حماية يمنحها لك قانون بلدك كمستهلك.",
+        "en": "If you have a complaint, write to us first and we will try to settle it amicably within 30 days. Unless agreed otherwise, these terms are governed by the law applicable where DoubleY operates, without taking away any protection your own country's consumer law gives you."
+      }
+    },
+    {
+      "id": "contact",
+      "icon": "email",
+      "title": {"ar": "تواصل معنا", "en": "Contact us"},
+      "body": {
+        "ar": "لأي سؤال عن هذه الشروط:\n- البريد الإلكتروني: alfaheem.2y@gmail.com\n- من داخل التطبيق: الإعدادات ← الشكاوى والدعم.\n\nالفهيم — DoubleY",
+        "en": "For any question about these terms:\n- Email: alfaheem.2y@gmail.com\n- In the app: Settings → Complaints & support.\n\nAlfaheem — DoubleY"
+      }
+    }
+  ]
+}

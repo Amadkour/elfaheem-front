@@ -1,0 +1,73 @@
+{
+ "_source": "GET /api/v1/exam/exams/2/review-items/2 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_hardening.py (back worktree wt-back-omr); read by the recorder right after the script, as the exam's teacher",
+ "_status": 200,
+ "payload": {
+  "id": 2,
+  "scan_page_id": 2,
+  "attempt_id": null,
+  "question_id": null,
+  "kind": "form",
+  "code": "qr_mismatch",
+  "reading": {
+   "signed": true,
+   "exam_ok": true,
+   "template_ok": false,
+   "reason": "other_version",
+   "en": "This sheet belongs to another exam / version",
+   "ar": "هذه الورقة تخص اختبارًا آخر / إصدارًا آخر"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T08:42:26.547725",
+  "actions": [
+   "dismiss"
+  ],
+  "has_crop": true,
+  "en": "This sheet belongs to another exam / version",
+  "ar": "هذه الورقة تخص اختبارًا آخر / إصدارًا آخر",
+  "crop_url": "/api/v1/exam/omr/images/crop/2?exp=1793609548&sig=daf4ff5dcc7937bbe4cf1c3b2bf35f42",
+  "system_reading": {
+   "reading_id": 2,
+   "engine_version": "nb-omr-engine/1 mlkit.omr thresholds:94796afbb463",
+   "form": {
+    "status": "unconfirmed",
+    "value": null,
+    "reason": "marker_unread",
+    "unread": [
+     "qr"
+    ],
+    "markers": {
+     "qr": {
+      "value": null,
+      "payload": "NBO1|t=1|v=2|x=2|h=FNDZJNY6WAMJUEUV",
+      "status": "no_form"
+     }
+    },
+    "en": "Model could not be confirmed",
+    "ar": "تعذّر تأكيد النموذج",
+    "box": [
+     1133,
+     204,
+     419,
+     206
+    ],
+    "qr_check": {
+     "present": true,
+     "signed": true,
+     "exam_ok": true,
+     "template_ok": false,
+     "form": null,
+     "student_id": null
+    }
+   }
+  },
+  "page": {
+   "id": 2,
+   "page_label": "1",
+   "status": "review",
+   "url": "/api/v1/exam/exams/2/omr/pages/2"
+  }
+ }
+}

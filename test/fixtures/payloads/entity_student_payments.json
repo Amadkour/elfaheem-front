@@ -1,0 +1,854 @@
+{
+ "_source": {
+  "route": "GET /api/v1/entities/students/21/payments?size=100",
+  "uid": 1
+ },
+ "payload": {
+  "items": [
+   {
+    "id": 35,
+    "course": {
+     "id": 38,
+     "name_ar": "Pb-29 ar",
+     "name_en": "Pb-29",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.496992",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 34,
+    "course": {
+     "id": 37,
+     "name_ar": "Pb-28 ar",
+     "name_en": "Pb-28",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.470758",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 33,
+    "course": {
+     "id": 36,
+     "name_ar": "Pb-27 ar",
+     "name_en": "Pb-27",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.441455",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 32,
+    "course": {
+     "id": 35,
+     "name_ar": "Pb-26 ar",
+     "name_en": "Pb-26",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.393445",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 31,
+    "course": {
+     "id": 34,
+     "name_ar": "Pb-25 ar",
+     "name_en": "Pb-25",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.364054",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 30,
+    "course": {
+     "id": 33,
+     "name_ar": "Pb-24 ar",
+     "name_en": "Pb-24",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.335602",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 29,
+    "course": {
+     "id": 32,
+     "name_ar": "Pb-23 ar",
+     "name_en": "Pb-23",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.304977",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 28,
+    "course": {
+     "id": 31,
+     "name_ar": "Pb-22 ar",
+     "name_en": "Pb-22",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.256260",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 27,
+    "course": {
+     "id": 30,
+     "name_ar": "Pb-21 ar",
+     "name_en": "Pb-21",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.232037",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 26,
+    "course": {
+     "id": 29,
+     "name_ar": "Pb-20 ar",
+     "name_en": "Pb-20",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.202077",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 25,
+    "course": {
+     "id": 28,
+     "name_ar": "Pb-19 ar",
+     "name_en": "Pb-19",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.165355",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 24,
+    "course": {
+     "id": 27,
+     "name_ar": "Pb-18 ar",
+     "name_en": "Pb-18",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.131142",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 23,
+    "course": {
+     "id": 26,
+     "name_ar": "Pb-17 ar",
+     "name_en": "Pb-17",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.096722",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 22,
+    "course": {
+     "id": 25,
+     "name_ar": "Pb-16 ar",
+     "name_en": "Pb-16",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.062230",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 21,
+    "course": {
+     "id": 24,
+     "name_ar": "Pb-15 ar",
+     "name_en": "Pb-15",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.031262",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 20,
+    "course": {
+     "id": 23,
+     "name_ar": "Pb-14 ar",
+     "name_en": "Pb-14",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:15.002099",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 19,
+    "course": {
+     "id": 22,
+     "name_ar": "Pb-13 ar",
+     "name_en": "Pb-13",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.973980",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 18,
+    "course": {
+     "id": 21,
+     "name_ar": "Pb-12 ar",
+     "name_en": "Pb-12",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.943735",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 17,
+    "course": {
+     "id": 20,
+     "name_ar": "Pb-11 ar",
+     "name_en": "Pb-11",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.911088",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 16,
+    "course": {
+     "id": 19,
+     "name_ar": "Pb-10 ar",
+     "name_en": "Pb-10",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.881221",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 15,
+    "course": {
+     "id": 18,
+     "name_ar": "Pb-9 ar",
+     "name_en": "Pb-9",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.831454",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 14,
+    "course": {
+     "id": 17,
+     "name_ar": "Pb-8 ar",
+     "name_en": "Pb-8",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.793690",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 13,
+    "course": {
+     "id": 16,
+     "name_ar": "Pb-7 ar",
+     "name_en": "Pb-7",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.746669",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 12,
+    "course": {
+     "id": 15,
+     "name_ar": "Pb-6 ar",
+     "name_en": "Pb-6",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.700798",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 11,
+    "course": {
+     "id": 14,
+     "name_ar": "Pb-5 ar",
+     "name_en": "Pb-5",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.661384",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 10,
+    "course": {
+     "id": 13,
+     "name_ar": "Pb-4 ar",
+     "name_en": "Pb-4",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.615488",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 9,
+    "course": {
+     "id": 12,
+     "name_ar": "Pb-3 ar",
+     "name_en": "Pb-3",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.563584",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 8,
+    "course": {
+     "id": 11,
+     "name_ar": "Pb-2 ar",
+     "name_en": "Pb-2",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.533003",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 7,
+    "course": {
+     "id": 10,
+     "name_ar": "Pb-1 ar",
+     "name_en": "Pb-1",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.488390",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   },
+   {
+    "id": 6,
+    "course": {
+     "id": 9,
+     "name_ar": "Pb-0 ar",
+     "name_en": "Pb-0",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "amount": 10.0,
+    "currency": "EGP",
+    "status": "completed",
+    "method": null,
+    "provider": "manual",
+    "created_at": "2026-11-06T06:32:14.438415",
+    "paid_at": "2026-11-06T06:32:04.835804",
+    "refunded_at": null
+   }
+  ],
+  "total": 30,
+  "page": 1,
+  "size": 100,
+  "pages": 1
+ }
+}

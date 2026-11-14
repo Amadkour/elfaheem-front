@@ -302,6 +302,13 @@
   const CHUNK_INTERVAL_MS = 10_000;   // native timeslice — recorder auto-flushes every 10s
   const CANVAS_W = 1920;
   const CANVAS_H = 1080;
+  // Drawing always happens in that 1920 × 1080 space; the context's scale maps it onto the real canvas, whose height
+  // is the quality picked for the recording (meta.canvasHeight, D-319).
+  let _canvasHeight = CANVAS_H;
+  // Labels whose stream the recorder itself opened (its own getUserMedia in
+  // recorder_web_impl.dart): the only ones stop() may end. Every other label
+  // wraps a LiveKit track the room still uses ('screen', 'remote_<sid>').
+  const OWNED_LABELS = ['camera'];
   const VIDEO_BITRATE = 3_500_000;    // 3.5 Mbps — ~4.4MB/10s chunk.
                                        // Chunk uploads are serialized and queue-depth
                                        // tracked (see ondataavailable/_uploadChunk below),
@@ -319,6 +326,12 @@
   let _rafId          = null;   // now holds a setInterval id (see start())
   let _safetyFlushId  = null;   // periodic requestData() safety-net interval
   let _sessionId, _apiUrl, _authToken;
+  let _uploadUrl      = '';   // meeting recordings: their own chunk route (meta.uploadUrl); '' = the session route
+  let _epoch          = '';   // this start's id (meta.epoch), sent with every chunk as `epoch` (R1)
+  let _assembled      = false; // the server answered 409 recording_assembled: nothing more to upload
+  let _videoBitrate   = VIDEO_BITRATE; // meta.videoBitsPerSecond (the picked quality), else the constant
+  let _audioOnly      = false; // meta.audioOnly: no canvas at all — the mixed audio stream is recorded alone
+  let _chunkExt       = 'webm'; // the uploaded chunk's extension (from the mime the recorder actually uses)
   let _chunkIndex     = 0;
   let _pendingUploads = 0;
   let _stopping       = false;
@@ -339,6 +352,125 @@
   let _isPaused          = false; // true between pause() and resume() — drives the placeholder's badge
 
   const _sources = {};
+
+  // ── D-306: the room's layout (lib/features/live/live_recording_layout.dart) ──────────────
+  // setLayout(json) hands the canvas a list of tiles {l: source label, k: camera|screen|board, x, y, w, h (px on
+  // the 1920×1080 canvas), f: contain|auto, n: name, m: main, s: speaking, o: an overlay source drawn over the fitted
+  // picture — the drawing on a shared screen, D-811} and `more` (cameras that did not fit).
+  // While a layout has tiles, _drawFrame draws them instead of the legacy "screen, else my camera" pair: the
+  // stage letterboxed in its own shape, each camera cropped when its shape is close to its cell (letterboxed when
+  // not: a phone held upright), an initials card while a source has no frame yet, a name pill and a ring on the
+  // one speaking. An empty layout (nothing on) falls back to the legacy drawing / the branded placeholder.
+  let _layout = null;
+
+  function _tileReady(src) {
+    if (!src) return null;
+    if (src.canvasEl) return src.canvasEl;
+    if (src.videoEl && src.videoEl.readyState >= 2 && src.videoEl.videoWidth > 0) return src.videoEl;
+    return null;
+  }
+
+  // Returns the rectangle the picture filled ([x, y, w, h]; null when nothing was drawn).
+  function _drawFitted(el, x, y, w, h, fit) {
+    const sw = el.videoWidth || el.width, sh = el.videoHeight || el.height;
+    if (!sw || !sh || w <= 0 || h <= 0) return null;
+    const ratio = (sw / sh) / (w / h);
+    const cover = fit === 'cover' || (fit === 'auto' && ratio > 0.72 && ratio < 1.39);
+    if (cover) {
+      // Crop the source to the cell's shape, about its centre.
+      let cw = sw, ch = sh;
+      if (sw / sh > w / h) cw = sh * (w / h); else ch = sw / (w / h);
+      _ctx.drawImage(el, (sw - cw) / 2, (sh - ch) / 2, cw, ch, x, y, w, h);
+      return [x, y, w, h];
+    }
+    const s = Math.min(w / sw, h / sh);
+    const dw = sw * s, dh = sh * s;
+    _ctx.drawImage(el, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+    return [x + (w - dw) / 2, y + (h - dh) / 2, dw, dh];
+  }
+
+  function _drawLayout() {
+    const L = _layout;
+    _ctx.fillStyle = '#0B1220';
+    _ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    const fullBleed = (t) => t.x <= 0 && t.y <= 0 && t.w >= CANVAS_W && t.h >= CANVAS_H;
+    for (const t of L.tiles) {
+      const el = _tileReady(_sources[t.l]);
+      const bleed = fullBleed(t);
+      const r = bleed ? 0 : (t.m ? 18 : 14);
+      _ctx.save();
+      _roundRectPath(t.x, t.y, t.w, t.h, r);
+      _ctx.clip();
+      _ctx.fillStyle = t.k === 'board' && el ? '#FFFFFF' : '#111A2E'; // a page letterboxes on paper
+      _ctx.fillRect(t.x, t.y, t.w, t.h);
+      if (el) {
+        let shown = null;
+        try { shown = _drawFitted(el, t.x, t.y, t.w, t.h, t.f || 'contain'); } catch (_) { /* a frame not decodable yet */ }
+        // D-811: the drawing on a shared screen (a transparent canvas in the share's shape) over the picture.
+        const over = t.o ? _sources[t.o] : null;
+        if (shown && over && over.canvasEl && over.canvasEl.width > 0) {
+          try { _ctx.drawImage(over.canvasEl, shown[0], shown[1], shown[2], shown[3]); } catch (_) { /* skipped frame */ }
+        }
+      } else {
+        // No frame yet (or a camera that just turned on): the person's initials.
+        const cx = t.x + t.w / 2, cy = t.y + t.h / 2;
+        const rad = Math.max(18, Math.min(t.w, t.h) * 0.2);
+        _ctx.fillStyle = '#1E2B47';
+        _ctx.beginPath();
+        _ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+        _ctx.fill();
+        _ctx.fillStyle = '#E2E8F0';
+        _ctx.font = `600 ${Math.round(rad * 0.8)}px sans-serif`;
+        _ctx.textAlign = 'center';
+        _ctx.textBaseline = 'middle';
+        _ctx.fillText(_initialsOf(t.n || ''), cx, cy + 1);
+      }
+      _ctx.restore();
+      // The one speaking: a ring (cameras only, never around the stage).
+      if (t.s && t.k === 'camera' && !bleed) {
+        _ctx.save();
+        _ctx.strokeStyle = '#22D3EE';
+        _ctx.lineWidth = 4;
+        _roundRectPath(t.x + 2, t.y + 2, t.w - 4, t.h - 4, Math.max(0, r - 2));
+        _ctx.stroke();
+        _ctx.restore();
+      }
+      // A name pill on every camera (bottom start corner).
+      if (t.k === 'camera' && t.n) {
+        const fs = t.w >= 900 ? 26 : 18;
+        _ctx.save();
+        _ctx.font = `600 ${fs}px sans-serif`;
+        const name = t.n.length > 28 ? t.n.slice(0, 27) + '…' : t.n;
+        const tw = Math.min(t.w - 24, _ctx.measureText(name).width + 24);
+        const ph = fs + 14, px = L.rtl ? t.x + t.w - tw - 12 : t.x + 12, py = t.y + t.h - ph - 12;
+        _ctx.fillStyle = 'rgba(2, 6, 23, 0.62)';
+        _roundRectPath(px, py, tw, ph, ph / 2);
+        _ctx.fill();
+        _ctx.fillStyle = '#F8FAFC';
+        _ctx.textAlign = 'center';
+        _ctx.textBaseline = 'middle';
+        _ctx.fillText(name, px + tw / 2, py + ph / 2 + 1, tw - 16);
+        _ctx.restore();
+      }
+    }
+    if (L.more > 0) {
+      const last = L.tiles[L.tiles.length - 1];
+      const label = '+' + L.more;
+      _ctx.save();
+      _ctx.font = '700 24px sans-serif';
+      const w = _ctx.measureText(label).width + 36, h = 44;
+      const x = last ? last.x + (last.w - w) / 2 : CANVAS_W - w - 24;
+      const y = last ? Math.min(CANVAS_H - h - 8, last.y + last.h + 12) : CANVAS_H - h - 24;
+      _ctx.fillStyle = 'rgba(30, 41, 59, 0.9)';
+      _roundRectPath(x, y, w, h, h / 2);
+      _ctx.fill();
+      _ctx.fillStyle = '#F8FAFC';
+      _ctx.textAlign = 'center';
+      _ctx.textBaseline = 'middle';
+      _ctx.fillText(label, x + w / 2, y + h / 2 + 1);
+      _ctx.restore();
+    }
+  }
 
   // ── Visible 1px container (prevents browser from suspending video decoding) ──
   function _ensureVisibleContainer() {
@@ -385,11 +517,32 @@
     return candidates.find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
   }
 
+  // Audio-only recordings (meta.audioOnly): opus in WebM first (Chrome,
+  // Edge, Firefox), then whatever isTypeSupported() accepts — Safari only
+  // knows audio/mp4 (AAC). The server transcodes any of them to one .m4a.
+  function _bestAudioMime() {
+    const candidates = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/mp4',
+    ];
+    return candidates.find(m => MediaRecorder.isTypeSupported(m)) || '';
+  }
+
+  function _chunkExtFor(mime) {
+    const m = String(mime || '').toLowerCase();
+    if (m.startsWith('audio/mp4')) return 'm4a';
+    if (m.startsWith('audio/ogg')) return 'ogg';
+    return 'webm';
+  }
+
   function _canvasDiag() {
+    if (!_ctx) return;
     try {
       // Sample a small region instead of the whole canvas (cheap) and
       // report whether it's non-uniform/non-black at this instant.
-      const sample = _ctx.getImageData(CANVAS_W / 2 - 5, CANVAS_H / 2 - 5, 10, 10).data;
+      const sample = _ctx.getImageData(_canvas.width / 2 - 5, _canvas.height / 2 - 5, 10, 10).data;
       let nonZero = 0;
       for (let i = 0; i < sample.length; i += 4) {
         if (sample[i] || sample[i + 1] || sample[i + 2]) nonZero++;
@@ -403,6 +556,7 @@
   let _diagCounter = 0;
   function _drawFrame() {
     if (!_ctx) return;
+    if (_layout && _layout.tiles && _layout.tiles.length) { _drawLayout(); return; }
 
     const screen = _sources['screen'];
     const camera = _sources['camera'];
@@ -781,17 +935,21 @@
     const form = new FormData();
     form.append('chunk_index', String(index));
     form.append('is_final',    isFinal ? '1' : '0');
-    form.append('chunk', blob, `chunk_${String(index).padStart(6,'0')}.webm`);
+    if (_epoch) form.append('epoch', _epoch);
+    form.append('chunk', blob, `chunk_${String(index).padStart(6,'0')}.${_chunkExt}`);
 
-    console.log(`[Compositor] uploading chunk #${index} size=${blob.size} final=${isFinal}`);
+    console.log(`[Compositor] uploading chunk #${index} size=${blob.size} final=${isFinal} ext=${_chunkExt}`);
 
     let attempt = 0;
     let uploaded = false;
 
+    // The run's recording is already assembled (409 recording_assembled): stop uploading, it is done.
+    if (_assembled) attempt = 4;
+
     while (attempt <= 3) {
       try {
         const r = await fetch(
-          `${_apiUrl}/api/v1/live-sessions/${_sessionId}/recording-chunk`,
+          _uploadUrl || `${_apiUrl}/api/v1/live-sessions/${_sessionId}/recording-chunk`,
           { method: 'POST', headers: { Authorization: _authToken }, body: form }
         );
         if (r.ok) {
@@ -802,7 +960,15 @@
           break;
         }
         const body = await r.text().catch(() => '(unreadable)');
+        if (r.status === 409 && body.indexOf('recording_assembled') >= 0) {
+          // R4: assembled already — every later chunk would be refused too; the recording is done.
+          console.log(`[Compositor] chunk #${index}: the recording is already assembled — no more uploads`);
+          _assembled = true;
+          window._ElFaheemCompositorAssembled = true;
+          break;
+        }
         console.error(`[Compositor] chunk #${index} REJECTED status=${r.status} body=${body.slice(0,300)}`);
+        // 4xx: no retry (409 recording_assembling, a revoked / expired upload token, no live run, …)
         if (r.status >= 400 && r.status < 500) break;
       } catch (e) {
         console.warn(`[Compositor] chunk #${index} network error attempt ${attempt}:`, e);
@@ -811,7 +977,7 @@
       if (attempt <= 3) await new Promise(res => setTimeout(res, 1000 * (1 << attempt)));
     }
 
-    if (!uploaded) console.error(`[Compositor] chunk #${index} FAILED after ${attempt} attempts`);
+    if (!uploaded && !_assembled) console.error(`[Compositor] chunk #${index} FAILED after ${attempt} attempts`);
 
     _pendingUploads--;
     _queueDepth--;
@@ -864,29 +1030,55 @@
       _teacherName      = '';
       _sessionTitle     = '';
       _participantCount = 0;
+      _uploadUrl        = '';
+      _epoch            = '';
+      _assembled        = false;
+      window._ElFaheemCompositorAssembled = false;
+      _videoBitrate     = VIDEO_BITRATE;
+      _audioOnly        = false;
+      _canvasHeight     = CANVAS_H;
+      _chunkExt         = 'webm';
       try {
         if (meta) {
           const parsed = JSON.parse(meta);
           _teacherName      = String(parsed.teacherName  || '');
           _sessionTitle     = String(parsed.sessionTitle || '');
           _participantCount = Number(parsed.participantCount) || 0;
+          _uploadUrl        = String(parsed.uploadUrl || '');
+          _epoch            = String(parsed.epoch || '').slice(0, 64);
+          const bps = Number(parsed.videoBitsPerSecond) || 0;
+          if (bps > 0) _videoBitrate = bps;
+          _audioOnly        = parsed.audioOnly === true;
+          _canvasHeight     = Number(parsed.canvasHeight) || CANVAS_H;
         }
       } catch (e) {
         console.warn('[Compositor] failed to parse start() meta — using defaults:', e);
       }
       _sessionStartMs = Date.now();
+      if (!_epoch) _epoch = String(_sessionStartMs); // an older Dart side sent none: one id per start still
       _isPaused = false;
 
       _sessionId = sessionId;
       _apiUrl    = apiUrl.replace(/\/$/, '');
       _authToken = authToken;
 
-      console.log(`[Compositor] start() sessionId=${sessionId} apiUrl=${_apiUrl}`);
+      console.log(`[Compositor] start() sessionId=${sessionId} apiUrl=${_apiUrl} audioOnly=${_audioOnly}`);
 
-      _canvas        = document.createElement('canvas');
-      _canvas.width  = CANVAS_W;
-      _canvas.height = CANVAS_H;
-      _ctx           = _canvas.getContext('2d');
+      // Audio-only (meeting recordings with quality "audio"): no canvas is
+      // ever created — _ctx stays null, so _drawFrame()/_canvasDiag() are
+      // no-ops, setPlaceholderImage has nothing to draw on, and the only
+      // thing recorded is the mixed audio of _dest below (the local mic
+      // plus every remote participant added through addStream — that
+      // mixing is exactly the same as in the video mode).
+      _canvas = null;
+      _ctx    = null;
+      if (!_audioOnly) {
+        _canvas        = document.createElement('canvas');
+        _canvas.width  = Math.round(_canvasHeight * 16 / 9 / 2) * 2;
+        _canvas.height = _canvasHeight;
+        _ctx           = _canvas.getContext('2d');
+        _ctx.setTransform(_canvasHeight / CANVAS_H, 0, 0, _canvasHeight / CANVAS_H, 0, 0);
+      }
 
       _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       // IMPORTANT: actually wait for + verify resume(), and log the result.
@@ -918,30 +1110,51 @@
       _silentGain.connect(_dest);
       _silentSource.start();
 
-      const canvasStream = _canvas.captureStream(30);
-      const audioTrack   = _dest.stream.getAudioTracks()[0];
-      // Only attach the destination audio track if the context is actually
-      // running. Attaching a track from a suspended context is what was
-      // corrupting the mux; safer to record video-only than to risk empty
-      // output. We keep retrying resume() in the safety-flush interval
-      // below in case it recovers mid-session, but we do NOT hot-swap the
-      // track into an already-started recorder (MediaRecorder doesn't
-      // support that) — so a context stuck suspended for a whole session
-      // means that session is recorded without audio, not silently dropped.
-      if (audioTrack && _audioCtx.state === 'running') {
-        canvasStream.addTrack(audioTrack);
-        console.log('[Compositor] audio track attached (audioCtx running)');
+      const audioTrack = _dest.stream.getAudioTracks()[0];
+      let recordStream, mime, recorderOptions;
+      if (_audioOnly) {
+        // The mixed audio track alone — no canvas capture, no video track.
+        // A suspended AudioContext has nothing else to fall back to here,
+        // so the track is attached regardless and the periodic resume()
+        // below keeps nudging the context (an audio-only session cannot
+        // be "recorded video-only" instead).
+        if (!audioTrack) {
+          console.error('[Compositor] audio-only start: the mixed audio destination has no track — nothing to record');
+          return;
+        }
+        if (_audioCtx.state !== 'running') {
+          console.warn(`[Compositor] audio-only: audioCtx.state="${_audioCtx.state}" — recording anyway, resume() is retried periodically`);
+        }
+        recordStream = new MediaStream([audioTrack]);
+        mime = _bestAudioMime();
+        recorderOptions = { audioBitsPerSecond: 128_000 };
+        if (mime) recorderOptions.mimeType = mime;
+        _chunkExt = _chunkExtFor(mime);
+        console.log(`[Compositor] audio-only: using mime "${mime || '(browser default)'}" → .${_chunkExt} chunks`);
       } else {
-        console.warn(`[Compositor] SKIPPING audio track — audioCtx.state="${_audioCtx.state}". Recording video-only to avoid corrupting the mux.`);
+        const canvasStream = _canvas.captureStream(30);
+        // Only attach the destination audio track if the context is actually
+        // running. Attaching a track from a suspended context is what was
+        // corrupting the mux; safer to record video-only than to risk empty
+        // output. We keep retrying resume() in the safety-flush interval
+        // below in case it recovers mid-session, but we do NOT hot-swap the
+        // track into an already-started recorder (MediaRecorder doesn't
+        // support that) — so a context stuck suspended for a whole session
+        // means that session is recorded without audio, not silently dropped.
+        if (audioTrack && _audioCtx.state === 'running') {
+          canvasStream.addTrack(audioTrack);
+          console.log('[Compositor] audio track attached (audioCtx running)');
+        } else {
+          console.warn(`[Compositor] SKIPPING audio track — audioCtx.state="${_audioCtx.state}". Recording video-only to avoid corrupting the mux.`);
+        }
+        recordStream = canvasStream;
+        mime = _bestMime();
+        recorderOptions = { mimeType: mime, videoBitsPerSecond: _videoBitrate };
+        _chunkExt = 'webm';
+        console.log(`[Compositor] using mime: ${mime}`);
       }
 
-      const mime = _bestMime();
-      console.log(`[Compositor] using mime: ${mime}`);
-
-      _recorder = new MediaRecorder(canvasStream, {
-        mimeType: mime,
-        videoBitsPerSecond: VIDEO_BITRATE,
-      });
+      _recorder = new MediaRecorder(recordStream, recorderOptions);
 
       _recorder.ondataavailable = (e) => {
         if (!e.data || e.data.size === 0) {
@@ -987,8 +1200,10 @@
       // — a plain interval (unlike requestAnimationFrame) keeps firing even
       // when the tab is hidden/backgrounded, so short/interrupted sessions
       // still get real, encodable video content.
-      _drawFrame();
-      _rafId = setInterval(_drawFrame, 33);
+      if (!_audioOnly) {
+        _drawFrame();
+        _rafId = setInterval(_drawFrame, 33);
+      }
 
       _recorder.start(CHUNK_INTERVAL_MS);
       console.log(`[Compositor] MediaRecorder started timeslice=${CHUNK_INTERVAL_MS}ms`);
@@ -1019,10 +1234,30 @@
     addStream(stream, label) {
       if (!stream) return;
       if (_sources[label]) compositor.removeStream(label);
-      const videoEl   = _makeVideoEl(stream);
+      // Audio-only: no <video> element is ever created (a screen share's
+      // frames have nowhere to go); its audio track is still mixed in.
+      const videoEl   = _audioOnly ? null : _makeVideoEl(stream);
       const audioNode = _connectAudio(stream, label);
       _sources[label] = { stream, videoEl, audioNode };
       console.log(`[Compositor] addStream: ${label} | video=${stream.getVideoTracks().length} audio=${stream.getAudioTracks().length}`);
+    },
+
+    // D-306: the room's tiles (see _drawLayout); invalid JSON keeps the last layout.
+    setLayout(json) {
+      try {
+        const L = typeof json === 'string' ? JSON.parse(json) : json;
+        _layout = L && Array.isArray(L.tiles) ? L : null;
+      } catch (e) {
+        console.warn('[Compositor] setLayout: bad layout', e);
+      }
+    },
+
+    // D-306: a <canvas> the app paints (the whiteboard page) as source [label]: drawn as it is, never stopped.
+    addCanvas(label, canvas) {
+      if (!label || !canvas) return;
+      if (_sources[label]) compositor.removeStream(label);
+      _sources[label] = { canvasEl: canvas };
+      console.log(`[Compositor] addCanvas: ${label} ${canvas.width}x${canvas.height}`);
     },
 
     removeStream(label) {
@@ -1090,8 +1325,19 @@
 
       await new Promise(r => setTimeout(r, 300));
 
-      Object.values(_sources).forEach(src => {
-        if (src.stream) src.stream.getTracks().forEach(t => { try { t.stop(); } catch(_){} });
+      // Stop only the tracks the recorder opened itself (its own
+      // getUserMedia camera/mic stream, label 'camera'). 'screen' is the
+      // share LiveKit is still publishing and 'remote_<sid>' are LiveKit's
+      // remote audio tracks: stopping those killed the live share and every
+      // remote voice when "Stop recording" was pressed mid-meeting. They are
+      // only detached from the compositor.
+      Object.keys(_sources).forEach(label => {
+        const src = _sources[label];
+        const owned = OWNED_LABELS.indexOf(label) !== -1;
+        compositor.removeStream(label);
+        if (owned && src && src.stream) {
+          src.stream.getTracks().forEach(t => { try { t.stop(); } catch(_){} });
+        }
       });
       try { if (_silentSource) _silentSource.stop(); } catch (_) {}
       try { if (_silentSource) _silentSource.disconnect(); } catch (_) {}
@@ -1148,6 +1394,7 @@
         );
       }
 
+      _layout = null;
       _stopping = false;
     },
 
@@ -1228,9 +1475,11 @@
       case 'updateParticipants':return compositor.updateParticipants(a1);
       case 'pause':             return compositor.pause();
       case 'resume':            return compositor.resume();
+      case 'setLayout':         return compositor.setLayout(a1);
+      case 'addCanvas':         return compositor.addCanvas(a1, a2);
       default: console.warn('[Compositor] unknown cmd:', cmd);
     }
   };
 
-  console.log('[Compositor] loaded — version 10 (premium branded placeholder w/ teacher+session+participant info, VP9/VP8-first mime selection, setInterval draw loop, periodic safety-flush, real-data/upload tracking)');
+  console.log('[Compositor] loaded — version 11 (D-306 room layout: cameras grid / stage + thumbnails, board canvas; premium branded placeholder w/ teacher+session+participant info, VP9/VP8-first mime selection, setInterval draw loop, periodic safety-flush, real-data/upload tracking)');
 })();

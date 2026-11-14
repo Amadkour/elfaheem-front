@@ -1,0 +1,58 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items/7 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "id": 7,
+  "scan_page_id": 14,
+  "attempt_id": null,
+  "question_id": null,
+  "kind": "quality",
+  "code": "blurry",
+  "reading": {
+   "codes": [
+    "blurry"
+   ],
+   "page_label": "7",
+   "en": "Page 7 is too blurry. Please upload a clearer image of it.",
+   "ar": "الصفحة 7 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها."
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T05:36:28.874998",
+  "actions": [
+   "dismiss"
+  ],
+  "has_crop": true,
+  "en": "Page 7 is too blurry. Please upload a clearer image of it.",
+  "ar": "الصفحة 7 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها.",
+  "crop_url": "/api/v1/exam/omr/images/crop/7?exp=1793598396&sig=3dddd5933b632b5ffe1c3491307a8d1b",
+  "system_reading": {
+   "reading_id": 14,
+   "engine_version": "nb-omr-engine/1 mlkit.omr thresholds:94796afbb463",
+   "quality": {
+    "status": "rejected",
+    "issues": [
+     {
+      "code": "blurry",
+      "en": "Too blurry, hold steady.",
+      "ar": "الصورة غير واضحة، ثبّت الهاتف.",
+      "details": {
+       "sigma_mm": 0.814
+      }
+     }
+    ],
+    "page_label": "7",
+    "en": "Page 7 is too blurry. Please upload a clearer image of it.",
+    "ar": "الصفحة 7 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها."
+   }
+  },
+  "page": {
+   "id": 14,
+   "page_label": "7",
+   "status": "rejected",
+   "url": "/api/v1/exam/exams/1/omr/pages/14"
+  }
+ }
+}

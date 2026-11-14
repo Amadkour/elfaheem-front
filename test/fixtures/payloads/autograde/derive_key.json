@@ -1,0 +1,81 @@
+{
+ "_source": {
+  "route": "POST /api/v1/exam/questions/derive-key",
+  "uid": 10
+ },
+ "payload": {
+  "kind": "short",
+  "kind_source": "inferred",
+  "derived": {
+   "v": 1,
+   "kind": "short",
+   "kind_source": "inferred",
+   "alternatives": [
+    "because light travels much faster than sound",
+    "because light travel much faster than sound",
+    "because light travel much faster sound"
+   ],
+   "keywords": [
+    {
+     "term": "faster",
+     "weight": 1.0,
+     "synonyms": []
+    },
+    {
+     "term": "light",
+     "weight": 1.0,
+     "synonyms": []
+    },
+    {
+     "term": "sound",
+     "weight": 1.0,
+     "synonyms": []
+    },
+    {
+     "term": "travels",
+     "weight": 1.0,
+     "synonyms": []
+    }
+   ],
+   "points": [
+    {
+     "text": "Because light travels much faster than sound",
+     "weight": 1.0
+    }
+   ],
+   "points_source": "model",
+   "keywords_source": "model",
+   "model_hash": "32e80f33b53f6057"
+  },
+  "effective": {
+   "keywords": [
+    {
+     "term": "faster",
+     "weight": 1.0,
+     "synonyms": []
+    },
+    {
+     "term": "light",
+     "weight": 1.0,
+     "synonyms": []
+    },
+    {
+     "term": "sound",
+     "weight": 1.0,
+     "synonyms": []
+    },
+    {
+     "term": "travels",
+     "weight": 1.0,
+     "synonyms": []
+    }
+   ],
+   "points": [
+    {
+     "text": "Because light travels much faster than sound",
+     "weight": 1.0
+    }
+   ]
+  }
+ }
+}

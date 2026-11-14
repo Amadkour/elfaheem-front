@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/paint_background.dart';
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
-import '../../features/shared/upload/upload_progress_footer.dart';
-import '../../features/student/courses/details/components/app_responsive.dart';
+import 'package:flutter_education_app/features/upload/upload_progress_footer.dart';
 import '../helpers.dart';
 import 'app_bar.dart';
 
@@ -19,10 +18,16 @@ class BasePage extends StatelessWidget {
     this.appBar,
     this.useWebCard = false,
     this.maxWith,
+    this.width,
     this.enableFooterWidget = true,
   });
 
+  /// The card's max width in pixels — older pages; new code names a [width] role instead.
   final double? maxWith;
+
+  /// The page-width role of a [useWebCard] page (D-304): form · reading · content · wide · full. It wins over
+  /// [maxWith]; with neither, the card is [AppWidth.content].
+  final AppWidth? width;
   final Widget child;
   final Color? background;
   final Widget? floatingActionButton;
@@ -58,33 +63,53 @@ class BasePage extends StatelessWidget {
     // Rebuild whenever the disable list changes (silent FCM push / theme fetch).
     return ValueListenableBuilder<int>(
       valueListenable: AppConfig.disableListVersion,
-      builder: (context, _, __) => _buildPage(context),
+      builder: (context, _, _) => _buildPage(context),
     );
   }
 
   Widget _buildPage(BuildContext context) {
+    Color bg=background ??(context.colors.background);
     if (key case ValueKey(
     value: final v,
     ) when AppConfig.disableList.contains(v)) {
+      // "Coming soon" (D-622): a vector mark on a peach block, the title in the editorial face — no emoji, no gold
       return Scaffold(
         appBar: ScreenAppBar(title: (key as ValueKey).value.toString().tr),
+        backgroundColor: bg,
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('🚀', style: TextStyle(fontSize: 70)),
-              Text(
-                'coming_soon'.tr,
-                style: context.colors.h2.copyWith(color: context.colors.accent2),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpace.lg),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+              child: AppBlock(
+                tone: AppBlockTone.peach,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.rocket_launch_rounded, size: AppIconSize.hero),
+                    const SizedBox(height: AppSpace.md),
+                    Text(
+                      'coming_soon'.tr,
+                      textAlign: TextAlign.center,
+                      style: AppType.headline(context).copyWith(color: AppBlock.colorsOf(context).ink),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
         ),
       );
     }
+    // A card page's header lies across the whole page, on top, like every other page's header (D-575): inside the card it
+    // was a second floating box on the page.
+    final headerOutside = useWebCard && appBar != null && context.width >= AppWidth.phoneMax;
+    final webCard = useWebCard && context.width >= AppWidth.phoneMax;
+    // D-948: the canvas is ONE solid colour (the server's background role, light and dark): no pattern, no gradient
+    // behind pages. Depth comes from the paper cards and the blocks on it.
     Widget w = Scaffold(
-      appBar: appBar,
-      backgroundColor: background ?? context.colors.background,
+      appBar: headerOutside ? null : appBar,
+      backgroundColor:bg,
       floatingActionButton: _buildFab(), // was: floatingActionButton
       bottomNavigationBar:
       enableFooterWidget ? _footerWith(bottomNavigationBar) : null,
@@ -99,52 +124,33 @@ class BasePage extends StatelessWidget {
       ),
     );
 
-    if (useWebCard && context.width > 599) {
+    if (webCard) {
       return Directionality(
         textDirection: Helpers.pageDirection,
         child: Scaffold(
-          backgroundColor: background ?? (context.colors.background),
+          backgroundColor: bg,
+          appBar: headerOutside ? appBar : null,
           // NOTE: no footer here — `w` below already carries it via its own
           // bottomNavigationBar, and `w` is what actually renders in this
           // branch (nested inside the centered card).
-          body: Stack(
-            children: [
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: ElearningPatternPainter(
-                    color: context.colors.primaryLight.withValues(alpha: 0.2),
-                    width: Helpers.calculateRemainingWidth(context),
-                  ),
-                ),
-              ),
-              Align(
-                alignment: AlignmentGeometry.center,
-                child: Container(
-                  width: Helpers.calculateRemainingWidth(
-                    context,
-                    maxWith: maxWith,
-                  ),
-                  margin: EdgeInsets.symmetric(vertical: 10),
-                  padding: const EdgeInsets.all(0.0),
-                  decoration: BoxDecoration(
-                    borderRadius:
-                    BorderRadius.circular(context.colors.radiusXL),
-                    color: context.colors.background,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadiusGeometry.circular(
-                      context.colors.radiusXL,
-                    ),
-                    child: w,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          // The card is measured against the room the page really has (a shell's sidebar or rail already took its
+          // share), not the window: the role's width, less a gutter each side once the room is narrower (D-304).
+          // The margins are the plain canvas (D-948): the paper cards and blocks on it carry the depth.
+          body: LayoutBuilder(builder: (context, box) {
+            final cardWidth = width != null
+                ? width!.inside(box.maxWidth)
+                : AppWidth.content.inside(box.maxWidth, max: maxWith);
+            // The body runs the whole height: a margin here stopped the scrolling content 12 px short of the window's
+            // edge, cut off by an invisible line (D-560).
+            return Align(
+              alignment: AlignmentDirectional.topCenter,
+              child: SizedBox(width: cardWidth, height: double.infinity, child: w),
+            );
+          }),
         ),
       );
     }
 
-    return w;
+    return SafeArea(child: w);
   }
 }

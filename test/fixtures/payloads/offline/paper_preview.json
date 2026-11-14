@@ -1,0 +1,81 @@
+{
+ "_source": "back tests/exam_engine/e2e_offline_flow.py, POST /exams/{id}/paper-design/preview (2026-11-12). Every png is the GENERIC copy's page shrunk to a thumbnail (no student name); part and adjustments are as the server answered.",
+ "nb2_student": {
+  "png": "iVBORw0KGgoAAAANSUhEUgAAADwAAABVCAAAAAAwbNg8AAACuklEQVR42u2WyW7UQBCG/+pue9xjzyRACALEICQ2hQMcuCDBC/AEPCA3rrwDF44gdgGRAgxLyCx4a3cVh8kyKMKkA1I4TMsXy/W5flfXX24SHH6pv2BhgPy5vRL6Dn5RXO0CIo+xNpHANVnDYxED2GuXdhM3ObJWFfLwVS99d3ftMlnAAFceqe7OMz/SWate2XjNNL1+4z53AQPoHth5qqKOQefcnwp8Zv32E7eKdLtgACYj6n81fbMb81vtgv4DV9zZrTaApSVgCWDRAhJQm+w30bez0Tw8fetNUrqOsKpi0GkNxSCBYoJIf06GunVRd/LB7IYEAL7E/OE83g/ccODXB81w4NcvlJ8HPzbPlcPzo+MJIMB+QbPMlLHOoLJap9C9WqesU61TjFJt0hryiePGdTMGomgfLCVzzVzWXDOXjmvPdbVz1ZZOshFR+7LPZG9taibtoZpIGs3KE4EapUjgtaxkv+9tAF2vGzZgU0VgaoxD4rQwRQ0JKUIrjA4tB9jCVx29B1fj8bLtaRn7qAc3FWvb4QnZPT/3zh5frku40hYVRpHdas8cn7Lzw+C7WEtumNgYRZVaFTRJ4ibPRdsir2AwzZuDwbQ9w0YsfSNboCWqckRZEHzYGQZAhOhg8TJLSHPw+KM6lRqgEaXb4c1RWiTezUw5ky280XEnrBt23MmofWwyCQizrtt2lUtWxyzTbHnLt8NK7d8q9hCIFwTVb6fan8SvJM1Qy6oOh4/kXwVg8iVasQeKz7/GipiPJXuym1wl5mBWLlmB2Or/4Zu5DsRi9c9cFYjRXG+LC4Qj+key2QdiWs1ZMnTHaN4Ycih4W3ZwwdTRtucCXsALeAEv4AW8gBfwL+cwLlRCgZiUbBUU8OzmvSI0Z3Hv5jPAAOXLmENhfveyBEiQP+1e1YGwf55f6x7hOewnZbBh3T9uULcAAAAASUVORK5CYII=",
+  "part": "nb2",
+  "adjustments": [
+   {
+    "part": "header",
+    "element": "logo",
+    "action": "moved",
+    "reason": "moved_off_machine_area"
+   },
+   {
+    "part": "header",
+    "element": "a3",
+    "action": "moved",
+    "reason": "moved_off_machine_area"
+   },
+   {
+    "part": "header",
+    "element": "a6",
+    "action": "moved",
+    "reason": "moved_off_machine_area"
+   },
+   {
+    "part": "header",
+    "element": "stamp",
+    "action": "moved",
+    "reason": "moved_off_machine_area"
+   },
+   {
+    "part": "header",
+    "element": "code",
+    "action": "dropped",
+    "reason": "qr_not_allowed"
+   },
+   {
+    "part": "footer",
+    "element": "luck",
+    "action": "moved",
+    "reason": "moved_into_zone"
+   }
+  ]
+ },
+ "nb2_generic_unsaved": {
+  "png": "iVBORw0KGgoAAAANSUhEUgAAADwAAABVCAAAAAAwbNg8AAACuklEQVR42u2WyW7UQBCG/+pue9xjzyRACALEICQ2hQMcuCDBC/AEPCA3rrwDF44gdgGRAgxLyCx4a3cVh8kyKMKkA1I4TMsXy/W5flfXX24SHH6pv2BhgPy5vRL6Dn5RXO0CIo+xNpHANVnDYxED2GuXdhM3ObJWFfLwVS99d3ftMlnAAFceqe7OMz/SWate2XjNNL1+4z53AQPoHth5qqKOQefcnwp8Zv32E7eKdLtgACYj6n81fbMb81vtgv4DV9zZrTaApSVgCWDRAhJQm+w30bez0Tw8fetNUrqOsKpi0GkNxSCBYoJIf06GunVRd/LB7IYEAL7E/OE83g/ccODXB81w4NcvlJ8HPzbPlcPzo+MJIMB+QbPMlLHOoLJap9C9WqesU61TjFJt0hryiePGdTMGomgfLCVzzVzWXDOXjmvPdbVz1ZZOshFR+7LPZG9taibtoZpIGs3KE4EapUjgtaxkv+9tAF2vGzZgU0VgaoxD4rQwRQ0JKUIrjA4tB9jCVx29B1fj8bLtaRn7qAc3FWvb4QnZPT/3zh5frku40hYVRpHdas8cn7Lzw+C7WEtumNgYRZVaFTRJ4ibPRdsir2AwzZuDwbQ9w0YsfSNboCWqckRZEHzYGQZAhOhg8TJLSHPw+KM6lRqgEaXb4c1RWiTezUw5ky280XEnrBt23MmofWwyCQizrtt2lUtWxyzTbHnLt8NK7d8q9hCIFwTVb6fan8SvJM1Qy6oOh4/kXwVg8iVasQeKz7/GipiPJXuym1wl5mBWLlmB2Or/4Zu5DsRi9c9cFYjRXG+LC4Qj+key2QdiWs1ZMnTHaN4Ycih4W3ZwwdTRtucCXsALeAEv4AW8gBfwL+cwLlRCgZiUbBUU8OzmvSI0Z3Hv5jPAAOXLmENhfveyBEiQP+1e1YGwf55f6x7hOewnZbBh3T9uULcAAAAASUVORK5CYII=",
+  "part": "nb2",
+  "adjustments": []
+ },
+ "bubble_student": {
+  "png": "iVBORw0KGgoAAAANSUhEUgAAADwAAABVCAAAAAAwbNg8AAACuklEQVR42u2WyW7UQBCG/+pue9xjzyRACALEICQ2hQMcuCDBC/AEPCA3rrwDF44gdgGRAgxLyCx4a3cVh8kyKMKkA1I4TMsXy/W5flfXX24SHH6pv2BhgPy5vRL6Dn5RXO0CIo+xNpHANVnDYxED2GuXdhM3ObJWFfLwVS99d3ftMlnAAFceqe7OMz/SWate2XjNNL1+4z53AQPoHth5qqKOQefcnwp8Zv32E7eKdLtgACYj6n81fbMb81vtgv4DV9zZrTaApSVgCWDRAhJQm+w30bez0Tw8fetNUrqOsKpi0GkNxSCBYoJIf06GunVRd/LB7IYEAL7E/OE83g/ccODXB81w4NcvlJ8HPzbPlcPzo+MJIMB+QbPMlLHOoLJap9C9WqesU61TjFJt0hryiePGdTMGomgfLCVzzVzWXDOXjmvPdbVz1ZZOshFR+7LPZG9taibtoZpIGs3KE4EapUjgtaxkv+9tAF2vGzZgU0VgaoxD4rQwRQ0JKUIrjA4tB9jCVx29B1fj8bLtaRn7qAc3FWvb4QnZPT/3zh5frku40hYVRpHdas8cn7Lzw+C7WEtumNgYRZVaFTRJ4ibPRdsir2AwzZuDwbQ9w0YsfSNboCWqckRZEHzYGQZAhOhg8TJLSHPw+KM6lRqgEaXb4c1RWiTezUw5ky280XEnrBt23MmofWwyCQizrtt2lUtWxyzTbHnLt8NK7d8q9hCIFwTVb6fan8SvJM1Qy6oOh4/kXwVg8iVasQeKz7/GipiPJXuym1wl5mBWLlmB2Or/4Zu5DsRi9c9cFYjRXG+LC4Qj+key2QdiWs1ZMnTHaN4Ycih4W3ZwwdTRtucCXsALeAEv4AW8gBfwL+cwLlRCgZiUbBUU8OzmvSI0Z3Hv5jPAAOXLmENhfveyBEiQP+1e1YGwf55f6x7hOewnZbBh3T9uULcAAAAASUVORK5CYII=",
+  "part": "bubble",
+  "adjustments": [
+   {
+    "part": "header",
+    "element": null,
+    "action": "scaled",
+    "reason": "band_taller_than_zone",
+    "factor": 0.375
+   },
+   {
+    "part": "header",
+    "element": "logo",
+    "action": "moved",
+    "reason": "moved_into_zone"
+   },
+   {
+    "part": "header",
+    "element": "code",
+    "action": "dropped",
+    "reason": "qr_not_allowed"
+   },
+   {
+    "part": "footer",
+    "element": null,
+    "action": "dropped",
+    "reason": "no_footer_on_this_sheet"
+   }
+  ]
+ }
+}

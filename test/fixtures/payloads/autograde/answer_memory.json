@@ -1,0 +1,20 @@
+{
+ "_source": {
+  "route": "GET /api/v1/exam/questions/2/answer-memory",
+  "uid": 10
+ },
+ "payload": {
+  "items": [
+   {
+    "id": 1,
+    "text": "the volume of the gas decreases",
+    "verdict": "wrong",
+    "fraction": 0.0,
+    "decisions": 1,
+    "conflict": false,
+    "source": "mark",
+    "updated_at": "2026-11-12T12:04:48.732968"
+   }
+  ]
+ }
+}

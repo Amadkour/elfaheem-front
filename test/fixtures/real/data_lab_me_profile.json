@@ -1,0 +1,98 @@
+{
+ "student": {
+  "id": 1,
+  "name": "Student",
+  "email": null,
+  "phone": null,
+  "image_url": null
+ },
+ "overall": {
+  "courses": 1,
+  "progress": 100.0,
+  "attendance": 100.0,
+  "exam_avg": null,
+  "review_flags": 0,
+  "read_flags": 0
+ },
+ "courses": [
+  {
+   "course": {
+    "id": 11,
+    "title": "أساسيات الخط العربي"
+   },
+   "progress": 100.0,
+   "attendance": {
+    "rate": 100.0,
+    "attended": 4,
+    "held": 4
+   },
+   "exams": {
+    "avg": null,
+    "items": []
+   },
+   "flags": {
+    "review": 0,
+    "read": 0
+   },
+   "columns": [
+    {
+     "id": 1,
+     "key": "progress",
+     "label": "التقدم",
+     "kind": "builtin",
+     "data_type": "number",
+     "source": "progress",
+     "formula": null,
+     "options": null,
+     "max_value": 100.0,
+     "visible_to_students": true,
+     "is_hidden": false,
+     "is_locked": false,
+     "display": null,
+     "style": {},
+     "position": 0,
+     "value": 100.0,
+     "class_avg": 100.0
+    },
+    {
+     "id": 2,
+     "key": "attendance",
+     "label": "الحضور",
+     "kind": "builtin",
+     "data_type": "number",
+     "source": "attendance",
+     "formula": null,
+     "options": null,
+     "max_value": 100.0,
+     "visible_to_students": true,
+     "is_hidden": false,
+     "is_locked": false,
+     "display": null,
+     "style": {},
+     "position": 1,
+     "value": 100.0,
+     "class_avg": 100.0
+    },
+    {
+     "id": 3,
+     "key": "exam_avg",
+     "label": "متوسط الاختبارات",
+     "kind": "builtin",
+     "data_type": "number",
+     "source": "exam_avg",
+     "formula": null,
+     "options": null,
+     "max_value": 100.0,
+     "visible_to_students": true,
+     "is_hidden": false,
+     "is_locked": false,
+     "display": null,
+     "style": {},
+     "position": 2,
+     "value": null,
+     "class_avg": null
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,313 @@
+{
+ "_source": {
+  "route": "GET /api/v1/parent/overview",
+  "uid": 6
+ },
+ "payload": {
+  "now": "2026-11-07T23:23:32.728033",
+  "today_date": "2026-11-08",
+  "timezone": "Africa/Cairo",
+  "children": [
+   {
+    "child": {
+     "id": 4,
+     "name": "st",
+     "image_url": null,
+     "is_active": true,
+     "linked_at": "2026-11-07T23:23:24.252641Z"
+    },
+    "today_sessions": [
+     {
+      "id": "session:3",
+      "source": "course_session",
+      "title": "L2",
+      "subtitle": "رياضيات",
+      "starts_at": "2026-11-08T10:00:00",
+      "ends_at": "2026-11-08T11:00:00",
+      "org_id": null,
+      "org": null,
+      "color": null,
+      "location": null,
+      "mode": "online",
+      "course_id": 1,
+      "meeting_id": null,
+      "kind": "lecture",
+      "my_status": null,
+      "change_id": null,
+      "title_auto": false
+     }
+    ],
+    "attendance_pct_30d": 50,
+    "latest_marks": [
+     {
+      "exam_id": 1,
+      "exam": "Quiz 1",
+      "course_id": 1,
+      "course_ar": "رياضيات",
+      "course_en": "Maths",
+      "percentage": 70.0,
+      "passed": true,
+      "submitted_at": "2026-11-07T23:23:24.250129"
+     }
+    ],
+    "open_alerts": 1,
+    "next_exam": {
+     "id": 2,
+     "name": "Midterm",
+     "course_id": 1,
+     "starts_at": "2026-11-09T23:23:22.121144",
+     "ends_at": "2026-11-10T01:23:22.121144",
+     "source": "course"
+    },
+    "courses": 1,
+    "pulse": {
+     "status": "watch",
+     "week": {
+      "scheduled": 2,
+      "attended": 1,
+      "missed": 1,
+      "rate": 50,
+      "homework_due": 0,
+      "homework_missing": 0,
+      "homework_due_soon": 0,
+      "active_days": 1,
+      "last_active_days": 0
+     },
+     "missed_sessions": [
+      {
+       "session": "L0",
+       "course_id": 1,
+       "course_ar": "رياضيات",
+       "course_en": "Maths",
+       "at": "2026-11-05T23:23:22.121144"
+      }
+     ],
+     "attendance_trend": [
+      {
+       "start": "2026-09-26T23:23:32.728033",
+       "rate": null
+      },
+      {
+       "start": "2026-10-03T23:23:32.728033",
+       "rate": null
+      },
+      {
+       "start": "2026-10-10T23:23:32.728033",
+       "rate": null
+      },
+      {
+       "start": "2026-10-17T23:23:32.728033",
+       "rate": null
+      },
+      {
+       "start": "2026-10-24T23:23:32.728033",
+       "rate": null
+      },
+      {
+       "start": "2026-10-31T23:23:32.728033",
+       "rate": 50
+      }
+     ],
+     "grades": {
+      "avg": 70.0,
+      "prev_avg": null,
+      "class_avg": null,
+      "mine_vs_class": null,
+      "count": 1,
+      "failed": 0,
+      "trend": [
+       {
+        "start": "2026-09-26T23:23:32.728033",
+        "avg": null
+       },
+       {
+        "start": "2026-10-03T23:23:32.728033",
+        "avg": null
+       },
+       {
+        "start": "2026-10-10T23:23:32.728033",
+        "avg": null
+       },
+       {
+        "start": "2026-10-17T23:23:32.728033",
+        "avg": null
+       },
+       {
+        "start": "2026-10-24T23:23:32.728033",
+        "avg": null
+       },
+       {
+        "start": "2026-10-31T23:23:32.728033",
+        "avg": 70.0
+       }
+      ]
+     },
+     "subjects": [
+      {
+       "course_id": 1,
+       "name_ar": "رياضيات",
+       "name_en": "Maths",
+       "progress": 40.0,
+       "avg": 70.0,
+       "class_avg": null,
+       "missed": 1,
+       "weak_open": 0,
+       "tone": "steady",
+       "teacher": {
+        "id": 3,
+        "name": "te",
+        "image_url": null
+       }
+      }
+     ],
+     "upcoming": [
+      {
+       "id": "session:3",
+       "source": "course_session",
+       "title": "L2",
+       "subtitle": "رياضيات",
+       "starts_at": "2026-11-08T10:00:00",
+       "ends_at": "2026-11-08T11:00:00",
+       "org_id": null,
+       "org": null,
+       "color": null,
+       "location": null,
+       "mode": "online",
+       "course_id": 1,
+       "meeting_id": null,
+       "kind": "lecture",
+       "my_status": null,
+       "change_id": null,
+       "title_auto": false
+      },
+      {
+       "id": "session:4",
+       "source": "course_session",
+       "title": "L3",
+       "subtitle": "رياضيات",
+       "starts_at": "2026-11-11T08:00:00",
+       "ends_at": "2026-11-11T09:00:00",
+       "org_id": null,
+       "org": null,
+       "color": null,
+       "location": null,
+       "mode": "online",
+       "course_id": 1,
+       "meeting_id": null,
+       "kind": "lecture",
+       "my_status": null,
+       "change_id": null,
+       "title_auto": false
+      }
+     ],
+     "roadmap": null,
+     "insights": [
+      {
+       "code": "missed_week",
+       "level": "warn",
+       "params": {
+        "count": 1,
+        "scheduled": 2
+       },
+       "action": {
+        "kind": "message_teacher",
+        "course_id": 1,
+        "teacher_id": 3
+       }
+      },
+      {
+       "code": "open_alerts",
+       "level": "info",
+       "params": {
+        "count": 1
+       },
+       "action": {
+        "kind": "open_alerts"
+       }
+      }
+     ],
+     "teachers": [
+      {
+       "id": 3,
+       "name": "te",
+       "image_url": null,
+       "course_id": 1,
+       "course_ar": "رياضيات",
+       "course_en": "Maths"
+      }
+     ]
+    }
+   },
+   {
+    "child": {
+     "id": 5,
+     "name": "st2",
+     "image_url": null,
+     "is_active": true,
+     "linked_at": "2026-11-07T23:23:24.253195Z"
+    },
+    "today_sessions": [],
+    "attendance_pct_30d": null,
+    "latest_marks": [],
+    "open_alerts": 0,
+    "next_exam": null,
+    "courses": 0,
+    "pulse": {
+     "status": "quiet",
+     "week": {
+      "scheduled": 0,
+      "attended": 0,
+      "missed": 0,
+      "rate": null,
+      "homework_due": 0,
+      "homework_missing": 0,
+      "homework_due_soon": 0,
+      "active_days": 0,
+      "last_active_days": null
+     },
+     "missed_sessions": [],
+     "attendance_trend": [
+      {
+       "start": "2026-09-26T23:23:32.728033",
+       "rate": null
+      },
+      {
+       "start": "2026-10-03T23:23:32.728033",
+       "rate": null
+      },
+      {
+       "start": "2026-10-10T23:23:32.728033",
+       "rate": null
+      },
+      {
+       "start": "2026-10-17T23:23:32.728033",
+       "rate": null
+      },
+      {
+       "start": "2026-10-24T23:23:32.728033",
+       "rate": null
+      },
+      {
+       "start": "2026-10-31T23:23:32.728033",
+       "rate": null
+      }
+     ],
+     "grades": null,
+     "subjects": [],
+     "upcoming": [],
+     "roadmap": null,
+     "insights": [],
+     "teachers": []
+    }
+   }
+  ],
+  "alerts_total": 1,
+  "requests": [],
+  "link_config": {
+   "mode": "easy",
+   "fields": [],
+   "documents": [],
+   "max_document_mb": 8
+  }
+ }
+}
