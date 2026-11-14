@@ -54,8 +54,8 @@ import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/courses/home_course_list.dart';
-import 'package:flutter_education_app/features/shared/inbox/inbox_page.dart' show kInboxFeatureKey;
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxEntry, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
+import 'package:flutter_education_app/features/messaging/inbox/inbox_page.dart' show kInboxFeatureKey;
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart' show InboxEntry, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
 import 'package:flutter_education_app/features/courses/roadmap/journey_page.dart';
 import 'package:flutter_education_app/features/courses/roadmap/recommendations.dart' show showInterestsSheet;
 import 'package:flutter_education_app/features/home/student/home_continue.dart';
@@ -63,8 +63,8 @@ import 'package:flutter_education_app/features/home/student/home_event_rows.dart
 import 'package:flutter_education_app/features/home/student/home_journey.dart';
 import 'package:flutter_education_app/features/home/student/home_live.dart';
 import 'package:flutter_education_app/features/home/student/home_provider.dart';
-import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart' show StudyProfileApi, kStudyProfileFeatureKey;
-import 'package:flutter_education_app/features/shared/study_profile/study_profile_pages.dart' show StudyPromptCard, StudyProfilePage;
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show StudyProfileApi, kStudyProfileFeatureKey;
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_pages.dart' show StudyPromptCard, StudyProfilePage;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:provider/provider.dart';
 

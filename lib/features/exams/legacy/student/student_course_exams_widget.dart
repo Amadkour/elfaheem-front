@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
-import 'package:flutter_education_app/features/shared/passcode/passcode_screen.dart';
+import 'package:flutter_education_app/features/profile/passcode/passcode_screen.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/exam_tr.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/exam_ui.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/student_exam_api.dart';

@@ -3,8 +3,8 @@
 // profile links off and a failed load with Retry; plus what each state says and that the buttons call back.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/public_profile/mention_card.dart';
-import 'package:flutter_education_app/features/shared/public_profile/public_profile.dart';
+import 'package:flutter_education_app/features/profile/public_profile/mention_card.dart';
+import 'package:flutter_education_app/features/profile/public_profile/public_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../auth/profile_link_test.dart' show teacherJson;

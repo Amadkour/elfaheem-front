@@ -50,8 +50,8 @@ import 'package:flutter_education_app/features/org/org_member_today.dart' show o
 import 'package:flutter_education_app/features/courses/course_list_card.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart' show CourseScope;
 import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
-import 'package:flutter_education_app/features/shared/inbox/inbox_page.dart' show kInboxFeatureKey;
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart'
+import 'package:flutter_education_app/features/messaging/inbox/inbox_page.dart' show kInboxFeatureKey;
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart'
     show InboxEntry, InboxEntryCard, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
 import 'package:flutter_education_app/features/home/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/home/student/home_live.dart' show HomeLiveNow;
@@ -62,7 +62,7 @@ import 'package:flutter_education_app/features/live/meeting_links_page.dart' sho
 import 'package:flutter_education_app/features/home/teacher/queue_work_items.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_home_extra.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
-import 'package:flutter_education_app/features/teacher/profile/payout/teacher_payouts_screen.dart';
+import 'package:flutter_education_app/features/profile/teacher/payout/teacher_payouts_screen.dart';
 import 'package:flutter_education_app/features/home/teacher/todo/teacher_todo_api.dart' show sendTodoChoice;
 import 'package:flutter_education_app/features/home/teacher/todo/teacher_todo_models.dart';
 import 'package:flutter_education_app/features/home/teacher/todo/teacher_todo_widgets.dart' show TeacherTodoCard;
@@ -73,7 +73,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/home/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';

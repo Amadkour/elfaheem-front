@@ -5,9 +5,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/profile/compalints/complaints_hub_data.dart';
-import 'package:flutter_education_app/features/shared/profile/compalints/complaints_hub_model.dart';
-import 'package:flutter_education_app/features/shared/profile/compalints/complaints_hub_widgets.dart';
+import 'package:flutter_education_app/features/profile/compalints/complaints_hub_data.dart';
+import 'package:flutter_education_app/features/profile/compalints/complaints_hub_model.dart';
+import 'package:flutter_education_app/features/profile/compalints/complaints_hub_widgets.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:flutter_education_app/core/attention/decision_refresh.dart';
 import 'package:flutter_test/flutter_test.dart';

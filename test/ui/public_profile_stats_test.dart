@@ -4,9 +4,9 @@
 // summary and finished courses; the owner panel (teacher live, student blocked); the guest's join card.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/public_profile/public_profile.dart';
-import 'package:flutter_education_app/features/shared/public_profile/public_profile_page.dart';
-import 'package:flutter_education_app/features/shared/public_profile/public_profile_view.dart';
+import 'package:flutter_education_app/features/profile/public_profile/public_profile.dart';
+import 'package:flutter_education_app/features/profile/public_profile/public_profile_page.dart';
+import 'package:flutter_education_app/features/profile/public_profile/public_profile_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../auth/profile_link_test.dart' show courseJson, teacherJson;

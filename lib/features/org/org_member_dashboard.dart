@@ -41,7 +41,7 @@ import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart';
 import 'package:flutter_education_app/features/home/student/home_event_rows.dart' show homeAgendaItemOf, homeDaySummaryOf, openHomeEvent;
 import 'package:flutter_education_app/features/home/student/home_live.dart' show HomeLiveNow;
 import 'package:flutter_education_app/utils/widget/base_page.dart';

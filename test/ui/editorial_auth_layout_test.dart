@@ -8,7 +8,7 @@ import 'package:flutter_education_app/features/auth/biometric_widgets.dart';
 import 'package:flutter_education_app/features/auth/google_auth_flow.dart';
 import 'package:flutter_education_app/features/auth/verify_way.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
-import 'package:flutter_education_app/features/shared/passcode/passcode_screen.dart';
+import 'package:flutter_education_app/features/profile/passcode/passcode_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

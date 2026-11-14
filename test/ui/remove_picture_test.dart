@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_widgets.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_widgets.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space_parts.dart';
 import 'package:flutter_education_app/features/courses/teacher/course_reel_field.dart';
 import 'package:flutter_education_app/utils/widget/editable_image.dart';

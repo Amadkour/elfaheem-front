@@ -19,7 +19,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart';
 import 'package:flutter_education_app/design/app_display.dart';
-import 'package:flutter_education_app/features/shared/display/display_settings_page.dart';
+import 'package:flutter_education_app/features/profile/display/display_settings_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;

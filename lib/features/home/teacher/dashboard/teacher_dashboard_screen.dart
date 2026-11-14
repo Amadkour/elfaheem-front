@@ -8,11 +8,11 @@ import 'package:flutter_education_app/core/attention/attention_service.dart' sho
 import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/shared/calendar/schedule_page.dart';
 import 'package:flutter_education_app/features/shared/calendar/schedule_store.dart';
-import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
-import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/home/teacher/dashboard/Teacher_dashboard_provider.dart';
-import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
+import 'package:flutter_education_app/features/profile/teacher/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/design/master_detail/entity_search_palette.dart';
 import 'package:provider/provider.dart';
@@ -21,7 +21,7 @@ import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppN
 import 'package:flutter_education_app/features/analytics/teacher/analytics_hub_screen.dart';
 import 'package:flutter_education_app/features/courses/teacher/courses_screen.dart';
 import 'package:flutter_education_app/features/home/teacher/home_screen.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_screen.dart';
+import 'package:flutter_education_app/features/profile/profile_screen.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
 
 // DashboardItem lives in the design layer (D-062); re-exported for the files that still import it from here.

@@ -1,6 +1,6 @@
 // Profile links by username (D-074): the link parser (`/@ahmed`, `@Ahmed`, full URLs, junk), the share URL, and the
 // defensive reader of GET /api/v1/public/u/{username}.
-import 'package:flutter_education_app/features/shared/public_profile/public_profile.dart';
+import 'package:flutter_education_app/features/profile/public_profile/public_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// One course card as the server sends it (CourseResponse without `teacher`).

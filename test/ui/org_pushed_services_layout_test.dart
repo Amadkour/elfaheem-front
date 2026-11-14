@@ -18,7 +18,7 @@ import 'package:flutter_education_app/features/org/org_join_pages.dart';
 import 'package:flutter_education_app/features/org/org_providers.dart';
 import 'package:flutter_education_app/features/org/org_reports/report_page.dart';
 import 'package:flutter_education_app/features/org/org_services_pages.dart';
-import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

@@ -61,8 +61,8 @@ import 'package:flutter_education_app/features/live/room/prejoin.dart' deferred 
 import 'package:flutter_education_app/features/sessions/teacher/sessions_screen.dart' deferred as sessions;
 import 'package:flutter_education_app/features/home/teacher/todo/teacher_todo_models.dart' show TodoItem;
 import 'package:flutter_education_app/features/home/teacher/todo/teacher_todo_page.dart' deferred as teacher_todo;
-import '../../features/shared/chat/chat_page.dart' deferred as chat_page;
-import '../../features/shared/chat/chat_sheets.dart' deferred as chat_sheets;
+import 'package:flutter_education_app/features/messaging/chat/chat_page.dart' deferred as chat_page;
+import 'package:flutter_education_app/features/messaging/chat/chat_sheets.dart' deferred as chat_sheets;
 
 /// What the person sees while a part downloads.
 enum DeferredLook {

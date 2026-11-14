@@ -19,9 +19,9 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/admin/admin_ai_controls.dart';
 import 'package:flutter_education_app/features/admin/admin_study_profile_settings_page.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
-import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart';
-import 'package:flutter_education_app/features/shared/study_profile/study_profile_pages.dart';
+import 'package:flutter_education_app/features/profile/profile_provider.dart';
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_pages.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 

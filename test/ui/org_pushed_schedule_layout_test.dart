@@ -11,7 +11,7 @@ import 'package:flutter_education_app/features/org/org_availability_pages.dart' 
 import 'package:flutter_education_app/features/org/org_providers.dart';
 import 'package:flutter_education_app/features/org/org_registrar_member.dart';
 import 'package:flutter_education_app/features/org/org_schedule_planning.dart' show orgStudioPage;
-import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart' show ScreenAppBar;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';

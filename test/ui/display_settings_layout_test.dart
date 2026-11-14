@@ -6,7 +6,7 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart';
 import 'package:flutter_education_app/design/app_display.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
-import 'package:flutter_education_app/features/shared/display/display_settings_page.dart';
+import 'package:flutter_education_app/features/profile/display/display_settings_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

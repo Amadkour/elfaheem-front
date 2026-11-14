@@ -21,7 +21,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
+import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 

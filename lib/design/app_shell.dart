@@ -52,7 +52,7 @@ import '../core/routing/app_routes.dart' show AppRoutes;
 import '../features/auth/auth_provider.dart';
 import '../features/shared/help/help_info_button.dart';
 import '../features/shared/guest/guest_state.dart';
-import '../features/shared/profile/update_account_widget.dart';
+import 'package:flutter_education_app/features/profile/update_account_widget.dart';
 import '../utils/widget/app_navigator.dart' show AppNavigator;
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/base_page.dart';

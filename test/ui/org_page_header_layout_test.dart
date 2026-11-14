@@ -9,7 +9,7 @@ import 'package:flutter_education_app/design/context_switcher.dart' show Context
 import 'package:flutter_education_app/features/org/org_dashboard_screen.dart' show OrgStaffOnlyPage;
 import 'package:flutter_education_app/features/org/org_page_header.dart';
 import 'package:flutter_education_app/features/org/org_providers.dart';
-import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

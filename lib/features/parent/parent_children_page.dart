@@ -14,7 +14,7 @@ import 'package:flutter_education_app/features/data_lab/data_lab_models.dart' sh
 import 'parent_link_providers.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
-import '../shared/inbox/unified_inbox.dart' show InboxEntryCard;
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart' show InboxEntryCard;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;

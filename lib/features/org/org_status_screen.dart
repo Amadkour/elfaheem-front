@@ -17,14 +17,14 @@ import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart' hide money;
 import '../admin/admin_list.dart' show IconBadge;
-import '../shared/profile/about/about_and_terms_screen.dart' show AboutScreen;
+import 'package:flutter_education_app/features/profile/about/about_and_terms_screen.dart' show AboutScreen;
 import 'org_common.dart';
 import 'org_creation_fee.dart' show money;
 import 'org_dashboard_screen.dart' show showOrgForm, showOrgSwitcher;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart' show orgCall, orgParseUtc;
-import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
+import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_icons.dart';

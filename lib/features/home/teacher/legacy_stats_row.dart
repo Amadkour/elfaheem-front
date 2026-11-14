@@ -1,7 +1,7 @@
 // lib/features/home/teacher/legacy_stats_row.dart — the instructor's rating figures.
 //
 // No longer part of the instructor home (Track B.5); kept only for the instructor profile
-// (features/shared/profile/course_instractor_profile.dart, `StatsRow(stats:, isFull: true)`), which still imports
+// (features/profile/course_instractor_profile.dart, `StatsRow(stats:, isFull: true)`), which still imports
 // it through home_screen.dart.
 //
 // The editorial KPI language (D-612): the overall rating is the ONE highlighted figure — a gold block (a top mark),

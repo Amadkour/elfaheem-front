@@ -10,7 +10,7 @@ import 'package:flutter_education_app/features/org/org_schedule_board.dart';
 import 'package:flutter_education_app/features/org/org_schedule_generate.dart';
 import 'package:flutter_education_app/features/org/org_schedule_grid.dart';
 import 'package:flutter_education_app/features/org/org_schedule_hub.dart';
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

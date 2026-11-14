@@ -49,22 +49,22 @@ Tests: `test/ui/polish_auth_shared_layout_test.dart` (20 tests: `NotificationsSt
 | auth/auth_shell.dart | 4 colours, dark gradient hex | theme (`heroShade` → `heroTint`) | physical pill alignment (by design) |
 | auth/auth_widgets.dart | 26 colours incl. light-only constants (bug 7); 2 physical margins | theme; directional | — |
 | auth/verify_way.dart | 19 colours; 3 physical gradients; `VerifyWayStatusPill` and `VerifyStepTracker` overflow at 320 / 1.3 | theme; directional; `Flexible` + ellipsis | 4 channel colours (`VerifyWay.brand` is a context-free enum getter; Telegram / WhatsApp are brand colours) |
-| shared/profile/profile_screen.dart | 22 `SettingsTile`, 4 `SettingsGroup`, `ProfileHeader`; 11 colours | `AppSettingsTile` / `AppSettingsGroup(danger:)` / `AppSettingsHeader`; old `ProfileHeader` removed | page not moved to `AppSettingsPage` (the MFA / cloud-drive entries are standalone widgets, not groups); `TileCountOverlay` badges kept |
-| shared/profile/components/setting_title.dart | chevron double-mirrored (bug 1) | plain `chevron_right_rounded` | widget kept for other callers outside the area |
-| shared/profile/change_language_screen.dart | — | — | — |
-| shared/profile/change_password_widget.dart | 1 colour | theme | — |
-| shared/profile/update_account_widget.dart | 6 colours; back button physically top-right, 42 px, no label; error notice (bug 5); raw `e.toString()` | theme; `AlignmentDirectional.topStart`, 48 px target + semantics; notice `error:`; API message | inline section spinners (small) |
-| shared/profile/about/about_and_terms_screen.dart | 12 colours; 2 page spinners; 2 hand `RefreshIndicator`; 2 unlabelled close buttons | theme; `AppListSkeleton`; `AppRefresh`; tooltips | — |
-| shared/profile/privacy_export.dart | — | — | already kit-based, tested |
-| shared/profile/student_favorite_screen.dart | no loading / empty / error state, no pull-to-refresh | `FavouritesStateBody` (skeleton · `ErrorRetry` · empty / "nothing matches" · `AppRefresh`) | — |
-| shared/profile/course_instractor_profile.dart | 26 colours (stat / badge hexes); `d/m/y` date | theme; `AppTime.date` | courses section inline spinner |
-| shared/profile/compalints/complaints_screen.dart | 34 colours; list + detail spinners; 2 `RefreshIndicator`; no error state (bug 4); hand times (bug 3); `EdgeInsets.only(left)` | theme (status / priority → `warning/primary/success/textLight`, `danger`); skeletons; `AppRefresh`; `ErrorRetry`; `AppTime`; directional | send-button spinner (button) |
-| shared/profile/compalints/new_complaint_screen.dart | 24 colours; `SnackBar`; history spinner, no error / refresh on empty; `d/m/y` | theme; `showAppNotice`; skeleton, `ErrorRetry`, `AppRefresh`; `AppTime.date` | — |
-| shared/profile/compalints/complaint_attachement_widgets.dart | 14 colours; 3 physical `Positioned`; physical gradient | theme; `PositionedDirectional`; directional | — |
-| shared/profile/compalints/complaint_provider.dart · complaint_model.dart | `e.toString()`; UTC+3 shift (bug 3) | API message; `complaintUtc` | — |
-| shared/notification/notifications_screen.dart | spinner replaced the app bar; bare-icon empty; no error state; empty group drew its header; 20 px "mark all read"; no paging (bug 2) | `NotificationsStateBody`; empty group hidden; `TextButton` 48 px; title `Expanded` | "NEW" badge text is English in both languages (server icon kind; cosmetic) |
-| shared/notification/admin_message_dialogs.dart | — | — | — |
-| shared/inbox/unified_inbox.dart | 6 colours; hand `RefreshIndicator` | theme; `AppRefresh` | — (skeleton / empty / retry already there) |
+| features/profile/profile_screen.dart | 22 `SettingsTile`, 4 `SettingsGroup`, `ProfileHeader`; 11 colours | `AppSettingsTile` / `AppSettingsGroup(danger:)` / `AppSettingsHeader`; old `ProfileHeader` removed | page not moved to `AppSettingsPage` (the MFA / cloud-drive entries are standalone widgets, not groups); `TileCountOverlay` badges kept |
+| features/profile/components/setting_title.dart | chevron double-mirrored (bug 1) | plain `chevron_right_rounded` | widget kept for other callers outside the area |
+| features/profile/change_language_screen.dart | — | — | — |
+| features/profile/change_password_widget.dart | 1 colour | theme | — |
+| features/profile/update_account_widget.dart | 6 colours; back button physically top-right, 42 px, no label; error notice (bug 5); raw `e.toString()` | theme; `AlignmentDirectional.topStart`, 48 px target + semantics; notice `error:`; API message | inline section spinners (small) |
+| features/profile/about/about_and_terms_screen.dart | 12 colours; 2 page spinners; 2 hand `RefreshIndicator`; 2 unlabelled close buttons | theme; `AppListSkeleton`; `AppRefresh`; tooltips | — |
+| features/profile/privacy_export.dart | — | — | already kit-based, tested |
+| features/profile/student_favorite_screen.dart | no loading / empty / error state, no pull-to-refresh | `FavouritesStateBody` (skeleton · `ErrorRetry` · empty / "nothing matches" · `AppRefresh`) | — |
+| features/profile/course_instractor_profile.dart | 26 colours (stat / badge hexes); `d/m/y` date | theme; `AppTime.date` | courses section inline spinner |
+| features/profile/compalints/complaints_screen.dart | 34 colours; list + detail spinners; 2 `RefreshIndicator`; no error state (bug 4); hand times (bug 3); `EdgeInsets.only(left)` | theme (status / priority → `warning/primary/success/textLight`, `danger`); skeletons; `AppRefresh`; `ErrorRetry`; `AppTime`; directional | send-button spinner (button) |
+| features/profile/compalints/new_complaint_screen.dart | 24 colours; `SnackBar`; history spinner, no error / refresh on empty; `d/m/y` | theme; `showAppNotice`; skeleton, `ErrorRetry`, `AppRefresh`; `AppTime.date` | — |
+| features/profile/compalints/complaint_attachement_widgets.dart | 14 colours; 3 physical `Positioned`; physical gradient | theme; `PositionedDirectional`; directional | — |
+| features/profile/compalints/complaint_provider.dart · complaint_model.dart | `e.toString()`; UTC+3 shift (bug 3) | API message; `complaintUtc` | — |
+| features/messaging/notification/notifications_screen.dart | spinner replaced the app bar; bare-icon empty; no error state; empty group drew its header; 20 px "mark all read"; no paging (bug 2) | `NotificationsStateBody`; empty group hidden; `TextButton` 48 px; title `Expanded` | "NEW" badge text is English in both languages (server icon kind; cosmetic) |
+| features/messaging/notification/admin_message_dialogs.dart | — | — | — |
+| features/messaging/inbox/unified_inbox.dart | 6 colours; hand `RefreshIndicator` | theme; `AppRefresh` | — (skeleton / empty / retry already there) |
 | shared/calendar/calendar_screen.dart | chevrons (bug 1); 2 colours | plain chevrons | header refresh spinner (16 px status, not a list) |
 | shared/calendar/calendar_views.dart | physical `Positioned` (bug 9); 5 colours | `PositionedDirectional`; theme | — |
 | shared/calendar/calendar_models.dart | 2 timetable hexes | `accent2` / `lerp(primary, accent2)` | — |
@@ -72,7 +72,7 @@ Tests: `test/ui/polish_auth_shared_layout_test.dart` (20 tests: `NotificationsSt
 | features/payments/subscription/subscription_screen.dart · _provider.dart | page spinner; provider returned `'$e'` | `AppListSkeleton`; `ApiException.from(e).message` | — |
 | shared/downloads/downloads_screen.dart | 4 colours; spinner; hand `RefreshIndicator`; home / delete icon buttons unlabelled; physical gradient | theme; skeleton; `AppRefresh`; tooltips; directional | — |
 | shared/upload/upload_progress_footer.dart · upload_queue_manager.dart | 1 colour; failure text is the raw server body | theme | `task.errorMessage` is logged only, never shown |
-| shared/passcode/passcode_screen.dart | fixed dark / gold palette (17 hexes) ignored theme and light mode; icon-only delete / close keys | live theme tokens; `Semantics` labels | status-strip spinner (fixed 44 px strip) |
+| features/profile/passcode/passcode_screen.dart | fixed dark / gold palette (17 hexes) ignored theme and light mode; icon-only delete / close keys | live theme tokens; `Semantics` labels | status-strip spinner (fixed 44 px strip) |
 | features/attendance/attendance_widgets.dart (student + teacher sheets) | 16 colours; 3 `SnackBar` (bug 6); teacher sheet without pull-to-refresh; nested scroll view; unlabelled close buttons; hand time | theme; `showAppNotice`; `_SheetFrame(onRefresh:)` + `TeacherAttendanceController.refresh()` (same code read as the ticker), inner scroll view dropped; tooltips; `AppTime.time` | button / stage spinners; student sheet refresh (it polls live) |
 | features/attendance/attendance_live_screen.dart | 16 colours | `onHero` / `heroShade` tokens | countdown ring (progress, not loading) |
 | features/attendance/attendance_course_entry.dart | 20 colours incl. amber gradient hexes | `warning` / `heroEnd(warning)` | share-button spinner |

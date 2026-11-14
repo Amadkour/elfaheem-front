@@ -5,12 +5,12 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show notOpenEntries;
 import 'package:flutter_education_app/features/attendance/teacher_attendance_launcher.dart';
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show approvalCountText;
-import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
-import 'package:flutter_education_app/features/shared/notification/notifications_screen.dart'
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart' show approvalCountText;
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_screen.dart'
     show NotificationTile, notificationPlainText;
-import 'package:flutter_education_app/features/shared/profile/compalints/complaint_model.dart';
-import 'package:flutter_education_app/features/shared/profile/compalints/new_complaint_screen.dart'
+import 'package:flutter_education_app/features/profile/compalints/complaint_model.dart';
+import 'package:flutter_education_app/features/profile/compalints/new_complaint_screen.dart'
     show complaintCategoryFor, kComplaintKinds;
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:flutter_test/flutter_test.dart';

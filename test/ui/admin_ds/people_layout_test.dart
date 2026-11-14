@@ -5,7 +5,7 @@ import 'package:flutter_education_app/features/admin/admin_admins_page.dart';
 import 'package:flutter_education_app/features/admin/admin_profile_page.dart';
 import 'package:flutter_education_app/features/admin/admin_users_page.dart';
 import 'package:flutter_education_app/features/admin/admin_view_as_page.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
+import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 

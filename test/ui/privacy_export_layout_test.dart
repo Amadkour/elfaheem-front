@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/shared/profile/privacy_export.dart';
+import 'package:flutter_education_app/features/profile/privacy_export.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

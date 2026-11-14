@@ -2,7 +2,7 @@
 // also gets pending and rejected documents, which must never read "Verified".
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart' show DocStatusBadge;
+import 'package:flutter_education_app/features/profile/course_instractor_profile.dart' show DocStatusBadge;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

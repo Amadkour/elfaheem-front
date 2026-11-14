@@ -18,7 +18,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
+import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';

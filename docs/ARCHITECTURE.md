@@ -159,7 +159,7 @@ sequenceDiagram
   it is dismissed it reopens on a later 403 only after 30 s (`mfaPromptCooldown`).
 - **Teacher onboarding token** (back D-028): `lib/features/auth/teacher_onboarding_token.dart`; `ApiClient` adds
   `X-Onboarding-Token` to every onboarding route.
-- **Download my data** (back D-029): `lib/features/shared/profile/privacy_export.dart`, feature key
+- **Download my data** (back D-029): `lib/features/profile/privacy_export.dart`, feature key
   `profile.data_export`.
 - **Organization status and quotas** (back D-032): exam and RAG screens map `orgs_disabled`, `org_not_approved`,
   `org_inactive` and `rag_quota_exceeded` (`exam_taking.dart`, `rag_library.dart`, `rag_chat.dart`); the library

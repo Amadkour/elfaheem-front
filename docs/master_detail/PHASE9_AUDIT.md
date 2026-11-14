@@ -34,7 +34,7 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 | My students · Submissions · Reviews | `features/home/teacher/classroom/teacher_classroom.dart` | 3 paged lists | on (`EntityListPage`) |
 | A course's enrolled students | `features/sessions/teacher/students/course_student_screen.dart` | student cards / grid | **P9**: `MasterDetailScaffold` over the existing sliver list; a card opens the student (selected card outlined, `siblings` for prev / next); panel actions = `entityViewerActions` (Message) + Certificates (opens the old dialog, which loses its now-redundant chip); the grid counts its columns on the list's own width (`SliverLayoutBuilder`) and its row height follows the text size |
 | Certificate requests | `features/certificates/certificate_requests_screen.dart` | request cards | **P9**: `MasterDetailScaffold`; the student and the course are `EntityChip`s (avatar card keeps approve / reject) |
-| Device switch requests | `teacher/profile/switch_device_requests/teacher_device_requests_screen.dart` | request cards | **P9**: `EntityGuardedChip` for the student and the course (`student_id` / `course_id` were already in the payload, now parsed, null-safe for an older server) |
+| Device switch requests | `features/profile/teacher/switch_device_requests/teacher_device_requests_screen.dart` | request cards | **P9**: `EntityGuardedChip` for the student and the course (`student_id` / `course_id` were already in the payload, now parsed, null-safe for an older server) |
 | Grade review (paper marks) | `features/exams/marks/review/grade_review_rows.dart` | its own list + detail | **P9**: the matched student is an `EntityGuardedChip` in the row detail (the screen keeps its own review master-detail) |
 | Attendance roll call | `features/attendance/analysis/teacher/teacher_attendance_screen.dart` | sessions, students | out (decided, gaps A): a row is already two targets, the name opens the course's analytics profile (on purpose, the one parents see) and the switch marks presence; the avatar as a record link would give one person two "open" destinations side by side |
 | Exam hub | `features/exams/legacy/teacher/teacher_exam_hub_screen.dart` | exams, submissions | **P9** (gaps A): `MasterDetailScaffold` around the hub; a result's student name is an `EntityGuardedChip` (`md.exam_result.student.<id>`), the card still opens the answers |
@@ -45,7 +45,7 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 | Live chat / hands | `features/live/room/widgets/` | live room | out |
 | Certificate designer / designs / manager | `features/certificates/designer/`, `courses/component/certificate_manager_sheet.dart` | designs | out |
 | Course form, next / recommended course pickers | `features/courses/teacher/course_form_screen.dart`, `component/*_courses_field.dart` | pickers | out |
-| Payouts | `teacher/profile/payout/teacher_payouts_screen.dart` | money rows | out |
+| Payouts | `features/profile/teacher/payout/teacher_payouts_screen.dart` | money rows | out |
 
 ## Student
 
@@ -107,7 +107,7 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 
 | screen | file | lists | status |
 |---|---|---|---|
-| Notifications | `shared/notification/notifications_screen.dart` | notifications | on (entities with `can_open`, P7) |
+| Notifications | `features/messaging/notification/notifications_screen.dart` | notifications | on (entities with `can_open`, P7) |
 | Schedule | `shared/calendar/schedule_page.dart` | events | on (`EntityNavigator`) |
 | Certificate issue lists | `features/certificates/issue/cert_issue_lists.dart` | students to issue to | **P9** (gaps B): a person with a `student_id` (on the platform) is an `EntityGuardedChip` (teachers, admins and org staff issue); a newcomer stays plain text |
 | Course profile, course list card / row / home list | `features/courses/course_profile/`, `features/courses/` | the course page itself, catalogue cards | out |

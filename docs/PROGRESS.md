@@ -128,7 +128,7 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
   (delete, postMultipart, patch, postForm, postFiles, uploadImage, getBytes, postForBytes). Cleared on finalize, on
   `onboarding_token: null`, on logout and on every new or ended session; the token, `mfa_token` and
   `mfa_enroll_token` are redacted from request logs.
-- **"Download my data" (back D-029)**: `lib/features/shared/profile/privacy_export.dart` (`DataExportPage`: status,
+- **"Download my data" (back D-029)**: `lib/features/profile/privacy_export.dart` (`DataExportPage`: status,
   request, download, polling every 5 s while queued / processing, saved with `p8SaveBytes`), a tile in the profile
   help group behind feature key `profile.data_export`.
 - **Organization status and RAG quota texts (back D-032)**: `examCodeText` (`exam_taking.dart`) and

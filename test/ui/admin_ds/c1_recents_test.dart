@@ -13,7 +13,7 @@ import 'package:flutter_education_app/features/admin/admin_providers.dart' show 
 import 'package:flutter_education_app/features/admin/admin_recents.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
+import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

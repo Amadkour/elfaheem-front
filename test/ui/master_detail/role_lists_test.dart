@@ -15,7 +15,7 @@ import 'package:flutter_education_app/design/master_detail/entity_learner.dart';
 import 'package:flutter_education_app/design/master_detail/entity_list_page.dart';
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
 import 'package:flutter_education_app/design/master_detail/entity_specs.dart' hide mdStudents;
-import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/home/student/record/student_record_pages.dart';
 import 'package:flutter_education_app/features/home/teacher/classroom/teacher_classroom.dart';
 import 'package:flutter_test/flutter_test.dart';

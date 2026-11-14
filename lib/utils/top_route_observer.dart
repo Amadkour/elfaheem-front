@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_store.dart' show ChatHub;
+import 'package:flutter_education_app/features/messaging/chat/chat_store.dart' show ChatHub;
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/utils/live_events.dart';

@@ -3,7 +3,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/notification/notifications_screen.dart' show NotifKind, notificationKind;
+import 'package:flutter_education_app/features/messaging/notification/notifications_screen.dart' show NotifKind, notificationKind;
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_path.dart';
 import 'package:flutter_education_app/features/courses/roadmap/recommendations.dart' show interestChoices;

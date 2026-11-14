@@ -13,7 +13,7 @@
 // keeps that student as its context.
 library;
 
-import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart' show StudyProfile;
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show StudyProfile;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';

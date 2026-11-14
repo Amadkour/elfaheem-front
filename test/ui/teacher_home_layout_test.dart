@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxEntry;
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart' show InboxEntry;
 import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 import 'package:flutter_education_app/features/home/teacher/go_live_sheet.dart' show GoLiveButton;
 import 'package:flutter_education_app/features/home/teacher/home_screen.dart';

@@ -19,7 +19,7 @@ Kind: **ND** = checks for new data · **JP** = progress of a job the user waits 
 | features/exams/exam_generate.dart:222 `waitFor` | GET /rag/exam-drafts/{id} | 1.5 s → 5 s, 4 min | per draft | JP | none |
 | features/exams/exam_insights_screen.dart:415 | GET …/exams/{id}/analytics | 2 s × ≤ 30 | after Refresh | JP | none |
 | shared/rag/rag_library_screen.dart:89 | GET /rag/documents | 5 s while a document is busy | screen open | JP | none |
-| shared/profile/privacy_export.dart:289 | GET data-export status | 5 s while processing | page open | JP | none |
+| features/profile/privacy_export.dart:289 | GET data-export status | 5 s while processing | page open | JP | none |
 | features/live/meeting_recording_sheets.dart:332, 753 | GET /me/cloud (OAuth wait) | 3 s | sheet open | JP | none |
 | features/live/meeting_recording_sheets.dart:544 `RecordingStatusCard` | GET /live/recordings/{rid} | 5 s while not final | detail open | JP | none (`recording_ready` visible only) |
 | features/payments/enrollment/enrollment_provider.dart:631 `_pollVerification` | POST payment verify | 5 s × 18 | after checkout | JP | none (`payment_success` visible push exists) |

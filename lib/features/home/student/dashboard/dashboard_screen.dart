@@ -14,10 +14,10 @@ import 'package:flutter_education_app/config/app_config.dart' as Helpers;
 import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
 import 'package:flutter_education_app/features/analytics/student/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/analytics/student/student_analytics_screen.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_screen.dart';
+import 'package:flutter_education_app/features/profile/profile_screen.dart';
 import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_provider.dart';
 import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_screen.dart';
-import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/home/student/home_screen.dart';
 
 // The shells (WideShell / RailShell / MobileShell), DashboardItem and the top-bar icons live in the design layer

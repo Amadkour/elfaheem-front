@@ -4,7 +4,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 
 import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
-import 'package:flutter_education_app/features/shared/passcode/passcode_screen.dart';
+import 'package:flutter_education_app/features/profile/passcode/passcode_screen.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
 
 /// Opens the course detail screen, asking for the access code first when the

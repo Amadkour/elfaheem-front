@@ -15,11 +15,11 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart';
 import 'package:flutter_education_app/design/app_display.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_api.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_models.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_page.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_store.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_widgets.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_api.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_models.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_page.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_store.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;

@@ -3,7 +3,7 @@
 // Share links:  https://nextbrain.site/c/<courseId>?ref=<sharerUserId>
 // Opening one lands on `/c/<id>?ref=<uid>` (Flutter's default deep linking feeds it to onGenerateRoute).
 // Profile links (D-074): https://nextbrain.site/@<username> → `/@<username>` → the public profile page
-// (features/shared/public_profile/; parsed by `profileLinkFrom`).
+// (features/profile/public_profile/; parsed by `profileLinkFrom`).
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -11,7 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/api_client.dart';
-import '../../features/shared/public_profile/public_profile.dart' show ProfileLink, profileLinkFrom, profileUrl;
+import 'package:flutter_education_app/features/profile/public_profile/public_profile.dart' show ProfileLink, profileLinkFrom, profileUrl;
 import '../../main.dart';
 import 'app_navigator.dart';
 

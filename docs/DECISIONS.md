@@ -880,7 +880,7 @@ new complaint and the history, and non-students may open the complaints they mus
 complaint systems with separate screens: platform complaints (`/api/v1/complaints`, one list mixing my own with the
 ones I handle, no create button on it) and organization complaints (`/api/v1/org/…/complaints`, reachable only
 inside the organization's pages).
-**Decision.** `ComplaintsHubPage` (`lib/features/shared/profile/compalints/complaints_hub_*.dart`) is the page of the
+**Decision.** `ComplaintsHubPage` (`lib/features/profile/compalints/complaints_hub_*.dart`) is the page of the
 profile's Help-center tile, the parent's "More" tile, the `support` deep link without an id and the profile's
 complaints attention item, for every role whose home is not the admin dashboard (admin / super-admin / developer
 keep `ComplaintsScreen`, the console).
@@ -4388,7 +4388,7 @@ and saves the exam's design on the draft.
 **Decision.** The services keep answering 403 `feature_disabled` {feature} (a new `ai_feature_off` code was rejected: every gate and app text already speaks it). `featureDisabledText(feature)` in `lib/core/api_error_text.dart` words the AI keys by name (grading off: "the written answers are kept for you to mark by hand"; bubble correction off: "nothing was deleted"), used by `apiErrorText`, by `orgErrorText` when the server names the feature (an unnamed one keeps its screen's text), and by the assistant (`ragChatResultText` / `ragCodeText`: a new question refused while the assistant is off). Entry points were already hidden by the same keys (`ParentComponent(featureKey:)`). Tests: `test/ui/admin_ai_controls_test.dart` (parsing, texts in both languages, the card in the layout harness).
 ## D-790 — A personal student's study data: own table, never registrar data · 2026-11-13 · accepted
 
-**Decision.** Stage, grade, track, school, governorate / city and a parent's phone live in `student_study_profiles` (back migration 0077, back D-790); the date of birth stays `users.dob`. Organization students keep their registrar data: nothing is copied either way, the home card shows only in the personal scope and org accounts never see it. Code: `lib/features/shared/study_profile/` (model + calls, the one form, the pages).
+**Decision.** Stage, grade, track, school, governorate / city and a parent's phone live in `student_study_profiles` (back migration 0077, back D-790); the date of birth stays `users.dob`. Organization students keep their registrar data: nothing is copied either way, the home card shows only in the personal scope and org accounts never see it. Code: `lib/features/profile/study_profile/` (model + calls, the one form, the pages).
 
 ## D-791 — What is asked, for an Arabic-first Egypt / MENA platform · 2026-11-13 · accepted
 

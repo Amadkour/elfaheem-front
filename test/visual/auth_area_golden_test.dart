@@ -18,7 +18,7 @@ import 'package:flutter_education_app/features/onboarding/guest_search_screen.da
 import 'package:flutter_education_app/features/onboarding/landing_api.dart';
 import 'package:flutter_education_app/features/onboarding/onboarding_screen.dart';
 import 'package:flutter_education_app/features/onboarding/onboarding_store.dart';
-import 'package:flutter_education_app/features/shared/passcode/passcode_screen.dart';
+import 'package:flutter_education_app/features/profile/passcode/passcode_screen.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:flutter_test/flutter_test.dart';
 

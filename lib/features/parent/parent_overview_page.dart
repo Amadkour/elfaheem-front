@@ -32,7 +32,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../auth/auth_provider.dart';
-import '../shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'parent_message_teacher.dart';
 import 'parent_overview.dart';
 import 'parent_pulse.dart';

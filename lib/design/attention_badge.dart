@@ -18,7 +18,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../core/app_mode.dart';
 import '../core/attention/attention_service.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_screen.dart' show TeacherTransfersScreen;
-import '../features/shared/inbox/unified_inbox.dart' show InboxItem, openInboxItem;
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart' show InboxItem, openInboxItem;
 import '../main.dart' show navigatorKey;
 import '../utils/top_route_observer.dart' show topRouteObserver;
 import 'app_shell_nav.dart' show AppShellNav;

@@ -1,4 +1,4 @@
-// The homes' inbox entry (lib/features/shared/inbox/unified_inbox.dart: InboxEntry, inboxEntryCounts,
+// The homes' inbox entry (lib/features/messaging/inbox/unified_inbox.dart: InboxEntry, inboxEntryCounts,
 // inboxEntrySummary) — the one slim row that replaced the inbox preview block: the counts it reads (the server's,
 // never fewer than the preview rows show), its one line, when a home draws it, the tap and the screen-reader label,
 // and the layout at 320x640 and 1400x900, Arabic + English, textScaler 1.3 (nothing to do, a lot to do, only news),
@@ -8,7 +8,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

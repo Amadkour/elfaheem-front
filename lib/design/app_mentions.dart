@@ -34,7 +34,7 @@ import '../config/theme/theme_config_provider.dart';
 import '../core/api_client.dart';
 import '../core/display/app_fonts.dart';
 import '../features/auth/username.dart' show UsernameRules;
-import '../features/shared/public_profile/mention_card.dart' show showMentionCard;
+import 'package:flutter_education_app/features/profile/public_profile/mention_card.dart' show showMentionCard;
 import '../utils/widget/app_navigator.dart' show AppNavigator;
 import 'app_keyboard.dart' show AppKeyboard;
 

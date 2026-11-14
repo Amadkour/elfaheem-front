@@ -1,4 +1,4 @@
-// The "Courses" block of the teacher profile (lib/features/shared/profile/instructor_courses_section.dart):
+// The "Courses" block of the teacher profile (lib/features/profile/instructor_courses_section.dart):
 //   • InstructorCoursesController on the wire — GET /api/v1/courses with teacher_id + scope=personal, a first page of
 //     6 then 12, paged on `has_more`, never the same course twice, an organization / private / draft course an older
 //     server still lists is left out, a failure keeps the listed courses and Retry asks the same page again;
@@ -9,8 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/features/auth/teacher_document_provider.dart';
-import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart';
-import 'package:flutter_education_app/features/shared/profile/instructor_courses_section.dart';
+import 'package:flutter_education_app/features/profile/course_instractor_profile.dart';
+import 'package:flutter_education_app/features/profile/instructor_courses_section.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';

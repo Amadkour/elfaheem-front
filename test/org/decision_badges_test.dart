@@ -10,7 +10,7 @@ import 'package:flutter_education_app/core/attention/decision_refresh.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
-import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
+import 'package:flutter_education_app/features/profile/teacher/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

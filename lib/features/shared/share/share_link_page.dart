@@ -33,7 +33,7 @@ import '../../auth/auth_provider.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_link_loader.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart' show CoursePageLoader;
 import '../guest/guest_state.dart';
-import '../public_profile/public_profile_page.dart' show PublicProfileScreen;
+import 'package:flutter_education_app/features/profile/public_profile/public_profile_page.dart' show PublicProfileScreen;
 import 'package:flutter_education_app/features/live/companion/companion_incoming.dart' show CompanionIncoming;
 import '../records/record_guest_page.dart' show GuestMediaKind, GuestRecordPage;
 import '../records/records_share.dart' show SharedRecordPage;

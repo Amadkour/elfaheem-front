@@ -1,4 +1,4 @@
-// Sample answers for the inbox page (lib/features/shared/inbox/inbox_page.dart) on the fake backend
+// Sample answers for the inbox page (lib/features/messaging/inbox/inbox_page.dart) on the fake backend
 // (test/support/fake_api.dart): GET /me/inbox (the real row shape of routers/organization/org_me_router.py) and
 // GET /notifications (the list's real shape, with the server's `unread`). Realistic Arabic / English text, picked by
 // AppConfig.lang when the request is answered. Used by test/ui/inbox_page_test.dart and the visual renders
