@@ -22053,6 +22053,14 @@
     "en": "This version is no longer supported. Download version {v} to keep using NextBrain.",
     "ar": "هذا الإصدار لم يعد مدعومًا. نزّل الإصدار {v} لمتابعة استخدام NextBrain."
   },
+  "app_update_required_generic": {
+    "en": "This version is no longer supported. Please update the app to continue.",
+    "ar": "هذا الإصدار لم يعد مدعومًا. يُرجى تحديث التطبيق للمتابعة."
+  },
+  "tls_pin_update_required": {
+    "en": "This version of the app can no longer connect securely to NextBrain. Please update the app to continue.",
+    "ar": "لم يعد هذا الإصدار من التطبيق قادرًا على الاتصال الآمن بـ NextBrain. يُرجى تحديث التطبيق للمتابعة."
+  },
   "get_app_update_now": {
     "en": "Download update",
     "ar": "تنزيل التحديث"
@@ -24686,5 +24694,13 @@
   "image_remove_failed": {
     "en": "Couldn't remove it. Try again.",
     "ar": "تعذّرت الإزالة. حاول مرة أخرى."
+  },
+  "link_refused": {
+    "en": "This link can't be opened from the app.",
+    "ar": "لا يمكن فتح هذا الرابط من التطبيق."
+  },
+  "link_open_failed": {
+    "en": "Couldn't open the link. Try again.",
+    "ar": "تعذّر فتح الرابط. حاول مرة أخرى."
   }
 }

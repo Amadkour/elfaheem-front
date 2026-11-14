@@ -23,7 +23,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
-import '../student/enrollment/enrollment_models.dart' show asJsonMap;
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart' show asJsonMap;
 import 'admin_common.dart';
 import 'admin_money_p8.dart' show AdminMoneyPage, parseAmountLoose;
 import 'package:flutter_education_app/design/app_kit.dart';

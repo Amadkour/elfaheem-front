@@ -7,11 +7,11 @@ import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_docx.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_pdf.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_sheet.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring.dart';
+import 'package:flutter_education_app/features/exams/exam_paper.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_docx.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_pdf.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_api.dart';

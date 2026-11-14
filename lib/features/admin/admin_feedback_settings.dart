@@ -16,7 +16,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
-import '../shared/exam_engine/exam_engine_api.dart' show EngineResult, ExamEngineApi, engineCall;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult, ExamEngineApi, engineCall;
 import 'admin_common.dart' show asBool, asInt, shortDateTime, asStrOrNull, t;
 import 'admin_money_p8.dart' show draftErrorText, p8SaveBytes, parseNum;
 import 'package:flutter_education_app/design/app_icons.dart';

@@ -2,9 +2,9 @@
 // (tests/exam_engine/e2e_bubble_fit.py) returns it, the PUT body, the sheet filter and the wizard's warning; the PUT's
 // `changes` and the alert's words after a trim / an Undo (D-725).
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_logic.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart' show OmrTemplateItem;
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/bubble_fit.dart';
+import 'package:flutter_education_app/features/exams/hub/create/exam_create_logic.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup.dart' show OmrTemplateItem;
+import 'package:flutter_education_app/features/exams/paper/scan/bubble_fit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> fitJson() => {

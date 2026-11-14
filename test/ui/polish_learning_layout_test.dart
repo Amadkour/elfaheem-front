@@ -8,30 +8,27 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/shared/course/course_price_tag.dart';
-import 'package:flutter_education_app/features/shared/course/private_flag.dart';
-import 'package:flutter_education_app/features/shared/course/topbar.dart';
-import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
-import 'package:flutter_education_app/features/shared/session/material/components/session_exam_tile.dart';
-import 'package:flutter_education_app/features/shared/session/material/components/session_progress_section.dart';
-import 'package:flutter_education_app/features/shared/session/material/components/session_shared_widgets.dart';
-import 'package:flutter_education_app/features/student/analysis/exam/exam_ui.dart' hide GradientButton;
-import 'package:flutter_education_app/features/student/courses/details/components/about.dart';
-import 'package:flutter_education_app/features/student/courses/details/course_access_sheet.dart';
-import 'package:flutter_education_app/features/student/courses/details/course_detail_screen.dart';
-import 'package:flutter_education_app/features/student/courses/details/session_exam_gate.dart';
-import 'package:flutter_education_app/features/student/models.dart';
-import 'package:flutter_education_app/features/teacher/certificates/certificate_requests_screen.dart';
-import 'package:flutter_education_app/features/teacher/courses/component/course_progress_status_card.dart';
-import 'package:flutter_education_app/features/teacher/courses/component/currency_selector.dart';
-import 'package:flutter_education_app/features/teacher/courses/component/gradient_button.dart';
-import 'package:flutter_education_app/features/teacher/courses/component/section_card.dart';
-import 'package:flutter_education_app/features/teacher/courses/course_privacy_card.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
-import 'package:flutter_education_app/features/teacher/sessions/components/teacher_course_parts.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_palette.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/participant_stats.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/room_screen_share.dart';
+import 'package:flutter_education_app/features/courses/course_price_tag.dart';
+import 'package:flutter_education_app/features/courses/private_flag.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/features/sessions/material/components/session_exam_tile.dart';
+import 'package:flutter_education_app/features/sessions/material/components/session_shared_widgets.dart';
+import 'package:flutter_education_app/features/exams/legacy/student/exam_ui.dart';
+import 'package:flutter_education_app/features/courses/student/details/components/about.dart';
+import 'package:flutter_education_app/features/courses/student/details/course_access_sheet.dart';
+import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart';
+import 'package:flutter_education_app/features/courses/student/details/session_exam_gate.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
+import 'package:flutter_education_app/features/certificates/certificate_requests_screen.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/course_progress_status_card.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/currency_selector.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/section_card.dart';
+import 'package:flutter_education_app/features/courses/teacher/course_privacy_card.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/teacher_course_parts.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_palette.dart';
+import 'package:flutter_education_app/features/live/room/widgets/participant_stats.dart';
+import 'package:flutter_education_app/features/live/room/widgets/room_screen_share.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -203,14 +200,12 @@ void main() {
         }
       });
 
-      testWidgets('currency selector + gradient button', (t) async {
+      testWidgets('currency selector', (t) async {
         await expectNoLayoutErrors(
           t,
           () => SingleChildScrollView(
             child: Column(children: [
               CurrencySelector(selected: AppCurrency.egp, onChanged: (_) {}, label: 'Currency'),
-              GradientButton(label: 'حفظ ونشر المقرر — Save and publish', isLoading: false, onTap: () {}),
-              const GradientButton(label: 'Saving', isLoading: true),
             ]),
           ),
         );
@@ -347,25 +342,7 @@ void main() {
           ]));
     });
 
-    testWidgets('course top bar: back + refresh + share + like + settings', (tester) async {
-      await expectNoLayoutErrors(tester, () => Builder(
-            builder: (context) => Container(
-              color: context.colors.primary,
-              padding: const EdgeInsets.all(8),
-              child: CourseDetailsTopBar(
-                showRefresh: true,
-                onBack: () {},
-                onRefresh: () async {},
-                onShare: () {},
-                onLike: () {},
-                onSetting: () {},
-                isFavorite: true,
-              ),
-            ),
-          ));
-    });
-
-    testWidgets('session material: progress (in progress / complete), action buttons, exam tile', (tester) async {
+    testWidgets('session material: action buttons, exam tile', (tester) async {
       final pending = SessionExamInfo.fromJson(const {
         'id': 1, 'name': longName, 'passing_score': 60, 'question_count': 12, 'remaining_submissions': 2,
       });
@@ -374,10 +351,6 @@ void main() {
         'remaining_submissions': 1,
       });
       await expectNoLayoutErrors(tester, () => ListView(padding: const EdgeInsets.all(16), children: [
-            const SessionProgressSection(totalMaterial: 7, completeMaterial: 3, isTeacher: false, isFull: false),
-            const SizedBox(height: 12),
-            const SessionProgressSection(totalMaterial: 4, completeMaterial: 4, isTeacher: false, isFull: true),
-            const SizedBox(height: 12),
             Builder(
               builder: (context) => Wrap(spacing: 8, runSpacing: 8, children: [
                 SessionActionBtn(icon: Icons.edit_rounded, label: 'تعديل المحاضرة', color: context.colors.primary, filled: true, onTap: () {}),

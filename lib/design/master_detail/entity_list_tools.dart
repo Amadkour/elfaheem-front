@@ -20,8 +20,8 @@ import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 
-import '../../features/teacher/data_lab/data_lab_saver_io.dart'
-    if (dart.library.html) '../../features/teacher/data_lab/data_lab_saver_web.dart' as saver;
+import 'package:flutter_education_app/features/data_lab/data_lab_saver_io.dart'
+    if (dart.library.html) 'package:flutter_education_app/features/data_lab/data_lab_saver_web.dart' as saver;
 import '../app_kit.dart';
 import '../app_table_export.dart';
 import '../export/export_studio_model.dart' show exportFileName;

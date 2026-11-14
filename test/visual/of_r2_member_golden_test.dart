@@ -30,7 +30,7 @@ import 'package:flutter_education_app/features/org/org_member_space.dart';
 import 'package:flutter_education_app/features/org/org_member_today.dart';
 import 'package:flutter_education_app/features/org/org_providers.dart';
 import 'package:flutter_education_app/features/parent/parent_org_view.dart';
-import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

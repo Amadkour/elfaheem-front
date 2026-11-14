@@ -1,7 +1,7 @@
 # Live rooms: share links, admission lobby, meeting recordings to cloud drives
 
-Contract between the app (`lib/features/shared/live/`, the live room in
-`lib/features/teacher/sessions/live/`) and the backend (`../back/routers/live_room_router.py`,
+Contract between the app (`lib/features/live/`, the live room in
+`lib/features/live/room/`) and the backend (`../back/routers/live_room_router.py`,
 `../back/services/live_room_service.py`, `../back/routers/live_recording_router.py`,
 `../back/services/live_recording_service.py`, `../back/services/cloud_drive_service.py`).
 Written 2026-10-27. Every agent working on this feature follows it; a deviation is recorded here.
@@ -344,7 +344,7 @@ the name field (autofocus) → Join; the pre-join step then presses Join by itse
   admission rules (host), the recording state, the free time left.
 * **Time limit:** `LiveResponseModel.freeEndsAt` (from `time_limit.ends_at`) → `RoomPage.freeEndsAt`: a countdown
   pill for everyone; the owner, from 3 minutes left, gets "Upgrade" → `showLivePlanSheet(context)` in
-  `lib/features/shared/points/live_plan_sheet.dart` (signature `Future<bool> showLivePlanSheet(BuildContext
+  `lib/features/payments/points/live_plan_sheet.dart` (signature `Future<bool> showLivePlanSheet(BuildContext
   context)`, true = subscribed); after subscribing the pill disappears. When the server ends the room for the
   limit, the owner sees "Free time ended" with Subscribe.
 

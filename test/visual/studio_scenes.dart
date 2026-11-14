@@ -5,13 +5,13 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/shared/records/records_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_studio_parts.dart';
-import 'package:flutter_education_app/features/shared/records/studio_export.dart';
-import 'package:flutter_education_app/features/shared/records/studio_panels.dart';
-import 'package:flutter_education_app/features/shared/records/studio_project.dart';
-import 'package:flutter_education_app/features/shared/records/studio_stage.dart';
-import 'package:flutter_education_app/features/shared/records/studio_timeline.dart';
+import 'package:flutter_education_app/features/records/records_api.dart';
+import 'package:flutter_education_app/features/records/records_studio_parts.dart';
+import 'package:flutter_education_app/features/records/studio_export.dart';
+import 'package:flutter_education_app/features/records/studio_panels.dart';
+import 'package:flutter_education_app/features/records/studio_project.dart';
+import 'package:flutter_education_app/features/records/studio_stage.dart';
+import 'package:flutter_education_app/features/records/studio_timeline.dart';
 
 enum StudioScene { edit, text, export, job }
 

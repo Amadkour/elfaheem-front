@@ -3,10 +3,10 @@
 // the progress strip (segments and the long-paper bar) and the nav bar on a middle question.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_grading.dart' show ResultAnswer;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_grading_widgets.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_result_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_taking_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_grading.dart' show ResultAnswer;
+import 'package:flutter_education_app/features/exams/exam_grading_widgets.dart';
+import 'package:flutter_education_app/features/exams/exam_result_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_taking_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

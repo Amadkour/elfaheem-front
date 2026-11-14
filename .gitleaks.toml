@@ -34,12 +34,12 @@ paths = ['''(^|/)test/ui/guest_live_layout_test\.dart$''']
 regexes = ['''^3f9a1c2e7b8d4f6a9c0e1b2d3f4a5c6e7d8f9a0b1c2d3e4f$''']
 
 [[allowlists]]
-# lib/features/shared/live/live_presenter_cam.dart: `storageKey` is the NAME of a local preference
+# lib/features/live/live_presenter_cam.dart: `storageKey` is the NAME of a local preference
 # ('live.presenter_cam.v1'), not a key.
 description = "presenter camera: a preference key name"
 targetRules = ["generic-api-key"]
 condition = "AND"          # path AND value must both match (the default, OR, would allowlist the whole file)
-paths = ['''(^|/)lib/features/shared/live/live_presenter_cam\.dart$''']
+paths = ['''(^|/)lib/features/live/live_presenter_cam\.dart$''']
 regexes = ['''^live\.presenter_cam\.v1$''']
 
 [[allowlists]]

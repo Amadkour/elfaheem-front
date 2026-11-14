@@ -1,8 +1,8 @@
 // The RAG chat follows the organization's status (Phase 10, A04): 403 orgs_disabled, 423 org_not_approved {status},
 // 403 org_inactive get their own bilingual text in the chat, never the raw server message.
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart' show EngineResult;
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

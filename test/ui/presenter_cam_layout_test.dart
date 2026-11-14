@@ -4,11 +4,11 @@
 // a bubble pins, "–" minimizes, the pill brings it back, a drop never rests on my self-view.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/live/live_presenter_cam.dart';
-import 'package:flutter_education_app/features/shared/live/live_self_view.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_palette.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_scrollbar.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/presenter_cam_box.dart';
+import 'package:flutter_education_app/features/live/live_presenter_cam.dart';
+import 'package:flutter_education_app/features/live/live_self_view.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_palette.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_scrollbar.dart';
+import 'package:flutter_education_app/features/live/room/widgets/presenter_cam_box.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

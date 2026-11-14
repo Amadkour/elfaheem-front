@@ -5,8 +5,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/grade/essay_run.dart';
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
+import 'package:flutter_education_app/features/exams/hub/grade/essay_run.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';
 

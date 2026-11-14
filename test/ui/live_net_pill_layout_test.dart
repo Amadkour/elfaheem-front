@@ -1,7 +1,7 @@
-// The weak-network UI (D-090, lib/features/shared/live/live_net_pill.dart): the "video quality lowered" pill in the
+// The weak-network UI (D-090, lib/features/live/live_net_pill.dart): the "video quality lowered" pill in the
 // room's badge column and the audio-only card with Show video, at 320×640 and 1400×900, ar + en, text scale 1.3.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/live/live_net_pill.dart';
+import 'package:flutter_education_app/features/live/live_net_pill.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

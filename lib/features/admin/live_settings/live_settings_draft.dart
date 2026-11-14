@@ -14,7 +14,7 @@
 //   LiveSettingsApi        the two calls
 //
 // The app's live room reads the same values from `live_config` in its join payloads — that model belongs to the
-// live room code (lib/features/shared/live/), not to this page. Server: services/live_settings_service.py.
+// live room code (lib/features/live/), not to this page. Server: services/live_settings_service.py.
 library;
 
 import 'dart:math' as math;

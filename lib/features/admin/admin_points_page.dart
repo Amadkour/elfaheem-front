@@ -22,8 +22,8 @@ import 'package:flutter_education_app/design/app_username.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
-import '../shared/points/points_api.dart';
-import '../shared/points/points_wallet_page.dart' show LedgerTile, TopupTile;
+import 'package:flutter_education_app/features/payments/points/points_api.dart';
+import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart' show LedgerTile, TopupTile;
 import 'admin_common.dart' show t;
 import 'admin_page.dart';
 import 'admin_money_p8.dart' show p8SaveBytes;

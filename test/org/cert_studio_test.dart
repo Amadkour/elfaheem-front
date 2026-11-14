@@ -10,9 +10,9 @@ import 'dart:ui' show Offset, Rect, Size, TextAlign, TextDirection;
 
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/cert_studio_adapter.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_design_models.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_provider.dart';
+import 'package:flutter_education_app/features/certificates/designer/cert_studio_adapter.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_design_models.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_designer_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The certificate-design routes the designer uses, over one stored design (a JSON map like the server's answer).

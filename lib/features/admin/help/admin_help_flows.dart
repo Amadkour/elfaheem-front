@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_kit.dart';
-import '../../shared/help/help_models.dart';
+import 'package:flutter_education_app/features/help/help_models.dart';
 import 'admin_help_editor.dart';
 
 class FlowStepDraft {

@@ -23,7 +23,7 @@ import '../../../design/app_image_cropper.dart';
 import '../../../design/app_kit.dart';
 import '../../admin/admin_common.dart';
 import '../../admin/admin_list.dart' show AdminAvatar;
-import '../../teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../teacher/data_lab/data_lab_saver_web.dart' as saver;
+import 'package:flutter_education_app/features/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/data_lab/data_lab_saver_web.dart' as saver;
 import '../org_common.dart' show openFileUrl;
 import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
 import '../org_providers.dart';

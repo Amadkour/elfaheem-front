@@ -15,7 +15,7 @@ import '../../core/api_client.dart';
 import '../../design/app_kit.dart';
 import 'admin_page.dart';
 import 'cfg_common.dart';
-import '../shared/roadmap/roadmap_api.dart';
+import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart';
 import 'admin_common.dart' show t;
 
 class AdminRecommendationsPage extends StatefulWidget {

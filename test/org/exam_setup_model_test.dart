@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _p(String name) =>

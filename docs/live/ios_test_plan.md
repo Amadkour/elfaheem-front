@@ -11,7 +11,7 @@ removed from the Runner target: 4 lines), `ios/BroadcastUploadExtension/SampleHa
 `DarwinNotificationCenter.swift` (the extension folder is an Xcode 16 *synchronized* group: new
 files join the extension target with no project edit — check §2). Deleted:
 `ios/Runner/LocalDebugRecorder.swift`, `ios/LocalDebugRecorder.swift`,
-`ios/LocalDebugRecorder 2.swift`. New Dart: `lib/features/teacher/sessions/live/widgets/ios_share.dart`.
+`ios/LocalDebugRecorder 2.swift`. New Dart: `lib/features/live/room/widgets/ios_share.dart`.
 
 ## 1. Toolchain and pods
 

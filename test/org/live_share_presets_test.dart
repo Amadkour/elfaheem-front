@@ -1,7 +1,7 @@
 // The Android share's pure rules (share_presets.dart): the Detail / Motion presets (D14), the
 // capture size, the mic while device audio rides on the mic track, and the native answers.
-import 'package:flutter_education_app/features/shared/live/live_config.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/share_presets.dart';
+import 'package:flutter_education_app/features/live/live_config.dart';
+import 'package:flutter_education_app/features/live/room/widgets/share_presets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:livekit_client/livekit_client.dart';
 

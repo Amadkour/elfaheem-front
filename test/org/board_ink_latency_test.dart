@@ -3,11 +3,11 @@ import 'dart:math' as math;
 import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_ink.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_protocol.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_stage.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_view.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_ink.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_controller.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_protocol.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_stage.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

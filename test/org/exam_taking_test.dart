@@ -1,11 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/engine_exams_section.dart' show EngineExamCard;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_consent_screen.dart' show ConsentBody;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_integrity.dart' show IntegrityDedupe;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_result_screen.dart' show ExamResultBody;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_taking.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_taking_screen.dart'
+import 'package:flutter_education_app/features/exams/engine_exams_section.dart' show EngineExamCard;
+import 'package:flutter_education_app/features/exams/exam_consent_screen.dart' show ConsentBody;
+import 'package:flutter_education_app/features/exams/exam_integrity.dart' show IntegrityDedupe;
+import 'package:flutter_education_app/features/exams/exam_result_screen.dart' show ExamResultBody;
+import 'package:flutter_education_app/features/exams/exam_taking.dart';
+import 'package:flutter_education_app/features/exams/exam_taking_screen.dart'
     show ExamNavBar, ExamProgressBar, ExamQuestionCard, ExamQuestionGrid, ExamTimerChip;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -45,6 +46,59 @@ void main() {
     expect(ServerClock.fromAttempt({'remaining_seconds': null}, t0)!.timed, isFalse);
     expect(clockText(59), '00:59');
     expect(clockText(3661), '1:01:01');
+  });
+
+  test('the screen counts on a monotonic clock: a device clock changed mid-exam neither ends nor stretches it (H6)', () {
+    // the device clock is set BACK by a day mid-exam: the wall delta goes negative, the monotonic count stands
+    final t0 = DateTime(2026, 1, 1, 12);
+    var elapsed = Duration.zero;
+    var now = t0;
+    final clock = ServerClock.fromAttempt({'remaining_seconds': 600}, t0, elapsed: () => elapsed, now: () => now)!;
+    expect(clock.remaining(), 600);
+    elapsed = const Duration(seconds: 61);
+    now = t0.add(const Duration(seconds: 61)).subtract(const Duration(days: 1));
+    expect(clock.remaining(), 539);
+    expect(clock.wallAhead(), isFalse);
+    elapsed = const Duration(hours: 2);
+    expect(clock.remaining(), 0);
+    expect(ServerClock.fromAttempt({'remaining_seconds': null}, t0, elapsed: () => elapsed, now: () => now)!.remaining(), isNull);
+    // a real monotonic source starts at zero
+    expect(ServerClock(remainingSeconds: 90, receivedAt: DateTime.now(), elapsed: ServerClock.monotonic()).remaining(), 90);
+
+    // the taking screen: the deadline comes from the server reply (start and every autosave), counted on the
+    // monotonic source, never on the device's wall clock
+    final src = File('lib/features/exams/exam_taking_screen.dart').readAsStringSync();
+    expect(src, isNot(contains('remainingAt(DateTime.now())')));
+    expect(RegExp(r'ServerClock\.fromAttempt\(attempt, DateTime\.now\(\), elapsed: ServerClock\.monotonic\(\)\)').hasMatch(src), isTrue);
+    expect(RegExp(r"remainingSeconds: r\.map\['remaining_seconds'\]").hasMatch(src), isTrue);
+    expect(RegExp(r'deadlineAt: _clock\.deadlineAt, elapsed: ServerClock\.monotonic\(\)').hasMatch(src), isTrue);
+    expect(RegExp(r'_saver = Timer\.periodic\(const Duration\(seconds: 4\)').hasMatch(src), isTrue); // autosave
+  });
+
+  test('a phone that slept: the Stopwatch stood still, the wall clock ran; the timer shows the real time left', () {
+    final t0 = DateTime(2026, 1, 1, 12);
+    var elapsed = const Duration(seconds: 10);
+    var now = t0.add(const Duration(seconds: 10));
+    final clock = ServerClock.fromAttempt({'remaining_seconds': 600}, t0, elapsed: () => elapsed, now: () => now)!;
+    expect(clock.remaining(), 590);
+    now = now.add(const Duration(minutes: 5));            // asleep for 5 minutes: only the wall clock moves
+    expect(clock.remaining(), 290);
+    expect(clock.wallAhead(), isTrue, reason: 'the screen asks the server before ending on the wall count');
+    now = now.add(const Duration(minutes: 10));
+    expect(clock.remaining(), 0);
+    elapsed = const Duration(seconds: 20);                // awake again, both clocks agree
+    now = t0.add(const Duration(seconds: 20));
+    expect(clock.remaining(), 580);
+    expect(clock.wallAhead(), isFalse);
+  });
+
+  test('the taking screen re-reads the server clock on resume and asks the server before ending on a wall-only zero', () {
+    final src = File('lib/features/exams/exam_taking_screen.dart').readAsStringSync();
+    expect(src, contains('with WidgetsBindingObserver'));
+    expect(src, contains('WidgetsBinding.instance.addObserver(this)'));
+    expect(src, contains('WidgetsBinding.instance.removeObserver(this)'));
+    expect(RegExp(r'state == AppLifecycleState\.resumed\)\s*_resyncClock\(\)').hasMatch(src), isTrue);
+    expect(RegExp(r"_clock\.wallAhead\(\)").hasMatch(src), isTrue);
   });
 
   test('paper: sections, answered count, one-way navigation', () {

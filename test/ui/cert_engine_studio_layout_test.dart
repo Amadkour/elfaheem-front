@@ -1,9 +1,9 @@
 // The certificate studio on the design engine at 320 x 640 and 1400 x 900, Arabic and English, text x 1.3
 // (layout_harness): the studio with one language and with both, and the dialogs and sheets it opens.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_studio.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_panels.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_api.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_engine_studio.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_engine_panels.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_engine_api.dart';
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

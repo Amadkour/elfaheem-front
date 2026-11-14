@@ -24,7 +24,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
-import '../shared/exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult, engineCall;
 import 'admin_page.dart';
 import 'admin_common.dart' show asBool, asDouble, asInt, asMap, asMapList, asStr, asStrOrNull, isSuperNow, money, shortDateTime, t;
 

@@ -5,9 +5,9 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/records/records_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_page.dart';
-import 'package:flutter_education_app/features/shared/records/records_parts.dart';
+import 'package:flutter_education_app/features/records/records_api.dart';
+import 'package:flutter_education_app/features/records/records_page.dart';
+import 'package:flutter_education_app/features/records/records_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

@@ -1,10 +1,10 @@
 // D-310: the pure parts of the meeting host handover and of the meeting's recording indicator for everyone — who may
 // take over (signed-in members only, never a guest or me), the `host` and `rec` LiveKit packets, the remote recording
 // clock (counts while recording, not while paused, forgotten when stale), the API paths / bodies and the phase order.
-import 'package:flutter_education_app/features/shared/live/live_host_handover.dart';
-import 'package:flutter_education_app/features/shared/live/live_rec_signal.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_top_row.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/record/recorder_types.dart';
+import 'package:flutter_education_app/features/live/live_host_handover.dart';
+import 'package:flutter_education_app/features/live/live_rec_signal.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_top_row.dart';
+import 'package:flutter_education_app/features/live/room/widgets/record/recorder_types.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

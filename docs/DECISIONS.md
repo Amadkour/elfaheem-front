@@ -330,7 +330,7 @@ backend URL for the OAuth redirect) before the drives show as available.
 
 **Context.** People wanted to keep a meeting running in a small box while moving around the app, as video apps do.
 `RoomPage` was a route: leaving the route disposed the LiveKit room, the recorder, chat and timers.
-**Decision.** `LiveRoomLayer` (`lib/features/shared/live/live_room_host.dart`) sits in `MaterialApp.builder`
+**Decision.** `LiveRoomLayer` (`lib/features/live/live_room_host.dart`) sits in `MaterialApp.builder`
 around the app's Navigator. `PreJoinPage` opens the room into it (`LiveRoomHost.open`); the layer draws the page
 full-screen inside its own nested Navigator, or, minimized, keeps the page mounted offstage and draws the box
 (`LiveMiniTile`). The back button is answered by an observer registered before `runApp` (so before WidgetsApp's
@@ -856,7 +856,7 @@ jitter); per-axis One Euro (flattens curves where one axis slows down).
 
 ## D-084 — The Analytics tabs compare with the class, not with a previous period · 2026-10-29
 
-**Decision.** The student's and the instructor's Analytics tabs are one summary page (`shared/analytics/
+**Decision.** The student's and the instructor's Analytics tabs are one summary page (`features/analytics/
 analytics_summary.dart` pure, `analytics_summary_ui.dart` plain-value widgets): concentric rings for progress ·
 attendance · exams around the overall figure with ONE sentence, four count tiles, "For you" (up to three
 plain-language nudges, one of each kind before a second, each opening what it is about), one bar per course for the
@@ -880,7 +880,7 @@ new complaint and the history, and non-students may open the complaints they mus
 complaint systems with separate screens: platform complaints (`/api/v1/complaints`, one list mixing my own with the
 ones I handle, no create button on it) and organization complaints (`/api/v1/org/…/complaints`, reachable only
 inside the organization's pages).
-**Decision.** `ComplaintsHubPage` (`lib/features/shared/profile/compalints/complaints_hub_*.dart`) is the page of the
+**Decision.** `ComplaintsHubPage` (`lib/features/profile/compalints/complaints_hub_*.dart`) is the page of the
 profile's Help-center tile, the parent's "More" tile, the `support` deep link without an id and the profile's
 complaints attention item, for every role whose home is not the admin dashboard (admin / super-admin / developer
 keep `ComplaintsScreen`, the console).
@@ -942,7 +942,7 @@ the page question automatically (the person should see and own what is asked).
 
 ## D-085 — "My schedule" and "My calendar" are one page · 2026-10-29 · accepted
 
-**Decision.** `SchedulePage` (`lib/features/shared/calendar/schedule_page.dart`) is the only schedule / calendar page:
+**Decision.** `SchedulePage` (`lib/features/calendar/schedule_page.dart`) is the only schedule / calendar page:
 the student and teacher shells' Schedule tab (`asTab: true`), the top-bar calendar icon, `'/calendar'` (deep links,
 notification taps, AppNavigator `calendar` / `live_lobby`, the org and department dashboards; `CalendarScreen` /
 `CalendarView` are thin names for it) all open it. Views: Agenda (phone default — today pinned, then only the days
@@ -956,7 +956,7 @@ and the day view fetch whole weeks from the start of their week so the week view
 every range inside it). `detail=true` (additive, back `b2c4784`) adds each changed date's `change` (online /
 substitute / cancelled with the answers, `can_respond` / `can_edit`), keeps cancelled dates with `cancelled: true`
 (an older app never asked, so it never shows them as classes) and returns `pauses` (exam windows pausing the
-weekly classes). A personal course's weekly appointments (`GET /student|teacher/schedules`) are expanded to dated
+weekly classes). A personal course's weekly appointments (`GET /student|features/home/teacher/schedules`) are expanded to dated
 `course_weekly` events in the app (cached 15 min, never failing the page). Live: the store reloads on the new
 stream-only `calendar_updated` (every meeting notification), `meeting_live`, `session_live` and timetable /
 exam-timetable `attention_changed`; "Live now · Join" comes from the home's `MeHomeService.liveNow` (no extra
@@ -1098,7 +1098,7 @@ a session creates it at the slot's start, so the dashboard matches it (course + 
 shows it. "Meet now" stays one tap away as the sheet's secondary action (the header icon left; it comes back when the
 kill switch `teacher.quick_live` hides Go live). Nothing is fetched when the home opens: the sheet asks
 `GET /courses/{id}/sessions` for the course it shows (cached per course while open), so the request budgets are
-unchanged. Files: `lib/features/teacher/home/go_live.dart` (pure, `test/org/go_live_test.dart`), `go_live_sheet.dart`
+unchanged. Files: `lib/features/home/teacher/go_live.dart` (pure, `test/org/go_live_test.dart`), `go_live_sheet.dart`
 (`test/ui/go_live_layout_test.dart`; renders `test/visual/go_live_golden_test.dart`).
 **Rejected.** A new server route ("quick live" in one call): the two existing calls do it, and `POST /quick_session`
 ignores the title and the Record switch; a floating button (the app assistant floats in the same corner); a primary-
@@ -1129,7 +1129,7 @@ Tap-to-focus is kept for a local CAMERA on Android / iOS only (`LiveCameraFocus`
 off for the run). The clocks tick a ValueNotifier read by the badge column only; the screenshot loop runs only while
 the device recorder records frames; the camera restarts only when it did not come up on the front camera; the
 share's glow is still; the aurora stops while my camera is on; the recursion is gone.
-Self-view (`lib/features/shared/live/live_self_view.dart` rules, `widgets/self_view_pip.dart` widgets): while my camera
+Self-view (`lib/features/live/live_self_view.dart` rules, `widgets/self_view_pip.dart` widgets): while my camera
 is on, it is always somewhere — a floating box (3:4 on phones, 16:9 on wide stages) or circle, small or medium, over
 the waiting card, someone's video, a shared screen (mine too), the whiteboard and the annotation layer; it takes only
 its own touches (drawing goes on around it) and keeps clear of the badge column (measured), the thumbnail strip, the
@@ -1747,7 +1747,7 @@ smart page, as premium as possible; redesign the header icons (back, share, refr
 simple." The student's course details and the teacher's studio (both `CourseSpace`) each had a "Course profile" quick
 action that pushed `CourseProfileScreen` (overview · lectures · sections · attendance · announcements · certificates ·
 team · archive) — a second page about the same course with its own hero and tabs.
-**Decision.** The profile's parts became tabs of the one page (`lib/features/shared/course_profile/course_profile_hub.dart`):
+**Decision.** The profile's parts became tabs of the one page (`lib/features/courses/course_profile/course_profile_hub.dart`):
 student — Announcements (unread count) · Progress (per-part progress, attendance, grade, certificates) · Archive (closed
 course: code / request) and the teaching team in About; staff — Announcements · Attendance (open attendance, by hand,
 the numbers, the attendance report, certificate rules) · Team (assistant grants) · Archive (access policy, requests,
@@ -1886,7 +1886,7 @@ no level / tags, no interests.
   (`course_prereq_links`, the owner's own personal courses, never also a next step: 422 `roadmap_cycle`), advisory only
   (owner's answer: show status, never block enrolment); `courses.level` / `courses.tags` are new (migration 0031). Read
   and edited through `GET/PUT /api/v1/roadmap/courses/{id}` (+ `/candidates`). On the course page it is a "Path" tab
-  (`lib/features/shared/roadmap/roadmap_tab.dart`) for both roles: ONE vertical path (`roadmap_path.dart`): previous →
+  (`lib/features/courses/roadmap/roadmap_tab.dart`) for both roles: ONE vertical path (`roadmap_path.dart`): previous →
   the course tinted "You are here" → the next courses numbered, each with its prerequisites as ✓ / ○ chips; the student
   sees states and live % (done = enrolment completed or every material done, the app's rule) and "Enroll in the whole
   path"; the teacher sees drafts and edits in one sheet (`roadmap_editor.dart`: add · drag to reorder · remove next
@@ -2655,7 +2655,7 @@ Two types beyond the brief: `admin_granted` (access with no payment) and `plan_b
 ## D-212 — The Super Admin's Courses ↔ Students console · 2026-11-04 · accepted
 
 `/api/v1/admin/course-students/…` (super admin only; kill switch `admin.course_students`) and
-`lib/features/admin/course_students/`: courses with active / expiring / expired students, revenue and issues; each
+`lib/features/courses/admin/course_students/`: courses with active / expiring / expired students, revenue and issues; each
 course's full roster with a status badge and the inconsistencies (paid without access, access without payment); a
 student drawer whose first block is the live access diagnostic per course, then the subscriptions, payments and the
 event timeline. Students are found by academic ID, national ID (shown masked), e-mail, phone or @username. Extend,
@@ -3167,7 +3167,7 @@ recorded on the host's device, assembled on the server, stored on their Google D
 newest first, grouped by meeting (title + date), with cover, title, length, size and a status chip (recording ·
 editing · saving to the drive · ready · failed + Retry). Tap a ready item → the editor; ⋯ → play & edit · rename ·
 cover · open in the drive · retry · delete; long-press → multi-select with a bar (Merge 2+ ready items in a chosen
-order, Delete). Files: `lib/features/shared/records/` (`records_api.dart` pure, `records_parts.dart` plain values,
+order, Delete). Files: `lib/features/records/` (`records_api.dart` pure, `records_parts.dart` plain values,
 `records_page.dart`, `records_notice.dart`); backend `routers/records_router.py`, `services/records_service.py`,
 `services/records_edit.py`, migration 0064; contract `../back/FLUTTER_API_CHANGES.md` "Records".
 
@@ -3205,7 +3205,7 @@ shows "Saving your recording to Records" with Open; the ready / failed notificat
 
 **Play first.** A tap on a ready record opens the PLAYER, not the editor: the app's one course video player
 (`VideoPlayerScreen.fromLegacy` on the signed stream of D-311, through `RecordPlayerPage` in
-`lib/features/shared/records/records_share.dart`), so the owner sees the recording exactly as a student sees a lesson
+`lib/features/records/records_share.dart`), so the owner sees the recording exactly as a student sees a lesson
 (controls, speed, gestures, fullscreen, screen protection). The player gained `actions: [VodAction]` — caller buttons
 on its top bar (`VodActionButton`, icons only below 720 px, the help button gives them its place below 480 px). Records
 puts **Open in Studio** (pops the player, opens the Studio) and **Share** (the sheet over the player) there; the item
@@ -3414,7 +3414,7 @@ viewers, the browser cost of the outline.
 
 ## D-315 — The Studio on session video materials (drafts, then publish as new or in place); records shared with guests by e-mail · 2026-11-08 · accepted
 
-**The Studio's source is pluggable.** `StudioSource` (`lib/features/shared/records/studio_source.dart`) is all the
+**The Studio's source is pluggable.** `StudioSource` (`lib/features/records/studio_source.dart`) is all the
 Studio page talks to: `RecordStudioSource` (a drive recording, D-311 / D-312, unchanged behaviour) or
 `MaterialStudioSource` (`material_studio_api.dart`: a course session's VIDEO / RECORDED material in MinIO). A source
 names its tools (a material has no Cover — the course page draws none), whether its jobs make drafts, and its
@@ -3751,7 +3751,7 @@ With ten or more unread messages the thread opens on the first of them, under th
 ## D-520 — The phone as a person's companion device (Teams' "Add a device") · 2026-11-09 · accepted
 
 **Context.** The owner: "when open / join meeting can use the cam or speaker or mic of mobile... when the user open the app from mobile open the request... mix between mobile captures and another device in web and stream it to participants and record... premium business logic like the Microsoft Teams".
-**Decision.** From the pre-join page or the room's bar (web / desktop, never on a phone) a signed-in person picks camera, microphone and / or speaker. The server keeps one `live_companions` row per person (`services/live_companion.py`, migration 0071) and rings the phone: a visible high-priority push (android / ios tokens only, so the asking browser never notifies itself) plus the real-time event, and the app asks `GET /me/live-companion/pending` when it opens, resumes or signs in, so whatever is pending shows at once as the incoming-call screen. Accepting returns a LiveKit token for `companion:<primary identity>` that publishes exactly the requested sources, subscribes only when the speaker was requested (client: audio only) and never the person's own mic. Every client folds that identity into the person (`lib/features/shared/live/companion/`): one tile, one name, one count; the host's mute / remove / permissions reach the phone from `services/live_controls.py`; the LiveKit webhook ends the row when the phone or the person leaves. The QR / link fallback is `/s/companion/<secret>` (the secret stored hashed): it opens that same person's request and nothing else, `ask` says `pushed: false` when no phone is signed in.
+**Decision.** From the pre-join page or the room's bar (web / desktop, never on a phone) a signed-in person picks camera, microphone and / or speaker. The server keeps one `live_companions` row per person (`services/live_companion.py`, migration 0071) and rings the phone: a visible high-priority push (android / ios tokens only, so the asking browser never notifies itself) plus the real-time event, and the app asks `GET /me/live-companion/pending` when it opens, resumes or signs in, so whatever is pending shows at once as the incoming-call screen. Accepting returns a LiveKit token for `companion:<primary identity>` that publishes exactly the requested sources, subscribes only when the speaker was requested (client: audio only) and never the person's own mic. Every client folds that identity into the person (`lib/features/live/companion/`): one tile, one name, one count; the host's mute / remove / permissions reach the phone from `services/live_controls.py`; the LiveKit webhook ends the row when the phone or the person leaves. The QR / link fallback is `/s/companion/<secret>` (the secret stored hashed): it opens that same person's request and nothing else, `ask` says `pushed: false` when no phone is signed in.
 **Rejected.** A separate participant for the phone with a duplicate tile (rejected by the brief); merging the phone's media on the server (no such path in LiveKit: an egress composite can only tile participants); a `hidden` participant (hidden tracks are not delivered to others).
 
 ## D-521 — What the companion obeys · 2026-11-09 · accepted
@@ -4388,7 +4388,7 @@ and saves the exam's design on the draft.
 **Decision.** The services keep answering 403 `feature_disabled` {feature} (a new `ai_feature_off` code was rejected: every gate and app text already speaks it). `featureDisabledText(feature)` in `lib/core/api_error_text.dart` words the AI keys by name (grading off: "the written answers are kept for you to mark by hand"; bubble correction off: "nothing was deleted"), used by `apiErrorText`, by `orgErrorText` when the server names the feature (an unnamed one keeps its screen's text), and by the assistant (`ragChatResultText` / `ragCodeText`: a new question refused while the assistant is off). Entry points were already hidden by the same keys (`ParentComponent(featureKey:)`). Tests: `test/ui/admin_ai_controls_test.dart` (parsing, texts in both languages, the card in the layout harness).
 ## D-790 — A personal student's study data: own table, never registrar data · 2026-11-13 · accepted
 
-**Decision.** Stage, grade, track, school, governorate / city and a parent's phone live in `student_study_profiles` (back migration 0077, back D-790); the date of birth stays `users.dob`. Organization students keep their registrar data: nothing is copied either way, the home card shows only in the personal scope and org accounts never see it. Code: `lib/features/shared/study_profile/` (model + calls, the one form, the pages).
+**Decision.** Stage, grade, track, school, governorate / city and a parent's phone live in `student_study_profiles` (back migration 0077, back D-790); the date of birth stays `users.dob`. Organization students keep their registrar data: nothing is copied either way, the home card shows only in the personal scope and org accounts never see it. Code: `lib/features/profile/study_profile/` (model + calls, the one form, the pages).
 
 ## D-791 — What is asked, for an Arabic-first Egypt / MENA platform · 2026-11-13 · accepted
 
@@ -4513,7 +4513,7 @@ app without "Display over other apps" does not see (nor record) other people's v
 
 ## D-844 — After the video or the meeting: a soft "create an account / sign in" card · 2026-11-13 · accepted
 
-**Decision.** `GuestLinkCta` (`lib/features/shared/guest/guest_link_cta.dart`): under the guest player for a signed-out guest, and on the meeting's guest page once the guest is back from the room. It pushes `/register` or `/login` on top (Back returns to the video); the page works the same without it. A meeting still asks a guest only for a display name, and keeps its PIN, lobby and host approval.
+**Decision.** `GuestLinkCta` (`lib/features/guest/guest_link_cta.dart`): under the guest player for a signed-out guest, and on the meeting's guest page once the guest is back from the room. It pushes `/register` or `/login` on top (Back returns to the video); the page works the same without it. A meeting still asks a guest only for a display name, and keeps its PIN, lobby and host approval.
 ## D-850 — ONE profile page per person: the owner, a visitor and a guest see the same page · 2026-11-13 · accepted
 
 **Decision.** `PublicProfileView` is THE profile page. A visitor opens it with `PublicProfileScreen(username)` (the
@@ -4638,7 +4638,7 @@ After D-860 the owner still saw "the old colour": the `green` preset's accent1, 
 
 ## D-870 — A course's students page: the figures, one filter, one sort, cards, export · 2026-11-13 · accepted
 
-The page (`lib/features/teacher/sessions/students/`) leads with four figures for the whole course — enrolled, active this week, average progress, at risk (a tap filters to them) — then, only when someone may be nudged, one amber card with Nudge all. One search, one filter (All / Active / Low progress / Inactive / Completed, counts of the search) and a sort (name, progress either way, last activity either way), all server-side so pages stay right. A student is a card: avatar, name and %, a progress bar with the class average as its marker, one meta line (last active · lessons done · exam average) and only what needs saying (the reason, "Nudged 3 h ago", Completed). Phones get a list, wide lists two columns, a tap opens the shared panel (D-290). The certificate pill left the card: one student's certificates are the panel's Certificates action, "send to everyone" a header action — the feature stays, the card says what matters. Export goes through the Export Studio (every student of the current search / filter, both languages' headers).
+The page (`lib/features/sessions/teacher/students/`) leads with four figures for the whole course — enrolled, active this week, average progress, at risk (a tap filters to them) — then, only when someone may be nudged, one amber card with Nudge all. One search, one filter (All / Active / Low progress / Inactive / Completed, counts of the search) and a sort (name, progress either way, last activity either way), all server-side so pages stay right. A student is a card: avatar, name and %, a progress bar with the class average as its marker, one meta line (last active · lessons done · exam average) and only what needs saying (the reason, "Nudged 3 h ago", Completed). Phones get a list, wide lists two columns, a tap opens the shared panel (D-290). The certificate pill left the card: one student's certificates are the panel's Certificates action, "send to everyone" a header action — the feature stays, the card says what matters. Export goes through the Export Studio (every student of the current search / filter, both languages' headers).
 
 ## D-871 — "Low progress" is one server rule, and every card says why · 2026-11-13 · accepted
 
@@ -4807,3 +4807,32 @@ toolbar, a canvas of usable height and the dock now scroll as one column.
 ## D-945 — Stats as balanced tiles; the teacher row on the teacher's view; a framed wash · 2026-11-14 · accepted
 
 **Decision.** The stats are equal tiles in balanced rows: one row when each tile gets 150 px, else 3 per row when they divide by three, else 2 per row with the last row's tiles sharing its width (5 stats → 2 + 2 + 1 full). A tile: the icon in a tinted well, the value in the large figure type (sans, tabular: serif digits and currency read poorly in Arabic), the label as a caption; a tappable tile (Students) has a primary hairline and a chevron. The teacher's own view shows their name and picture under the title, as students see it. The washed block ends nearer the tone (40 % toward paper) and has a hairline edge, so it separates from the canvas in light mode.
+
+## D-946 — TLS pinned by public key, the server renews with the same key · 2026-11-14 · accepted
+
+**Context.** The apps pinned the SHA-256 of the whole leaf certificate of `nextbrain.site` (`SecurityContext(withTrustedRoots: false)`, so the pin is the only trust). Every renewal changes that hash (new serial, new dates), so a certbot run would cut off every installed Android / iOS app; the version-check dialog goes through the same pinned client and could not even say why (plan S1). The encryption handshake and the retry after `encryption_session_expired` used a bare, unpinned `Dio` (plan S2): a proxy with a CA the device trusts could sit in the handshake, and the retry re-sent the request, bearer included, through it.
+
+**Decision.** Pin the public key (SPKI SHA-256, base64), in `lib/core/cert_pin.dart`:
+- primary: `5sI/tocMhHnqTPDXhhj4nfWavN+crxuYvDX13koLqDM=` (hex `e6c23fb6…0ba833`), the hash of the server's own EC P-256 public key. No date or host check: only the key holder can finish the handshake;
+- transition: the old leaf-certificate hash `93d682e0…141402`, until that certificate expires (2026-12-23);
+- backup, for a renewal that had to change the key: a leaf for the API host (subjectAltName), inside its dates, whose signature verifies with one of the 16 Let's Encrypt intermediates the app carries (YE1–3, YR1–3 under Root YE / Root YR; E5–E9, R10–R14 under ISRG Root X2 / X1). That is as narrow as pinning those intermediates: only Let's Encrypt signs with them, and only for whoever controls the domain.
+
+dart:io hands `badCertificateCallback` only the LEAF (BoringSSL: `X509_STORE_CTX_get0_cert`; iOS / macOS: `chain[0]` after `SecTrust` failed — read in the Dart SDK source and seen on this machine: one call, `CN=nextbrain.site`), never the chain, so "pin the intermediate" is done by verifying the leaf's signature with the intermediate's key (pointycastle ECDSA P-256 / P-384, RSA PKCS#1, SHA-256 / 384 / 512). There is no fall back to the system's roots. The root keys (ISRG Root X1 `C5+lpZ7t…`, X2 `diGVwiVY…`, Root YE `sCkq5UWX…`, Root YR `fk6IOKit…`) are not used at run time: `test/auth/cert_pin_test.dart` checks each carried intermediate's signature against them, from committed public PEMs (`test/fixtures/tls/`).
+
+Every client that talks to the API host is built by the one `_pinnedHttpClient()`: the main Dio and a bare pinned Dio for the handshake; the session-expired retry goes back through the main Dio (flag `_encRetried`, one retry), so it is pinned and runs the auth interceptor again (fresh bearer, 401 refresh).
+
+A refused leaf that looks like our server (for the API host, issuer Let's Encrypt) sets `CertPin.updateRequired`: API errors then read `tls_pin_update_required` ("please update the app", code `APP_UPDATE_REQUIRED`) instead of "no connection", and the version check shows a blocking update dialog from the releases manifest (fetched with package:http, outside the pin) or, without one, a dialog that opens the site. Remote Config's `force_update_version` (Firebase, outside the pin) also blocks when the version check got no answer. Anything else refused (a proxy, a captive portal) keeps the network message.
+
+**Server rule.** Renew `nextbrain.site` ONLY with the same key: `certbot renew --cert-name nextbrain.site --reuse-key` (and keep `reuse_key = True` in its renewal conf, so the timer does the same). A key change is only for a compromise, and then a new app build with the new key ships first. Apps built before D-946 pin the old certificate itself and stop at the first renewal whatever the key: put the new build in the releases manifest as `min_build` before renewing.
+
+**Upkeep.** Add the next Let's Encrypt generation to `backupIssuers` before Gen Y expires (2028-09-02; the 2024 set 2027-03-12); drop the legacy hash after 2026-12-23. A deliberate key change: add the new key's pin, ship, then switch the server.
+
+## D-947 — Feature folders, scripted move, package imports · 2026-11-14 · accepted
+
+**Context.** `lib/features/` was cut by role (`student`, `teacher`, `shared`, …), so one feature lived in up to four places (attendance in `shared/attendance`, `student/attendance`, `student/analysis/attendance`, `teacher/analysis/attendance`), `shared/` had grown to 40 folders, and relative imports such as `../../../shared/course/…` broke whenever a file moved. A hand move of ~700 files would bury the change and break every open branch.
+
+**Decision.** One folder per feature: `home`, `courses`, `sessions`, `live` (`live/room` is the room), `exams` (with `identity` and `legacy`), `attendance`, `payments`, `certificates`, `data_lab`, `analytics`, `profile`, `messaging`, and the old `shared/` folders without the prefix (`calendar`, `rag`, `records`, `help`, `exports`, `downloads`, `upload`, `guest`, `share`, `get_app`). A role's own screens of a feature sit in its `student/`, `teacher/` or `admin/` subfolder. `admin`, `org`, `parent`, `auth`, `ads` and `onboarding` stay as they were.
+
+The move is scripted, never by hand: `tool/apply_moves.dart` over `tool/moves/M1..M10.tsv` (`old<TAB>new` rows), one commit per map, `flutter analyze` at 0 warnings after each. It does `git mv` (git sees renames, history follows with `--follow`) and changes only the characters between the quotes of import / export / part directives, plus path mentions in docs, comments and configs; no line is reformatted (D-003). An import of a moved file, and every relative import inside a moved file, becomes `package:flutter_education_app/…`; `part` / `part of` stay relative. A map applied on its own leaves the files of later maps at their old paths (fixed in the tool before the move, with a test).
+
+**Consequences.** Write new imports between feature folders as `package:` imports. A branch made on the old layout merges this, then runs `dart run tool/apply_moves.dart --fix-imports`, which rewrites only what still names an old path. Old decisions and notes were rewritten to the new paths by the same tool, so a path in an old D-entry is the file's current home, not its home at the time. Checked: same analyzer count (402 infos), same test totals, same number of deferred web parts, `flutter build apk --debug`.

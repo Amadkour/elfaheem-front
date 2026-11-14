@@ -19,7 +19,7 @@ import 'package:provider/provider.dart';
 
 import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
-import '../teacher/profile/payout/teacher_payouts_screen.dart' as tp show statusLabel;
+import 'package:flutter_education_app/features/profile/teacher/payout/teacher_payouts_screen.dart' as tp show statusLabel;
 import 'admin_common.dart';
 import 'admin_list.dart';
 import 'admin_models.dart';

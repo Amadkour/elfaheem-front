@@ -27,9 +27,9 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../admin/admin_common.dart' show asInt, asMap, asMapList, t;
-import '../shared/exam_engine/exam_authoring.dart' show ExamAuthoringApi;
-import '../shared/exam_engine/exam_quick.dart' show examForSlot;
-import '../shared/exam_engine/exam_quick_screen.dart' show showSlotExamSheet;
+import 'package:flutter_education_app/features/exams/exam_authoring.dart' show ExamAuthoringApi;
+import 'package:flutter_education_app/features/exams/exam_quick.dart' show examForSlot;
+import 'package:flutter_education_app/features/exams/exam_quick_screen.dart' show showSlotExamSheet;
 import 'org_schedule_versions.dart' show calendarDate;
 import 'org_v3.dart';
 

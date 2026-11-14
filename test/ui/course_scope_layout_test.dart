@@ -1,4 +1,4 @@
-// The course scope parts (lib/features/shared/course/course_scope_bar.dart) at 320x640 and 1400x900, Arabic +
+// The course scope parts (lib/features/courses/course_scope_bar.dart) at 320x640 and 1400x900, Arabic +
 // English, textScaler 1.3: the teacher's banner (personal / organization, long names, counts, the other sides,
 // Switch), the student's chip bar (many organizations, long names) and the card badge, plus the course list with
 // badges drawn over its cards.
@@ -7,10 +7,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/course/course_scope.dart';
-import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
-import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/courses/course_scope.dart';
+import 'package:flutter_education_app/features/courses/course_scope_bar.dart';
+import 'package:flutter_education_app/features/courses/home_course_list.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

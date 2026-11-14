@@ -17,12 +17,12 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_api.dart' show RemoteCalendarApi;
-import 'package:flutter_education_app/features/shared/calendar/calendar_meeting.dart' show showMeetingSheet;
+import 'package:flutter_education_app/features/calendar/calendar_api.dart' show RemoteCalendarApi;
+import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show showMeetingSheet;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, t;
 import '../governance/gov_request_parts.dart' show govAttachmentExtensions;
@@ -462,8 +462,7 @@ Future<void> advOpenAttachment(BuildContext context, AdvCommApi api, AdvAttachme
     await showDialog<void>(context: context, builder: (_) => AdvImagePreview(name: a.shown, url: url));
     return;
   }
-  final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-  if (!ok) showAppNotice(t('تعذّر فتح الملف', 'Could not open the file'), error: true);
+  await openExternalLink(url, failText: t('تعذّر فتح الملف', 'Could not open the file'));
 }
 
 class AdvImagePreview extends StatelessWidget {
@@ -487,7 +486,7 @@ class AdvImagePreview extends StatelessWidget {
               IconButton(
                 tooltip: t('فتح في المتصفح', 'Open in the browser'),
                 icon: const Icon(Icons.open_in_new_rounded),
-                onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+                onPressed: () => openExternalLink(url),
               ),
               IconButton(tooltip: t('إغلاق', 'Close'), icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
             ]),
@@ -533,8 +532,7 @@ Future<AdvAttachment?> advPickAttachment(AdvCommApi api) async {
 /// Join a video appointment: the advisor's own https link, else the platform's meeting (the calendar's Join flow).
 Future<void> advJoinAppointment(BuildContext context, AdvAppointment a) async {
   if (a.hasLink) {
-    final ok = await launchUrl(Uri.parse(a.videoLink!), mode: LaunchMode.externalApplication);
-    if (!ok) showAppNotice(t('تعذّر فتح رابط الاجتماع', 'Could not open the meeting link'), error: true);
+    await openExternalLink(a.videoLink, failText: t('تعذّر فتح رابط الاجتماع', 'Could not open the meeting link'));
     return;
   }
   final id = a.meetingId;

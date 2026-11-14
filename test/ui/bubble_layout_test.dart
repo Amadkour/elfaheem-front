@@ -4,9 +4,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/bubble/bubble_flow.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/bubble/bubble_one_photo.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/bubble/bubble_widgets.dart';
+import 'package:flutter_education_app/features/exams/paper/bubble/bubble_flow.dart';
+import 'package:flutter_education_app/features/exams/paper/bubble/bubble_one_photo.dart';
+import 'package:flutter_education_app/features/exams/paper/bubble/bubble_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

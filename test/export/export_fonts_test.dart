@@ -19,7 +19,7 @@ import 'package:flutter_education_app/design/export/table_export_xlsx.dart';
 import 'package:flutter_education_app/design/export/ttf_tools.dart';
 import 'package:flutter_education_app/design/export_hub/export_design.dart';
 import 'package:flutter_education_app/design/export_hub/export_pdf.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_design_models.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_design_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;

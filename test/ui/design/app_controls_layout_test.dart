@@ -1,6 +1,6 @@
 // The kit's controls (Warm Editorial, system.md §4): the field language (AppField, AppEmailField, AppPasswordField,
 // AppUrlField, AppNumberField, AppSearchField, AppDropdown, AppPicker), the switch, and the older widgets that wear
-// the same look (PrimaryButton, MyTextField, MyPasswordTextField, MySearchBar, OutlineButton, CustomButton) at
+// the same look (PrimaryButton, MyTextField, MyPasswordTextField, MySearchBar, OutlineButton) at
 // 320 / 1400 wide, ar + en, textScaler 1.3 — plus the behaviour the brief fixes: the label sits ABOVE the well, a
 // busy button keeps its width, the switch is a 48 px target and toggles from the keyboard, a dropdown opens its
 // sheet and answers the pick.
@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/utils/widget/custom_button.dart';
 import 'package:flutter_education_app/utils/widget/outline_button.dart';
 import 'package:flutter_education_app/utils/widget/password_text_field.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
@@ -91,11 +90,6 @@ Widget _legacy() {
         OutlineButton(label: _long, color: Colors.red, icon: Icons.delete, onPressed: () {}),
         const SizedBox(width: AppSpace.xs),
         OutlineButton(label: 'Short', color: Colors.green, icon: Icons.check, onPressed: () {}),
-      ]),
-      const SizedBox(height: AppSpace.xs),
-      Wrap(spacing: AppSpace.xs, children: [
-        CustomButton(text: _long, onPressed: () {}, icon: Icons.add),
-        const CustomButton(text: 'Loading', isLoading: true),
       ]),
     ]),
   );

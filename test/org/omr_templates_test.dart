@@ -9,8 +9,8 @@ import 'dart:typed_data';
 import 'package:flutter/painting.dart' show MatrixUtils, Offset, Size;
 
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/templates/omr_templates.dart';
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
+import 'package:flutter_education_app/features/exams/paper/templates/omr_templates.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _dir = 'test/fixtures/payloads/omr_templates';

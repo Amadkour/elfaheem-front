@@ -2,10 +2,10 @@
 // dialog: every step's plain-values widget at 320×640 and 1400×900, ar / en, text ×1.3 (layout_harness.dart).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup_wizard.dart';
-import 'package:flutter_education_app/features/shared/identity/identity_request_gate.dart';
-import 'package:flutter_education_app/features/shared/identity/identity_requests.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup_wizard.dart';
+import 'package:flutter_education_app/features/exams/identity/identity_request_gate.dart';
+import 'package:flutter_education_app/features/exams/identity/identity_requests.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

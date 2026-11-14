@@ -4,17 +4,17 @@
 // Save as draft, the job card's Publish) — plus what they say and do.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/records/material_studio_api.dart';
-import 'package:flutter_education_app/features/shared/records/material_studio_parts.dart';
-import 'package:flutter_education_app/features/shared/records/records_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_guests_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_guests_parts.dart';
-import 'package:flutter_education_app/features/shared/records/records_share_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_share_parts.dart';
-import 'package:flutter_education_app/features/shared/records/records_studio_parts.dart';
-import 'package:flutter_education_app/features/shared/records/studio_export.dart';
-import 'package:flutter_education_app/features/shared/records/studio_project.dart';
-import 'package:flutter_education_app/features/shared/records/studio_timeline.dart';
+import 'package:flutter_education_app/features/records/material_studio_api.dart';
+import 'package:flutter_education_app/features/records/material_studio_parts.dart';
+import 'package:flutter_education_app/features/records/records_api.dart';
+import 'package:flutter_education_app/features/records/records_guests_api.dart';
+import 'package:flutter_education_app/features/records/records_guests_parts.dart';
+import 'package:flutter_education_app/features/records/records_share_api.dart';
+import 'package:flutter_education_app/features/records/records_share_parts.dart';
+import 'package:flutter_education_app/features/records/records_studio_parts.dart';
+import 'package:flutter_education_app/features/records/studio_export.dart';
+import 'package:flutter_education_app/features/records/studio_project.dart';
+import 'package:flutter_education_app/features/records/studio_timeline.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

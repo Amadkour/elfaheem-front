@@ -353,7 +353,7 @@
 
   const _sources = {};
 
-  // ── D-306: the room's layout (lib/features/shared/live/live_recording_layout.dart) ──────────────
+  // ── D-306: the room's layout (lib/features/live/live_recording_layout.dart) ──────────────
   // setLayout(json) hands the canvas a list of tiles {l: source label, k: camera|screen|board, x, y, w, h (px on
   // the 1920×1080 canvas), f: contain|auto, n: name, m: main, s: speaking, o: an overlay source drawn over the fitted
   // picture — the drawing on a shared screen, D-811} and `more` (cameras that did not fit).

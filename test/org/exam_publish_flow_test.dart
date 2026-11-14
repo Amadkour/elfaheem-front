@@ -5,12 +5,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_grading.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_grading_widgets.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_result_screen.dart' show ExamResultBody;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_results_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring.dart';
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
+import 'package:flutter_education_app/features/exams/exam_grading.dart';
+import 'package:flutter_education_app/features/exams/exam_grading_widgets.dart';
+import 'package:flutter_education_app/features/exams/exam_result_screen.dart' show ExamResultBody;
+import 'package:flutter_education_app/features/exams/exam_results_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

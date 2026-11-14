@@ -7,12 +7,12 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/auth/auth_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_widgets.dart' show ProgressBar;
 import 'package:flutter_education_app/features/auth/verify_way.dart';
-import 'package:flutter_education_app/features/shared/analytics/analytics_ui.dart';
-import 'package:flutter_education_app/features/shared/notification/notifications_screen.dart';
-import 'package:flutter_education_app/features/shared/passcode/passcode_screen.dart';
-import 'package:flutter_education_app/features/shared/profile/compalints/complaint_model.dart' show complaintUtc;
-import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart';
-import 'package:flutter_education_app/features/shared/profile/student_favorite_screen.dart';
+import 'package:flutter_education_app/features/analytics/analytics_ui.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_screen.dart';
+import 'package:flutter_education_app/features/profile/passcode/passcode_screen.dart';
+import 'package:flutter_education_app/features/profile/compalints/complaint_model.dart' show complaintUtc;
+import 'package:flutter_education_app/features/profile/components/setting_title.dart';
+import 'package:flutter_education_app/features/profile/student_favorite_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

@@ -6,11 +6,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/category/categories_provider.dart';
-import 'package:flutter_education_app/features/shared/category/categories_screen.dart';
-import 'package:flutter_education_app/features/student/enrollment/enrollment_screen.dart';
-import 'package:flutter_education_app/features/student/enrollment/enrollment_widgets.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
+import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
+import 'package:flutter_education_app/features/courses/category/categories_screen.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_screen.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_widgets.dart';
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseModel;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

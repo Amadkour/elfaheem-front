@@ -1,7 +1,7 @@
 // Member dashboard: inbox priority order, urgency, countdowns and the Organization/Individual switch rules.
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 String iso(DateTime d) => d.toUtc().toIso8601String().replaceAll('Z', ''); // the server sends naive UTC

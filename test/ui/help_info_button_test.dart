@@ -5,10 +5,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/chrome_button.dart';
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
-import 'package:flutter_education_app/features/shared/help/help_models.dart';
-import 'package:flutter_education_app/features/shared/help/help_service.dart';
-import 'package:flutter_education_app/features/shared/help/help_tour.dart';
+import 'package:flutter_education_app/features/help/help_info_button.dart';
+import 'package:flutter_education_app/features/help/help_models.dart';
+import 'package:flutter_education_app/features/help/help_service.dart';
+import 'package:flutter_education_app/features/help/help_tour.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

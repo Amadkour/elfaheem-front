@@ -36,7 +36,10 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'dart:io' show HttpClient;
+
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart' show IOClient;
 
 import '../../config/app_config.dart';
 import '../../utils/live_events.dart';
@@ -273,6 +276,15 @@ class LiveEventsClient with WidgetsBindingObserver {
   @visibleForTesting
   bool get busy => _sub != null || _connecting || _retry != null || _stall != null || _http != null;
 
+  /// The dart:io client the stream is built on: the API's pinned one (the stream carries the bearer token, so it
+  /// gets the same public-key pin as every API call, never the system's trusted roots). Tests swap it for a spy.
+  @visibleForTesting
+  static HttpClient Function() pinnedHttpClientFactory = ApiClient.pinnedHttpClient;
+
+  /// The HTTP client of one stream: on phones and desktops an [IOClient] over [pinnedHttpClientFactory]; on the web
+  /// the browser's client (a tab controls its own TLS, nothing can pin there).
+  static http.Client streamHttpClient() => kIsWeb ? http.Client() : IOClient(pinnedHttpClientFactory());
+
   static Uri streamUri({String? ticket, String? baseUrl}) {
     final base = Uri.parse('${baseUrl ?? AppConfig.baseUrl}$streamPath');
     if (ticket == null || ticket.isEmpty) return base;
@@ -379,7 +391,7 @@ class LiveEventsClient with WidgetsBindingObserver {
   Future<void> _connect(String token, {String? ticket}) async {
     _connecting = true;
     final gen = ++_gen;
-    final client = http.Client();
+    final client = streamHttpClient();
     _http = client;
     final req = http.Request('GET', streamUri(ticket: ticket, baseUrl: _baseUrl))
       ..headers.addAll(streamHeaders(token: ticket == null ? token : null, lastId: _lastId));

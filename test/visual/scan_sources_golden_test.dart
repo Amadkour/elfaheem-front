@@ -20,10 +20,10 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan_widgets.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/scan_files.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/scan_sources.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/scan_upload_view.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_scan_widgets.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/scan_files.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/scan_sources.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/scan_upload_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

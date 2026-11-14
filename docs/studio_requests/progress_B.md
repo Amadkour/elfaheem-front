@@ -65,7 +65,7 @@ States: done · partial · left.
   spacing, Arabic right to left, the renderer's shrink rule; every logo / signature field its OWN picture
   (`src`, else that language's default; one image part per distinct picture); signature name / title under the
   picture; photo cropped round; QR picture; lines.
-- `lib/features/shared/certificates_issue/cert_issue_word.dart`: fetches the batch's design, fills the
+- `lib/features/certificates/issue/cert_issue_word.dart`: fetches the batch's design, fills the
   placeholders like `CertificateIssueService._variables` (date, default title localized, organization, course,
   row values, name, serial, verify link), draws the QR codes, loads pictures and fonts; "Word file (.docx)" in each
   issued certificate's menu (`IssuedCertTile.onWord`), one file per issued language.

@@ -18,7 +18,7 @@ import 'package:flutter_education_app/design/export_hub/export_themes.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/admin/admin_table_export.dart' show orgMembersExport;
-import 'package:flutter_education_app/features/shared/exports/export_schedules_page.dart'
+import 'package:flutter_education_app/features/exports/export_schedules_page.dart'
     show exportParamChoices, exportParamIsFlag, exportPeopleRoles, exportRolesOf;
 import 'package:flutter_test/flutter_test.dart';
 

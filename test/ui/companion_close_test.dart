@@ -5,7 +5,7 @@
 // re-ran Leave, which found the page already closing and did nothing — the page stayed on screen with dead buttons and a
 // dead back button, and the phone looked frozen. `closeCompanionRoute` pops past it.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/live/companion/companion_parts.dart';
+import 'package:flutter_education_app/features/live/companion/companion_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The phone page's shape: a PopScope that refuses and runs "leave" instead, and a way to close itself.

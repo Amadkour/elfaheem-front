@@ -11,11 +11,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:flutter_education_app/design/export/export_studio_api.dart';
-import 'package:flutter_education_app/features/shared/exports/export_link_open_page.dart';
-import 'package:flutter_education_app/features/shared/exports/export_links_page.dart';
-import 'package:flutter_education_app/features/shared/exports/export_log_page.dart';
-import 'package:flutter_education_app/features/shared/exports/export_schedules_page.dart';
-import 'package:flutter_education_app/features/shared/exports/exports_center_page.dart';
+import 'package:flutter_education_app/features/exports/export_link_open_page.dart';
+import 'package:flutter_education_app/features/exports/export_links_page.dart';
+import 'package:flutter_education_app/features/exports/export_log_page.dart';
+import 'package:flutter_education_app/features/exports/export_schedules_page.dart';
+import 'package:flutter_education_app/features/exports/exports_center_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

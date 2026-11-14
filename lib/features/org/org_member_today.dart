@@ -17,7 +17,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../admin/admin_common.dart' show asInt, asMapList;
 import 'org_member_changes.dart';
@@ -145,7 +145,7 @@ class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
             busy: _busy == x.id,
             onRespond: x.canRespond ? (d) => _respond(x, d) : null,
             onUndo: x.canEdit ? () => _undo(x) : null,
-            onOpenLink: x.onlineUrl == null ? null : () => launchUrl(Uri.parse(x.onlineUrl!), mode: LaunchMode.externalApplication),
+            onOpenLink: x.onlineUrl == null ? null : () => openExternalLink(x.onlineUrl),
           ),
         ),
       HomeAgenda(

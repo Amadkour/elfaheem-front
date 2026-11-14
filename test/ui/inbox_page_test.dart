@@ -1,4 +1,4 @@
-// The inbox page (lib/features/shared/inbox/inbox_page.dart): the inbox and the notifications on ONE page with the
+// The inbox page (lib/features/messaging/inbox/inbox_page.dart): the inbox and the notifications on ONE page with the
 // tabs To do · Notifications · Announcements & offers · Done. Pure rules (which tabs, the segment → tab mapping, the
 // routes, the actionable count), the real page over the fake backend (each entry point on its tab, counts only on
 // the actionable tabs, the kill switches, the platform admins, an organization's inbox), and the layout at 320x640
@@ -9,10 +9,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/inbox_badge.dart';
-import 'package:flutter_education_app/features/shared/inbox/inbox_page.dart';
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
-import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
-import 'package:flutter_education_app/features/shared/notification/notifications_screen.dart' show NotificationTile;
+import 'package:flutter_education_app/features/messaging/inbox/inbox_page.dart';
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_screen.dart' show NotificationTile;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

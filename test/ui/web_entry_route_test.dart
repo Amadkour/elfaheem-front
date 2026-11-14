@@ -1,5 +1,5 @@
 // M20: a browser URL opened directly (or refreshed) starts the web app on that page when the person may open it.
-import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart' show guestLiveRouteFromUri, legacyHashRoute;
+import 'package:flutter_education_app/features/guest/guest_live_api.dart' show guestLiveRouteFromUri, legacyHashRoute;
 import 'package:flutter_education_app/utils/web_entry_route.dart';
 import 'package:flutter_test/flutter_test.dart';
 

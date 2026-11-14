@@ -4,13 +4,13 @@
 // tab. The hand and edge auto-scroll themselves: whiteboard_hand_layout_test.dart.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_painter.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_protocol.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_toolbar.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_view.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/share_options_sheet.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/share_presets.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_controller.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_painter.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_protocol.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_toolbar.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_view.dart';
+import 'package:flutter_education_app/features/live/room/widgets/share_options_sheet.dart';
+import 'package:flutter_education_app/features/live/room/widgets/share_presets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

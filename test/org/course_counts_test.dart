@@ -1,7 +1,7 @@
 // Course cards show the server's own counts and ratings — no display inflation (students_count used to get +700,
 // rating totals +200 and the average +4).
-import 'package:flutter_education_app/features/student/models.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 import 'package:flutter_test/flutter_test.dart';
 

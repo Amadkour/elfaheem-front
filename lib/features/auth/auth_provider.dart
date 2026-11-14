@@ -1,7 +1,7 @@
 library;
 
-import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart' show StudySettings;
-import 'package:flutter_education_app/features/shared/chat/chat_store.dart' show ChatHub;
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show StudySettings;
+import 'package:flutter_education_app/features/messaging/chat/chat_store.dart' show ChatHub;
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_access.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,10 +16,10 @@ import '../../core/base_provider.dart';
 import '../../utils/helpers.dart';
 import '../../utils/widget/view_as_state.dart';
 import '../../core/app_mode.dart';
-import '../shared/category/categories_provider.dart';
-import '../shared/notification/notification_service.dart';
+import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notification_service.dart';
 import '../../config/app_config.dart' show AppConfig;
-import '../shared/exam_engine/exam_media.dart' show MediaBytesCache;
+import 'package:flutter_education_app/features/exams/exam_media.dart' show MediaBytesCache;
 import 'biometric.dart';
 import 'mfa.dart';
 import 'teacher_onboarding_token.dart';
@@ -491,8 +491,11 @@ class MyAuthProvider extends BaseProvider {
 
   void loadCachedUser() {
     final saved = _storage.savedUser;
-    if (saved != null) {
+    if (saved == null) return;
+    try {
       _currentUser = UserModel.fromJson(saved);
+    } catch (_) {
+      _currentUser = null; // a cached user this build cannot read (no role, edited prefs): signed out, not a crash at start-up
     }
   }
 

@@ -7,9 +7,9 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_docx.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_qr_png.dart';
+import 'package:flutter_education_app/features/exams/exam_paper.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_docx.dart';
+import 'package:flutter_education_app/features/exams/exam_qr_png.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 

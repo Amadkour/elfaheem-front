@@ -5,13 +5,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_time.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_api.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_views.dart' show CalEventBlock, CalTimeGrid;
-import 'package:flutter_education_app/features/shared/calendar/schedule_logic.dart';
-import 'package:flutter_education_app/features/shared/calendar/schedule_page.dart';
-import 'package:flutter_education_app/features/shared/calendar/schedule_parts.dart';
-import 'package:flutter_education_app/features/shared/calendar/schedule_store.dart';
+import 'package:flutter_education_app/features/calendar/calendar_api.dart';
+import 'package:flutter_education_app/features/calendar/calendar_models.dart';
+import 'package:flutter_education_app/features/calendar/calendar_views.dart' show CalEventBlock, CalTimeGrid;
+import 'package:flutter_education_app/features/calendar/schedule_logic.dart';
+import 'package:flutter_education_app/features/calendar/schedule_page.dart';
+import 'package:flutter_education_app/features/calendar/schedule_parts.dart';
+import 'package:flutter_education_app/features/calendar/schedule_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

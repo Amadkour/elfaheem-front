@@ -88,7 +88,7 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 ## Phase 5 — app side (2026-10-25, Exam Engine taking flow v2)
 
 ### Done (commit d176b2a)
-- **Exam Engine client** (`lib/features/shared/exam_engine/exam_engine_api.dart`): the student calls of `/api/v1/exam` over the one `ApiClient` (which gained an optional `headers` argument for `X-Exam-Session`); `EngineResult.unavailable` detects an engine that is not deployed or routed yet, so the legacy exam flow stays in charge until then.
+- **Exam Engine client** (`lib/features/exams/exam_engine_api.dart`): the student calls of `/api/v1/exam` over the one `ApiClient` (which gained an optional `headers` argument for `X-Exam-Session`); `EngineResult.unavailable` detects an engine that is not deployed or routed yet, so the legacy exam flow stays in charge until then.
 - **Pure logic** (`exam_taking.dart`, unit-tested): the server clock (counts down from the server's `remaining_seconds`, never from the device clock), the paper model with one-way sections, the autosave queue with a monotonic `save_seq` per question (older saves are ignored by the server, retries are safe), the integrity event buffer (urgent kinds flush at once), the policy actions, the bilingual code texts.
 - **Screens**: consent (`ExamConsentScreen`: the versioned text, what it requires, what THIS device can and cannot do, hash-bound acceptance), taking (`ExamTakingScreen`: timer chip, progress and lock banner, one card per question type — single / multi / true-false / blanks / matching / ordering / numeric with units / short answer / essay —, question grid, autosave every 4 s, submit with an unanswered-count confirmation, leaving keeps the attempt), result (`ExamResultBody`: by the results policy, "awaiting review" when so). Integrity signals from what each platform offers (`exam_integrity*.dart`: web — tab / window switch, full-screen exit, copy / paste; mobile — app to background) are reported as events; the consent screen says plainly what cannot be prevented. On-device face / gaze models are Phase 9.
 - **Entry**: `EngineExamsSection` above the legacy course exams (start / resume / passcode / result), hidden when the engine has no exams for the course or is not deployed.
@@ -103,7 +103,7 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 
 ## Phase 6 — app side (2026-10-25)
 
-- `lib/features/shared/exam_engine/exam_review.dart`: review models (proposal, criteria with evidence spans, rubric, marks, OCR regions and words), pure helpers (confidence bands, evidence highlight runs, criteria totals, score validation, state / flag / quality texts) and `ExamReviewApi` (grading policy, review queue, mark, bulk approve, scans, image bytes, assign, transcription, upload, marks import, sheets PDF).
+- `lib/features/exams/exam_review.dart`: review models (proposal, criteria with evidence spans, rubric, marks, OCR regions and words), pure helpers (confidence bands, evidence highlight runs, criteria totals, score validation, state / flag / quality texts) and `ExamReviewApi` (grading policy, review queue, mark, bulk approve, scans, image bytes, assign, transcription, upload, marks import, sheets PDF).
 - `exam_review_screen.dart`: `ExamReviewScreen` (lowest confidence first, one-tap accept, criteria editor, bulk approval banner, policy sheet) and `EngineReviewSection` in the teacher exam hub; `exam_scan_review.dart`: the page beside the OCR text with low-confidence words marked, corrected transcription, unmatched assignment.
 - `ApiClient`: `getBytes` / `postForBytes` (outside the envelope encryption, auth and pinning kept) and `postFiles` (several files under one field).
 - Tests: `test/org/exam_review_test.dart` (parsing, approvable count, helpers, layout harness over the card, the editor and the OCR words).
@@ -128,7 +128,7 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
   (delete, postMultipart, patch, postForm, postFiles, uploadImage, getBytes, postForBytes). Cleared on finalize, on
   `onboarding_token: null`, on logout and on every new or ended session; the token, `mfa_token` and
   `mfa_enroll_token` are redacted from request logs.
-- **"Download my data" (back D-029)**: `lib/features/shared/profile/privacy_export.dart` (`DataExportPage`: status,
+- **"Download my data" (back D-029)**: `lib/features/profile/privacy_export.dart` (`DataExportPage`: status,
   request, download, polling every 5 s while queued / processing, saved with `p8SaveBytes`), a tile in the profile
   help group behind feature key `profile.data_export`.
 - **Organization status and RAG quota texts (back D-032)**: `examCodeText` (`exam_taking.dart`) and
@@ -189,7 +189,7 @@ findings fixed (app D-009, back D-045):
 - Open items (G4): dead calls `MyAuthProvider.resetPassword` / `ProfileProvider.resendOtp` removed (contract scan:
   1 known-missing left); refund sheet handles 409 `refund_external_recorded` (`RefundExternalRecorded`, same
   idempotency key, Refund off at 0) and the cards show refunded / refundable (`paymentRefundFigures`); RAG quota
-  override for the Super Admin (`lib/features/shared/rag/rag_quota_admin.dart`, entry `org.rag_quota` in the
+  override for the Super Admin (`lib/features/rag/rag_quota_admin.dart`, entry `org.rag_quota` in the
   organization review sheet); `role_swap` / `llm_disagrees` flag labels; `DocStatusBadge` on the instructor profile;
   `feeConflictText` for 409 `fee_already_paid` / `fee_under_review` without a token; `orgErrorText` maps
   `logo_url_not_allowed`; `.gitignore` gains secret / key / docs-venv patterns.

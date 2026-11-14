@@ -1,4 +1,4 @@
-// Certificate issuing — the pure part (lib/features/shared/certificates_issue/cert_issue_logic.dart): the review
+// Certificate issuing — the pure part (lib/features/certificates/issue/cert_issue_logic.dart): the review
 // state over a real-shaped check answer (test/fixtures/cert_issue/check.json, the shape of
 // ../back/services/certificate_issue_service.check), row edit / remove, candidate pick, manual recipients,
 // duplicates, the summary, and every request body.
@@ -7,7 +7,7 @@ import 'dart:io';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_logic.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_logic.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _check() =>

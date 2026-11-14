@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_review.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_review_screen.dart' show ReviewAnswerCard, MarkEditor;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_scan_review.dart' show OcrWordsView;
+import 'package:flutter_education_app/features/exams/exam_review.dart';
+import 'package:flutter_education_app/features/exams/exam_review_screen.dart' show ReviewAnswerCard, MarkEditor;
+import 'package:flutter_education_app/features/exams/exam_scan_review.dart' show OcrWordsView;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

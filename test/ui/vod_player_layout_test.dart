@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
-import 'package:flutter_education_app/features/shared/session/video/video_player_screen.dart';
-import 'package:flutter_education_app/features/shared/session/video/vod_player_parts.dart';
+import 'package:flutter_education_app/features/sessions/material/session_material_model.dart';
+import 'package:flutter_education_app/features/sessions/video/video_player_screen.dart';
+import 'package:flutter_education_app/features/sessions/video/vod_player_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

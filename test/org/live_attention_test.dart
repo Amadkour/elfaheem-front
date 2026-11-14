@@ -1,8 +1,8 @@
-// The live room's attention counts (lib/features/shared/live/live_attention.dart) and the phone pill's "More"
+// The live room's attention counts (lib/features/live/live_attention.dart) and the phone pill's "More"
 // badge (live_control_bar.dart liveMoreBadge).
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/live/live_attention.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_control_bar.dart';
+import 'package:flutter_education_app/features/live/live_attention.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_control_bar.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

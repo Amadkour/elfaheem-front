@@ -5,12 +5,12 @@
 //     now hands its exams over (`onItems`), found after the 409 course_not_in_org probe that names the organization.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/engine_exams_section.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart' show ExamAuthoringApi;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring_screen.dart' show QuestionBankBrowser;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_review_screen.dart' show EngineReviewSection;
-import 'package:flutter_education_app/features/shared/models/exam_model.dart';
-import 'package:flutter_education_app/features/teacher/analysis/exam/teacher_exam_hub_screen.dart';
+import 'package:flutter_education_app/features/exams/engine_exams_section.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring.dart' show ExamAuthoringApi;
+import 'package:flutter_education_app/features/exams/exam_authoring_screen.dart' show QuestionBankBrowser;
+import 'package:flutter_education_app/features/exams/exam_review_screen.dart' show EngineReviewSection;
+import 'package:flutter_education_app/features/exams/legacy/exam_model.dart';
+import 'package:flutter_education_app/features/exams/legacy/teacher/teacher_exam_hub_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

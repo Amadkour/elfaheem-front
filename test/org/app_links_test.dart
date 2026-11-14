@@ -1,10 +1,10 @@
 // The one link scheme (D-307): lib/core/share/app_links.dart, the meeting links payload and filters
-// (lib/features/shared/live/meeting_links.dart).
+// (lib/features/live/meeting_links.dart).
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/routing/app_routes.dart';
 import 'package:flutter_education_app/core/share/app_links.dart';
-import 'package:flutter_education_app/features/shared/live/meeting_links.dart';
-import 'package:flutter_education_app/features/shared/share/share_link_page.dart' show sharePageAllowed;
+import 'package:flutter_education_app/features/live/meeting_links.dart';
+import 'package:flutter_education_app/features/share/share_link_page.dart' show sharePageAllowed;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

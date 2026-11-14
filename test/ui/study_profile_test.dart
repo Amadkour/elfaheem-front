@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/features/admin/admin_study_profile_settings_page.dart' show StudyProfileSection;
-import 'package:flutter_education_app/features/shared/study_profile/study_profile_form.dart';
-import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart';
-import 'package:flutter_education_app/features/shared/study_profile/study_profile_pages.dart' show StudyPromptCard;
-import 'package:flutter_education_app/features/student/home/home_screen.dart';
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_form.dart';
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_pages.dart' show StudyPromptCard;
+import 'package:flutter_education_app/features/home/student/home_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

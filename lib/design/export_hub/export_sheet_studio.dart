@@ -17,7 +17,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../features/org/org_providers.dart' show orgBase;
-import '../../features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant;
 import '../app_image_cropper.dart';
 import '../app_kit.dart';
 import '../app_notice.dart';

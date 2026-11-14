@@ -19,10 +19,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/teacher/home/go_live.dart';
-import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart';
-import 'package:flutter_education_app/features/teacher/home/home_screen.dart' show TeacherHomeHero;
-import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
+import 'package:flutter_education_app/features/home/teacher/go_live.dart';
+import 'package:flutter_education_app/features/home/teacher/go_live_sheet.dart';
+import 'package:flutter_education_app/features/home/teacher/home_screen.dart' show TeacherHomeHero;
+import 'package:flutter_education_app/features/sessions/teacher/model/live_response_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;

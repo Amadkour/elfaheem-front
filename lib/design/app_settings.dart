@@ -23,7 +23,7 @@
 //       implement it on a custom row (CalendarEntryTile does) so the search can see it; a row that is not
 //       searchable is kept while the query is empty and left out while one is typed.
 //
-// The older SettingsGroup / SettingsTile / ProfileHeader (features/shared/profile/components, profile_screen)
+// The older SettingsGroup / SettingsTile / ProfileHeader (features/profile/components, profile_screen)
 // keep working; a More page adopts this file by swapping the names (`color:` instead of iconBg + iconColor, the
 // header takes values instead of the provider). Layout test: test/ui/app_settings_layout_test.dart.
 library;

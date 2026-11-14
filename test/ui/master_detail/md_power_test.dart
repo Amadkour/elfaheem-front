@@ -13,7 +13,7 @@ import 'package:flutter_education_app/design/app_table_export.dart';
 import 'package:flutter_education_app/design/master_detail/entity_list_page.dart';
 import 'package:flutter_education_app/design/master_detail/entity_list_tools.dart';
 import 'package:flutter_education_app/design/master_detail/entity_search_palette.dart';
-import 'package:flutter_education_app/features/teacher/classroom/teacher_classroom.dart';
+import 'package:flutter_education_app/features/home/teacher/classroom/teacher_classroom.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

@@ -8,25 +8,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../../utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
 Future<void> _launch(String url) async {
-  var ok = false;
-  try {
-    ok = await launchUrl(
-      Uri.parse(url),
-      mode: kIsWeb
-          ? LaunchMode.platformDefault
-          : LaunchMode.externalApplication,
-      webOnlyWindowName: '_blank',
-    );
-  } catch (_) {}
-  if (!ok)
-    toast(t('تعذر فتح الإيصال', 'Could not open the receipt'), error: true);
+  await openExternalLink(url, failText: t('تعذر فتح الإيصال', 'Could not open the receipt'), webOnlyWindowName: '_blank');
 }
 
 /// [link] is the map returned by `receiptLink(id)` in the providers.

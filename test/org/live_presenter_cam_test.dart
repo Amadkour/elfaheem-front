@@ -1,11 +1,11 @@
-// The presenter's camera over a share (D-094, lib/features/shared/live/live_presenter_cam.dart): which camera floats
+// The presenter's camera over a share (D-094, lib/features/live/live_presenter_cam.dart): which camera floats
 // in the box and when, the bubbles inside the video budget, the unit's size, where it rests (never on the self-view)
 // and what is remembered.
 import 'dart:convert';
 
 import 'package:flutter/painting.dart';
-import 'package:flutter_education_app/features/shared/live/live_presenter_cam.dart';
-import 'package:flutter_education_app/features/shared/live/live_self_view.dart';
+import 'package:flutter_education_app/features/live/live_presenter_cam.dart';
+import 'package:flutter_education_app/features/live/live_self_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

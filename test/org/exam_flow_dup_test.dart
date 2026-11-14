@@ -1,9 +1,9 @@
 // Duplicate an exam from the Exam Hub (D-665): who gets the action, the reply, the texts.
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_all.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart' show EngineResult;
-import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_duplicate.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_logic.dart';
+import 'package:flutter_education_app/features/exams/exam_all.dart';
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
+import 'package:flutter_education_app/features/exams/hub/hub_duplicate.dart';
+import 'package:flutter_education_app/features/exams/hub/hub_logic.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 AllExam _e(int id, {String status = 'published', String? run}) => AllExam({

@@ -30,6 +30,8 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:clock/clock.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -836,7 +838,9 @@ class _StudioCanvasState<P> extends State<StudioCanvas<P>> {
       if (!_additive) _ctl.clearSelection();
       return;
     }
-    final now = DateTime.now();
+    // clock.now(): the real time in the app, the fake test clock in widget tests (a busy test run never splits a
+    // double click into two single ones)
+    final now = clock.now();
     final dbl = id == _lastTapId && now.difference(_lastTapAt) < kDoubleTapTimeout;
     _lastTapId = id;
     _lastTapAt = now;

@@ -1,13 +1,13 @@
-// "Go live" on the instructor home (D-091, lib/features/teacher/home/go_live_sheet.dart): the header pill and the
+// "Go live" on the instructor home (D-091, lib/features/home/teacher/go_live_sheet.dart): the header pill and the
 // sheet at phone and web sizes, Arabic and English, text scale 1.3 — no overflow; then the sheet's flow over a fake
 // API (a new session is created with the default title, a scheduled one is started as it is, Record turned on).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
-import 'package:flutter_education_app/features/teacher/home/go_live.dart';
-import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart';
-import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
+import 'package:flutter_education_app/features/home/teacher/go_live.dart';
+import 'package:flutter_education_app/features/home/teacher/go_live_sheet.dart';
+import 'package:flutter_education_app/features/sessions/teacher/model/live_response_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

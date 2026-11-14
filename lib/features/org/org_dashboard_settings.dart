@@ -14,7 +14,7 @@ library;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
-import '../shared/legal/legal_links.dart' show legalSettingsGroup;
+import 'package:flutter_education_app/features/profile/legal/legal_links.dart' show legalSettingsGroup;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
@@ -26,7 +26,7 @@ import 'package:flutter_education_app/design/context_switcher.dart' show showCon
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/mfa_entry.dart' show MfaSettingsEntry;
 import 'package:flutter_education_app/design/app_language_switch.dart' show AppLanguageTile;
-import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
+import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
@@ -41,18 +41,18 @@ import 'org_danger_zone.dart';
 import 'org_v3.dart' show orgCall, orgCodeText;
 import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgSub;
-import '../shared/exam_engine/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
-import '../shared/exam_engine/hub/hub_entry.dart' show examHubTeachingRole, kExamHubFeatureKey;
+import 'package:flutter_education_app/features/exams/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
+import 'package:flutter_education_app/features/exams/hub/hub_entry.dart' show examHubTeachingRole, kExamHubFeatureKey;
 import 'org_chat_settings_tile.dart';
 import 'org_providers.dart';
 import 'org_terms_pages.dart' show OrgTermsAdminPage;
 import 'org_ui.dart' show orgPickAndUpload;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
-import 'package:flutter_education_app/features/shared/display/display_settings_page.dart' show DisplaySettingsTile;
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show CertVerifyEntryTile;
-import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart' show GetAppTile;
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
+import 'package:flutter_education_app/features/profile/display/display_settings_page.dart' show DisplaySettingsTile;
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show CertVerifyEntryTile;
+import 'package:flutter_education_app/features/get_app/get_app_banner.dart' show GetAppTile;
+import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Settings ("More" on phones)

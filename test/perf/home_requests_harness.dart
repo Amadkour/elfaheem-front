@@ -18,7 +18,6 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/providers.dart';
 import 'package:flutter_education_app/main.dart' show navigatorKey;
-import 'package:flutter_education_app/utils/widget/refresh_button.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -165,13 +164,11 @@ Future<HomeMetrics> measureHome(WidgetTester tester, String role, Widget screen,
     ..unmatched = api.unmatched.toSet().toList();
   expect(tester.takeException(), isNull);
 
-  // pull to refresh: the home's RefreshIndicator, else the shell's refresh button
+  // pull to refresh: the home's RefreshIndicator
   api.reset();
   final indicator = find.byType(RefreshIndicator);
   if (indicator.evaluate().isNotEmpty) {
     tester.state<RefreshIndicatorState>(indicator.first).show();
-  } else if (find.byType(RefreshButton).evaluate().isNotEmpty) {
-    await tester.tap(find.byType(RefreshButton).first);
   }
   for (var i = 0; i < 30; i++) {
     await tester.pump(const Duration(milliseconds: 100));

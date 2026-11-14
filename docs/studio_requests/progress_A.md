@@ -51,7 +51,7 @@ watermark: {"kind": "text" | "image", "text": str ≤ 200, "src": image URL, "co
 
 ## Tasks
 
-Front `lib/` paths are under `lib/features/teacher/certificates/designer/` (D/) unless said; back paths are in
+Front `lib/` paths are under `lib/features/certificates/designer/` (D/) unless said; back paths are in
 `wt-back-cert`. Back commits afa6081, 3d3ddba, b73b7bb; front ad49988 onwards.
 
 | # | Task | State | Files | Notes / next |

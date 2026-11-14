@@ -17,11 +17,11 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_sheet_header.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_quick.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_logic.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/create/exam_create_wizard.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup_wizard.dart' show SetupChoiceTile;
+import 'package:flutter_education_app/features/exams/exam_quick.dart';
+import 'package:flutter_education_app/features/exams/hub/create/exam_create_logic.dart';
+import 'package:flutter_education_app/features/exams/hub/create/exam_create_wizard.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup_wizard.dart' show SetupChoiceTile;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

@@ -18,7 +18,7 @@ library;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
@@ -45,12 +45,7 @@ Future<void> _saveFile(Uint8List bytes, String name) => p8SaveBytes(bytes, name)
 
 /// Opens a link outside the app (the Codemagic build page, a published file).
 Future<void> openReleaseLink(String url) async {
-  final uri = Uri.tryParse(url);
-  try {
-    if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) throw StateError('not opened');
-  } catch (_) {
-    showAppNotice(t('تعذّر فتح الرابط', 'Could not open the link'), error: true);
-  }
+  await openExternalLink(url, failText: t('تعذّر فتح الرابط', 'Could not open the link'));
 }
 
 /// True when [e] is about release [id] (`id` or `release_id`).

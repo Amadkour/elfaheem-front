@@ -3,7 +3,7 @@
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/parent/parent_overview.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_home_extra.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final full = <String, dynamic>{

@@ -15,11 +15,11 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/cert_designer_panels.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/cert_studio_adapter.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_design_models.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_provider.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_screen.dart';
+import 'package:flutter_education_app/features/certificates/designer/cert_designer_panels.dart';
+import 'package:flutter_education_app/features/certificates/designer/cert_studio_adapter.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_design_models.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_designer_provider.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_designer_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_api.dart';

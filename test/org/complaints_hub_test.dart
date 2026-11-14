@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/profile/compalints/complaint_model.dart';
-import 'package:flutter_education_app/features/shared/profile/compalints/complaints_hub_model.dart';
+import 'package:flutter_education_app/features/profile/compalints/complaint_model.dart';
+import 'package:flutter_education_app/features/profile/compalints/complaints_hub_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final _now = DateTime.utc(2026, 10, 28, 7);

@@ -4,11 +4,11 @@
 // (WhiteboardDock in LiveFocusChrome's bottom, with the Controls chip, no overflow at 320×640 and 1400×900, Arabic
 // and English, text 1.3×), and the pen keeps the tool picked there after the bars hide.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_protocol.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_stage.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_view.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_focus_chrome.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_controller.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_protocol.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_stage.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_view.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_focus_chrome.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

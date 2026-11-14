@@ -3,10 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart' show AdCard;
-import 'package:flutter_education_app/utils/widget/count_badge.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
-import 'package:flutter_education_app/utils/widget/refresh_button.dart';
 import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -85,7 +83,7 @@ void main() {
     );
   });
 
-  testWidgets('Paging strip, footer, refresh pill and the tile count overlay', (tester) async {
+  testWidgets('Paging strip and footer', (tester) async {
     await expectNoLayoutErrors(
       tester,
       () => _scroll([
@@ -93,8 +91,6 @@ void main() {
         const PagedCountCard(loaded: 134, total: 134, loadingMore: false, done: true),
         const PagedListFooter(loadingMore: true, hasMore: true),
         const PagedListFooter(loadingMore: false, hasMore: false),
-        Align(alignment: AlignmentDirectional.centerStart, child: RefreshButton(onTap: () async {})),
-        const TileCountOverlay(count: 120, child: ListTile(title: Text(_long))),
       ]),
     );
   });

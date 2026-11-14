@@ -7,12 +7,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/grade/grade_papers_sheet.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/hub_logic.dart' show GradeKind;
-import 'package:flutter_education_app/features/shared/exam_engine/paper/bubble/bubble_flow.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/bubble/bubble_widgets.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review_parts.dart';
+import 'package:flutter_education_app/features/exams/hub/grade/grade_papers_sheet.dart';
+import 'package:flutter_education_app/features/exams/hub/hub_logic.dart' show GradeKind;
+import 'package:flutter_education_app/features/exams/paper/bubble/bubble_flow.dart';
+import 'package:flutter_education_app/features/exams/paper/bubble/bubble_widgets.dart';
+import 'package:flutter_education_app/features/exams/paper/review/omr_review.dart';
+import 'package:flutter_education_app/features/exams/paper/review/omr_review_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

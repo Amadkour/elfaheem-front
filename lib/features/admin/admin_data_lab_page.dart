@@ -11,8 +11,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
-import '../teacher/data_lab/data_lab_api.dart';
-import '../teacher/data_lab/data_lab_models.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
 import 'admin_common.dart' show t;
 import 'admin_page.dart';
 import 'cfg_common.dart';

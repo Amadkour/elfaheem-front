@@ -7,8 +7,8 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
-import '../shared/analytics/analytics_ui.dart';
-import '../teacher/data_lab/data_lab_models.dart';
+import 'package:flutter_education_app/features/analytics/analytics_ui.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
 import 'parent_report_widgets.dart';
 import 'parent_widgets.dart';
 

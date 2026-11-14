@@ -27,7 +27,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter_education_app/design/app_responsive.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
@@ -40,7 +40,7 @@ import 'package:flutter_education_app/design/app_states.dart' show AppErrorState
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/design/app_shell.dart' show AppShell, DashboardItem;
 import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
-import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import 'org_registrar_staff.dart' show OrgRegistrarPage;

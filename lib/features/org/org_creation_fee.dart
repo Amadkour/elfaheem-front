@@ -9,21 +9,89 @@
 //
 // The server enforces it: POST /applications and a root POST /orgs answer 402 org_fee_required until a payment is
 // usable. One payment = one request; a rejected request keeps its payment for re-submission.
+//
+// The fee token proves this device paid (an anonymous payer has nothing else): it lives in the platform keystore on
+// devices (OrgFeeTokenStore, like lib/core/token_storage.dart) and in SharedPreferences on the web only.
 library;
 
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../admin/admin_common.dart' show asMap, asMapList, t;
 import 'org_v3.dart';
 
 const _feePath = '/api/v1/org/creation-fee';
 const _kTokenKey = 'org_fee_token_v1';
+
+/// Where the organization-creation payment token lives. Devices: flutter_secure_storage (Keychain / Android
+/// EncryptedSharedPreferences); a token an older build left in SharedPreferences is moved there on the first read and
+/// the plain copy wiped. Web: SharedPreferences (a browser has no store a script cannot read).
+class OrgFeeTokenStore {
+  OrgFeeTokenStore({@visibleForTesting bool? web}) : _web = web ?? kIsWeb;
+
+  final bool _web;
+
+  static const _secure = FlutterSecureStorage(
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
+  );
+
+  Future<String?> read() async {
+    if (_web) {
+      try {
+        return (await SharedPreferences.getInstance()).getString(_kTokenKey);
+      } catch (_) {
+        return null;
+      }
+    }
+    String? v;
+    try {
+      v = await _secure.read(key: _kTokenKey);
+    } catch (_) {}
+    return v ?? await _migrateFromPrefs();
+  }
+
+  /// One-time move of an older build's plain copy into the keystore.
+  Future<String?> _migrateFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final old = prefs.getString(_kTokenKey);
+      if (old == null) return null;
+      try {
+        await _secure.write(key: _kTokenKey, value: old);
+      } catch (_) {
+        return old; // keystore unavailable: keep the plain copy rather than lose the payment
+      }
+      await prefs.remove(_kTokenKey);
+      return old;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> write(String? token) async {
+    if (_web) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        token == null ? await prefs.remove(_kTokenKey) : await prefs.setString(_kTokenKey, token);
+      } catch (_) {}
+      return;
+    }
+    try {
+      token == null ? await _secure.delete(key: _kTokenKey) : await _secure.write(key: _kTokenKey, value: token);
+    } catch (_) {}
+    // never leave a plain copy behind
+    try {
+      await (await SharedPreferences.getInstance()).remove(_kTokenKey);
+    } catch (_) {}
+  }
+}
 
 String money(dynamic amount, String currency) {
   final v = (amount is num) ? amount : num.tryParse('$amount') ?? 0;
@@ -75,24 +143,16 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
     _restore();
   }
 
+  final _store = OrgFeeTokenStore();
+
   Future<void> _restore() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _token = prefs.getString(_kTokenKey);
-    } catch (_) {}
+    _token = await _store.read();
     await reload();
   }
 
   Future<void> _remember(String? token) async {
     _token = token;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      if (token == null) {
-        await prefs.remove(_kTokenKey);
-      } else {
-        await prefs.setString(_kTokenKey, token);
-      }
-    } catch (_) {}
+    await _store.write(token);
   }
 
   /// Re-reads the status (after paying in the browser, after a receipt review …).
@@ -150,8 +210,8 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
       return;
     }
     await _remember('${r.map['token']}');
-    final url = Uri.tryParse('${r.map['checkout_url'] ?? ''}');
-    if (url != null) await launchUrl(url, mode: LaunchMode.externalApplication);
+    final url = '${r.map['checkout_url'] ?? ''}';
+    if (url.isNotEmpty) await openExternalLink(url);
     if (mounted) setState(() {});
   }
 

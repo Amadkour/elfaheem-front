@@ -70,7 +70,7 @@ import 'app_side_sheet.dart' show appScrimColor, AppSheetMode;
 import 'app_tokens.dart';
 import '../features/admin/admin_common.dart' as admin;
 import '../features/org/org_ui.dart' as org;
-import '../features/teacher/data_lab/data_lab_widgets.dart' as dl;
+import 'package:flutter_education_app/features/data_lab/data_lab_widgets.dart' as dl;
 
 // The design system (D-180, lib/design/README.md): tokens, the gradient rules and the components added on top of
 // the Data Lab / org kits below.
@@ -535,6 +535,19 @@ class _PickOption<T> {
 class _Pick<T> {
   const _Pick(this.value);
   final T? value;
+}
+
+/// The kit's pick sheet on its own, for a compact inline trigger that is not a field well (a filter bar's value):
+/// `value → text` options, a check on [current]; the picked value, or null when dismissed.
+Future<T?> showAppPickSheet<T extends Object>(BuildContext context,
+    {required String title, required Map<T, String> options, T? current}) async {
+  final picked = await _showPickSheet<T>(
+    context,
+    title: title,
+    options: [for (final e in options.entries) _PickOption<T>(e.key, Text(e.value), e.value)],
+    current: current,
+  );
+  return picked?.value;
 }
 
 /// The sheet behind [AppDropdown] and [AppPicker]: the title, a search box once the list is long, 48 px rows with a

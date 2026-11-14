@@ -35,7 +35,7 @@ flowchart LR
 flowchart TB
     main["lib/main.dart<br/>_bootstrap → _initCore (each step with a timeout)<br/>onGenerateRoute: _router"]
     providers["lib/core/providers.dart<br/>appProviders (ChangeNotifiers)"]
-    features["lib/features/&lt;role&gt;/<br/>student · teacher · parent · admin · org · shared · auth"]
+    features["lib/features/&lt;feature&gt;/ (D-947)<br/>home · courses · sessions · live · exams · attendance · payments · …<br/>role areas: admin · org · parent · auth"]
     kit["lib/design/app_kit.dart + BasePage<br/>(kill switch, upload footer)"]
     base["BaseProvider.run(() => …)<br/>idle / loading / success / error"]
     api["lib/core/api_client.dart<br/>ApiClient singleton on Dio"]
@@ -55,9 +55,17 @@ flowchart TB
     providers --> theme --> api
 ```
 
+Feature folders (D-947): `lib/features/` holds one folder per feature (`home`, `courses`, `sessions`, `live`, `exams`,
+`attendance`, `payments`, `certificates`, `data_lab`, `analytics`, `profile`, `messaging`, `calendar`, `rag`,
+`records`, …), and a role's own screens of a feature sit in its `student/`, `teacher/` or `admin/` subfolder. `admin`,
+`org`, `parent`, `auth` and `ads` stay whole. Imports between folders are `package:flutter_education_app/…`, so a
+file moves without touching its neighbours' relative paths. The old `student/`, `teacher/` and `shared/` roots were
+moved by `tool/apply_moves.dart` over the maps in `tool/moves/`; `--fix-imports` updates a branch written on the old
+layout.
+
 Ports and services behind nginx: core `api` 8000 (everything under `/api/v1/…` except the two below), Exam Engine
-8001 (`/api/v1/exam/…`, client `lib/features/shared/exam_engine/exam_engine_api.dart`), RAG 8002 (`/api/v1/rag/…`,
-`lib/features/shared/rag/`). The app sends every path in full on top of `AppConfig.baseUrl`
+8001 (`/api/v1/exam/…`, client `lib/features/exams/exam_engine_api.dart`), RAG 8002 (`/api/v1/rag/…`,
+`lib/features/rag/`). The app sends every path in full on top of `AppConfig.baseUrl`
 (`https://nextbrain.site/api`, or `--dart-define=API_BASE_URL=…` for a dev build), so requests reach nginx as
 `/api/api/v1/…`: `/api/api/v1/exam/…` and `/api/api/v1/rag/…` go to the engine and RAG with the extra `/api` cut, and
 everything else goes to the core with the first `/api` stripped (`../back/docs/DEPLOY.md`,
@@ -159,7 +167,7 @@ sequenceDiagram
   it is dismissed it reopens on a later 403 only after 30 s (`mfaPromptCooldown`).
 - **Teacher onboarding token** (back D-028): `lib/features/auth/teacher_onboarding_token.dart`; `ApiClient` adds
   `X-Onboarding-Token` to every onboarding route.
-- **Download my data** (back D-029): `lib/features/shared/profile/privacy_export.dart`, feature key
+- **Download my data** (back D-029): `lib/features/profile/privacy_export.dart`, feature key
   `profile.data_export`.
 - **Organization status and quotas** (back D-032): exam and RAG screens map `orgs_disabled`, `org_not_approved`,
   `org_inactive` and `rag_quota_exceeded` (`exam_taking.dart`, `rag_library.dart`, `rag_chat.dart`); the library
@@ -168,7 +176,7 @@ sequenceDiagram
   otherwise it talks to production.
 - **Admin money and RAG quota** (D-009): the refund sheet handles 409 `refund_external_recorded` and the cards show
   refunded / refundable (`admin_money_p8.dart`, `admin_finance_page.dart`); the Super Admin sets a library quota per
-  organization from the organization review sheet (`lib/features/shared/rag/rag_quota_admin.dart`).
+  organization from the organization review sheet (`lib/features/rag/rag_quota_admin.dart`).
 - **Transport** (D-005, D-009): `android/app/src/main/res/xml/network_security_config.xml` (cleartext only for
   loopback — the offline-video server — and the emulator host) is prepared but not referenced by the manifest yet;
   `usesCleartextTraffic` / `NSAllowsArbitraryLoads` stay until the server's media URLs are confirmed https.

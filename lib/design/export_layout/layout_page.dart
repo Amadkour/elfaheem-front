@@ -27,7 +27,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../core/live/event_wait.dart';
 import '../../features/admin/admin_common.dart' show t;
-import '../../features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../features/teacher/data_lab/data_lab_saver_web.dart' as saver;
+import 'package:flutter_education_app/features/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/data_lab/data_lab_saver_web.dart' as saver;
 import '../app_kit.dart';
 import '../app_notice.dart';
 import '../app_tokens.dart';

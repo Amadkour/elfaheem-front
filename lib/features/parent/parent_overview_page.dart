@@ -25,14 +25,14 @@ import 'package:flutter_education_app/design/boot_splash.dart' show SplashState;
 import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/core/plural.dart';
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../auth/auth_provider.dart';
-import '../shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'parent_message_teacher.dart';
 import 'parent_overview.dart';
 import 'parent_pulse.dart';

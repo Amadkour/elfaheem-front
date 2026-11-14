@@ -3,9 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_language_switch.dart';
-import 'package:flutter_education_app/features/shared/profile/about/about_terms_model.dart';
-import 'package:flutter_education_app/features/shared/profile/about/about_terms_parts.dart';
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart';
+import 'package:flutter_education_app/features/profile/about/about_terms_model.dart';
+import 'package:flutter_education_app/features/profile/about/about_terms_parts.dart';
+import 'package:flutter_education_app/features/rag/app_assistant.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

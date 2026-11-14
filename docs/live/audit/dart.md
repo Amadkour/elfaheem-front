@@ -1,6 +1,6 @@
 # Live audit: shared Dart room code (2026-10-29, read-only agent report; D1, D12 re-verified by hand)
 
-livekit_client ^2.8.0 → 2.13.1 locked; flutter_webrtc fork ref 1634692. Paths under `lib/features/teacher/sessions/live/` unless shown.
+livekit_client ^2.8.0 → 2.13.1 locked; flutter_webrtc fork ref 1634692. Paths under `lib/features/live/room/` unless shown.
 
 | id | sev | file:line | issue | proposed fix |
 |---|---|---|---|---|

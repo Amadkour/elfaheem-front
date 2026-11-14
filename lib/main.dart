@@ -3,10 +3,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
-import 'package:flutter_education_app/features/shared/profile/about/about_and_terms_screen.dart' show TermsScreen;
+import 'package:flutter_education_app/features/profile/about/about_and_terms_screen.dart' show TermsScreen;
 import 'package:flutter_education_app/core/offline/downloads_availability.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
-import 'package:flutter_education_app/features/shared/downloads/downloads_screen.dart';
+import 'package:flutter_education_app/features/downloads/downloads_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -14,9 +14,9 @@ import 'package:flutter_education_app/core/version_check_service.dart';
 import 'package:flutter_education_app/core/app_locale.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/forget_screen.dart';
-import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
-import 'package:flutter_education_app/features/student/home/home_screen.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/dashboard/dashboard_screen.dart';
+import 'package:flutter_education_app/features/home/student/home_screen.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/utils/widget/url_strategy.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/remote_config_service.dart';
@@ -35,6 +35,7 @@ import 'package:flutter_education_app/utils/web_base_path.dart';
 import 'package:flutter_education_app/utils/web_entry_route.dart';
 import 'package:flutter_education_app/core/routing/app_router.dart';
 import 'package:flutter_education_app/core/routing/app_routes.dart';
+import 'package:flutter_education_app/core/routing/route_roles.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind, EntityLinkRequest, EntityRef;
 import 'package:flutter_education_app/core/routing/web_history.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
@@ -57,51 +58,51 @@ import 'features/onboarding/onboarding_screen.dart';
 import 'features/onboarding/onboarding_store.dart';
 import 'features/onboarding/start_route.dart';
 import 'features/auth/verified_screen.dart';
-import 'features/shared/attendance/attendance_offline_sync.dart';
-import 'features/shared/attendance/attendance_push.dart';
-import 'features/shared/attendance/attendance_store.dart';
-import 'features/shared/attendance/attendance_teacher_banner.dart';
-import 'features/shared/guest/guest_live_api.dart' show guestLiveTokenFromRoute, legacyHashRoute;
-import 'features/shared/guest/guest_live_page.dart';
-import 'features/shared/certificates_issue/cert_issue_logic.dart' show certVerifyTokenFromRoute;
-import 'features/shared/certificates_issue/cert_verify_logic.dart' show isCertVerifyHomeRoute;
-import 'features/shared/certificates_issue/cert_verify_page.dart';
+import 'package:flutter_education_app/features/attendance/attendance_offline_sync.dart';
+import 'package:flutter_education_app/features/attendance/attendance_push.dart';
+import 'package:flutter_education_app/features/attendance/attendance_store.dart';
+import 'package:flutter_education_app/features/attendance/attendance_teacher_banner.dart';
+import 'package:flutter_education_app/features/guest/guest_live_api.dart' show guestLiveTokenFromRoute, legacyHashRoute;
+import 'package:flutter_education_app/features/guest/guest_live_page.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_logic.dart' show certVerifyTokenFromRoute;
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_logic.dart' show isCertVerifyHomeRoute;
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart';
 import 'design/export/export_studio_api.dart' show exportLinkTokenFromRoute;
-import 'features/shared/exports/export_link_open_page.dart';
-import 'features/shared/exports/export_links_page.dart';
-import 'features/shared/exports/export_log_page.dart';
-import 'features/shared/exports/export_schedules_page.dart';
-import 'features/shared/exports/exports_center_page.dart';
-import 'features/shared/guest/guest_state.dart';
-import 'features/shared/rag/app_assistant.dart' show AppAssistantHost;
+import 'package:flutter_education_app/features/exports/export_link_open_page.dart';
+import 'package:flutter_education_app/features/exports/export_links_page.dart';
+import 'package:flutter_education_app/features/exports/export_log_page.dart';
+import 'package:flutter_education_app/features/exports/export_schedules_page.dart';
+import 'package:flutter_education_app/features/exports/exports_center_page.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistantHost;
 import 'features/org/org_invitation_prompt.dart' show OrgInvitationPromptHost;
 import 'features/admin/models/model_download_bar.dart' show ModelDownloadsHost;
 import 'core/release/web_release_watch.dart' show WebReleaseBanner;
-import 'features/shared/get_app/app_download_banner.dart' show AppDownloadBanner;
-import 'features/shared/live/live_room_host.dart' show LiveRoomHost, LiveRoomLayer;
-import 'features/shared/get_app/get_app_banner.dart' show GetAppBanner;
-import 'features/shared/session/video/vod_listen_layer.dart' show VodListenLayer;
+import 'package:flutter_education_app/features/get_app/app_download_banner.dart' show AppDownloadBanner;
+import 'package:flutter_education_app/features/live/live_room_host.dart' show LiveRoomHost, LiveRoomLayer;
+import 'package:flutter_education_app/features/get_app/get_app_banner.dart' show GetAppBanner;
+import 'package:flutter_education_app/features/sessions/video/vod_listen_layer.dart' show VodListenLayer;
 import 'design/app_keyboard.dart' show AppKeyboardSupport;
-import 'features/shared/notification/admin_message_dialogs.dart';
-import 'features/shared/notification/notification_service.dart';
-import 'features/shared/inbox/inbox_page.dart' show InboxPage, inboxRouteTab;
-import 'features/shared/course_profile/course_profile_hub.dart' show CoursePageLoader;
-import 'features/shared/calendar/calendar_screen.dart';
-import 'features/shared/profile/change_password_widget.dart';
-import 'features/shared/profile/update_account_widget.dart';
-import 'features/shared/subscription/subscription_screen.dart';
-import 'features/student/courses/details/course_detail_screen.dart';
+import 'package:flutter_education_app/features/messaging/notification/admin_message_dialogs.dart';
+import 'package:flutter_education_app/features/messaging/notification/notification_service.dart';
+import 'package:flutter_education_app/features/messaging/inbox/inbox_page.dart' show InboxPage, inboxRouteTab;
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart' show CoursePageLoader;
+import 'package:flutter_education_app/features/calendar/calendar_screen.dart';
+import 'package:flutter_education_app/features/profile/change_password_widget.dart';
+import 'package:flutter_education_app/features/profile/update_account_widget.dart';
+import 'package:flutter_education_app/features/payments/subscription/subscription_screen.dart';
+import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart';
 import 'features/org/orgs_unavailable_gate.dart';
-import 'features/shared/live/companion/companion_incoming.dart';
-import 'features/student/courses/details/course_link_loader.dart';
-import 'features/shared/public_profile/public_profile_page.dart' show PublicProfileScreen;
+import 'package:flutter_education_app/features/live/companion/companion_incoming.dart';
+import 'package:flutter_education_app/features/courses/student/details/course_link_loader.dart';
+import 'package:flutter_education_app/features/profile/public_profile/public_profile_page.dart' show PublicProfileScreen;
 import 'core/share/app_links.dart';
-import 'features/shared/share/share_link_page.dart';
-import 'features/shared/records/record_guest_page.dart' show GuestMediaKind, GuestRecordPage;
-import 'features/shared/records/records_guests_api.dart' show isGuestRecordToken;
-import 'features/shared/live/meeting_links_page.dart';
+import 'package:flutter_education_app/features/share/share_link_page.dart';
+import 'package:flutter_education_app/features/records/record_guest_page.dart' show GuestMediaKind, GuestRecordPage;
+import 'package:flutter_education_app/features/records/records_guests_api.dart' show isGuestRecordToken;
+import 'package:flutter_education_app/features/live/meeting_links_page.dart';
 import 'core/routing/deferred_screens.dart';
-import 'features/shared/profile/profile_provider.dart';
+import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'firebase_options.dart';
 import 'core/display/display_settings.dart';
 import 'core/display/display_sync.dart';
@@ -1217,6 +1218,11 @@ class _GuardState extends State<_Guard> {
         Navigator.of(context).pushReplacementNamed('/login');
         return;
       }
+      final home = _roleRedirect(context);
+      if (home != null) {
+        Navigator.of(context).pushReplacementNamed(home); // another role's home (S4): the user's own one instead
+        return; // that home's guard consumes the pending links below
+      }
       DeepLinkService.instance.consumePending(); // link opened while logged out
       ExportLinkPending.consume(Navigator.of(context)); // an export share link, likewise
       SignInReturn.consume(); // any other page opened by URL while signed out (D-170)
@@ -1228,12 +1234,20 @@ class _GuardState extends State<_Guard> {
     });
   }
 
+  /// S4: a signed-in user on another role's home (by URL, an edited cached user) → their own home, else null.
+  String? _roleRedirect(BuildContext context) {
+    final auth = context.read<MyAuthProvider>();
+    if (!auth.isAuthenticated) return null;
+    return routeRoleRedirect(ModalRoute.of(context)?.settings.name,
+        role: auth.currentUser?.role, homeRoute: auth.homeRoute, viewAs: ViewAsState.active);
+  }
+
   @override
   Widget build(BuildContext context) =>
-      (context.read<MyAuthProvider>().isAuthenticated ||
+      ((context.read<MyAuthProvider>().isAuthenticated && _roleRedirect(context) == null) ||
           (widget.guestOk && GuestState.active))
           ? widget.child
-          : const SizedBox.shrink();
+          : const SizedBox.shrink(); // nothing of another role's shell is built (its requests would only fail)
 }
 
 /// Sends the user to their own home screen (used when a route has no usable arguments).

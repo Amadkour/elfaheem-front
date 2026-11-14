@@ -5,7 +5,7 @@
 // (admin_student_manage.dart, AdminTeacherManage), on every host of the panel.
 library;
 
-import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart' show StudyProfile;
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show StudyProfile;
 import 'admin_study_profile_settings_page.dart' show StudyProfileSection;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_number_field.dart';

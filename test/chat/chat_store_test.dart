@@ -1,6 +1,6 @@
 // NextBrain Messages (D-330): the pure message merging, tick and parsing rules.
-import 'package:flutter_education_app/features/shared/chat/chat_models.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_store.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_models.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 ChatMessage msg(int? id, String client, {ChatSendState s = ChatSendState.sent, int sec = 0}) =>

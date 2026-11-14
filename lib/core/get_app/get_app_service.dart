@@ -1,6 +1,6 @@
 // lib/core/get_app/get_app_service.dart — the web build's "Get the app" state: where the page runs, the releases
 // manifest, the remembered dismissals and the light analytics. Drawn by GetAppBanner / GetAppSheet / GetAppTile
-// (lib/features/shared/get_app/).
+// (lib/features/get_app/).
 //
 // Everything offered comes from ONE file, the releases manifest `<site>/releases/releases.json` (schema in
 // releases_manifest.dart), published with the files by scripts/release/publish_release.py into the server's
@@ -18,7 +18,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../../config/app_config.dart';
 import 'get_app_probe_stub.dart' if (dart.library.js_interop) 'get_app_probe_web.dart' as probe;
@@ -192,11 +192,7 @@ class GetAppService extends ChangeNotifier {
   /// Starts the download of [file] in a new tab. False when the browser refused.
   Future<bool> download(GetAppOs os, ReleaseFile file) async {
     track(os, 'click');
-    try {
-      return await launchUrl(Uri.parse(file.url), mode: LaunchMode.externalApplication, webOnlyWindowName: '_blank');
-    } catch (_) {
-      return false;
-    }
+    return openExternalLink(file.url, quiet: true, webOnlyWindowName: '_blank');
   }
 
   /// The browser's own "Install app" prompt (Chrome / Edge): 'accepted', 'dismissed' or 'unavailable'.

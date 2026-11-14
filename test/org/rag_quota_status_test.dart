@@ -1,10 +1,10 @@
 // Phase 10: the RAG library quota (usage, 409 rag_quota_exceeded) and the organization-status codes the exam engine
 // and the RAG service answer like the core (403 orgs_disabled · 423 org_not_approved {status} · 403 org_inactive).
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_taking.dart' show examCodeText;
-import 'package:flutter_education_app/features/shared/rag/rag_library.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_library_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
+import 'package:flutter_education_app/features/exams/exam_taking.dart' show examCodeText;
+import 'package:flutter_education_app/features/rag/rag_library.dart';
+import 'package:flutter_education_app/features/rag/rag_library_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

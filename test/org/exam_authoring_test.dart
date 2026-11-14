@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

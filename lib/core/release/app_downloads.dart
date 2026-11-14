@@ -1,6 +1,6 @@
 // lib/core/release/app_downloads.dart — the website channel's downloads (D-144, docs/release/APP_RELEASES_CODEMAGIC.md
 // "Downloads"): the public list `GET /api/v1/app/downloads`, what this browser is offered first, and the dismissal
-// remembered per browser for one version. Drawn by AppDownloadBanner (lib/features/shared/get_app/app_download_banner.dart).
+// remembered per browser for one version. Drawn by AppDownloadBanner (lib/features/get_app/app_download_banner.dart).
 //
 //   parseAppDownloads(raw)                 the list, leniently ({items} / {downloads} / a bare list; web and file-less
 //                                          entries dropped: the site itself is not a download)
@@ -14,7 +14,7 @@ library;
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../../config/app_config.dart';
 import '../api_client.dart';
@@ -317,11 +317,7 @@ class AppDownloadsService extends ChangeNotifier {
 
   /// Opens [file] (the browser downloads it: the server answers with Content-Disposition: attachment).
   Future<bool> download(AppDownloadFile file) async {
-    try {
-      return await launchUrl(Uri.parse(file.url), mode: LaunchMode.externalApplication, webOnlyWindowName: '_blank');
-    } catch (_) {
-      return false;
-    }
+    return openExternalLink(file.url, quiet: true, webOnlyWindowName: '_blank');
   }
 
   @visibleForTesting

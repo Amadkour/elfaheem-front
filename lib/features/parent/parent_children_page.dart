@@ -9,12 +9,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../shared/analytics/analytics_ui.dart';
-import '../teacher/data_lab/data_lab_models.dart' show DlProfile;
+import 'package:flutter_education_app/features/analytics/analytics_ui.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_models.dart' show DlProfile;
 import 'parent_link_providers.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
-import '../shared/inbox/unified_inbox.dart' show InboxEntryCard;
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart' show InboxEntryCard;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;

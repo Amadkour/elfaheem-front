@@ -1,6 +1,6 @@
 // D-313: when a meeting's shared content takes the overlay layout, and the per-meeting memory of the controls'
 // shown / hidden choice (live_stage_overlay.dart).
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_stage_overlay.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_stage_overlay.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

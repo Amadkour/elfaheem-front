@@ -3,10 +3,10 @@
 // every size, both languages, text 1.3x — and the choices it hands back.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/android_share.dart'
+import 'package:flutter_education_app/features/live/room/widgets/android_share.dart'
     show shareDeviceAudioScopeNote;
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/share_options_sheet.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/share_presets.dart';
+import 'package:flutter_education_app/features/live/room/widgets/share_options_sheet.dart';
+import 'package:flutter_education_app/features/live/room/widgets/share_presets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

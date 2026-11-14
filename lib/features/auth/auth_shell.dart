@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
+import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
@@ -27,7 +27,7 @@ import '../../core/display/app_fonts.dart';
 import '../../design/app_blocks.dart';
 import '../../design/app_motion_kit.dart' show AppEase;
 import '../../design/app_tokens.dart';
-import '../shared/legal/legal_links.dart' show LegalLinksRow;
+import 'package:flutter_education_app/features/profile/legal/legal_links.dart' show LegalLinksRow;
 import 'auth_widgets.dart';
 
 typedef AuthBodyBuilder = Widget Function(BuildContext context, bool isWide);

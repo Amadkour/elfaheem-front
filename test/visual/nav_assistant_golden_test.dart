@@ -24,7 +24,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/shared/rag/app_assistant.dart';
+import 'package:flutter_education_app/features/rag/app_assistant.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';

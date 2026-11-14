@@ -2,10 +2,10 @@
 // preview parse, the export's per-question columns, and the screen's plain-value widgets under the layout harness.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/result/exam_get_result_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/result/exam_result_data.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/result/exam_result_sheets.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/hub/result/parent_grades_link.dart';
+import 'package:flutter_education_app/features/exams/hub/result/exam_get_result_screen.dart';
+import 'package:flutter_education_app/features/exams/hub/result/exam_result_data.dart';
+import 'package:flutter_education_app/features/exams/hub/result/exam_result_sheets.dart';
+import 'package:flutter_education_app/features/exams/hub/result/parent_grades_link.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

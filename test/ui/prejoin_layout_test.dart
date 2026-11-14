@@ -1,8 +1,8 @@
 // PreJoinLayout (the pre-join screen without LiveKit) at 320x640 and 1400x900, ar + en, textScaler 1.3:
 // with and without devices, camera on/off, busy, teacher/student, permission issue, and the device sheet open.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/prejoin_layout.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/prejoin_mic_meter_stub.dart' show micLevelFromBands;
+import 'package:flutter_education_app/features/live/room/prejoin_layout.dart';
+import 'package:flutter_education_app/features/live/room/prejoin_mic_meter_stub.dart' show micLevelFromBands;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

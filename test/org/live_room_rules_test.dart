@@ -3,7 +3,7 @@
 // in the background (D8).
 import 'dart:async' as async;
 
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_room_rules.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_room_rules.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:livekit_client/livekit_client.dart';
 

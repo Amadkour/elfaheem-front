@@ -1,4 +1,4 @@
-// Layout smoke for the chat sessions widgets (lib/features/shared/rag/rag_chat_sessions.dart, rag_chat_screen.dart):
+// Layout smoke for the chat sessions widgets (lib/features/rag/rag_chat_sessions.dart, rag_chat_screen.dart):
 // the conversations panel and its rows (current, long titles, no meta), the empty panel with the retention notice,
 // the empty chat with the New chat button (no retention banner there), the thumbs-down comment sheet, the rename
 // dialog, and an answer card with a curated source and its deep link — at 320x640 and 1400x900, Arabic and
@@ -9,10 +9,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_learning.dart' show RagDownVote;
-import 'package:flutter_education_app/features/shared/rag/chat/rag_chat_parts.dart' show RagSourceChip;
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/rag_chat_screen.dart';
+import 'package:flutter_education_app/features/rag/rag_learning.dart' show RagDownVote;
+import 'package:flutter_education_app/features/rag/chat/rag_chat_parts.dart' show RagSourceChip;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

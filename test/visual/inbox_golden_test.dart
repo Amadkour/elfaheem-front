@@ -1,4 +1,4 @@
-// VISUAL review renders of the inbox page (lib/features/shared/inbox/inbox_page.dart): the inbox and the
+// VISUAL review renders of the inbox page (lib/features/messaging/inbox/inbox_page.dart): the inbox and the
 // notifications on ONE page with tabs, the real page over the fake backend (test/ui/inbox_page_samples.dart), opened
 // on each tab, at 390x844 and 1440x900, ar / en, light / dark, into test/visual/goldens/inbox_<tab>_*.png. Not a CI
 // suite; compared by eye (times follow the clock).
@@ -17,8 +17,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/inbox/inbox_page.dart';
-import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/messaging/inbox/inbox_page.dart';
+import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

@@ -2,7 +2,7 @@
 // soft mute — the order of the real mute and the native clear (L1 / L2), the native clear on every
 // reset (H1), device audio only when the mic may be published (M2) and "muted by the call" owned
 // by the gate (M3).
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/android_share.dart';
+import 'package:flutter_education_app/features/live/room/widgets/android_share.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeMic implements LiveMic {

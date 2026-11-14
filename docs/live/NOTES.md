@@ -12,11 +12,11 @@
 - The 5 s chunks are a RECORDING path only. Viewers watch over LiveKit (WebRTC), never via chunks.
 
 ## App files
-- Room: `lib/features/teacher/sessions/live/` (`prejoin.dart`, `room.dart`, `widgets/room_screen_share.dart`,
+- Room: `lib/features/live/room/` (`prejoin.dart`, `room.dart`, `widgets/room_screen_share.dart`,
   `widgets/room_recorder.dart` (commented-out legacy), `recorder_web_impl.dart` (JS compositor, MediaRecorder timeslice),
   `widgets/record/recorder_native_{android,ios,shared}.dart`, `live_control_bar.dart`, `live_reactions.dart`).
-- Shared live: `lib/features/shared/live/` (lobby, share link, meeting recording, `live_room_host.dart` minimize).
-- Whiteboard (D-087): `lib/features/teacher/sessions/live/whiteboard/` — `board_protocol.dart` (topics `board` /
+- Shared live: `lib/features/live/` (lobby, share link, meeting recording, `live_room_host.dart` minimize).
+- Whiteboard (D-087): `lib/features/live/room/whiteboard/` — `board_protocol.dart` (topics `board` /
   `board.laser`), `board_controller.dart` (pure: presenter, pages, items, undo / redo, snapshots, permissions),
   `board_painter.dart`, `board_stage.dart` (pointer, text editing, selection, per-device zoom, PNG),
   `board_toolbar.dart` (dock, bar, Board sheet, background tiles), `board_view.dart` (the stage composition +
@@ -76,7 +76,7 @@ UDP buffers `net.core.rmem_max/wmem_max=5000000`, LiveKit `use_external_ip: true
 - Docker Desktop not running (needed for postgres / livekit / egress / minio local stack).
 
 ## Live media tuning (D-090, 2026-10-29)
-The super admin's `live_config` (every join / start payload; parsed in `lib/features/shared/live/live_config.dart`,
+The super admin's `live_config` (every join / start payload; parsed in `lib/features/live/live_config.dart`,
 missing / older server → the defaults below) drives what the room publishes (`live_media_plan.dart`, built when the
 Room is made in `prejoin.dart`) and receives (`live_media_controller.dart` + `live_quality_governor.dart`).
 
@@ -125,7 +125,7 @@ their tickers run only while a laser dot fades, `shouldRepaint` compares item li
 - The room must not rebuild once a second: the clocks tick `_clockTick` (badge column + iOS banner listen). Room
   rebuilds come from the throttled sort (≤ 2/s), the governor's tier changes, the recorder and the user.
 - Android placeholder screenshots run only while the device recorder records frames (`_maybeSyncLiveScreenCapture`).
-- Self-view rules: `lib/features/shared/live/live_self_view.dart` (spot, size, keep-out, snap, prefs, the bar's
+- Self-view rules: `lib/features/live/live_self_view.dart` (spot, size, keep-out, snap, prefs, the bar's
   show / hide); widgets: `widgets/self_view_pip.dart`; room wiring: the "Self-view (D-092)" block of room.dart
   (`_selfSpot`, `_selfKeepOut`, `_buildSelfView`, `_openSelfViewOptions`). Prefs: SharedPreferences
   `live.self_view.v1`. Tests `test/org/live_self_view_test.dart`, `test/ui/live_self_view_layout_test.dart` (incl. the

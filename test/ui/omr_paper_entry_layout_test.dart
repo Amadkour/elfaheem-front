@@ -4,16 +4,16 @@
 // template cards, the student's graded header and the legacy answer sheets with the picker.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_flow.dart' show SheetsOptionsView;
-import 'package:flutter_education_app/features/shared/exam_engine/exam_result_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_review.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_review_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup_wizard.dart' show TemplateStepBody;
-import 'package:flutter_education_app/features/shared/exam_engine/paper/paper_exam_entry.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review.dart' show OmrStudent;
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_audience_picker.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_scan_section.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_flow.dart' show SheetsOptionsView;
+import 'package:flutter_education_app/features/exams/exam_result_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_review.dart';
+import 'package:flutter_education_app/features/exams/exam_review_screen.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup_wizard.dart' show TemplateStepBody;
+import 'package:flutter_education_app/features/exams/paper/paper_exam_entry.dart';
+import 'package:flutter_education_app/features/exams/paper/review/omr_review.dart' show OmrStudent;
+import 'package:flutter_education_app/features/exams/paper/scan/omr_audience_picker.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_scan_section.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

@@ -8,12 +8,12 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_bands.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_docx.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_pdf.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_xlsx.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_qr_png.dart';
+import 'package:flutter_education_app/features/exams/exam_paper.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_bands.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_docx.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_pdf.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_xlsx.dart';
+import 'package:flutter_education_app/features/exams/exam_qr_png.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 PaperQuestion _q(int n, String type, String prompt, {List<String> options = const [], Set<int> correct = const {}, double points = 2, String difficulty = ''}) =>

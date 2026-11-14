@@ -4,8 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
-import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
-import 'package:flutter_education_app/features/shared/profile/compalints/new_complaint_screen.dart';
+import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
+import 'package:flutter_education_app/features/profile/compalints/new_complaint_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

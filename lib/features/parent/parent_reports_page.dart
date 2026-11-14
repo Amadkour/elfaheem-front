@@ -22,8 +22,8 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../shared/analytics/analytics_ui.dart' show anTr;
-import '../teacher/data_lab/data_lab_models.dart' show DlProfile;
+import 'package:flutter_education_app/features/analytics/analytics_ui.dart' show anTr;
+import 'package:flutter_education_app/features/data_lab/data_lab_models.dart' show DlProfile;
 import 'parent_child_marks.dart';
 import 'parent_link_providers.dart';
 import 'parent_report_widgets.dart';

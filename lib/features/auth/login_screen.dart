@@ -9,7 +9,7 @@ import '../../design/app_kit.dart' show appConfirm;
 import '../../design/app_tokens.dart';
 import '../../design/app_notice.dart';
 import '../../utils/helpers.dart';
-import '../shared/guest/guest_state.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'auth_provider.dart';
 import 'auth_shell.dart';
 import 'auth_widgets.dart';
@@ -23,8 +23,8 @@ import 'register_screen.dart';
 import 'username.dart' show IdentifierIconData;
 import '../../utils/widget/parent_component.dart';
 import '../org/org_application_screen.dart';
-import '../shared/certificates_issue/cert_verify_logic.dart' show kCertVerifyFeature;
-import '../shared/certificates_issue/cert_verify_page.dart' show openCertVerify;
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_logic.dart' show kCertVerifyFeature;
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show openCertVerify;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

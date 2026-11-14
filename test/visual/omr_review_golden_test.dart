@@ -28,9 +28,9 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
-import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_results_parts.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review_parts.dart';
+import 'package:flutter_education_app/features/exams/paper/review/omr_results_parts.dart';
+import 'package:flutter_education_app/features/exams/paper/review/omr_review.dart';
+import 'package:flutter_education_app/features/exams/paper/review/omr_review_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;

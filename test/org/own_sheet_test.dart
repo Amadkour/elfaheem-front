@@ -8,9 +8,9 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup_wizard.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/templates/own_sheet.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup_wizard.dart';
+import 'package:flutter_education_app/features/exams/paper/templates/own_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

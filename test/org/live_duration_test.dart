@@ -1,6 +1,6 @@
-// Live room — "joined N min ago" / "stayed N min" (lib/features/teacher/sessions/live/widgets/live_duration.dart).
+// Live room — "joined N min ago" / "stayed N min" (lib/features/live/room/widgets/live_duration.dart).
 // The attendance rows are naive UTC; parsed as local time they put the duration off by the UTC offset.
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_duration.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_duration.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

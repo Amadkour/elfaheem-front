@@ -9,7 +9,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_home_body.dart';
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_admin_console.dart';
+import 'package:flutter_education_app/features/rag/rag_admin_console.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../org/rag_monitoring_test.dart' show monitoringJson;

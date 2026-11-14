@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/admin/course_students/cs_models.dart';
-import 'package:flutter_education_app/features/admin/course_students/cs_profile.dart';
-import 'package:flutter_education_app/features/admin/course_students/cs_widgets.dart';
+import 'package:flutter_education_app/features/courses/admin/course_students/cs_models.dart';
+import 'package:flutter_education_app/features/courses/admin/course_students/cs_profile.dart';
+import 'package:flutter_education_app/features/courses/admin/course_students/cs_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

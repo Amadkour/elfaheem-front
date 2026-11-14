@@ -4,10 +4,10 @@
 // hand tool's keyboard shortcut.
 import 'package:flutter/painting.dart' show EdgeInsets;
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_edge_scroll.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_format.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_toolbar.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_controller.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_edge_scroll.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_format.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_toolbar.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _box = Size(390, 600);

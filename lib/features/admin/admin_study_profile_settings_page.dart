@@ -14,7 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
-import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart';
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
 
 import 'admin_common.dart' show ErrorRetry, KeyValue, Section, t;
 import 'admin_page.dart';

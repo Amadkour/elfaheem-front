@@ -11,9 +11,9 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/export/cert_docx.dart';
 import 'package:flutter_education_app/design/export/docx_fonts.dart';
 import 'package:flutter_education_app/design/export/export_fonts.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_logic.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_word.dart' show certIssuedVariables;
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_design_models.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_logic.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_word.dart' show certIssuedVariables;
+import 'package:flutter_education_app/features/certificates/designer/certificate_design_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 

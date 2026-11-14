@@ -2,8 +2,8 @@
 // to the source; undo / redo / restore; the saved doc; the render params; the preview's animation curves; moving a part
 // (D-823) and which saved copy opens the Studio (D-826).
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/records/studio_autosave.dart';
-import 'package:flutter_education_app/features/shared/records/studio_project.dart';
+import 'package:flutter_education_app/features/records/studio_autosave.dart';
+import 'package:flutter_education_app/features/records/studio_project.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 StudioOverlay _text(double a, double b, {String text = 'Hello', StudioAnim inA = StudioAnim.fade, StudioAnim outA = StudioAnim.fade}) =>

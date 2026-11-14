@@ -17,7 +17,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/export/export_studio_api.dart';
-import 'package:flutter_education_app/features/shared/exports/export_schedules_page.dart' show ExportScheduleCard, downloadExportRun, showScheduleExportSheet;
+import 'package:flutter_education_app/features/exports/export_schedules_page.dart' show ExportScheduleCard, downloadExportRun, showScheduleExportSheet;
 
 import '../../admin/admin_common.dart' show asInt, t;
 import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage;

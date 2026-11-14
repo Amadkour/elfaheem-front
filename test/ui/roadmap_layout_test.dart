@@ -5,14 +5,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/admin/admin_recs_page.dart';
-import 'package:flutter_education_app/design/app_shine.dart';
-import 'package:flutter_education_app/features/shared/roadmap/journey_page.dart';
-import 'package:flutter_education_app/features/shared/roadmap/recommendations.dart';
-import 'package:flutter_education_app/features/shared/roadmap/roadmap_api.dart';
-import 'package:flutter_education_app/features/shared/roadmap/roadmap_editor.dart';
-import 'package:flutter_education_app/features/shared/roadmap/roadmap_tab.dart';
-import 'package:flutter_education_app/features/student/home/home_journey.dart';
-import 'package:flutter_education_app/features/student/models.dart' show CourseSummary;
+import 'package:flutter_education_app/features/courses/roadmap/journey_page.dart';
+import 'package:flutter_education_app/features/courses/roadmap/recommendations.dart';
+import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart';
+import 'package:flutter_education_app/features/courses/roadmap/roadmap_editor.dart';
+import 'package:flutter_education_app/features/courses/roadmap/roadmap_tab.dart';
+import 'package:flutter_education_app/features/home/student/home_journey.dart';
+import 'package:flutter_education_app/features/home/student/models.dart' show CourseSummary;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -203,7 +202,6 @@ void main() {
   testWidgets('the journey card is calm: no light sweep, no frame scheduled at rest (the home leads with Continue)', (t) async {
     await t.pumpWidget(layoutHost(_scroll(HomeJourneyCard(journey: _journey(), onTap: () {}))));
     await t.pump(const Duration(seconds: 2));
-    expect(find.byType(AppShineBand), findsNothing);
     expect(t.binding.hasScheduledFrame, isFalse, reason: 'nothing loops on the card');
     await t.pumpWidget(const SizedBox());
   });

@@ -19,7 +19,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_keyboard.dart';
 import 'package:flutter_education_app/design/export/export_fonts.dart';
 import 'package:flutter_education_app/design/export_layout/layout_element_view.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_studio.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_engine_studio.dart';
 import 'package:flutter_education_app/main.dart' show navigatorKey;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

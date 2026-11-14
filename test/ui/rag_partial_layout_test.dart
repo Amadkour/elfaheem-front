@@ -1,4 +1,4 @@
-// Layout smoke for the assistant's draft answer (Track E.8, lib/features/shared/rag/rag_chat_screen.dart): the
+// Layout smoke for the assistant's draft answer (Track E.8, lib/features/rag/rag_chat_screen.dart): the
 // pending card with the stage trail and a long draft (Arabic and English), the draft widget alone, the same under
 // reduced motion (steady caret), and the swap to the final answer — at 320x640 and 1400x900, Arabic and English,
 // textScaler 1.3.
@@ -7,8 +7,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/rag_chat_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

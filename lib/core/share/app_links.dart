@@ -15,7 +15,7 @@
 // Root form on purpose: nginx sends a person on to the web app under /app/ (D-270), the phone apps claim `/s/` with
 // App Links / Universal Links (android/app/src/main/AndroidManifest.xml, web/.well-known/*), and a chat app's
 // preview crawler gets the server's Open-Graph card (`/api/v1/share/og/s/{kind}/{id}`). main.dart's router turns a
-// `/s/…` route into the share-link page (features/shared/share/share_link_page.dart), which opens the target for a
+// `/s/…` route into the share-link page (features/share/share_link_page.dart), which opens the target for a
 // signed-in person and shows a public preview + Sign in to everyone else.
 library;
 

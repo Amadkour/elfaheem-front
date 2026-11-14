@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../design/app_kit.dart';
-import '../../shared/help/help_models.dart';
+import 'package:flutter_education_app/features/help/help_models.dart';
 
 const helpMaxSections = 40, helpMaxItems = 60, helpMaxTour = 40, helpMaxText = 6000;
 final _keyRe = RegExp(r'^[a-z0-9_]+$');

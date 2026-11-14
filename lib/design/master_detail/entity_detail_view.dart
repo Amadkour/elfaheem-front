@@ -13,7 +13,7 @@
 // keeps that student as its context.
 library;
 
-import 'package:flutter_education_app/features/shared/study_profile/study_profile_model.dart' show StudyProfile;
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show StudyProfile;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -23,8 +23,8 @@ import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredAdminEntityManage;
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
-import 'package:flutter_education_app/features/shared/course/course_price_tag.dart' show coursePriceLabel;
-import 'package:flutter_education_app/features/student/models.dart' show AppCurrencyX;
+import 'package:flutter_education_app/features/courses/course_price_tag.dart' show coursePriceLabel;
+import 'package:flutter_education_app/features/home/student/models.dart' show AppCurrencyX;
 import 'package:provider/provider.dart';
 
 import '../app_bidi.dart' show ltrIsolate;

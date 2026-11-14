@@ -1,8 +1,8 @@
-// Partial answers of the assistant (Track E.8, lib/features/shared/rag/rag_chat.dart): `answer_partial` read from the
+// Partial answers of the assistant (Track E.8, lib/features/rag/rag_chat.dart): `answer_partial` read from the
 // query row, shown only while the question runs, replaced by the final answer; what counts as a visible change for
 // the pending card; and the poll pacing while a draft grows.
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
+import 'package:flutter_education_app/features/rag/rag_chat.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _row({String state = 'running', String? stage = 'write', Object? partial, String answer = ''}) => {

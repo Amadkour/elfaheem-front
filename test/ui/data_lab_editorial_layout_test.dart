@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppSpace;
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_widgets.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

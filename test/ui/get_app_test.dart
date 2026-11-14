@@ -1,7 +1,7 @@
 // "Get the app" / direct downloads: platform detection (iPadOS-as-Mac, in-app browsers, standalone), the releases
 // manifest, what each browser is offered, the 14-day dismissal, the kill switches, the light analytics, the native
 // update rule, and the layouts of the strip, the sheet and the update dialog (lib/core/get_app/,
-// lib/features/shared/get_app/, lib/core/version_check_service.dart).
+// lib/features/get_app/, lib/core/version_check_service.dart).
 import 'dart:convert';
 import 'dart:io';
 
@@ -9,8 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/get_app/get_app_service.dart';
 import 'package:flutter_education_app/core/version_check_service.dart';
-import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart';
-import 'package:flutter_education_app/features/shared/get_app/get_app_sheet.dart';
+import 'package:flutter_education_app/features/get_app/get_app_banner.dart';
+import 'package:flutter_education_app/features/get_app/get_app_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

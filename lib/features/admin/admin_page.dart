@@ -18,7 +18,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellChrome;
-import 'package:flutter_education_app/features/shared/help/help_info_button.dart';
+import 'package:flutter_education_app/features/help/help_info_button.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 /// How a shell tab's Refresh reaches the page inside it without re-creating the page (which would drop its

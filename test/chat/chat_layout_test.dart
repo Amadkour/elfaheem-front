@@ -3,11 +3,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_api.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_models.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_sheets.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_store.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_widgets.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_api.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_models.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_sheets.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_store.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

@@ -73,4 +73,24 @@ void main() {
       {'token': '***', 'items': [{'password': '***', 'n': 1}]}
     ]);
   });
+
+  test('S8: the Google id token, the SSE ticket, a passcode and a PIN are masked', () {
+    final out = redactForLog({
+      'id_token': 'eyJhbGciOi.google.sig',
+      'ticket': 'sse-ticket-123',
+      'passcode': '9182',
+      'pin': '4321',
+      'nested': {'Passcode': '1111', 'PIN': '2222'},
+      'name': 'kept',
+    }) as Map;
+    expect(out['id_token'], '***');
+    expect(out['ticket'], '***');
+    expect(out['passcode'], '***');
+    expect(out['pin'], '***');
+    expect(out['nested'], {'Passcode': '***', 'PIN': '***'});
+    expect(out['name'], 'kept');
+    for (final k in ['id_token', 'ticket', 'passcode', 'pin']) {
+      expect(logSensitiveKeys, contains(k), reason: k);
+    }
+  });
 }

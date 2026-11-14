@@ -2,12 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_logic.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_parts.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_api.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_presets.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_template_colours.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_wordings_panel.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_logic.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_parts.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_engine_api.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_engine_presets.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_template_colours.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_wordings_panel.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

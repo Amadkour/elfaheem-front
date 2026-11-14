@@ -6,9 +6,9 @@ import 'package:flutter_education_app/core/routing/app_routes.dart';
 import 'package:flutter_education_app/features/admin/admin_legal_page.dart' show LegalDocCard;
 import 'package:flutter_education_app/features/auth/auth_shell.dart';
 import 'package:flutter_education_app/features/auth/register_screen.dart' show AuthTermsRow;
-import 'package:flutter_education_app/features/shared/legal/legal_links.dart';
-import 'package:flutter_education_app/features/shared/profile/about/about_terms_model.dart';
-import 'package:flutter_education_app/features/shared/profile/about/about_terms_parts.dart';
+import 'package:flutter_education_app/features/profile/legal/legal_links.dart';
+import 'package:flutter_education_app/features/profile/about/about_terms_model.dart';
+import 'package:flutter_education_app/features/profile/about/about_terms_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

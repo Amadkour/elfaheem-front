@@ -16,16 +16,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_result_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_results_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_review_screen.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_scan_review.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/exam_setup.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/paper_exam_entry.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_results_parts.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_routes.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/scan/omr_sheets_sheet.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_result_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_results_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_review_screen.dart';
+import 'package:flutter_education_app/features/exams/exam_scan_review.dart';
+import 'package:flutter_education_app/features/exams/paper/exam_setup.dart';
+import 'package:flutter_education_app/features/exams/paper/paper_exam_entry.dart';
+import 'package:flutter_education_app/features/exams/paper/review/omr_results_parts.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_routes.dart';
+import 'package:flutter_education_app/features/exams/paper/scan/omr_sheets_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -61,6 +61,15 @@ Map<String, dynamic> _queueItem({int studentId = 21}) => {
       'points': 4, 'key': {'model': 'I do not think he will storm the charts with this one, but it is a good start.'}, 'review_state': 'needs_review',
       'proposal': null, 'proposed_score': 4, 'confidence': null, 'final_score': null, 'grader_version': null, 'marks': [],
     };
+
+/// A 1×1 PNG: the scanned page's image.
+final _png = base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+
+/// The scan record of page 31 as `GET /exam/scans/{id}` returns it: the handwritten answer's region for question 12.
+const _scanPage31 = {
+  'id': 31, 'status': 'graded', 'student_id': 21, 'attempt_id': 5, 'file_name': 'quiz.pdf', 'quality_warnings': [],
+  'ocr': {'regions': [{'question_id': 12, 'text': "I don't think he will storm the charts", 'confidence': 0.9, 'box': [0.1, 0.2, 0.8, 0.2]}]},
+};
 
 Future<void> _frames(WidgetTester tester, [int n = 6]) async {
   for (var i = 0; i < n; i++) {
@@ -227,10 +236,14 @@ void main() {
       final fake = FakeApi({
         'GET $_e/review': (_) => {'items': [_queueItem()], 'total': 1, 'counts': {'needs_review': 1}, 'policy': {}, 'accept_threshold': 0.95},
         'GET $_e/omr/students': (_) => _aud('aud_all'),
+        // the answer's crop: the scan record (its region for question 12) and the page image (D-672, D-688)
+        'GET /api/v1/exam/scans/31': (_) => _scanPage31,
+        'GET /api/v1/exam/scans/31/image': (_) => _png,
       }, latency: const Duration(milliseconds: 10))
         ..install();
       addTearDown(fake.uninstall);
       await _pump(tester, const ExamReviewScreen(examId: 1, examTitle: 'CS101 Handwritten quiz'), size: const Size(1440, 1400));
+      expect(find.bySemanticsLabel('The answer on the paper'), findsOneWidget, reason: 'the crop of the scanned page');
 
       expect(find.text('Mona Adel'), findsOneWidget, reason: 'student 21 in the recorded audience');
       expect(find.text('#21'), findsNothing);

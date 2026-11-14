@@ -28,7 +28,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../../config/app_config.dart' show AppConfig, translate;
-import '../../features/teacher/certificates/designer/certificate_design_models.dart' show CertFont, kCertFonts;
+import 'package:flutter_education_app/features/certificates/designer/certificate_design_models.dart' show CertFont, kCertFonts;
 import '../../core/display/lazy_fonts.dart';
 import 'ttf_tools.dart';
 

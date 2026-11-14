@@ -40,7 +40,7 @@ Regression: `../back/tests/org_v2/cert_langs.py` (fails on the old list).
 | 3 | Shared studio engine `lib/design/studio/` (controller, canvas, toolbar, panel) | agent | done (54 tests) |
 | 4 | Export platform backend (templates per user / org + versions, export log, datasets, server render, schedules, links) | agent | done (`e2e_export_platform.py`, 244 checks), reviewed + fixed |
 | 5 | Certificate designer on the engine + v2 UI (per-language, logos, signatures, langs, QR, custom fields) | agent | done (20 unit + 16 layout tests); follow-up: `inherit_en`, English generated background, unsaved-theme preview |
-| 6 | Standalone issuing UI + `/verify/<token>` page (`lib/features/shared/certificates_issue/`) | agent | done (18 unit + 9 layout tests; app links: Android manifest + AASA `/verify/*`); real-app check owed |
+| 6 | Standalone issuing UI + `/verify/<token>` page (`lib/features/certificates/issue/`) | agent | done (18 unit + 9 layout tests; app links: Android manifest + AASA `/verify/*`); real-app check owed |
 | 7 | Export Studio UI on the engine (flow, field picker, Excel studio, rules, themes, templates, log / schedules / links) | agent | done (export suite 109 + 19 unit + 10 layout); entries: admin services hub, org Settings › Exports |
 | 8 | QA + adversarial review, features guide, docs | lead | done: features guide (5 entries + designer updated); real-app QA in a web build on the local stack (designer, standalone issuing, Export Studio, layout 390 / 1440 ar / en) found 9 bugs; front review 11 findings — all fixed with a test each |
 

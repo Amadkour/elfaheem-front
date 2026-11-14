@@ -5,7 +5,7 @@ import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer, AppDoodleScope, AppPattern, AppPatternStyle;
 import 'package:flutter_education_app/design/app_tokens.dart';
 
-import '../../features/shared/upload/upload_progress_footer.dart';
+import 'package:flutter_education_app/features/upload/upload_progress_footer.dart';
 import '../helpers.dart';
 import 'app_bar.dart';
 

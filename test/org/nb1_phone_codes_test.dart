@@ -2,9 +2,9 @@
 // warnings head "Retake these pages", the two written review codes ask for a new photo with no suggested mark, and a
 // key-verified answer says so. Parsers on the documented shapes, read defensively.
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_autograde.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_review.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/paper/review/omr_review.dart';
+import 'package:flutter_education_app/features/exams/exam_autograde.dart';
+import 'package:flutter_education_app/features/exams/exam_review.dart';
+import 'package:flutter_education_app/features/exams/paper/review/omr_review.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

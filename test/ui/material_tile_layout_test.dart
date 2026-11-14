@@ -1,7 +1,7 @@
 // The material card's parts (D-316): no overflow at any size, the sheet pops with the option tapped.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/session/material/components/material_tile_parts.dart';
+import 'package:flutter_education_app/features/sessions/material/components/material_tile_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

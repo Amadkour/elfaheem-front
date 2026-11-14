@@ -73,8 +73,8 @@ Before / after pairs for the three worst issues are in `docs/polish/visual/`:
 - `lib/features/org/org_dashboard_home.dart`: attention action ink and width, trend title.
 - `lib/features/org/org_member_dashboard.dart`: two columns and section titles.
 - `lib/features/admin/admin_home_body.dart`: currency centre, grouped money, LTR unit, ink, health grid.
-- `lib/features/student/home/home_screen.dart`: `HomeSplit`.
-- `lib/features/student/home/home_event_rows.dart`: progress colour and ink.
+- `lib/features/home/student/home_screen.dart`: `HomeSplit`.
+- `lib/features/home/student/home_event_rows.dart`: progress colour and ink.
 - `lib/features/parent/parent_overview_page.dart`: mode label and time ink.
-- `lib/features/shared/rag/` (second pass, rows 19–23, 31, 32): `rag_chat.dart` (`kRagChatMaxWidth`, `kRagPageMaxWidth`, `ragGutter`), `rag_chat_screen.dart`, `rag_chat_sessions.dart`, `rag_admin_console.dart`, `rag_learning_page.dart` (`RagTileGrid`), `rag_qa_admin.dart`, `rag_library_screen.dart`; the golden test draws the chat column as the view does and adds `rag_learning_*`.
+- `lib/features/rag/` (second pass, rows 19–23, 31, 32): `rag_chat.dart` (`kRagChatMaxWidth`, `kRagPageMaxWidth`, `ragGutter`), `rag_chat_screen.dart`, `rag_chat_sessions.dart`, `rag_admin_console.dart`, `rag_learning_page.dart` (`RagTileGrid`), `rag_qa_admin.dart`, `rag_library_screen.dart`; the golden test draws the chat column as the view does and adds `rag_learning_*`.
 - `lib/features/admin/admin_finance_page.dart` and `lib/features/admin/admin_income_breakdown.dart`: two unused imports from HEAD removed. They were analyzer warnings already in `fe9492e`.

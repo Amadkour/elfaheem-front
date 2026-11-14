@@ -11,11 +11,11 @@ import 'package:flutter_education_app/design/engine/design_engine.dart';
 import 'package:flutter_education_app/design/export_layout/layout_api.dart';
 import 'package:flutter_education_app/design/export_layout/layout_element_view.dart' show LayoutAssets;
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_authoring.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_cover_picker.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_design_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_designer.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_paper_sheet.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring.dart';
+import 'package:flutter_education_app/features/exams/exam_cover_picker.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_design_api.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_designer.dart';
+import 'package:flutter_education_app/features/exams/exam_paper_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

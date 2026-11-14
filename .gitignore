@@ -80,6 +80,9 @@ build/debug-info/
 *.p12
 *.p8
 *.pem
+# public TLS certificates (server leaf, Let's Encrypt intermediates and roots), fixtures of test/auth/cert_pin_test.dart (D-946)
+!test/fixtures/tls/*.pem
+!test/fixtures/tls/le/*.pem
 *.mobileprovision
 
 # developer-documents toolchain (D1)

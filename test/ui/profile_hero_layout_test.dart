@@ -3,10 +3,10 @@
 // picture or username, an empty name, and no edit action; plus the old SettingsGroup / SettingsTile names, which now
 // draw the kit's settings group.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
-import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_hero.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_screen.dart' show profileSectionColumns;
+import 'package:flutter_education_app/features/profile/components/setting_group.dart';
+import 'package:flutter_education_app/features/profile/components/setting_title.dart';
+import 'package:flutter_education_app/features/profile/profile_hero.dart';
+import 'package:flutter_education_app/features/profile/profile_screen.dart' show profileSectionColumns;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

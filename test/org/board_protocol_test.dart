@@ -1,9 +1,9 @@
-// The live whiteboard's wire format (D-087): lib/features/teacher/sessions/live/whiteboard/board_protocol.dart.
+// The live whiteboard's wire format (D-087): lib/features/live/room/whiteboard/board_protocol.dart.
 import 'dart:convert';
 
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_protocol.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_protocol.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_data_route.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_protocol.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_protocol.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_data_route.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 List<int> _raw(Map<String, Object?> m) => utf8.encode(jsonEncode(m));

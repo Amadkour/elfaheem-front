@@ -3,13 +3,12 @@ library;
 
 import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' show DateFormat;
+import 'package:flutter_education_app/core/app_time.dart';
 import '../config/app_config.dart';
 import '../config/theme/theme_config_provider.dart';
-import '../features/student/models.dart';
-import '../features/teacher/sessions/components/session_form_sheet.dart';
-import '../features/teacher/sessions/sessions_provider.dart';
-import '../main.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/session_form_sheet.dart';
+import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -51,7 +50,7 @@ extension SaudiDateTime on DateTime {
   /// Format this datetime in AST and return a display string.
   /// Falls back to the raw value if [pattern] is invalid.
   String toAstString([String pattern = 'MMM dd, yyyy hh:mm a']) {
-    return DateFormat(pattern).format(toAst());
+    return AppTime.wall(toAst(), pattern: pattern);
   }
 
   /// true if this datetime is in AST (offset == +03:00).
@@ -61,17 +60,17 @@ extension SaudiDateTime on DateTime {
 class Helpers {
   /// Format date to readable string (AST)
   static String formatDate(DateTime date) {
-    return DateFormat('MMM dd, yyyy').format(date.toAst());
+    return AppTime.date(date.toUtc(), pattern: 'MMM dd, yyyy');
   }
 
   /// Format datetime to readable string (AST)
   static String formatDateTime(DateTime date) {
-    return DateFormat('MMM dd, yyyy hh:mm a').format(date.toAst());
+    return AppTime.dateTime(date.toUtc());
   }
 
   /// Format time (AST)
   static String formatTime(DateTime date) {
-    return DateFormat('hh:mm a').format(date.toAst());
+    return AppTime.time(date.toUtc());
   }
 
   /// Format currency
@@ -111,43 +110,8 @@ class Helpers {
 
   /// Show snackbar message
   static void showMessage(String message, {bool isError = false}) {
-    // above every route (open sheets / dialogs no longer hide it) — falls back to the SnackBar below
-    if (showAppNotice(message, error: isError)) return;
-    if (navigatorKey.currentContext == null) {
-      return;
-    }
-    BuildContext context = navigatorKey.currentContext!;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Directionality(
-          textDirection: pageDirection,
-          child: Wrap(
-            children: [
-              Icon(
-                !isError ? Icons.check_circle_rounded : Icons.error_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                message,
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        backgroundColor: !isError
-            ? context.colors.success
-            : context.colors.danger,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-    );
+    // above every route (open sheets / dialogs no longer hide it); nothing to draw on before the app has a Navigator
+    showAppNotice(message, error: isError);
   }
 
   static TextDirection get pageDirection =>

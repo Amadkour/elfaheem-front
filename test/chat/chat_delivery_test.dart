@@ -7,11 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_api.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_models.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_page.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_store.dart';
-import 'package:flutter_education_app/features/shared/chat/chat_widgets.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_api.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_models.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_page.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_store.dart';
+import 'package:flutter_education_app/features/messaging/chat/chat_widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

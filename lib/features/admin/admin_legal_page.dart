@@ -21,7 +21,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/plural.dart' show countText;
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/shared/profile/about/about_and_terms_screen.dart' show TermsScreen;
+import 'package:flutter_education_app/features/profile/about/about_and_terms_screen.dart' show TermsScreen;
 
 import 'admin_common.dart' as admin show t, asMap;
 import 'admin_page.dart';

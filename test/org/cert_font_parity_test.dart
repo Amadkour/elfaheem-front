@@ -16,8 +16,8 @@ import 'package:flutter_education_app/design/export_layout/layout_model.dart';
 import 'package:flutter_education_app/design/export_layout/layout_props.dart';
 import 'package:flutter_education_app/design/export_layout/layout_canvas.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_api.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_font_picker.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_engine_api.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_font_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

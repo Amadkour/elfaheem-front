@@ -6,8 +6,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/teacher/sessions/students/course_student_provider.dart';
-import 'package:flutter_education_app/features/teacher/sessions/students/course_student_screen.dart' show courseStudentsExport;
+import 'package:flutter_education_app/features/sessions/teacher/students/course_student_provider.dart';
+import 'package:flutter_education_app/features/sessions/teacher/students/course_student_screen.dart' show courseStudentsExport;
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _payload(String name) {

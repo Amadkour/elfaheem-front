@@ -3,10 +3,10 @@
 // and the course page under it (with a bool route popped with a List).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/records/material_studio_api.dart';
-import 'package:flutter_education_app/features/shared/records/material_studio_page.dart';
-import 'package:flutter_education_app/features/shared/records/records_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_share_api.dart';
+import 'package:flutter_education_app/features/records/material_studio_api.dart';
+import 'package:flutter_education_app/features/records/material_studio_page.dart';
+import 'package:flutter_education_app/features/records/records_api.dart';
+import 'package:flutter_education_app/features/records/records_share_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

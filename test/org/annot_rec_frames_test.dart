@@ -4,10 +4,10 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui';
 
-import 'package:flutter_education_app/features/shared/live/live_recording_layout.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annot_rec_frames.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_ink.dart';
+import 'package:flutter_education_app/features/live/live_recording_layout.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annot_rec_frames.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_controller.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_ink.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The extent of every point a stroke's path passes through.

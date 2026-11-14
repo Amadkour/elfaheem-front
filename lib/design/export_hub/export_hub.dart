@@ -26,7 +26,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/admin/admin_common.dart' show SheetHeader, t, toast;
 import '../../features/org/governance/gov_models.dart' show ExportTemplate;
-import '../../features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../features/teacher/data_lab/data_lab_saver_web.dart' as saver;
+import 'package:flutter_education_app/features/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/data_lab/data_lab_saver_web.dart' as saver;
 import '../app_kit.dart';
 import '../export/docx_fonts.dart' show DocxFonts, loadDocxFontFiles;
 import '../export/export_fonts.dart' show ExportFonts;

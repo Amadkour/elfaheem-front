@@ -43,7 +43,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../config/app_config.dart';
-import '../../features/shared/calendar/calendar_models.dart' show CalEvent;
+import 'package:flutter_education_app/features/calendar/calendar_models.dart' show CalEvent;
 import '../../utils/live_events.dart';
 import '../api_client.dart';
 import '../app_mode.dart';

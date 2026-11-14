@@ -3,9 +3,9 @@
 // at 320×640 and 1400×900, Arabic and English, text scale 1.3 — no overflow, the right texts and keys.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/live/live_host_handover.dart';
-import 'package:flutter_education_app/features/shared/live/live_rec_signal.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_top_row.dart';
+import 'package:flutter_education_app/features/live/live_host_handover.dart';
+import 'package:flutter_education_app/features/live/live_rec_signal.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_top_row.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

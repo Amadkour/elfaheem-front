@@ -1,4 +1,4 @@
-// The shared course card and its list parts (lib/features/shared/course/course_list_card.dart) at 320x640 and
+// The shared course card and its list parts (lib/features/courses/course_list_card.dart) at 320x640 and
 // 1400x900, Arabic + English, textScaler 1.3: rows and tiles with very long titles, an organization badge leading
 // the meta line, every footer (progress · price with a discount · the teacher's figures), the corner controls, the
 // toolbar (search + segments + action), the empty line, the error banner and the skeleton — plus CourseCard over a
@@ -8,12 +8,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/course/course_list_card.dart';
-import 'package:flutter_education_app/features/shared/course/course_price_tag.dart';
-import 'package:flutter_education_app/features/shared/course/course_scope.dart';
-import 'package:flutter_education_app/features/shared/course/course_scope_bar.dart';
-import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/courses/course_list_card.dart';
+import 'package:flutter_education_app/features/courses/course_price_tag.dart';
+import 'package:flutter_education_app/features/courses/course_scope.dart';
+import 'package:flutter_education_app/features/courses/course_scope_bar.dart';
+import 'package:flutter_education_app/features/courses/home_course_list.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

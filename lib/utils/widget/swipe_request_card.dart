@@ -616,13 +616,11 @@ class _ReasonDialogState extends State<_ReasonDialog> {
   }
 }
 
-/// The result toast (the kit's notice, drawn above every sheet and dialog). [messenger] is kept for existing callers
-/// (captured before any `await`); [color] = the danger colour shows it as an error.
+/// The result toast (the kit's notice, drawn above every sheet and dialog). [icon] is kept for existing callers.
 void showRequestSnack(
-    ScaffoldMessengerState messenger,
     String message, {
-      required Color color,
+      required bool error,
       IconData icon = Icons.info_outline_rounded,
     }) {
-  showAppNotice(message, error: color == messenger.context.colors.danger);
+  showAppNotice(message, error: error);
 }

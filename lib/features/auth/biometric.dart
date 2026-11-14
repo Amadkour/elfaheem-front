@@ -32,7 +32,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../core/token_storage.dart';
-import '../student/courses/security/device_id_service.dart';
+import 'package:flutter_education_app/features/courses/student/security/device_id_service.dart';
 
 /// Kill switch: hides the login button, the offer and the Security switch.
 const kBiometricFeatureKey = 'auth.biometric';

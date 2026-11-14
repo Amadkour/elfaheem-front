@@ -4,10 +4,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_features.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_gen_api.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_generate.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_generate_wizard.dart';
+import 'package:flutter_education_app/features/exams/exam_features.dart';
+import 'package:flutter_education_app/features/exams/exam_gen_api.dart';
+import 'package:flutter_education_app/features/exams/exam_generate.dart';
+import 'package:flutter_education_app/features/exams/exam_generate_wizard.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

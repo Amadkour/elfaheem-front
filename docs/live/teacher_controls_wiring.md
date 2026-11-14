@@ -9,7 +9,7 @@ What the room does beyond the steps below:
   end-for-all removes every participant (`DisconnectReason.participantRemoved`, the same reason a single Remove gives;
   a meeting's room is deleted → `roomDeleted`, already "session ended"). The host's controller calls
   `onEndForAllPhase(true)` right before the request and `(false)` when it failed; the room publishes a reliable packet
-  on topic `room_end` (`lib/features/shared/live/live_end_signal.dart`), every room keeps it in `LiveEndForAllSignal`,
+  on topic `room_end` (`lib/features/live/live_end_signal.dart`), every room keeps it in `LiveEndForAllSignal`,
   and `liveDisconnectActionAfterEndSignal` turns a removal within 5 minutes of "ending" into `sessionEnded`. No request
   at disconnect time; packets from guests are ignored.
 - The host's own removal / deleted room after End for everyone shows no dialog (`_endedForAll`); the recorder is
@@ -20,11 +20,11 @@ What the room does beyond the steps below:
 
 New files (do not need edits):
 
-- `lib/features/shared/live/live_controls_api.dart` — `LiveControlsApi(ref)` (one method per route), pure helpers
+- `lib/features/live/live_controls_api.dart` — `LiveControlsApi(ref)` (one method per route), pure helpers
   (`liveHostActionsFor`, `livePermissionsFor`, `liveMuteSourceFor`, `liveIdentityIsHost`, `LivePublishPermissions`,
   `LiveControlTarget`, `LiveLockState`), `liveControlsErrorText(code)` / `liveControlsError(e)`, feature keys
   `kLiveTeacherControlsFeatureKey` (`live.teacher_controls`) and `kLiveRoomLockFeatureKey` (`live.room_lock`).
-- `lib/features/shared/live/live_participant_controls.dart` — `LiveHostControlsController`, `showLiveParticipantControls`,
+- `lib/features/live/live_participant_controls.dart` — `LiveHostControlsController`, `showLiveParticipantControls`,
   `LiveParticipantActionsBody`, `LiveParticipantControlsButton`, `LiveHostControlsBar`, `LiveHostControlsHeader`.
 - Tests: `test/org/live_controls_api_test.dart`, `test/ui/live_participant_controls_layout_test.dart`.
 
@@ -37,8 +37,8 @@ Backend contract: `../back/routers/live_controls_router.py`, `services/live_cont
 Add a region like the lobby's, the only host-controls code in this file:
 
 ```dart
-import 'package:flutter_education_app/features/shared/live/live_controls_api.dart';
-import 'package:flutter_education_app/features/shared/live/live_participant_controls.dart';
+import 'package:flutter_education_app/features/live/live_controls_api.dart';
+import 'package:flutter_education_app/features/live/live_participant_controls.dart';
 
 // ── Host controls (live.teacher_controls / live.room_lock) ─────────────────
 LiveHostControlsController? _controls;

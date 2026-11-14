@@ -6,14 +6,37 @@
 #   scripts/build_release.sh apk | appbundle | ipa | web
 #
 # Android signing: android/key.properties or ANDROID_KEYSTORE_PATH / _PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD;
-# without them the build is debug-signed and must not be published (gradle prints a warning).
+# without them this script refuses the apk / appbundle (S13: a release is never signed with the debug key), and so does
+# gradle (android/app/build.gradle.kts).
 set -euo pipefail
 target="${1:-appbundle}"
 version="$(grep -E '^version:' pubspec.yaml | awk '{print $2}')"
 symbols="build/debug-info/${version}"
 mkdir -p "$symbols"
+android_keystore() {
+  # the same lookup as gradle: key.properties' storeFile (relative to android/app), else ANDROID_KEYSTORE_PATH
+  local store=""
+  if [[ -f android/key.properties ]]; then
+    store="$(grep -E '^[[:space:]]*storeFile[[:space:]]*=' android/key.properties | head -n1 | cut -d= -f2- | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [[ -n "$store" && "$store" != /* && ! "$store" =~ ^[A-Za-z]: ]] && store="android/app/$store"
+  fi
+  [[ -z "$store" ]] && store="${ANDROID_KEYSTORE_PATH:-}"
+  printf '%s' "$store"
+}
 case "$target" in
-  apk|appbundle|ipa)
+  apk|appbundle)
+    store="$(android_keystore)"
+    if [[ -z "$store" ]]; then
+      echo "refusing: no release keystore (android/key.properties or ANDROID_KEYSTORE_PATH) — a release must never be signed with the debug key" >&2
+      exit 3
+    fi
+    if [[ ! -f "$store" ]]; then
+      echo "refusing: the release keystore '$store' does not exist" >&2
+      exit 3
+    fi
+    flutter build "$target" --release --obfuscate --split-debug-info="$symbols"
+    ;;
+  ipa)
     flutter build "$target" --release --obfuscate --split-debug-info="$symbols"
     ;;
   web)

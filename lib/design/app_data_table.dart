@@ -47,7 +47,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_widgets.dart' as dl;
+import 'package:flutter_education_app/features/data_lab/data_lab_widgets.dart' as dl;
 
 import 'app_kit.dart' show AppChoiceChip, AppDropdown, AppEmpty, AppSheetContent, AppSkeletonBox, showAppSheet;
 import 'app_pagination.dart';

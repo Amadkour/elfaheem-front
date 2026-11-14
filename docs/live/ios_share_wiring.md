@@ -1,6 +1,6 @@
 # iOS share — Dart wiring still owed (2026-10-29)
 
-The native side (ios/, UNTESTED) and `lib/features/teacher/sessions/live/widgets/ios_share.dart`
+The native side (ios/, UNTESTED) and `lib/features/live/room/widgets/ios_share.dart`
 (`IosShareNative`) are written. These existing Dart files were being edited by another agent, so
 the changes below were NOT applied. Apply them, then run the Mac test plan
 (`docs/live/ios_test_plan.md`). Audit ids: `docs/live/audit/ios_web.md`.
@@ -22,7 +22,7 @@ the changes below were NOT applied. Apply them, then run the Mac test plan
 livekit_client 2.13.1 (`local.dart` `setSourceEnabled`, iOS branch) answers it with
 `BroadcastManager().requestActivation()`, i.e. a SECOND picker on top of ours.
 
-## 1. `lib/features/teacher/sessions/live/prejoin.dart` — `RoomOptions` (≈ line 458) — I1
+## 1. `lib/features/live/room/prejoin.dart` — `RoomOptions` (≈ line 458) — I1
 
 ```dart
 defaultScreenShareCaptureOptions: const ScreenShareCaptureOptions(
@@ -40,7 +40,7 @@ Also check the same file around lines 503 / 533 (audit I6): any leftover `startL
 `stopLocalDebugSave` call must go — the native handlers are removed (an old call now gets
 `MissingPluginException`/`notImplemented`).
 
-## 2. `lib/features/teacher/sessions/live/widgets/room_screen_share.dart`
+## 2. `lib/features/live/room/widgets/room_screen_share.dart`
 
 ### 2a. `_toggleScreenShareIOS(local, isSharing)` — START branch (I1, I3, I5)
 
@@ -116,14 +116,14 @@ final isSharing = lkPlatformIs(PlatformType.iOS)
 
 `screenShareActive` already includes `_isBroadcastActive`; add `IosShareNative.broadcasting.value`.
 
-## 3. `lib/features/teacher/sessions/live/widgets/controls.dart` — I3
+## 3. `lib/features/live/room/widgets/controls.dart` — I3
 
 `build()` (≈ line 408: `final isSharing = participant.isScreenShareEnabled();`) — on iOS OR it with
 `IosShareNative.broadcasting.value` and rebuild on it (wrap the share action in a
 `ValueListenableBuilder<bool>(valueListenable: IosShareNative.broadcasting, ...)` or listen in
 `initState`). Otherwise the button shows "Share" while the broadcast is live but not yet published.
 
-## 4. `lib/features/teacher/sessions/live/room.dart`
+## 4. `lib/features/live/room/room.dart`
 
 - **Leaving the room (≈ line 1286):** `stopIOSBroadcast(leaving: true)` stays; with 2b it now really
   ends the extension. No other change.

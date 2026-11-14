@@ -5,8 +5,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/exam_notice.dart';
-import 'package:flutter_education_app/features/shared/exam_engine/parent_grade_visibility.dart';
+import 'package:flutter_education_app/features/exams/exam_notice.dart';
+import 'package:flutter_education_app/features/exams/parent_grade_visibility.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

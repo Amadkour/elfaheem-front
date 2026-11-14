@@ -1,15 +1,15 @@
-// Who is drawing now (D-093): lib/features/teacher/sessions/live/annotation/live_presence.dart (the tracker, its
+// Who is drawing now (D-093): lib/features/live/room/annotation/live_presence.dart (the tracker, its
 // fade and glide, safe names, colours), presence_tags.dart (where a tag goes) and the controllers that feed it from
 // the packets they already receive — with the REAL sender identity.
 import 'dart:convert';
 import 'dart:ui';
 
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_protocol.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/live_presence.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/presence_tags.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_protocol.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_controller.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_protocol.dart';
+import 'package:flutter_education_app/features/live/room/annotation/live_presence.dart';
+import 'package:flutter_education_app/features/live/room/annotation/presence_tags.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_controller.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_protocol.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -5,15 +5,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppButton;
-import 'package:flutter_education_app/features/shared/records/records_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_share_api.dart';
-import 'package:flutter_education_app/features/shared/records/records_share_parts.dart';
-import 'package:flutter_education_app/features/shared/records/records_studio_parts.dart';
-import 'package:flutter_education_app/features/shared/records/studio_export.dart';
-import 'package:flutter_education_app/features/shared/records/studio_panels.dart';
-import 'package:flutter_education_app/features/shared/records/studio_project.dart';
-import 'package:flutter_education_app/features/shared/records/studio_timeline.dart';
-import 'package:flutter_education_app/features/shared/session/video/vod_player_parts.dart' show VodAction, VodActionButton;
+import 'package:flutter_education_app/features/records/records_api.dart';
+import 'package:flutter_education_app/features/records/records_share_api.dart';
+import 'package:flutter_education_app/features/records/records_share_parts.dart';
+import 'package:flutter_education_app/features/records/records_studio_parts.dart';
+import 'package:flutter_education_app/features/records/studio_export.dart';
+import 'package:flutter_education_app/features/records/studio_panels.dart';
+import 'package:flutter_education_app/features/records/studio_project.dart';
+import 'package:flutter_education_app/features/records/studio_timeline.dart';
+import 'package:flutter_education_app/features/sessions/video/vod_player_parts.dart' show VodAction, VodActionButton;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

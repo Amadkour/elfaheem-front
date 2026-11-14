@@ -10,7 +10,7 @@ import 'package:flutter_education_app/features/admin/help/admin_help_editor.dart
 import 'package:flutter_education_app/features/admin/help/admin_help_export.dart';
 import 'package:flutter_education_app/features/admin/help/admin_help_flows.dart';
 import 'package:flutter_education_app/features/admin/help/admin_help_page.dart';
-import 'package:flutter_education_app/features/shared/help/help_models.dart';
+import 'package:flutter_education_app/features/help/help_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';

@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/course_access.dart';
-import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _access({String reason = 'enrolled', bool has = true, String? exp, String status = 'active', int? days}) => {

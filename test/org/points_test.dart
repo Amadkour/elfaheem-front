@@ -1,11 +1,11 @@
 // Points wallet + student live-meeting plan (docs/backend/live-rooms-spec.md §7 – §9): the pure part of
-// lib/features/shared/points/points_api.dart and the meeting form's request body (calendar_models.dart).
+// lib/features/payments/points/points_api.dart and the meeting form's request body (calendar_models.dart).
 import 'dart:typed_data';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart';
-import 'package:flutter_education_app/features/shared/points/points_api.dart';
+import 'package:flutter_education_app/features/calendar/calendar_models.dart';
+import 'package:flutter_education_app/features/payments/points/points_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 ApiException coded(int status, String code, [Map<String, dynamic> extra = const {}]) => ApiException(

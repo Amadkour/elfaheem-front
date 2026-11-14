@@ -26,7 +26,7 @@ import 'org_academic_pages.dart' show CourseArchiveScreen;
 import 'org_page_header.dart' show OrgPushedPage;
 import 'org_schedule_pages.dart' show OrgSchedulePage;
 import '../admin/admin_table_export.dart' show exportPagedList, orgCoursesExport;
-import '../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_screen.dart' show openCourseProfile;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 

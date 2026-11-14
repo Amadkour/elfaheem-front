@@ -2,12 +2,12 @@
 // 1400×900, ar / en, textScaler 1.3, with long Arabic data.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/course/course_space/course_space.dart';
-import 'package:flutter_education_app/features/student/courses/details/components/about.dart';
-import 'package:flutter_education_app/features/student/courses/details/components/course_detail_parts.dart';
-import 'package:flutter_education_app/features/student/courses/details/components/issued_certificate.dart';
-import 'package:flutter_education_app/features/student/models.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
+import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
+import 'package:flutter_education_app/features/courses/student/details/components/about.dart';
+import 'package:flutter_education_app/features/courses/student/details/components/course_detail_parts.dart';
+import 'package:flutter_education_app/features/courses/student/details/components/issued_certificate.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

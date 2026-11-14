@@ -1,7 +1,7 @@
 // My exams (GET /org/public/me/exams) and the weekly-timetable pause during published exam windows: pure logic.
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/org/org_my_exams.dart';
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
+import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> exam(int id, String startsAt, String endsAt, {String role = 'student', int course = 1, int? myRoom}) => {
