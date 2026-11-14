@@ -27,7 +27,7 @@ void main() {
         'https://alfheemacademy.com/verify/$_token',
         'https://www.alfheemacademy.com/verify/$_token',
         'https://alfheemacademy.com/app/verify/$_token',
-        'https://NEXTBRAIN.site/verify/$_token',
+        'https://ALFHEEMACADEMY.com/verify/$_token',
         'https://alfheemacademy.com:443/verify/$_token',
         'alfheemacademy.com/verify/$_token',
       ]) {

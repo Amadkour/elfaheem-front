@@ -135,14 +135,22 @@ def rename_names(text: str) -> str:
 
 
 def rename_domain(text: str) -> str:
-    if NB_DOMAIN not in text:
+    if NB_DOMAIN not in text.lower():
         return text
+    pattern = re.compile(re.escape(NB_DOMAIN), re.I)
+
+    def repl(m: re.Match) -> str:  # keep the case of each label ('NEXTBRAIN.site' tests case-insensitive hosts)
+        old_labels, new_labels = m.group(0).split('.'), DOMAIN.split('.')
+        if len(old_labels) == len(new_labels):
+            return '.'.join(n.upper() if o.isupper() else n for o, n in zip(old_labels, new_labels))
+        return DOMAIN
+
     lines = text.split('\n')
     for i, line in enumerate(lines):
         # Calendar UIDs keep the old host: a changed UID duplicates every imported event (plan 4.2).
         if 'UID:' in line or 'UID=' in line:
             continue
-        lines[i] = line.replace(NB_DOMAIN, DOMAIN)
+        lines[i] = pattern.sub(repl, line)
     return '\n'.join(lines)
 
 

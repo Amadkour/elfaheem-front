@@ -34,7 +34,7 @@ void main() {
       expect(_cb('https://www.alfheemacademy.com/#/payment/callback?status=paid'), isTrue);
       expect(_cb('https://alfheemacademy.com/payment/callback?status=paid'), isTrue);
       expect(_cb('https://alfheemacademy.com/app/payment/callback?status=paid'), isTrue);
-      expect(_cb('https://NEXTBRAIN.site/#/payment/callback?status=paid'), isTrue);
+      expect(_cb('https://ALFHEEMACADEMY.com/#/payment/callback?status=paid'), isTrue);
     });
 
     test('a URL that only contains the words is not the callback', () {
