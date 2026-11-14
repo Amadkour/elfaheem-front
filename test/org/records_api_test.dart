@@ -1,7 +1,7 @@
 // Records (D-311): the pure part — parsing the library rows the server sends, grouping by meeting, times as mm:ss,
 // the edit rules (the server's MIN_PART / speeds), the request bodies and the play URL.
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/live/meeting_recording.dart';
+import 'package:flutter_education_app/features/live/meeting_recording.dart';
 import 'package:flutter_education_app/features/shared/records/records_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 

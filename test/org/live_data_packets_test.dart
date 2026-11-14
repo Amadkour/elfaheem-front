@@ -1,8 +1,8 @@
 // LiveKit data packets in the room: which topic goes where (widgets/live_data_route.dart) and whose hand a
 // hand packet may raise / lower (handPacketTarget in widgets/live_hands.dart). Any participant can publish
 // data, so an unknown topic is dropped and a hand packet's payload identity is not trusted.
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_data_route.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_hands.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_data_route.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_hands.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

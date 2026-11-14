@@ -330,7 +330,7 @@ backend URL for the OAuth redirect) before the drives show as available.
 
 **Context.** People wanted to keep a meeting running in a small box while moving around the app, as video apps do.
 `RoomPage` was a route: leaving the route disposed the LiveKit room, the recorder, chat and timers.
-**Decision.** `LiveRoomLayer` (`lib/features/shared/live/live_room_host.dart`) sits in `MaterialApp.builder`
+**Decision.** `LiveRoomLayer` (`lib/features/live/live_room_host.dart`) sits in `MaterialApp.builder`
 around the app's Navigator. `PreJoinPage` opens the room into it (`LiveRoomHost.open`); the layer draws the page
 full-screen inside its own nested Navigator, or, minimized, keeps the page mounted offstage and draws the box
 (`LiveMiniTile`). The back button is answered by an observer registered before `runApp` (so before WidgetsApp's
@@ -1129,7 +1129,7 @@ Tap-to-focus is kept for a local CAMERA on Android / iOS only (`LiveCameraFocus`
 off for the run). The clocks tick a ValueNotifier read by the badge column only; the screenshot loop runs only while
 the device recorder records frames; the camera restarts only when it did not come up on the front camera; the
 share's glow is still; the aurora stops while my camera is on; the recursion is gone.
-Self-view (`lib/features/shared/live/live_self_view.dart` rules, `widgets/self_view_pip.dart` widgets): while my camera
+Self-view (`lib/features/live/live_self_view.dart` rules, `widgets/self_view_pip.dart` widgets): while my camera
 is on, it is always somewhere — a floating box (3:4 on phones, 16:9 on wide stages) or circle, small or medium, over
 the waiting card, someone's video, a shared screen (mine too), the whiteboard and the annotation layer; it takes only
 its own touches (drawing goes on around it) and keeps clear of the badge column (measured), the thumbnail strip, the
@@ -3751,7 +3751,7 @@ With ten or more unread messages the thread opens on the first of them, under th
 ## D-520 — The phone as a person's companion device (Teams' "Add a device") · 2026-11-09 · accepted
 
 **Context.** The owner: "when open / join meeting can use the cam or speaker or mic of mobile... when the user open the app from mobile open the request... mix between mobile captures and another device in web and stream it to participants and record... premium business logic like the Microsoft Teams".
-**Decision.** From the pre-join page or the room's bar (web / desktop, never on a phone) a signed-in person picks camera, microphone and / or speaker. The server keeps one `live_companions` row per person (`services/live_companion.py`, migration 0071) and rings the phone: a visible high-priority push (android / ios tokens only, so the asking browser never notifies itself) plus the real-time event, and the app asks `GET /me/live-companion/pending` when it opens, resumes or signs in, so whatever is pending shows at once as the incoming-call screen. Accepting returns a LiveKit token for `companion:<primary identity>` that publishes exactly the requested sources, subscribes only when the speaker was requested (client: audio only) and never the person's own mic. Every client folds that identity into the person (`lib/features/shared/live/companion/`): one tile, one name, one count; the host's mute / remove / permissions reach the phone from `services/live_controls.py`; the LiveKit webhook ends the row when the phone or the person leaves. The QR / link fallback is `/s/companion/<secret>` (the secret stored hashed): it opens that same person's request and nothing else, `ask` says `pushed: false` when no phone is signed in.
+**Decision.** From the pre-join page or the room's bar (web / desktop, never on a phone) a signed-in person picks camera, microphone and / or speaker. The server keeps one `live_companions` row per person (`services/live_companion.py`, migration 0071) and rings the phone: a visible high-priority push (android / ios tokens only, so the asking browser never notifies itself) plus the real-time event, and the app asks `GET /me/live-companion/pending` when it opens, resumes or signs in, so whatever is pending shows at once as the incoming-call screen. Accepting returns a LiveKit token for `companion:<primary identity>` that publishes exactly the requested sources, subscribes only when the speaker was requested (client: audio only) and never the person's own mic. Every client folds that identity into the person (`lib/features/live/companion/`): one tile, one name, one count; the host's mute / remove / permissions reach the phone from `services/live_controls.py`; the LiveKit webhook ends the row when the phone or the person leaves. The QR / link fallback is `/s/companion/<secret>` (the secret stored hashed): it opens that same person's request and nothing else, `ask` says `pushed: false` when no phone is signed in.
 **Rejected.** A separate participant for the phone with a duplicate tile (rejected by the brief); merging the phone's media on the server (no such path in LiveKit: an egress composite can only tile participants); a `hidden` participant (hidden tracks are not delivered to others).
 
 ## D-521 — What the companion obeys · 2026-11-09 · accepted

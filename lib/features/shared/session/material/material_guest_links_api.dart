@@ -14,7 +14,7 @@ library;
 
 import '../../../../core/api_client.dart';
 import '../../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
-import '../../live/meeting_recording.dart' show parseRecordingTime;
+import 'package:flutter_education_app/features/live/meeting_recording.dart' show parseRecordingTime;
 import '../../records/records_api.dart' show RecordPlay;
 import '../../records/records_guests_api.dart' show GuestRecordApi, GuestRecordCard;
 

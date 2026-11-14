@@ -4,10 +4,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/prejoin_layout.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_chat.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_control_bar.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_hands.dart';
+import 'package:flutter_education_app/features/live/room/prejoin_layout.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_chat.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_control_bar.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_hands.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

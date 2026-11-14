@@ -11,11 +11,11 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart' show Canvas, Offset, Paint, PaintingStyle, Path, StrokeCap, StrokeJoin;
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_ink.dart' show AnnotFlutterPath;
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_export.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_protocol.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_rec_pacing.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_ink.dart' show AnnotFlutterPath;
+import 'package:flutter_education_app/features/live/room/whiteboard/board_controller.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_export.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_protocol.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_rec_pacing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 BoardController _board() {

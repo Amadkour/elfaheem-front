@@ -17,9 +17,9 @@ import 'package:provider/provider.dart';
 import '../../../../core/api_client.dart';
 import '../../../../utils/widget/view_as_state.dart';
 import '../../../auth/auth_provider.dart';
-import '../../../shared/live/live_controls_api.dart' show liveJoinRefusalText;
-import '../../../shared/live/live_room.dart' show JoinOutcome;
-import '../../../teacher/sessions/live/join_args.dart';
+import 'package:flutter_education_app/features/live/live_controls_api.dart' show liveJoinRefusalText;
+import 'package:flutter_education_app/features/live/live_room.dart' show JoinOutcome;
+import 'package:flutter_education_app/features/live/room/join_args.dart';
 import '../../../teacher/sessions/model/live_response_model.dart';
 
 /// GET /live-sessions/{id}/join as a student: the room (LiveResponseModel), or the lobby outcome (202 waiting …).

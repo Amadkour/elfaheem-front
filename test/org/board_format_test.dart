@@ -4,11 +4,11 @@
 import 'dart:convert';
 import 'dart:ui';
 
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_protocol.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_export.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_format.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_protocol.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_protocol.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_controller.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_export.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_format.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_protocol.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, Object?> _json(List<int> b) => jsonDecode(utf8.decode(b)) as Map<String, Object?>;

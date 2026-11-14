@@ -37,7 +37,7 @@ import '../../utils/top_route_observer.dart' show topRouteObserver;
 import '../../utils/widget/view_as_state.dart';
 import '../admin/admin_common.dart' show asMap, asMapList, t;
 import '../auth/auth_provider.dart';
-import '../shared/live/live_room_host.dart' show LiveRoomHost;
+import 'package:flutter_education_app/features/live/live_room_host.dart' show LiveRoomHost;
 import 'org_invitations.dart';
 import 'org_providers.dart' show OrgSession;
 import 'org_v3.dart';

@@ -4,10 +4,10 @@ import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/features/shared/live/live_recording_layout.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_scrollbar.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_view.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_focus_chrome.dart';
+import 'package:flutter_education_app/features/live/live_recording_layout.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_scrollbar.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_view.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_focus_chrome.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 RecSource _cam(String id, {bool speaking = false}) =>

@@ -29,7 +29,7 @@ import '../../../main.dart' show navigatorKey;
 import '../../../utils/top_route_observer.dart';
 import '../../../utils/widget/view_as_state.dart';
 import '../guest/guest_state.dart';
-import '../live/live_room_host.dart' show LiveRoomHost;
+import 'package:flutter_education_app/features/live/live_room_host.dart' show LiveRoomHost;
 import '../notification/notification_service.dart';
 import 'get_app_sheet.dart';
 

@@ -2,7 +2,7 @@
 // to the access token, the per-start epoch and what an uploader does with each answer.
 import 'package:dio/dio.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/record/recording_upload_token.dart';
+import 'package:flutter_education_app/features/live/room/widgets/record/recording_upload_token.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -7,8 +7,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppButton;
 import 'package:flutter_education_app/design/app_notice.dart' show appNoticeTopOverlay;
-import 'package:flutter_education_app/features/shared/live/meeting_recording.dart';
-import 'package:flutter_education_app/features/shared/live/meeting_recording_sheets.dart';
+import 'package:flutter_education_app/features/live/meeting_recording.dart';
+import 'package:flutter_education_app/features/live/meeting_recording_sheets.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 

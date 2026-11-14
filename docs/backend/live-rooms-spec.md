@@ -1,7 +1,7 @@
 # Live rooms: share links, admission lobby, meeting recordings to cloud drives
 
-Contract between the app (`lib/features/shared/live/`, the live room in
-`lib/features/teacher/sessions/live/`) and the backend (`../back/routers/live_room_router.py`,
+Contract between the app (`lib/features/live/`, the live room in
+`lib/features/live/room/`) and the backend (`../back/routers/live_room_router.py`,
 `../back/services/live_room_service.py`, `../back/routers/live_recording_router.py`,
 `../back/services/live_recording_service.py`, `../back/services/cloud_drive_service.py`).
 Written 2026-10-27. Every agent working on this feature follows it; a deviation is recorded here.

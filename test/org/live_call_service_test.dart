@@ -4,7 +4,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_call_service.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_call_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -29,7 +29,7 @@ import '../../../design/app_notice.dart';
 import '../../../design/app_tokens.dart';
 import '../../../main.dart' show navigatorKey;
 import '../../../utils/widget/parent_component.dart';
-import '../live/live_room_host.dart' show LiveRoomHost;
+import 'package:flutter_education_app/features/live/live_room_host.dart' show LiveRoomHost;
 import 'get_app_banner.dart' show GetAppBannerView;
 import 'get_app_sheet.dart' show getAppIcon, getAppLtr;
 

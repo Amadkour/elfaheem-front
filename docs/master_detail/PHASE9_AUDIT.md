@@ -42,7 +42,7 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 | Data Lab | `teacher/data_lab/*` | spreadsheet grid | out (an editor) |
 | Analytics hub | `teacher/analysis/analytics_hub_screen.dart` | course tool cards | out (navigation hub) |
 | Schedules, sessions section | `teacher/schedules/`, `teacher/sessions/components/` | sessions | out |
-| Live chat / hands | `teacher/sessions/live/widgets/` | live room | out |
+| Live chat / hands | `features/live/room/widgets/` | live room | out |
 | Certificate designer / designs / manager | `teacher/certificates/designer/`, `courses/component/certificate_manager_sheet.dart` | designs | out |
 | Course form, next / recommended course pickers | `teacher/courses/course_form_screen.dart`, `component/*_courses_field.dart` | pickers | out |
 | Payouts | `teacher/profile/payout/teacher_payouts_screen.dart` | money rows | out |

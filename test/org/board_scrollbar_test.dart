@@ -3,7 +3,7 @@
 // point is on.
 import 'dart:ui';
 
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_scrollbar.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_scrollbar.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

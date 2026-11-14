@@ -26,9 +26,9 @@ import 'package:flutter_education_app/features/teacher/courses/component/section
 import 'package:flutter_education_app/features/teacher/courses/course_privacy_card.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/sessions/components/teacher_course_parts.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_palette.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/participant_stats.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/room_screen_share.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_palette.dart';
+import 'package:flutter_education_app/features/live/room/widgets/participant_stats.dart';
+import 'package:flutter_education_app/features/live/room/widgets/room_screen_share.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

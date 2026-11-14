@@ -1,12 +1,12 @@
-// Live rooms — the host's lobby poll schedule (LiveLobbyController, lib/features/shared/live/live_lobby_sheets.dart):
+// Live rooms — the host's lobby poll schedule (LiveLobbyController, lib/features/live/live_lobby_sheets.dart):
 // idle every 15 s, 4 s while the LobbySheet is open, at once on the `live_join_request` push with one follow-up
 // 4 s later, at once on resume, nothing in the background, nothing after dispose. Runs on testWidgets' fake clock
 // against a fake LiveRoomApi — ApiClient is a singleton and cannot be faked, the API class can.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
-import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart';
-import 'package:flutter_education_app/features/shared/live/live_room.dart';
+import 'package:flutter_education_app/features/live/live_lobby_sheets.dart';
+import 'package:flutter_education_app/features/live/live_room.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';
 

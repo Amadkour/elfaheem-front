@@ -56,8 +56,8 @@ import '../../features/teacher/certificates/designer/certificate_designs_screen.
 import '../../features/teacher/courses/course_form_screen.dart' deferred as course_form;
 import '../../features/teacher/dashboard/teacher_dashboard_screen.dart' deferred as teacher_dashboard;
 import '../../features/teacher/data_lab/data_lab_screen.dart' deferred as data_lab;
-import '../../features/teacher/sessions/live/join_args.dart' show JoinArgs;
-import '../../features/teacher/sessions/live/prejoin.dart' deferred as prejoin;
+import 'package:flutter_education_app/features/live/room/join_args.dart' show JoinArgs;
+import 'package:flutter_education_app/features/live/room/prejoin.dart' deferred as prejoin;
 import '../../features/teacher/sessions/sessions_screen.dart' deferred as sessions;
 import '../../features/teacher/todo/teacher_todo_models.dart' show TodoItem;
 import '../../features/teacher/todo/teacher_todo_page.dart' deferred as teacher_todo;

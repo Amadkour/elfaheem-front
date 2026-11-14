@@ -1,12 +1,12 @@
-// One screen share at a time + "Ask to share" (lib/features/shared/live/live_share_arbiter.dart): the packets,
+// One screen share at a time + "Ask to share" (lib/features/live/live_share_arbiter.dart): the packets,
 // the tap decision, the enforcement rule and the state machine across two hosts and two students on a fake
 // network (every packet is delivered to everyone else with LiveKit's sender identity).
 import 'dart:typed_data';
 
-import 'package:flutter_education_app/features/shared/live/live_controls_api.dart';
-import 'package:flutter_education_app/features/shared/live/live_participant_controls.dart';
-import 'package:flutter_education_app/features/shared/live/live_room.dart';
-import 'package:flutter_education_app/features/shared/live/live_share_arbiter.dart';
+import 'package:flutter_education_app/features/live/live_controls_api.dart';
+import 'package:flutter_education_app/features/live/live_participant_controls.dart';
+import 'package:flutter_education_app/features/live/live_room.dart';
+import 'package:flutter_education_app/features/live/live_share_arbiter.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _Net {

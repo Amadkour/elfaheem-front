@@ -34,7 +34,7 @@ import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppButton, AppButtonSize, AppCard, AppKpiGrid, AppListSkeleton, AppPill, AppRefresh, AppTime, AppTrendTile, appChartPalette, appCompactNumber;
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/live/meeting_links_page.dart' show kMeetingLinksFeatureKey, openMeetingLinks;
+import 'package:flutter_education_app/features/live/meeting_links_page.dart' show kMeetingLinksFeatureKey, openMeetingLinks;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_blocks.dart' show AppBlockTone;
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;

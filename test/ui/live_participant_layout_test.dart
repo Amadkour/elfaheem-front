@@ -7,13 +7,13 @@
 //   • RecordingPlaceholderFrame: host alone · 3 others · 60 others (overflow tile) · long title · no logo.
 // Plus the pure helpers: initials and the stable per-name hue.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_avatar.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_palette.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/no_video.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/participant.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/participant_info.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/participant_stats.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/recording_placeholder.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_avatar.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_palette.dart';
+import 'package:flutter_education_app/features/live/room/widgets/no_video.dart';
+import 'package:flutter_education_app/features/live/room/widgets/participant.dart';
+import 'package:flutter_education_app/features/live/room/widgets/participant_info.dart';
+import 'package:flutter_education_app/features/live/room/widgets/participant_stats.dart';
+import 'package:flutter_education_app/features/live/room/widgets/recording_placeholder.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

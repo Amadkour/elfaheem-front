@@ -20,12 +20,12 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_ink.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_layer.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_painter.dart' show AnnotFit;
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_protocol.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_palette.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_controller.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_ink.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_layer.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_painter.dart' show AnnotFit;
+import 'package:flutter_education_app/features/live/room/annotation/annotation_protocol.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_palette.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;

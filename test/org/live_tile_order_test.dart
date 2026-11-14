@@ -1,7 +1,7 @@
 // The room's tile order and re-layout throttle (widgets/live_tile_order.dart, D21): speakers stay on top in their
 // places for 2 s, the order is total and stable, and the throttle runs at most twice a second with the last
 // change always applied.
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_tile_order.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_tile_order.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final _t0 = DateTime.utc(2026, 10, 29, 10);

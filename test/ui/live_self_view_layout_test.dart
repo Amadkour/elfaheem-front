@@ -5,11 +5,11 @@
 // VideoTrackRenderer wraps a LOCAL track in one) no longer wins the tap, and a parent rebuild no longer rebuilds the
 // renderer (the rebuild count the room's once-a-second clock used to cost).
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/live/live_self_view.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/prejoin_layout.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_palette.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_video_view.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/self_view_pip.dart';
+import 'package:flutter_education_app/features/live/live_self_view.dart';
+import 'package:flutter_education_app/features/live/room/prejoin_layout.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_palette.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_video_view.dart';
+import 'package:flutter_education_app/features/live/room/widgets/self_view_pip.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

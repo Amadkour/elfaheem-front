@@ -1,7 +1,7 @@
 // "Go live" from the instructor home (D-091): the pure part (lib/features/teacher/home/go_live.dart) — which
 // session is offered first, which course the sheet opens on, the default title / Record, what the device remembers.
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/live/live_config.dart';
+import 'package:flutter_education_app/features/live/live_config.dart';
 import 'package:flutter_education_app/features/teacher/home/go_live.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

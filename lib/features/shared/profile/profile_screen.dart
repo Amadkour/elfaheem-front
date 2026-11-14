@@ -29,7 +29,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/offline/offline_strings.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/mfa_entry.dart' show MfaSettingsEntry;
-import '../live/meeting_recording_sheets.dart' show CloudDrivesSettingsEntry;
+import 'package:flutter_education_app/features/live/meeting_recording_sheets.dart' show CloudDrivesSettingsEntry;
 import '../../parent/student_link_code_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';

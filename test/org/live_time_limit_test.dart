@@ -1,6 +1,6 @@
 // The free-time limit of a student's live meeting (docs/backend/live-rooms-spec.md §8, §11): the pure countdown
-// rules of lib/features/shared/live/live_time_limit.dart.
-import 'package:flutter_education_app/features/shared/live/live_time_limit.dart';
+// rules of lib/features/live/live_time_limit.dart.
+import 'package:flutter_education_app/features/live/live_time_limit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

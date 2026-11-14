@@ -6,7 +6,7 @@ hardening, batch 2" → "Device recording upload token" and "Recording chunks (R
 
 ## What the Dart side already does
 
-- `ClientRecorder.start()` (`lib/features/teacher/sessions/live/widgets/room_recorder.dart`) asks once per start for
+- `ClientRecorder.start()` (`lib/features/live/room/widgets/room_recorder.dart`) asks once per start for
   the upload token (`POST /api/v1/live-sessions/{id}/recording-upload-token`, a meeting recording
   `POST /api/v1/live/recordings/{rid}/upload-token`; pure rule in `widgets/record/recording_upload_token.dart`) and
   passes `Bearer <upload token>` as the existing `authToken` start argument. An older server (bare 404 / 405) or any

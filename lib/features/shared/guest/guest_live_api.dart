@@ -18,13 +18,13 @@
 // to resolve `/live/<token>` as a route (web path, web hash and app links).
 import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
-import '../live/live_controls_api.dart' show liveControlsErrorText;
-import '../live/live_room.dart'
+import 'package:flutter_education_app/features/live/live_controls_api.dart' show liveControlsErrorText;
+import 'package:flutter_education_app/features/live/live_room.dart'
     show JoinOutcome, LiveGuestAdmission, LiveRoomKind, LiveRoomRef, liveGuestAdmissionFrom, liveRoomCodeText;
-import '../live/live_room_words.dart' show liveTr;
+import 'package:flutter_education_app/features/live/live_room_words.dart' show liveTr;
 import '../../../utils/web_entry_route.dart' show stripWebBasePath;
-import '../live/live_config.dart';
-import '../live/live_time_limit.dart' show parseLiveTimeLimit, parseNaiveUtc;
+import 'package:flutter_education_app/features/live/live_config.dart';
+import 'package:flutter_education_app/features/live/live_time_limit.dart' show parseLiveTimeLimit, parseNaiveUtc;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Models

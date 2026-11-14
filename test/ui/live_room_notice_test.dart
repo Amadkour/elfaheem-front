@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/features/shared/live/live_room_host.dart';
+import 'package:flutter_education_app/features/live/live_room_host.dart';
 import 'package:flutter_education_app/main.dart' show navigatorKey;
 import 'package:flutter_test/flutter_test.dart';
 

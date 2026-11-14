@@ -4,8 +4,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_toolbar.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_controller.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_toolbar.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

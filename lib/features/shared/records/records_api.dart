@@ -21,7 +21,7 @@ import 'dart:typed_data';
 
 import '../../../core/api_client.dart';
 import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
-import '../live/meeting_recording.dart' show CloudProvider, RecordingQuality, parseRecordingTime, recordingSizeLabel;
+import 'package:flutter_education_app/features/live/meeting_recording.dart' show CloudProvider, RecordingQuality, parseRecordingTime, recordingSizeLabel;
 
 /// The library's kill switch (My profile tile, the page, the deep link).
 const kRecordsFeatureKey = 'profile.records';

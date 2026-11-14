@@ -22,7 +22,7 @@ import 'dart:typed_data';
 
 import '../../../core/api_client.dart';
 import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
-import '../live/meeting_recording.dart' show parseRecordingTime;
+import 'package:flutter_education_app/features/live/meeting_recording.dart' show parseRecordingTime;
 import 'records_api.dart';
 import 'records_share_api.dart' show RecordFrames, recordFramesCount;
 import 'records_studio_parts.dart' show StudioTool;

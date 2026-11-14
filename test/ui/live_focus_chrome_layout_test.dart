@@ -3,8 +3,8 @@
 // shown, the top row slides in at the top and the bar at the bottom, over the content (the content never moves);
 // the top row stays ONE 48 px line; the hint pill fits; Reduce motion moves them at once.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_focus_chrome.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_top_row.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_focus_chrome.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_top_row.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

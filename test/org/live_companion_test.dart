@@ -1,5 +1,5 @@
 import 'package:flutter_education_app/core/share/app_links.dart';
-import 'package:flutter_education_app/features/shared/live/companion/companion_core.dart';
+import 'package:flutter_education_app/features/live/companion/companion_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

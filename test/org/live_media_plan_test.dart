@@ -1,7 +1,7 @@
 // What the room publishes and receives (D-090, live_media_plan.dart): camera layers and bitrates per role cap,
 // the codec rule, audio options, the receive rules.
-import 'package:flutter_education_app/features/shared/live/live_config.dart';
-import 'package:flutter_education_app/features/shared/live/live_media_plan.dart';
+import 'package:flutter_education_app/features/live/live_config.dart';
+import 'package:flutter_education_app/features/live/live_media_plan.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:livekit_client/livekit_client.dart';
 

@@ -59,7 +59,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../admin/admin_common.dart' show t, asMap;
 import '../../../config/app_config.dart';
-import '../live/meeting_links_page.dart' show MeetingLinksIcon, kMeetingLinksFeatureKey, openMeetingLinks;
+import 'package:flutter_education_app/features/live/meeting_links_page.dart' show MeetingLinksIcon, kMeetingLinksFeatureKey, openMeetingLinks;
 import 'calendar_api.dart';
 import 'calendar_meeting.dart';
 import 'calendar_models.dart';

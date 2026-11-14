@@ -17,7 +17,7 @@ import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../../../design/app_inputs.dart' show kEmailRegex;
 import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
-import '../live/meeting_recording.dart' show parseRecordingTime;
+import 'package:flutter_education_app/features/live/meeting_recording.dart' show parseRecordingTime;
 import 'records_api.dart' show RecordPlay, recordsErrorText;
 import 'records_share_api.dart' show RecordShare;
 

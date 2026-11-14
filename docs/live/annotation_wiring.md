@@ -1,6 +1,6 @@
 # Live annotation: wiring into the room (D-079)
 
-The core is in `lib/features/teacher/sessions/live/annotation/` (protocol, controller, painter, layer, toolbar,
+The core is in `lib/features/live/room/annotation/` (protocol, controller, painter, layer, toolbar,
 Android overlay wrapper) and `android/.../AnnotationOverlay.kt` + `AnnotationOverlayChannel.kt` (registered in
 `MainActivity.configureFlutterEngine`, `SYSTEM_ALERT_WINDOW` in the manifest). Nothing in the room uses it yet:
 these are the steps to apply once the files other sessions are editing (`room.dart`, `controls.dart`,

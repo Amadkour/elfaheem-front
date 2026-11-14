@@ -18,8 +18,8 @@ import 'dart:convert';
 import '../../../core/api_client.dart';
 import '../../../core/app_time.dart';
 import '../../admin/admin_common.dart' show t;
-import '../../shared/live/live_config.dart' show LiveConfig;
-import '../../shared/live/live_time_limit.dart' show parseNaiveUtc;
+import 'package:flutter_education_app/features/live/live_config.dart' show LiveConfig;
+import 'package:flutter_education_app/features/live/live_time_limit.dart' show parseNaiveUtc;
 import '../sessions/model/live_response_model.dart';
 
 /// The kill switch of the home's "Go live" (services/feature_catalog.py).

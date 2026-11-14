@@ -30,7 +30,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
-import '../live/meeting_recording.dart' show recordingSizeLabel;
+import 'package:flutter_education_app/features/live/meeting_recording.dart' show recordingSizeLabel;
 import 'records_api.dart';
 import 'records_parts.dart' show RecordCover, recordsCountText;
 

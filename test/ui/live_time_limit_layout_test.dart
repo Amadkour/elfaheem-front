@@ -1,7 +1,7 @@
-// The free-time countdown pill and the owner's "Free time ended" card (lib/features/shared/live/live_time_limit.dart)
+// The free-time countdown pill and the owner's "Free time ended" card (lib/features/live/live_time_limit.dart)
 // at phone and web sizes, Arabic and English, text scale 1.3: no overflow.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/live/live_time_limit.dart';
+import 'package:flutter_education_app/features/live/live_time_limit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

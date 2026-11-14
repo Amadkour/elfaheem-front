@@ -3,13 +3,13 @@
 // (idle and held, down and across), and a fixed page in full view with the hint over it.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/live/meeting_recording_sheets.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/draw_input_prefs.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_protocol.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_scrollbar.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_stage.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_view.dart';
+import 'package:flutter_education_app/features/live/meeting_recording_sheets.dart';
+import 'package:flutter_education_app/features/live/room/annotation/draw_input_prefs.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_controller.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_protocol.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_scrollbar.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_stage.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

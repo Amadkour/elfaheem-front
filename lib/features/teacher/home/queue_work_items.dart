@@ -43,7 +43,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/shared/live/live_config.dart';
+import 'package:flutter_education_app/features/live/live_config.dart';
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart' show homeDuration;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
@@ -52,7 +52,7 @@ import 'package:provider/provider.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
 import '../sessions/components/guest_link_sheet.dart';
-import '../sessions/live/join_args.dart';
+import 'package:flutter_education_app/features/live/room/join_args.dart';
 import '../sessions/sessions_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;

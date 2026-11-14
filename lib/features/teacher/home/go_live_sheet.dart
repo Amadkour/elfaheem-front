@@ -33,8 +33,8 @@ import '../../../utils/widget/app_network_image.dart';
 import '../../admin/admin_common.dart' show t;
 import '../../auth/auth_provider.dart';
 import '../../shared/calendar/calendar_meeting.dart' show startQuickMeeting;
-import '../../shared/live/live_room_host.dart';
-import '../sessions/live/join_args.dart';
+import 'package:flutter_education_app/features/live/live_room_host.dart';
+import 'package:flutter_education_app/features/live/room/join_args.dart';
 import 'go_live.dart';
 import 'teacher_models.dart';
 

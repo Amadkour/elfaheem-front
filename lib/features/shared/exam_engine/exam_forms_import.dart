@@ -18,8 +18,8 @@ import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show asMap, asMapList, t;
-import '../live/meeting_recording.dart';
-import '../live/meeting_recording_sheets.dart' show cloudConnectPoll, cloudConnectPollLive, cloudConnectTimeout, openExternalUrl;
+import 'package:flutter_education_app/features/live/meeting_recording.dart';
+import 'package:flutter_education_app/features/live/meeting_recording_sheets.dart' show cloudConnectPoll, cloudConnectPollLive, cloudConnectTimeout, openExternalUrl;
 import 'exam_authoring.dart';
 import 'exam_quick.dart' show QuickExam, QuickMode, QuickResult, QuickSource, createQuickExam;
 

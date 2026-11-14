@@ -1,10 +1,10 @@
-// Live rooms — the host layer (lib/features/shared/live/live_room_host.dart): the room lives above the Navigator,
+// Live rooms — the host layer (lib/features/live/live_room_host.dart): the room lives above the Navigator,
 // shrinks to a box and comes back; the back button closes the room's own dialog, then minimizes, and is left to
 // the app while minimized; closing unmounts the page and completes the handle. Plus the pure geometry of the box
 // and the pure choice of what the box shows (live_mini_box.dart). No LiveKit: the page and the box are plain widgets.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/live/live_mini_box.dart';
-import 'package:flutter_education_app/features/shared/live/live_room_host.dart';
+import 'package:flutter_education_app/features/live/live_mini_box.dart';
+import 'package:flutter_education_app/features/live/live_room_host.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Widget _app() => MaterialApp(

@@ -3,11 +3,11 @@
 // controller's end-for-all phases.
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/live/live_controls_api.dart';
-import 'package:flutter_education_app/features/shared/live/live_end_signal.dart';
-import 'package:flutter_education_app/features/shared/live/live_participant_controls.dart';
-import 'package:flutter_education_app/features/shared/live/live_room.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_room_rules.dart';
+import 'package:flutter_education_app/features/live/live_controls_api.dart';
+import 'package:flutter_education_app/features/live/live_end_signal.dart';
+import 'package:flutter_education_app/features/live/live_participant_controls.dart';
+import 'package:flutter_education_app/features/live/live_room.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_room_rules.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _session = LiveRoomRef.session(42);

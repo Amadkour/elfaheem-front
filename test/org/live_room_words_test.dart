@@ -1,5 +1,5 @@
 // D-106: the live room's words follow its kind — a calendar meeting says «اجتماع» / "meeting", a course session
-// keeps «الحصة» / "session" (lib/features/shared/live/live_room_words.dart) — and no entry asks the pre-join page
+// keeps «الحصة» / "session" (lib/features/live/live_room_words.dart) — and no entry asks the pre-join page
 // to join by itself any more.
 import 'dart:convert';
 import 'dart:io';
@@ -7,9 +7,9 @@ import 'dart:io';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart';
-import 'package:flutter_education_app/features/shared/live/live_controls_api.dart';
-import 'package:flutter_education_app/features/shared/live/live_room.dart';
-import 'package:flutter_education_app/features/shared/live/live_room_words.dart';
+import 'package:flutter_education_app/features/live/live_controls_api.dart';
+import 'package:flutter_education_app/features/live/live_room.dart';
+import 'package:flutter_education_app/features/live/live_room_words.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Arabic / English words of a course session, which a meeting text must never carry.
@@ -154,7 +154,7 @@ void main() {
     // GuestLiveInfo keeps the server's `auto_join` (a DIRECT link: no lobby, no name step) — not a pre-join flag.
     hits.removeWhere((h) => h.contains('guest_live_api.dart') && h.contains("j['auto_join']"));
     expect(hits, isEmpty, reason: hits.join('\n'));
-    final prejoin = File('lib/features/teacher/sessions/live/prejoin.dart').readAsStringSync();
+    final prejoin = File('lib/features/live/room/prejoin.dart').readAsStringSync();
     expect(prejoin.contains('_maybeAutoJoin'), isFalse);
     expect(prejoin.contains('widget.args.autoJoin'), isFalse);
   });

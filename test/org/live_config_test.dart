@@ -1,7 +1,7 @@
 // The super admin's live media settings (D-090): live_config.dart parses `live_config` from every join / start
 // payload; anything missing or unknown is the recommended default.
-import 'package:flutter_education_app/features/shared/live/live_config.dart';
-import 'package:flutter_education_app/features/shared/live/live_room.dart' show JoinOutcome;
+import 'package:flutter_education_app/features/live/live_config.dart';
+import 'package:flutter_education_app/features/live/live_room.dart' show JoinOutcome;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

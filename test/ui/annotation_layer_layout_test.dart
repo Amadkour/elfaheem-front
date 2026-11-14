@@ -5,9 +5,9 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_painter.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_layer.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_controller.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_painter.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_layer.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

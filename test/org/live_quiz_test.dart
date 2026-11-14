@@ -1,6 +1,6 @@
-// The 'quiz' LiveKit packet (lib/features/teacher/sessions/live/widgets/live_quiz.dart): encode / decode and the
+// The 'quiz' LiveKit packet (lib/features/live/room/widgets/live_quiz.dart): encode / decode and the
 // teacher → room hook.
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_quiz.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_quiz.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

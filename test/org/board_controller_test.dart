@@ -1,10 +1,10 @@
-// The live whiteboard's state machine (D-087): lib/features/teacher/sessions/live/whiteboard/board_controller.dart.
+// The live whiteboard's state machine (D-087): lib/features/live/room/whiteboard/board_controller.dart.
 // A tiny "room" passes every packet one device sends to the others, with the REAL sender identity.
 import 'dart:convert';
 
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_protocol.dart' show AnnotInk;
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_protocol.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_protocol.dart' show AnnotInk;
+import 'package:flutter_education_app/features/live/room/whiteboard/board_controller.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_protocol.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _Room {

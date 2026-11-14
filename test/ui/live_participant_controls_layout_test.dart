@@ -1,11 +1,11 @@
-// Host controls in the live room: every presentational widget of lib/features/shared/live/live_participant_controls
+// Host controls in the live room: every presentational widget of lib/features/live/live_participant_controls
 // .dart at phone and web sizes, in Arabic and English, text scale 1.3 — no overflow, no layout exception — plus the
 // tap targets / labels guidelines and the callbacks.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/live/live_controls_api.dart';
-import 'package:flutter_education_app/features/shared/live/live_participant_controls.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_palette.dart';
+import 'package:flutter_education_app/features/live/live_controls_api.dart';
+import 'package:flutter_education_app/features/live/live_participant_controls.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_palette.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

@@ -1,8 +1,8 @@
-// The room's (i) sheet (lib/features/shared/live/meeting_info_sheet.dart, live-rooms-spec §11) at phone and web
+// The room's (i) sheet (lib/features/live/meeting_info_sheet.dart, live-rooms-spec §11) at phone and web
 // sizes, Arabic and English, text scale 1.3: a guest, a member and the host with the link and the rules.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/live/live_room.dart';
-import 'package:flutter_education_app/features/shared/live/meeting_info_sheet.dart';
+import 'package:flutter_education_app/features/live/live_room.dart';
+import 'package:flutter_education_app/features/live/meeting_info_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

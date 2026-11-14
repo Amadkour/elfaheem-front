@@ -3,7 +3,7 @@
 // codes → bilingual text, and the API's paths.
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/live/meeting_recording.dart';
+import 'package:flutter_education_app/features/live/meeting_recording.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

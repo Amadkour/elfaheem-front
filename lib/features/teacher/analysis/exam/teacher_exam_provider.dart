@@ -5,7 +5,7 @@ import '../../../../config/app_config.dart';
 import '../../../../core/api_client.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
 import '../../../shared/models/exam_model.dart';
-import '../../sessions/live/widgets/live_quiz.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_quiz.dart';
 import 'exam_files.dart';
 
 class TeacherExamProvider extends ChangeNotifier {

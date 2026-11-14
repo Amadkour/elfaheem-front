@@ -1,4 +1,4 @@
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/record/live_frame_pacing.dart';
+import 'package:flutter_education_app/features/live/room/widgets/record/live_frame_pacing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // D-135: the Android recorder's room frames — fast enough for real-time motion, never more than half the time spent

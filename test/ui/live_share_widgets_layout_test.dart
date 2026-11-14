@@ -1,14 +1,14 @@
-// One share at a time + the room's attention cues (lib/features/shared/live/live_share_widgets.dart, the Share
+// One share at a time + the room's attention cues (lib/features/live/live_share_widgets.dart, the Share
 // button modes of controls.dart, the "More" badge of live_control_bar.dart, the minimized box's badge): no overflow
 // at 320×640 and 1400×900, ar / en, text scale 1.3.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/live/live_mini_box.dart';
-import 'package:flutter_education_app/features/shared/live/live_share_arbiter.dart';
-import 'package:flutter_education_app/features/shared/live/live_share_widgets.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/controls.dart' show ControlsWidgetState;
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_control_bar.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_palette.dart';
+import 'package:flutter_education_app/features/live/live_mini_box.dart';
+import 'package:flutter_education_app/features/live/live_share_arbiter.dart';
+import 'package:flutter_education_app/features/live/live_share_widgets.dart';
+import 'package:flutter_education_app/features/live/room/widgets/controls.dart' show ControlsWidgetState;
+import 'package:flutter_education_app/features/live/room/widgets/live_control_bar.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_palette.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

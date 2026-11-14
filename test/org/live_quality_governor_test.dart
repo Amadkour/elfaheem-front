@@ -1,7 +1,7 @@
 // The weak-network fix (D-090, live_quality_governor.dart): straight down on a bad sample, one step up per hold of
 // good samples, a doubled hold + a ceiling after a step up that broke the link (no 180p ↔ 720p flapping), audio
 // only under audio_first, "Show video". Replays the 2026-10-29 bench shapes (docs/live/NOTES.md).
-import 'package:flutter_education_app/features/shared/live/live_quality_governor.dart';
+import 'package:flutter_education_app/features/live/live_quality_governor.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _good = LiveNetSample(rating: LiveLinkRating.excellent, lossPct: 0);

@@ -32,7 +32,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 
 import '../../admin/admin_common.dart' show t;
 import '../guest/guest_state.dart';
-import '../live/meeting_recording_sheets.dart' show openExternalUrl;
+import 'package:flutter_education_app/features/live/meeting_recording_sheets.dart' show openExternalUrl;
 import '../session/video/vod_player_parts.dart' show VodAction;
 import 'records_api.dart';
 import 'records_parts.dart';

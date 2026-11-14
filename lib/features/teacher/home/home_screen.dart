@@ -58,7 +58,7 @@ import 'package:flutter_education_app/features/student/home/home_live.dart' show
 import 'package:flutter_education_app/features/student/home/home_screen.dart' show orgModeDaySummary;
 import 'package:flutter_education_app/features/teacher/home/go_live.dart' show kQuickLiveFeatureKey;
 import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart' show GoLiveEntry;
-import 'package:flutter_education_app/features/shared/live/meeting_links_page.dart' show MeetingLinksIcon;
+import 'package:flutter_education_app/features/live/meeting_links_page.dart' show MeetingLinksIcon;
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';

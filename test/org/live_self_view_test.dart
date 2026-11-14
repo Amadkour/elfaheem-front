@@ -1,9 +1,9 @@
-// The self-view rules (D-092, lib/features/shared/live/live_self_view.dart): where my camera goes, how big the box
+// The self-view rules (D-092, lib/features/live/live_self_view.dart): where my camera goes, how big the box
 // is, where a drop settles, what is remembered, and the controls bar's show / hide rule.
 import 'dart:convert';
 
 import 'package:flutter/painting.dart';
-import 'package:flutter_education_app/features/shared/live/live_self_view.dart';
+import 'package:flutter_education_app/features/live/live_self_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

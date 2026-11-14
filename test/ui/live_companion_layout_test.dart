@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/live/companion/companion_core.dart';
-import 'package:flutter_education_app/features/shared/live/companion/companion_link.dart' show CompanionStage;
-import 'package:flutter_education_app/features/shared/live/companion/companion_parts.dart';
+import 'package:flutter_education_app/features/live/companion/companion_core.dart';
+import 'package:flutter_education_app/features/live/companion/companion_link.dart' show CompanionStage;
+import 'package:flutter_education_app/features/live/companion/companion_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

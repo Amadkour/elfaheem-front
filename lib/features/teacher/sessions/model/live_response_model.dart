@@ -1,4 +1,4 @@
-import '../../../shared/live/live_config.dart';
+import 'package:flutter_education_app/features/live/live_config.dart';
 
 class LiveResponseModel {
   final int sessionId;

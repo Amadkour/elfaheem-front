@@ -3,8 +3,8 @@
 // sender (the LiveKit identity decides, never the payload), and burned-in mode.
 import 'dart:convert';
 
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_protocol.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_controller.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_protocol.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _Packet {

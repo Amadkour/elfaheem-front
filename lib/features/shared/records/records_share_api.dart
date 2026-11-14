@@ -18,7 +18,7 @@ import 'dart:typed_data';
 
 import '../../../core/api_client.dart';
 import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
-import '../live/meeting_recording.dart' show RecordingQuality, parseRecordingTime;
+import 'package:flutter_education_app/features/live/meeting_recording.dart' show RecordingQuality, parseRecordingTime;
 import 'records_api.dart' show RecordPlay;
 import 'records_guests_api.dart' show RecordGuest;
 

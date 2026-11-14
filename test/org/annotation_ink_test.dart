@@ -5,9 +5,9 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_controller.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_ink.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/annotation/annotation_protocol.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_controller.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_ink.dart';
+import 'package:flutter_education_app/features/live/room/annotation/annotation_protocol.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// RMS distance of [ys] from 0 (the ideal horizontal line).

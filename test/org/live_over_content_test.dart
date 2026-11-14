@@ -1,9 +1,9 @@
 // D-105: while a screen share fills the stage, the presenter's camera (viewers) and the presenter's own self-view
-// float over the shared PICTURE, not in the empty bars beside / under it (lib/features/shared/live/live_self_view.dart:
+// float over the shared PICTURE, not in the empty bars beside / under it (lib/features/live/live_self_view.dart:
 // shareContentRect, selfViewOverContent).
 import 'package:flutter/painting.dart';
-import 'package:flutter_education_app/features/shared/live/live_self_view.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/whiteboard/board_scrollbar.dart';
+import 'package:flutter_education_app/features/live/live_self_view.dart';
+import 'package:flutter_education_app/features/live/room/whiteboard/board_scrollbar.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

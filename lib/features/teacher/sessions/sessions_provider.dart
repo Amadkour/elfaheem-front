@@ -30,13 +30,13 @@ import '../../shared/upload/upload_queue_manager.dart';
 import '../../student/courses/details/session_exam_gate.dart';
 import '../../student/models.dart';
 import '../home/teacher_models.dart';
-import 'live/join_args.dart';
+import 'package:flutter_education_app/features/live/room/join_args.dart';
 import 'model/live_response_model.dart';
 import '../../shared/course_profile/course_profile_models.dart' show CoursePageState;
-import '../../shared/live/live_config.dart' show LiveConfig;
-import '../../shared/live/live_room.dart' show JoinOutcome;
-import '../../shared/live/live_time_limit.dart' show parseNaiveUtc;
-import '../../shared/live/live_controls_api.dart' show liveJoinRefusalText;
+import 'package:flutter_education_app/features/live/live_config.dart' show LiveConfig;
+import 'package:flutter_education_app/features/live/live_room.dart' show JoinOutcome;
+import 'package:flutter_education_app/features/live/live_time_limit.dart' show parseNaiveUtc;
+import 'package:flutter_education_app/features/live/live_controls_api.dart' show liveJoinRefusalText;
 
 class TeacherCourseScreenProvider extends BaseProvider {
   TeacherCourseScreenProvider({

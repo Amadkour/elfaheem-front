@@ -1,7 +1,7 @@
 // The web screen share's pure parts (share_presets.dart): the same Detail / Motion presets as Android turned into
 // getDisplayMedia constraints and a contentHint (W7), the size the browser gave, the tab-audio track's publish
 // options (W1), and which browsers can share audio at all.
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/share_presets.dart';
+import 'package:flutter_education_app/features/live/room/widgets/share_presets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:livekit_client/livekit_client.dart';
 

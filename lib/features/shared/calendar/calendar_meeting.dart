@@ -23,16 +23,16 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_share_sheet.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart' show showLobbySheet, showShareLinkSheet;
-import 'package:flutter_education_app/features/shared/live/live_room.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/join_args.dart';
+import 'package:flutter_education_app/features/live/live_lobby_sheets.dart' show showLobbySheet, showShareLinkSheet;
+import 'package:flutter_education_app/features/live/live_room.dart';
+import 'package:flutter_education_app/features/live/room/join_args.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
 // [meeting-recording] the latest recording's card + the creator's Record right (docs/backend/live-rooms-spec.md §5)
-import '../live/meeting_recording.dart' show MeetingRecording, RecordingQuality;
-import '../live/meeting_recording_sheets.dart' show MeetingRecordingStatus, RecordingQualityField;
+import 'package:flutter_education_app/features/live/meeting_recording.dart' show MeetingRecording, RecordingQuality;
+import 'package:flutter_education_app/features/live/meeting_recording_sheets.dart' show MeetingRecordingStatus, RecordingQualityField;
 import '../points/live_plan_sheet.dart' show showLivePlanSheet;
 import '../points/points_api.dart';
 import 'calendar_api.dart';
