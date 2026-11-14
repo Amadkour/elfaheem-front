@@ -3,34 +3,35 @@
     "platforms": {
       "android": {
         "default": {
-          "projectId": "elfaheem",
-          "appId": "1:520907928286:android:c262d4fcaa8a4a4277884f",
+          "projectId": "alfaheem-d3c8f",
+          "appId": "1:887854198161:android:d7a88e297d225c3e0afe30",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "ios": {
         "default": {
-          "projectId": "elfaheem",
-          "appId": "1:520907928286:ios:0d8cb6a92aa79d6b77884f",
+          "projectId": "alfaheem-d3c8f",
+          "appId": "1:887854198161:ios:ffa59d7c85f3ac430afe30",
           "uploadDebugSymbols": false,
           "fileOutput": "ios/Runner/GoogleService-Info.plist"
         }
       },
       "macos": {
         "default": {
-          "projectId": "elfaheem",
-          "appId": "1:520907928286:ios:9fdc718bbf42415f77884f",
+          "projectId": "alfaheem-d3c8f",
+          "appId": "1:887854198161:ios:ffa59d7c85f3ac430afe30",
           "uploadDebugSymbols": false,
           "fileOutput": "macos/Runner/GoogleService-Info.plist"
         }
       },
       "dart": {
         "lib/firebase_options.dart": {
-          "projectId": "elfaheem",
+          "projectId": "alfaheem-d3c8f",
           "configurations": {
-            "android": "1:520907928286:android:c262d4fcaa8a4a4277884f",
-            "ios": "1:520907928286:ios:0d8cb6a92aa79d6b77884f",
-            "web": "1:520907928286:web:18b6dc8a8c5f9f5b77884f"
+            "android": "1:887854198161:android:d7a88e297d225c3e0afe30",
+            "ios": "1:887854198161:ios:ffa59d7c85f3ac430afe30",
+            "macos": "1:887854198161:ios:ffa59d7c85f3ac430afe30",
+            "web": "1:887854198161:web:27ee2572fb6035000afe30"
           }
         }
       }

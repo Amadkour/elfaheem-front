@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "520907928286",
-    "project_id": "elfaheem",
-    "storage_bucket": "elfaheem.firebasestorage.app"
+    "project_number": "887854198161",
+    "project_id": "alfaheem-d3c8f",
+    "storage_bucket": "alfaheem-d3c8f.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:520907928286:android:c262d4fcaa8a4a4277884f",
+        "mobilesdk_app_id": "1:887854198161:android:d7a88e297d225c3e0afe30",
         "android_client_info": {
-          "package_name": "com.example.flutter_education_app"
+          "package_name": "com.doubley.alfaheem"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBjtZYFJ5j6JhvppWAuqpuQxa7B1Ka09wg"
+          "current_key": "AIzaSyA2BHNFX3s_SirHxC2tlJtbWs9Tb_8o05I"
         }
       ],
       "services": {

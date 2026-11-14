@@ -31,9 +31,8 @@
 				<string>Editor</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
-					<!-- Firebase Auth returns here after "Continue with Google" (the encoded iOS app id of nextbrain-2y, D-145) -->
-					<string>app-1-647242717565-ios-9e1944ca9c37d70bd69414</string>
-					<string>com.googleusercontent.apps.647242717565-t2inc3ig4t92ek8geavqtgot7vadsb28</string>
+					<!-- Firebase Auth returns here after "Continue with Google" (the encoded iOS app id of alfaheem-d3c8f, A-006) -->
+					<string>app-1-887854198161-ios-ffa59d7c85f3ac430afe30</string>
 				</array>
 			</dict>
 		</array>

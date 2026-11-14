@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyDp7KmV-jpsMbE74KLHm3K6VSYr05pu5Dw</string>
+	<string>AIzaSyA26UeLxyL5_iuc6fo5Cj-K72I1fxsWVuE</string>
 	<key>GCM_SENDER_ID</key>
-	<string>520907928286</string>
+	<string>887854198161</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.flutterEducationApp</string>
+	<string>com.doubley.alfaheem</string>
 	<key>PROJECT_ID</key>
-	<string>elfaheem</string>
+	<string>alfaheem-d3c8f</string>
 	<key>STORAGE_BUCKET</key>
-	<string>elfaheem.firebasestorage.app</string>
+	<string>alfaheem-d3c8f.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:520907928286:ios:0d8cb6a92aa79d6b77884f</string>
+	<string>1:887854198161:ios:ffa59d7c85f3ac430afe30</string>
 </dict>
 </plist>

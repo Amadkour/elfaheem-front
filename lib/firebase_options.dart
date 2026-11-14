@@ -25,10 +25,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for windows - '
@@ -47,29 +44,37 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAAMGDzpS1mT9jK524CdDPzAOy5GrnwQ00',
-    appId: '1:520907928286:web:18b6dc8a8c5f9f5b77884f',
-    messagingSenderId: '520907928286',
-    projectId: 'elfaheem',
-    authDomain: 'elfaheem.firebaseapp.com',
-    storageBucket: 'elfaheem.firebasestorage.app',
-    measurementId: 'G-X65VJHH620',
+    apiKey: 'AIzaSyDUAAYG9xBIOsL0WAY-Or4iPXAuug1ZZ60',
+    appId: '1:887854198161:web:27ee2572fb6035000afe30',
+    messagingSenderId: '887854198161',
+    projectId: 'alfaheem-d3c8f',
+    authDomain: 'alfaheem-d3c8f.firebaseapp.com',
+    storageBucket: 'alfaheem-d3c8f.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBjtZYFJ5j6JhvppWAuqpuQxa7B1Ka09wg',
-    appId: '1:520907928286:android:c262d4fcaa8a4a4277884f',
-    messagingSenderId: '520907928286',
-    projectId: 'elfaheem',
-    storageBucket: 'elfaheem.firebasestorage.app',
+    apiKey: 'AIzaSyA2BHNFX3s_SirHxC2tlJtbWs9Tb_8o05I',
+    appId: '1:887854198161:android:d7a88e297d225c3e0afe30',
+    messagingSenderId: '887854198161',
+    projectId: 'alfaheem-d3c8f',
+    storageBucket: 'alfaheem-d3c8f.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDp7KmV-jpsMbE74KLHm3K6VSYr05pu5Dw',
-    appId: '1:520907928286:ios:0d8cb6a92aa79d6b77884f',
-    messagingSenderId: '520907928286',
-    projectId: 'elfaheem',
-    storageBucket: 'elfaheem.firebasestorage.app',
-    iosBundleId: 'com.example.flutterEducationApp',
+    apiKey: 'AIzaSyA26UeLxyL5_iuc6fo5Cj-K72I1fxsWVuE',
+    appId: '1:887854198161:ios:ffa59d7c85f3ac430afe30',
+    messagingSenderId: '887854198161',
+    projectId: 'alfaheem-d3c8f',
+    storageBucket: 'alfaheem-d3c8f.firebasestorage.app',
+    iosBundleId: 'com.doubley.alfaheem',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyA26UeLxyL5_iuc6fo5Cj-K72I1fxsWVuE',
+    appId: '1:887854198161:ios:ffa59d7c85f3ac430afe30',
+    messagingSenderId: '887854198161',
+    projectId: 'alfaheem-d3c8f',
+    storageBucket: 'alfaheem-d3c8f.firebasestorage.app',
+    iosBundleId: 'com.doubley.alfaheem',
   );
 }
