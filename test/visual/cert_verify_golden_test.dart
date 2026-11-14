@@ -14,8 +14,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_logic.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_view.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_logic.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'home_screens_golden_test.dart' show pubspecFonts;

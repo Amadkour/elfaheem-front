@@ -36,7 +36,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../features/admin/admin_common.dart' as admin;
-import '../features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../features/teacher/data_lab/data_lab_saver_web.dart' as saver;
+import 'package:flutter_education_app/features/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/data_lab/data_lab_saver_web.dart' as saver;
 import 'export/export_studio_model.dart' show exportFileName, exportLtr, exportSizeLabel;
 import 'export/table_export_docx.dart';
 import 'export/table_export_model.dart';

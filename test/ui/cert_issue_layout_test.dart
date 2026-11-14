@@ -1,18 +1,18 @@
 // Certificate issuing — no overflow on a phone (320×640) or a wide window (1400×900), Arabic and English, text ×1.3
 // (layout_harness.dart), for every step's presentational widget, the history list, a batch, a saved list and the
-// public verification page (lib/features/shared/certificates_issue/).
+// public verification page (lib/features/certificates/issue/).
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_expiry_card.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_history.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_lists.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_logic.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_parts.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_view.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_expiry_card.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_history.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_lists.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_logic.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_parts.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

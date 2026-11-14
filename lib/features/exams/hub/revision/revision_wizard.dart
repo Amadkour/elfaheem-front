@@ -17,7 +17,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, asMapList, t;
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_api.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';
 import 'package:flutter_education_app/features/exams/exam_authoring.dart' show ExamAuthoringApi;
 import 'package:flutter_education_app/features/exams/marks/mark_sessions_api.dart' show MarkMode;
 import 'package:flutter_education_app/features/exams/marks/mark_templates_api.dart';

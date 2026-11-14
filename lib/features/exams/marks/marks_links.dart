@@ -11,7 +11,7 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/features/exams/exam_features.dart' show examAutoCorrectAllowed;
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, t;
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_api.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';
 import 'package:flutter_education_app/features/exams/exam_authoring.dart' show ExamAuthoringApi;
 import 'package:flutter_education_app/features/exams/hub/revision/exam_revision_flow.dart' show openExamRevision;
 import 'package:flutter_education_app/features/exams/marks/mark_sessions_api.dart' show MarkMode;

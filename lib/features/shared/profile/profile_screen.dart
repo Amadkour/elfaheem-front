@@ -62,7 +62,7 @@ import 'package:flutter_education_app/features/payments/points/points_api.dart' 
 import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart' show PointsWalletPage;
 import '../records/records_page.dart' show RecordsPage, RecordsSettingsTile;
 import '../public_profile/public_profile_page.dart' show MyProfileTile, ShareMyProfileTile, myShareableUsername, shareProfileLink;
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show CertVerifyEntryTile;
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/design/app_tokens.dart';

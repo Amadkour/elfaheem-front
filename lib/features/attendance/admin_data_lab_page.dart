@@ -13,9 +13,9 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart';
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_api.dart';
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_models.dart';
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_widgets.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_widgets.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
 class AdminDataLabPage extends StatefulWidget {

@@ -24,7 +24,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/design/engine/design_engine.dart' show DesignPurpose;
 import 'package:flutter_education_app/design/export_layout/layout_api.dart' show LayoutApi;
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/teacher/data_lab/data_lab_saver_web.dart' as saver;
+import 'package:flutter_education_app/features/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/data_lab/data_lab_saver_web.dart' as saver;
 import 'package:flutter_education_app/features/exams/exam_authoring_screen.dart' show ExamEditorScreen;
 import 'package:flutter_education_app/features/exams/exam_paper_design_api.dart';
 import 'package:flutter_education_app/features/exams/exam_paper_designer.dart' show PaperConflictChoice, blankPaperDoc, openPaperDesigner, paperDocFrom, paperStartChoices, showPaperConflictDialog;

@@ -1,8 +1,8 @@
 // The certificate designer's save and field limit:
 //   * an edit made while a save is in flight survives the save's answer and keeps the design dirty
 //   * a duplicate near the 60-field limit adds only the copies that fit (the server refuses more with a 400)
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_design_models.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_provider.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_design_models.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_designer_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

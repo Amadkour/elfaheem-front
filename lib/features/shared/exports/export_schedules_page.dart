@@ -27,7 +27,7 @@ import 'package:flutter_education_app/design/export/table_export_model.dart' sho
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
-import '../../teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../teacher/data_lab/data_lab_saver_web.dart' as saver;
+import 'package:flutter_education_app/features/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/data_lab/data_lab_saver_web.dart' as saver;
 import 'export_links_page.dart' show exportContextOrg;
 import 'export_log_page.dart' show exportRowsLabel;
 import 'exports_center_page.dart';

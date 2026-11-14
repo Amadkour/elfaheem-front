@@ -21,9 +21,9 @@ import 'package:flutter_education_app/features/payments/points/live_plan_sheet.d
 import 'package:flutter_education_app/features/payments/points/points_api.dart';
 import 'package:flutter_education_app/features/payments/points/points_card_checkout.dart';
 import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart';
-import 'package:flutter_education_app/features/student/certificates/my_certificate_model.dart';
-import 'package:flutter_education_app/features/student/certificates/my_certificates_provider.dart';
-import 'package:flutter_education_app/features/student/certificates/my_certificates_screen.dart';
+import 'package:flutter_education_app/features/certificates/student/my_certificate_model.dart';
+import 'package:flutter_education_app/features/certificates/student/my_certificates_provider.dart';
+import 'package:flutter_education_app/features/certificates/student/my_certificates_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 

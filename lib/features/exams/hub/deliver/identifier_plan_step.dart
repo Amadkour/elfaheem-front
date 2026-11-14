@@ -17,7 +17,7 @@ import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, t;
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/teacher/data_lab/data_lab_saver_web.dart' as saver;
+import 'package:flutter_education_app/features/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/data_lab/data_lab_saver_web.dart' as saver;
 import 'package:flutter_education_app/features/exams/exam_paper_bands.dart' show kPaperMaxIdentifiers;
 import 'package:flutter_education_app/features/exams/paper/exam_setup.dart';
 import 'package:flutter_education_app/features/exams/hub/deliver/deliver_logic.dart';

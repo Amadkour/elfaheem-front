@@ -5,7 +5,7 @@ import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/shared/calendar/schedule_page.dart';
 import 'package:flutter_education_app/features/shared/calendar/schedule_store.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_gate.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_gate.dart';
 import 'package:flutter_education_app/features/exams/identity/identity_request_gate.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/design/master_detail/entity_search_palette.dart';

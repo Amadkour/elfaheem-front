@@ -6,9 +6,9 @@ import 'dart:convert';
 import 'dart:ui' show Offset, Rect;
 
 import 'package:flutter_education_app/design/studio/studio.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/cert_studio_adapter.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_design_models.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_provider.dart';
+import 'package:flutter_education_app/features/certificates/designer/cert_studio_adapter.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_design_models.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_designer_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

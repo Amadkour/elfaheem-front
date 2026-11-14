@@ -19,7 +19,7 @@ import 'package:flutter_education_app/design/chrome_button.dart' show ChromeIcon
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import '../../../utils/widget/base_page.dart';
 import 'package:flutter_education_app/features/attendance/analysis/teacher/attendance_model.dart';
-import '../../teacher/data_lab/data_lab_models.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
 import 'analytics_editorial.dart';
 import 'package:flutter_education_app/features/attendance/analysis/student/student_attendance_model.dart';
 import 'student_analytics_provider.dart';

@@ -33,7 +33,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/shared/exports/export_links_page.dart' show showShareExportLinkSheet;
 import '../../features/shared/exports/export_schedules_page.dart' show showScheduleExportSheet;
-import '../../features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) '../../features/teacher/data_lab/data_lab_saver_web.dart' as saver;
+import 'package:flutter_education_app/features/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/data_lab/data_lab_saver_web.dart' as saver;
 import '../app_contrast.dart';
 import '../app_kit.dart';
 import '../app_notice.dart';

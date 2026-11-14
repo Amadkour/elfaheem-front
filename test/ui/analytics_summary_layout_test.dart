@@ -10,7 +10,7 @@ import 'package:flutter_education_app/features/attendance/analysis/student/stude
 import 'package:flutter_education_app/features/student/analysis/student_analytics_api.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_screen.dart';
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_models.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 

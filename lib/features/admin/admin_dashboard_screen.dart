@@ -66,7 +66,7 @@ import 'admin_users_page.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show CertVerifyEntryTile;
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show CertVerifyEntryTile;
 
 /// Current tab of the admin shell (the teacher uses TeacherDashboardProvider).
 class AdminDashboardProvider extends ChangeNotifier {

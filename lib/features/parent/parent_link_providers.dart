@@ -10,7 +10,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 
-import '../teacher/data_lab/data_lab_models.dart' show DlProfile;
+import 'package:flutter_education_app/features/data_lab/data_lab_models.dart' show DlProfile;
 import 'parent_widgets.dart';
 
 /// A child's analytics profile — the same one the student sees (progress, attendance, exams, the marks the

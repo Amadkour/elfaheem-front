@@ -5,12 +5,12 @@
 // docked on the end side (tablet / desktop) or in a non-modal panel under the page (phone).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/cert_canvas_item.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/cert_designer_panels.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/cert_text_layout.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_design_models.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_provider.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_screen.dart';
+import 'package:flutter_education_app/features/certificates/designer/cert_canvas_item.dart';
+import 'package:flutter_education_app/features/certificates/designer/cert_designer_panels.dart';
+import 'package:flutter_education_app/features/certificates/designer/cert_text_layout.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_design_models.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_designer_provider.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_designer_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

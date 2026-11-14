@@ -16,7 +16,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_responsive.dart';
 import 'package:flutter_education_app/design/export_hub/export_flow.dart' deferred as export_flow;
 import 'package:flutter_education_app/design/export_layout/layout_page.dart' deferred as export_layout;
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_api.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMapList, t;

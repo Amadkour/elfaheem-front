@@ -10,7 +10,7 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
-import '../../teacher/data_lab/data_lab_models.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
 import 'analytics_summary.dart' show anIsolate;
 import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/design/app_kit.dart';

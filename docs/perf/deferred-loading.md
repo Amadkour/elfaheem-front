@@ -3,8 +3,8 @@
 `main.dart.js` (release) was 18.2 MB with no deferred parts; the browser needs about 6 s to parse and start it.
 dump-info of that build: app code 10.1 MB, of which `features/org` 2.0 MB (+ governance 451 KB, org_reports 107 KB,
 insights 39 KB), `exam_engine` 1.16 MB, `features/admin` 820 KB (+ app_releases 139, models 96), `teacher/sessions`
-607 KB (the live room), `shared/rag` 331, `design/export_hub` 308, `teacher/data_lab` 291, `export_layout` 196,
-`teacher/certificates` 183, `certificates_issue` 143; packages: `timezone` 836 KB, `flutter_localizations` 492,
+607 KB (the live room), `shared/rag` 331, `design/export_hub` 308, `features/data_lab` 291, `export_layout` 196,
+`features/certificates` 183, `certificates_issue` 143; packages: `timezone` 836 KB, `flutter_localizations` 492,
 `image` 337, `livekit_client` 288, `archive` 116, `pdf` 106.
 
 ## How the graph was read

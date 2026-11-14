@@ -19,7 +19,7 @@ import 'package:flutter_education_app/features/courses/student/details/course_ac
 import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart';
 import 'package:flutter_education_app/features/courses/student/details/session_exam_gate.dart';
 import 'package:flutter_education_app/features/student/models.dart';
-import 'package:flutter_education_app/features/teacher/certificates/certificate_requests_screen.dart';
+import 'package:flutter_education_app/features/certificates/certificate_requests_screen.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/course_progress_status_card.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/currency_selector.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/section_card.dart';

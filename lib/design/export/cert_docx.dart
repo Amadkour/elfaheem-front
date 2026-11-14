@@ -24,7 +24,7 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:image/image.dart' as img;
 
-import '../../features/teacher/certificates/designer/certificate_design_models.dart' show CertFieldKind, CertField, CertLangView;
+import 'package:flutter_education_app/features/certificates/designer/certificate_design_models.dart' show CertFieldKind, CertField, CertLangView;
 import 'docx_fonts.dart';
 import 'table_export_model.dart' show xmlEsc;
 import 'ttf_tools.dart';

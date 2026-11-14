@@ -31,7 +31,7 @@ import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/new_complaint_screen.dart';
 import 'package:flutter_education_app/features/shared/public_profile/public_profile_page.dart' show openPersonProfile;
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_api.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/course_reel_player.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/student_course_exams_widget.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/student_exam_provider.dart';

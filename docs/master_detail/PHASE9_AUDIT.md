@@ -33,17 +33,17 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 | My courses | `features/courses/teacher/courses_screen.dart` | course cards | on (P7: panel, Open course primary) |
 | My students · Submissions · Reviews | `teacher/classroom/teacher_classroom.dart` | 3 paged lists | on (`EntityListPage`) |
 | A course's enrolled students | `features/sessions/teacher/students/course_student_screen.dart` | student cards / grid | **P9**: `MasterDetailScaffold` over the existing sliver list; a card opens the student (selected card outlined, `siblings` for prev / next); panel actions = `entityViewerActions` (Message) + Certificates (opens the old dialog, which loses its now-redundant chip); the grid counts its columns on the list's own width (`SliverLayoutBuilder`) and its row height follows the text size |
-| Certificate requests | `teacher/certificates/certificate_requests_screen.dart` | request cards | **P9**: `MasterDetailScaffold`; the student and the course are `EntityChip`s (avatar card keeps approve / reject) |
+| Certificate requests | `features/certificates/certificate_requests_screen.dart` | request cards | **P9**: `MasterDetailScaffold`; the student and the course are `EntityChip`s (avatar card keeps approve / reject) |
 | Device switch requests | `teacher/profile/switch_device_requests/teacher_device_requests_screen.dart` | request cards | **P9**: `EntityGuardedChip` for the student and the course (`student_id` / `course_id` were already in the payload, now parsed, null-safe for an older server) |
 | Grade review (paper marks) | `features/exams/marks/review/grade_review_rows.dart` | its own list + detail | **P9**: the matched student is an `EntityGuardedChip` in the row detail (the screen keeps its own review master-detail) |
 | Attendance roll call | `features/attendance/analysis/teacher/teacher_attendance_screen.dart` | sessions, students | out (decided, gaps A): a row is already two targets, the name opens the course's analytics profile (on purpose, the one parents see) and the switch marks presence; the avatar as a record link would give one person two "open" destinations side by side |
 | Exam hub | `features/exams/legacy/teacher/teacher_exam_hub_screen.dart` | exams, submissions | **P9** (gaps A): `MasterDetailScaffold` around the hub; a result's student name is an `EntityGuardedChip` (`md.exam_result.student.<id>`), the card still opens the answers |
 | Read flags | `teacher/analysis/flags/teacher_read_flags_screen.dart` | flagged items → students | out (decided, gaps A): each student row is one link to the analytics profile; a chip inside it would be a link in a link (`EntityLink` rule: one row, one link) |
-| Data Lab | `teacher/data_lab/*` | spreadsheet grid | out (an editor) |
+| Data Lab | `features/data_lab/*` | spreadsheet grid | out (an editor) |
 | Analytics hub | `teacher/analysis/analytics_hub_screen.dart` | course tool cards | out (navigation hub) |
 | Schedules, sessions section | `teacher/schedules/`, `features/sessions/teacher/components/` | sessions | out |
 | Live chat / hands | `features/live/room/widgets/` | live room | out |
-| Certificate designer / designs / manager | `teacher/certificates/designer/`, `courses/component/certificate_manager_sheet.dart` | designs | out |
+| Certificate designer / designs / manager | `features/certificates/designer/`, `courses/component/certificate_manager_sheet.dart` | designs | out |
 | Course form, next / recommended course pickers | `features/courses/teacher/course_form_screen.dart`, `component/*_courses_field.dart` | pickers | out |
 | Payouts | `teacher/profile/payout/teacher_payouts_screen.dart` | money rows | out |
 
@@ -53,7 +53,7 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 |---|---|---|---|
 | My courses (+ Left) | `features/courses/student/my_courses/my_courses_screen.dart` | course cards | on (P7) |
 | Grades, Payments, Subscriptions | `student/record/student_record_pages.dart` | paged lists | on (`EntityListPage`) |
-| My certificates | `student/certificates/my_certificates_screen.dart` | certificates | on (course chip, P7) |
+| My certificates | `features/certificates/student/my_certificates_screen.dart` | certificates | on (course chip, P7) |
 | My exams | `features/exams/legacy/student/student_exam_list_screen.dart` | exam cards in 4 tabs | **P9**: `MasterDetailScaffold` around the tabs; the course of each exam is an `EntityChip` (opens the course panel: progress, what is due, Continue learning); the card still opens the exam |
 | Dashboard exam tab | `student/dashboard/component/student_exam_tab.dart` | exam cards | **P9** (gaps A): the course is an `EntityChip` (`md.exam_tab.course.<id>`), as in My exams. The widget has no importer today (dead code, see `docs/polish/screen-audit-learning.md`); no scaffold of its own, so a chip opens the full page unless a host wraps it |
 | Analytics | `student/analysis/student_analytics_screen.dart` | course cards → analytics | out (decided, gaps A): the whole card opens the course's analytics; a chip in its header would be a second link inside it, and My courses already opens the course panel |
@@ -109,7 +109,7 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 |---|---|---|---|
 | Notifications | `shared/notification/notifications_screen.dart` | notifications | on (entities with `can_open`, P7) |
 | Schedule | `shared/calendar/schedule_page.dart` | events | on (`EntityNavigator`) |
-| Certificate issue lists | `shared/certificates_issue/cert_issue_lists.dart` | students to issue to | **P9** (gaps B): a person with a `student_id` (on the platform) is an `EntityGuardedChip` (teachers, admins and org staff issue); a newcomer stays plain text |
+| Certificate issue lists | `features/certificates/issue/cert_issue_lists.dart` | students to issue to | **P9** (gaps B): a person with a `student_id` (on the platform) is an `EntityGuardedChip` (teachers, admins and org staff issue); a newcomer stays plain text |
 | Course profile, course list card / row / home list | `features/courses/course_profile/`, `features/courses/` | the course page itself, catalogue cards | out |
 | Complaints, RAG console / chat, about, attendance offline tab, OMR audience picker, material grid, VOD parts | `shared/*` | | out |
 

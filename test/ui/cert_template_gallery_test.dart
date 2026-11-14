@@ -3,8 +3,8 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_api.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_template_gallery.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_engine_api.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_template_gallery.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

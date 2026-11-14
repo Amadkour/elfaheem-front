@@ -2,7 +2,7 @@
 
 Scope: the Export Studio (front `lib/design/export_layout/`, `lib/design/export_hub/`, `lib/design/export/`, shared
 canvas `lib/design/studio/`; server `services/export_layout/`), the Certificate Studio (front
-`lib/features/teacher/certificates/designer/`; server `certificate_design_*`, `certificate_draft_service.py`), and the
+`lib/features/certificates/designer/`; server `certificate_design_*`, `certificate_draft_service.py`), and the
 other renderers the engine must serve. Code read on `organizations` @ front d6d6668 / back d0f253e.
 
 ## What works (keep)

@@ -23,7 +23,7 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/teacher/data_lab/data_lab_saver_web.dart' as saver;
+import 'package:flutter_education_app/features/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/data_lab/data_lab_saver_web.dart' as saver;
 import 'package:flutter_education_app/features/exams/paper/review/omr_review.dart' show OmrReviewApi;
 import 'package:flutter_education_app/features/exams/paper/scan/omr_audience_picker.dart';
 import 'package:flutter_education_app/features/exams/paper/scan/omr_scan.dart';

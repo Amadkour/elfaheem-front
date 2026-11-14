@@ -51,11 +51,11 @@ import 'package:flutter_education_app/features/exams/legacy/teacher/teacher_exam
 import 'package:flutter_education_app/features/exams/paper/bubble/bubble_run_screen.dart' deferred as bubble_home;
 import 'package:flutter_education_app/features/exams/exam_all_screen.dart' deferred as exam_all;
 import 'package:flutter_education_app/features/exams/hub/exam_hub_screen.dart' deferred as exam_hub_screen;
-import '../../features/teacher/certificates/certificate_requests_screen.dart' deferred as cert_requests;
-import '../../features/teacher/certificates/designer/certificate_designs_screen.dart' deferred as cert_designs;
+import 'package:flutter_education_app/features/certificates/certificate_requests_screen.dart' deferred as cert_requests;
+import 'package:flutter_education_app/features/certificates/designer/certificate_designs_screen.dart' deferred as cert_designs;
 import 'package:flutter_education_app/features/courses/teacher/course_form_screen.dart' deferred as course_form;
 import '../../features/teacher/dashboard/teacher_dashboard_screen.dart' deferred as teacher_dashboard;
-import '../../features/teacher/data_lab/data_lab_screen.dart' deferred as data_lab;
+import 'package:flutter_education_app/features/data_lab/data_lab_screen.dart' deferred as data_lab;
 import 'package:flutter_education_app/features/live/room/join_args.dart' show JoinArgs;
 import 'package:flutter_education_app/features/live/room/prejoin.dart' deferred as prejoin;
 import 'package:flutter_education_app/features/sessions/teacher/sessions_screen.dart' deferred as sessions;

@@ -13,7 +13,7 @@ Paths: F = front `lib/`, B = back.
 | # | Item | State | Evidence | Needed |
 |---|------|-------|----------|--------|
 | 2.1.1 | Arabic design resets on save | 1 | B `services/certificate_design_service.py:42` imports the renderer's 28-key `FONT_KEYS`; Arabic in `fields` and English in `fields_en` (B `data/models.py:1397`); `cert_langs.py` "every catalog font survives a save" passes | Real-app re-check only |
-| 2.1.2 | Field editing popup hides the field | 3 | F `features/teacher/certificates/designer/certificate_designer_screen.dart:545` docks the props panel only at width ≥1100; below that `_openPropsSheet` (:636) is a modal `showAppSheet` over the canvas | Non-modal docked sheet on phone/tablet that keeps the field visible |
+| 2.1.2 | Field editing popup hides the field | 3 | F `features/certificates/designer/certificate_designer_screen.dart:545` docks the props panel only at width ≥1100; below that `_openPropsSheet` (:636) is a modal `showAppSheet` over the canvas | Non-modal docked sheet on phone/tablet that keeps the field visible |
 | 2.1.3 | Field resize | 2 | F `design/studio/studio_model.dart:89` has 8 handles, `minSize`; numeric W/H at `cert_designer_panels.dart:600`; aspect fixed per kind (`cert_studio_adapter.dart:84`) | User aspect-lock toggle for text/boxes |
 | 2.1.4 | Editor = preview = saved = export | 2 | Preview and saved file use the same server renderer (`/certificate-designs/{id}/preview`, provider :899); the editor canvas is a separate Flutter painter; no parity test exists | Parity test (canvas vs server PNG); fix the drift it finds |
 | 2.1.5 | Only 2 fonts in Word/PDF/Excel | 3 | F `design/export_hub/export_design.dart:32` `exportFontFamilies = ['tajawal','bahij','plex']`; `design/export/table_export_pdf.dart:3` Tajawal/Bahij; Word/Excel hard-code Arial (`table_export_docx.dart:22`, `table_export_xlsx.dart:49`); no Word font embedding. Arabic RTL shaping fixed (be1d277) | Every studio font in export settings, embedded in PDF and Word |
@@ -40,7 +40,7 @@ Paths: F = front `lib/`, B = back.
 | 3.7 | Server permissions (view, create-for-others, status, export) | 2 | `_manages` / `ctx.can("workflow", …)` (router :68-72), `can_export_items` (`export_data.py:87`) | No distinct "create for others" permission; `source_user_id` not checked for org membership |
 | 3.8 | Validation, audit, ar/en | 2 | Pydantic limits (member router :43-49), `audit(...)` on create/export; attachments only checked for http(s) URL (`services/organization/forms.py:62`) | Client validation pass; attachment URL must be our storage |
 | 6.1 | Ready-made certificate templates | 3 | Draft generator, 3 styles (B `services/certificate_draft_service.py:27`) | Real template gallery ar/en |
-| 6.2 | Bulk generation | 1 | `lib/features/shared/certificates_issue/`, B `certificate_issue_service.py`, `e2e_cert_standalone.py` (70 checks; ZIP / merged PDF) | Real-app check (tracker) |
+| 6.2 | Bulk generation | 1 | `lib/features/certificates/issue/`, B `certificate_issue_service.py`, `e2e_cert_standalone.py` (70 checks; ZIP / merged PDF) | Real-app check (tracker) |
 | 6.3 | QR verification page | 1 | B `routers/certificate_issue_router.py:357` public `/verify/{token}`; F `cert_verify_page.dart` | — |
 | 6.4 | Watermark everywhere | 3 | Export Hub PDF + Word (`export_docx.dart`, `export_pdf.dart`); Excel none (`export_xlsx.dart:9`); certificates none | Cert watermark; image watermark |
 | 6.5 | Request notifications | 1 | B `services/organization/governance/notify.py` (in-app + email `fallback/always`); e2e notifications=54 | — |

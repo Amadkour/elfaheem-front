@@ -25,7 +25,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/certificate_manager_provider.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_screen.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_designer_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';

@@ -14,10 +14,10 @@ import 'dart:typed_data';
 import 'dart:ui' show Rect, Size;
 
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/cert_canvas_item.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/cert_studio_adapter.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/cert_text_layout.dart';
-import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_design_models.dart';
+import 'package:flutter_education_app/features/certificates/designer/cert_canvas_item.dart';
+import 'package:flutter_education_app/features/certificates/designer/cert_studio_adapter.dart';
+import 'package:flutter_education_app/features/certificates/designer/cert_text_layout.dart';
+import 'package:flutter_education_app/features/certificates/designer/certificate_design_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The renderer's font files (certificate_design_renderer.FONT_CATALOG), by the app's family name.

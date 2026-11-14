@@ -1,9 +1,9 @@
 // My certificates (editorial theme): the gold "earned" block and the certificate cards in every state, plus the
 // loading, failed and empty pages, at 320x640 and 1400x900, Arabic + English, textScaler 1.3.
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/student/certificates/my_certificate_model.dart';
-import 'package:flutter_education_app/features/student/certificates/my_certificates_provider.dart';
-import 'package:flutter_education_app/features/student/certificates/my_certificates_screen.dart';
+import 'package:flutter_education_app/features/certificates/student/my_certificate_model.dart';
+import 'package:flutter_education_app/features/certificates/student/my_certificates_provider.dart';
+import 'package:flutter_education_app/features/certificates/student/my_certificates_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 

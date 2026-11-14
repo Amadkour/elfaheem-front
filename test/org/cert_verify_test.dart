@@ -8,9 +8,9 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/routing/app_routes.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_issue_logic.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_logic.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_logic.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_logic.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_api.dart';

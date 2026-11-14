@@ -53,7 +53,7 @@ import 'package:flutter_education_app/features/shared/display/display_settings_p
 import 'package:flutter_education_app/features/shared/get_app/get_app_banner.dart' show GetAppTile;
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
-import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show CertVerifyEntryTile;
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/design/master_detail/entity_search_palette.dart';
 
 class ParentTabProvider extends ChangeNotifier {

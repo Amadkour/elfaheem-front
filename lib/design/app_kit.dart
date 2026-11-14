@@ -70,7 +70,7 @@ import 'app_side_sheet.dart' show appScrimColor, AppSheetMode;
 import 'app_tokens.dart';
 import '../features/admin/admin_common.dart' as admin;
 import '../features/org/org_ui.dart' as org;
-import '../features/teacher/data_lab/data_lab_widgets.dart' as dl;
+import 'package:flutter_education_app/features/data_lab/data_lab_widgets.dart' as dl;
 
 // The design system (D-180, lib/design/README.md): tokens, the gradient rules and the components added on top of
 // the Data Lab / org kits below.

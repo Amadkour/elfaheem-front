@@ -20,9 +20,9 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
-import '../../teacher/data_lab/data_lab_api.dart';
-import '../../teacher/data_lab/data_lab_models.dart';
-import '../../teacher/data_lab/data_lab_widgets.dart' show DlAvatar;
+import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_widgets.dart' show DlAvatar;
 import 'flags/student_flags_screen.dart';
 import 'student_analytics_provider.dart';
 import 'student_analytics_widgets.dart';

@@ -14,7 +14,7 @@ Agent branches `de/<id>` in worktrees `D:/platform/nextbrain/wt-de-<id>`, merged
 | 5 | Computed fields evaluator mirror + visual rule builder | FA | `layout_computed*.dart`, `layout_logic.dart` | done (parity fixture ✓, 55 layout tests ✓) |
 | 6 | Canvas: layers, rotation, match size / distribute, perf, v4 drawing + props | FB | `lib/design/studio/*`, `layout_canvas/element_view/props.dart` | done (shadow colours fixed to `#AARRGGBB` at merge) |
 | 7 | Export flow: quick path, layout presets, live preview, computed entry, Excel note, bugs, `design_engine.dart` | FC | `layout_page/steps/flow_controller/api.dart` + `layout_start/arrange.dart`, `design_engine.dart` | done |
-| 8 | Certificate Studio on the engine (kill switch `certificates.engine`) | FD | `lib/features/teacher/certificates/studio/` | done (parity gaps listed below, owner decides) |
+| 8 | Certificate Studio on the engine (kill switch `certificates.engine`) | FD | `lib/features/certificates/studio/` | done (parity gaps listed below, owner decides) |
 | 9 | Merge + integration (snapshots, features guide, docs) | lead | — | done (all 7 branches merged; server suites ✓; front gate running) |
 | 10 | Independent review (correctness, security, tenant isolation) | reviewer agent | — | done (2 high, 2 medium, 4 low: all fixed + tested) |
 | 10b | Improvements: studio parity (I1, I4), visual pass (I2), export plumbing (I3), smoke test + automatic rollback (B5, D-166), template as a document | agents + lead | — | done |

@@ -63,9 +63,9 @@ import 'package:flutter_education_app/features/attendance/attendance_store.dart'
 import 'package:flutter_education_app/features/attendance/attendance_teacher_banner.dart';
 import 'features/shared/guest/guest_live_api.dart' show guestLiveTokenFromRoute, legacyHashRoute;
 import 'features/shared/guest/guest_live_page.dart';
-import 'features/shared/certificates_issue/cert_issue_logic.dart' show certVerifyTokenFromRoute;
-import 'features/shared/certificates_issue/cert_verify_logic.dart' show isCertVerifyHomeRoute;
-import 'features/shared/certificates_issue/cert_verify_page.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_logic.dart' show certVerifyTokenFromRoute;
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_logic.dart' show isCertVerifyHomeRoute;
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart';
 import 'design/export/export_studio_api.dart' show exportLinkTokenFromRoute;
 import 'features/shared/exports/export_link_open_page.dart';
 import 'features/shared/exports/export_links_page.dart';

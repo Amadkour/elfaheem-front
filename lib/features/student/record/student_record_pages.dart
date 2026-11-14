@@ -20,7 +20,7 @@ import 'package:flutter_education_app/design/master_detail/entity_list_page.dart
 import 'package:flutter_education_app/design/master_detail/entity_specs.dart';
 import 'package:flutter_education_app/design/master_detail/entity_exports.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
-import 'package:flutter_education_app/features/student/certificates/my_certificates_screen.dart';
+import 'package:flutter_education_app/features/certificates/student/my_certificates_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';

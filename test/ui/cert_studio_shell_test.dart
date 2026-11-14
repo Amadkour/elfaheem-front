@@ -6,9 +6,9 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/export_layout/layout_canvas.dart';
 import 'package:flutter_education_app/design/export_layout/layout_model.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_inspector.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_panels.dart';
-import 'package:flutter_education_app/features/teacher/certificates/studio/cert_engine_shell.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_engine_inspector.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_engine_panels.dart';
+import 'package:flutter_education_app/features/certificates/studio/cert_engine_shell.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

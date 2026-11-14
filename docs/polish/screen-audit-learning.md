@@ -81,7 +81,7 @@ Not fixed:
 | `student/analysis/student_analytics_screen.dart` | 7 colours (white avatar on hero); spinner; RefreshIndicator; clear-search icon without tooltip | theme (avatar -> onHero); skeleton; `AppRefresh`; tooltip | — |
 | `student/analysis/student_course_analytics_screen.dart` (+ provider) | 29 colours; 4 spinners; 5 RefreshIndicators; glass buttons 40 px unlabelled; 3 raw errors in provider | theme; skeletons; `AppRefresh`; 48 px + tooltips; apiErrorText | attendance dates are pre-converted with `toLocal()` (AppTime would shift twice) |
 | `student/analysis/student_analytics_profile_screen.dart` | 4 colours; spinner; RefreshIndicator; raw `'$e'` | theme; skeleton; `AppRefresh`; apiErrorText | — |
-| `student/certificates/my_certificates_screen.dart` | 8 colours; spinners (page + image); RefreshIndicator; `_toast` ignored its `error` flag (every success notice showed as an error); close button `Positioned(right:)` without tooltip | theme; skeleton + shimmer; `AppRefresh`; `error: error`; `PositionedDirectional(end:)` + tooltip | — |
+| `features/certificates/student/my_certificates_screen.dart` | 8 colours; spinners (page + image); RefreshIndicator; `_toast` ignored its `error` flag (every success notice showed as an error); close button `Positioned(right:)` without tooltip | theme; skeleton + shimmer; `AppRefresh`; `error: error`; `PositionedDirectional(end:)` + tooltip | — |
 | `features/courses/student/details/course_detail_provider.dart`, `courses/security/device_security_provider.dart` | raw `e.toString()` to the user | apiErrorText | — |
 | `features/attendance/student/attendance_screen.dart` | 4 colours; hand-rolled hh:mm | colours -> theme | unused (no importer) |
 | `student/reward/rewards_screen.dart` (+ provider) | 3 colours, Arabic-only, mock leaderboard data | colours -> theme | unused (no importer) — mock screen |
@@ -102,9 +102,9 @@ Not fixed:
 | `features/courses/teacher/component/section_card.dart` | 18 px close glyph as a GestureDetector (no label, tiny target); asymmetric LTRB | `IconButton` with tooltip (48 px); `fromSTEB` | — |
 | `features/courses/teacher/component/recommended_courses_field.dart` | 14 px chip close without label; asymmetric LTRB | labelled, padded hit area; `fromSTEB` | — |
 | `features/courses/teacher/component/next_courses_field.dart` | 3 icon-only buttons without tooltip | tooltips (move up / down / remove) | — |
-| `teacher/certificates/certificate_requests_screen.dart` | page spinner; failed load showed "no requests"; hand-written empty state + RefreshIndicator | body factored to `CertificateRequestsBody` (plain values): skeleton · `ErrorRetry` · `AppEmpty` (pullable) · `AppRefresh` list; tested | — |
-| `teacher/certificates/designer/certificate_designs_screen.dart` | page spinner; failed load showed "no designs"; RefreshIndicator; asymmetric LTRB | skeleton; `ErrorRetry`; `AppEmpty` (pullable); `AppRefresh`; `fromSTEB` | — |
-| `teacher/certificates/designer/certificate_designer_screen.dart` | 19 colours; 7 icon-only buttons without tooltip | chrome colours → roles; tooltips (align / lines / show-hide / delete / close / remove) | signature ink palette (`_inks`), photo placeholder on the canvas, `hexToColor` fallback kept — certificate content, not UI chrome; ink swatches stay 30 px (wide-only side panel); designer loading spinner kept (canvas, not a list) |
+| `features/certificates/certificate_requests_screen.dart` | page spinner; failed load showed "no requests"; hand-written empty state + RefreshIndicator | body factored to `CertificateRequestsBody` (plain values): skeleton · `ErrorRetry` · `AppEmpty` (pullable) · `AppRefresh` list; tested | — |
+| `features/certificates/designer/certificate_designs_screen.dart` | page spinner; failed load showed "no designs"; RefreshIndicator; asymmetric LTRB | skeleton; `ErrorRetry`; `AppEmpty` (pullable); `AppRefresh`; `fromSTEB` | — |
+| `features/certificates/designer/certificate_designer_screen.dart` | 19 colours; 7 icon-only buttons without tooltip | chrome colours → roles; tooltips (align / lines / show-hide / delete / close / remove) | signature ink palette (`_inks`), photo placeholder on the canvas, `hexToColor` fallback kept — certificate content, not UI chrome; ink swatches stay 30 px (wide-only side panel); designer loading spinner kept (canvas, not a list) |
 | `teacher/analysis/analytics_hub_screen.dart` | 12 colours; page spinner; RefreshIndicator; close IconButton without tooltip | roles; skeleton; `AppRefresh`; tooltip; `fromSTEB` | per-course load failure still shows shortcuts only (by design: "the hub still works") |
 | `features/attendance/analysis/teacher/teacher_attendance_screen.dart` (+ provider) | 10 colours; spinners; raw `e.toString()` errors; clear button without tooltip | roles (`heroTint` for hero stat); skeletons; `apiErrorText(ApiException.from(e))`; tooltip | — |
 | `features/exams/legacy/teacher/teacher_exam_hub_screen.dart` (+ provider) | 32 colours; tab spinners; 10 raw `e.toString()`; exam start time shown in UTC; picked dates HH:MM by hand; popup items colour without context; asymmetric LTRB; remove-option button without tooltip | roles; skeletons; `apiErrorText`; `_fmtDate` reads naive UTC → `AppTime.dateTime`; picked times `clockMinutes`; `fromSTEB`; tooltip | — |
@@ -118,7 +118,7 @@ Not fixed:
 | `features/sessions/teacher/components/course_hero.dart`, `course_stats_row.dart`, `session_form_sheet.dart`, `guest_link_sheet.dart` | colours; session form date HH:MM by hand; `only(left:)` error labels | roles; `clockMinutes`; directional | QR `backgroundColor: Colors.white` kept (scanner needs a light quiet zone) |
 | `features/sessions/teacher/components/course_reel_player.dart` | 17 colours; 36 px glass buttons without labels | roles + theme import; buttons labelled (tooltip + semantics) with 48 px target | video chrome kept: gold progress line, dark poster gradient, black full-screen background |
 | `features/sessions/teacher/students/course_student_screen.dart` | 25 colours (getter + const palette without context); spinner; RefreshIndicator; failed load showed "no students"; 36 px back + 28 px dialog close | roles (palette from theme roles); skeleton; `AppRefresh`; `ErrorRetry`; 48 px targets + labels | — |
-| `teacher/certificates/certificate_requests_provider.dart`, `teacher/dashboard/*`, `switch_device_requests` provider, `sessions/model` | no UI issues | — | `teacher/dashboard` belongs to the homes/dashboards owner |
+| `features/certificates/certificate_requests_provider.dart`, `teacher/dashboard/*`, `switch_device_requests` provider, `sessions/model` | no UI issues | — | `teacher/dashboard` belongs to the homes/dashboards owner |
 
 ## Live room, lobby, guest, video player (`features/live/room/**`, `shared/{live,guest,session/video}/**`)
 
@@ -143,7 +143,7 @@ Not fixed:
 | `features/sessions/video/video_player_screen.dart` (VideoPlayerScreen chrome) | 73 colours; quality tier hexes; selected speed text white on primary; play / ±10 s buttons without semantics; 38 px glass buttons and 28 px mute / next / rotate targets; error-screen back button without tooltip | → `VodInk` / `c.warning` / `c.success` / `c.onHero`; `Semantics` labels on play/pause/replay and ±10 s; 48 px hit areas; tooltips (back ×2, auto-rotate) | chrome is forced LTR on purpose (seek bar / seek gestures follow the video timeline); buffering + download-progress spinners kept |
 | `features/sessions/video/fullscreen_*.dart` | none | — | — |
 
-## Course, materials, Exam Engine, Data Lab, models (`shared/{course,session,exam_engine,models}/**`, `teacher/data_lab/**`)
+## Course, materials, Exam Engine, Data Lab, models (`shared/{course,session,exam_engine,models}/**`, `features/data_lab/**`)
 
 | file | issues | fixed | left (reason) |
 |---|---|---|---|
@@ -177,15 +177,15 @@ Not fixed:
 | lib/features/exams/offline/offline_exam_screen.dart | hand RefreshIndicator | AppRefresh | - |
 | lib/features/exams/offline/offline_exam_teacher.dart | hand RefreshIndicator | AppRefresh | - |
 | lib/features/exams/(generate, paper_flow, consent, policy, offline core/service, other sheets) | checked: kit colours, AppTime, skeletons already | - | nothing to fix |
-| lib/features/teacher/data_lab/data_lab_widgets.dart (kit) | 19 colours; dlAgo printed device-local yyyy-mm-dd | white -> onHero (same alpha values: 0.70 / 0.12 kept so light mode is identical); dlAgo date -> AppTime.date (platform tz) | DlSwatches parses user hex (content colour) |
-| lib/features/teacher/data_lab/data_lab_screen.dart | 35 colours; raw `$e` toast; search clear button no tooltip; asymmetric LTRB | -> theme roles; apiErrorText; tooltip; fromSTEB | inline row spinners kept |
-| lib/features/teacher/data_lab/data_lab_history_sheet.dart | page spinner; old->new arrow double-mirrored in RTL (manual flip of an auto-mirrored icon) | AppListSkeleton; arrow fixed; apiErrorText | load-more spinner kept |
-| lib/features/teacher/data_lab/data_lab_import_sheet.dart | page spinner; Back + mapping arrows double-mirrored in RTL; raw `$e` | skeleton; arrows fixed; apiErrorText | - |
-| lib/features/teacher/data_lab/data_lab_certificates_sheet.dart | page spinner; 3 raw `$e`; +/- buttons without tooltip | skeleton; apiErrorText; tooltips | - |
-| lib/features/teacher/data_lab/data_lab_requests.dart | page spinner; hand RefreshIndicator; 4 raw `$e`; 2 icon buttons without tooltip; colours | skeleton; AppRefresh; apiErrorText; tooltips; colours; fromSTEB | inline busy spinners kept |
-| lib/features/teacher/data_lab/data_lab_export_sheet.dart | 3 raw `$e` toasts (save / share) | apiErrorText | - |
-| lib/features/teacher/data_lab/data_lab_gate.dart | `_errText` returned `'$e'`; password eye button without tooltip | apiErrorText; show/hide tooltip | continue arrows auto-mirror |
-| lib/features/teacher/data_lab/data_lab_provider.dart | `_msg` returned `'$e'` | apiErrorText | - |
-| lib/features/teacher/data_lab/data_lab_style_sheet.dart | 5 colours; delete-rule button no tooltip | theme roles; tooltip | - |
-| lib/features/teacher/data_lab/(column_sheet, columns_sheet, entry_cards) | white/black colours; asymmetric LTRB | theme roles; fromSTEB | - |
+| lib/features/data_lab/data_lab_widgets.dart (kit) | 19 colours; dlAgo printed device-local yyyy-mm-dd | white -> onHero (same alpha values: 0.70 / 0.12 kept so light mode is identical); dlAgo date -> AppTime.date (platform tz) | DlSwatches parses user hex (content colour) |
+| lib/features/data_lab/data_lab_screen.dart | 35 colours; raw `$e` toast; search clear button no tooltip; asymmetric LTRB | -> theme roles; apiErrorText; tooltip; fromSTEB | inline row spinners kept |
+| lib/features/data_lab/data_lab_history_sheet.dart | page spinner; old->new arrow double-mirrored in RTL (manual flip of an auto-mirrored icon) | AppListSkeleton; arrow fixed; apiErrorText | load-more spinner kept |
+| lib/features/data_lab/data_lab_import_sheet.dart | page spinner; Back + mapping arrows double-mirrored in RTL; raw `$e` | skeleton; arrows fixed; apiErrorText | - |
+| lib/features/data_lab/data_lab_certificates_sheet.dart | page spinner; 3 raw `$e`; +/- buttons without tooltip | skeleton; apiErrorText; tooltips | - |
+| lib/features/data_lab/data_lab_requests.dart | page spinner; hand RefreshIndicator; 4 raw `$e`; 2 icon buttons without tooltip; colours | skeleton; AppRefresh; apiErrorText; tooltips; colours; fromSTEB | inline busy spinners kept |
+| lib/features/data_lab/data_lab_export_sheet.dart | 3 raw `$e` toasts (save / share) | apiErrorText | - |
+| lib/features/data_lab/data_lab_gate.dart | `_errText` returned `'$e'`; password eye button without tooltip | apiErrorText; show/hide tooltip | continue arrows auto-mirror |
+| lib/features/data_lab/data_lab_provider.dart | `_msg` returned `'$e'` | apiErrorText | - |
+| lib/features/data_lab/data_lab_style_sheet.dart | 5 colours; delete-rule button no tooltip | theme roles; tooltip | - |
+| lib/features/data_lab/(column_sheet, columns_sheet, entry_cards) | white/black colours; asymmetric LTRB | theme roles; fromSTEB | - |
 | lib/features/shared/models/** | none (data only) | - | - |

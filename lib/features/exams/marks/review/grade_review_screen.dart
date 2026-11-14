@@ -17,7 +17,7 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
-import 'package:flutter_education_app/features/teacher/data_lab/data_lab_api.dart';
+import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';
 import 'package:flutter_education_app/features/exams/hub/revision/revision_api.dart';
 import 'package:flutter_education_app/features/exams/hub/revision/revision_history_screen.dart';
 import 'package:flutter_education_app/features/exams/hub/revision/revision_models.dart';
