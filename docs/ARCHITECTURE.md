@@ -35,7 +35,7 @@ flowchart LR
 flowchart TB
     main["lib/main.dart<br/>_bootstrap → _initCore (each step with a timeout)<br/>onGenerateRoute: _router"]
     providers["lib/core/providers.dart<br/>appProviders (ChangeNotifiers)"]
-    features["lib/features/&lt;role&gt;/<br/>student · teacher · parent · admin · org · shared · auth"]
+    features["lib/features/&lt;feature&gt;/ (D-947)<br/>home · courses · sessions · live · exams · attendance · payments · …<br/>role areas: admin · org · parent · auth"]
     kit["lib/design/app_kit.dart + BasePage<br/>(kill switch, upload footer)"]
     base["BaseProvider.run(() => …)<br/>idle / loading / success / error"]
     api["lib/core/api_client.dart<br/>ApiClient singleton on Dio"]
@@ -54,6 +54,14 @@ flowchart TB
     features --> offline
     providers --> theme --> api
 ```
+
+Feature folders (D-947): `lib/features/` holds one folder per feature (`home`, `courses`, `sessions`, `live`, `exams`,
+`attendance`, `payments`, `certificates`, `data_lab`, `analytics`, `profile`, `messaging`, `calendar`, `rag`,
+`records`, …), and a role's own screens of a feature sit in its `student/`, `teacher/` or `admin/` subfolder. `admin`,
+`org`, `parent`, `auth` and `ads` stay whole. Imports between folders are `package:flutter_education_app/…`, so a
+file moves without touching its neighbours' relative paths. The old `student/`, `teacher/` and `shared/` roots were
+moved by `tool/apply_moves.dart` over the maps in `tool/moves/`; `--fix-imports` updates a branch written on the old
+layout.
 
 Ports and services behind nginx: core `api` 8000 (everything under `/api/v1/…` except the two below), Exam Engine
 8001 (`/api/v1/exam/…`, client `lib/features/exams/exam_engine_api.dart`), RAG 8002 (`/api/v1/rag/…`,

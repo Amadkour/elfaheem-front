@@ -1,6 +1,6 @@
 # Screen audit — auth + shared (Track A2, area 1 of 3, 2026-10-28)
 
-Scope: `lib/features/auth/**`, `lib/features/shared/{profile,notification,inbox,calendar,subscription,downloads,upload,passcode,attendance,category,course_profile,analytics}/**`.
+Scope: `lib/features/auth/**`, `lib/features/{profile,calendar,downloads,upload,attendance,analytics}/**`, `lib/features/messaging/{notification,inbox}/**`, `lib/features/payments/subscription/**`, `lib/features/profile/passcode/**`, `lib/features/courses/{category,course_profile}/**` (the old `shared/` folders, D-947).
 Checks per screen: (a) colours only from `context.colors` · (b) list spinners → `AppListSkeleton` · (c) empty + error states, no raw exception text · (d) RTL · (e) overflow at 320×640 / textScaler 1.3 / ar + en · (f) 48 px targets, labels on icon-only buttons · (g) old widgets → kit · (h) times via `AppTime` · (i) pull-to-refresh via `AppRefresh`.
 Behaviour and API calls are unchanged except where a row says "bug".
 

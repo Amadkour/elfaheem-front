@@ -1,6 +1,6 @@
 # Screen audit — learning (Track A2, area 2 of 3, 2026-10-28)
 
-Scope: `lib/features/student/**` except `features/home/student/**`, `lib/features/teacher/**` except `features/home/teacher/**`, `lib/features/shared/{session,course,exam_engine,live,guest,models}/**` (243 Dart files).
+Scope (on the layout of the day; since D-947 the files sit in feature folders): the student and teacher screens outside their homes, now `lib/features/{courses,sessions,attendance,payments,certificates,analytics,profile}/**/{student,teacher}/**`, `lib/features/{courses,sessions,exams,live,guest}/**`, `lib/features/exams/legacy/**` (243 Dart files).
 Checks per screen: (a) colours only from `context.colors` · (b) page / list spinners → `AppListSkeleton` / `AppShimmer` · (c) empty + error states (`AppEmpty`, `ErrorRetry`, `apiErrorText`), no raw exception text · (d) RTL · (e) overflow at 320×640 / textScaler 1.3 / ar + en · (f) 48 px targets, labels on icon-only buttons · (g) old widgets → kit · (h) times via `AppTime` · (i) pull-to-refresh via `AppRefresh`.
 Behaviour and API calls are unchanged except where a row or the bug list says "bug". `RoomPage` / `VideoPlayerScreen` are covered through their presentational parts only.
 
@@ -44,7 +44,7 @@ Not fixed:
 
 ## Per screen
 
-## Student (`lib/features/student/**`, without `home/`)
+## Student (the `student/` subfolders of `lib/features/*/`, without `home/student/`)
 
 | file | issues | fixed | left (reason) |
 |---|---|---|---|
@@ -89,7 +89,7 @@ Not fixed:
 | `features/home/student/dashboard/component/student_schedule_tab.dart`, `features/home/student/dashboard/dashboard_screen.dart` | — | — | dashboard owned by the homes track |
 | `features/home/student/models.dart` | hand-rolled `d/m hh:mm` session labels | — | values come from `toLocalSaTime` (already converted); AppTime needs the raw UTC, so the change belongs with the model |
 
-## Teacher (`lib/features/teacher/**`, without `home/`, `sessions/live/`, `data_lab/`)
+## Teacher (the `teacher/` subfolders of `lib/features/*/`, without `home/teacher/`, `live/room/`, `data_lab/`)
 
 | file | issues | fixed | left (reason) |
 |---|---|---|---|
@@ -120,7 +120,7 @@ Not fixed:
 | `features/sessions/teacher/students/course_student_screen.dart` | 25 colours (getter + const palette without context); spinner; RefreshIndicator; failed load showed "no students"; 36 px back + 28 px dialog close | roles (palette from theme roles); skeleton; `AppRefresh`; `ErrorRetry`; 48 px targets + labels | — |
 | `features/certificates/certificate_requests_provider.dart`, `features/home/teacher/dashboard/*`, `switch_device_requests` provider, `sessions/model` | no UI issues | — | `features/home/teacher/dashboard` belongs to the homes/dashboards owner |
 
-## Live room, lobby, guest, video player (`features/live/room/**`, `shared/{live,guest,session/video}/**`)
+## Live room, lobby, guest, video player (`features/live/room/**`, `features/{live,guest,sessions/video}/**`)
 
 | file | issues | fixed | left (reason) |
 |---|---|---|---|
@@ -143,7 +143,7 @@ Not fixed:
 | `features/sessions/video/video_player_screen.dart` (VideoPlayerScreen chrome) | 73 colours; quality tier hexes; selected speed text white on primary; play / ±10 s buttons without semantics; 38 px glass buttons and 28 px mute / next / rotate targets; error-screen back button without tooltip | → `VodInk` / `c.warning` / `c.success` / `c.onHero`; `Semantics` labels on play/pause/replay and ±10 s; 48 px hit areas; tooltips (back ×2, auto-rotate) | chrome is forced LTR on purpose (seek bar / seek gestures follow the video timeline); buffering + download-progress spinners kept |
 | `features/sessions/video/fullscreen_*.dart` | none | — | — |
 
-## Course, materials, Exam Engine, Data Lab, models (`shared/{course,session,exam_engine,models}/**`, `features/data_lab/**`)
+## Course, materials, Exam Engine, Data Lab, models (`features/{courses,sessions,exams}/**`, `features/exams/legacy/exam_model.dart`, `features/data_lab/**`)
 
 | file | issues | fixed | left (reason) |
 |---|---|---|---|
@@ -188,4 +188,4 @@ Not fixed:
 | lib/features/data_lab/data_lab_provider.dart | `_msg` returned `'$e'` | apiErrorText | - |
 | lib/features/data_lab/data_lab_style_sheet.dart | 5 colours; delete-rule button no tooltip | theme roles; tooltip | - |
 | lib/features/data_lab/(column_sheet, columns_sheet, entry_cards) | white/black colours; asymmetric LTRB | theme roles; fromSTEB | - |
-| lib/features/shared/models/** | none (data only) | - | - |
+| lib/features/exams/legacy/exam_model.dart | none (data only) | - | - |
