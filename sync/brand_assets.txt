@@ -1,0 +1,49 @@
+# Brand images NextBrain has and Alfaheem never drew: each is GENERATED from Alfaheem's own images by
+# sync/gen_brand_assets.py (or flutter_native_splash / flutter_launcher_icons, see sync/README.md). Never NextBrain's.
+# On a sync, Alfaheem's version always wins, like sync/keep_paths.txt. sync/check_identity.py fails on any image path
+# outside these two lists, and on any listed image still byte-identical to NextBrain's.
+
+android/app/src/main/res/drawable-v21/background.png
+android/app/src/main/res/drawable/background.png
+assets/icon/adaptive_icon_foreground.png
+assets/icon/icon.png
+assets/images/logo_mark.png
+assets/images/splash_alfaheem.png
+ios/Runner/Assets.xcassets/LaunchBackground.imageset/background.png
+landing/public/apple-touch-icon.png
+landing/public/favicon-32.png
+landing/public/favicon.ico
+landing/public/favicon.svg
+landing/public/logo-512.png
+landing/public/og.png
+landing/src/assets/logo_mark.png
+web/splash/ios/apple-splash-1125-2436.png
+web/splash/ios/apple-splash-1170-2532.png
+web/splash/ios/apple-splash-1179-2556.png
+web/splash/ios/apple-splash-1206-2622.png
+web/splash/ios/apple-splash-1242-2208.png
+web/splash/ios/apple-splash-1242-2688.png
+web/splash/ios/apple-splash-1260-2736.png
+web/splash/ios/apple-splash-1284-2778.png
+web/splash/ios/apple-splash-1290-2796.png
+web/splash/ios/apple-splash-1320-2868.png
+web/splash/ios/apple-splash-1488-2266.png
+web/splash/ios/apple-splash-1536-2048.png
+web/splash/ios/apple-splash-1620-2160.png
+web/splash/ios/apple-splash-1640-2360.png
+web/splash/ios/apple-splash-1668-2224.png
+web/splash/ios/apple-splash-1668-2388.png
+web/splash/ios/apple-splash-1668-2420.png
+web/splash/ios/apple-splash-2048-1536.png
+web/splash/ios/apple-splash-2048-2732.png
+web/splash/ios/apple-splash-2064-2752.png
+web/splash/ios/apple-splash-2160-1620.png
+web/splash/ios/apple-splash-2224-1668.png
+web/splash/ios/apple-splash-2266-1488.png
+web/splash/ios/apple-splash-2360-1640.png
+web/splash/ios/apple-splash-2388-1668.png
+web/splash/ios/apple-splash-2420-1668.png
+web/splash/ios/apple-splash-2732-2048.png
+web/splash/ios/apple-splash-2752-2064.png
+web/splash/ios/apple-splash-750-1334.png
+web/splash/ios/apple-splash-828-1792.png
