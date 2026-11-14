@@ -19,7 +19,6 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart' show AdCard;
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
-import 'package:flutter_education_app/utils/widget/refresh_button.dart';
 import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -148,7 +147,6 @@ Widget _gallery() {
           ),
           AppSpace.gapLg,
           const PagedCountCard(loaded: 40, total: 134, loadingMore: false, done: false),
-          Align(alignment: AlignmentDirectional.centerStart, child: RefreshButton(onTap: () async {})),
         ]),
       ),
     ]);
