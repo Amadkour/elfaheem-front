@@ -19,6 +19,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:webview_flutter/webview_flutter.dart'
 if (dart.library.html) 'package:flutter_education_app/features/payments/enrollment/webview_stub.dart';
 import 'package:flutter_education_app/core/display/lazy_fonts.dart';
+import 'package:flutter_education_app/features/payments/enrollment/checkout_callback.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Hosted checkout WebView
@@ -35,40 +36,53 @@ class MobileCheckoutPage extends StatefulWidget {
 class _MobileCheckoutPageState extends State<MobileCheckoutPage> {
   late final WebViewController _controller;
   bool _loading = true;
+  bool _resolved = false; // pop once
 
-  // The backend's result page redirects to  APP_URL/#/payment/callback?status=paid
-  static const String _callbackMarker = '/payment/callback';
+  // The backend's result page redirects to  FLUTTER_APP_URL/#/payment/callback?status=paid — matched exactly by
+  // scheme + host + path (checkout_callback.dart), never by "the URL contains /payment/callback".
+  final CheckoutOrigin _origin = CheckoutOrigin.current();
 
   @override
   void initState() {
     super.initState();
     _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setJavaScriptMode(JavaScriptMode.unrestricted) // the gateways' card forms and 3-D Secure need it
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (_) {
           if (mounted) setState(() => _loading = false);
         },
         onNavigationRequest: (req) {
-          if (!req.url.contains(_callbackMarker)) return NavigationDecision.navigate;
-          Navigator.of(context).pop(_statusFrom(Uri.parse(req.url)));
-          return NavigationDecision.prevent;
+          final uri = Uri.tryParse(req.url);
+          if (uri != null && isCheckoutCallback(uri, _origin)) {
+            // The page's word only: PaymentFlowProvider asks the server before it shows success.
+            _finish(checkoutStatusFrom(uri));
+            return NavigationDecision.prevent;
+          }
+          if (!checkoutNavigationAllowed(uri, _origin, isMainFrame: req.isMainFrame)) {
+            debugPrint('Checkout WebView: blocked a non-https navigation');
+            return NavigationDecision.prevent;
+          }
+          return NavigationDecision.navigate;
         },
         // Only `.description` exists on the web stub's WebResourceError.
         onWebResourceError: (e) {
           debugPrint('Checkout WebView error: ${e.description}');
-          if (mounted) Navigator.of(context).pop('failed');
+          _finish('failed');
         },
-      ))
-      ..loadRequest(Uri.parse(widget.url));
+      ));
+    final start = Uri.tryParse(widget.url);
+    if (checkoutNavigationAllowed(start, _origin)) {
+      _controller.loadRequest(start!);
+    } else {
+      // the server handed a page we will not open (not https): nothing was paid
+      WidgetsBinding.instance.addPostFrameCallback((_) => _finish('failed'));
+    }
   }
 
-  /// Handles hash-style URLs:  /#/payment/callback?status=paid
-  String _statusFrom(Uri uri) {
-    final fragment = uri.fragment;
-    if (fragment.contains('status=')) {
-      return Uri.parse('?${fragment.split('?').last}').queryParameters['status'] ?? 'failed';
-    }
-    return uri.queryParameters['status'] ?? 'failed';
+  void _finish(String status) {
+    if (_resolved || !mounted) return;
+    _resolved = true;
+    Navigator.of(context).pop(status);
   }
 
   @override
@@ -80,7 +94,7 @@ class _MobileCheckoutPageState extends State<MobileCheckoutPage> {
           icon: Icon(Icons.close_rounded, color: context.colors.onHero),
           tooltip: 'cancel'.tr,
           constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-          onPressed: () => Navigator.of(context).pop('cancelled'),
+          onPressed: () => _finish('cancelled'),
         ),
       ),
       body: Stack(
