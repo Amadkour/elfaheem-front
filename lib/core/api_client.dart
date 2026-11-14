@@ -6,17 +6,17 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:crypto/crypto.dart' hide Hmac;   // add crypto: ^3.0.0 to pubspec.yaml if missing
 import 'package:cryptography/cryptography.dart';   // add cryptography: ^2.7.0 to pubspec.yaml
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';           // IOHttpClientAdapter — mobile only
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/token_storage.dart';
+import 'package:flutter_education_app/core/cert_pin.dart';
 import 'package:flutter_education_app/core/attention/decision_refresh.dart';
 import 'package:flutter_education_app/main.dart';
 import 'package:flutter/material.dart' show MaterialPageRoute;
@@ -165,6 +165,18 @@ class ApiException implements Exception {
   factory ApiException.fromDio(DioException e) {
     final nested = e.error;
     if (nested is ApiException) return nested;
+
+    // The API host showed a real-looking certificate whose key this build does not pin (D-946): the server moved
+    // to a new key, only an update can fix it — say that instead of "could not connect".
+    if (CertPin.isUpdateFailure(nested) ||
+        (e.type == DioExceptionType.badCertificate && CertPin.updateRequired)) {
+      return ApiException(
+        statusCode: 0,
+        type: ApiErrorType.network,
+        message: translate('tls_pin_update_required'),
+        code: kPinUpdateCode,
+      );
+    }
 
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
@@ -649,6 +661,20 @@ class _EncSession {
 }
 
 class _EncryptionInterceptor extends Interceptor {
+  /// [bare]: the pinned client WITHOUT interceptors, for the handshake (it bootstraps the session this interceptor
+  /// is part of, so it cannot go through itself). [owner]: the Dio this interceptor sits in, for the retry after
+  /// `encryption_session_expired`, so the retry runs every interceptor again (fresh bearer, 401 refresh, device
+  /// headers, decryption). Both are pinned: nothing here opens an unpinned connection (D-946, S2).
+  _EncryptionInterceptor({required Dio Function() bare, required Dio Function() owner})
+      : _bare = bare,
+        _owner = owner;
+
+  final Dio Function() _bare;
+  final Dio Function() _owner;
+
+  /// Set on the one retry after `encryption_session_expired`; a second expiry on it is passed on, not retried.
+  static const retriedKey = '_encRetried';
+
   static final _algo = AesGcm.with256bits();
   static final _kdfAlgo = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
   // Must be byte-identical to services/crypto_session_service.py's
@@ -677,11 +703,10 @@ class _EncryptionInterceptor extends Interceptor {
     final clientKeyPair = await algo.newKeyPair();
     final clientPublic = await clientKeyPair.extractPublicKey();
 
-    // A bare Dio instance, deliberately NOT the pinned/encrypted one above —
-    // the handshake bootstraps the very session this interceptor is part of,
-    // so it can't depend on itself. TLS + AppConfig.baseUrl still apply.
-
-    final res = await Dio(BaseOptions(baseUrl: AppConfig.baseUrl)).post(
+    // The pinned client without interceptors: the handshake bootstraps the very session this interceptor is part
+    // of, so it can't go through itself — but it must not skip the pin either (a proxy in the handshake would
+    // hold the key of every encrypted body after it).
+    final res = await _bare().post(
       '/api/v1/security/handshake',
       data: {'client_public_key': base64Encode(clientPublic.bytes)},
     );
@@ -780,20 +805,22 @@ class _EncryptionInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     await _tryDecrypt(err.response);   // decrypt the error body too, before the session-expired check
     final data = ApiException.asMap(err.response?.data);
-    if (data != null && data['error'] == 'encryption_session_expired') {
+    final o = err.requestOptions;
+    if (data != null && data['error'] == 'encryption_session_expired' && o.extra[retriedKey] != true) {
       _session = null;
       try {
-        final session = await _ensureSession();
-        final o = err.requestOptions;
-        if (!_skips(o)) await _encryptInto(o, session);   // re-encrypt the ORIGINAL body with the NEW key
-        final clone = await Dio(BaseOptions(baseUrl: AppConfig.baseUrl)).fetch(o);
-        await _tryDecrypt(clone);                          // the retried response is encrypted too
-        return handler.resolve(clone);
+        // Back through the owning Dio, so the retry is pinned AND runs every interceptor again: this one encrypts
+        // the ORIGINAL body (kept in extra[_plainKey]) with a NEW session, the auth interceptor sets the current
+        // bearer and refreshes on a 401, and the response is decrypted on the way back.
+        final retry = o.copyWith(
+          extra: {...o.extra, retriedKey: true},
+          data: o.data is FormData ? (o.data as FormData).clone() : o.data,
+        );
+        return handler.resolve(await _owner().fetch(retry));
       } on DioException catch (e) {
-        // The retry itself failed (e.g. 403 DEVICE_MISMATCH): surface THAT
-        // error (decrypted), not the stale "session expired" one.
-        await _tryDecrypt(e.response);
-        return handler.next(e);
+        // The retry itself failed (e.g. 403 DEVICE_MISMATCH): surface THAT error, which the retry's own chain
+        // already decrypted and handled, not the stale "session expired" one.
+        return handler.reject(e);
       } catch (_) {}
     }
     handler.next(err);
@@ -825,23 +852,49 @@ class ApiClient {
   // ── Certificate pinning (mobile only — a browser tab controls its own TLS,
   // nothing here can change that) ─────────────────────────────────────────
   //
-  // Get the current pin:
-  //   openssl s_client -connect nextbrain.site:443 -servername nextbrain.site \
-  //     </dev/null 2>/dev/null | openssl x509 -outform der | sha256sum
+  // Pinned by PUBLIC KEY, not by certificate (D-946, lib/core/cert_pin.dart): the server renews with
+  // `certbot renew --reuse-key`, the key stays, the pin keeps matching. A renewal that changes the key is still
+  // accepted when Let's Encrypt signed it (backup intermediates); anything else fails closed, and the app says
+  // "update the app" (tls_pin_update_required) when it was our own host.
   //
-  // Whenever certbot renews the cert (~every 60–90 days) the hash changes.
-  // Add the NEW pin below a few days before the old cert expires, keep BOTH
-  // during the overlap, then delete the old one — otherwise the app goes
-  // dark for every user the moment it renews.
-  static const _pinnedCertSha256 = <String>[
-    '93d682e09f1a3f195d50f3ed70e80c4c45206e527f332d7bd36ea03045141402',
-    // 'REPLACE_WITH_NEXT_PIN_BEFORE_RENEWAL',
-  ];
-
-  static bool _certMatchesPin(X509Certificate cert, String host, int port) {
-    final hash = sha256.convert(cert.der).toString();
-    return _pinnedCertSha256.contains(hash);
+  // withTrustedRoots: false -> the OS/system CA list is NOT consulted at all, so a proxy's CA being "trusted" on
+  // this device (rooted/test builds, a user CA) does not matter: every connection falls through to CertPin.check,
+  // the only thing deciding whether the cert is accepted. EVERY client that talks to the API host is built here:
+  // the main one and the bare one of the encryption handshake (S2).
+  static HttpClient _pinnedHttpClient() {
+    CertPin.apiHost = Uri.parse(_base).host;
+    final client = HttpClient(context: SecurityContext(withTrustedRoots: false));
+    client.badCertificateCallback = CertPin.check;
+    return client;
   }
+
+  /// Web has no dart:io HttpClient, so pinning is mobile / desktop only.
+  static Dio _pinned(Dio d) {
+    if (!kIsWeb) (d.httpClientAdapter as IOHttpClientAdapter).createHttpClient = _pinnedHttpClient;
+    return d;
+  }
+
+  /// The pinned client WITHOUT interceptors (the encryption handshake). One per ApiClient.
+  late final Dio _bareDio = _pinned(Dio(BaseOptions(
+    baseUrl: _base,
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 30),
+    headers: {HttpHeaders.acceptHeader: 'application/json'},
+  )));
+
+  /// Tests: the bare client and whether a Dio carries the pinned HttpClient factory.
+  @visibleForTesting
+  Dio get debugBareDio => _bareDio;
+
+  @visibleForTesting
+  static bool debugIsPinned(Dio d) =>
+      d.httpClientAdapter is IOHttpClientAdapter &&
+      (d.httpClientAdapter as IOHttpClientAdapter).createHttpClient == _pinnedHttpClient;
+
+  /// Tests: the encryption interceptor over the given clients (the handshake on [bare], the retry on [owner]).
+  @visibleForTesting
+  static Interceptor debugEncryptionInterceptor({required Dio Function() bare, required Dio Function() owner}) =>
+      _EncryptionInterceptor(bare: bare, owner: owner);
 
   Dio _buildDio() {
     final d = Dio(
@@ -874,7 +927,7 @@ class ApiClient {
     // were never detected, so the "switch device" dialog never opened.)
     // Auth headers (Authorization, X-Device-*) are not part of the encrypted
     // body, so attaching them after encryption is fine.
-    d.interceptors.add(_EncryptionInterceptor());
+    d.interceptors.add(_EncryptionInterceptor(bare: () => _bareDio, owner: () => d));
 
     // Logger next: it sees every request, response and error (including the
     // first 401 that the auth interceptor later recovers from).
@@ -884,24 +937,12 @@ class ApiClient {
 
     d.interceptors.add(_authInterceptor());
 
-    // withTrustedRoots: false -> the OS/system CA list is NOT consulted at all,
-    // so a proxy's CA being "trusted" on this device (rooted/test builds) no
-    // longer matters. Every connection now falls through to our own check,
-    // which is the only thing deciding whether the cert is accepted.
-    // Web has no dart:io HttpClient, so this whole block is mobile-only.
+    // Pinned (see _pinnedHttpClient above).
     // IMPORTANT: this Dio instance must only ever talk to _base's host. If any
     // other code reuses `ApiClient().dio` against a different domain (MinIO,
     // LiveKit REST, …), that request will now fail closed — by design, but
     // worth grepping `apiClient.dio` / `ApiClient().dio` for before shipping.
-    if (!kIsWeb) {
-      (d.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-        final client = HttpClient(context: SecurityContext(withTrustedRoots: false));
-        client.badCertificateCallback = _certMatchesPin;
-        return client;
-      };
-    }
-
-    return d;
+    return _pinned(d);
   }
 
   Interceptor _authInterceptor() => InterceptorsWrapper(
