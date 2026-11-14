@@ -55,10 +55,10 @@ class NotificationService {
 
   static final NotificationService instance = NotificationService._();
 
-  /// The Web Push (VAPID) public key of the web app's Firebase project (`nextbrain-2y`, D-145): Project settings →
+  /// The Web Push (VAPID) public key of the web app's Firebase project (`alfaheem-d3c8f`, A-006): Project settings →
   /// Cloud Messaging → Web Push certificates. A public key, not a secret.
   static const webPushVapidKey =
-      'BMbmlTUe7ISZTKD-qlNpxHGOZiS4TQ4_OAUi4_pAIjtHB2iQCIICTh0j6vVdZylU3mTbgYPMKdElK55jACSqAR0';
+      '';
 
   final FlutterLocalNotificationsPlugin _plugin =
   FlutterLocalNotificationsPlugin();
@@ -199,6 +199,11 @@ class NotificationService {
       _api = api;
       String? token;
 
+      // ALFAHEEM (sync/identity.env FIREBASE_WEB_VAPID_KEY, A-006): no Web Push certificate yet, so no web token.
+      if (kIsWeb && webPushVapidKey.isEmpty) {
+        _fcmLog('[FCM] web push skipped: no VAPID key configured');
+        return;
+      }
       if (kIsWeb) {
         token = await _fcm.getToken(vapidKey: webPushVapidKey);
       } else {
@@ -217,6 +222,7 @@ class NotificationService {
 
   // ── Called on logout ─────────────────────────────────────────────────────
   Future<void> unregisterFromBackend(ApiClient api) async {
+    if (kIsWeb && webPushVapidKey.isEmpty) return; // never registered (A-006)
     final token = await _fcm.getToken();
     if (token == null) return;
     try {

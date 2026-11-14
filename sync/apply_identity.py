@@ -8,11 +8,13 @@ Idempotent: running it twice changes nothing. Ordered:
   3. platform display names (launcher label, desktop binary names, web titles);
   4. user-visible names: "NextBrain" / "نكست برين" -> Alfaheem / الفهيم, Arabic inside Arabic text;
   5. one-off blocks: certificate pins, App Links fingerprints, Firebase web worker + firebase.json (Alfaheem's
-     project, read from the kept lib/firebase_options.dart), splash and launcher settings, CLAUDE.md note.
+     project, read from the kept lib/firebase_options.dart), the iOS Firebase URL schemes and the web-push VAPID key
+     (FIREBASE_* in sync/identity.env, A-006), splash and launcher settings, CLAUDE.md note.
 
 What must NOT change (sync/README.md, plan section 4.2) is never matched: the rules only touch the exact tokens above,
 so signing labels (nextbrain/biometric-login/v1, ...), storage keys, the reserved username, nextbrain_offline_exam,
-script file names (nextbrain_runner.py) and the Firebase project id nextbrain-2y stay as they are.
+and script file names (nextbrain_runner.py) stay as they are. NextBrain's Firebase ids (nextbrain-2y) are rewired by
+the Firebase blocks, never renamed by text.
 
 Usage: py -3.12 sync/apply_identity.py [--check]   (--check: print what would change, exit 1 when anything would)
 """
@@ -345,7 +347,8 @@ def firebase_sw(text: str) -> str:
     body = ''.join(f'  {k}: "{o[k]}",\n' for k in keys if k in o)
     text = re.sub(r'firebase\.initializeApp\(\{\n.*?\n\}\);', lambda _: 'firebase.initializeApp({\n' + body + '});', text,
                   count=1, flags=re.S)
-    text = text.replace('project nextbrain-2y, D-145', f"project {o.get('projectId', '')}, A-004")
+    text = re.sub(r'\(DefaultFirebaseOptions\.web, project [\w-]+, [AD]-\d+\)',
+                  f"(DefaultFirebaseOptions.web, project {o.get('projectId', '')}, A-006)", text, count=1)
     return text
 
 
@@ -375,6 +378,55 @@ def firebase_json(text: str) -> str:
             'android': ids.get('android'), 'ios': ids.get('ios'), 'macos': ids.get('macos') or None,
             'web': ids.get('web')}.items() if v}
     return json.dumps(data, indent=2, ensure_ascii=False) + '\n'
+
+
+def ios_url_schemes(text: str) -> str:
+    """The Firebase URL schemes of ios/Runner/Info.plist: Firebase Auth returns to the encoded iOS app id, Google
+    sign-in to the REVERSED_CLIENT_ID (only when the iOS app has an OAuth client)."""
+    app_id = E.get('FIREBASE_IOS_APP_ID', '')
+    if not app_id:
+        return text
+    reversed_id = E.get('FIREBASE_IOS_REVERSED_CLIENT_ID', '')
+    m = re.search(r'(<key>CFBundleURLSchemes</key>\n(\s*)<array>\n)((?:(?!</array>).)*?'
+                  r'<string>app-1-[^<]*</string>(?:(?!</array>).)*?)(\n\s*</array>)', text, re.S)
+    if not m:
+        return text
+    pad = m.group(2) + '\t'
+    body = (f'{pad}<!-- Firebase Auth returns here after "Continue with Google" (the encoded iOS app id of '
+            f'{E.get("FIREBASE_PROJECT_ID", "")}, A-006) -->\n'
+            f'{pad}<string>app-{app_id.replace(":", "-")}</string>')
+    if reversed_id:
+        body += f'\n{pad}<string>{reversed_id}</string>'
+    return text[:m.start(3)] + body + text[m.end(3):]
+
+
+VAPID_GUARD = 'webPushVapidKey.isEmpty'
+
+
+def vapid_key(text: str) -> str:
+    """The web-push key comes from FIREBASE_WEB_VAPID_KEY; with none, web push is skipped instead of asking Firebase
+    for a token with NextBrain's key (A-006)."""
+    key = E.get('FIREBASE_WEB_VAPID_KEY', '')
+    project = E.get('FIREBASE_PROJECT_ID', '')
+    text = re.sub(r"(static const webPushVapidKey =\s*)'[^']*'", lambda m: m.group(1) + f"'{key}'", text, count=1)
+    text = re.sub(r"(/// The Web Push \(VAPID\) public key of the web app's Firebase project )\(`[^`]*`, [AD]-\d+\)",
+                  lambda m: m.group(1) + f'(`{project}`, A-006)', text, count=1)
+    if VAPID_GUARD in text:
+        return text
+    reg = '      if (kIsWeb) {\n        token = await _fcm.getToken(vapidKey: webPushVapidKey);\n'
+    text = text.replace(reg, (
+        '      // ALFAHEEM (sync/identity.env FIREBASE_WEB_VAPID_KEY, A-006): no Web Push certificate yet, so no web token.\n'
+        '      if (kIsWeb && webPushVapidKey.isEmpty) {\n'
+        "        _fcmLog('[FCM] web push skipped: no VAPID key configured');\n"
+        '        return;\n'
+        '      }\n' + reg), 1)
+    unreg = ('  Future<void> unregisterFromBackend(ApiClient api) async {\n'
+             '    final token = await _fcm.getToken();\n')
+    text = text.replace(unreg, (
+        '  Future<void> unregisterFromBackend(ApiClient api) async {\n'
+        '    if (kIsWeb && webPushVapidKey.isEmpty) return; // never registered (A-006)\n'
+        '    final token = await _fcm.getToken();\n'), 1)
+    return text
 
 
 def pubspec(text: str) -> str:
@@ -413,16 +465,31 @@ def boot_splash(text: str) -> str:
 CLAUDE_NOTE = f"""<!-- alfaheem:begin -->
 > **Alfaheem fork.** This repository is Alfaheem ({NAME_AR}, by DoubleY), built from NextBrain by `sync/`
 > (`sync/README.md`): application id `{APP_ID}`, domain `{DOMAIN}`. Alfaheem-only decisions are in
-> `docs/DECISIONS_ALFAHEEM.md` (A-nnn). Text below that still names NextBrain-only values (the Firebase project
-> `nextbrain-2y`, the `D-nnn` history) describes the upstream; Alfaheem's values are in `sync/identity.env`.
+> `docs/DECISIONS_ALFAHEEM.md` (A-nnn), Firebase project `{E.get('FIREBASE_PROJECT_ID', '')}` (A-006). Text below that
+> still names NextBrain-only values (the `D-nnn` history) describes the upstream; Alfaheem's values are in
+> `sync/identity.env`.
 <!-- alfaheem:end -->
 
 """
 
 
-def claude_md(text: str) -> str:
-    if 'Alfaheem fork.' in text:
+def claude_firebase(text: str) -> str:
+    project = E.get('FIREBASE_PROJECT_ID', '')
+    if not project:
         return text
+    text = re.sub(r'Firebase project `nextbrain-2y` \(the old `elfaheem` stays as the fallback for installed apps, D-145\)',
+                  f'Firebase project `{project}` (A-006; the upstream project and the old elfaheem one are not used, no fallback)', text)
+    text = re.sub(r"; \.firebaserc still defaults to the old `elfaheem` project, the app itself is on `nextbrain-2y`",
+                  f'; .firebaserc defaults to `{project}`', text)
+    return text
+
+
+def claude_md(text: str) -> str:
+    text = claude_firebase(text)
+    if 'Alfaheem fork.' in text:
+        # Refresh a note written by an older version of this script.
+        return re.sub(r'<!-- alfaheem:begin -->\n.*?<!-- alfaheem:end -->\n', lambda _: CLAUDE_NOTE.split('\n\n')[0] + '\n',
+                      text, count=1, flags=re.S)
     m = re.search(r'\r?\n\r?\n', text)
     if not m:
         return CLAUDE_NOTE + text
@@ -438,6 +505,8 @@ def main() -> int:
     edit('web/.well-known/assetlinks.json', assetlinks)
     edit('web/firebase-messaging-sw.js', firebase_sw)
     edit('firebase.json', firebase_json)
+    edit('ios/Runner/Info.plist', ios_url_schemes)
+    edit('lib/features/messaging/notification/notification_service.dart', vapid_key)
     edit('pubspec.yaml', pubspec)
     edit('lib/design/boot_splash.dart', boot_splash)
     edit('CLAUDE.md', claude_md)
