@@ -32,7 +32,7 @@ import 'package:flutter_education_app/design/app_contrast.dart' show ensureContr
 import 'package:flutter_education_app/design/app_buttons.dart' show appFocusRing, appKeyboardFocus;
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_gradients.dart'
-    show AppBrandInk, AppBrandLabel, AppBrandLayer, AppBrandPanel, AppBrandSpan, AppGradientIcon, AppHeadingHalo, BrandInk;
+    show AppBrandInk, AppBrandLabel, AppBrandLayer, AppBrandPanel, AppBrandSpan, AppGradientIcon, BrandInk;
 import 'package:flutter_education_app/design/app_inputs.dart'
     show validateEmail, kEmailRegex, appFieldDecoration, appFieldTextStyle, appFieldFocusInk;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppEase, AppPressScale;
@@ -1126,8 +1126,7 @@ class AuthOrDivider extends StatelessWidget {
           flex: 3,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-            // D-650 r3: on the doodle canvas the label gets the page-colour halo when the doodles would drop it below AA
-            child: AppHeadingHalo(child: Text(label, textAlign: TextAlign.center, style: AppType.meta(context))),
+            child: Text(label, textAlign: TextAlign.center, style: AppType.meta(context)),
           ),
         ),
         line(),

@@ -126,17 +126,44 @@ abstract final class AppShadow {
 /// Casts the resting card shadow ([AppShadow.card]) under [child], a card drawn with a `Material` of the same
 /// [radius] (default [AppRadius.cardAll]; a `Material` takes no shadow list). The white card on the tinted page
 /// (D-632).
-class AppLift extends StatelessWidget {
-  const AppLift({super.key, required this.child, this.radius});
+///
+/// [hover] (a tappable card, D-948): under a mouse the card rises to [AppElevation] level 2 while the pointer is on
+/// it, easing over [AppMotion.base] (instant under Reduce motion). Touch screens never see it.
+class AppLift extends StatefulWidget {
+  const AppLift({super.key, required this.child, this.radius, this.hover = false});
 
   final Widget child;
   final BorderRadius? radius;
 
+  /// Rise on mouse hover.
+  final bool hover;
+
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-        decoration: BoxDecoration(borderRadius: radius ?? AppRadius.cardAll, boxShadow: AppShadow.card(context)),
-        child: child,
-      );
+  State<AppLift> createState() => _AppLiftState();
+}
+
+class _AppLiftState extends State<AppLift> {
+  bool _over = false;
+
+  void _set(bool v) {
+    if (mounted && v != _over) setState(() => _over = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final up = widget.hover && _over;
+    final box = AnimatedContainer(
+      duration: AppMotion.of(context).base,
+      curve: AppMotion.curve,
+      decoration: BoxDecoration(
+        borderRadius: widget.radius ?? AppRadius.cardAll,
+        boxShadow: up ? AppElevation.of(context, 2) : AppShadow.card(context),
+      ),
+      child: widget.child,
+    );
+    if (!widget.hover) return box;
+    return MouseRegion(onEnter: (_) => _set(true), onExit: (_) => _set(false), child: box);
+  }
 }
 
 /// Elevation by level, in the theme's warm shadow tone (`card_shadow_color`, charcoal; never a neutral grey). Depth
