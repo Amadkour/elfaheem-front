@@ -18,7 +18,6 @@ lib/features/student/analysis/student_analytics_screen.dart	lib/features/analyti
 lib/features/student/analysis/student_analytics_widgets.dart	lib/features/analytics/student/student_analytics_widgets.dart
 lib/features/student/analysis/student_course_analytics_screen.dart	lib/features/analytics/student/student_course_analytics_screen.dart
 lib/features/teacher/analysis/analytics_hub_screen.dart	lib/features/analytics/teacher/analytics_hub_screen.dart
-lib/features/teacher/analysis/analytics_models.dart	lib/features/analytics/teacher/analytics_models.dart
 lib/features/teacher/analysis/teacher_stat_band.dart	lib/features/analytics/teacher/teacher_stat_band.dart
 lib/features/student/analysis/flags	lib/features/analytics/student/flags
 lib/features/teacher/analysis/flags	lib/features/analytics/teacher/flags
