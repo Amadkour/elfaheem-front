@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';
 
-const _uri = 'otpauth://totp/ElFaheem:admin%40x.io?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=ElFaheem'
+const _uri = 'otpauth://totp/NextBrain:admin%40x.io?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=NextBrain'
     '&algorithm=SHA1&digits=6&period=30';
 
 class _FakeApi implements MfaApi {
@@ -33,7 +33,7 @@ class _FakeApi implements MfaApi {
   Future<MfaSetupInfo> setup({String? password}) async {
     setups++;
     lastPassword = password;
-    return const MfaSetupInfo(secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP', otpauthUri: _uri, issuer: 'ElFaheem',
+    return const MfaSetupInfo(secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP', otpauthUri: _uri, issuer: 'NextBrain',
         account: 'admin@x.io');
   }
 
@@ -210,7 +210,7 @@ void main() {
       final ctl = TextEditingController(text: '12');
       addTearDown(ctl.dispose);
       const info = MfaSetupInfo(
-          secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP', otpauthUri: _uri, issuer: 'ElFaheem', account: 'a.very.long.admin.address@university.example.edu');
+          secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP', otpauthUri: _uri, issuer: 'NextBrain', account: 'a.very.long.admin.address@university.example.edu');
       await expectNoLayoutErrors(t, () => MfaSetupView(info: info, code: ctl, onConfirm: () {}, onCancel: () {}));
       await expectNoLayoutErrors(t, () => MfaSetupView(info: info, code: ctl, busy: true, error: 'The code is not correct'));
     });

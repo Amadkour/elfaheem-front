@@ -16,7 +16,7 @@ flowchart LR
     exam["Exam Engine :8001"]
     rag["RAG service :8002"]
     lk["LiveKit (live rooms)"]
-    fb["Firebase project elfaheem<br/>Messaging · Crashlytics · Remote Config<br/>Auth (Google) · Hosting (web)"]
+    fb["Firebase project nextbrain-2y (old elfaheem as fallback, D-145)<br/>Messaging · Crashlytics · Remote Config<br/>Auth (Google) · Hosting (web)"]
     pay["Moyasar / Paymob"]
 
     people --> app
