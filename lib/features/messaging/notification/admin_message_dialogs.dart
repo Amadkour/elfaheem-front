@@ -2,7 +2,7 @@
 //
 // Shows admin messages sent as "dialog" / "dialog with button". Call checkPending():
 //   • after login / app start (see _Guard in main.dart)
-//   • when the app resumes (WidgetsBindingObserver in ElFaheemApp)
+//   • when the app resumes (WidgetsBindingObserver in AlfaheemApp)
 //   • when a push of type admin_message arrives in the foreground (notification_service.dart)
 // Never runs while a super-admin is in "view as" mode (it would show — and could not dismiss — someone else's dialogs).
 import 'package:flutter/material.dart';
