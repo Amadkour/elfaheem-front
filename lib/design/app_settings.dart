@@ -35,7 +35,7 @@ import '../config/theme/theme_config_provider.dart';
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/parent_component.dart';
 import 'app_blocks.dart';
-import 'app_gradients.dart' show AppGradientIcon, AppHeadingHalo;
+import 'app_gradients.dart' show AppGradientIcon;
 import 'app_responsive.dart';
 import 'app_tokens.dart';
 
@@ -175,9 +175,12 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
     final col = own ?? section ?? c.primary;
     final n = badge ?? 0;
     final sub = subtitle;
-    final row = InkWell(
+    // D-948: the row's ink (hover, focus, press) is a soft wash of its own colour; the chevron leans toward the
+    // reading end and darkens under the mouse
+    final row = _RowInk(
+      color: col,
       onTap: onTap,
-      child: ConstrainedBox(
+      builder: (hovered) => ConstrainedBox(
         constraints: const BoxConstraints(minHeight: AppTouch.min),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
@@ -221,10 +224,15 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
               trailing!,
             ] else if (onTap != null) ...[
               const SizedBox(width: AppSpace.xs),
-              Icon(
-                Icons.chevron_right_rounded, // matchTextDirection: Flutter mirrors it in RTL
-                color: c.textLight,
-                size: AppIconSize.lg,
+              AnimatedSlide(
+                offset: Offset(hovered ? 0.12 : 0, 0), // Flutter mirrors the icon, the slide follows the direction
+                duration: AppMotion.of(context).fast,
+                curve: AppMotion.curve,
+                child: Icon(
+                  Icons.chevron_right_rounded, // matchTextDirection: Flutter mirrors it in RTL
+                  color: hovered ? c.textMedium : c.textLight,
+                  size: AppIconSize.lg,
+                ),
               ),
             ],
           ]),
@@ -232,6 +240,38 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
       ),
     );
     return featureKey == null ? row : ParentComponent(featureKey: featureKey, child: row);
+  }
+}
+
+/// A settings row's ink (D-948): hover, keyboard focus and press are washes of the row's [color] (never a grey), and
+/// the row knows when the mouse is on it ([builder]).
+class _RowInk extends StatefulWidget {
+  const _RowInk({required this.color, required this.onTap, required this.builder});
+
+  final Color color;
+  final VoidCallback? onTap;
+  final Widget Function(bool hovered) builder;
+
+  @override
+  State<_RowInk> createState() => _RowInkState();
+}
+
+class _RowInkState extends State<_RowInk> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = context.colors.isDark;
+    final col = widget.color;
+    return InkWell(
+      onTap: widget.onTap,
+      onHover: widget.onTap == null ? null : (v) => setState(() => _hovered = v),
+      hoverColor: col.withValues(alpha: dark ? 0.10 : 0.05),
+      focusColor: col.withValues(alpha: dark ? 0.16 : 0.10),
+      highlightColor: col.withValues(alpha: dark ? 0.12 : 0.07),
+      splashColor: col.withValues(alpha: dark ? 0.14 : 0.08),
+      child: widget.builder(_hovered && widget.onTap != null),
+    );
   }
 }
 
@@ -290,8 +330,7 @@ class AppSettingsGroup extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
         padding: EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, spaceAbove ? AppSpace.sectionHead.top : 0, AppSpace.xxs, AppSpace.sectionHead.bottom),
-        // D-650 r3: a page-colour halo when the doodle field would drop the heading below AA
-        child: AppHeadingHalo(child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           if (icon != null) ...[
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpace.xxs / 2),
@@ -313,7 +352,7 @@ class AppSettingsGroup extends StatelessWidget {
               ],
             ]),
           ),
-        ])),
+        ]),
       ),
       // the white card on the tinted page (D-632); the sign-out group keeps its flat danger tint
       _lifted(danger, Material(
