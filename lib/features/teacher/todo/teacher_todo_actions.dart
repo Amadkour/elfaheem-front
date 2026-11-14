@@ -14,7 +14,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/deferred_screens.dart' show deferredTeacherSessionsScreen;
 import '../../../utils/widget/app_navigator.dart';
-import '../../admin/enrollment_request/teacher_transfers_screen.dart' show TeacherTransfersScreen;
+import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_screen.dart' show TeacherTransfersScreen;
 import 'package:flutter_education_app/features/exams/exam_insights_screen.dart' show ExamAppealsScreen;
 import 'package:flutter_education_app/features/exams/exam_review_screen.dart' show ExamReviewScreen;
 import 'package:flutter_education_app/features/exams/paper/review/omr_review_page.dart' show OmrReviewPage;

@@ -63,7 +63,7 @@ import 'admin_profile_page.dart';
 import 'admin_providers.dart' show AdminPendingPayoutsProvider;
 import 'admin_services_hub.dart';
 import 'admin_users_page.dart';
-import 'enrollment_request/teacher_transfers_provider.dart';
+import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/features/shared/certificates_issue/cert_verify_page.dart' show CertVerifyEntryTile;

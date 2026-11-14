@@ -1,4 +1,4 @@
-// lib/features/shared/points/points_wallet_page.dart — the points wallet (docs/backend/live-rooms-spec.md §9,
+// lib/features/payments/points/points_wallet_page.dart — the points wallet (docs/backend/live-rooms-spec.md §9,
 // feature key `profile.points`): the live-meeting plan card, the balance with "Buy points", my top-ups with their
 // status and the history (ledger kinds as text).
 //
@@ -22,10 +22,10 @@ import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
-import '../../admin/admin_common.dart' show t;
-import 'live_plan_sheet.dart';
-import 'points_api.dart';
-import 'points_card_checkout.dart' show runCardTopup;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/payments/points/live_plan_sheet.dart';
+import 'package:flutter_education_app/features/payments/points/points_api.dart';
+import 'package:flutter_education_app/features/payments/points/points_card_checkout.dart' show runCardTopup;
 
 class PointsWalletPage extends StatefulWidget {
   const PointsWalletPage({super.key, this.openPlan = false, this.api = const PointsApi()});

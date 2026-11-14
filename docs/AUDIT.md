@@ -41,7 +41,7 @@ Date: 2026-10-24. Branch: `feature/platform-rbac-exams-rag`. Method: an independ
 
 ## 3. What exists and is reused
 
-`AppMode.individual/organization` + `AppModeController.openOrg` + `ContextSwitcher`/`leaveToPersonal` (`lib/core/app_mode.dart`, `lib/design/context_switcher.dart`); org join flows (`org_access_joining.dart`, `org_join_scan.dart`, `org_join_pages.dart`); people/roles (`org_people_page.dart`, `org_access_page.dart`, `org_member_form.dart`); platform settings (`admin_platform_settings_page.dart`, `org_platform_settings_page.dart`, `admin_fee_rates.dart`); payments (`features/student/enrollment/`); payouts (`teacher_payouts_screen.dart`, `admin_payouts_page.dart`); exam timetables (`org_schedule_exams.dart` with the `RemoteExamApi`/`MockExamApi` pattern at `:121,150`, `org_my_exams.dart`); the UI kit (`lib/design/app_kit.dart`), `BasePage`, `AppTime`, the layout harness.
+`AppMode.individual/organization` + `AppModeController.openOrg` + `ContextSwitcher`/`leaveToPersonal` (`lib/core/app_mode.dart`, `lib/design/context_switcher.dart`); org join flows (`org_access_joining.dart`, `org_join_scan.dart`, `org_join_pages.dart`); people/roles (`org_people_page.dart`, `org_access_page.dart`, `org_member_form.dart`); platform settings (`admin_platform_settings_page.dart`, `org_platform_settings_page.dart`, `admin_fee_rates.dart`); payments (`features/payments/enrollment/`); payouts (`teacher_payouts_screen.dart`, `admin_payouts_page.dart`); exam timetables (`org_schedule_exams.dart` with the `RemoteExamApi`/`MockExamApi` pattern at `:121,150`, `org_my_exams.dart`); the UI kit (`lib/design/app_kit.dart`), `BasePage`, `AppTime`, the layout harness.
 
 ## 4. Constraints for the plan
 

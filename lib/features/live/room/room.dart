@@ -105,7 +105,7 @@ import 'package:flutter_education_app/features/live/room/whiteboard/board_rec_pa
 import 'package:flutter_education_app/features/live/room/whiteboard/board_format.dart' show BoardViewportPos;
 import 'package:flutter_education_app/features/live/live_recording_layout.dart';
 import 'package:flutter_education_app/features/live/meeting_info_sheet.dart';
-import 'package:flutter_education_app/features/shared/points/live_plan_sheet.dart' show showLivePlanSheet;
+import 'package:flutter_education_app/features/payments/points/live_plan_sheet.dart' show showLivePlanSheet;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_education_app/features/live/room/widgets/room_screen_share.dart';
 import 'package:flutter_education_app/features/live/room/widgets/android_share.dart' show LiveMicGate;

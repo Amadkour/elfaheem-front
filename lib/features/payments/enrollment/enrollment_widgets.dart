@@ -9,12 +9,12 @@ import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountU
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
-import '../../../config/app_config.dart' as helpers;
-import '../../../config/theme/theme_config_provider.dart';
-import '../../../core/api_client.dart';
-import '../../../utils/widget/app_bar.dart';
+import 'package:flutter_education_app/config/app_config.dart' as helpers;
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-import 'enrollment_models.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
 
 bool isWideLayout(BuildContext context) =>
     MediaQuery.of(context).size.width > 600;

@@ -12,9 +12,9 @@ import 'dart:typed_data';
 
 import 'package:cross_file/cross_file.dart';
 
-import '../../../../core/api_client.dart';
-import '../../../../core/base_provider.dart';
-import '../enrollment_models.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/base_provider.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
 
 enum TransferSubmitStep { form, submitting, submitted, failed }
 

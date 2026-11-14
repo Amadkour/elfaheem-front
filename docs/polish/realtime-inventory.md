@@ -22,7 +22,7 @@ Kind: **ND** = checks for new data · **JP** = progress of a job the user waits 
 | shared/profile/privacy_export.dart:289 | GET data-export status | 5 s while processing | page open | JP | none |
 | features/live/meeting_recording_sheets.dart:332, 753 | GET /me/cloud (OAuth wait) | 3 s | sheet open | JP | none |
 | features/live/meeting_recording_sheets.dart:544 `RecordingStatusCard` | GET /live/recordings/{rid} | 5 s while not final | detail open | JP | none (`recording_ready` visible only) |
-| student/enrollment/enrollment_provider.dart:631 `_pollVerification` | POST payment verify | 5 s × 18 | after checkout | JP | none (`payment_success` visible push exists) |
+| features/payments/enrollment/enrollment_provider.dart:631 `_pollVerification` | POST payment verify | 5 s × 18 | after checkout | JP | none (`payment_success` visible push exists) |
 | auth/verified_screen.dart:477 `_pollLink` | checkPhoneLink | 2 s | QR shown | JP | none |
 | features/attendance/teacher_attendance_controller.dart:313,324, …_provider.dart:115 | attendance code / roster `_sync()` | 5 s | attendance screen | ND | students get silent pushes; teacher roster polls |
 | teacher/home/queue_work_items.dart:108 | none (old 10 s poll commented out) | 10 s tick | teacher home | C | — |

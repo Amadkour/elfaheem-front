@@ -8,10 +8,10 @@ library;
 
 import 'dart:async';
 
-import '../../../core/api_client.dart';
-import '../../../core/base_provider.dart';
-import '../../../utils/live_events.dart';
-import '../../student/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/base_provider.dart';
+import 'package:flutter_education_app/utils/live_events.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
 
 class TeacherTransfersProvider extends BaseProvider {
   TeacherTransfersProvider({ApiClient? api}) : api = api ?? ApiClient() {

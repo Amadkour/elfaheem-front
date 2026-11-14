@@ -11,9 +11,9 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../core/api_client.dart';
-import 'enrollment_models.dart';
-import 'payment_flow_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/features/payments/enrollment/payment_flow_provider.dart';
 
 /// Prerequisite refusals the enrolment-blocked sheet can explain.
 const enrollBlockCodes = {'roadmap_prerequisites', 'course_prerequisites', 'department_prerequisites'};

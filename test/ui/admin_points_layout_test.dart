@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_switch.dart' show AppSwitch;
 import 'package:flutter_education_app/features/admin/admin_points_page.dart';
-import 'package:flutter_education_app/features/shared/points/points_api.dart';
+import 'package:flutter_education_app/features/payments/points/points_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

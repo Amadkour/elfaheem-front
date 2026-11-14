@@ -69,7 +69,7 @@ Tests: `test/ui/polish_auth_shared_layout_test.dart` (20 tests: `NotificationsSt
 | shared/calendar/calendar_views.dart | physical `Positioned` (bug 9); 5 colours | `PositionedDirectional`; theme | — |
 | shared/calendar/calendar_models.dart | 2 timetable hexes | `accent2` / `lerp(primary, accent2)` | — |
 | shared/calendar/calendar_meeting.dart | — | — | already themed; errors via `calErrorText` |
-| shared/subscription/subscription_screen.dart · _provider.dart | page spinner; provider returned `'$e'` | `AppListSkeleton`; `ApiException.from(e).message` | — |
+| features/payments/subscription/subscription_screen.dart · _provider.dart | page spinner; provider returned `'$e'` | `AppListSkeleton`; `ApiException.from(e).message` | — |
 | shared/downloads/downloads_screen.dart | 4 colours; spinner; hand `RefreshIndicator`; home / delete icon buttons unlabelled; physical gradient | theme; skeleton; `AppRefresh`; tooltips; directional | — |
 | shared/upload/upload_progress_footer.dart · upload_queue_manager.dart | 1 colour; failure text is the raw server body | theme | `task.errorMessage` is logged only, never shown |
 | shared/passcode/passcode_screen.dart | fixed dark / gold palette (17 hexes) ignored theme and light mode; icon-only delete / close keys | live theme tokens; `Semantics` labels | status-strip spinner (fixed 44 px strip) |

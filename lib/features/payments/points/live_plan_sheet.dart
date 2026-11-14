@@ -1,4 +1,4 @@
-// lib/features/shared/points/live_plan_sheet.dart — the student live-meeting plan (docs/backend/live-rooms-spec.md §8).
+// lib/features/payments/points/live_plan_sheet.dart — the student live-meeting plan (docs/backend/live-rooms-spec.md §8).
 //
 //   showLivePlanSheet(context)   → true when the person is now covered (subscribed, or staff who never need it).
 //                                  Used by the room's "Upgrade" (live agent), the calendar's 402 live_plan_required,
@@ -15,9 +15,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
-import '../../admin/admin_common.dart' show t;
-import 'points_api.dart';
-import 'points_wallet_page.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/payments/points/points_api.dart';
+import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart';
 
 /// Shows the plan with Subscribe. Returns true once the person is covered. [reason] is the 402's `reason`
 /// (`daily_limit` → the header says today's free time is used up).

@@ -60,14 +60,14 @@ Not fixed:
 | `features/courses/student/list/courses_list_screen.dart` | branded spinner; no error state | `AppListSkeleton`; `ErrorRetry` | — |
 | `features/courses/student/my_courses/components/course_progress_bar.dart` | Arabic-only labels | — | unused (no importer) |
 | `features/courses/student/security/device_blocked_dialog.dart` | forced `TextDirection.rtl` also in English; `Alignment.centerRight` | `pageDirection`; `AlignmentDirectional.centerStart` | — |
-| `student/enrollment/enrollment_screen.dart` | 13 colours; branded spinners (page + methods) | colours -> theme ("new card" tile -> primary); spinners -> `AppListSkeleton` | Visa / Mastercard / Amex / mada tile colours are the networks' brand colours |
-| `student/enrollment/enrollment_widgets.dart` | 5 colours | -> theme | in-button / processing loaders kept (not list loading) |
-| `student/enrollment/saved_cards/student_saved_methods_screen.dart` | 26 colours; `Colors.amber[700]`; painter with no theme access; delete icon without tooltip | ink / badge / shadow colours -> theme; `_ArcPainter(ink)`; tooltip | card-art gradients per network and the EMV-chip gold are artwork of a physical card |
-| `student/enrollment/checkout_pages.dart`, `checkout_web_impl.dart` | 2 colours; branded loader while payment opens | colours -> theme | loader kept (payment hand-off, not a list) |
-| `student/enrollment/roadmap_enrollment_screen.dart` | branded spinner | `AppListSkeleton` | — |
-| `student/enrollment/transfer/transfer_payment_screen.dart` (+ provider) | branded spinner; provider failure text hard-coded Arabic + raw `$e` | `AppListSkeleton`; new keys `transfer_submit_failed` / `transfer_proof_required` + `apiErrorText` | — |
-| `student/enrollment/payment_flow_provider.dart` | `payment_open_failed: $e` (raw exception) | `apiErrorText(ApiException.from(e))` | — |
-| `student/enrollment/payment_callback_page.dart` | 5 colours | -> theme | unused (no importer) |
+| `features/payments/enrollment/enrollment_screen.dart` | 13 colours; branded spinners (page + methods) | colours -> theme ("new card" tile -> primary); spinners -> `AppListSkeleton` | Visa / Mastercard / Amex / mada tile colours are the networks' brand colours |
+| `features/payments/enrollment/enrollment_widgets.dart` | 5 colours | -> theme | in-button / processing loaders kept (not list loading) |
+| `features/payments/enrollment/saved_cards/student_saved_methods_screen.dart` | 26 colours; `Colors.amber[700]`; painter with no theme access; delete icon without tooltip | ink / badge / shadow colours -> theme; `_ArcPainter(ink)`; tooltip | card-art gradients per network and the EMV-chip gold are artwork of a physical card |
+| `features/payments/enrollment/checkout_pages.dart`, `checkout_web_impl.dart` | 2 colours; branded loader while payment opens | colours -> theme | loader kept (payment hand-off, not a list) |
+| `features/payments/enrollment/roadmap_enrollment_screen.dart` | branded spinner | `AppListSkeleton` | — |
+| `features/payments/enrollment/transfer/transfer_payment_screen.dart` (+ provider) | branded spinner; provider failure text hard-coded Arabic + raw `$e` | `AppListSkeleton`; new keys `transfer_submit_failed` / `transfer_proof_required` + `apiErrorText` | — |
+| `features/payments/enrollment/payment_flow_provider.dart` | `payment_open_failed: $e` (raw exception) | `apiErrorText(ApiException.from(e))` | — |
+| `features/payments/enrollment/payment_callback_page.dart` | 5 colours | -> theme | unused (no importer) |
 | `features/exams/legacy/student/exam_ui.dart` | 28 colours; `GlassIcon` 40 px, no label; `ExamRing` default `Colors.white` | colours -> theme; `GlassIcon` 48 px target + `tooltip` (back gets the localized back tooltip); `ExamRing.color` nullable -> onHero; harness-tested | `kDeep / kDanger / kAmber / kViolet` consts kept for the teacher screens that import them (student screens no longer use them) |
 | `features/exams/legacy/student/student_exam_detail_screen.dart` | 10 colours + k* palette; hand-rolled `d/m/y hh:mm` | theme roles; `AppTime.dateTime` | — |
 | `features/exams/legacy/student/student_exam_quiz_screen.dart` | 9 colours + k* palette; page spinner | theme; `AppListSkeleton` | — |

@@ -19,19 +19,19 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/student/enrollment/saved_cards/saved_payment_models.dart';
-import 'package:flutter_education_app/features/student/enrollment/transfer/transfer_payment_screen.dart';
+import 'package:flutter_education_app/features/payments/enrollment/saved_cards/saved_payment_models.dart';
+import 'package:flutter_education_app/features/payments/enrollment/transfer/transfer_payment_screen.dart';
 import 'package:moyasar/moyasar.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../config/app_config.dart';
-import '../../../core/live/event_wait.dart';
-import '../../../utils/live_events.dart';
-import '../../student/models.dart';
-import 'checkout_pages.dart';
-import 'enrollment_models.dart';
-import 'payment_flow_provider.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
+import 'package:flutter_education_app/utils/live_events.dart';
+import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/payments/enrollment/checkout_pages.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/features/payments/enrollment/payment_flow_provider.dart';
 
-export 'payment_flow_provider.dart' show EnrollStep;
+export 'package:flutter_education_app/features/payments/enrollment/payment_flow_provider.dart' show EnrollStep;
 
 /// Shown on the Apple Pay sheet / Paymob SDK. Change to your app's display name.
 const _kWalletAppName = 'Education App';

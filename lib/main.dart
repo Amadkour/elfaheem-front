@@ -89,7 +89,7 @@ import 'package:flutter_education_app/features/courses/course_profile/course_pro
 import 'features/shared/calendar/calendar_screen.dart';
 import 'features/shared/profile/change_password_widget.dart';
 import 'features/shared/profile/update_account_widget.dart';
-import 'features/shared/subscription/subscription_screen.dart';
+import 'package:flutter_education_app/features/payments/subscription/subscription_screen.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart';
 import 'features/org/orgs_unavailable_gate.dart';
 import 'package:flutter_education_app/features/live/companion/companion_incoming.dart';

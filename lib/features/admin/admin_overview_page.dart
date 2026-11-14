@@ -36,7 +36,7 @@ import 'admin_payouts_page.dart';
 import 'admin_providers.dart';
 import 'admin_subscriptions_page.dart';
 import 'admin_users_page.dart';
-import 'enrollment_request/teacher_transfers_screen.dart';
+import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_screen.dart';
 
 class AdminOverviewPage extends StatelessWidget {
   const AdminOverviewPage({super.key, required this.onOpenTab});

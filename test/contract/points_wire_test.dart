@@ -20,7 +20,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart' show GuestJoin;
 import 'package:flutter_education_app/features/live/live_room.dart' show JoinOutcome;
 import 'package:flutter_education_app/features/live/live_time_limit.dart' show parseNaiveUtc;
-import 'package:flutter_education_app/features/shared/points/points_api.dart';
+import 'package:flutter_education_app/features/payments/points/points_api.dart';
 import 'package:flutter_education_app/features/sessions/teacher/model/live_response_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 

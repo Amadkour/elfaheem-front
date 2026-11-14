@@ -49,15 +49,15 @@ import 'package:flutter_education_app/features/courses/admin/course_trash/trash_
 import 'admin_points_page.dart';
 import 'admin_recs_page.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart' show kRecsAdminKey;
-import '../shared/points/points_api.dart' show kAdminPointsFeatureKey;
+import 'package:flutter_education_app/features/payments/points/points_api.dart' show kAdminPointsFeatureKey;
 import 'admin_theme_page.dart';
 import 'admin_app_versions_page.dart';
 import 'admin_fees_page.dart';
 import 'admin_parent_linking_page.dart';
 import 'admin_recents.dart';
 import 'live_settings/live_settings_page.dart' show LiveSettingsPage, kLiveSettingsFeatureKey, liveSettingsTitle;
-import 'enrollment_request/teacher_transfers_provider.dart';
-import 'enrollment_request/teacher_transfers_screen.dart';
+import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
+import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_screen.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart';
 import 'package:flutter_education_app/features/exams/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;

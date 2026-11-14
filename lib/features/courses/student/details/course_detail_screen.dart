@@ -36,9 +36,9 @@ import 'package:flutter_education_app/features/sessions/teacher/components/cours
 import 'package:flutter_education_app/features/exams/legacy/student/student_course_exams_widget.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/student_exam_provider.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_profile_screen.dart';
-import 'package:flutter_education_app/features/student/enrollment/enrollment_screen.dart';
-import 'package:flutter_education_app/features/student/enrollment/enrollment_widgets.dart';
-import 'package:flutter_education_app/features/student/enrollment/roadmap_enrollment_screen.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_screen.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_widgets.dart';
+import 'package:flutter_education_app/features/payments/enrollment/roadmap_enrollment_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/about.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/course_access_parts.dart';

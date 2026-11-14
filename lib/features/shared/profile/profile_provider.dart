@@ -15,7 +15,7 @@ import '../../auth/auth_provider.dart';
 import '../../auth/login_screen.dart';
 import '../../auth/username.dart' show UsernameError, UsernameRules;
 import '../../student/models.dart';
-import '../../admin/enrollment_request/teacher_transfers_provider.dart';
+import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:path/path.dart' as p;
 

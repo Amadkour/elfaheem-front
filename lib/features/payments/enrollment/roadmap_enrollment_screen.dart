@@ -12,14 +12,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
-import '../../../config/app_config.dart';
-import '../../../config/theme/theme_config_provider.dart';
-import '../../../utils/widget/app_network_image.dart';
-import '../../org/org_levels_pages.dart' show showEnrollBlock;
-import 'enrollment_models.dart';
-import 'enrollment_widgets.dart';
-import 'payment_flow_provider.dart' show EnrollStep;
-import 'roadmap_enrollment_provider.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
+import 'package:flutter_education_app/features/org/org_levels_pages.dart' show showEnrollBlock;
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_widgets.dart';
+import 'package:flutter_education_app/features/payments/enrollment/payment_flow_provider.dart' show EnrollStep;
+import 'package:flutter_education_app/features/payments/enrollment/roadmap_enrollment_provider.dart';
 
 class RoadmapEnrollmentScreen extends StatelessWidget {
   final int courseId;

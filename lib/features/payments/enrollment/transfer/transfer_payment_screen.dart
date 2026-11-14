@@ -20,11 +20,11 @@ import 'package:flutter_education_app/utils/widget/clickable_text.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../config/app_config.dart';
-import '../../../../config/theme/theme_config_provider.dart';
-import '../enrollment_models.dart';
-import '../enrollment_widgets.dart';
-import 'transfer_payment_provider.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_widgets.dart';
+import 'package:flutter_education_app/features/payments/enrollment/transfer/transfer_payment_provider.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
 class TransferPaymentScreen extends StatelessWidget {

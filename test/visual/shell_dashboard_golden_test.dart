@@ -20,7 +20,7 @@ import 'package:flutter_education_app/features/admin/admin_home_body.dart';
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
 import 'package:flutter_education_app/features/admin/admin_providers.dart' show AdminPendingPayoutsProvider;
 import 'package:flutter_education_app/features/admin/admin_services_hub.dart';
-import 'package:flutter_education_app/features/admin/enrollment_request/teacher_transfers_provider.dart';
+import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -12,7 +12,7 @@ import 'dart:async';
 
 import 'package:flutter_education_app/core/api_client.dart';
 
-import '../points/points_api.dart' show pointsCodeText, pointsErrorCode;
+import 'package:flutter_education_app/features/payments/points/points_api.dart' show pointsCodeText, pointsErrorCode;
 
 const _base = '/api/v1/me/calendar';
 const calTimeout = Duration(seconds: 25);

@@ -9,12 +9,12 @@ import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../../config/app_config.dart';
-import '../../../core/api_client.dart';
-import '../../../core/base_provider.dart';
-import 'checkout_pages.dart';
-import 'enrollment_models.dart';
-import 'checkout_web_impl.dart' if (dart.library.io) 'checkout_stub_impl.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/base_provider.dart';
+import 'package:flutter_education_app/features/payments/enrollment/checkout_pages.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/features/payments/enrollment/checkout_web_impl.dart' if (dart.library.io) 'package:flutter_education_app/features/payments/enrollment/checkout_stub_impl.dart';
 
 enum EnrollStep { method, verifying, pending, success, failed }
 

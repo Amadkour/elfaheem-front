@@ -6,7 +6,7 @@ library;
 
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
-import '../../../student/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
 
 class DeviceSwitchItem {
   final int id;

@@ -33,8 +33,8 @@ import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
 // [meeting-recording] the latest recording's card + the creator's Record right (docs/backend/live-rooms-spec.md §5)
 import 'package:flutter_education_app/features/live/meeting_recording.dart' show MeetingRecording, RecordingQuality;
 import 'package:flutter_education_app/features/live/meeting_recording_sheets.dart' show MeetingRecordingStatus, RecordingQualityField;
-import '../points/live_plan_sheet.dart' show showLivePlanSheet;
-import '../points/points_api.dart';
+import 'package:flutter_education_app/features/payments/points/live_plan_sheet.dart' show showLivePlanSheet;
+import 'package:flutter_education_app/features/payments/points/points_api.dart';
 import 'calendar_api.dart';
 import 'calendar_models.dart';
 import 'package:flutter_education_app/design/app_username.dart';

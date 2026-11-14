@@ -11,13 +11,13 @@ import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:moyasar/moyasar.dart';
 
-import '../../../config/app_config.dart' as helpers;
-import '../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/config/app_config.dart' as helpers;
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 // webview_flutter is imported only on mobile; the stub keeps Flutter Web compiling.
 import 'package:webview_flutter/webview_flutter.dart'
-if (dart.library.html) 'webview_stub.dart';
+if (dart.library.html) 'package:flutter_education_app/features/payments/enrollment/webview_stub.dart';
 import 'package:flutter_education_app/core/display/lazy_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════

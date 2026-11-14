@@ -98,7 +98,7 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 | Courses | `admin/admin_courses_page.dart` | `AppDataTable` | on (P5) |
 | Categories | `admin/admin_categories_page.dart` | table | on (P6) |
 | Finance, Payouts, Subscriptions | `admin/admin_finance_page.dart`, `admin_payouts_page.dart`, `admin_subscriptions_page.dart` | tables | on (`adminEntityCell`) |
-| Teacher transfers | `admin/enrollment_request/teacher_transfers_screen.dart` | requests | **P9** (gaps B): the student and the course are `EntityGuardedChip`s, not `adminEntityCell`: the same queue serves teachers (`GET /payments/transfers/pending` is teacher / admin), so the server answers per mention |
+| Teacher transfers | `features/payments/enrollment_request/teacher_transfers_screen.dart` | requests | **P9** (gaps B): the student and the course are `EntityGuardedChip`s, not `adminEntityCell`: the same queue serves teachers (`GET /payments/transfers/pending` is teacher / admin), so the server answers per mention |
 | Parent link requests | `admin/admin_parent_requests_page.dart` | requests | **P9** (gaps B): the table's Request cell is the parent's name → `adminEntityCell` (student, from `student_id`); the detail's student block names the student the same way (the row still opens the request) |
 | Organizations | `admin/admin_organizations_page.dart` | organizations | gap (low): owner / teacher mentions |
 | Admins, content, features, feature guide, datacenter, platform settings, send message, required documents, view-as, app releases, landing, money p8, filters, table export | `admin/*` | | out |

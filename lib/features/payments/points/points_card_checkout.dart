@@ -1,4 +1,4 @@
-// lib/features/shared/points/points_card_checkout.dart — buying points by card (docs/backend/live-rooms-spec.md
+// lib/features/payments/points/points_card_checkout.dart — buying points by card (docs/backend/live-rooms-spec.md
 // Part 3 §13).
 //
 //   runCardTopup(context, api, checkout)   the whole card flow after `POST /me/points/checkout`: opens the
@@ -18,11 +18,11 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 
-import '../../admin/admin_common.dart' show t;
-import '../../student/enrollment/checkout_pages.dart' show MobileCheckoutPage;
-import '../../student/enrollment/checkout_web_impl.dart'
-    if (dart.library.io) '../../student/enrollment/checkout_stub_impl.dart' show IFrameCheckoutPage;
-import 'points_api.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/payments/enrollment/checkout_pages.dart' show MobileCheckoutPage;
+import 'package:flutter_education_app/features/payments/enrollment/checkout_web_impl.dart'
+    if (dart.library.io) 'package:flutter_education_app/features/payments/enrollment/checkout_stub_impl.dart' show IFrameCheckoutPage;
+import 'package:flutter_education_app/features/payments/points/points_api.dart';
 
 /// How long the sheet waits for the provider's confirmation before it offers "Check again".
 const Duration kCardTopupWait = Duration(minutes: 2);

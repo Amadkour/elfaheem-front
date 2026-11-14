@@ -1,7 +1,7 @@
 /// saved_payment_models.dart
 /// Models: SavedPaymentMethod · FeeBreakdown · PaymentMethod enum
 library;
-import '../../../../config/app_config.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 

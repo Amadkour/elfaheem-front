@@ -1,4 +1,4 @@
-// lib/features/shared/points/points_api.dart — the points wallet and the student live-meeting plan: pure models,
+// lib/features/payments/points/points_api.dart — the points wallet and the student live-meeting plan: pure models,
 // code → text, price maths and the API calls. Contract: docs/backend/live-rooms-spec.md §8 – §9.
 //
 //   GET  /api/v1/me/points                      wallet: balance, price per point, currency, minimum, methods,
@@ -20,7 +20,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_education_app/core/api_client.dart';
 
-import '../../admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 
 /// Kill-switch keys (ParentComponent / AppConfig.disableList).
 const String kPointsFeatureKey = 'profile.points';

@@ -22,7 +22,7 @@ import '../features/student/home/home_provider.dart';
 import 'package:nested/nested.dart';
 import '../features/student/reward/rewards_provider.dart';
 import '../features/teacher/home/teacher_home_provider.dart';
-import '../features/admin/enrollment_request/teacher_transfers_provider.dart';
+import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
 import '../features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import '../features/teacher/schedules/schedules_provider.dart';
 import 'package:flutter_education_app/features/sessions/teacher/students/course_student_provider.dart';

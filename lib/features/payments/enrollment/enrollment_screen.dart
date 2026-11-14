@@ -14,17 +14,17 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/courses/course_list_card.dart' show CourseCoverArt, coursePrimaryInk;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/features/student/enrollment/saved_cards/saved_payment_models.dart';
+import 'package:flutter_education_app/features/payments/enrollment/saved_cards/saved_payment_models.dart';
 import 'package:provider/provider.dart';
 
-import '../../../config/app_config.dart';
-import '../../../config/theme/theme_config_provider.dart';
-import '../../../utils/widget/app_network_image.dart';
-import '../../shared/profile/course_instractor_profile.dart';
-import '../../student/models.dart';
-import 'enrollment_models.dart';
-import 'enrollment_provider.dart';
-import 'enrollment_widgets.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
+import 'package:flutter_education_app/features/shared/profile/course_instractor_profile.dart';
+import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_provider.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_widgets.dart';
 
 
 class EnrollmentScreen extends StatelessWidget {

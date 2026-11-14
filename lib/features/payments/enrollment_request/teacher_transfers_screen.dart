@@ -15,15 +15,15 @@ import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/utils/helpers.dart';
-import '../../../config/app_config.dart';
-import '../../../config/theme/theme_config_provider.dart';
-import '../../../utils/widget/app_bar.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-import '../../student/enrollment/enrollment_models.dart';
-import 'teacher_transfers_provider.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
-import '../admin_common.dart' show t;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 
 class TeacherTransfersScreen extends StatefulWidget {
   const TeacherTransfersScreen({super.key});

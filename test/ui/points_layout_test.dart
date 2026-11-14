@@ -3,11 +3,11 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/points/live_plan_sheet.dart';
-import 'package:flutter_education_app/features/shared/points/points_api.dart';
-import 'package:flutter_education_app/features/shared/points/points_card_checkout.dart';
+import 'package:flutter_education_app/features/payments/points/live_plan_sheet.dart';
+import 'package:flutter_education_app/features/payments/points/points_api.dart';
+import 'package:flutter_education_app/features/payments/points/points_card_checkout.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/points/points_wallet_page.dart';
+import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

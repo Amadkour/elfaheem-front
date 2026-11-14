@@ -36,7 +36,7 @@ import 'package:flutter_education_app/features/live/live_mini_box.dart' show Liv
 import 'package:flutter_education_app/features/live/live_room_host.dart';
 import 'package:flutter_education_app/features/live/live_controls_api.dart' show liveJoinRefusalText;
 import 'package:flutter_education_app/design/app_kit.dart' show appToast;
-import 'package:flutter_education_app/features/shared/points/points_api.dart' show LivePlanDeclined;
+import 'package:flutter_education_app/features/payments/points/points_api.dart' show LivePlanDeclined;
 export 'package:flutter_education_app/features/live/room/join_args.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────

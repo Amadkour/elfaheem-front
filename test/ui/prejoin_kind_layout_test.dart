@@ -10,7 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/live/live_room.dart';
-import 'package:flutter_education_app/features/shared/points/points_api.dart' show LivePlanDeclined;
+import 'package:flutter_education_app/features/payments/points/points_api.dart' show LivePlanDeclined;
 import 'package:flutter_education_app/features/live/room/prejoin.dart';
 import 'package:flutter_education_app/features/live/room/prejoin_layout.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -35,7 +35,7 @@ import 'package:flutter_education_app/features/shared/profile/profile_screen.dar
 import 'package:flutter_education_app/features/shared/profile/update_account_widget.dart';
 import 'package:flutter_education_app/features/shared/public_profile/public_profile.dart';
 import 'package:flutter_education_app/features/shared/public_profile/public_profile_view.dart';
-import 'package:flutter_education_app/features/shared/subscription/subscription_screen.dart';
+import 'package:flutter_education_app/features/payments/subscription/subscription_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/teacher/profile/payout/teacher_payouts_screen.dart';
 import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';

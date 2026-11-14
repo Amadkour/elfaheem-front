@@ -25,7 +25,7 @@ import 'package:flutter_education_app/features/shared/profile/profile_provider.d
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import 'subscription_provider.dart';
+import 'package:flutter_education_app/features/payments/subscription/subscription_provider.dart';
 
 class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({super.key});
