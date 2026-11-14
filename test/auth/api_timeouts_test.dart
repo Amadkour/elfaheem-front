@@ -1,6 +1,7 @@
 // S14: a hung server must not hold a spinner for an hour. Every call through the app's one Dio waits 20 s to
 // connect and 30 s for the answer; only uploads (FormData, a byte stream) and binary downloads keep the long
 // transfer timeouts, whether they go through ApiClient's helpers or straight through `ApiClient().dio`.
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -69,6 +70,32 @@ void main() {
       expect(o.receiveTimeout, kApiTransferTimeout, reason: o.path);
       expect(o.sendTimeout, kApiTransferTimeout, reason: o.path); // the VM test host is not web
       expect(o.connectTimeout, kApiConnectTimeout, reason: o.path);
+    }
+  });
+
+  test('a JSON call carrying a base64 file (marked, or just large) gets the long transfer timeouts', () async {
+    await ApiClient.instance.post('/api/v1/certificate-designs/logo', body: {'image_base64': 'AAAA'}, transfer: true);
+    await ApiClient.instance.put('/api/v1/p', body: {'a': 1}, transfer: true);
+    await ApiClient.instance.patch('/api/v1/q', body: {'a': 1}, transfer: true);
+    await ApiClient.instance.post('/api/v1/unmarked', body: {'content_base64': 'A' * (kApiLargeBodyChars + 1)});
+    expect(cap.seen, hasLength(4));
+    for (final o in cap.seen) {
+      expect(o.receiveTimeout, kApiTransferTimeout, reason: o.path);
+      expect(o.sendTimeout, kApiTransferTimeout, reason: o.path);
+    }
+    cap.seen.clear();
+    await ApiClient.instance.post('/api/v1/small', body: {'content_base64': 'A' * 100});
+    expect(cap.seen.single.sendTimeout, kApiReceiveTimeout);
+  });
+
+  test('every base64 upload over JSON is marked as a transfer', () {
+    final sites = {
+      'lib/features/certificates/designer/certificate_designer_provider.dart': 2,
+      'lib/features/certificates/studio/cert_engine_api.dart': 1,
+      'lib/features/exams/legacy/teacher/teacher_exam_api.dart': 1,
+    };
+    for (final e in sites.entries) {
+      expect('transfer: true'.allMatches(File(e.key).readAsStringSync()).length, greaterThanOrEqualTo(e.value), reason: e.key);
     }
   });
 

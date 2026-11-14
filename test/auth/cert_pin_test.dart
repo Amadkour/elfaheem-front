@@ -5,7 +5,10 @@
 //     (`openssl s_client -connect nextbrain.site:443 -servername nextbrain.site -showcerts`);
 //   isrg_root_x1.pem, isrg_root_x2.pem — the self-signed roots of the OS CA bundle;
 //   root_ye.pem, root_yr.pem, root_yr_by_x1.pem, le/*.pem — github.com/letsencrypt/website static/certs (gen-y/, 2024/),
-//     each verified with `openssl verify` against the two ISRG roots above; le/ye1.pem equals the served YE1.
+//     each verified with `openssl verify` against the two ISRG roots above; le/ye1.pem equals the served YE1;
+//   fake_self_signed_le.pem (self-signed, subject = issuer = "C=US, O=Let's Encrypt, CN=nextbrain.site") and
+//     fake_ca_named_ye1.pem (signed by a home-made CA named "C=US, O=Let's Encrypt, CN=YE1") — made with openssl
+//     for these tests, valid 2026-11-01 .. 2027-01-29, SAN nextbrain.site, their keys thrown away.
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -22,6 +25,28 @@ Uint8List _der(String path) {
       .where((l) => l.isNotEmpty && !l.startsWith('-----'))
       .join();
   return base64Decode(body);
+}
+
+/// [der] with the issuer's CN value [from] replaced by [to] (same length), inside the issuer Name only.
+Uint8List _renameIssuer(Uint8List der, String from, String to) {
+  final out = Uint8List.fromList(der);
+  final issuer = ParsedCert.parse(der).issuer;
+  final start = _indexOf(der, issuer);
+  final at = _indexOf(issuer, ascii.encode(from));
+  expect(start >= 0 && at >= 0, isTrue);
+  out.setRange(start + at, start + at + to.length, ascii.encode(to));
+  return out;
+}
+
+int _indexOf(List<int> hay, List<int> needle) {
+  outer:
+  for (var i = 0; i + needle.length <= hay.length; i++) {
+    for (var j = 0; j < needle.length; j++) {
+      if (hay[i + j] != needle[j]) continue outer;
+    }
+    return i;
+  }
+  return -1;
 }
 
 String _spkiPin(Uint8List der) =>
@@ -113,8 +138,9 @@ void main() {
     test('the backup rule refuses a broken signature, an expired leaf and another host', () {
       final forged = Uint8List.fromList(leaf);
       forged[forged.length - 10] ^= 0x01; // inside the signature
-      expect(eval(forged, noPins: true), PinVerdict.rejectedUnknownServerKey);
-      expect(eval(leaf, noPins: true, now: DateTime.utc(2026, 12, 24)), PinVerdict.rejectedUnknownServerKey);
+      // signed "by YE1" but YE1's key says no: a forgery, not a rotation (no update prompt)
+      expect(eval(forged, noPins: true), PinVerdict.rejectedForeign);
+      expect(eval(leaf, noPins: true, now: DateTime.utc(2026, 12, 24)), PinVerdict.rejectedForeign);
       expect(CertPin.evaluate(leaf, 'evil.example', apiHost: 'evil.example', now: today, leafPins: const {}, legacyPins: const {}),
           PinVerdict.rejectedForeign);
       expect(CertPin.evaluate(leaf, 'www.nextbrain.site', apiHost: 'nextbrain.site', now: today, leafPins: const {}, legacyPins: const {}),
@@ -125,6 +151,39 @@ void main() {
       expect(eval(_der('isrg_root_x1.pem')), PinVerdict.rejectedForeign);
       expect(eval(_der('le/ye1.pem')), PinVerdict.rejectedForeign);
       expect(eval(Uint8List.fromList([1, 2, 3])), PinVerdict.rejectedForeign);
+    });
+
+    test("a real key rotation onto a Let's Encrypt intermediate this build lacks asks for an update", () {
+      // the served leaf, its issuer renamed YE1 -> YE4 (a generation this build does not carry): in date, for our
+      // host, Let's Encrypt's naming, signature unverifiable with the bundled keys
+      final rotated = _renameIssuer(leaf, 'YE1', 'YE4');
+      expect(ParsedCert.parse(rotated).issuerAttr('2.5.4.3'), 'YE4');
+      expect(eval(rotated, noPins: true), PinVerdict.rejectedUnknownServerKey);
+      expect(eval(_renameIssuer(leaf, 'YE1', 'E10'), noPins: true), PinVerdict.rejectedUnknownServerKey);
+      CertPin.debugReset();
+      CertPin.apiHost = 'nextbrain.site';
+      expect(CertPin.checkDer(rotated, 'nextbrain.site', now: today, leafPins: const {}, legacyPins: const {}), isFalse);
+      expect(CertPin.updateRequired, isTrue, reason: 'a real rotation keeps the update path');
+      CertPin.debugReset();
+      // the same, but expired or for another host: no prompt
+      expect(eval(rotated, noPins: true, now: DateTime.utc(2026, 12, 24)), PinVerdict.rejectedForeign);
+      expect(CertPin.evaluate(rotated, 'www.nextbrain.site', apiHost: 'nextbrain.site', now: today, leafPins: const {}, legacyPins: const {}),
+          PinVerdict.rejectedForeign);
+    });
+
+    test("a home-made certificate with our host and Let's Encrypt in the issuer never raises the update prompt", () {
+      final selfSigned = _der('fake_self_signed_le.pem');
+      final fakeCa = _der('fake_ca_named_ye1.pem');
+      expect(ParsedCert.parse(selfSigned).coversHost('nextbrain.site'), isTrue);
+      expect(ParsedCert.parse(selfSigned).issuerMentions("Let's Encrypt"), isTrue);
+      expect(eval(selfSigned), PinVerdict.rejectedForeign);
+      expect(eval(fakeCa), PinVerdict.rejectedForeign);
+      // through the dart:io callback: refused, and the flag stays down
+      CertPin.debugReset();
+      CertPin.apiHost = 'nextbrain.site';
+      expect(CertPin.checkDer(selfSigned, 'nextbrain.site', now: today), isFalse);
+      expect(CertPin.checkDer(fakeCa, 'nextbrain.site', now: today), isFalse);
+      expect(CertPin.updateRequired, isFalse);
     });
 
     test('the legacy leaf hash alone still accepts the old certificate', () {

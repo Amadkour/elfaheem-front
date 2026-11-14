@@ -191,7 +191,7 @@ class TeacherExamApi {
     final data = await _api.post('/api/v1/exams/$examId/questions/import', body: {
       'filename': file.filename,
       'content_base64': base64Encode(file.bytes),
-    });
+    }, transfer: true);
     return ImportResult.fromJson(data as Map<String, dynamic>);
   }
 

@@ -49,17 +49,21 @@ void main() {
   });
 
   test('the screen counts on a monotonic clock: a device clock changed mid-exam neither ends nor stretches it (H6)', () {
-    // the device clock is set to a far past date: only the elapsed source counts
+    // the device clock is set BACK by a day mid-exam: the wall delta goes negative, the monotonic count stands
+    final t0 = DateTime(2026, 1, 1, 12);
     var elapsed = Duration.zero;
-    final clock = ServerClock.fromAttempt({'remaining_seconds': 600}, DateTime(1999), elapsed: () => elapsed)!;
+    var now = t0;
+    final clock = ServerClock.fromAttempt({'remaining_seconds': 600}, t0, elapsed: () => elapsed, now: () => now)!;
     expect(clock.remaining(), 600);
     elapsed = const Duration(seconds: 61);
+    now = t0.add(const Duration(seconds: 61)).subtract(const Duration(days: 1));
     expect(clock.remaining(), 539);
+    expect(clock.wallAhead(), isFalse);
     elapsed = const Duration(hours: 2);
     expect(clock.remaining(), 0);
-    expect(ServerClock.fromAttempt({'remaining_seconds': null}, DateTime(1999), elapsed: () => elapsed)!.remaining(), isNull);
+    expect(ServerClock.fromAttempt({'remaining_seconds': null}, t0, elapsed: () => elapsed, now: () => now)!.remaining(), isNull);
     // a real monotonic source starts at zero
-    expect(ServerClock(remainingSeconds: 90, receivedAt: DateTime(1999), elapsed: ServerClock.monotonic()).remaining(), 90);
+    expect(ServerClock(remainingSeconds: 90, receivedAt: DateTime.now(), elapsed: ServerClock.monotonic()).remaining(), 90);
 
     // the taking screen: the deadline comes from the server reply (start and every autosave), counted on the
     // monotonic source, never on the device's wall clock
@@ -69,6 +73,32 @@ void main() {
     expect(RegExp(r"remainingSeconds: r\.map\['remaining_seconds'\]").hasMatch(src), isTrue);
     expect(RegExp(r'deadlineAt: _clock\.deadlineAt, elapsed: ServerClock\.monotonic\(\)').hasMatch(src), isTrue);
     expect(RegExp(r'_saver = Timer\.periodic\(const Duration\(seconds: 4\)').hasMatch(src), isTrue); // autosave
+  });
+
+  test('a phone that slept: the Stopwatch stood still, the wall clock ran; the timer shows the real time left', () {
+    final t0 = DateTime(2026, 1, 1, 12);
+    var elapsed = const Duration(seconds: 10);
+    var now = t0.add(const Duration(seconds: 10));
+    final clock = ServerClock.fromAttempt({'remaining_seconds': 600}, t0, elapsed: () => elapsed, now: () => now)!;
+    expect(clock.remaining(), 590);
+    now = now.add(const Duration(minutes: 5));            // asleep for 5 minutes: only the wall clock moves
+    expect(clock.remaining(), 290);
+    expect(clock.wallAhead(), isTrue, reason: 'the screen asks the server before ending on the wall count');
+    now = now.add(const Duration(minutes: 10));
+    expect(clock.remaining(), 0);
+    elapsed = const Duration(seconds: 20);                // awake again, both clocks agree
+    now = t0.add(const Duration(seconds: 20));
+    expect(clock.remaining(), 580);
+    expect(clock.wallAhead(), isFalse);
+  });
+
+  test('the taking screen re-reads the server clock on resume and asks the server before ending on a wall-only zero', () {
+    final src = File('lib/features/exams/exam_taking_screen.dart').readAsStringSync();
+    expect(src, contains('with WidgetsBindingObserver'));
+    expect(src, contains('WidgetsBinding.instance.addObserver(this)'));
+    expect(src, contains('WidgetsBinding.instance.removeObserver(this)'));
+    expect(RegExp(r'state == AppLifecycleState\.resumed\)\s*_resyncClock\(\)').hasMatch(src), isTrue);
+    expect(RegExp(r"_clock\.wallAhead\(\)").hasMatch(src), isTrue);
   });
 
   test('paper: sections, answered count, one-way navigation', () {

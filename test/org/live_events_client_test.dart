@@ -1,11 +1,36 @@
 // The pure parts of the real-time client (lib/core/live/live_events_client.dart): the SSE parser, the dedupe
 // window, the backoff sequence and the "should the stream be open" decision. No network.
+import 'dart:io';
+
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/core/live/live_events_client.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/io_client.dart';
 
 void main() {
+  group('pinned stream client', () {
+    test("on devices the stream runs on the API's pinned HttpClient, never the system trust store", () {
+      expect(LiveEventsClient.pinnedHttpClientFactory == ApiClient.pinnedHttpClient, isTrue);
+      final saved = LiveEventsClient.pinnedHttpClientFactory;
+      var built = 0;
+      LiveEventsClient.pinnedHttpClientFactory = () {
+        built++;
+        return saved();
+      };
+      addTearDown(() => LiveEventsClient.pinnedHttpClientFactory = saved);
+      final c = LiveEventsClient.streamHttpClient();
+      expect(c, isA<IOClient>());
+      expect(built, 1);
+      c.close();
+      // the connect path uses that client, not a plain http.Client()
+      final src = File('lib/core/live/live_events_client.dart').readAsStringSync();
+      expect(src, contains('final client = streamHttpClient();'));
+      expect(RegExp(r'= http\.Client\(\);').hasMatch(src), isFalse);
+    });
+  });
+
   group('SseParser', () {
     test('one frame with id, event and json data', () {
       final p = SseParser();

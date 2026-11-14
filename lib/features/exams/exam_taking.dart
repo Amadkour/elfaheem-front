@@ -10,17 +10,23 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show asI
 
 /// The authoritative timer: the server tells `remaining_seconds` at `server_time`; we count down from that instant
 /// with the device clock's DELTA, never its absolute value, so a wrong device clock cannot help or hurt.
-/// The screen passes [elapsed] = [monotonic] (a Stopwatch): then even a device clock CHANGED mid-exam (set forward
-/// by hand, an NTP correction) cannot end the exam early on this side or stretch it; the wall-clock delta of
-/// [remainingAt] is the fallback and what the pure tests use. Every autosave reply resets the clock from the server.
+/// The screen passes [elapsed] = [monotonic] (a Stopwatch) AND keeps the wall-clock delta; [remaining] is the
+/// SMALLER of the two. A Stopwatch stops while the phone sleeps (the wall clock does not), and a device clock set
+/// back by hand stretches only the wall delta, so the smaller one is right in both cases and can never show more
+/// time than the server allows. A clock set FORWARD shortens only the wall delta: the screen then asks the server
+/// ([wallAhead]) before it ends the exam, and it re-reads the server's clock whenever the app comes back to the
+/// front. Every autosave reply resets the clock from the server.
 class ServerClock {
-  ServerClock({required this.remainingSeconds, required DateTime receivedAt, this.deadlineAt, Duration Function()? elapsed})
+  ServerClock({required this.remainingSeconds, required DateTime receivedAt, this.deadlineAt, Duration Function()? elapsed,
+      DateTime Function()? now})
       : _receivedAt = receivedAt,
-        _elapsed = elapsed;
+        _elapsed = elapsed,
+        _now = now ?? DateTime.now;
   final int? remainingSeconds;
   final DateTime _receivedAt;
   final DateTime? deadlineAt;
   final Duration Function()? _elapsed;
+  final DateTime Function() _now;
 
   /// A monotonic "time since now", started at the call (pass a fresh one with every server reply).
   static Duration Function() monotonic() {
@@ -28,13 +34,28 @@ class ServerClock {
     return () => sw.elapsed;
   }
 
-  /// Seconds left now: on the monotonic [elapsed] when given, else the wall-clock delta.
+  /// Seconds left now: the smaller of the monotonic [elapsed] count (when given) and the wall-clock delta.
   int? remaining() {
+    final wall = remainingAt(_now());
+    final mono = monotonicRemaining();
+    if (wall == null || mono == null) return wall;
+    return mono < wall ? mono : wall;
+  }
+
+  /// Seconds left on the monotonic count alone (null without [elapsed] or untimed).
+  int? monotonicRemaining() {
     final e = _elapsed;
-    if (e == null) return remainingAt(DateTime.now());
-    if (remainingSeconds == null) return null;
+    if (e == null || remainingSeconds == null) return null;
     final left = remainingSeconds! - e().inSeconds;
     return left < 0 ? 0 : left;
+  }
+
+  /// The wall clock ran ahead of the monotonic count by more than [slack]: the phone slept, or its clock was set
+  /// forward. Only the server can tell which, so the screen asks it before ending the exam on this count.
+  bool wallAhead({int slack = 5}) {
+    final wall = remainingAt(_now());
+    final mono = monotonicRemaining();
+    return wall != null && mono != null && mono - wall > slack;
   }
 
   int? remainingAt(DateTime now) {
@@ -46,9 +67,10 @@ class ServerClock {
 
   bool get timed => remainingSeconds != null;
 
-  static ServerClock? fromAttempt(Map<String, dynamic> attempt, DateTime receivedAt, {Duration Function()? elapsed}) {
-    if (attempt['remaining_seconds'] == null) return ServerClock(remainingSeconds: null, receivedAt: receivedAt, elapsed: elapsed);
-    return ServerClock(remainingSeconds: asInt(attempt['remaining_seconds']), receivedAt: receivedAt, elapsed: elapsed,
+  static ServerClock? fromAttempt(Map<String, dynamic> attempt, DateTime receivedAt, {Duration Function()? elapsed,
+      DateTime Function()? now}) {
+    if (attempt['remaining_seconds'] == null) return ServerClock(remainingSeconds: null, receivedAt: receivedAt, elapsed: elapsed, now: now);
+    return ServerClock(remainingSeconds: asInt(attempt['remaining_seconds']), receivedAt: receivedAt, elapsed: elapsed, now: now,
         deadlineAt: attempt['deadline_at'] == null ? null : DateTime.tryParse('${attempt['deadline_at']}Z'));
   }
 }
