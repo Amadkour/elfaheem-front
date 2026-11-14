@@ -105,7 +105,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
     _attemptId = asInt(attempt['id']);
     _session = '${widget.startReply['exam_session']}';
     _paper = Paper.fromJson(asMap(attempt['paper']));
-    _clock = ServerClock.fromAttempt(attempt, DateTime.now())!;
+    _clock = ServerClock.fromAttempt(attempt, DateTime.now(), elapsed: ServerClock.monotonic())!;
     _locked = attempt['locked'] == true;
     _lockReason = attempt['lock_reason'] as String?;
     _integrity = ExamIntegrity((kind, meta) {
@@ -164,7 +164,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
   // ── timer ──
   void _tick() {
     if (!mounted || _finished) return;
-    final left = _clock.remainingAt(DateTime.now());
+    final left = _clock.remaining();
     setState(() {});
     if (left != null && left <= 0) _timeUp();
   }
@@ -201,7 +201,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
       }
       _persistPending();
       _clock = ServerClock(remainingSeconds: r.map['remaining_seconds'] == null ? null : asInt(r.map['remaining_seconds']), receivedAt: DateTime.now(),
-          deadlineAt: _clock.deadlineAt);
+          deadlineAt: _clock.deadlineAt, elapsed: ServerClock.monotonic());
     } else {
       await _handleFailure(r);
     }
@@ -358,7 +358,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
   Widget build(BuildContext context) {
     final all = _paper.all;
     final q = all.isEmpty ? null : all[_index.clamp(0, all.length - 1)];
-    final left = _clock.remainingAt(DateTime.now());
+    final left = _clock.remaining();
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
