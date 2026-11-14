@@ -278,6 +278,7 @@ MovePlan buildPlan(Tree tree, List<MoveRow> rows, MoveOptions opts, MoveReport r
   final plan = MovePlan();
   final all = tree.all;
   final owner = <String, MoveRow>{};
+  final allMoves = <String, String>{};
   final sorted = all.toList()..sort();
 
   List<String> filesUnder(String p) {
@@ -315,9 +316,13 @@ MovePlan buildPlan(Tree tree, List<MoveRow> rows, MoveOptions opts, MoveReport r
         continue;
       }
       owner[e.key] = row;
+      allMoves[e.key] = e.value;
+      final moving = !applied && selected && !opts.fixImports;
+      // A row of a map left for a later run still sits at its old path: imports keep pointing there.
+      if (!applied && !moving) continue;
       plan.rowOf[e.key] = row;
       plan.oldToNew[e.key] = e.value;
-      if (!applied && selected && !opts.fixImports) plan.pending[e.key] = e.value;
+      if (moving) plan.pending[e.key] = e.value;
     }
     if (applied) {
       report.appliedPerMap[row.map] = (report.appliedPerMap[row.map] ?? 0) + files.length;
@@ -333,7 +338,7 @@ MovePlan buildPlan(Tree tree, List<MoveRow> rows, MoveOptions opts, MoveReport r
 
   // Destinations: unique, and not an existing file that stays where it is.
   final seen = <String, String>{};
-  for (final e in plan.oldToNew.entries) {
+  for (final e in allMoves.entries) {
     final other = seen[e.value];
     if (other != null) {
       report.errors.add('`$other` and `${e.key}` would both become `${e.value}`');

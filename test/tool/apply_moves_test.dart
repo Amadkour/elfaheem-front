@@ -156,6 +156,27 @@ void main() {
     expect(_snapshot(dir), s);
   });
 
+  test('--maps one at a time: a later map\'s file keeps its old path until its own run', () {
+    final all = _tree(_fixture);
+    addTearDown(() {
+      try {
+        all.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+    runMoves(MoveOptions(root: all.path));
+
+    var r = runMoves(MoveOptions(root: dir.path, maps: {'M1'}));
+    expect(r.errors, isEmpty, reason: r.render());
+    expect(r.warnings, isEmpty, reason: r.render());
+    // M2 has not run: x.dart now imports z.dart at its old path.
+    expect(_snapshot(dir)['lib/features/new/inner/x.dart'], contains("import 'package:demo/features/b/z.dart' show Z;"));
+
+    r = runMoves(MoveOptions(root: dir.path, maps: {'M2'}));
+    expect(r.errors, isEmpty, reason: r.render());
+    expect(r.warnings, isEmpty, reason: r.render());
+    expect(_snapshot(dir), _snapshot(all));
+  });
+
   test('--fix-imports rewrites a file written on the old layout after the move', () {
     _run(dir);
     File('${dir.path}/lib/features/later.dart').writeAsStringSync("import 'old/y.dart';\n// lib/features/b/z.dart\n");
