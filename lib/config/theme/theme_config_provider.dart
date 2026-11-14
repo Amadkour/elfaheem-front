@@ -1118,6 +1118,11 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       cardColor: card,
       dividerColor: divider,
       shadowColor: shadow,
+      // D-948: every ink (hover, keyboard focus, press, ripple) is a soft wash of the primary, never Material's grey
+      hoverColor: pText.withValues(alpha: dark ? 0.08 : 0.04),
+      focusColor: pText.withValues(alpha: dark ? 0.14 : 0.10),
+      highlightColor: pText.withValues(alpha: dark ? 0.10 : 0.06),
+      splashColor: pText.withValues(alpha: dark ? 0.12 : 0.08),
       colorScheme: scheme,
       textTheme: textTheme,
       textSelectionTheme: TextSelectionThemeData(
@@ -1199,6 +1204,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       inputDecorationTheme: base.inputDecorationTheme.copyWith(
         filled: true,
         fillColor: input,
+        hoverColor: pText.withValues(alpha: dark ? 0.06 : 0.03),
         labelStyle: ts(13.5, FontWeight.w500, muted),
         hintStyle: ts(14, FontWeight.w400, faint),
         helperStyle: ts(12, FontWeight.w400, faint),
