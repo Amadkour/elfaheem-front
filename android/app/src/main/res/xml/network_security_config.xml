@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Cleartext (plain http / ws) is refused everywhere except the device itself and the emulator's host alias.
-  - Every server URL is https / wss: the API (https://nextbrain.site/api, pinned in ApiClient), MinIO media and
+  - Every server URL is https / wss: the API (https://alfheemacademy.com/api, pinned in ApiClient), MinIO media and
     presigned uploads (MINIO_PUBLIC_URL, which the https web app can only reach over https), LiveKit (ws_url from the
     server, also used by the https web app, so wss).
   - 127.0.0.1 / localhost: needed in RELEASE builds too. OfflineVideoService serves decrypted offline videos to the
