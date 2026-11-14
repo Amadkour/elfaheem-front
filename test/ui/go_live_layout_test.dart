@@ -7,7 +7,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/features/teacher/home/go_live.dart';
 import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart';
-import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
+import 'package:flutter_education_app/features/sessions/teacher/model/live_response_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

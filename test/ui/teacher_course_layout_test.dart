@@ -6,11 +6,11 @@ import 'package:flutter_education_app/features/courses/course_space/course_space
 import 'package:flutter_education_app/features/courses/teacher/component/add_item_dialog.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/student/models.dart' show TeacherSessionItem;
-import 'package:flutter_education_app/features/teacher/sessions/components/session_form_sheet.dart';
-import 'package:flutter_education_app/features/teacher/sessions/components/teacher_course_parts.dart';
-import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
-import 'package:flutter_education_app/features/teacher/sessions/students/course_student_provider.dart';
-import 'package:flutter_education_app/features/teacher/sessions/students/course_student_screen.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/session_form_sheet.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/teacher_course_parts.dart';
+import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
+import 'package:flutter_education_app/features/sessions/teacher/students/course_student_provider.dart';
+import 'package:flutter_education_app/features/sessions/teacher/students/course_student_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

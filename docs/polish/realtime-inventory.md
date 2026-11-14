@@ -11,7 +11,7 @@ Kind: **ND** = checks for new data · **JP** = progress of a job the user waits 
 | features/live/live_lobby_sheets.dart:1010–1048 `WaitingForHostPage` | GET /live/requests/{id} / public poll | server `poll_after` (3 s, 1–30) | while waiting | JP | none (admit/reject not pushed) |
 | shared/guest/guest_live_page.dart:160 | GET /public/live/{token} | 10 s until live; 60 s after 429 | page open | ND | none (no FCM token) |
 | features/live/room/room.dart:1288 `_pollActiveQuiz` | GET /courses/{id}/exams/active | 30 s | students, whole room visit | ND | none (LiveKit data topics exist) |
-| shared/session/material/components/session_material_grid.dart:1283 `_CaptionsAction` | GET /sessions/{sid}/materials | 8 s while captions pending | per tile | JP | none |
+| features/sessions/material/components/session_material_grid.dart:1283 `_CaptionsAction` | GET /sessions/{sid}/materials | 8 s while captions pending | per tile | JP | none |
 | student/dashboard/component/student_exam_tab.dart:43 | GET /student/exams/upcoming | 5 min | tab mounted | ND | none |
 | org/org_providers.dart:422 `OrgScheduleProvider._follow` | GET …/schedules/{sid}/runs/{rid} | 2 s; stops after 5 misses / 4 min | while a run is followed | JP | none |
 | org/org_registrar_member.dart:160 | GET …/register-requests/{id} | server `poll_after_ms` | after cart submit | JP | none (outbox `registration.processed` not fanned out) |

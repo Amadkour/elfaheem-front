@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/shared/session/material/components/material_title.dart';
+import 'package:flutter_education_app/features/sessions/material/components/material_title.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

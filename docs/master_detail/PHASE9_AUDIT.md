@@ -32,7 +32,7 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 |---|---|---|---|
 | My courses | `features/courses/teacher/courses_screen.dart` | course cards | on (P7: panel, Open course primary) |
 | My students · Submissions · Reviews | `teacher/classroom/teacher_classroom.dart` | 3 paged lists | on (`EntityListPage`) |
-| A course's enrolled students | `teacher/sessions/students/course_student_screen.dart` | student cards / grid | **P9**: `MasterDetailScaffold` over the existing sliver list; a card opens the student (selected card outlined, `siblings` for prev / next); panel actions = `entityViewerActions` (Message) + Certificates (opens the old dialog, which loses its now-redundant chip); the grid counts its columns on the list's own width (`SliverLayoutBuilder`) and its row height follows the text size |
+| A course's enrolled students | `features/sessions/teacher/students/course_student_screen.dart` | student cards / grid | **P9**: `MasterDetailScaffold` over the existing sliver list; a card opens the student (selected card outlined, `siblings` for prev / next); panel actions = `entityViewerActions` (Message) + Certificates (opens the old dialog, which loses its now-redundant chip); the grid counts its columns on the list's own width (`SliverLayoutBuilder`) and its row height follows the text size |
 | Certificate requests | `teacher/certificates/certificate_requests_screen.dart` | request cards | **P9**: `MasterDetailScaffold`; the student and the course are `EntityChip`s (avatar card keeps approve / reject) |
 | Device switch requests | `teacher/profile/switch_device_requests/teacher_device_requests_screen.dart` | request cards | **P9**: `EntityGuardedChip` for the student and the course (`student_id` / `course_id` were already in the payload, now parsed, null-safe for an older server) |
 | Grade review (paper marks) | `features/exams/marks/review/grade_review_rows.dart` | its own list + detail | **P9**: the matched student is an `EntityGuardedChip` in the row detail (the screen keeps its own review master-detail) |
@@ -41,7 +41,7 @@ Rows of the tables below (an "out" row may group several small screens of one ar
 | Read flags | `teacher/analysis/flags/teacher_read_flags_screen.dart` | flagged items → students | out (decided, gaps A): each student row is one link to the analytics profile; a chip inside it would be a link in a link (`EntityLink` rule: one row, one link) |
 | Data Lab | `teacher/data_lab/*` | spreadsheet grid | out (an editor) |
 | Analytics hub | `teacher/analysis/analytics_hub_screen.dart` | course tool cards | out (navigation hub) |
-| Schedules, sessions section | `teacher/schedules/`, `teacher/sessions/components/` | sessions | out |
+| Schedules, sessions section | `teacher/schedules/`, `features/sessions/teacher/components/` | sessions | out |
 | Live chat / hands | `features/live/room/widgets/` | live room | out |
 | Certificate designer / designs / manager | `teacher/certificates/designer/`, `courses/component/certificate_manager_sheet.dart` | designs | out |
 | Course form, next / recommended course pickers | `features/courses/teacher/course_form_screen.dart`, `component/*_courses_field.dart` | pickers | out |

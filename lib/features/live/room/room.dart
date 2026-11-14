@@ -43,7 +43,7 @@ import 'package:flutter_education_app/features/live/room/widgets/live_stage_over
 import 'package:flutter_education_app/features/live/room/widgets/live_top_row.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart';
-import 'package:flutter_education_app/features/teacher/sessions/components/exts.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/exts.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show appConfirm, AppBorder, AppIconSize, AppRadius;
 import 'package:flutter_education_app/core/app_time.dart';

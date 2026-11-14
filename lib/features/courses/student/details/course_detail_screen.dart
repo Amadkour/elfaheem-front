@@ -17,7 +17,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
+import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -32,7 +32,7 @@ import 'package:flutter_education_app/features/shared/profile/compalints/complai
 import 'package:flutter_education_app/features/shared/profile/compalints/new_complaint_screen.dart';
 import 'package:flutter_education_app/features/shared/public_profile/public_profile_page.dart' show openPersonProfile;
 import 'package:flutter_education_app/features/teacher/data_lab/data_lab_api.dart';
-import 'package:flutter_education_app/features/teacher/sessions/components/course_reel_player.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/course_reel_player.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/student_course_exams_widget.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/student_exam_provider.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_profile_screen.dart';

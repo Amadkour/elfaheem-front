@@ -19,7 +19,7 @@ import 'package:flutter_education_app/features/courses/student/details/component
 import 'package:flutter_education_app/features/student/models.dart' show DiscountInfoX;
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
-import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
+import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_infinite_scroll.dart';

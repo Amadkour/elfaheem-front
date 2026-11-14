@@ -80,7 +80,7 @@ import 'core/release/web_release_watch.dart' show WebReleaseBanner;
 import 'features/shared/get_app/app_download_banner.dart' show AppDownloadBanner;
 import 'package:flutter_education_app/features/live/live_room_host.dart' show LiveRoomHost, LiveRoomLayer;
 import 'features/shared/get_app/get_app_banner.dart' show GetAppBanner;
-import 'features/shared/session/video/vod_listen_layer.dart' show VodListenLayer;
+import 'package:flutter_education_app/features/sessions/video/vod_listen_layer.dart' show VodListenLayer;
 import 'design/app_keyboard.dart' show AppKeyboardSupport;
 import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';

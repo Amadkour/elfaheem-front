@@ -20,13 +20,13 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse;
-import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart' show TeacherCourseScreenProvider;
+import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart' show TeacherCourseScreenProvider;
 import 'package:flutter_education_app/features/student/analysis/student_course_analytics_screen.dart';
 import 'package:flutter_education_app/features/shared/attendance/attendance_course_entry.dart' show AttendanceCourseEntry;
 import 'package:flutter_education_app/features/shared/attendance/attendance_widgets.dart' show showTeacherAttendanceSheet;
-import 'package:flutter_education_app/features/shared/session/material/components/session_material_grid.dart' show MaterialImageViewerDialog;
-import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
-import 'package:flutter_education_app/features/shared/session/video/video_player_screen.dart';
+import 'package:flutter_education_app/features/sessions/material/components/session_material_grid.dart' show MaterialImageViewerDialog;
+import 'package:flutter_education_app/features/sessions/material/session_material_model.dart';
+import 'package:flutter_education_app/features/sessions/video/video_player_screen.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_actions.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_announcements.dart' show CpAnnouncementCard;
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_models.dart';

@@ -23,8 +23,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../admin/admin_common.dart' show t;
-import '../session/video/video_player_screen.dart';
-import '../session/video/vod_player_parts.dart' show VodAction, VodPlayerSkeleton;
+import 'package:flutter_education_app/features/sessions/video/video_player_screen.dart';
+import 'package:flutter_education_app/features/sessions/video/vod_player_parts.dart' show VodAction, VodPlayerSkeleton;
 import 'records_api.dart';
 import 'records_guests_api.dart';
 import 'records_guests_parts.dart';

@@ -77,7 +77,7 @@ import '../../shared/notification/notifications_provider.dart';
 import '../../student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 import '../home/teacher_models.dart';
-import '../sessions/sessions_provider.dart';
+import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
 
 // The older rating row still reaches the instructor profile through this file.

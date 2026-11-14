@@ -19,7 +19,7 @@ import 'package:flutter_education_app/features/exams/exam_insights_screen.dart' 
 import 'package:flutter_education_app/features/exams/exam_review_screen.dart' show ExamReviewScreen;
 import 'package:flutter_education_app/features/exams/paper/review/omr_review_page.dart' show OmrReviewPage;
 import '../home/teacher_home_provider.dart';
-import '../sessions/sessions_provider.dart' show TeacherCourseScreenProvider;
+import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart' show TeacherCourseScreenProvider;
 import 'teacher_todo_models.dart';
 
 /// Opens the screen where [item] is done. Returns false when this app version knows no place for it.

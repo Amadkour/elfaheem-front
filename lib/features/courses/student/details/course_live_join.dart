@@ -20,7 +20,7 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/live/live_controls_api.dart' show liveJoinRefusalText;
 import 'package:flutter_education_app/features/live/live_room.dart' show JoinOutcome;
 import 'package:flutter_education_app/features/live/room/join_args.dart';
-import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
+import 'package:flutter_education_app/features/sessions/teacher/model/live_response_model.dart';
 
 /// GET /live-sessions/{id}/join as a student: the room (LiveResponseModel), or the lobby outcome (202 waiting …).
 /// A refusal of the host's controls (423 room_locked, 403 participant_removed) is rethrown so the pre-join page says

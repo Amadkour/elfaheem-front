@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_live_page.dart';
-import 'package:flutter_education_app/features/teacher/sessions/components/guest_link_sheet.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/guest_link_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

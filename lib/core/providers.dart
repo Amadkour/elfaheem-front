@@ -25,7 +25,7 @@ import '../features/teacher/home/teacher_home_provider.dart';
 import '../features/admin/enrollment_request/teacher_transfers_provider.dart';
 import '../features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import '../features/teacher/schedules/schedules_provider.dart';
-import '../features/teacher/sessions/students/course_student_provider.dart';
+import 'package:flutter_education_app/features/sessions/teacher/students/course_student_provider.dart';
 
 List<SingleChildWidget> appProviders({
   required StorageService storage,

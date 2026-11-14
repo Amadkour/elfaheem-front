@@ -13,7 +13,7 @@ import 'package:flutter_education_app/features/shared/help/help_service.dart' sh
 import 'package:flutter_education_app/features/live/room/widgets/android_share.dart' show LiveMicGate;
 import 'package:flutter_education_app/features/live/room/widgets/ios_share.dart' show IosShareNative;
 import 'package:flutter_webrtc/flutter_webrtc.dart';
-import 'package:flutter_education_app/features/teacher/sessions/components/exts.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/exts.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/live/live_share_arbiter.dart' show LiveShareButton;
 

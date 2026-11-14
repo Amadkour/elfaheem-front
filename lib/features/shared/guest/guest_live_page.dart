@@ -38,7 +38,7 @@ import '../../admin/admin_common.dart' show t;
 import '../../auth/auth_provider.dart';
 import 'package:flutter_education_app/features/live/room/join_args.dart';
 import 'package:flutter_education_app/features/live/room/widgets/participant_info.dart' show isGuestIdentity;
-import '../../teacher/sessions/model/live_response_model.dart';
+import 'package:flutter_education_app/features/sessions/teacher/model/live_response_model.dart';
 import 'package:flutter_education_app/features/live/live_lobby_sheets.dart' show WaitingForHostPage;
 import 'package:flutter_education_app/features/live/live_room.dart';
 import 'package:flutter_education_app/features/live/live_room_words.dart';

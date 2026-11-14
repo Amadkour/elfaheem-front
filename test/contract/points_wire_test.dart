@@ -21,7 +21,7 @@ import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart'
 import 'package:flutter_education_app/features/live/live_room.dart' show JoinOutcome;
 import 'package:flutter_education_app/features/live/live_time_limit.dart' show parseNaiveUtc;
 import 'package:flutter_education_app/features/shared/points/points_api.dart';
-import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
+import 'package:flutter_education_app/features/sessions/teacher/model/live_response_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _dir = 'test/fixtures/points';

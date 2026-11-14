@@ -32,7 +32,7 @@ import 'package:flutter_education_app/design/app_kit.dart' show appConfirm;
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:http_parser/http_parser.dart';
 
-import 'package:flutter_education_app/features/teacher/sessions/components/course_reel_player.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/course_reel_player.dart';
 const Map<String, String> _kReelMimeByExt = {
   'mp4': 'video/mp4',
   'm4v': 'video/x-m4v',

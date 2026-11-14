@@ -21,11 +21,11 @@ import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountU
 import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart';
 import 'package:flutter_education_app/features/student/models.dart' show TeacherSessionItem;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
-import 'package:flutter_education_app/features/teacher/sessions/components/guest_link_sheet.dart';
-import 'package:flutter_education_app/features/teacher/sessions/components/session_form_sheet.dart';
-import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
-import 'package:flutter_education_app/features/teacher/sessions/students/course_student_provider.dart';
-import 'package:flutter_education_app/features/teacher/sessions/students/course_student_screen.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/guest_link_sheet.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/session_form_sheet.dart';
+import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
+import 'package:flutter_education_app/features/sessions/teacher/students/course_student_provider.dart';
+import 'package:flutter_education_app/features/sessions/teacher/students/course_student_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

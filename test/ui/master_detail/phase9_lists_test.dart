@@ -10,8 +10,8 @@ import 'package:flutter_education_app/features/exams/legacy/student/student_exam
 import 'package:flutter_education_app/features/exams/legacy/student/student_exam_provider.dart';
 import 'package:flutter_education_app/features/teacher/certificates/certificate_requests_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
-import 'package:flutter_education_app/features/teacher/sessions/students/course_student_provider.dart';
-import 'package:flutter_education_app/features/teacher/sessions/students/course_student_screen.dart';
+import 'package:flutter_education_app/features/sessions/teacher/students/course_student_provider.dart';
+import 'package:flutter_education_app/features/sessions/teacher/students/course_student_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

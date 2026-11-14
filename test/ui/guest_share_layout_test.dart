@@ -6,8 +6,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_link_cta.dart';
 import 'package:flutter_education_app/features/shared/records/records_guests_api.dart';
 import 'package:flutter_education_app/features/shared/records/records_guests_parts.dart';
-import 'package:flutter_education_app/features/shared/session/material/material_guest_links_api.dart';
-import 'package:flutter_education_app/features/shared/session/material/material_guest_links_sheet.dart';
+import 'package:flutter_education_app/features/sessions/material/material_guest_links_api.dart';
+import 'package:flutter_education_app/features/sessions/material/material_guest_links_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';

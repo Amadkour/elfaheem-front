@@ -20,7 +20,7 @@ import '../../../core/app_time.dart';
 import '../../admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/live/live_config.dart' show LiveConfig;
 import 'package:flutter_education_app/features/live/live_time_limit.dart' show parseNaiveUtc;
-import '../sessions/model/live_response_model.dart';
+import 'package:flutter_education_app/features/sessions/teacher/model/live_response_model.dart';
 
 /// The kill switch of the home's "Go live" (services/feature_catalog.py).
 const kQuickLiveFeatureKey = 'teacher.quick_live';

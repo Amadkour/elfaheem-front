@@ -11,7 +11,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pointycastle/export.dart';
 
-import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
+import 'package:flutter_education_app/features/sessions/material/session_material_model.dart';
 import 'package:flutter_education_app/features/courses/student/security/device_id_service.dart';
 
 // ════════════════════════════════════════════════════════════════════════════

@@ -47,13 +47,13 @@ import 'package:flutter_education_app/features/live/live_config.dart';
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart' show homeDuration;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
-import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
+import 'package:flutter_education_app/features/sessions/teacher/model/live_response_model.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
-import '../sessions/components/guest_link_sheet.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/guest_link_sheet.dart';
 import 'package:flutter_education_app/features/live/room/join_args.dart';
-import '../sessions/sessions_provider.dart';
+import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 // ── Helpers ───────────────────────────────────────────────────────────────────

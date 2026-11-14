@@ -14,8 +14,8 @@ import 'package:flutter_education_app/features/shared/analytics/analytics_summar
 import 'package:flutter_education_app/features/shared/analytics/analytics_ui.dart' show anFmt, anPct;
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
 import 'package:flutter_education_app/features/courses/category/categories_screen.dart' show CategoryAvatar;
-import 'package:flutter_education_app/features/shared/session/material/components/material_title.dart';
-import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
+import 'package:flutter_education_app/features/sessions/material/components/material_title.dart';
+import 'package:flutter_education_app/features/sessions/material/session_material_model.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_api.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/student/models.dart';

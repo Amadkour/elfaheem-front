@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart';
-import 'package:flutter_education_app/features/shared/session/video/vod_player_parts.dart';
+import 'package:flutter_education_app/features/sessions/video/vod_player_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

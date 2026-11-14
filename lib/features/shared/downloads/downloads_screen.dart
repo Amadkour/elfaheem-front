@@ -16,8 +16,8 @@ import 'package:flutter_education_app/core/course_access.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
-import 'package:flutter_education_app/features/shared/session/video/video_player_screen.dart';
+import 'package:flutter_education_app/features/sessions/material/session_material_model.dart';
+import 'package:flutter_education_app/features/sessions/video/video_player_screen.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 
 import '../../../core/offline/offline_strings.dart';

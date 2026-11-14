@@ -32,7 +32,7 @@ import 'package:flutter/foundation.dart' show ValueNotifier;
 
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
-import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
+import 'package:flutter_education_app/features/sessions/teacher/model/live_response_model.dart';
 import 'package:flutter_education_app/features/live/live_config.dart';
 import 'package:flutter_education_app/features/live/live_room_words.dart' show liveT;
 import 'package:flutter_education_app/features/live/live_time_limit.dart' show parseLiveFreeMinutes, parseLiveTimeLimit, parseNaiveUtc;

@@ -58,7 +58,7 @@ import '../../features/teacher/dashboard/teacher_dashboard_screen.dart' deferred
 import '../../features/teacher/data_lab/data_lab_screen.dart' deferred as data_lab;
 import 'package:flutter_education_app/features/live/room/join_args.dart' show JoinArgs;
 import 'package:flutter_education_app/features/live/room/prejoin.dart' deferred as prejoin;
-import '../../features/teacher/sessions/sessions_screen.dart' deferred as sessions;
+import 'package:flutter_education_app/features/sessions/teacher/sessions_screen.dart' deferred as sessions;
 import '../../features/teacher/todo/teacher_todo_models.dart' show TodoItem;
 import '../../features/teacher/todo/teacher_todo_page.dart' deferred as teacher_todo;
 import '../../features/shared/chat/chat_page.dart' deferred as chat_page;

@@ -12,7 +12,7 @@ import 'package:flutter_education_app/core/share/app_links.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart';
 import 'package:flutter_education_app/features/shared/records/record_guest_page.dart';
 import 'package:flutter_education_app/features/shared/records/records_guests_api.dart';
-import 'package:flutter_education_app/features/shared/session/material/material_guest_links_api.dart';
+import 'package:flutter_education_app/features/sessions/material/material_guest_links_api.dart';
 import 'package:flutter_education_app/utils/web_entry_route.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

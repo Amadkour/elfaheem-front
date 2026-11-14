@@ -24,7 +24,7 @@ import '../../../core/screen_security.dart';
 import '../../admin/admin_common.dart' show t;
 import '../../auth/auth_provider.dart';
 import '../guest/guest_link_cta.dart';
-import '../session/material/material_guest_links_api.dart' show RemoteGuestVideoApi;
+import 'package:flutter_education_app/features/sessions/material/material_guest_links_api.dart' show RemoteGuestVideoApi;
 import 'records_guests_api.dart';
 import 'records_guests_parts.dart';
 
