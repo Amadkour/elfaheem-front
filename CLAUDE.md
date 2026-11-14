@@ -3,15 +3,16 @@
 <!-- alfaheem:begin -->
 > **Alfaheem fork.** This repository is Alfaheem (الفهيم, by DoubleY), built from NextBrain by `sync/`
 > (`sync/README.md`): application id `com.doubley.alfaheem`, domain `alfheemacademy.com`. Alfaheem-only decisions are in
-> `docs/DECISIONS_ALFAHEEM.md` (A-nnn). Text below that still names NextBrain-only values (the Firebase project
-> `nextbrain-2y`, the `D-nnn` history) describes the upstream; Alfaheem's values are in `sync/identity.env`.
+> `docs/DECISIONS_ALFAHEEM.md` (A-nnn), Firebase project `alfaheem-d3c8f` (A-006). Text below that
+> still names NextBrain-only values (the `D-nnn` history) describes the upstream; Alfaheem's values are in
+> `sync/identity.env`.
 <!-- alfaheem:end -->
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project
 
-Flutter education platform (VOD courses, live sessions, attendance, organizations) — product name Alfaheem by DoubleY, application id `com.doubley.alfaheem` on every platform (D-145), Dart package name `flutter_education_app` (internal, never renamed), Firebase project `nextbrain-2y` (the old `elfaheem` stays as the fallback for installed apps, D-145), backend at `AppConfig.baseUrl` (`https://alfheemacademy.com/api` unless built with `--dart-define=API_BASE_URL=…`; a release build accepts only an `https://` override, see `resolveApiBaseUrl`). Targets Android, iOS and Web. The web app is served by nginx under **`/app/`** (every web build uses `--base-href /app/`; the start-URL parsers strip it, `lib/utils/web_base_path.dart`); the site root is the static landing in `landing/` (Astro, its own README), and old root URLs are redirected to `/app/…` (D-270). Default UI language is Arabic (RTL); English is also supported.
+Flutter education platform (VOD courses, live sessions, attendance, organizations) — product name Alfaheem by DoubleY, application id `com.doubley.alfaheem` on every platform (D-145), Dart package name `flutter_education_app` (internal, never renamed), Firebase project `alfaheem-d3c8f` (A-006; the upstream project and the old elfaheem one are not used, no fallback), backend at `AppConfig.baseUrl` (`https://alfheemacademy.com/api` unless built with `--dart-define=API_BASE_URL=…`; a release build accepts only an `https://` override, see `resolveApiBaseUrl`). Targets Android, iOS and Web. The web app is served by nginx under **`/app/`** (every web build uses `--base-href /app/`; the start-URL parsers strip it, `lib/utils/web_base_path.dart`); the site root is the static landing in `landing/` (Astro, its own README), and old root URLs are redirected to `/app/…` (D-270). Default UI language is Arabic (RTL); English is also supported.
 
 ## Commands
 
@@ -24,7 +25,7 @@ flutter test test/org/ test/export/ test/ui/ test/auth/ test/access/ test/admin/
 flutter test test/some_test.dart --plain-name "name"   # run a single test
 MSYS_NO_PATHCONV=1 flutter build web --release --base-href /app/   # web (the env var stops Git Bash rewriting /app/)
 scripts/build_landing.sh             # the landing site: landing/dist (npm, or Docker node when node is missing)
-scripts/build_firebase_hosting.sh && firebase deploy --only hosting   # Firebase Hosting copy: landing at /, app at /app/ (build/hosting); .firebaserc still defaults to the old `elfaheem` project, the app itself is on `nextbrain-2y`
+scripts/build_firebase_hosting.sh && firebase deploy --only hosting   # Firebase Hosting copy: landing at /, app at /app/ (build/hosting); .firebaserc defaults to `alfaheem-d3c8f`
 scripts/server/build_web.sh          # run ON the server: the live web deploy (builds next to live, scripts/web/postbuild.dart, swap, smoke test, rollback to the previous build)
 scripts/build_release.sh apk|appbundle|ipa|web   # release builds (bash): obfuscated, symbols in build/debug-info/<version>/ (keep them: `flutter symbolize -i trace.txt -d build/debug-info/<version>/app.android-arm64.symbols` is the only way to read a stack trace); signing from android/key.properties / env (never committed)
 dart run tool/gen_help_index.dart ../back/data/help_seed.json   # regenerate assets/help/help_index.json (test/ui/help_index_test.dart fails when it drifts)

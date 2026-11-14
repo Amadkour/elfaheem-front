@@ -44,7 +44,7 @@ cached. Launcher icons and native splash screens are regenerated from `assets/im
 flutter_native_splash. No NextBrain image ships: `sync/check_identity.py` fails on any listed image still
 byte-identical to NextBrain's and on any image path in neither list.
 
-## A-004 Firebase not wired yet
+## A-004 Firebase not wired yet (superseded by A-006)
 
 The Firebase files are Alfaheem's (project `elfaheem`) as they were before the sync: `android/app/google-services.json`,
 `ios/Runner/GoogleService-Info.plist`, `macos/Runner/GoogleService-Info.plist`, `lib/firebase_options.dart`,
@@ -59,3 +59,26 @@ ever flows back. `sync/sync.sh` merges, keeps Alfaheem's files (`sync/keep_paths
 takes NextBrain's version of every other conflict, re-applies the identity and runs the gate. Alfaheem has no code of
 its own: anything Alfaheem changes outside the two lists must be produced by `sync/apply_identity.py`, or the next
 sync loses it.
+
+## A-006 Firebase project alfaheem-d3c8f (2026-11-14)
+
+Alfaheem runs on its own Firebase project `alfaheem-d3c8f` (number 887854198161, owner account alfaheem.2y@gmail.com),
+apps registered for `com.doubley.alfaheem`: Android, iOS (the macOS app reuses the iOS app and plist, same bundle id)
+and Web. NextBrain's `nextbrain-2y` is never used, and neither is the old `elfaheem` project: there is no fallback
+project, so an app installed from the old project is not carried over.
+
+- Kept files (`sync/keep_paths.txt`): `android/app/google-services.json`, `ios/Runner/GoogleService-Info.plist`,
+  `macos/Runner/GoogleService-Info.plist`, `lib/firebase_options.dart`, `.firebaserc`. These are public client
+  configs; no service-account or private key goes in git.
+- `sync/identity.env` holds the `FIREBASE_*` values. `sync/apply_identity.py` writes `web/firebase-messaging-sw.js`
+  and `firebase.json` from `lib/firebase_options.dart`, the Firebase Auth URL scheme in `ios/Runner/Info.plist`
+  (`app-1-887854198161-ios-ffa59d7c85f3ac430afe30`; the Google sign-in `REVERSED_CLIENT_ID` scheme only once
+  `FIREBASE_IOS_REVERSED_CLIENT_ID` is set: the iOS app has no OAuth client yet) and the web-push key in
+  `notification_service.dart`.
+- Web push: `FIREBASE_WEB_VAPID_KEY` is empty until the owner generates a key pair (Firebase console, Project
+  settings, Cloud Messaging, Web Push certificates). NextBrain's key must not ship. With an empty key the web app
+  skips `getToken` (a debug log) and the logout unregister, so web users get no push; mobile push is unaffected.
+- `sync/check_identity.py` fails on any Firebase id of `nextbrain-2y` or the old `elfaheem` project, on NextBrain's
+  VAPID key, and on a Firebase file that does not name `FIREBASE_PROJECT_ID`.
+- Still owed: the backend's FCM service account for `alfaheem-d3c8f` (server `.env.production`), the VAPID key, the
+  iOS OAuth client for Google sign-in, Android SHA fingerprints in the Firebase console once the release key exists.

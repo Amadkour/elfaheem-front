@@ -36,15 +36,15 @@ When the gate fails:
   `gen_brand_assets.py` and add it to `brand_assets.txt` (a non-brand image goes in `keep_paths.txt` only if
   Alfaheem has its own copy; otherwise list it in `brand_assets.txt` with a generator).
 
-## Firebase (A-004): files the Firebase step must rewrite for the new project
+## Firebase (A-006): project alfaheem-d3c8f
 
-- `android/app/google-services.json` (package `com.doubley.alfaheem`; the kept file is still registered for
-  `com.example.flutter_education_app`, so Android Firebase does not initialise until it is replaced)
-- `ios/Runner/GoogleService-Info.plist`, `macos/Runner/GoogleService-Info.plist` (bundle `com.doubley.alfaheem`)
-- `lib/firebase_options.dart` (android, ios, macos, web; windows optional)
-- `ios/Runner/Info.plist`: the Google sign-in URL scheme (`CFBundleURLSchemes`, still NextBrain's `nextbrain-2y` iOS app)
-- `lib/features/messaging/notification/notification_service.dart`: the web-push VAPID key (still NextBrain's)
-- `web/firebase-messaging-sw.js`, `firebase.json` (written from `lib/firebase_options.dart` by `apply_identity.py`:
-  re-run it after `flutterfire configure`)
-- `.firebaserc` (default project)
-- the server's FCM service account (backend `.env.production`)
+Wired 2026-11-14. The client configs are kept files (`keep_paths.txt`); the merged files that carry Firebase ids are
+rewritten by `apply_identity.py` from the `FIREBASE_*` values in `identity.env`:
+- `web/firebase-messaging-sw.js`, `firebase.json` (from `lib/firebase_options.dart`: re-run after `flutterfire configure`)
+- `ios/Runner/Info.plist`: the Firebase Auth URL scheme (`FIREBASE_IOS_APP_ID`) and, when set,
+  `FIREBASE_IOS_REVERSED_CLIENT_ID` for Google sign-in
+- `lib/features/messaging/notification/notification_service.dart`: `webPushVapidKey` (`FIREBASE_WEB_VAPID_KEY`, empty
+  for now: web push is skipped)
+
+Still owed by the owner: the VAPID key, the iOS OAuth client, the server's FCM service account (backend
+`.env.production`).
