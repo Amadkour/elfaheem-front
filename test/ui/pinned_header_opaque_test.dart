@@ -58,9 +58,12 @@ void main() {
     }
   }
 
-  testWidgets('the production dark background is translucent (the cause), the pinned tab strip is not', (tester) async {
+  // D-650 made the production dark background opaque (#121414), but the theme is server-driven and a super admin can
+  // store a translucent one again (the cause of e2e I9 / I10: the card tone at 90 % alpha): the pinned strip must
+  // stay opaque over such a background, so this case feeds one on purpose.
+  testWidgets('a translucent dark background (the old cause): the pinned tab strip is still opaque', (tester) async {
     final theme = ThemeConfigProvider(api: ApiClient())
-      ..debugUseColors(_prod())
+      ..debugUseColors({..._prod(), 'dark_background': '#E61E2021'})
       ..isDark = true;
     expect(_alpha(theme.background), lessThan(255));
     tester.view.physicalSize = const Size(1280, 800);

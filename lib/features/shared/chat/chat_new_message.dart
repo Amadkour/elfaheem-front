@@ -245,18 +245,22 @@ class ChatPeopleView extends StatelessWidget {
   }
 }
 
-/// The first message to someone with no link, right in the sheet.
+/// The first message to someone with no link, right in the sheet. It scrolls inside whatever height it is given
+/// (a short phone, large text, an error banner), so it never overflows its box.
 class ChatRequestComposer extends StatelessWidget {
-  const ChatRequestComposer({super.key, required this.person, required this.controller, required this.busy, this.error, required this.onSend, required this.onBack});
+  const ChatRequestComposer({super.key, required this.person, required this.controller, required this.busy, this.error, required this.onSend, required this.onBack, this.padding = EdgeInsets.zero});
   final ChatPersonRow person;
   final TextEditingController controller;
   final bool busy;
   final String? error;
   final VoidCallback onSend;
   final VoidCallback onBack;
+  final EdgeInsetsGeometry padding;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => SingleChildScrollView(padding: padding, child: _form(context));
+
+  Widget _form(BuildContext context) {
     final c = context.colors;
     final first = person.user.name.split(' ').first;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -399,10 +403,9 @@ class _ChatNewMessageSheetState extends State<ChatNewMessageSheet> {
     final requesting = _requesting;
     final motion = AppMotion.of(context).base;
     final body = requesting != null
-        ? SingleChildScrollView(
-            padding: AppSheetContent.padding,
-            child: ChatRequestComposer(person: requesting, controller: _message, busy: _sending, error: _sendError, onSend: _sendRequest, onBack: () => setState(() => _requesting = null)),
-          )
+        ? ChatRequestComposer(
+            person: requesting, controller: _message, busy: _sending, error: _sendError, onSend: _sendRequest,
+            onBack: () => setState(() => _requesting = null), padding: AppSheetContent.padding)
         : LayoutBuilder(builder: (context, box) {
             final search = Padding(
               padding: EdgeInsets.fromLTRB(AppSheetContent.padding.left, 0, AppSheetContent.padding.left, AppSpace.xs),

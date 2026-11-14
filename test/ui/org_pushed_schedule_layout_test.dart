@@ -62,7 +62,12 @@ void main() {
   /// [routes] answer every call the screen makes (so the real content is drawn, not an error state), unless
   /// [allowMissing].
   void serve(Map<String, FakeHandler> routes, {bool allowMissing = false}) {
-    api = FakeApi(routes, latency: const Duration(milliseconds: 10));
+    // the badge counts: AttentionService refreshes on route pushes, throttled by the wall clock, so whether a test
+    // reaches it depends on timing; it is always answered (as in org_pages_layout_test)
+    api = FakeApi({
+      'GET /api/v1/me/attention': (_) => {'counts': {}, 'total': 0, 'items': []},
+      ...routes,
+    }, latency: const Duration(milliseconds: 10));
     api.install();
     addTearDown(api.uninstall);
     if (!allowMissing) addTearDown(() => expect(api.unmatched, isEmpty, reason: 'unanswered calls'));

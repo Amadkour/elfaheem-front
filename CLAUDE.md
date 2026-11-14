@@ -13,7 +13,7 @@ flutter pub get
 flutter analyze --no-fatal-infos --fatal-warnings   # the CI gate (exit 0 = no warnings/errors); lints: package:flutter_lints/flutter.yaml; platform dirs are excluded
 flutter run                          # add -d chrome for web
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:18080/api   # Android emulator → local stack (../back/scripts/dev/setup.*, demo accounts in ../back/README.md); web / iOS simulator use http://localhost:18080/api, a USB phone after `adb reverse tcp:18080 tcp:18080`; default is production
-flutter test test/org/ test/export/ test/ui/ test/auth/ test/access/ test/admin/ test/perf/ test/contract/   # the real suites (CI runs them all); test/chat/ is not in CI yet: its request-composer layout test overflows at 320×640
+flutter test test/org/ test/export/ test/ui/ test/auth/ test/access/ test/admin/ test/perf/ test/contract/ test/chat/   # the real suites (CI runs them all)
 flutter test test/some_test.dart --plain-name "name"   # run a single test
 MSYS_NO_PATHCONV=1 flutter build web --release --base-href /app/   # web (the env var stops Git Bash rewriting /app/)
 scripts/build_landing.sh             # the landing site: landing/dist (npm, or Docker node when node is missing)
