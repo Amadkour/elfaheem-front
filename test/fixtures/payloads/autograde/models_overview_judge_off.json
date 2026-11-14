@@ -1,0 +1,3311 @@
+{
+ "_source": {
+  "route": "GET /api/v1/models",
+  "uid": 1
+ },
+ "payload": {
+  "roles": [
+   {
+    "role": "embedding",
+    "task": null,
+    "active": "multilingual-e5-small@int8-761b726",
+    "active_id": 1,
+    "previous": null,
+    "previous_id": null,
+    "fallback": null,
+    "fallback_id": null,
+    "pending": null,
+    "limits": {
+     "threads": 1,
+     "max_concurrency": 2,
+     "priority": "interactive",
+     "idle_unload_s": 0,
+     "ram_mb": 0
+    },
+    "recommended": null,
+    "models": [
+     {
+      "id": 32,
+      "role": "embedding",
+      "name": "Arabic-Triplet-Matryoshka-V2",
+      "version": "fp32-17b8742",
+      "ref": "Arabic-Triplet-Matryoshka-V2@fp32-17b8742",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "local:bench/autograde/export_onnx.py",
+      "revision": "17b87422aa4bfb3b478369299e701070b308314f",
+      "license": "Apache-2.0",
+      "size_bytes": 542744374,
+      "disk_bytes": 0,
+      "ram_mb": 1185,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "embedding",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32 export; cosine to torch 1.0)",
+      "dim": 768,
+      "files": {
+       "model": {
+        "path": "Arabic-Triplet-Matryoshka-V2/onnx/model.onnx",
+        "bytes": 540967259
+       },
+       "tokenizer": {
+        "path": "Arabic-Triplet-Matryoshka-V2/tokenizer.json",
+        "bytes": 1777115
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.227065",
+      "deletable": false
+     },
+     {
+      "id": 31,
+      "role": "embedding",
+      "name": "Arabic-Triplet-Matryoshka-V2",
+      "version": "int8-17b8742",
+      "ref": "Arabic-Triplet-Matryoshka-V2@int8-17b8742",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "local:bench/autograde/export_onnx.py",
+      "revision": "17b87422aa4bfb3b478369299e701070b308314f",
+      "license": "Apache-2.0",
+      "size_bytes": 138118770,
+      "disk_bytes": 0,
+      "ram_mb": 376,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "embedding",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int8 (ONNX Runtime dynamic, per-channel QInt8, of the fp32 export; min cosine to torch 0.955 on the export's samples)",
+      "dim": 768,
+      "files": {
+       "model": {
+        "path": "Arabic-Triplet-Matryoshka-V2/onnx/model_quantized.onnx",
+        "bytes": 136341655
+       },
+       "tokenizer": {
+        "path": "Arabic-Triplet-Matryoshka-V2/tokenizer.json",
+        "bytes": 1777115
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.225555",
+      "deletable": false
+     },
+     {
+      "id": 26,
+      "role": "embedding",
+      "name": "bge-m3",
+      "version": "fp32-4de1325",
+      "ref": "bge-m3@fp32-4de1325",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/bge-m3",
+      "revision": "4de13258303883538bd53b696b452bf8099f0858",
+      "license": "MIT",
+      "size_bytes": 2284510727,
+      "disk_bytes": 0,
+      "ram_mb": 4669,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "embedding",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32; ONNX export of BAAI/bge-m3 5617a9f, dense head: CLS pooling, normalised, no prefixes)",
+      "dim": 1024,
+      "files": {
+       "model": {
+        "path": "bge-m3/onnx/model.onnx",
+        "bytes": 607298
+       },
+       "data": {
+        "path": "bge-m3/onnx/model.onnx_data",
+        "bytes": 2266820608
+       },
+       "tokenizer": {
+        "path": "bge-m3/tokenizer.json",
+        "bytes": 17082821
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.217556",
+      "deletable": false
+     },
+     {
+      "id": 27,
+      "role": "embedding",
+      "name": "bge-m3",
+      "version": "int8-4de1325",
+      "ref": "bge-m3@int8-4de1325",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/bge-m3",
+      "revision": "4de13258303883538bd53b696b452bf8099f0858",
+      "license": "MIT",
+      "size_bytes": 585539515,
+      "disk_bytes": 0,
+      "ram_mb": 1271,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "embedding",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int8 (ONNX Runtime dynamic quantization of the fp32 export, Xenova)",
+      "dim": 1024,
+      "files": {
+       "model": {
+        "path": "bge-m3/onnx/model_int8.onnx",
+        "bytes": 568456694
+       },
+       "tokenizer": {
+        "path": "bge-m3/tokenizer.json",
+        "bytes": 17082821
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.219557",
+      "deletable": false
+     },
+     {
+      "id": 6,
+      "role": "embedding",
+      "name": "multilingual-e5-base",
+      "version": "int8-1ec9243",
+      "ref": "multilingual-e5-base@int8-1ec9243",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/multilingual-e5-base",
+      "revision": "1ec9243030a27d1a115d5c340572074c125b58b2",
+      "license": "MIT",
+      "size_bytes": 295730322,
+      "disk_bytes": 0,
+      "ram_mb": 691,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "embedding",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int8 (dynamic, Xenova export)",
+      "dim": 768,
+      "files": {
+       "model": {
+        "path": "multilingual-e5-base/onnx/model_quantized.onnx",
+        "bytes": 278647662
+       },
+       "tokenizer": {
+        "path": "multilingual-e5-base/tokenizer.json",
+        "bytes": 17082660
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.192545",
+      "deletable": false
+     },
+     {
+      "id": 2,
+      "role": "embedding",
+      "name": "multilingual-e5-small",
+      "version": "fp32-761b726",
+      "ref": "multilingual-e5-small@fp32-761b726",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/multilingual-e5-small",
+      "revision": "761b726dd34fb83930e26aab4e9ac3899aa1fa78",
+      "license": "MIT",
+      "size_bytes": 487351263,
+      "disk_bytes": 0,
+      "ram_mb": 1074,
+      "status": "active",
+      "error": null,
+      "last_test": null,
+      "used_as": [
+       "active"
+      ],
+      "used_in": {
+       "grading": [
+        "active"
+       ]
+      },
+      "roles": [
+       "embedding",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32)",
+      "dim": 384,
+      "files": {
+       "model": {
+        "path": "multilingual-e5-small/onnx/model.onnx",
+        "bytes": 470268533
+       },
+       "tokenizer": {
+        "path": "multilingual-e5-small/tokenizer.json",
+        "bytes": 17082730
+       }
+      },
+      "pinned": true,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.188544",
+      "deletable": false
+     },
+     {
+      "id": 1,
+      "role": "embedding",
+      "name": "multilingual-e5-small",
+      "version": "int8-761b726",
+      "ref": "multilingual-e5-small@int8-761b726",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/multilingual-e5-small",
+      "revision": "761b726dd34fb83930e26aab4e9ac3899aa1fa78",
+      "license": "MIT",
+      "size_bytes": 135390915,
+      "disk_bytes": 0,
+      "ram_mb": 370,
+      "status": "active",
+      "error": null,
+      "last_test": null,
+      "used_as": [
+       "active"
+      ],
+      "used_in": {
+       "embedding": [
+        "active"
+       ]
+      },
+      "roles": [
+       "embedding",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int8 (dynamic, Xenova export)",
+      "dim": 384,
+      "files": {
+       "model": {
+        "path": "multilingual-e5-small/onnx/model_quantized.onnx",
+        "bytes": 118308185
+       },
+       "tokenizer": {
+        "path": "multilingual-e5-small/tokenizer.json",
+        "bytes": 17082730
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.185543",
+      "deletable": false
+     },
+     {
+      "id": 4,
+      "role": "embedding",
+      "name": "paraphrase-multilingual-MiniLM-L12-v2",
+      "version": "fp32-2c4055b",
+      "ref": "paraphrase-multilingual-MiniLM-L12-v2@fp32-2c4055b",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/paraphrase-multilingual-MiniLM-L12-v2",
+      "revision": "2c4055b12046f11709e9df2c122e59ffbdc2f900",
+      "license": "Apache-2.0",
+      "size_bytes": 487351423,
+      "disk_bytes": 0,
+      "ram_mb": 1074,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "embedding",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32)",
+      "dim": 384,
+      "files": {
+       "model": {
+        "path": "paraphrase-multilingual-MiniLM-L12-v2/onnx/model.onnx",
+        "bytes": 470268510
+       },
+       "tokenizer": {
+        "path": "paraphrase-multilingual-MiniLM-L12-v2/tokenizer.json",
+        "bytes": 17082913
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.190545",
+      "deletable": false
+     },
+     {
+      "id": 3,
+      "role": "embedding",
+      "name": "paraphrase-multilingual-MiniLM-L12-v2",
+      "version": "int8-2c4055b",
+      "ref": "paraphrase-multilingual-MiniLM-L12-v2@int8-2c4055b",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/paraphrase-multilingual-MiniLM-L12-v2",
+      "revision": "2c4055b12046f11709e9df2c122e59ffbdc2f900",
+      "license": "Apache-2.0",
+      "size_bytes": 135391039,
+      "disk_bytes": 0,
+      "ram_mb": 370,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "embedding",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int8 (dynamic, Xenova export)",
+      "dim": 384,
+      "files": {
+       "model": {
+        "path": "paraphrase-multilingual-MiniLM-L12-v2/onnx/model_quantized.onnx",
+        "bytes": 118308126
+       },
+       "tokenizer": {
+        "path": "paraphrase-multilingual-MiniLM-L12-v2/tokenizer.json",
+        "bytes": 17082913
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.189545",
+      "deletable": false
+     }
+    ]
+   },
+   {
+    "role": "reranker",
+    "task": null,
+    "active": "mmarco-mMiniLMv2-L12-H384-v1@int8-1427fd6",
+    "active_id": 16,
+    "previous": null,
+    "previous_id": null,
+    "fallback": null,
+    "fallback_id": null,
+    "pending": null,
+    "limits": {
+     "threads": 1,
+     "max_concurrency": 1,
+     "priority": "interactive",
+     "idle_unload_s": 0,
+     "ram_mb": 0
+    },
+    "recommended": null,
+    "models": [
+     {
+      "id": 28,
+      "role": "reranker",
+      "name": "bge-reranker-v2-m3",
+      "version": "fp32-6f5ff65",
+      "ref": "bge-reranker-v2-m3@fp32-6f5ff65",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:onnx-community/bge-reranker-v2-m3-ONNX",
+      "revision": "6f5ff65298512715a1e669753bc754d2bc8f367b",
+      "license": "Apache-2.0",
+      "size_bytes": 2288828447,
+      "disk_bytes": 0,
+      "ram_mb": 4677,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "reranker"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32; ONNX export of BAAI/bge-reranker-v2-m3 953dc6f)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "bge-reranker-v2-m3/onnx/model.onnx",
+        "bytes": 656891
+       },
+       "data": {
+        "path": "bge-reranker-v2-m3/onnx/model.onnx_data",
+        "bytes": 2271088656
+       },
+       "tokenizer": {
+        "path": "bge-reranker-v2-m3/tokenizer.json",
+        "bytes": 17082900
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.220556",
+      "deletable": false
+     },
+     {
+      "id": 29,
+      "role": "reranker",
+      "name": "bge-reranker-v2-m3",
+      "version": "int8-6f5ff65",
+      "ref": "bge-reranker-v2-m3@int8-6f5ff65",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:onnx-community/bge-reranker-v2-m3-ONNX",
+      "revision": "6f5ff65298512715a1e669753bc754d2bc8f367b",
+      "license": "Apache-2.0",
+      "size_bytes": 587809994,
+      "disk_bytes": 0,
+      "ram_mb": 1275,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "reranker"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int8 (ONNX Runtime dynamic quantization of the fp32 export)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "bge-reranker-v2-m3/onnx/model_int8.onnx",
+        "bytes": 570727094
+       },
+       "tokenizer": {
+        "path": "bge-reranker-v2-m3/tokenizer.json",
+        "bytes": 17082900
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.222557",
+      "deletable": false
+     },
+     {
+      "id": 30,
+      "role": "reranker",
+      "name": "gte-multilingual-reranker-base",
+      "version": "int8-ee64367",
+      "ref": "gte-multilingual-reranker-base@int8-ee64367",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:onnx-community/gte-multilingual-reranker-base",
+      "revision": "ee64367e35a2db0da46bb6497e13a18f8bd585cb",
+      "license": "Apache-2.0",
+      "size_bytes": 357941199,
+      "disk_bytes": 0,
+      "ram_mb": 815,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "reranker"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int8 (per-channel symmetric, the transformers.js export of Alibaba-NLP/gte-multilingual-reranker-base 8215cf0)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gte-multilingual-reranker-base/onnx/model_int8.onnx",
+        "bytes": 340858200
+       },
+       "tokenizer": {
+        "path": "gte-multilingual-reranker-base/tokenizer.json",
+        "bytes": 17082999
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.224557",
+      "deletable": false
+     },
+     {
+      "id": 17,
+      "role": "reranker",
+      "name": "mmarco-mMiniLMv2-L12-H384-v1",
+      "version": "fp32-1427fd6",
+      "ref": "mmarco-mMiniLMv2-L12-H384-v1@fp32-1427fd6",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+      "revision": "1427fd652930e4ba29e8149678df786c240d8825",
+      "license": "Apache-2.0",
+      "size_bytes": 487966356,
+      "disk_bytes": 0,
+      "ram_mb": 1075,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "reranker"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "mmarco-mMiniLMv2-L12-H384-v1/onnx/model.onnx",
+        "bytes": 470883696
+       },
+       "tokenizer": {
+        "path": "mmarco-mMiniLMv2-L12-H384-v1/tokenizer.json",
+        "bytes": 17082660
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.204546",
+      "deletable": false
+     },
+     {
+      "id": 16,
+      "role": "reranker",
+      "name": "mmarco-mMiniLMv2-L12-H384-v1",
+      "version": "int8-1427fd6",
+      "ref": "mmarco-mMiniLMv2-L12-H384-v1@int8-1427fd6",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+      "revision": "1427fd652930e4ba29e8149678df786c240d8825",
+      "license": "Apache-2.0",
+      "size_bytes": 135702676,
+      "disk_bytes": 0,
+      "ram_mb": 371,
+      "status": "active",
+      "error": null,
+      "last_test": null,
+      "used_as": [
+       "active"
+      ],
+      "used_in": {
+       "reranker": [
+        "active"
+       ]
+      },
+      "roles": [
+       "reranker"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "uint8 dynamic (AVX2, sentence-transformers export)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "mmarco-mMiniLMv2-L12-H384-v1/onnx/model_quint8_avx2.onnx",
+        "bytes": 118620016
+       },
+       "tokenizer": {
+        "path": "mmarco-mMiniLMv2-L12-H384-v1/tokenizer.json",
+        "bytes": 17082660
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.202546",
+      "deletable": false
+     }
+    ]
+   },
+   {
+    "role": "nli",
+    "task": null,
+    "active": null,
+    "active_id": null,
+    "previous": null,
+    "previous_id": null,
+    "fallback": null,
+    "fallback_id": null,
+    "pending": null,
+    "limits": {
+     "threads": 1,
+     "max_concurrency": 1,
+     "priority": "grading",
+     "idle_unload_s": 1800,
+     "ram_mb": 0
+    },
+    "recommended": null,
+    "models": [
+     {
+      "id": 8,
+      "role": "nli",
+      "name": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7",
+      "version": "fp32-0864ced",
+      "ref": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7@fp32-0864ced",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7",
+      "revision": "0864ced79bf1ef851bfaf9dd9de0aa54d735d9d0",
+      "license": "MIT",
+      "size_bytes": 1132431215,
+      "disk_bytes": 0,
+      "ram_mb": 1911,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "nli",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7/onnx/model.onnx",
+        "bytes": 1116115064
+       },
+       "tokenizer": {
+        "path": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7/tokenizer.json",
+        "bytes": 16316151
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.194544",
+      "deletable": false
+     },
+     {
+      "id": 7,
+      "role": "nli",
+      "name": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7",
+      "version": "int8-0864ced",
+      "ref": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7@int8-0864ced",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7",
+      "revision": "0864ced79bf1ef851bfaf9dd9de0aa54d735d9d0",
+      "license": "MIT",
+      "size_bytes": 354995283,
+      "disk_bytes": 0,
+      "ram_mb": 667,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "nli",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int8 (dynamic, Xenova export)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7/onnx/model_quantized.onnx",
+        "bytes": 338679132
+       },
+       "tokenizer": {
+        "path": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7/tokenizer.json",
+        "bytes": 16316151
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.193545",
+      "deletable": false
+     },
+     {
+      "id": 9,
+      "role": "nli",
+      "name": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7",
+      "version": "int8emb-0864ced",
+      "ref": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7@int8emb-0864ced",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7",
+      "revision": "0864ced79bf1ef851bfaf9dd9de0aa54d735d9d0",
+      "license": "MIT",
+      "size_bytes": 554439362,
+      "disk_bytes": 0,
+      "ram_mb": 987,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "nli",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int8 word-embedding table only (onnxruntime dynamic, Gather nodes), built from the fp32 export (mlkit/derive.py); attention, feed-forward and classifier stay fp32. Decisions 99.3 % the same as fp32, peak RSS 815 MB vs 1870 MB (bench/autograde/nli_quant.json, D-675)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7/onnx/model_int8emb.onnx",
+        "bytes": 538123211
+       },
+       "tokenizer": {
+        "path": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7/tokenizer.json",
+        "bytes": 16316151
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.195545",
+      "deletable": false
+     },
+     {
+      "id": 5,
+      "role": "nli",
+      "name": "multilingual-MiniLMv2-L6-mnli-xnli",
+      "version": "fp32-0a71e92",
+      "ref": "multilingual-MiniLMv2-L6-mnli-xnli@fp32-0a71e92",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli",
+      "revision": "0a71e92a985b6e1ad1828cf67ce9c459639c1dca",
+      "license": "MIT",
+      "size_bytes": 445209870,
+      "disk_bytes": 0,
+      "ram_mb": 812,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "nli",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32) — the dynamic INT8 export was measured and rejected: a correct paraphrase fell from 0.71 to 0.26 entailment",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "multilingual-MiniLMv2-L6-mnli-xnli/onnx/model.onnx",
+        "bytes": 428127016
+       },
+       "tokenizer": {
+        "path": "multilingual-MiniLMv2-L6-mnli-xnli/onnx/tokenizer.json",
+        "bytes": 17082854
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.191545",
+      "deletable": false
+     }
+    ],
+    "judge": "off"
+   },
+   {
+    "role": "ocr_det",
+    "task": null,
+    "active": "paddleocr-det@pp-ocrv3-7b02d0a",
+    "active_id": 10,
+    "previous": null,
+    "previous_id": null,
+    "fallback": null,
+    "fallback_id": null,
+    "pending": null,
+    "limits": {
+     "threads": 1,
+     "max_concurrency": 1,
+     "priority": "grading",
+     "idle_unload_s": 1800,
+     "ram_mb": 0
+    },
+    "recommended": null,
+    "models": [
+     {
+      "id": 10,
+      "role": "ocr_det",
+      "name": "paddleocr-det",
+      "version": "pp-ocrv3-7b02d0a",
+      "ref": "paddleocr-det@pp-ocrv3-7b02d0a",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:monkt/paddleocr-onnx",
+      "revision": "7b02d0a30a07ba2b92ad1ff5a8941ae2c633de65",
+      "license": "Apache-2.0",
+      "size_bytes": 2429873,
+      "disk_bytes": 0,
+      "ram_mb": 106,
+      "status": "active",
+      "error": null,
+      "last_test": null,
+      "used_as": [
+       "active"
+      ],
+      "used_in": {
+       "ocr_det": [
+        "active"
+       ]
+      },
+      "roles": [
+       "ocr_det"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32, 2.4 MB)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "paddleocr-onnx/detection/v3/det.onnx",
+        "bytes": 2429873
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.196545",
+      "deletable": false
+     }
+    ]
+   },
+   {
+    "role": "ocr_rec_ar",
+    "task": null,
+    "active": "paddleocr-rec-ar@pp-ocrv5-14aaedc",
+    "active_id": 15,
+    "previous": null,
+    "previous_id": null,
+    "fallback": null,
+    "fallback_id": null,
+    "pending": null,
+    "limits": {
+     "threads": 1,
+     "max_concurrency": 1,
+     "priority": "grading",
+     "idle_unload_s": 1800,
+     "ram_mb": 0
+    },
+    "recommended": null,
+    "models": [
+     {
+      "id": 33,
+      "role": "ocr_rec_ar",
+      "name": "htr-ar-khatt-crnn",
+      "version": "d1e394c-fba98a2e-int8",
+      "ref": "htr-ar-khatt-crnn@d1e394c-fba98a2e-int8",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "local:mlops/learning/export_htr.py (FixFips/arabicocr-khatt@d1e394ced68290bf92e88ba5d34bb02d710f9fc1, crnn_best.pt sha256 844cec07…)",
+      "revision": null,
+      "license": "MIT (model card and package); trained by its author on KHATT",
+      "size_bytes": 31758924,
+      "disk_bytes": 0,
+      "ram_mb": 179,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "ocr_rec_ar"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int8 dynamic (MatMul, Gemm, LSTM), onnxruntime",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "htr-ar-khatt-crnn/d1e394c-fba98a2e/model_int8.onnx",
+        "bytes": 31757413
+       },
+       "vocab": {
+        "path": "htr-ar-khatt-crnn/d1e394c-fba98a2e/vocab.json",
+        "bytes": 440
+       },
+       "manifest": {
+        "path": "htr-ar-khatt-crnn/d1e394c-fba98a2e/manifest.json",
+        "bytes": 1071
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.229082",
+      "deletable": false
+     },
+     {
+      "id": 11,
+      "role": "ocr_rec_ar",
+      "name": "paddleocr-rec-ar",
+      "version": "pp-ocrv3-7b02d0a",
+      "ref": "paddleocr-rec-ar@pp-ocrv3-7b02d0a",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:monkt/paddleocr-onnx",
+      "revision": "7b02d0a30a07ba2b92ad1ff5a8941ae2c633de65",
+      "license": "Apache-2.0",
+      "size_bytes": 8979069,
+      "disk_bytes": 0,
+      "ram_mb": 122,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "ocr_rec_ar"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32, 9 MB)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "paddleocr-onnx/languages/arabic/rec.onnx",
+        "bytes": 8978664
+       },
+       "keys": {
+        "path": "paddleocr-onnx/languages/arabic/dict.txt",
+        "bytes": 405
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.197545",
+      "deletable": false
+     },
+     {
+      "id": 15,
+      "role": "ocr_rec_ar",
+      "name": "paddleocr-rec-ar",
+      "version": "pp-ocrv5-14aaedc",
+      "ref": "paddleocr-rec-ar@pp-ocrv5-14aaedc",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:PaddlePaddle/arabic_PP-OCRv5_mobile_rec_onnx",
+      "revision": "14aaedcd75825982689ecf5cd64ab33ee083215a",
+      "license": "Apache-2.0",
+      "size_bytes": 8005112,
+      "disk_bytes": 0,
+      "ram_mb": 120,
+      "status": "active",
+      "error": null,
+      "last_test": null,
+      "used_as": [
+       "active"
+      ],
+      "used_in": {
+       "ocr_rec_ar": [
+        "active"
+       ]
+      },
+      "roles": [
+       "ocr_rec_ar"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32, 8 MB)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "arabic_PP-OCRv5_mobile_rec_onnx/inference.onnx",
+        "bytes": 7998947
+       },
+       "keys": {
+        "path": "arabic_PP-OCRv5_mobile_rec_onnx/inference.yml",
+        "bytes": 6165
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.201546",
+      "deletable": false
+     }
+    ]
+   },
+   {
+    "role": "ocr_rec_en",
+    "task": null,
+    "active": "paddleocr-rec-en@pp-ocrv5-7b02d0a",
+    "active_id": 12,
+    "previous": null,
+    "previous_id": null,
+    "fallback": null,
+    "fallback_id": null,
+    "pending": null,
+    "limits": {
+     "threads": 1,
+     "max_concurrency": 1,
+     "priority": "grading",
+     "idle_unload_s": 1800,
+     "ram_mb": 0
+    },
+    "recommended": null,
+    "models": [
+     {
+      "id": 12,
+      "role": "ocr_rec_en",
+      "name": "paddleocr-rec-en",
+      "version": "pp-ocrv5-7b02d0a",
+      "ref": "paddleocr-rec-en@pp-ocrv5-7b02d0a",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:monkt/paddleocr-onnx",
+      "revision": "7b02d0a30a07ba2b92ad1ff5a8941ae2c633de65",
+      "license": "Apache-2.0",
+      "size_bytes": 7832304,
+      "disk_bytes": 0,
+      "ram_mb": 119,
+      "status": "active",
+      "error": null,
+      "last_test": null,
+      "used_as": [
+       "active"
+      ],
+      "used_in": {
+       "ocr_rec_en": [
+        "active"
+       ]
+      },
+      "roles": [
+       "ocr_rec_en"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32, 7.8 MB)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "paddleocr-onnx/languages/english/rec.onnx",
+        "bytes": 7830888
+       },
+       "keys": {
+        "path": "paddleocr-onnx/languages/english/dict.txt",
+        "bytes": 1416
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.198545",
+      "deletable": false
+     }
+    ]
+   },
+   {
+    "role": "handwriting_en",
+    "task": null,
+    "active": "trocr-small-handwritten@fp32-2432e24",
+    "active_id": 14,
+    "previous": null,
+    "previous_id": null,
+    "fallback": null,
+    "fallback_id": null,
+    "pending": null,
+    "limits": {
+     "threads": 1,
+     "max_concurrency": 1,
+     "priority": "grading",
+     "idle_unload_s": 1800,
+     "ram_mb": 0
+    },
+    "recommended": null,
+    "models": [
+     {
+      "id": 14,
+      "role": "handwriting_en",
+      "name": "trocr-small-handwritten",
+      "version": "fp32-2432e24",
+      "ref": "trocr-small-handwritten@fp32-2432e24",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/trocr-small-handwritten",
+      "revision": "2432e24d184b1d964d07ed04f5d9e21d31a59141",
+      "license": "MIT",
+      "size_bytes": 250806629,
+      "disk_bytes": 0,
+      "ram_mb": 727,
+      "status": "active",
+      "error": null,
+      "last_test": null,
+      "used_as": [
+       "active"
+      ],
+      "used_in": {
+       "handwriting_en": [
+        "active"
+       ]
+      },
+      "roles": [
+       "handwriting_en"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32)",
+      "dim": null,
+      "files": {
+       "encoder": {
+        "path": "trocr-small-handwritten/onnx/encoder_model.onnx",
+        "bytes": 87496990
+       },
+       "decoder": {
+        "path": "trocr-small-handwritten/onnx/decoder_model.onnx",
+        "bytes": 158814912
+       },
+       "tokenizer": {
+        "path": "trocr-small-handwritten/tokenizer.json",
+        "bytes": 4494727
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.200545",
+      "deletable": false
+     },
+     {
+      "id": 13,
+      "role": "handwriting_en",
+      "name": "trocr-small-handwritten",
+      "version": "int8-2432e24",
+      "ref": "trocr-small-handwritten@int8-2432e24",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/trocr-small-handwritten",
+      "revision": "2432e24d184b1d964d07ed04f5d9e21d31a59141",
+      "license": "MIT",
+      "size_bytes": 67737573,
+      "disk_bytes": 0,
+      "ram_mb": 269,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "handwriting_en"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int8 (dynamic, Xenova export)",
+      "dim": null,
+      "files": {
+       "encoder": {
+        "path": "trocr-small-handwritten/onnx/encoder_model_quantized.onnx",
+        "bytes": 23082942
+       },
+       "decoder": {
+        "path": "trocr-small-handwritten/onnx/decoder_model_quantized.onnx",
+        "bytes": 40159904
+       },
+       "tokenizer": {
+        "path": "trocr-small-handwritten/tokenizer.json",
+        "bytes": 4494727
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.199545",
+      "deletable": false
+     }
+    ]
+   },
+   {
+    "role": "digits",
+    "task": null,
+    "active": null,
+    "active_id": null,
+    "previous": null,
+    "previous_id": null,
+    "fallback": null,
+    "fallback_id": null,
+    "pending": null,
+    "limits": {
+     "threads": 1,
+     "max_concurrency": 2,
+     "priority": "grading",
+     "idle_unload_s": 1800,
+     "ram_mb": 0
+    },
+    "recommended": null,
+    "models": [
+     {
+      "id": 25,
+      "role": "digits",
+      "name": "digits-cnn",
+      "version": "v2-5c5131b9",
+      "ref": "digits-cnn@v2-5c5131b9",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "local:mlops/learning/train_digits.py",
+      "revision": null,
+      "license": "trained here on MNIST train (card: MIT) + MADBase train (card: publicly available for research, no SPDX licence); see the manifest's data block",
+      "size_bytes": 371124,
+      "disk_bytes": 0,
+      "ram_mb": 100,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "digits"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int8 static QDQ, per-channel (onnxruntime.quantization)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "digits-cnn/v2-5c5131b9/model.onnx",
+        "bytes": 297407
+       },
+       "manifest": {
+        "path": "digits-cnn/v2-5c5131b9/manifest.json",
+        "bytes": 8050
+       },
+       "samples": {
+        "path": "digits-cnn/v2-5c5131b9/samples.npz",
+        "bytes": 65667
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.216557",
+      "deletable": false
+     }
+    ]
+   },
+   {
+    "role": "vision_language",
+    "task": null,
+    "active": null,
+    "active_id": null,
+    "previous": null,
+    "previous_id": null,
+    "fallback": null,
+    "fallback_id": null,
+    "pending": null,
+    "limits": {
+     "threads": 2,
+     "max_concurrency": 1,
+     "priority": "grading",
+     "idle_unload_s": 600,
+     "ram_mb": 0
+    },
+    "recommended": null,
+    "models": [
+     {
+      "id": 24,
+      "role": "vision_language",
+      "name": "qwen2.5-vl-3b-instruct",
+      "version": "q4_k_m-5037fcf",
+      "ref": "qwen2.5-vl-3b-instruct@q4_k_m-5037fcf",
+      "provider": "llamacpp",
+      "source": "registry",
+      "repo": "hf:ggml-org/Qwen2.5-VL-3B-Instruct-GGUF",
+      "revision": "5037fcf163dd95d1e41d1974465f0898ed108ca2",
+      "license": "Apache-2.0",
+      "size_bytes": 2774658784,
+      "disk_bytes": 0,
+      "ram_mb": 6481,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "vision_language"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "GGUF Q4_K_M text model + Q8_0 vision projector (ggml-org build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen2.5-vl-3b/gguf/Qwen2.5-VL-3B-Instruct-Q4_K_M.gguf",
+        "bytes": 1929901056
+       },
+       "mmproj": {
+        "path": "qwen2.5-vl-3b/gguf/mmproj-Qwen2.5-VL-3B-Instruct-Q8_0.gguf",
+        "bytes": 844757728
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.214556",
+      "deletable": false
+     }
+    ]
+   },
+   {
+    "role": "exam_grading",
+    "task": "grading",
+    "active": null,
+    "active_id": null,
+    "previous": null,
+    "previous_id": null,
+    "fallback": null,
+    "fallback_id": null,
+    "pending": null,
+    "limits": {
+     "threads": 2,
+     "max_concurrency": 1,
+     "priority": "grading",
+     "idle_unload_s": 600,
+     "ram_mb": 0
+    },
+    "recommended": null,
+    "models": [],
+    "mode": "shared",
+    "shared_from": "generation.chat",
+    "shared_active": "gen-good@v1",
+    "effective": "gen-good@v1"
+   },
+   {
+    "role": "generation.chat",
+    "task": "chat",
+    "active": "gen-good@v1",
+    "active_id": 38,
+    "previous": "gen-later@v1",
+    "previous_id": 44,
+    "fallback": "gen-later@v1",
+    "fallback_id": 44,
+    "pending": null,
+    "limits": {
+     "threads": 1,
+     "max_concurrency": 1,
+     "priority": "interactive",
+     "idle_unload_s": 0,
+     "ram_mb": 0
+    },
+    "recommended": "ollama:qwen3:4b",
+    "models": [
+     {
+      "id": 45,
+      "role": "generation",
+      "name": "gen-broken",
+      "version": "v1",
+      "ref": "gen-broken@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-broken",
+      "revision": null,
+      "license": null,
+      "size_bytes": 2048,
+      "disk_bytes": 2048,
+      "ram_mb": 100,
+      "status": "ready",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-broken/gen-broken",
+        "bytes": 2048
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:09.725561",
+      "deletable": true
+     },
+     {
+      "id": 42,
+      "role": "generation",
+      "name": "gen-cancel",
+      "version": "v1",
+      "ref": "gen-cancel@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-cancel",
+      "revision": null,
+      "license": null,
+      "size_bytes": 600000,
+      "disk_bytes": 0,
+      "ram_mb": 101,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-cancel/gen-cancel",
+        "bytes": 600000
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:04.594741",
+      "deletable": false
+     },
+     {
+      "id": 40,
+      "role": "generation",
+      "name": "gen-crash",
+      "version": "v1",
+      "ref": "gen-crash@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-crash",
+      "revision": null,
+      "license": null,
+      "size_bytes": 400000,
+      "disk_bytes": 400000,
+      "ram_mb": 100,
+      "status": "ready",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-crash/gen-crash",
+        "bytes": 400000
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:01.758059",
+      "deletable": true
+     },
+     {
+      "id": 46,
+      "role": "generation",
+      "name": "gen-erring",
+      "version": "v1",
+      "ref": "gen-erring@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-erring",
+      "revision": null,
+      "license": null,
+      "size_bytes": 2048,
+      "disk_bytes": 2048,
+      "ram_mb": 100,
+      "status": "ready",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-erring/gen-erring",
+        "bytes": 2048
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:09.863025",
+      "deletable": true
+     },
+     {
+      "id": 38,
+      "role": "generation",
+      "name": "gen-good",
+      "version": "v1",
+      "ref": "gen-good@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-good",
+      "revision": null,
+      "license": null,
+      "size_bytes": 300000,
+      "disk_bytes": 300000,
+      "ram_mb": 136,
+      "status": "active",
+      "error": null,
+      "last_test": {
+       "speed": 500.0,
+       "checks": [
+        {
+         "name": "says_ok",
+         "ok": true,
+         "text": "OK"
+        }
+       ],
+       "ok": true,
+       "load_ms": 0,
+       "ms": 0,
+       "rss_mb": 136,
+       "at": "2026-11-12T12:05:09.215022"
+      },
+      "used_as": [
+       "active"
+      ],
+      "used_in": {
+       "generation.chat": [
+        "active"
+       ]
+      },
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": {
+       "value": 500.0,
+       "unit": "tok/s",
+       "ttft_ms": null,
+       "load_ms": 0,
+       "rss_mb": 136,
+       "at": "2026-11-12T12:05:09.215022",
+       "ok": true
+      },
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-good/gen-good",
+        "bytes": 300000
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:00.600954",
+      "deletable": false
+     },
+     {
+      "id": 44,
+      "role": "generation",
+      "name": "gen-later",
+      "version": "v1",
+      "ref": "gen-later@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-later",
+      "revision": null,
+      "license": null,
+      "size_bytes": 8192,
+      "disk_bytes": 8192,
+      "ram_mb": 137,
+      "status": "ready",
+      "error": null,
+      "last_test": {
+       "speed": 500.0,
+       "checks": [
+        {
+         "name": "says_ok",
+         "ok": true,
+         "text": "OK"
+        }
+       ],
+       "ok": true,
+       "load_ms": 0,
+       "ms": 0,
+       "rss_mb": 137,
+       "at": "2026-11-12T12:05:09.564693"
+      },
+      "used_as": [
+       "previous",
+       "fallback"
+      ],
+      "used_in": {
+       "generation.chat": [
+        "previous",
+        "fallback"
+       ]
+      },
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": {
+       "value": 500.0,
+       "unit": "tok/s",
+       "ttft_ms": null,
+       "load_ms": 0,
+       "rss_mb": 137,
+       "at": "2026-11-12T12:05:09.564693",
+       "ok": true
+      },
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-later/gen-later",
+        "bytes": 8192
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:09.458419",
+      "deletable": false
+     },
+     {
+      "id": 39,
+      "role": "generation",
+      "name": "gen-tampered",
+      "version": "v1",
+      "ref": "gen-tampered@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-tampered",
+      "revision": null,
+      "license": null,
+      "size_bytes": 50000,
+      "disk_bytes": 0,
+      "ram_mb": 100,
+      "status": "failed",
+      "error": "sha256 mismatch: checksum mismatch (58af6432881a… is not 000000000000…): the file was discarded",
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-tampered/gen-tampered",
+        "bytes": 50000
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:00.750895",
+      "deletable": false
+     },
+     {
+      "id": 43,
+      "role": "generation",
+      "name": "gen-wrong",
+      "version": "v1",
+      "ref": "gen-wrong@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-wrong",
+      "revision": null,
+      "license": null,
+      "size_bytes": 2048,
+      "disk_bytes": 2048,
+      "ram_mb": 136,
+      "status": "ready",
+      "error": null,
+      "last_test": {
+       "speed": 500.0,
+       "checks": [
+        {
+         "name": "says_ok",
+         "ok": false,
+         "text": "NO"
+        }
+       ],
+       "ok": false,
+       "load_ms": 0,
+       "ms": 0,
+       "rss_mb": 136,
+       "stage": "answer",
+       "error": "the model answered the known sample wrong",
+       "at": "2026-11-12T12:05:09.399491"
+      },
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": {
+       "value": 500.0,
+       "unit": "tok/s",
+       "ttft_ms": null,
+       "load_ms": 0,
+       "rss_mb": 136,
+       "at": "2026-11-12T12:05:09.399491",
+       "ok": false
+      },
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-wrong/gen-wrong",
+        "bytes": 2048
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:09.291470",
+      "deletable": true
+     },
+     {
+      "id": 19,
+      "role": "generation",
+      "name": "qwen3-0.6b",
+      "version": "int4-58ca03a",
+      "ref": "qwen3-0.6b@int4-58ca03a",
+      "provider": "onnx-genai",
+      "source": "registry",
+      "repo": "hf:onnx-community/Qwen3-0.6B-ONNX",
+      "revision": "58ca03a5e7b354b480b1a82b34bde8dc7b854cc0",
+      "license": "Apache-2.0",
+      "size_bytes": 536027089,
+      "disk_bytes": 0,
+      "ram_mb": 2009,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int4 (KLD, block 128; the onnx-community onnxruntime-genai CPU build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen3-0.6b/cpu-int4-kld-block-128/model.onnx",
+        "bytes": 524589133
+       },
+       "tokenizer": {
+        "path": "qwen3-0.6b/cpu-int4-kld-block-128/tokenizer.json",
+        "bytes": 11422648
+       },
+       "config": {
+        "path": "qwen3-0.6b/cpu-int4-kld-block-128/genai_config.json",
+        "bytes": 1520
+       },
+       "model_config": {
+        "path": "qwen3-0.6b/cpu-int4-kld-block-128/config.json",
+        "bytes": 8957
+       },
+       "tokenizer_config": {
+        "path": "qwen3-0.6b/cpu-int4-kld-block-128/tokenizer_config.json",
+        "bytes": 663
+       },
+       "chat_template": {
+        "path": "qwen3-0.6b/cpu-int4-kld-block-128/chat_template.jinja",
+        "bytes": 4168
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.207546",
+      "deletable": false
+     },
+     {
+      "id": 20,
+      "role": "generation",
+      "name": "qwen3-0.6b",
+      "version": "q4_k_m-50968a4",
+      "ref": "qwen3-0.6b@q4_k_m-50968a4",
+      "provider": "llamacpp",
+      "source": "registry",
+      "repo": "hf:unsloth/Qwen3-0.6B-GGUF",
+      "revision": "50968a4468ef4233ed78cd7c3de230dd1d61a56b",
+      "license": "Apache-2.0",
+      "size_bytes": 396705472,
+      "disk_bytes": 0,
+      "ram_mb": 1364,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "GGUF Q4_K_M (llama.cpp k-quant, unsloth build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen3-0.6b/gguf/Qwen3-0.6B-Q4_K_M.gguf",
+        "bytes": 396705472
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.208546",
+      "deletable": false
+     },
+     {
+      "id": 21,
+      "role": "generation",
+      "name": "qwen3-0.6b",
+      "version": "q5_k_m-50968a4",
+      "ref": "qwen3-0.6b@q5_k_m-50968a4",
+      "provider": "llamacpp",
+      "source": "registry",
+      "repo": "hf:unsloth/Qwen3-0.6B-GGUF",
+      "revision": "50968a4468ef4233ed78cd7c3de230dd1d61a56b",
+      "license": "Apache-2.0",
+      "size_bytes": 444415680,
+      "disk_bytes": 0,
+      "ram_mb": 1197,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "GGUF Q5_K_M (llama.cpp k-quant, unsloth build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen3-0.6b/gguf/Qwen3-0.6B-Q5_K_M.gguf",
+        "bytes": 444415680
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.210547",
+      "deletable": false
+     },
+     {
+      "id": 18,
+      "role": "generation",
+      "name": "qwen3-1.7b",
+      "version": "int4-3231b52",
+      "ref": "qwen3-1.7b@int4-3231b52",
+      "provider": "onnx-genai",
+      "source": "registry",
+      "repo": "hf:onnx-community/Qwen3-1.7B-ONNX",
+      "revision": "3231b522c6e703b2f9b3cd8ea27426a1289a02f2",
+      "license": "Apache-2.0",
+      "size_bytes": 1420381385,
+      "disk_bytes": 0,
+      "ram_mb": 3186,
+      "status": "active",
+      "error": null,
+      "last_test": null,
+      "used_as": [
+       "active"
+      ],
+      "used_in": {
+       "generation.exam": [
+        "active"
+       ]
+      },
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int4 (KLD, block 128; the onnx-community onnxruntime-genai CPU build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen3-1.7b/cpu-int4-kld-block-128/model.onnx",
+        "bytes": 1408943689
+       },
+       "tokenizer": {
+        "path": "qwen3-1.7b/cpu-int4-kld-block-128/tokenizer.json",
+        "bytes": 11422648
+       },
+       "config": {
+        "path": "qwen3-1.7b/cpu-int4-kld-block-128/genai_config.json",
+        "bytes": 1520
+       },
+       "model_config": {
+        "path": "qwen3-1.7b/cpu-int4-kld-block-128/config.json",
+        "bytes": 8697
+       },
+       "tokenizer_config": {
+        "path": "qwen3-1.7b/cpu-int4-kld-block-128/tokenizer_config.json",
+        "bytes": 663
+       },
+       "chat_template": {
+        "path": "qwen3-1.7b/cpu-int4-kld-block-128/chat_template.jinja",
+        "bytes": 4168
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.205546",
+      "deletable": false
+     },
+     {
+      "id": 22,
+      "role": "generation",
+      "name": "qwen3-1.7b",
+      "version": "q4_k_m-d7f544e",
+      "ref": "qwen3-1.7b@q4_k_m-d7f544e",
+      "provider": "llamacpp",
+      "source": "registry",
+      "repo": "hf:unsloth/Qwen3-1.7B-GGUF",
+      "revision": "d7f544eead698dbd1f15126ef60b45a1e1933222",
+      "license": "Apache-2.0",
+      "size_bytes": 1107409472,
+      "disk_bytes": 0,
+      "ram_mb": 2544,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "GGUF Q4_K_M (llama.cpp k-quant, unsloth build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen3-1.7b/gguf/Qwen3-1.7B-Q4_K_M.gguf",
+        "bytes": 1107409472
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.211556",
+      "deletable": false
+     },
+     {
+      "id": 23,
+      "role": "generation",
+      "name": "qwen3-1.7b",
+      "version": "q5_k_m-d7f544e",
+      "ref": "qwen3-1.7b@q5_k_m-d7f544e",
+      "provider": "llamacpp",
+      "source": "registry",
+      "repo": "hf:unsloth/Qwen3-1.7B-GGUF",
+      "revision": "d7f544eead698dbd1f15126ef60b45a1e1933222",
+      "license": "Apache-2.0",
+      "size_bytes": 1257880128,
+      "disk_bytes": 0,
+      "ram_mb": 2018,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "GGUF Q5_K_M (llama.cpp k-quant, unsloth build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen3-1.7b/gguf/Qwen3-1.7B-Q5_K_M.gguf",
+        "bytes": 1257880128
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.213557",
+      "deletable": false
+     },
+     {
+      "id": 34,
+      "role": "generation",
+      "name": "qwen3:1.7b",
+      "version": "",
+      "ref": "ollama:qwen3:1.7b",
+      "provider": "ollama",
+      "source": "ollama",
+      "repo": "qwen3:1.7b-q4_K_M",
+      "revision": null,
+      "license": "Apache-2.0",
+      "size_bytes": 1400000000,
+      "disk_bytes": 1400000000,
+      "ram_mb": 2300,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": 40960,
+      "params_b": 1.7,
+      "recommended_for": [],
+      "quantization": "Q4_K_M (GGUF)",
+      "dim": null,
+      "files": {},
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.232082",
+      "deletable": false
+     },
+     {
+      "id": 37,
+      "role": "generation",
+      "name": "qwen3:14b",
+      "version": "",
+      "ref": "ollama:qwen3:14b",
+      "provider": "ollama",
+      "source": "ollama",
+      "repo": "qwen3:14b-q4_K_M",
+      "revision": null,
+      "license": "Apache-2.0",
+      "size_bytes": 9300000000,
+      "disk_bytes": 9300000000,
+      "ram_mb": 11500,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": 40960,
+      "params_b": 14.8,
+      "recommended_for": [],
+      "quantization": "Q4_K_M (GGUF)",
+      "dim": null,
+      "files": {},
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.232082",
+      "deletable": false
+     },
+     {
+      "id": 35,
+      "role": "generation",
+      "name": "qwen3:4b",
+      "version": "",
+      "ref": "ollama:qwen3:4b",
+      "provider": "ollama",
+      "source": "ollama",
+      "repo": "qwen3:4b-q4_K_M",
+      "revision": null,
+      "license": "Apache-2.0",
+      "size_bytes": 2600000000,
+      "disk_bytes": 2600000000,
+      "ram_mb": 3900,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": 40960,
+      "params_b": 4.0,
+      "recommended_for": [
+       "generation.chat"
+      ],
+      "quantization": "Q4_K_M (GGUF)",
+      "dim": null,
+      "files": {},
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.232082",
+      "deletable": false
+     },
+     {
+      "id": 36,
+      "role": "generation",
+      "name": "qwen3:8b",
+      "version": "",
+      "ref": "ollama:qwen3:8b",
+      "provider": "ollama",
+      "source": "ollama",
+      "repo": "qwen3:8b-q4_K_M",
+      "revision": null,
+      "license": "Apache-2.0",
+      "size_bytes": 5200000000,
+      "disk_bytes": 5200000000,
+      "ram_mb": 7000,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": 40960,
+      "params_b": 8.2,
+      "recommended_for": [
+       "generation.exam"
+      ],
+      "quantization": "Q4_K_M (GGUF)",
+      "dim": null,
+      "files": {},
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.232082",
+      "deletable": false
+     }
+    ]
+   },
+   {
+    "role": "generation.exam",
+    "task": "exam",
+    "active": "qwen3-1.7b@int4-3231b52",
+    "active_id": 18,
+    "previous": null,
+    "previous_id": null,
+    "fallback": null,
+    "fallback_id": null,
+    "pending": null,
+    "limits": {
+     "threads": 4,
+     "max_concurrency": 1,
+     "priority": "batch",
+     "idle_unload_s": 900,
+     "ram_mb": 0
+    },
+    "recommended": "ollama:qwen3:8b",
+    "models": [
+     {
+      "id": 45,
+      "role": "generation",
+      "name": "gen-broken",
+      "version": "v1",
+      "ref": "gen-broken@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-broken",
+      "revision": null,
+      "license": null,
+      "size_bytes": 2048,
+      "disk_bytes": 2048,
+      "ram_mb": 100,
+      "status": "ready",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-broken/gen-broken",
+        "bytes": 2048
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:09.725561",
+      "deletable": true
+     },
+     {
+      "id": 42,
+      "role": "generation",
+      "name": "gen-cancel",
+      "version": "v1",
+      "ref": "gen-cancel@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-cancel",
+      "revision": null,
+      "license": null,
+      "size_bytes": 600000,
+      "disk_bytes": 0,
+      "ram_mb": 101,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-cancel/gen-cancel",
+        "bytes": 600000
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:04.594741",
+      "deletable": false
+     },
+     {
+      "id": 40,
+      "role": "generation",
+      "name": "gen-crash",
+      "version": "v1",
+      "ref": "gen-crash@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-crash",
+      "revision": null,
+      "license": null,
+      "size_bytes": 400000,
+      "disk_bytes": 400000,
+      "ram_mb": 100,
+      "status": "ready",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-crash/gen-crash",
+        "bytes": 400000
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:01.758059",
+      "deletable": true
+     },
+     {
+      "id": 46,
+      "role": "generation",
+      "name": "gen-erring",
+      "version": "v1",
+      "ref": "gen-erring@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-erring",
+      "revision": null,
+      "license": null,
+      "size_bytes": 2048,
+      "disk_bytes": 2048,
+      "ram_mb": 100,
+      "status": "ready",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-erring/gen-erring",
+        "bytes": 2048
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:09.863025",
+      "deletable": true
+     },
+     {
+      "id": 38,
+      "role": "generation",
+      "name": "gen-good",
+      "version": "v1",
+      "ref": "gen-good@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-good",
+      "revision": null,
+      "license": null,
+      "size_bytes": 300000,
+      "disk_bytes": 300000,
+      "ram_mb": 136,
+      "status": "active",
+      "error": null,
+      "last_test": {
+       "speed": 500.0,
+       "checks": [
+        {
+         "name": "says_ok",
+         "ok": true,
+         "text": "OK"
+        }
+       ],
+       "ok": true,
+       "load_ms": 0,
+       "ms": 0,
+       "rss_mb": 136,
+       "at": "2026-11-12T12:05:09.215022"
+      },
+      "used_as": [
+       "active"
+      ],
+      "used_in": {
+       "generation.chat": [
+        "active"
+       ]
+      },
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": {
+       "value": 500.0,
+       "unit": "tok/s",
+       "ttft_ms": null,
+       "load_ms": 0,
+       "rss_mb": 136,
+       "at": "2026-11-12T12:05:09.215022",
+       "ok": true
+      },
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-good/gen-good",
+        "bytes": 300000
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:00.600954",
+      "deletable": false
+     },
+     {
+      "id": 44,
+      "role": "generation",
+      "name": "gen-later",
+      "version": "v1",
+      "ref": "gen-later@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-later",
+      "revision": null,
+      "license": null,
+      "size_bytes": 8192,
+      "disk_bytes": 8192,
+      "ram_mb": 137,
+      "status": "ready",
+      "error": null,
+      "last_test": {
+       "speed": 500.0,
+       "checks": [
+        {
+         "name": "says_ok",
+         "ok": true,
+         "text": "OK"
+        }
+       ],
+       "ok": true,
+       "load_ms": 0,
+       "ms": 0,
+       "rss_mb": 137,
+       "at": "2026-11-12T12:05:09.564693"
+      },
+      "used_as": [
+       "previous",
+       "fallback"
+      ],
+      "used_in": {
+       "generation.chat": [
+        "previous",
+        "fallback"
+       ]
+      },
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": {
+       "value": 500.0,
+       "unit": "tok/s",
+       "ttft_ms": null,
+       "load_ms": 0,
+       "rss_mb": 137,
+       "at": "2026-11-12T12:05:09.564693",
+       "ok": true
+      },
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-later/gen-later",
+        "bytes": 8192
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:09.458419",
+      "deletable": false
+     },
+     {
+      "id": 39,
+      "role": "generation",
+      "name": "gen-tampered",
+      "version": "v1",
+      "ref": "gen-tampered@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-tampered",
+      "revision": null,
+      "license": null,
+      "size_bytes": 50000,
+      "disk_bytes": 0,
+      "ram_mb": 100,
+      "status": "failed",
+      "error": "sha256 mismatch: checksum mismatch (58af6432881a… is not 000000000000…): the file was discarded",
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-tampered/gen-tampered",
+        "bytes": 50000
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:00.750895",
+      "deletable": false
+     },
+     {
+      "id": 43,
+      "role": "generation",
+      "name": "gen-wrong",
+      "version": "v1",
+      "ref": "gen-wrong@v1",
+      "provider": "onnx-genai",
+      "source": "url",
+      "repo": "http://127.0.0.1:62746/gen-wrong",
+      "revision": null,
+      "license": null,
+      "size_bytes": 2048,
+      "disk_bytes": 2048,
+      "ram_mb": 136,
+      "status": "ready",
+      "error": null,
+      "last_test": {
+       "speed": 500.0,
+       "checks": [
+        {
+         "name": "says_ok",
+         "ok": false,
+         "text": "NO"
+        }
+       ],
+       "ok": false,
+       "load_ms": 0,
+       "ms": 0,
+       "rss_mb": 136,
+       "stage": "answer",
+       "error": "the model answered the known sample wrong",
+       "at": "2026-11-12T12:05:09.399491"
+      },
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": {
+       "value": 500.0,
+       "unit": "tok/s",
+       "ttft_ms": null,
+       "load_ms": 0,
+       "rss_mb": 136,
+       "at": "2026-11-12T12:05:09.399491",
+       "ok": false
+      },
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": null,
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "gen-wrong/gen-wrong",
+        "bytes": 2048
+       }
+      },
+      "pinned": false,
+      "added_by": 1,
+      "added_at": "2026-11-12T12:05:09.291470",
+      "deletable": true
+     },
+     {
+      "id": 19,
+      "role": "generation",
+      "name": "qwen3-0.6b",
+      "version": "int4-58ca03a",
+      "ref": "qwen3-0.6b@int4-58ca03a",
+      "provider": "onnx-genai",
+      "source": "registry",
+      "repo": "hf:onnx-community/Qwen3-0.6B-ONNX",
+      "revision": "58ca03a5e7b354b480b1a82b34bde8dc7b854cc0",
+      "license": "Apache-2.0",
+      "size_bytes": 536027089,
+      "disk_bytes": 0,
+      "ram_mb": 2009,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int4 (KLD, block 128; the onnx-community onnxruntime-genai CPU build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen3-0.6b/cpu-int4-kld-block-128/model.onnx",
+        "bytes": 524589133
+       },
+       "tokenizer": {
+        "path": "qwen3-0.6b/cpu-int4-kld-block-128/tokenizer.json",
+        "bytes": 11422648
+       },
+       "config": {
+        "path": "qwen3-0.6b/cpu-int4-kld-block-128/genai_config.json",
+        "bytes": 1520
+       },
+       "model_config": {
+        "path": "qwen3-0.6b/cpu-int4-kld-block-128/config.json",
+        "bytes": 8957
+       },
+       "tokenizer_config": {
+        "path": "qwen3-0.6b/cpu-int4-kld-block-128/tokenizer_config.json",
+        "bytes": 663
+       },
+       "chat_template": {
+        "path": "qwen3-0.6b/cpu-int4-kld-block-128/chat_template.jinja",
+        "bytes": 4168
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.207546",
+      "deletable": false
+     },
+     {
+      "id": 20,
+      "role": "generation",
+      "name": "qwen3-0.6b",
+      "version": "q4_k_m-50968a4",
+      "ref": "qwen3-0.6b@q4_k_m-50968a4",
+      "provider": "llamacpp",
+      "source": "registry",
+      "repo": "hf:unsloth/Qwen3-0.6B-GGUF",
+      "revision": "50968a4468ef4233ed78cd7c3de230dd1d61a56b",
+      "license": "Apache-2.0",
+      "size_bytes": 396705472,
+      "disk_bytes": 0,
+      "ram_mb": 1364,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "GGUF Q4_K_M (llama.cpp k-quant, unsloth build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen3-0.6b/gguf/Qwen3-0.6B-Q4_K_M.gguf",
+        "bytes": 396705472
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.208546",
+      "deletable": false
+     },
+     {
+      "id": 21,
+      "role": "generation",
+      "name": "qwen3-0.6b",
+      "version": "q5_k_m-50968a4",
+      "ref": "qwen3-0.6b@q5_k_m-50968a4",
+      "provider": "llamacpp",
+      "source": "registry",
+      "repo": "hf:unsloth/Qwen3-0.6B-GGUF",
+      "revision": "50968a4468ef4233ed78cd7c3de230dd1d61a56b",
+      "license": "Apache-2.0",
+      "size_bytes": 444415680,
+      "disk_bytes": 0,
+      "ram_mb": 1197,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "GGUF Q5_K_M (llama.cpp k-quant, unsloth build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen3-0.6b/gguf/Qwen3-0.6B-Q5_K_M.gguf",
+        "bytes": 444415680
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.210547",
+      "deletable": false
+     },
+     {
+      "id": 18,
+      "role": "generation",
+      "name": "qwen3-1.7b",
+      "version": "int4-3231b52",
+      "ref": "qwen3-1.7b@int4-3231b52",
+      "provider": "onnx-genai",
+      "source": "registry",
+      "repo": "hf:onnx-community/Qwen3-1.7B-ONNX",
+      "revision": "3231b522c6e703b2f9b3cd8ea27426a1289a02f2",
+      "license": "Apache-2.0",
+      "size_bytes": 1420381385,
+      "disk_bytes": 0,
+      "ram_mb": 3186,
+      "status": "active",
+      "error": null,
+      "last_test": null,
+      "used_as": [
+       "active"
+      ],
+      "used_in": {
+       "generation.exam": [
+        "active"
+       ]
+      },
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "int4 (KLD, block 128; the onnx-community onnxruntime-genai CPU build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen3-1.7b/cpu-int4-kld-block-128/model.onnx",
+        "bytes": 1408943689
+       },
+       "tokenizer": {
+        "path": "qwen3-1.7b/cpu-int4-kld-block-128/tokenizer.json",
+        "bytes": 11422648
+       },
+       "config": {
+        "path": "qwen3-1.7b/cpu-int4-kld-block-128/genai_config.json",
+        "bytes": 1520
+       },
+       "model_config": {
+        "path": "qwen3-1.7b/cpu-int4-kld-block-128/config.json",
+        "bytes": 8697
+       },
+       "tokenizer_config": {
+        "path": "qwen3-1.7b/cpu-int4-kld-block-128/tokenizer_config.json",
+        "bytes": 663
+       },
+       "chat_template": {
+        "path": "qwen3-1.7b/cpu-int4-kld-block-128/chat_template.jinja",
+        "bytes": 4168
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.205546",
+      "deletable": false
+     },
+     {
+      "id": 22,
+      "role": "generation",
+      "name": "qwen3-1.7b",
+      "version": "q4_k_m-d7f544e",
+      "ref": "qwen3-1.7b@q4_k_m-d7f544e",
+      "provider": "llamacpp",
+      "source": "registry",
+      "repo": "hf:unsloth/Qwen3-1.7B-GGUF",
+      "revision": "d7f544eead698dbd1f15126ef60b45a1e1933222",
+      "license": "Apache-2.0",
+      "size_bytes": 1107409472,
+      "disk_bytes": 0,
+      "ram_mb": 2544,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "GGUF Q4_K_M (llama.cpp k-quant, unsloth build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen3-1.7b/gguf/Qwen3-1.7B-Q4_K_M.gguf",
+        "bytes": 1107409472
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.211556",
+      "deletable": false
+     },
+     {
+      "id": 23,
+      "role": "generation",
+      "name": "qwen3-1.7b",
+      "version": "q5_k_m-d7f544e",
+      "ref": "qwen3-1.7b@q5_k_m-d7f544e",
+      "provider": "llamacpp",
+      "source": "registry",
+      "repo": "hf:unsloth/Qwen3-1.7B-GGUF",
+      "revision": "d7f544eead698dbd1f15126ef60b45a1e1933222",
+      "license": "Apache-2.0",
+      "size_bytes": 1257880128,
+      "disk_bytes": 0,
+      "ram_mb": 2018,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "GGUF Q5_K_M (llama.cpp k-quant, unsloth build)",
+      "dim": null,
+      "files": {
+       "model": {
+        "path": "qwen3-1.7b/gguf/Qwen3-1.7B-Q5_K_M.gguf",
+        "bytes": 1257880128
+       }
+      },
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.213557",
+      "deletable": false
+     },
+     {
+      "id": 34,
+      "role": "generation",
+      "name": "qwen3:1.7b",
+      "version": "",
+      "ref": "ollama:qwen3:1.7b",
+      "provider": "ollama",
+      "source": "ollama",
+      "repo": "qwen3:1.7b-q4_K_M",
+      "revision": null,
+      "license": "Apache-2.0",
+      "size_bytes": 1400000000,
+      "disk_bytes": 1400000000,
+      "ram_mb": 2300,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": 40960,
+      "params_b": 1.7,
+      "recommended_for": [],
+      "quantization": "Q4_K_M (GGUF)",
+      "dim": null,
+      "files": {},
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.232082",
+      "deletable": false
+     },
+     {
+      "id": 37,
+      "role": "generation",
+      "name": "qwen3:14b",
+      "version": "",
+      "ref": "ollama:qwen3:14b",
+      "provider": "ollama",
+      "source": "ollama",
+      "repo": "qwen3:14b-q4_K_M",
+      "revision": null,
+      "license": "Apache-2.0",
+      "size_bytes": 9300000000,
+      "disk_bytes": 9300000000,
+      "ram_mb": 11500,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": 40960,
+      "params_b": 14.8,
+      "recommended_for": [],
+      "quantization": "Q4_K_M (GGUF)",
+      "dim": null,
+      "files": {},
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.232082",
+      "deletable": false
+     },
+     {
+      "id": 35,
+      "role": "generation",
+      "name": "qwen3:4b",
+      "version": "",
+      "ref": "ollama:qwen3:4b",
+      "provider": "ollama",
+      "source": "ollama",
+      "repo": "qwen3:4b-q4_K_M",
+      "revision": null,
+      "license": "Apache-2.0",
+      "size_bytes": 2600000000,
+      "disk_bytes": 2600000000,
+      "ram_mb": 3900,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": 40960,
+      "params_b": 4.0,
+      "recommended_for": [
+       "generation.chat"
+      ],
+      "quantization": "Q4_K_M (GGUF)",
+      "dim": null,
+      "files": {},
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.232082",
+      "deletable": false
+     },
+     {
+      "id": 36,
+      "role": "generation",
+      "name": "qwen3:8b",
+      "version": "",
+      "ref": "ollama:qwen3:8b",
+      "provider": "ollama",
+      "source": "ollama",
+      "repo": "qwen3:8b-q4_K_M",
+      "revision": null,
+      "license": "Apache-2.0",
+      "size_bytes": 5200000000,
+      "disk_bytes": 5200000000,
+      "ram_mb": 7000,
+      "status": "not_downloaded",
+      "error": null,
+      "last_test": null,
+      "used_as": [],
+      "used_in": {},
+      "roles": [
+       "generation.chat",
+       "generation.exam"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": 40960,
+      "params_b": 8.2,
+      "recommended_for": [
+       "generation.exam"
+      ],
+      "quantization": "Q4_K_M (GGUF)",
+      "dim": null,
+      "files": {},
+      "pinned": false,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.232082",
+      "deletable": false
+     }
+    ]
+   },
+   {
+    "role": "grading",
+    "task": "grading",
+    "active": "multilingual-e5-small@fp32-761b726",
+    "active_id": 2,
+    "previous": null,
+    "previous_id": null,
+    "fallback": null,
+    "fallback_id": null,
+    "pending": null,
+    "limits": {
+     "threads": 2,
+     "max_concurrency": 1,
+     "priority": "grading",
+     "idle_unload_s": 1800,
+     "ram_mb": 0
+    },
+    "recommended": null,
+    "models": [
+     {
+      "id": 2,
+      "role": "embedding",
+      "name": "multilingual-e5-small",
+      "version": "fp32-761b726",
+      "ref": "multilingual-e5-small@fp32-761b726",
+      "provider": "onnx",
+      "source": "registry",
+      "repo": "hf:Xenova/multilingual-e5-small",
+      "revision": "761b726dd34fb83930e26aab4e9ac3899aa1fa78",
+      "license": "MIT",
+      "size_bytes": 487351263,
+      "disk_bytes": 0,
+      "ram_mb": 1074,
+      "status": "active",
+      "error": null,
+      "last_test": null,
+      "used_as": [
+       "active"
+      ],
+      "used_in": {
+       "grading": [
+        "active"
+       ]
+      },
+      "roles": [
+       "embedding",
+       "grading"
+      ],
+      "accuracy": {},
+      "speed": null,
+      "context": null,
+      "params_b": null,
+      "recommended_for": [],
+      "quantization": "none (fp32)",
+      "dim": 384,
+      "files": {
+       "model": {
+        "path": "multilingual-e5-small/onnx/model.onnx",
+        "bytes": 470268533
+       },
+       "tokenizer": {
+        "path": "multilingual-e5-small/tokenizer.json",
+        "bytes": 17082730
+       }
+      },
+      "pinned": true,
+      "added_by": null,
+      "added_at": "2026-11-12T12:05:00.188544",
+      "deletable": false
+     }
+    ]
+   }
+  ],
+  "tasks": [
+   {
+    "task": "exam_grading",
+    "roles": [
+     "exam_grading",
+     "nli",
+     "embedding"
+    ]
+   }
+  ]
+ }
+}

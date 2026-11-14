@@ -1,0 +1,85 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items/2 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_review.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "id": 2,
+  "scan_page_id": 1,
+  "attempt_id": 1,
+  "question_id": 4,
+  "kind": "bubble",
+  "code": "multiple",
+  "reading": {
+   "n": 4,
+   "state": "multiple",
+   "selected": [
+    "A",
+    "D"
+   ],
+   "fills": {
+    "A": 0.902,
+    "B": 0.002,
+    "C": 0.001,
+    "D": 0.902
+   },
+   "type": "mcq_single",
+   "en": "More than one answer was shaded",
+   "ar": "ظُلِّلت أكثر من إجابة"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T05:37:21.066493",
+  "actions": [
+   "choose",
+   "blank"
+  ],
+  "has_crop": true,
+  "en": "More than one answer was shaded",
+  "ar": "ظُلِّلت أكثر من إجابة",
+  "crop_url": "/api/v1/exam/omr/images/crop/2?exp=1793598449&sig=c4982125fb3fcde7bb06152d8ebdfb5d",
+  "system_reading": {
+   "reading_id": 1,
+   "engine_version": "nb-omr-engine/1 mlkit.omr thresholds:94796afbb463",
+   "answer": {
+    "n": 4,
+    "state": "multiple",
+    "selected": [
+     "A",
+     "D"
+    ],
+    "fills": {
+     "A": 0.902,
+     "B": 0.002,
+     "C": 0.001,
+     "D": 0.902
+    },
+    "margin": 0.028,
+    "box": [
+     355,
+     945,
+     246,
+     69
+    ]
+   }
+  },
+  "question": {
+   "n": 4,
+   "question_id": 4,
+   "type": "mcq_single",
+   "points": 2.0,
+   "letters": [
+    "A",
+    "B",
+    "C",
+    "D"
+   ]
+  },
+  "page": {
+   "id": 1,
+   "page_label": "1",
+   "status": "review",
+   "url": "/api/v1/exam/exams/1/omr/pages/1"
+  }
+ }
+}

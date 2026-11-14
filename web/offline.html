@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#FBF7EC" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0F7B5F" media="(prefers-color-scheme: dark)">
+  <title>NextBrain — غير متصل / Offline</title>
+  <!-- Served by web/sw.js when a navigation fails with no network. Self-contained on purpose:
+       the worker caches only this file, so the logo is inline and there are no external resources. -->
+  <style>
+    :root {
+      --bg: #FBF7EC;
+      --card: #FFFFFF;
+      --ink: #1B2A24;
+      --muted: #5B6B63;
+      --accent: #0F7B5F;
+      --on-accent: #FFFFFF;
+      --line: rgba(15, 123, 95, 0.16);
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0B2A22;
+        --card: #0F3A2E;
+        --ink: #F3EFE3;
+        --muted: #B9C9C0;
+        --accent: #FBF7EC;
+        --on-accent: #0F5A46;
+        --line: rgba(251, 247, 236, 0.18);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, "Segoe UI", Tahoma, "Noto Sans Arabic", Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      line-height: 1.5;
+    }
+    main {
+      width: 100%;
+      max-width: 420px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 32px 24px;
+      text-align: center;
+    }
+    img { width: 72px; height: 72px; border-radius: 18px; display: block; margin: 0 auto 20px; }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; }
+    p { margin: 0 0 4px; color: var(--muted); }
+    .en { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+    .en h1 { font-size: 1.15rem; }
+    button {
+      margin-top: 24px;
+      min-height: 48px;
+      min-width: 160px;
+      padding: 12px 24px;
+      border: 0;
+      border-radius: 14px;
+      background: var(--accent);
+      color: var(--on-accent);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:focus-visible { outline: 3px solid var(--muted); outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <img alt="NextBrain" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJAAAACQCAMAAADQmBKKAAAAwFBMVEX///r///b///X//vT//fP//PL9/PX/+/H/+vD++e79+u/9+O36+e/89+z79+379+z79+v69+z69uv69ur69en59uv59ur59er49ur49er49en39er08+jw7+Lq7eDj6Nrb4tLX3MjD1cO8x62cvafLn1mLrZByo4lelnnFjj3FizekikNIiWo/g2Q3fl4welkpdlQmdFEjck8hcU4fcE0eb0wdbksbbUoZbEgYa0cXa0cWakYUaUQSZ0MPZkALYz0Rr4bEAAAMi0lEQVR42u2aiXKbWBaGxSY2WQo4oCD2RYAz7MsFxKL3f6s5SHZPkpbckZOZ7qmCcrlwuYQ/znb/+1+vdv+wa7UALUAL0AK0AC1AC9ACtAAtQAvQArQALUAL0AK0AC1AC9ACtAAtQP9/QIIo/HOABFmReJYXFUX4JwCJCk9ilKprDI4/KX87kKQwmOr4YZzEYeBKuCj/nUCiIlGY4cX9eRqnM3yLXZqUf3PiVg8Eh8Upy0/PY4tQm4XJOIxjaJPEk/h3AMkyhetuWJ0H1LQtmsKV4cY9OqPQ/cKI/3MgUaEIK0jGqZtx4DoVzmqlJwPqpinUOfG9ASE+NCJ+CkhhcDuoz0PTtKdTNwM1Q+Z7YQX3CJ09/NJtf6IS94q841mWfYIRIQm/DUgUcTNA5zk4qCyKsumAo+mhqk+A1qHJW2mKctjRP3YAS2Akq+mGLtE4Ru0U6fcA7VnKS6cWAUSVJmmSpFnVdqeuaZqubVDZTIFBYMSKt7bfTSucNBwviKIkSaLQ92wBoyX5NwAdSD0c2xI1dVk3bZml2YUpzyFWOVx1kpzTwHO80CH/CAE0JHRA2k/T2A99dxqGCUW+RZGy+KtACm7FZwRXXrRtDH/Y8aO8nKGAqkRZ6BmGjyB950A/vIVHwnUvPk19PwJR15yGaRq6ccoDm2CUXwNSCCcdIVuo7ZPA0QicJAgdJnUUxXEUBp4l4ixLWH6cAZr6dM0xQ7nx0KKhz6LAcx3Hdf0wace2HVFg4HvhF4AOuJM1RdOgqfJNiuAVRZZlliB43TBNQ6MJ6kkRRZnCNNPUWf76DqQRTH0zZYFrsjhBkCQBJQ1vEQ8DOqcuLogfBtoTdt7kedmMkY0xigo8kihAD+9YhiFWK5xW5OsQ5xmGFV5jasfnGl7AoglW3G7Wm42qqpvVCoM0npth8Dle/CCQxJjJiJqiRv6W0lSeJgmSYvhZdogSb/ue59DM/o/x90eOm3IKLYzey+uNYbvHy+Xa2mql+agv++ALJ30ISBA24VQ3zVC6xJcdQWqm7Ti2qeA4rwjC1gjO5yY0SeX7HnCSPK98mjo8r1X7+PL17Xo5uuZ65UR9MYXbrfgRoD3utWXTnFoXlwnNCaK0aFEaR1DcOC8L7MpJT+fEIg/f1Vxe5ZmLCQdmYx9njrfrwmStjHCszwF9f27fB5JoK4Ux044exnzxIpg/KfxclC3IDk+DiaJiDvw2tf4To5lnOFUOpnxeG8cLzVt8rkwv7kYKz9XbYvMY0DMZ9GlRTz5JWeGpKYosiaIorU+oqKrIIXZA5HYIiKjXpyuknfZN42Lq5zWE50JwraA5dVeko7aJpqa2yf2jQDJlI1TWY6QRToLyEbrYMqDbYSSnRVrXPsNKCua19Rgb9P46060Ecnzlefk6/3XX0tX1eq3qUNuvUTrqBsykSNoJDwJJZDCUTds7KyeGXPkmidMMyzIkxttB0TXnQGVlBfeGaoq0uddkyoy7soFsvPK8uPp6zT2Jz89P3HptvCJ9PR6cHhZkTHkMaG75LK/PIWZGaRo5GA17DehtUVZ2FOUkE5SmupUl3Ie7UOVkkTGiCY0e/uWV52iu2efnT9fF5PmZm6vqSoTB4Ex0XngMCN49y7rOWQVdEZrEt9oBMIywz5qA20kS4UORhsJ2p0VD+S2PRj9/29ziM7Nxr1mzzbIZ7tX1HSBJh4zl1RSurbyPDerw/a9VWgur7ORTgixQARAFG14Nps4npP3aPM48Kvf8Y5c8rS9EX1/0YOzDzSMpYw1Ti4uiAe0VdLmDq3+aUZwWDtCBhCRvYXyWQ8CxXBBwwmfKuPBo7POfnvrpee1eRsHRQV1jU9JPA0mUY5pJmp+QpUajjx1uTE1GgzEOtSnLM1s5+CQvityeu8ZH455vPPfTp/VlGrzY0Xj2b5f1TSCR9nQnTbIp5uwqMW5q+D39VsQzUV/CvBJ2z4x+4dFv8kDWOOM4h8j1pzGkxZ8GYnWfc7MkP4cr7+zfqT6FNuOxRi6u7Bk9gl7zSWWrXXhM+vO9aXtJGgyofkh0VvhJIBFGM+Z1ABSsvN6m7ihhhTQTVBSwUCi0EU+w+yAECNDXo0E/3+Fhdf0Swhc3HQrrZhHdApJxB0IzZtA8Kz/WeOGu3LbTuspmIhiKfdF45AZSYq7vxQeAnNUlRG409g6x/0kgBXMj3OsLNAOFpPiuwEUdxOigkFZcFrlLbExz/Xxf0fCuZl36LBpH92Yt3AbyEt7trhHyMeVdiVt1fWYTChAlVV6CQH1vGysTnvX5UmbheGf1uAOU63aeFlDUro/t3xGVGu527QCiCIicFLZuDn54b8+Aee7qCjQ8BtTbBqyoY7K1PeKd3Z3I7nC3yuvYpBQQi2XfoXeJFIj4FSh6CAh3zh4JayoMRs1j729b9pRhcISbZ6fIoPYHzGkgfw5xeAcoCOaq/nqMh0dqiHDm6kkTkHYrR+Pv8tB6FGkc5SGQIAatQDPUZZlY5P2qoyP/CpQM0GU/CwTitYk3TpKUU7TV9XtAEkzoaQj1HQkdCaKI2wNRmVeJRR3uqWKzfwXKYA7RPzuHBF6La0ePM1hdXVx7ulM/vBRUMMw1iKgPMi0Eoj0B+4JZHSj3ahpiPtfQv6rxzoC7s7gGJ38VNBkak3tulLjlgi4tI52WRYnyJzDVVHYvEd5YDtGrqP3xRbdqNDkz0Et4msIHVntQpk2sWeB0NOOdpUwUaH8o+7l0tvwTTwdDhgKB3YuEPxbjnL8/f0bFvCExLqtL3N8Tsas7O6AMpJCfxnlzAtF+g0ci/TYbEpNSBdIPOI4JUNYHAmwhgQ12rgKn3Fj7Uphs9sucsaG8XUJ3BJpIh+fUMMBsQj1yVocfs7bfEv4pK+ZdImjdovS/8NtgKKaA2+4hlee5ougf3uNAa9E4uCtQjccQEkyJDyhGaHwEVeRladn0yMV235nRokpv/DZvU5s4QJ2OxQkqe7sJQGaDqFX47SwhQxP71jCTZuNrGqONCiV0TIrudtPf1dRPapinIPCHrGr6zlfx3ZtrCdsOFjPDOkcFDGWFcMt6gp2ZKLNqWILMJsHPVsM2axOXInfKZasiKbNtGrWotlc2VFDY9JH69NA2CEKUVZEmhac0q7sxciSM4kUwhwSWBF8lKdIcZMcBFtc0LRNz3odehGMNTSCB4A76uh9Ch8cI2MwxFE6YflrmjUfMAQqadrgXoLvbIJEKhyFYa2GWJAUah8iztdmOYcB5SqYqrRIHVw4gP4osfvUbruK682DnwW79fkRjEXqOZRim7QXZWBS5R6/nAKXdOSSlB7fSMFTTFvS95oPxmqJ2Ojdw3BIEYVJPbYGmyCIUlbAT1KX2m/8xy+wqqzx8L+8IJwIjcJj6Io3TChz3/hw7FEhqSFg/pAb3KBDMIrfOMg+j3ajIMjCtuvE8n7j0WZI2daBTygG3InBjv1ne95QZ5VnhYeIeDBwv6qfhBKY26oZpTHydErSZB/xu5yPuh0x6eZr53ArSf0Jwm82GTFa0TRo4BKuKGGz6k9T5dkyBlI2K/ORRjKLwhDp7SnlT52kcujrGC5uZp6oHj1A+YFgJMIuLDIXmijRneyjP4AvsqNi3GVJVadrL8jR1v3/2TDSgAcxW8QBImDS7bo6pg0VxWEN8/hU3aPAp8UOWnrhj/FM9pS6H4Yrlej6UkOfaKkYrKgOnDW2GIF8/LBEXohzBSRqxU1R1x1AkSdL84bABR+0lLIZuglklfMz0FHcgdU4naF8BxwmKpml4OiOpTyQBMcuyJr5RCwqtBxUkNnQknOIVVdNU9bBjON09+vEJrGqPED/qws7HLk48FFA0rsmTgMQwNNhEuhOkCKopMG5JMZnlPDDSxtM8KUgMA6OaPJiuH0RZ106xg8nCLzn5hg/uYpbFoe86tmU5rje7n1k5xC53+5xA3MHZWo2KvEjnUxdw8gEGzKYcwZmWTiq/eNbBknYARkiFKpQncZLVbQHNlkaeft+SV2jKCRI4AWjGoSnychhOp34Y0sDCWeVXT4Pg4ICyvChHVTm3fZrXTRUHrv7uoyWRpOcPdeBS1ghWkWnMI88kaUX8DQd4Epy/iTD9wzCKIzhx8R0DTg3+4tGySOM8tGYwfwg+41o8uILSbzrilJQnWB8ZOBw0NGG+E//6TeFDOxp6k5E0FVZXjN4p4m88lRYkRRZ4loETH9AS4k+frIP6eOJ5Yb75L/wjwaMHzG8TX1j+f2gBWoAWoAVoAVqAFqAFaAFagBagBWgBWoAWoAVoAVqAFqAFaAFagD54/RsaTdflmT5ViAAAAABJRU5ErkJggg==">
+    <section>
+      <h1>أنت غير متصل بالإنترنت</h1>
+      <p>تحقّق من اتصالك ثم أعد المحاولة.</p>
+    </section>
+    <section class="en" dir="ltr" lang="en">
+      <h1>You're offline</h1>
+      <p>Check your connection, then try again.</p>
+    </section>
+    <button id="retry" type="button">إعادة المحاولة · Retry</button>
+  </main>
+  <script>
+    document.getElementById('retry').addEventListener('click', function () { location.reload(); });
+    // Come back on its own as soon as the connection returns.
+    window.addEventListener('online', function () { location.reload(); });
+  </script>
+</body>
+</html>

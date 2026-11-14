@@ -1,0 +1,64 @@
+{
+ "_source": {
+  "route": "GET /api/v1/rag/qa?scope=app",
+  "uid": 1
+ },
+ "payload": {
+  "items": [
+   {
+    "id": 2,
+    "scope": "app",
+    "org_id": null,
+    "question": "How do I reset my password?",
+    "variants": [
+     "كيف أغيّر كلمة المرور؟"
+    ],
+    "answer": "Settings → Change password: type the old password and the new one.",
+    "lang": "en",
+    "deep_link": null,
+    "enabled": true,
+    "created_by": 1,
+    "usage_count": 0,
+    "version": 1,
+    "last_used_at": null,
+    "created_at": "2026-10-28T06:31:00.729146Z",
+    "updated_at": "2026-10-28T06:31:00.729146Z",
+    "stale": false
+   },
+   {
+    "id": 1,
+    "scope": "app",
+    "org_id": null,
+    "question": "How do I download a lecture for offline viewing?",
+    "variants": [
+     "كيف أحمّل المحاضرة لمشاهدتها بدون إنترنت؟",
+     "download lectures offline"
+    ],
+    "answer": "Open the lecture and tap **Download**.\n- The video is saved encrypted on your phone.\n- Play it from the Downloads tab, even without internet.",
+    "lang": "en",
+    "deep_link": "downloads",
+    "enabled": true,
+    "created_by": 1,
+    "usage_count": 5,
+    "version": 3,
+    "last_used_at": "2026-10-28T06:31:11.135860Z",
+    "created_at": "2026-10-28T06:31:00.658790Z",
+    "updated_at": "2026-10-28T06:31:11.692595Z",
+    "stale": false
+   }
+  ],
+  "scope": "app",
+  "org_id": null,
+  "manager": true,
+  "embedder": "hash-test@0",
+  "thresholds": {
+   "direct": 0.92,
+   "example": 0.8
+  },
+  "usage": {
+   "pairs": 2,
+   "enabled": 2,
+   "direct": 5
+  }
+ }
+}

@@ -5,16 +5,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/plural.dart';
 
 import '../../config/app_config.dart';
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/app_loading_indicator.dart';
-import '../../utils/widget/base_page.dart';
 import 'admin_common.dart';
-import '../../utils/widget/primary_button.dart';
+import 'admin_page.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_username.dart';
 
 class AdminSendMessagePage extends StatefulWidget {
-  const AdminSendMessagePage({super.key});
+  const AdminSendMessagePage({super.key, this.student, this.teacher});
+
+  /// Opens addressed to this one student (`{id, name}`), e.g. from their detail.
+  final Map<String, dynamic>? student;
+
+  /// Opens already addressed to this teacher (`{id, name}`, the Message action of a teacher's detail).
+  final Map<String, dynamic>? teacher;
 
   @override
   State<AdminSendMessagePage> createState() => _AdminSendMessagePageState();
@@ -27,17 +33,27 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
   final _label = TextEditingController();
   final _customModule = TextEditingController();
 
-  String _audience =
-      'all_students'; // all_students | course | student | all_teachers | teacher
-  String _display =
-      'notification'; //  email | notification | dialog | dialog_action
-  String _module =
-      'course'; // profile | course | notifications | my_courses | subscription | __custom__
-  Map<String, dynamic>?
-  _course; //      audience = course, or the course a button opens
-  Map<String, dynamic>? _student;
+  late String _audience = widget.student == null ? 'all_students' : 'student'; // all_students | course | student | all_teachers | teacher
+  String _display = 'notification'; //  email | notification | dialog | dialog_action
+  String _module = 'course'; // profile | course | notifications | my_courses | subscription | __custom__
+  Map<String, dynamic>? _course; //      audience = course, or the course a button opens
+  late Map<String, dynamic>? _student = widget.student;
   Map<String, dynamic>? _teacher;
   bool _sending = false;
+
+  /// "Will reach N people": the total of the audience, null while unknown / loading (never blocks sending).
+  int? _reach;
+  int _reachReq = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.teacher != null) {
+      _audience = 'teacher';
+      _teacher = widget.teacher;
+    }
+    _refreshReach();
+  }
 
   @override
   void dispose() {
@@ -56,20 +72,45 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
 
   bool get _isCustomModule => _module == _customModuleValue;
 
-  bool get _needsCourseForButton =>
-      !_toTeachers && _display == 'dialog_action' && _module == 'course';
+  bool get _needsCourseForButton => !_toTeachers && _display == 'dialog_action' && _module == 'course';
+
+  bool get _dirty => _title.text.trim().isNotEmpty || _body.text.trim().isNotEmpty;
+
+  /// The size of the audience from data the existing lists already return (the users list's `total`, the picked
+  /// course's `students_count`): no extra server route.
+  Future<void> _refreshReach() async {
+    final my = ++_reachReq;
+    int? n;
+    switch (_audience) {
+      case 'student':
+        n = _student == null ? null : 1;
+      case 'teacher':
+        n = _teacher == null ? null : 1;
+      case 'course':
+        n = _course == null ? null : (_course!['students'] as num?)?.toInt();
+      default:
+        setState(() => _reach = null);
+        try {
+          final r = await _api.get('/api/v1/admin/users',
+              queryParams: {'role': _audience == 'all_teachers' ? 'teacher' : 'student', 'size': 1});
+          n = r is Map ? (r['total'] as num?)?.toInt() : null;
+        } catch (_) {
+          n = null;
+        }
+    }
+    if (mounted && my == _reachReq) setState(() => _reach = n);
+  }
 
   Future<void> _pick({required bool course, bool teacher = false}) async {
-    final picked = await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _PickerSheet(
+    final picked = await showAppSheet<Map<String, dynamic>>(
+      context,
+      (_) => _PickerSheet(
         api: _api,
         title: course
             ? 'admin_choose_a_course'.tr
             : teacher
-            ? 'admin_choose_a_teacher'.tr
-            : 'admin_choose_a_student'.tr,
+                ? 'admin_choose_a_teacher'.tr
+                : 'admin_choose_a_student'.tr,
         path: course ? '/api/v1/admin/courses' : '/api/v1/admin/users',
         extra: course ? const {} : {'role': teacher ? 'teacher' : 'student'},
         subtitleKey: course ? null : 'gmail',
@@ -85,10 +126,12 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
           _student = picked;
         }
       });
+      _refreshReach();
     }
   }
 
   Future<void> _send() async {
+    if (_sending) return;
     if (_title.text.trim().isEmpty || _body.text.trim().isEmpty) {
       return _snack('admin_enter_a_title_and_a_message'.tr);
     }
@@ -109,9 +152,10 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
       return _snack('admin_enter_custom_module_name'.tr);
     }
 
-    final ok = await confirm(
+    final n = _reach;
+    final ok = await appConfirm(
       context,
-      message: 'admin_send_this_message_now'.tr,
+      message: n == null ? 'admin_send_this_message_now'.tr : '${_reachText(n)}\n${'admin_send_this_message_now'.tr}',
     );
     if (!ok) return;
 
@@ -128,11 +172,9 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
           'body': _body.text.trim(),
           'display_type': _display,
           if (_display == 'dialog_action') ...{
-            'action_module':
-                _isCustomModule ? _customModule.text.trim() : _module,
+            'action_module': _isCustomModule ? _customModule.text.trim() : _module,
             if (_module == 'course') 'action_target_id': _course!['id'],
-            if (_label.text.trim().isNotEmpty)
-              'action_label': _label.text.trim(),
+            if (_label.text.trim().isNotEmpty) 'action_label': _label.text.trim(),
           },
         },
       );
@@ -148,63 +190,59 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
       _label.clear();
       _customModule.clear();
     } on ApiException catch (e) {
-      _snack(e.message);
+      _snack(e.message, error: true);
     } catch (_) {
-      _snack(
-        'admin_send_failed'.tr,
-      ); // network error etc. — used to leave the button silently idle
+      _snack('admin_send_failed'.tr, error: true); // network error etc. — used to leave the button silently idle
     } finally {
       if (mounted) setState(() => _sending = false);
     }
   }
 
-  void _snack(String m) {
+  void _snack(String m, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+    showAppNotice(m, error: error);
   }
+
+  String _reachText(int n) => t(
+        'ستصل إلى ${countText(n, ar1: 'شخص واحد', ar2: 'شخصين', arFew: '{n} أشخاص', arMany: '{n} شخصًا', en1: '1 person', en: '{n} people')}',
+        'Will reach ${countText(n, ar1: '', arFew: '', en1: '1 person', en: '{n} people')}',
+      );
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     Widget label(String s) => Padding(
-      padding: const EdgeInsets.only(top: 18, bottom: 8),
-      child: Text(
-        s,
-        style: TextStyle(
-          fontFamily: 'tajawal',
-          fontWeight: FontWeight.w800,
-          color: c.textDark,
-        ),
-      ),
-    );
+          padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.xs),
+          child: Text(s, style: AppType.section(context)),
+        );
 
-    Widget chips<T>(List<(T, String)> opts, T value, ValueChanged<T> on) =>
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+    Widget chips<T>(List<(T, String)> opts, T value, ValueChanged<T> on) => Wrap(
+          spacing: AppSpace.xs,
+          runSpacing: AppSpace.xs,
           children: [
-            for (final o in opts)
-              ChoiceChip(
-                label: Text(o.$2),
-                selected: value == o.$1,
-                onSelected: (_) => on(o.$1),
-              ),
+            for (final o in opts) AppChoiceChip(label: o.$2, selected: value == o.$1, onTap: () => on(o.$1)),
           ],
         );
 
-    Widget pickerBtn(String text, IconData icon, VoidCallback on) =>
-        OutlinedButton.icon(
-          onPressed: on,
-          icon: Icon(icon),
-          label: Text(text, overflow: TextOverflow.ellipsis),
+    Widget pickerBtn(String text, IconData icon, VoidCallback on) => Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: AppButton.secondary(label: text, icon: icon, onPressed: on),
         );
 
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
-      appBar: ScreenAppBar(title: 'send_message'.tr),
-      child: ListView(
-        padding: const EdgeInsets.all(16),
+    final reach = _reach;
+    return AdminPage(
+      width: AppWidth.reading,
+      title: 'send_message'.tr,
+      subtitle: 'svc_send_message_d'.tr,
+      icon: Icons.mark_email_unread_rounded,
+      dirty: _dirty && !_sending,
+      primaryAction: AppButton.primary(
+        label: 'lk_send_btn'.tr,
+        icon: Icons.send_rounded,
+        busy: _sending,
+        onPressed: _sending ? null : _send,
+      ),
+      body: ListView(
+        padding: AdminPage.bodyPadding(context),
         children: [
           label('admin_send_to'.tr),
           chips<String>(
@@ -216,43 +254,42 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
               ('teacher', 'admin_one_teacher'.tr),
             ],
             _audience,
-            (v) => setState(() {
-              _audience = v;
-              if (_toTeachers) {
-                // teachers cannot open a course / my-courses / subscription → fall back to a valid target
-                _course = null;
-                if (!_teacherModules.contains(_module)) _module = 'profile';
-              } else if (v == 'student') {
-                // the course picked for a "student" / "all" message must not silently become the audience
-                if (!(_display == 'dialog_action' && _module == 'course')) {
+            (v) {
+              setState(() {
+                _audience = v;
+                if (_toTeachers) {
+                  // teachers cannot open a course / my-courses / subscription → fall back to a valid target
                   _course = null;
+                  if (!_teacherModules.contains(_module)) _module = 'profile';
+                } else if (v == 'student') {
+                  // the course picked for a "student" / "all" message must not silently become the audience
+                  if (!(_display == 'dialog_action' && _module == 'course')) {
+                    _course = null;
+                  }
                 }
-              }
-            }),
+              });
+              _refreshReach();
+            },
           ),
           if (_audience == 'course') ...[
-            const SizedBox(height: 8),
-            pickerBtn(
-              _course?['name']?.toString() ?? 'admin_choose_a_course'.tr,
-              Icons.menu_book_rounded,
-              () => _pick(course: true),
-            ),
+            AppSpace.gapXs,
+            pickerBtn(_course?['name']?.toString() ?? 'admin_choose_a_course'.tr, Icons.menu_book_rounded, () => _pick(course: true)),
           ],
           if (_audience == 'student') ...[
-            const SizedBox(height: 8),
-            pickerBtn(
-              _student?['name']?.toString() ?? 'admin_choose_a_student'.tr,
-              Icons.person_search_rounded,
-              () => _pick(course: false),
-            ),
+            AppSpace.gapXs,
+            pickerBtn(_student?['name']?.toString() ?? 'admin_choose_a_student'.tr, Icons.person_search_rounded, () => _pick(course: false)),
           ],
           if (_audience == 'teacher') ...[
-            const SizedBox(height: 8),
-            pickerBtn(
-              _teacher?['name']?.toString() ?? 'admin_choose_a_teacher'.tr,
-              Icons.person_pin_rounded,
-              () => _pick(course: false, teacher: true),
-            ),
+            AppSpace.gapXs,
+            pickerBtn(_teacher?['name']?.toString() ?? 'admin_choose_a_teacher'.tr, Icons.person_pin_rounded, () => _pick(course: false, teacher: true)),
+          ],
+          if (reach != null) ...[
+            AppSpace.gapXs,
+            Row(children: [
+              Icon(Icons.groups_rounded, size: AppIconSize.md, color: context.colors.primary),
+              AppSpace.gapXs,
+              Flexible(child: Text(_reachText(reach), style: AppType.meta(context))),
+            ]),
           ],
           label('admin_how_it_appears'.tr),
           chips<String>(
@@ -266,42 +303,18 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
             (v) => setState(() => _display = v),
           ),
           if (_display == 'dialog_action') ...[
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
+            AppSpace.gapSm,
+            AppDropdown<String>(
               key: ValueKey('module_$_toTeachers'),
               initialValue: _module,
-              decoration: InputDecoration(
-                labelText: 'admin_button_opens'.tr,
-                border: const OutlineInputBorder(),
-              ),
+              decoration: InputDecoration(labelText: 'admin_button_opens'.tr),
               items: [
-                if (!_toTeachers)
-                  DropdownMenuItem(
-                    value: 'course',
-                    child: Text('admin_course_profile'.tr),
-                  ),
-                DropdownMenuItem(
-                  value: 'profile',
-                  child: Text('admin_profile'.tr),
-                ),
-                if (!_toTeachers)
-                  DropdownMenuItem(
-                    value: 'my_courses',
-                    child: Text('admin_my_courses'.tr),
-                  ),
-                DropdownMenuItem(
-                  value: 'notifications',
-                  child: Text('admin_notifications'.tr),
-                ),
-                if (!_toTeachers)
-                  DropdownMenuItem(
-                    value: 'subscription',
-                    child: Text('admin_subscription'.tr),
-                  ),
-                DropdownMenuItem(
-                  value: _customModuleValue,
-                  child: Text('admin_custom_module'.tr),
-                ),
+                if (!_toTeachers) DropdownMenuItem(value: 'course', child: Text('admin_course_profile'.tr)),
+                DropdownMenuItem(value: 'profile', child: Text('admin_profile'.tr)),
+                if (!_toTeachers) DropdownMenuItem(value: 'my_courses', child: Text('admin_my_courses'.tr)),
+                DropdownMenuItem(value: 'notifications', child: Text('admin_notifications'.tr)),
+                if (!_toTeachers) DropdownMenuItem(value: 'subscription', child: Text('admin_subscription'.tr)),
+                DropdownMenuItem(value: _customModuleValue, child: Text('admin_custom_module'.tr)),
               ],
               onChanged: (v) => setState(() {
                 _module = v ?? 'course';
@@ -309,62 +322,42 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
               }),
             ),
             if (_isCustomModule) ...[
-              const SizedBox(height: 12),
+              AppSpace.gapSm,
               TextField(
                 controller: _customModule,
                 maxLength: 255,
                 decoration: InputDecoration(
                   labelText: 'admin_custom_module_name'.tr,
                   hintText: 'admin_custom_module_name_hint'.tr,
-                  border: const OutlineInputBorder(),
                 ),
               ),
             ],
             if (_needsCourseForButton && _audience != 'course') ...[
-              const SizedBox(height: 8),
-              pickerBtn(
-                _course?['name']?.toString() ??
-                    'admin_choose_the_course_it_opens'.tr,
-                Icons.menu_book_rounded,
-                () => _pick(course: true),
-              ),
+              AppSpace.gapXs,
+              pickerBtn(_course?['name']?.toString() ?? 'admin_choose_the_course_it_opens'.tr, Icons.menu_book_rounded, () => _pick(course: true)),
             ],
-            const SizedBox(height: 12),
+            AppSpace.gapSm,
             TextField(
               controller: _label,
               maxLength: 80,
-              decoration: InputDecoration(
-                labelText: 'admin_button_text_optional'.tr,
-                border: const OutlineInputBorder(),
-              ),
+              decoration: InputDecoration(labelText: 'admin_button_text_optional'.tr),
             ),
           ],
           label('admin_message_2'.tr),
           TextField(
             controller: _title,
             maxLength: 255,
-            decoration: InputDecoration(
-              labelText: 'video_title'.tr,
-              border: const OutlineInputBorder(),
-            ),
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(labelText: t('العنوان', 'Title')),
           ),
-          const SizedBox(height: 8),
+          AppSpace.gapXs,
           TextField(
             controller: _body,
             minLines: 4,
             maxLines: 10,
             maxLength: 4000,
-            decoration: InputDecoration(
-              labelText: 'admin_message'.tr,
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          PrimaryButton(
-            isLoading: _sending,
-            label: 'lk_send_btn'.tr,
-            icon: Icons.send_rounded,
-            onPressed: _sending ? null : _send,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(labelText: 'admin_message'.tr),
           ),
         ],
       ),
@@ -372,7 +365,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
   }
 }
 
-/// Searchable list for the admin endpoints that return `{items: [{id, name, ...}]}`.
+/// Searchable list for the admin endpoints that return `{items: [{id, name, ...}]}`; more pages load as it scrolls.
 class _PickerSheet extends StatefulWidget {
   const _PickerSheet({
     required this.api,
@@ -392,22 +385,46 @@ class _PickerSheet extends StatefulWidget {
 }
 
 class _PickerSheetState extends State<_PickerSheet> {
-  List<Map<String, dynamic>> _items = [];
+  static const _size = 30;
+  final List<Map<String, dynamic>> _items = [];
   bool _loading = true;
+  bool _loadingMore = false;
   bool _failed = false;
+  int _page = 1;
+  int _total = 0;
   int _req = 0;
   final _q = TextEditingController();
+  final _scroll = ScrollController();
+  final _debounce = Debouncer();
 
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(() {
+      if (_scroll.hasClients && _scroll.position.extentAfter < 200) _more();
+    });
     _load();
   }
 
   @override
   void dispose() {
+    _debounce.dispose();
     _q.dispose();
+    _scroll.dispose();
     super.dispose();
+  }
+
+  Future<Map?> _fetch(int page) async {
+    final r = await widget.api.get(
+      widget.path,
+      queryParams: {
+        ...widget.extra,
+        if (_q.text.trim().isNotEmpty) 'search': _q.text.trim(),
+        'page': page,
+        'size': _size,
+      },
+    );
+    return r is Map ? r : null;
   }
 
   Future<void> _load() async {
@@ -415,87 +432,99 @@ class _PickerSheetState extends State<_PickerSheet> {
     setState(() {
       _loading = true;
       _failed = false;
+      _page = 1;
     });
     try {
-      final r = await widget.api.get(
-        widget.path,
-        queryParams: {
-          ...widget.extra,
-          if (_q.text.trim().isNotEmpty) 'search': _q.text.trim(),
-          'size': 30,
-        },
-      );
-      _items = ((r is Map ? r['items'] : null) as List? ?? [])
-          .cast<Map<String, dynamic>>();
+      final r = await _fetch(1);
+      if (req != _req) return;
+      _items
+        ..clear()
+        ..addAll(((r?['items'] as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
+      _total = (r?['total'] as num?)?.toInt() ?? _items.length;
     } catch (_) {
-      _items = [];
+      if (req != _req) return;
+      _items.clear();
       _failed = true;
     }
     if (mounted && req == _req) setState(() => _loading = false);
   }
 
+  Future<void> _more() async {
+    if (_loading || _loadingMore || _failed || _items.length >= _total) return;
+    final req = _req;
+    setState(() => _loadingMore = true);
+    try {
+      final r = await _fetch(_page + 1);
+      if (req != _req) return;
+      final more = ((r?['items'] as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e));
+      _page++;
+      _items.addAll(more);
+      if (more.isEmpty) _total = _items.length;
+    } catch (_) {
+      // the rows already loaded stay; scrolling again retries
+    }
+    if (mounted && req == _req) setState(() => _loadingMore = false);
+  }
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-    child: SizedBox(
-      height: MediaQuery.of(context).size.height * 0.7,
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          Text(
-            widget.title,
-            style: const TextStyle(
-              fontFamily: 'tajawal',
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: _q,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _load(),
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  onPressed: _load,
-                ),
-                hintText: 'search'.tr,
-                border: const OutlineInputBorder(),
+  Widget build(BuildContext context) {
+    final isCourse = widget.subtitleKey == null;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppSheetHeader(widget.title),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
+              child: AppSearchField(
+                hint: 'search'.tr,
+                onChanged: (_) => _debounce.run(_load),
+                onSubmitted: (_) => _debounce.flush(_load),
               ),
             ),
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: AppLoadingIndicator())
-                : _failed
-                ? ErrorRetry(
-                    message: 'admin_could_not_load_data'.tr,
-                    onRetry: _load,
-                  )
-                : _items.isEmpty
-                ? EmptyState('admin_nothing_here_yet'.tr)
-                : ListView.builder(
-                    itemCount: _items.length,
-                    itemBuilder: (_, i) {
-                      final it = _items[i];
-                      return ListTile(
-                        title: Text('${it['name'] ?? it['title'] ?? it['id']}'),
-                        subtitle: widget.subtitleKey == null
-                            ? null
-                            : Text('${it[widget.subtitleKey] ?? ''}'),
-                        onTap: () => Navigator.pop(context, {
-                          'id': it['id'],
-                          'name': it['name'] ?? it['title'],
-                        }),
-                      );
-                    },
-                  ),
-          ),
-        ],
+            Expanded(
+              child: _loading
+                  ? const AppListSkeleton()
+                  : _failed
+                      ? Center(child: AppErrorState(message: 'admin_could_not_load_data'.tr, onRetry: _load))
+                      : _items.isEmpty
+                          ? AppEmpty(icon: Icons.search_off_rounded, title: 'admin_nothing_here_yet'.tr)
+                          : ListView.builder(
+                              controller: _scroll,
+                              itemCount: _items.length + (_loadingMore ? 1 : 0),
+                              itemBuilder: (_, i) {
+                                if (i >= _items.length) {
+                                  return const Padding(padding: EdgeInsets.all(AppSpace.md), child: AppListSkeleton(items: 1));
+                                }
+                                final it = _items[i];
+                                final uname = usernameFrom(it);
+                                return ListTile(
+                                  title: Text('${it['name'] ?? it['title'] ?? it['id']}'),
+                                  subtitle: isCourse
+                                      ? (uname == null ? null : AppUsernameLine(uname))
+                                      : Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            AppUsernameLine(uname),
+                                            Text('${it[widget.subtitleKey] ?? ''}'),
+                                          ],
+                                        ),
+                                  onTap: () => Navigator.pop(context, {
+                                    'id': it['id'],
+                                    'name': it['name'] ?? it['title'],
+                                    if (isCourse) 'students': it['students_count'],
+                                  }),
+                                );
+                              },
+                            ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

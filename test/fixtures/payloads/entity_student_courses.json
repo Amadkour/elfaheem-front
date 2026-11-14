@@ -1,0 +1,1244 @@
+{
+ "_source": {
+  "route": "GET /api/v1/entities/students/21/courses?size=100",
+  "uid": 1
+ },
+ "payload": {
+  "items": [
+   {
+    "course": {
+     "id": 38,
+     "name_ar": "Pb-29 ar",
+     "name_en": "Pb-29",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 44,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.481703"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 37,
+     "name_ar": "Pb-28 ar",
+     "name_en": "Pb-28",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 43,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.451772"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 36,
+     "name_ar": "Pb-27 ar",
+     "name_en": "Pb-27",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 42,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.412333"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 35,
+     "name_ar": "Pb-26 ar",
+     "name_en": "Pb-26",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 41,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.376366"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 34,
+     "name_ar": "Pb-25 ar",
+     "name_en": "Pb-25",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 40,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.345722"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 33,
+     "name_ar": "Pb-24 ar",
+     "name_en": "Pb-24",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 39,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.318137"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 32,
+     "name_ar": "Pb-23 ar",
+     "name_en": "Pb-23",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 38,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.279464"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 31,
+     "name_ar": "Pb-22 ar",
+     "name_en": "Pb-22",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 37,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.241598"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 30,
+     "name_ar": "Pb-21 ar",
+     "name_en": "Pb-21",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 36,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.213931"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 29,
+     "name_ar": "Pb-20 ar",
+     "name_en": "Pb-20",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 35,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.182589"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 28,
+     "name_ar": "Pb-19 ar",
+     "name_en": "Pb-19",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 34,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.144123"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 27,
+     "name_ar": "Pb-18 ar",
+     "name_en": "Pb-18",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 33,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.112753"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 26,
+     "name_ar": "Pb-17 ar",
+     "name_en": "Pb-17",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 32,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.076205"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 25,
+     "name_ar": "Pb-16 ar",
+     "name_en": "Pb-16",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 31,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.041985"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 24,
+     "name_ar": "Pb-15 ar",
+     "name_en": "Pb-15",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 30,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:15.012375"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 23,
+     "name_ar": "Pb-14 ar",
+     "name_en": "Pb-14",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 29,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.984914"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 22,
+     "name_ar": "Pb-13 ar",
+     "name_en": "Pb-13",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 28,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.955043"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 21,
+     "name_ar": "Pb-12 ar",
+     "name_en": "Pb-12",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 27,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.924665"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 20,
+     "name_ar": "Pb-11 ar",
+     "name_en": "Pb-11",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 26,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.895197"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 19,
+     "name_ar": "Pb-10 ar",
+     "name_en": "Pb-10",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 25,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.852940"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 18,
+     "name_ar": "Pb-9 ar",
+     "name_en": "Pb-9",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 24,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.805128"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 17,
+     "name_ar": "Pb-8 ar",
+     "name_en": "Pb-8",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 23,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.763128"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 16,
+     "name_ar": "Pb-7 ar",
+     "name_en": "Pb-7",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 22,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.715685"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 15,
+     "name_ar": "Pb-6 ar",
+     "name_en": "Pb-6",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 21,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.675007"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 14,
+     "name_ar": "Pb-5 ar",
+     "name_en": "Pb-5",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 20,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.632150"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 13,
+     "name_ar": "Pb-4 ar",
+     "name_en": "Pb-4",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 19,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.580523"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 12,
+     "name_ar": "Pb-3 ar",
+     "name_en": "Pb-3",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 18,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.544266"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 11,
+     "name_ar": "Pb-2 ar",
+     "name_en": "Pb-2",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 17,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.502738"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 10,
+     "name_ar": "Pb-1 ar",
+     "name_en": "Pb-1",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 16,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.465733"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   },
+   {
+    "course": {
+     "id": 9,
+     "name_ar": "Pb-0 ar",
+     "name_en": "Pb-0",
+     "image_url": null,
+     "category": {
+      "id": 5,
+      "name_ar": "cb",
+      "name_en": "cb"
+     },
+     "teacher": {
+      "id": 20,
+      "name": "Ptb",
+      "username": "ptb",
+      "image_url": null
+     }
+    },
+    "enrollment_id": 15,
+    "state": "in_progress",
+    "enrolled_at": "2026-10-27T06:32:04.835804",
+    "expected_end_at": null,
+    "progress": 10.0,
+    "first_activity_at": null,
+    "last_activity_at": null,
+    "completed_at": null,
+    "withdrawn_at": null,
+    "withdrawal_reason_code": null,
+    "withdrawal_reason": null,
+    "favorited": true,
+    "rating": {
+     "value": 3,
+     "review": null,
+     "at": "2026-11-06T06:32:14.407566"
+    },
+    "exams": {
+     "count": 1,
+     "avg_percentage": 50.0,
+     "passed": 1
+    }
+   }
+  ],
+  "total": 30,
+  "page": 1,
+  "size": 100,
+  "pages": 1
+ }
+}

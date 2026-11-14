@@ -1,7 +1,16 @@
+// lib/utils/widget/search_text_field.dart
+//
+// The older list search bar (favourites, course lists, a course's students): the kit's search well
+// (appFieldDecoration with the search icon, 48 high, the 2 px ring on focus) with the page gutter around it. It is a
+// plain TextField with the search action, so Ctrl+K and "/" find it (app_keyboard.dart). New screens use
+// AppSearchField (debounce, clear, Esc).
+library;
+
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_inputs.dart' show appFieldDecoration, appFieldTextStyle;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../config/app_config.dart';
-import '../../config/theme/theme_config_provider.dart';
 
 class MySearchBar extends StatelessWidget {
   final TextEditingController controller;
@@ -14,41 +23,14 @@ class MySearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxs),
       child: TextField(
         controller: controller,
-        textDirection: TextDirection.rtl,
-        style: TextStyle(
-          fontFamily: 'tajawal',
-          fontSize: 14,
-          color: context.colors.textDark,
-        ),
-        decoration: InputDecoration(
-          hintText: hint.tr,
-          hintStyle: TextStyle(
-            fontFamily: 'tajawal',
-            color: context.colors.textMedium,
-            fontSize: 13,
-          ),
-          prefixIcon: Icon(Icons.search_rounded,
-              size: 20, color: context.colors.textMedium),
-          filled: true,
-          fillColor: context.colors.cardBg,
-          contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.colors.divider, width: 0.5),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.colors.divider, width: 0.5),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: context.colors.primary, width: 1),
-          ),
-        ),
+        textDirection: pageDirection,
+        textInputAction: TextInputAction.search,
+        style: appFieldTextStyle(context),
+        decoration: appFieldDecoration(context, hint: hint.tr, icon: Icons.search_rounded)
+            .copyWith(hintTextDirection: pageDirection),
         onChanged: onChanged,
       ),
     );

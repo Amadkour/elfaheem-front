@@ -1,0 +1,249 @@
+{
+ "_source": {
+  "route": "GET /api/v1/models/benchmarks",
+  "uid": 1
+ },
+ "payload": {
+  "roles": [
+   {
+    "role": "embedding",
+    "metric": "spearman_x100",
+    "metric_label": {
+     "en": "Agreement with raters (Spearman x100)",
+     "ar": "التوافق مع المصححين (سبيرمان ×100)"
+    },
+    "higher_is_better": true,
+    "dataset": "grading-gold-v1",
+    "provisional": true,
+    "active_id": 1,
+    "active": "multilingual-e5-small@int8-761b726",
+    "choice": null,
+    "default": null,
+    "effective_id": null,
+    "results": []
+   },
+   {
+    "role": "nli",
+    "metric": "entail_contradict_acc",
+    "metric_label": {
+     "en": "Entail / contradict accuracy",
+     "ar": "دقة الاستنتاج / التناقض"
+    },
+    "higher_is_better": true,
+    "dataset": "grading-nli-v1",
+    "provisional": true,
+    "active_id": null,
+    "active": null,
+    "choice": null,
+    "default": {
+     "model_id": 5,
+     "ref": "multilingual-MiniLMv2-L6-mnli-xnli@fp32-0a71e92",
+     "rule": "best_accuracy_then_latency"
+    },
+    "effective_id": 5,
+    "results": [
+     {
+      "id": 3,
+      "model_id": null,
+      "ref": "not-in-library@v1",
+      "name": "not-in-library",
+      "role": "nli",
+      "metric": "entail_contradict_acc",
+      "accuracy": 99.0,
+      "latency_avg_ms": 1.0,
+      "latency_p95_ms": 1.0,
+      "peak_ram_mb": null,
+      "size_bytes": 0,
+      "dataset": "grading-nli-v1",
+      "n": 598,
+      "provisional": true,
+      "detail": {},
+      "source": "seed",
+      "at": "2026-11-12T08:00:00",
+      "by": null,
+      "license": null,
+      "downloaded": false,
+      "is_active": false,
+      "selectable": false,
+      "reason": {
+       "code": "not_in_library",
+       "en": "This model is not in the library.",
+       "ar": "النموذج غير موجود في المكتبة"
+      },
+      "is_default": false,
+      "is_choice": false
+     },
+     {
+      "id": 1,
+      "model_id": 7,
+      "ref": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7@int8-0864ced",
+      "name": "mDeBERTa-v3-base-xnli-multilingual-nli-2mil7",
+      "role": "nli",
+      "metric": "entail_contradict_acc",
+      "accuracy": 90.0,
+      "latency_avg_ms": 60.0,
+      "latency_p95_ms": 90.0,
+      "peak_ram_mb": 700,
+      "size_bytes": 338679132,
+      "dataset": "grading-nli-v1",
+      "n": 598,
+      "provisional": true,
+      "detail": {
+       "x": 1
+      },
+      "source": "seed",
+      "at": "2026-11-12T08:00:00",
+      "by": null,
+      "license": "MIT",
+      "downloaded": false,
+      "is_active": false,
+      "selectable": true,
+      "reason": null,
+      "is_default": false,
+      "is_choice": false
+     },
+     {
+      "id": 2,
+      "model_id": 5,
+      "ref": "multilingual-MiniLMv2-L6-mnli-xnli@fp32-0a71e92",
+      "name": "multilingual-MiniLMv2-L6-mnli-xnli",
+      "role": "nli",
+      "metric": "entail_contradict_acc",
+      "accuracy": 89.5,
+      "latency_avg_ms": 20.0,
+      "latency_p95_ms": 30.0,
+      "peak_ram_mb": 500,
+      "size_bytes": 428127016,
+      "dataset": "grading-nli-v1",
+      "n": 598,
+      "provisional": true,
+      "detail": {},
+      "source": "seed",
+      "at": "2026-11-12T08:00:00",
+      "by": null,
+      "license": "MIT",
+      "downloaded": false,
+      "is_active": false,
+      "selectable": true,
+      "reason": null,
+      "is_default": true,
+      "is_choice": false
+     }
+    ]
+   },
+   {
+    "role": "reranker",
+    "metric": "spearman_x100",
+    "metric_label": {
+     "en": "Agreement with raters (Spearman x100)",
+     "ar": "التوافق مع المصححين (سبيرمان ×100)"
+    },
+    "higher_is_better": true,
+    "dataset": "grading-gold-v1",
+    "provisional": true,
+    "active_id": 16,
+    "active": "mmarco-mMiniLMv2-L12-H384-v1@int8-1427fd6",
+    "choice": null,
+    "default": null,
+    "effective_id": null,
+    "results": []
+   },
+   {
+    "role": "digits",
+    "metric": "accuracy",
+    "metric_label": {
+     "en": "Digit accuracy",
+     "ar": "دقة قراءة الأرقام"
+    },
+    "higher_is_better": true,
+    "dataset": "digits-samples-v1",
+    "provisional": false,
+    "active_id": null,
+    "active": null,
+    "choice": null,
+    "default": null,
+    "effective_id": null,
+    "results": []
+   },
+   {
+    "role": "handwriting_en",
+    "metric": "char_acc",
+    "metric_label": {
+     "en": "Character accuracy (100 - CER)",
+     "ar": "دقة الحروف (100 - نسبة الخطأ)"
+    },
+    "higher_is_better": true,
+    "dataset": "iam-lines-test40",
+    "provisional": true,
+    "active_id": 14,
+    "active": "trocr-small-handwritten@fp32-2432e24",
+    "choice": null,
+    "default": null,
+    "effective_id": null,
+    "results": []
+   },
+   {
+    "role": "ocr_rec_ar",
+    "metric": "char_acc",
+    "metric_label": {
+     "en": "Character accuracy (100 - CER)",
+     "ar": "دقة الحروف (100 - نسبة الخطأ)"
+    },
+    "higher_is_better": true,
+    "dataset": "khatt-lines-test40",
+    "provisional": true,
+    "active_id": 15,
+    "active": "paddleocr-rec-ar@pp-ocrv5-14aaedc",
+    "choice": null,
+    "default": null,
+    "effective_id": null,
+    "results": []
+   }
+  ],
+  "runners": [
+   {
+    "role": "embedding",
+    "dataset": "grading-gold-v1",
+    "metric": "spearman_x100",
+    "available": true,
+    "reason": null
+   },
+   {
+    "role": "nli",
+    "dataset": "grading-nli-v1",
+    "metric": "entail_contradict_acc",
+    "available": true,
+    "reason": null
+   },
+   {
+    "role": "reranker",
+    "dataset": "grading-gold-v1",
+    "metric": "spearman_x100",
+    "available": true,
+    "reason": null
+   },
+   {
+    "role": "digits",
+    "dataset": "digits-samples-v1",
+    "metric": "accuracy",
+    "available": true,
+    "reason": null
+   },
+   {
+    "role": "handwriting_en",
+    "dataset": "iam-lines-test40",
+    "metric": "char_acc",
+    "available": false,
+    "reason": "test.parquet is missing: run python -m bench.handwriting.fetch --data"
+   },
+   {
+    "role": "ocr_rec_ar",
+    "dataset": "khatt-lines-test40",
+    "metric": "char_acc",
+    "available": false,
+    "reason": "test-00000-of-00001.parquet is missing: run python -m bench.handwriting.fetch --data"
+   }
+  ],
+  "run": null
+ }
+}

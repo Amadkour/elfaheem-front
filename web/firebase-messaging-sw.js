@@ -7,18 +7,19 @@
 // Notes:
 //   - Web Push only works over HTTPS or http://localhost. It will silently
 //     fail on plain HTTP hosting.
-//   - The config below matches web/firebase_options.dart (DefaultFirebaseOptions.web).
+//   - The config below matches lib/firebase_options.dart (DefaultFirebaseOptions.web, project nextbrain-2y, D-145).
 //     If you ever rotate/regenerate Firebase config, update both places together.
 
 importScripts("https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js");
 
 firebase.initializeApp({
-  apiKey: "AIzaSyAAMGDzpS1mT9jK524CdDPzAOy5GrnwQ00",
-  appId: "1:520907928286:web:18b6dc8a8c5f9f5b77884f",
-  messagingSenderId: "520907928286",
-  projectId: "elfaheem",
-  storageBucket: "elfaheem.firebasestorage.app",
+  apiKey: "AIzaSyAD0BWtCBEXdFD-5q97hgSEYTBDXmae50Y",
+  appId: "1:647242717565:web:7c22c255a55be260d69414",
+  messagingSenderId: "647242717565",
+  projectId: "nextbrain-2y",
+  authDomain: "nextbrain-2y.firebaseapp.com",
+  storageBucket: "nextbrain-2y.firebasestorage.app",
 });
 
 const messaging = firebase.messaging();
@@ -37,11 +38,25 @@ messaging.onBackgroundMessage((payload) => {
     data: payload.data,
   });
 
-  const title = payload.notification?.title || "ElFaheem";
-  const body = payload.notification?.body || "";
+  // Every open tab gets the data (a hidden tab has no onMessage and no live stream):
+  // notification_service.dart listens for this message and feeds it to LiveEvents.
+  const data = payload.data || {};
+  self.clients
+    .matchAll({ type: "window", includeUncontrolled: true })
+    .then((clients) => {
+      for (const client of clients) client.postMessage({ source: "fcm", data });
+    })
+    .catch((e) => console.log("[FCM][background] postMessage failed", e));
+
+  // A data-only push (silent event) shows nothing.
+  if (!payload.notification) return;
+
+  const title = payload.notification.title || "NextBrain";
+  const body = payload.notification.body || "";
 
   self.registration.showNotification(title, {
     body,
     icon: "/icons/Icon-192.png", // adjust path if your web icons live elsewhere
+    data,
   });
 });

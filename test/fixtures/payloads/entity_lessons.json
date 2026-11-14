@@ -1,0 +1,47 @@
+{
+ "_source": {
+  "route": "GET /api/v1/entities/courses/1/lessons",
+  "uid": 4
+ },
+ "payload": {
+  "items": [
+   {
+    "id": 1,
+    "name": "Lecture 1",
+    "track": "lecture",
+    "scheduled_at": null,
+    "duration_minutes": null,
+    "materials": 1,
+    "completed": 1,
+    "attended": false,
+    "state": "done"
+   },
+   {
+    "id": 2,
+    "name": "Lecture 2",
+    "track": "lecture",
+    "scheduled_at": "2026-11-08T06:32:50.432271",
+    "duration_minutes": null,
+    "materials": 0,
+    "completed": 0,
+    "attended": false,
+    "state": "upcoming"
+   },
+   {
+    "id": 3,
+    "name": "Lecture 3",
+    "track": "lecture",
+    "scheduled_at": null,
+    "duration_minutes": null,
+    "materials": 2,
+    "completed": 1,
+    "attended": false,
+    "state": "in_progress"
+   }
+  ],
+  "total": 3,
+  "page": 1,
+  "size": 20,
+  "pages": 1
+ }
+}

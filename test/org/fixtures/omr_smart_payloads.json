@@ -1,0 +1,1614 @@
+{
+ "_source": "Hand-written 2026-11-03 from the smart-photos API contract (scratch smart/COMMON.md: live-hint `blocking`, every OMR page `result {tier, review_count, message, tips, preview_url, applied}`, sheets `modes` + mode / order / index), each built ON a recorded reply of omr_scan_payloads.json (same ids and texts) by scratch smart/fe/make_fixtures.py. The backend was built in parallel: re-record from its real routes once it lands (the field names in the contract are binding; `prefilled_reason` and the map form of `modes` are the front's tolerant guesses).",
+ "payloads": {
+  "hint_gentle_first": {
+   "status": 200,
+   "body": {
+    "ok": true,
+    "code": "too_dark",
+    "en": "Add a little more light.",
+    "ar": "أضف قليلًا من الإضاءة.",
+    "corners": [
+     [
+      55.0,
+      45.0
+     ],
+     [
+      483.0,
+      45.0
+     ],
+     [
+      483.0,
+      673.0
+     ],
+     [
+      55.0,
+      673.0
+     ]
+    ],
+    "corners_found": 4,
+    "brightness": 187.6,
+    "clipped": 0.0,
+    "sharpness": 1206.0,
+    "motion": null,
+    "page_fraction": 0.691,
+    "stat": "48x64:RkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZS2oOP29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbj4PaUkZGRkZS2lNn29vb29vb29vb29vb287GwsDVwsLJwdHb29vb29vb29vb29vbZ1PaUkZGRkZS2tvb29vb29vb29vb29vb29vb283Oz87b29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NjY2dna29vb29vb29vb29vb29vb29vb29vb29vb29vY0djR2NvaUkZGRkZS2tvbzMvQzMnP2NfX19fa29vb29vQ0NDT0dDZ29vbz9DQ09va19fU2tvaUkZGRkZS2tvb1dTT09PT1NXV1NPY29vb29rQ0dHOztvb29vb0Nvb0NBodG9729vaUkZGRkZS2tvby4rBqJCNiYB/ycvX29vb29rO0M7Q2tvb29vb0Nvb0NFqXHKN29vaUkZGRkZS2tvby8vLysrLy8nIgMvW29vb29rP0tLQ0tTb29vb0M/P1NNVam+O29vaUkZGRkZS2tvbzMvLy8vMzMrJyszW29vb29vb0tDP0NHQ0djKzs3OyNBtYH6V29vaUkZGRkZS2tvbgsiXssnKysjIycrW29vb29vb29bRzdHP0NfO0dLV0NPa2trb29vaUkZGRkZS2tvby8vLy8vLy8nIyozN29vb29vb29vWzMzPzNfb1tXQxs/b29vb29vaUkZGRkZS2tvby8vLy8vLy8nJysrW29vb29vb29vV1dXW1traxL+qgKbb29vb29vaUkZGRkZS2tvbycnKysrKysjHyMrW29vb29vb29vb29vb29vb2trZ19jb29vb29vaUkZGRkZS2tvby8vLy8vLzMrJysvX29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbysrKysrKy8jIycrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbycrKysrKysjHyMrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2tra2tra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbzdPT09ra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NnV2NbW1tbW1tbW2dvb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb29vb29vas8fS1dbS29vb29vb29vb2dTV0tXW0tvb29vb29vb29vaUkZGRkZS2tvb29vb29vapb/M0dTO29vb29vb29vb1NDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzchkz8/J29vb29vb29vb1M3PydDPydvb29vb29vb29vaUkZGRkZS2tvb29vb29vYz9HNl7XN29vb29vb29vb0s/SzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0NPNwMuu29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXztLO0c2F29vb29vb29vb087SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXgazKz8/J29vb29vb29vb0MzPyc/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vby9XU1tjV29vb29vb29vb29fY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vWjbHN0dHM29vb29vb29vb1M/QzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZztDM0NDM29vb29vb29vb0s7Qy9HRy9vb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dPN29vb29vb29vb2NDTzNHTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXz9PN0dPN29vb29vb29vb1c/TzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzM/Lz8/K29vb29vb29vb0c3PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HN0dHN29vb29vb29vb08/RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29va1tjU1tjU29vb29vb29vb2tbY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vVzM/Jzs/J29vb29vb29vb0cvPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vW0NPO0dPO29vb29vb29vb1tDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPN0dPM29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vUztHN0dHN29vb29vb29vb0c7RzNLRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vTzdDM0NDL29vb29vb29vb0c3Qy9DQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0NPN0dPN29vb29vb29vb19DTzdLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0tXR1NXR29vb29vb29vb1NLV0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HO0dLN29vb29vb29vb09DRzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0dPN0dPN29vb29vb29vb2tHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9LN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM7Jz8/J29vb29vb29vb0czPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vV0NPO0tPO29vb29vb29vb1NDTztLTztvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dTM29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vQz9HN0dLN29vb29vb29vb0s/RzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vY09XR1NXR29vb29vb29vb2NTU0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9PN0dTN29vb29vb29vb1NDTzdHTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vSzc/L0NDK29vb29vb29vb083PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTztHN0dHM29vb29vb29vb0c7RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NTN0dPN29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vSz9PN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM/Jzs/J29vb29vb29vb0MzPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vb2tva29vb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2lNn29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbZ1PaUkZGRkZS2oOP29vb29vb29vb29vb29HT09XR1NLW0tPb29vb29vb29vb29vbj4PaUkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZG",
+    "cv_ms": 9.19,
+    "ms": 19.45,
+    "blocking": false
+   }
+  },
+  "hint_gentle": {
+   "status": 200,
+   "body": {
+    "ok": true,
+    "code": "too_dark",
+    "en": "Add a little more light.",
+    "ar": "أضف قليلًا من الإضاءة.",
+    "corners": [
+     [
+      55.0,
+      45.0
+     ],
+     [
+      483.0,
+      45.0
+     ],
+     [
+      483.0,
+      673.0
+     ],
+     [
+      55.0,
+      673.0
+     ]
+    ],
+    "corners_found": 4,
+    "brightness": 187.6,
+    "clipped": 0.0,
+    "sharpness": 1206.0,
+    "motion": 0.4,
+    "page_fraction": 0.691,
+    "stat": "48x64:RkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZS2oOP29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbj4PaUkZGRkZS2lNn29vb29vb29vb29vb287GwsDVwsLJwdHb29vb29vb29vb29vbZ1PaUkZGRkZS2tvb29vb29vb29vb29vb29vb283Oz87b29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NjY2dna29vb29vb29vb29vb29vb29vb29vb29vb29vY0djR2NvaUkZGRkZS2tvbzMvQzMnP2NfX19fa29vb29vQ0NDT0dDZ29vbz9DQ09va19fU2tvaUkZGRkZS2tvb1dTT09PT1NXV1NPY29vb29rQ0dHOztvb29vb0Nvb0NBodG9729vaUkZGRkZS2tvby4rBqJCNiYB/ycvX29vb29rO0M7Q2tvb29vb0Nvb0NFqXHKN29vaUkZGRkZS2tvby8vLysrLy8nIgMvW29vb29rP0tLQ0tTb29vb0M/P1NNVam+O29vaUkZGRkZS2tvbzMvLy8vMzMrJyszW29vb29vb0tDP0NHQ0djKzs3OyNBtYH6V29vaUkZGRkZS2tvbgsiXssnKysjIycrW29vb29vb29bRzdHP0NfO0dLV0NPa2trb29vaUkZGRkZS2tvby8vLy8vLy8nIyozN29vb29vb29vWzMzPzNfb1tXQxs/b29vb29vaUkZGRkZS2tvby8vLy8vLy8nJysrW29vb29vb29vV1dXW1traxL+qgKbb29vb29vaUkZGRkZS2tvbycnKysrKysjHyMrW29vb29vb29vb29vb29vb2trZ19jb29vb29vaUkZGRkZS2tvby8vLy8vLzMrJysvX29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbysrKysrKy8jIycrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbycrKysrKysjHyMrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2tra2tra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbzdPT09ra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NnV2NbW1tbW1tbW2dvb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb29vb29vas8fS1dbS29vb29vb29vb2dTV0tXW0tvb29vb29vb29vaUkZGRkZS2tvb29vb29vapb/M0dTO29vb29vb29vb1NDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzchkz8/J29vb29vb29vb1M3PydDPydvb29vb29vb29vaUkZGRkZS2tvb29vb29vYz9HNl7XN29vb29vb29vb0s/SzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0NPNwMuu29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXztLO0c2F29vb29vb29vb087SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXgazKz8/J29vb29vb29vb0MzPyc/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vby9XU1tjV29vb29vb29vb29fY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vWjbHN0dHM29vb29vb29vb1M/QzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZztDM0NDM29vb29vb29vb0s7Qy9HRy9vb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dPN29vb29vb29vb2NDTzNHTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXz9PN0dPN29vb29vb29vb1c/TzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzM/Lz8/K29vb29vb29vb0c3PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HN0dHN29vb29vb29vb08/RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29va1tjU1tjU29vb29vb29vb2tbY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vVzM/Jzs/J29vb29vb29vb0cvPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vW0NPO0dPO29vb29vb29vb1tDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPN0dPM29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vUztHN0dHN29vb29vb29vb0c7RzNLRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vTzdDM0NDL29vb29vb29vb0c3Qy9DQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0NPN0dPN29vb29vb29vb19DTzdLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0tXR1NXR29vb29vb29vb1NLV0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HO0dLN29vb29vb29vb09DRzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0dPN0dPN29vb29vb29vb2tHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9LN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM7Jz8/J29vb29vb29vb0czPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vV0NPO0tPO29vb29vb29vb1NDTztLTztvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dTM29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vQz9HN0dLN29vb29vb29vb0s/RzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vY09XR1NXR29vb29vb29vb2NTU0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9PN0dTN29vb29vb29vb1NDTzdHTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vSzc/L0NDK29vb29vb29vb083PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTztHN0dHM29vb29vb29vb0c7RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NTN0dPN29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vSz9PN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM/Jzs/J29vb29vb29vb0MzPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vb2tva29vb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2lNn29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbZ1PaUkZGRkZS2oOP29vb29vb29vb29vb29HT09XR1NLW0tPb29vb29vb29vb29vbj4PaUkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZG",
+    "cv_ms": 8.69,
+    "ms": 20.77,
+    "blocking": false
+   }
+  },
+  "hint_gentle_moving": {
+   "status": 200,
+   "body": {
+    "ok": false,
+    "code": "moving",
+    "en": "Hold steady.",
+    "ar": "ثبّت الهاتف قليلًا.",
+    "corners": [
+     [
+      55.0,
+      45.0
+     ],
+     [
+      483.0,
+      45.0
+     ],
+     [
+      483.0,
+      673.0
+     ],
+     [
+      55.0,
+      673.0
+     ]
+    ],
+    "corners_found": 4,
+    "brightness": 187.6,
+    "clipped": 0.0,
+    "sharpness": 1206.0,
+    "motion": 9.1,
+    "page_fraction": 0.691,
+    "stat": "48x64:RkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZS2oOP29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbj4PaUkZGRkZS2lNn29vb29vb29vb29vb287GwsDVwsLJwdHb29vb29vb29vb29vbZ1PaUkZGRkZS2tvb29vb29vb29vb29vb29vb283Oz87b29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NjY2dna29vb29vb29vb29vb29vb29vb29vb29vb29vY0djR2NvaUkZGRkZS2tvbzMvQzMnP2NfX19fa29vb29vQ0NDT0dDZ29vbz9DQ09va19fU2tvaUkZGRkZS2tvb1dTT09PT1NXV1NPY29vb29rQ0dHOztvb29vb0Nvb0NBodG9729vaUkZGRkZS2tvby4rBqJCNiYB/ycvX29vb29rO0M7Q2tvb29vb0Nvb0NFqXHKN29vaUkZGRkZS2tvby8vLysrLy8nIgMvW29vb29rP0tLQ0tTb29vb0M/P1NNVam+O29vaUkZGRkZS2tvbzMvLy8vMzMrJyszW29vb29vb0tDP0NHQ0djKzs3OyNBtYH6V29vaUkZGRkZS2tvbgsiXssnKysjIycrW29vb29vb29bRzdHP0NfO0dLV0NPa2trb29vaUkZGRkZS2tvby8vLy8vLy8nIyozN29vb29vb29vWzMzPzNfb1tXQxs/b29vb29vaUkZGRkZS2tvby8vLy8vLy8nJysrW29vb29vb29vV1dXW1traxL+qgKbb29vb29vaUkZGRkZS2tvbycnKysrKysjHyMrW29vb29vb29vb29vb29vb2trZ19jb29vb29vaUkZGRkZS2tvby8vLy8vLzMrJysvX29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbysrKysrKy8jIycrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbycrKysrKysjHyMrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2tra2tra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbzdPT09ra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NnV2NbW1tbW1tbW2dvb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb29vb29vas8fS1dbS29vb29vb29vb2dTV0tXW0tvb29vb29vb29vaUkZGRkZS2tvb29vb29vapb/M0dTO29vb29vb29vb1NDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzchkz8/J29vb29vb29vb1M3PydDPydvb29vb29vb29vaUkZGRkZS2tvb29vb29vYz9HNl7XN29vb29vb29vb0s/SzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0NPNwMuu29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXztLO0c2F29vb29vb29vb087SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXgazKz8/J29vb29vb29vb0MzPyc/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vby9XU1tjV29vb29vb29vb29fY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vWjbHN0dHM29vb29vb29vb1M/QzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZztDM0NDM29vb29vb29vb0s7Qy9HRy9vb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dPN29vb29vb29vb2NDTzNHTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXz9PN0dPN29vb29vb29vb1c/TzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzM/Lz8/K29vb29vb29vb0c3PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HN0dHN29vb29vb29vb08/RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29va1tjU1tjU29vb29vb29vb2tbY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vVzM/Jzs/J29vb29vb29vb0cvPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vW0NPO0dPO29vb29vb29vb1tDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPN0dPM29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vUztHN0dHN29vb29vb29vb0c7RzNLRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vTzdDM0NDL29vb29vb29vb0c3Qy9DQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0NPN0dPN29vb29vb29vb19DTzdLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0tXR1NXR29vb29vb29vb1NLV0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HO0dLN29vb29vb29vb09DRzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0dPN0dPN29vb29vb29vb2tHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9LN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM7Jz8/J29vb29vb29vb0czPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vV0NPO0tPO29vb29vb29vb1NDTztLTztvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dTM29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vQz9HN0dLN29vb29vb29vb0s/RzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vY09XR1NXR29vb29vb29vb2NTU0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9PN0dTN29vb29vb29vb1NDTzdHTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vSzc/L0NDK29vb29vb29vb083PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTztHN0dHM29vb29vb29vb0c7RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NTN0dPN29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vSz9PN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM/Jzs/J29vb29vb29vb0MzPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vb2tva29vb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2lNn29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbZ1PaUkZGRkZS2oOP29vb29vb29vb29vb29HT09XR1NLW0tPb29vb29vb29vb29vbj4PaUkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZG",
+    "cv_ms": 8.69,
+    "ms": 20.77,
+    "blocking": false
+   }
+  },
+  "hint_blocking_dark": {
+   "status": 200,
+   "body": {
+    "ok": false,
+    "code": "too_dark",
+    "en": "Too dark, move to better light.",
+    "ar": "الصورة مظلمة جدًا، انتقل إلى إضاءة أفضل.",
+    "corners": [
+     [
+      55.0,
+      45.0
+     ],
+     [
+      483.0,
+      45.0
+     ],
+     [
+      483.0,
+      673.0
+     ],
+     [
+      55.0,
+      673.0
+     ]
+    ],
+    "corners_found": 4,
+    "brightness": 27.4,
+    "clipped": 0.0,
+    "sharpness": 25.9,
+    "motion": 0.2,
+    "page_fraction": 0.691,
+    "stat": "48x64:CgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoLHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dDAoKCgoMIBMVICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgFRMgDAoKCgoMIAwPICAgICAgICAgICAgIB4dHR0fHRwdHB8gICAgICAgICAgICAgDwwgDAoKCgoMICAgICAgICAgICAgICAgICAgIB4eHh4gICAgICAgICAgICAgICAgICAgDAoKCgoMICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgHyAfICAgDAoKCgoMICAgHh4fHh4eIB8gICAgICAgICAfHx8fHx4gICAgHx4eHyAgIB8fICAgDAoKCgoMICAgIB8fHx8fIB8gHx8gICAgICAfHx8fHyAgICAgHyAgHx4PERASICAgDAoKCgoMICAgHhQcGBUVFBMTHh4gICAgICAeHx8fICAgICAgHyAgHx8QDhEVICAgDAoKCgoMICAgHh4eHh4eHh4eEx4gICAgICAeHx8fHx8gICAgHh8fHx8MEBEVICAgDAoKCgoMICAgHh4eHh4eHh4eHh4gICAgICAgHx8fHx8fHyAeHh4eHh4QDhIWICAgDAoKCgoMICAgEx0WGh4eHh4eHh4fICAgICAgIB8fHh8eHyAeHx8fHx8gICAgICAgDAoKCgoMICAgHh4eHh4eHh4dHhQeICAgICAgICAgHh4eHh8gHx8fHR8gICAgICAgDAoKCgoMICAgHh4eHh4eHh4dHh4gICAgICAgICAfHx8fHyAgHRwZExggICAgICAgDAoKCgoMICAgHh4eHh4eHh4eHh4fICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgHh4eHh4eHh4eHh4fICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgHh4eHh4eHh4eHR4gICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgHh0eHh4eHh0eHh4gICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgHh8fHyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgICAfIB8fHx8fHx8fICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMICAgICAgICAgGh0fHx8fICAgICAgICAgIB8fHx8fHyAgICAgICAgICAgDAoKCgoMICAgICAgICAgGBweHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHh0PHh4eICAgICAgICAgHx4eHh8fHSAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eFhoeICAgICAgICAgHx8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eHB4aICAgICAgICAgIB8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHh8eHx4UICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfExkeHh4eICAgICAgICAgHx4eHh4eHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHh8fHyAfICAgICAgICAgIB8gHx8gICAgICAgICAgICAgDAoKCgoMICAgICAgICAfFRoeHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHh8eHx4eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHh8eHx8eICAgICAgICAgIB8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh4eHh8eICAgICAgICAgHx4eHh4fHSAgICAgICAgICAgDAoKCgoMICAgICAgICAfHx8eHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgICAfHx8fICAgICAgICAgICAgHyAgHyAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHh4eICAgICAgICAgHx4eHh4fHSAgICAgICAgICAgDAoKCgoMICAgICAgICAfHx8eHx8eICAgICAgICAgIB8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eHx8eICAgICAgICAgIB8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHx8fICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHx4eICAgICAgICAgHx4fHh4fHSAgICAgICAgICAgDAoKCgoMICAgICAgICAfHx8eHx8eICAgICAgICAgHx8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHx8fHx8fICAgICAgICAgHx8fHx8fHyAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eHx8eICAgICAgICAgIB8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHh8eICAgICAgICAgHx4eHh8fHSAgICAgICAgICAgDAoKCgoMICAgICAgICAfHx8eHx8eICAgICAgICAgHx8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eHx8eICAgICAgICAgIB4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAeHx8eHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8fHx8fICAgICAgICAgIB8fHx8fHyAgICAgICAgICAgDAoKCgoMICAgICAgICAfHx8eHx8eICAgICAgICAgHx8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh4eHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHx8eICAgICAgICAgHh4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAgHx8eHx8eICAgICAgICAgIB8fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8fHx8eICAgICAgICAgHx4fHh8fHiAgICAgICAgICAgDAoKCgoMICAgICAgICAfHh8eHh8eICAgICAgICAgHx4eHh4eHSAgICAgICAgICAgDAoKCgoMICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDAoKCgoMIAwPICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDwwgDAoKCgoMIBMVICAgICAgICAgICAgIB4fHx8fHx8fHx8gICAgICAgICAgICAgFRMgDAoKCgoLHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dDAoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoK",
+    "cv_ms": 7.98,
+    "ms": 18.12,
+    "blocking": true
+   }
+  },
+  "hint_ready_smart": {
+   "status": 200,
+   "body": {
+    "ok": true,
+    "code": "ready",
+    "en": "Hold still…",
+    "ar": "ثبّت الهاتف…",
+    "corners": [
+     [
+      55.0,
+      45.0
+     ],
+     [
+      483.0,
+      45.0
+     ],
+     [
+      483.0,
+      673.0
+     ],
+     [
+      55.0,
+      673.0
+     ]
+    ],
+    "corners_found": 4,
+    "brightness": 187.6,
+    "clipped": 0.0,
+    "sharpness": 1206.0,
+    "motion": 0.0,
+    "page_fraction": 0.691,
+    "stat": "48x64:RkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZS2oOP29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbj4PaUkZGRkZS2lNn29vb29vb29vb29vb287GwsDVwsLJwdHb29vb29vb29vb29vbZ1PaUkZGRkZS2tvb29vb29vb29vb29vb29vb283Oz87b29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NjY2dna29vb29vb29vb29vb29vb29vb29vb29vb29vY0djR2NvaUkZGRkZS2tvbzMvQzMnP2NfX19fa29vb29vQ0NDT0dDZ29vbz9DQ09va19fU2tvaUkZGRkZS2tvb1dTT09PT1NXV1NPY29vb29rQ0dHOztvb29vb0Nvb0NBodG9729vaUkZGRkZS2tvby4rBqJCNiYB/ycvX29vb29rO0M7Q2tvb29vb0Nvb0NFqXHKN29vaUkZGRkZS2tvby8vLysrLy8nIgMvW29vb29rP0tLQ0tTb29vb0M/P1NNVam+O29vaUkZGRkZS2tvbzMvLy8vMzMrJyszW29vb29vb0tDP0NHQ0djKzs3OyNBtYH6V29vaUkZGRkZS2tvbgsiXssnKysjIycrW29vb29vb29bRzdHP0NfO0dLV0NPa2trb29vaUkZGRkZS2tvby8vLy8vLy8nIyozN29vb29vb29vWzMzPzNfb1tXQxs/b29vb29vaUkZGRkZS2tvby8vLy8vLy8nJysrW29vb29vb29vV1dXW1traxL+qgKbb29vb29vaUkZGRkZS2tvbycnKysrKysjHyMrW29vb29vb29vb29vb29vb2trZ19jb29vb29vaUkZGRkZS2tvby8vLy8vLzMrJysvX29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbysrKysrKy8jIycrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbycrKysrKysjHyMrW29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2tra2tra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvbzdPT09ra2tra2trb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb2NnV2NbW1tbW1tbW2dvb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2tvb29vb29vas8fS1dbS29vb29vb29vb2dTV0tXW0tvb29vb29vb29vaUkZGRkZS2tvb29vb29vapb/M0dTO29vb29vb29vb1NDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzchkz8/J29vb29vb29vb1M3PydDPydvb29vb29vb29vaUkZGRkZS2tvb29vb29vYz9HNl7XN29vb29vb29vb0s/SzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0NPNwMuu29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXztLO0c2F29vb29vb29vb087SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXgazKz8/J29vb29vb29vb0MzPyc/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vby9XU1tjV29vb29vb29vb29fY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vWjbHN0dHM29vb29vb29vb1M/QzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZztDM0NDM29vb29vb29vb0s7Qy9HRy9vb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dPN29vb29vb29vb2NDTzNHTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vXz9PN0dPN29vb29vb29vb1c/TzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vXzM/Lz8/K29vb29vb29vb0c3PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HN0dHN29vb29vb29vb08/RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29va1tjU1tjU29vb29vb29vb2tbY1NfY1Nvb29vb29vb29vaUkZGRkZS2tvb29vb29vVzM/Jzs/J29vb29vb29vb0cvPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vW0NPO0dPO29vb29vb29vb1tDTzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPN0dPM29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vUztHN0dHN29vb29vb29vb0c7RzNLRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vTzdDM0NDL29vb29vb29vb0c3Qy9DQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0NPN0dPN29vb29vb29vb19DTzdLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vX0tXR1NXR29vb29vb29vb1NLV0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vTz9HO0dLN29vb29vb29vb09DRzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29va0dPN0dPN29vb29vb29vb2tHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9LN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM7Jz8/J29vb29vb29vb0czPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vV0NPO0tPO29vb29vb29vb1NDTztLTztvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NPM0dTM29vb29vb29vb2NHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vQz9HN0dLN29vb29vb29vb0s/RzdLSzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vY09XR1NXR29vb29vb29vb2NTU0dTV0dvb29vb29vb29vaUkZGRkZS2tvb29vb29vWz9PN0dTN29vb29vb29vb1NDTzdHTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vSzc/L0NDK29vb29vb29vb083PytDQytvb29vb29vb29vaUkZGRkZS2tvb29vb29vTztHN0dHM29vb29vb29vb0c7RzNHRzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vZ0NTN0dPN29vb29vb29vb2dHTzNLTzNvb29vb29vb29vaUkZGRkZS2tvb29vb29vSz9PN0dPN29vb29vb29vb0s/SzdLTzdvb29vb29vb29vaUkZGRkZS2tvb29vb29vRzM/Jzs/J29vb29vb29vb0MzPyM/PyNvb29vb29vb29vaUkZGRkZS2tvb29vb29vb2tva29vb29vb29vb29vb29vb29vb29vb29vb29vb29vaUkZGRkZS2lNn29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vb29vbZ1PaUkZGRkZS2oOP29vb29vb29vb29vb29HT09XR1NLW0tPb29vb29vb29vb29vbj4PaUkZGRkZQxsfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fGUEZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZG",
+    "cv_ms": 8.69,
+    "ms": 20.77,
+    "blocking": false
+   }
+  },
+  "capture_accept": {
+   "status": 200,
+   "body": {
+    "accepted": true,
+    "page_id": 4,
+    "batch_id": 4,
+    "captured": 1,
+    "expected": 40,
+    "en": "Paper 1 of 40 captured",
+    "ar": "تم التقاط الورقة 1 من 40",
+    "ms": 279.2,
+    "result": {
+     "tier": "accept",
+     "review_count": 0,
+     "message": {
+      "ar": "قُرئت الورقة.",
+      "en": "The paper was read."
+     },
+     "tips": [],
+     "preview_url": "/api/v1/exam/omr/images/preview/4?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+     "applied": [
+      "resize",
+      "shadow",
+      "clahe",
+      "perspective"
+     ]
+    }
+   }
+  },
+  "capture_flags": {
+   "status": 200,
+   "body": {
+    "accepted": true,
+    "page_id": 4,
+    "batch_id": 4,
+    "captured": 1,
+    "expected": 40,
+    "en": "Paper 1 of 40 captured",
+    "ar": "تم التقاط الورقة 1 من 40",
+    "ms": 279.2,
+    "result": {
+     "tier": "flags",
+     "review_count": 3,
+     "message": {
+      "ar": "3 أسئلة غير واضحة تنتظر المراجعة.",
+      "en": "3 questions are unclear and wait for review."
+     },
+     "tips": [],
+     "preview_url": "/api/v1/exam/omr/images/preview/4?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+     "applied": [
+      "resize",
+      "clahe"
+     ]
+    }
+   }
+  },
+  "capture_retake": {
+   "status": 200,
+   "body": {
+    "accepted": true,
+    "page_id": 4,
+    "batch_id": 4,
+    "captured": 1,
+    "expected": 40,
+    "en": "Paper 1 of 40 captured",
+    "ar": "تم التقاط الورقة 1 من 40",
+    "ms": 279.2,
+    "result": {
+     "tier": "retake",
+     "review_count": 5,
+     "message": {
+      "ar": "الحافة السفلية للورقة مقطوعة.",
+      "en": "The bottom edge of the page is cut off."
+     },
+     "tips": [
+      {
+       "ar": "اجعل الورقة كلها داخل الإطار.",
+       "en": "Fit the whole page inside the frame."
+      }
+     ],
+     "preview_url": "/api/v1/exam/omr/images/preview/4?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+     "applied": [
+      "resize",
+      "shadow",
+      "clahe",
+      "sauvola",
+      "perspective"
+     ]
+    }
+   }
+  },
+  "capture_reject": {
+   "status": 200,
+   "body": {
+    "accepted": false,
+    "code": "too_dark",
+    "en": "The page is too dark to read.",
+    "ar": "الورقة مظلمة جدًا ولا يمكن قراءتها.",
+    "issues": [
+     {
+      "code": "too_dark",
+      "en": "The page is too dark to read.",
+      "ar": "الورقة مظلمة جدًا ولا يمكن قراءتها."
+     }
+    ],
+    "ms": 285.9,
+    "batch_id": null,
+    "result": {
+     "tier": "reject",
+     "review_count": 0,
+     "message": {
+      "ar": "الورقة مظلمة جدًا ولا يمكن قراءتها.",
+      "en": "The page is too dark to read."
+     },
+     "tips": [
+      {
+       "ar": "شغّل ضوءًا أو اقترب من نافذة.",
+       "en": "Turn on a light or move near a window."
+      }
+     ],
+     "preview_url": null,
+     "applied": [
+      "resize",
+      "shadow",
+      "clahe"
+     ]
+    }
+   }
+  },
+  "batch_smart": {
+   "status": 200,
+   "body": {
+    "batch_id": 8,
+    "exam_id": 1,
+    "kind": "omr",
+    "total": 10,
+    "done": 10,
+    "graded": 7,
+    "review": 2,
+    "rejected": 1,
+    "failed": 0,
+    "pending": 0,
+    "status": "done",
+    "expected": null,
+    "rejected_pages": [
+     {
+      "page_id": 14,
+      "page_label": "7",
+      "page_no": 7,
+      "file_name": "batch.pdf",
+      "codes": [
+       "blurry"
+      ],
+      "en": "Page 7 is too blurry. Please upload a clearer image of it.",
+      "ar": "الصفحة 7 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها.",
+      "instruction_en": "Too blurry, hold steady.",
+      "instruction_ar": "الصورة غير واضحة، ثبّت الهاتف.",
+      "result": {
+       "tier": "reject",
+       "review_count": 0,
+       "message": {
+        "ar": "الصورة غير واضحة، ثبّت الهاتف.",
+        "en": "Too blurry, hold steady."
+       },
+       "tips": [
+        {
+         "ar": "ثبّت الهاتف على سطح أو استند بمرفقيك.",
+         "en": "Rest the phone on something steady or brace your elbows."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/14?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "resize"
+       ]
+      }
+     }
+    ],
+    "created_at": "2026-11-02T05:30:27.390734",
+    "en": "10 of 10 papers processed",
+    "ar": "تمت معالجة 10 من 10 ورقة",
+    "pages": [
+     {
+      "page_id": 5,
+      "page_no": 1,
+      "page_label": "1",
+      "file_name": "batch.pdf",
+      "status": "processed",
+      "result": {
+       "tier": "accept",
+       "review_count": 0,
+       "message": {
+        "ar": "قُرئت الورقة.",
+        "en": "The paper was read."
+       },
+       "tips": [],
+       "preview_url": "/api/v1/exam/omr/images/preview/5?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "direct"
+       ]
+      }
+     },
+     {
+      "page_id": 6,
+      "page_no": 2,
+      "page_label": "2",
+      "file_name": "batch.pdf",
+      "status": "processed",
+      "result": {
+       "tier": "accept",
+       "review_count": 0,
+       "message": {
+        "ar": "قُرئت الورقة.",
+        "en": "The paper was read."
+       },
+       "tips": [],
+       "preview_url": "/api/v1/exam/omr/images/preview/6?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "direct"
+       ]
+      }
+     },
+     {
+      "page_id": 7,
+      "page_no": 3,
+      "page_label": "3",
+      "file_name": "batch.pdf",
+      "status": "review",
+      "result": {
+       "tier": "flags",
+       "review_count": 2,
+       "message": {
+        "ar": "سؤالان غير واضحين ينتظران المراجعة.",
+        "en": "2 questions are unclear and wait for review."
+       },
+       "tips": [],
+       "preview_url": "/api/v1/exam/omr/images/preview/7?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "resize",
+        "clahe"
+       ]
+      }
+     },
+     {
+      "page_id": 8,
+      "page_no": 4,
+      "page_label": "4",
+      "file_name": "batch.pdf",
+      "status": "processed",
+      "result": {
+       "tier": "accept",
+       "review_count": 0,
+       "message": {
+        "ar": "قُرئت الورقة.",
+        "en": "The paper was read."
+       },
+       "tips": [],
+       "preview_url": "/api/v1/exam/omr/images/preview/8?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "direct"
+       ]
+      }
+     },
+     {
+      "page_id": 9,
+      "page_no": 5,
+      "page_label": "5",
+      "file_name": "batch.pdf",
+      "status": "processed",
+      "result": {
+       "tier": "accept",
+       "review_count": 0,
+       "message": {
+        "ar": "قُرئت الورقة.",
+        "en": "The paper was read."
+       },
+       "tips": [],
+       "preview_url": "/api/v1/exam/omr/images/preview/9?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "direct"
+       ]
+      }
+     },
+     {
+      "page_id": 10,
+      "page_no": 6,
+      "page_label": "6",
+      "file_name": "batch.pdf",
+      "status": "processed",
+      "result": {
+       "tier": "accept",
+       "review_count": 0,
+       "message": {
+        "ar": "قُرئت الورقة.",
+        "en": "The paper was read."
+       },
+       "tips": [],
+       "preview_url": "/api/v1/exam/omr/images/preview/10?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "direct"
+       ]
+      }
+     },
+     {
+      "page_id": 14,
+      "page_no": 7,
+      "page_label": "7",
+      "file_name": "batch.pdf",
+      "status": "rejected",
+      "result": {
+       "tier": "reject",
+       "review_count": 0,
+       "message": {
+        "ar": "الصورة غير واضحة، ثبّت الهاتف.",
+        "en": "Too blurry, hold steady."
+       },
+       "tips": [
+        {
+         "ar": "ثبّت الهاتف على سطح أو استند بمرفقيك.",
+         "en": "Rest the phone on something steady or brace your elbows."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/14?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "resize"
+       ]
+      }
+     },
+     {
+      "page_id": 12,
+      "page_no": 8,
+      "page_label": "8",
+      "file_name": "batch.pdf",
+      "status": "processed",
+      "result": {
+       "tier": "accept",
+       "review_count": 0,
+       "message": {
+        "ar": "قُرئت الورقة.",
+        "en": "The paper was read."
+       },
+       "tips": [],
+       "preview_url": "/api/v1/exam/omr/images/preview/12?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "direct"
+       ]
+      }
+     },
+     {
+      "page_id": 13,
+      "page_no": 9,
+      "page_label": "9",
+      "file_name": "batch.pdf",
+      "status": "review",
+      "result": {
+       "tier": "retake",
+       "review_count": 4,
+       "message": {
+        "ar": "ظل قوي على نصف الورقة.",
+        "en": "A heavy shadow covers half of the page."
+       },
+       "tips": [
+        {
+         "ar": "صوّر بعيدًا عن ظلك أو شغّل الفلاش.",
+         "en": "Step out of your own shadow or turn the torch on."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/13?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "resize",
+        "shadow",
+        "clahe",
+        "sauvola"
+       ]
+      }
+     },
+     {
+      "page_id": 99,
+      "page_no": 10,
+      "page_label": "10",
+      "file_name": "batch.pdf",
+      "status": "processed",
+      "result": {
+       "tier": "accept",
+       "review_count": 0,
+       "message": {
+        "ar": "قُرئت الورقة.",
+        "en": "The paper was read."
+       },
+       "tips": [],
+       "preview_url": "/api/v1/exam/omr/images/preview/99?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "direct"
+       ]
+      }
+     }
+    ]
+   }
+  },
+  "sheets_info_modes": {
+   "status": 200,
+   "body": {
+    "template_id": 1,
+    "template_version": 1,
+    "printable": true,
+    "questions": 6,
+    "sheet_questions": 50,
+    "forms": [
+     "A",
+     "B"
+    ],
+    "sheet_forms": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "form_markers": [
+     "qr",
+     "printed"
+    ],
+    "id_kind": "shaded",
+    "modes": [
+     "prefilled",
+     "named",
+     "blank"
+    ]
+   }
+  },
+  "sheets_info_no_prefilled": {
+   "status": 200,
+   "body": {
+    "template_id": 1,
+    "template_version": 1,
+    "printable": true,
+    "questions": 6,
+    "sheet_questions": 50,
+    "forms": [
+     "A",
+     "B"
+    ],
+    "sheet_forms": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "form_markers": [
+     "qr",
+     "printed"
+    ],
+    "id_kind": "shaded",
+    "modes": [
+     "named",
+     "blank"
+    ],
+    "prefilled_reason": {
+     "ar": "لا يمكن التظليل المسبق: بعض أرقام الطلاب فيها حروف.",
+     "en": "Pre-filled is not possible: some student numbers contain letters."
+    }
+   }
+  },
+  "sheets_info_modes_maps": {
+   "status": 200,
+   "body": {
+    "template_id": 1,
+    "template_version": 1,
+    "printable": true,
+    "questions": 6,
+    "sheet_questions": 50,
+    "forms": [
+     "A",
+     "B"
+    ],
+    "sheet_forms": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "form_markers": [
+     "qr",
+     "printed"
+    ],
+    "id_kind": "handwritten",
+    "modes": [
+     {
+      "mode": "prefilled",
+      "available": false
+     },
+     {
+      "mode": "named"
+     },
+     {
+      "mode": "blank"
+     }
+    ]
+   }
+  },
+  "replace_retake_accepted": {
+   "status": 200,
+   "body": {
+    "accepted": true,
+    "page_id": 5,
+    "replaces": 4,
+    "batch_id": 4,
+    "ms": 79.5,
+    "en": "Page 1 replaced. It is being read now.",
+    "ar": "تم استبدال الصفحة 1 وجارٍ قراءتها الآن.",
+    "progress": {
+     "batch_id": 1,
+     "exam_id": 1,
+     "kind": "omr",
+     "total": 3,
+     "done": 2,
+     "graded": 2,
+     "review": 0,
+     "rejected": 0,
+     "failed": 0,
+     "pending": 1,
+     "status": "processing",
+     "expected": null,
+     "rejected_pages": [],
+     "created_at": "2026-11-02T08:42:24.948015",
+     "en": "2 of 3 papers processed",
+     "ar": "تمت معالجة 2 من 3 ورقة"
+    },
+    "result": {
+     "tier": "accept",
+     "review_count": 0,
+     "message": {
+      "ar": "قُرئت الورقة.",
+      "en": "The paper was read."
+     },
+     "tips": [],
+     "preview_url": "/api/v1/exam/omr/images/preview/5?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+     "applied": [
+      "direct",
+      "perspective"
+     ]
+    }
+   }
+  },
+  "replace_page_reviewed_409": {
+   "status": 409,
+   "body": {
+    "detail": {
+     "code": "page_reviewed",
+     "message": "راجعت أسئلة هذه الورقة من قبل، فلن تُستبدل.",
+     "message_en": "You already reviewed questions on this paper, so it is not replaced."
+    }
+   }
+  },
+  "batch_v3": {
+   "status": 200,
+   "body": {
+    "batch_id": 21,
+    "exam_id": 1,
+    "kind": "omr",
+    "total": 5,
+    "done": 5,
+    "graded": 1,
+    "review": 3,
+    "rejected": 1,
+    "failed": 0,
+    "pending": 0,
+    "status": "done",
+    "expected": null,
+    "created_at": "2026-11-03T08:42:24.948015",
+    "en": "5 of 5 papers processed",
+    "ar": "تمت معالجة 5 من 5 أوراق",
+    "rejected_pages": [
+     {
+      "page_id": 103,
+      "page_no": 3,
+      "page_label": "3",
+      "file_name": "wa01.jpg",
+      "codes": [
+       "blurry"
+      ],
+      "en": "Page 3 is too blurry. Please upload a clearer image of it.",
+      "ar": "الصفحة 3 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها.",
+      "instruction_en": "Too blurry, hold steady.",
+      "instruction_ar": "الصورة غير واضحة، ثبّت الهاتف.",
+      "result": {
+       "tier": "reject",
+       "review_count": 0,
+       "student": null,
+       "message": {
+        "en": "Couldn't read this paper: the photo is too blurry.",
+        "ar": "تعذّرت قراءة هذه الورقة: الصورة غير واضحة."
+       },
+       "tips": [
+        {
+         "en": "Hold the phone steady and take it again.",
+         "ar": "ثبّت الهاتف وأعد التصوير."
+        }
+       ],
+       "preview_url": null,
+       "applied": []
+      }
+     }
+    ],
+    "pages": [
+     {
+      "page_id": 101,
+      "page_no": 1,
+      "page_label": "1",
+      "file_name": "scaled_1000237462.jpg",
+      "status": "processed",
+      "result": {
+       "tier": "accept",
+       "review_count": 0,
+       "student": "identified",
+       "message": {
+        "en": "Read successfully",
+        "ar": "تمت القراءة بنجاح"
+       },
+       "tips": [],
+       "preview_url": "/api/v1/exam/omr/images/preview/101?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "resize"
+       ]
+      }
+     },
+     {
+      "page_id": 102,
+      "page_no": 2,
+      "page_label": "2",
+      "file_name": "scaled_1000237481.jpg",
+      "status": "review",
+      "result": {
+       "tier": "flags",
+       "review_count": 2,
+       "student": "confirm",
+       "message": {
+        "en": "Read with 2 questions to review — confirm the student",
+        "ar": "تمت القراءة، وسؤالان للمراجعة — أكّد الطالب"
+       },
+       "tips": [
+        {
+         "en": "A corner of the sheet was outside the photo: fit the whole sheet in the frame next time.",
+         "ar": "كان أحد أركان الورقة خارج الصورة: اجعل الورقة كاملة داخل الإطار في المرة القادمة."
+        },
+        {
+         "en": "Confirm the student for this paper: its QR code and student ID do not agree, or the student is already scanned / not in this exam.",
+         "ar": "أكّد الطالب لهذه الورقة: رمز QR ورقم الطالب غير متطابقين، أو الطالب مُصوَّر مسبقًا / ليس في هذا الاختبار."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/102?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": [
+        "perspective"
+       ]
+      }
+     },
+     {
+      "page_id": 103,
+      "page_no": 3,
+      "page_label": "3",
+      "file_name": "wa01.jpg",
+      "status": "rejected",
+      "result": {
+       "tier": "reject",
+       "review_count": 0,
+       "student": null,
+       "message": {
+        "en": "Couldn't read this paper: the photo is too blurry.",
+        "ar": "تعذّرت قراءة هذه الورقة: الصورة غير واضحة."
+       },
+       "tips": [
+        {
+         "en": "Hold the phone steady and take it again.",
+         "ar": "ثبّت الهاتف وأعد التصوير."
+        }
+       ],
+       "preview_url": null,
+       "applied": []
+      }
+     },
+     {
+      "page_id": 104,
+      "page_no": 4,
+      "page_label": "4",
+      "file_name": "wa24.jpg",
+      "status": "review",
+      "result": {
+       "tier": "flags",
+       "review_count": 0,
+       "student": "confirm",
+       "message": {
+        "en": "Read — confirm the student",
+        "ar": "تمت القراءة — أكّد الطالب"
+       },
+       "tips": [
+        {
+         "en": "This student already has a graded paper in this exam.",
+         "ar": "لهذا الطالب ورقة مصحّحة في هذا الاختبار."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/104?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": []
+      }
+     },
+     {
+      "page_id": 105,
+      "page_no": 5,
+      "page_label": "5",
+      "file_name": "wa25.jpg",
+      "status": "review",
+      "result": {
+       "tier": "retake",
+       "review_count": 1,
+       "student": "confirm",
+       "message": {
+        "en": "Read with 1 question to review, but something covers part of the paper — confirm the student.",
+        "ar": "تمت القراءة، وسؤال واحد للمراجعة، لكن شيئًا ما يغطي جزءًا من الورقة — أكّد الطالب."
+       },
+       "tips": [
+        {
+         "en": "Make sure nothing lies on the sheet and take it again.",
+         "ar": "تأكّد أن لا شيء فوق الورقة وأعد التصوير."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/105?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": []
+      }
+     },
+     {
+      "page_id": 107,
+      "page_no": 7,
+      "page_label": "7",
+      "file_name": "wa27.jpg",
+      "status": "review",
+      "result": {
+       "tier": "flags",
+       "review_count": 1,
+       "student": "identified",
+       "message": {
+        "en": "Read with 1 question to review — confirm the answer form",
+        "ar": "تمت القراءة، وسؤال واحد للمراجعة — أكّد نموذج الإجابة"
+       },
+       "tips": [
+        {
+         "en": "The QR code and the printed letter name different answer forms.",
+         "ar": "رمز QR والحرف المطبوع يشيران إلى نموذجين مختلفين."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/107?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": []
+      }
+     }
+    ]
+   }
+  },
+  "batch_old_identity": {
+   "status": 200,
+   "body": {
+    "batch_id": 20,
+    "exam_id": 1,
+    "kind": "omr",
+    "total": 2,
+    "done": 2,
+    "graded": 0,
+    "review": 2,
+    "rejected": 0,
+    "failed": 0,
+    "pending": 0,
+    "status": "done",
+    "expected": null,
+    "created_at": "2026-11-02T19:05:00",
+    "en": "2 of 2 papers processed",
+    "ar": "تمت معالجة 2 من ورقتين",
+    "rejected_pages": [],
+    "pages": [
+     {
+      "page_id": 201,
+      "page_no": 1,
+      "page_label": "1",
+      "file_name": "page24.jpg",
+      "status": "review",
+      "result": {
+       "tier": "flags",
+       "review_count": 1,
+       "student": "unidentified",
+       "message": {
+        "en": "Read successfully - confirm the student (its QR code or student ID needs a person)",
+        "ar": "تمت القراءة بنجاح - أكّد الطالب (رمز QR أو رقم الطالب يحتاج إلى مراجعة)"
+       },
+       "tips": [
+        {
+         "en": "Confirm the student for this paper: its QR code and student ID do not agree, or the student is already scanned / not in this exam.",
+         "ar": "أكّد الطالب لهذه الورقة: رمز QR ورقم الطالب غير متطابقين، أو الطالب مُصوَّر مسبقًا / ليس في هذا الاختبار."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/201?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": []
+      }
+     },
+     {
+      "page_id": 202,
+      "page_no": 2,
+      "page_label": "2",
+      "file_name": "wa23.jpg",
+      "status": "review",
+      "result": {
+       "tier": "flags",
+       "review_count": 3,
+       "student": "unidentified",
+       "message": {
+        "en": "Read with 2 questions to review - confirm the student (its QR code or student ID needs a person)",
+        "ar": "تمت القراءة مع سؤالين للمراجعة - أكّد الطالب (رمز QR أو رقم الطالب يحتاج إلى مراجعة)"
+       },
+       "tips": [
+        {
+         "en": "A corner of the sheet was outside the photo: fit the whole sheet in the frame next time.",
+         "ar": "كان أحد أركان الورقة خارج الصورة: اجعل الورقة كاملة داخل الإطار في المرة القادمة."
+        },
+        {
+         "en": "Another sheet shows next to this one: put the page on a plain surface next time.",
+         "ar": "تظهر ورقة أخرى بجانب هذه الورقة: ضع الورقة على سطح خالٍ في المرة القادمة."
+        },
+        {
+         "en": "Confirm the student for this paper: its QR code and student ID do not agree, or the student is already scanned / not in this exam.",
+         "ar": "أكّد الطالب لهذه الورقة: رمز QR ورقم الطالب غير متطابقين، أو الطالب مُصوَّر مسبقًا / ليس في هذا الاختبار."
+        }
+       ],
+       "preview_url": "/api/v1/exam/omr/images/preview/202?exp=1793700000&sig=5f1c0ffee5f1c0ffee5f1c0ffee5f1c0",
+       "applied": []
+      }
+     }
+    ]
+   }
+  },
+  "review_items_v3": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "id": 31,
+      "scan_page_id": 104,
+      "attempt_id": null,
+      "question_id": null,
+      "kind": "identifier",
+      "code": "identifier_blank",
+      "reading": {
+       "kind": "shaded",
+       "status": "blank",
+       "value": null,
+       "candidates": [],
+       "en": "The student ID is empty",
+       "ar": "رقم الطالب فارغ"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-03T08:43:10.120000",
+      "actions": [
+       "assign",
+       "accept",
+       "fix",
+       "replace",
+       "dismiss"
+      ],
+      "has_crop": false,
+      "en": "The student ID is empty",
+      "ar": "رقم الطالب فارغ",
+      "page_no": 4,
+      "file_name": "wa24.jpg",
+      "batch_id": 21,
+      "batch_created_at": "2026-11-03T08:42:24.948015"
+     },
+     {
+      "id": 32,
+      "scan_page_id": 105,
+      "attempt_id": null,
+      "question_id": null,
+      "kind": "identifier",
+      "code": "identifier_unclear",
+      "reading": {
+       "kind": "handwritten",
+       "status": "review",
+       "value": null,
+       "qr_student_id": 24,
+       "qr_student_name": "Sara Nabil",
+       "qr_masked_id": "0121",
+       "candidates": [],
+       "en": "The student ID could not be read with confidence",
+       "ar": "تعذّرت قراءة رقم الطالب بثقة"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-03T08:43:10.120000",
+      "actions": [
+       "assign",
+       "accept",
+       "fix",
+       "replace",
+       "dismiss"
+      ],
+      "has_crop": false,
+      "en": "The student ID could not be read with confidence",
+      "ar": "تعذّرت قراءة رقم الطالب بثقة",
+      "page_no": 5,
+      "file_name": "wa25.jpg",
+      "batch_id": 21,
+      "batch_created_at": "2026-11-03T08:42:24.948015"
+     },
+     {
+      "id": 33,
+      "scan_page_id": 106,
+      "attempt_id": null,
+      "question_id": null,
+      "kind": "identifier",
+      "code": "student_already_scanned",
+      "reading": {
+       "kind": "shaded",
+       "status": "clear",
+       "value": null,
+       "student_id": 24,
+       "student_name": "Sara Nabil",
+       "masked_id": "0121",
+       "other_page_no": 2,
+       "other_file_name": "scaled_1000237481.jpg",
+       "candidates": [],
+       "en": "This student already has a graded sheet",
+       "ar": "لهذا الطالب ورقة مصححة بالفعل"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-03T08:43:10.120000",
+      "actions": [
+       "assign",
+       "accept",
+       "fix",
+       "replace",
+       "dismiss"
+      ],
+      "has_crop": false,
+      "en": "This student already has a graded sheet",
+      "ar": "لهذا الطالب ورقة مصححة بالفعل",
+      "page_no": 6,
+      "file_name": "wa26.jpg",
+      "batch_id": 21,
+      "batch_created_at": "2026-11-03T08:42:24.948015"
+     },
+     {
+      "id": 34,
+      "scan_page_id": 103,
+      "attempt_id": null,
+      "question_id": null,
+      "kind": "quality",
+      "code": "blurry",
+      "reading": {
+       "en": "Too blurry, hold steady.",
+       "ar": "الصورة غير واضحة، ثبّت الهاتف."
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-03T08:43:10.120000",
+      "actions": [
+       "dismiss"
+      ],
+      "has_crop": false,
+      "en": "Page 3 is too blurry. Please upload a clearer image of it.",
+      "ar": "الصفحة 3 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها.",
+      "page_no": 3,
+      "file_name": "wa01.jpg",
+      "batch_id": 21,
+      "batch_created_at": "2026-11-03T08:42:24.948015"
+     },
+     {
+      "id": 35,
+      "scan_page_id": 102,
+      "attempt_id": null,
+      "question_id": 503,
+      "kind": "bubble",
+      "code": "uncertain",
+      "reading": {
+       "n": 3,
+       "type": "mcq_single",
+       "fills": {
+        "A": 0.48,
+        "B": 0.0,
+        "C": 0.53,
+        "D": 0.0
+       },
+       "selected": []
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-03T08:43:10.120000",
+      "actions": [
+       "choose",
+       "blank"
+      ],
+      "has_crop": false,
+      "en": "The mark is unclear",
+      "ar": "التظليل غير واضح",
+      "page_no": 2,
+      "file_name": "scaled_1000237481.jpg",
+      "batch_id": 21,
+      "batch_created_at": "2026-11-03T08:42:24.948015",
+      "student": {
+       "id": 24,
+       "name": "Sara Nabil"
+      }
+     }
+    ],
+    "total": 5,
+    "open_by_kind": {
+     "identifier": 3,
+     "quality": 1,
+     "bubble": 1
+    }
+   }
+  },
+  "review_item_v3_conflict": {
+   "status": 200,
+   "body": {
+    "id": 36,
+    "scan_page_id": 107,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "identifier_conflict",
+    "reading": {
+     "kind": "shaded",
+     "status": "clear",
+     "value": "2024000122",
+     "read_student_id": 22,
+     "read_student_name": "Omar Adel",
+     "read_masked_id": "0122",
+     "qr_student_id": 21,
+     "qr_student_name": "Mona Adel",
+     "qr_masked_id": "0121",
+     "candidates": [],
+     "en": "The QR code and the shaded ID name different students",
+     "ar": "رمز QR ورقم الطالب المظلّل يشيران إلى طالبين مختلفين"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-03T08:43:10.120000",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "The QR code and the shaded ID name different students",
+    "ar": "رمز QR ورقم الطالب المظلّل يشيران إلى طالبين مختلفين",
+    "page_no": 7,
+    "file_name": "wa27.jpg",
+    "batch_id": 21,
+    "batch_created_at": "2026-11-03T08:42:24.948015"
+   }
+  },
+  "sheets_info_block": {
+   "status": 200,
+   "body": {
+    "template_id": 1,
+    "template_version": 1,
+    "printable": true,
+    "questions": 6,
+    "sheet_questions": 50,
+    "forms": [
+     "A"
+    ],
+    "sheet_forms": [
+     "A",
+     "B",
+     "C",
+     "D"
+    ],
+    "form_markers": [
+     "qr"
+    ],
+    "id_kind": "shaded",
+    "identifier_fit": {
+     "status": "block",
+     "reason": "too_long"
+    },
+    "modes": [
+     "named"
+    ],
+    "mode_detail": {
+     "prefilled": {
+      "available": false,
+      "reason": "too_long"
+     },
+     "named": {
+      "available": true,
+      "reason": null
+     },
+     "blank": {
+      "available": false,
+      "reason": "identifier_zone_mismatch"
+     }
+    },
+    "orders": [
+     "name",
+     "identifier"
+    ],
+    "max_students": 200
+   }
+  },
+  "review_item_v3_blank": {
+   "status": 200,
+   "body": {
+    "id": 31,
+    "scan_page_id": 104,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "identifier_blank",
+    "reading": {
+     "kind": "shaded",
+     "status": "blank",
+     "value": null,
+     "candidates": [],
+     "en": "The student ID is empty",
+     "ar": "رقم الطالب فارغ"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-03T08:43:10.120000",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "The student ID is empty",
+    "ar": "رقم الطالب فارغ",
+    "page_no": 4,
+    "file_name": "wa24.jpg",
+    "batch_id": 21,
+    "batch_created_at": "2026-11-03T08:42:24.948015"
+   }
+  },
+  "review_item_v3_proposed": {
+   "status": 200,
+   "body": {
+    "id": 32,
+    "scan_page_id": 105,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "identifier_unclear",
+    "reading": {
+     "kind": "handwritten",
+     "status": "review",
+     "value": null,
+     "qr_student_id": 24,
+     "qr_student_name": "Sara Nabil",
+     "qr_masked_id": "0121",
+     "candidates": [],
+     "en": "The student ID could not be read with confidence",
+     "ar": "تعذّرت قراءة رقم الطالب بثقة"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-03T08:43:10.120000",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "The student ID could not be read with confidence",
+    "ar": "تعذّرت قراءة رقم الطالب بثقة",
+    "page_no": 5,
+    "file_name": "wa25.jpg",
+    "batch_id": 21,
+    "batch_created_at": "2026-11-03T08:42:24.948015"
+   }
+  },
+  "review_item_v3_duplicate": {
+   "status": 200,
+   "body": {
+    "id": 33,
+    "scan_page_id": 106,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "student_already_scanned",
+    "reading": {
+     "kind": "shaded",
+     "status": "clear",
+     "value": null,
+     "student_id": 24,
+     "student_name": "Sara Nabil",
+     "masked_id": "0121",
+     "other_page_no": 2,
+     "other_file_name": "scaled_1000237481.jpg",
+     "candidates": [],
+     "en": "This student already has a graded sheet",
+     "ar": "لهذا الطالب ورقة مصححة بالفعل"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-03T08:43:10.120000",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "This student already has a graded sheet",
+    "ar": "لهذا الطالب ورقة مصححة بالفعل",
+    "page_no": 6,
+    "file_name": "wa26.jpg",
+    "batch_id": 21,
+    "batch_created_at": "2026-11-03T08:42:24.948015"
+   }
+  },
+  "review_item_v3_quality": {
+   "status": 200,
+   "body": {
+    "id": 34,
+    "scan_page_id": 103,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "quality",
+    "code": "blurry",
+    "reading": {
+     "en": "Too blurry, hold steady.",
+     "ar": "الصورة غير واضحة، ثبّت الهاتف."
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-03T08:43:10.120000",
+    "actions": [
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "Page 3 is too blurry. Please upload a clearer image of it.",
+    "ar": "الصفحة 3 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها.",
+    "page_no": 3,
+    "file_name": "wa01.jpg",
+    "batch_id": 21,
+    "batch_created_at": "2026-11-03T08:42:24.948015",
+    "system_reading": {
+     "quality": {
+      "status": "rejected",
+      "issues": [
+       {
+        "code": "blurry",
+        "en": "Too blurry, hold steady.",
+        "ar": "الصورة غير واضحة، ثبّت الهاتف."
+       }
+      ],
+      "page_label": "3"
+     }
+    }
+   }
+  },
+  "review_items_old": {
+   "status": 200,
+   "body": {
+    "items": [
+     {
+      "id": 8,
+      "scan_page_id": 19,
+      "attempt_id": null,
+      "question_id": null,
+      "kind": "identifier",
+      "code": "identifier_unclear",
+      "reading": {
+       "kind": "shaded",
+       "status": "review",
+       "value": "??",
+       "candidates": [],
+       "en": "The student ID could not be read with confidence",
+       "ar": "تعذّرت قراءة رقم الطالب بثقة"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-02T05:36:17.574789",
+      "actions": [
+       "assign",
+       "accept",
+       "fix",
+       "replace",
+       "dismiss"
+      ],
+      "has_crop": false,
+      "en": "The student ID could not be read with confidence",
+      "ar": "تعذّرت قراءة رقم الطالب بثقة"
+     },
+     {
+      "id": 9,
+      "scan_page_id": 20,
+      "attempt_id": null,
+      "question_id": null,
+      "kind": "identifier",
+      "code": "student_already_scanned",
+      "reading": {
+       "kind": "shaded",
+       "status": "clear",
+       "value": "????",
+       "candidates": [],
+       "en": "This student already has a graded sheet",
+       "ar": "لهذا الطالب ورقة مصححة بالفعل"
+      },
+      "status": "open",
+      "resolution": {},
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-11-02T05:36:17.574789",
+      "actions": [
+       "assign",
+       "accept",
+       "fix",
+       "replace",
+       "dismiss"
+      ],
+      "has_crop": false,
+      "en": "This student already has a graded sheet",
+      "ar": "لهذا الطالب ورقة مصححة بالفعل"
+     }
+    ],
+    "total": 2,
+    "open_by_kind": {
+     "identifier": 2
+    }
+   }
+  },
+  "review_item_old_qq": {
+   "status": 200,
+   "body": {
+    "id": 8,
+    "scan_page_id": 19,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "identifier_unclear",
+    "reading": {
+     "kind": "shaded",
+     "status": "review",
+     "value": "??",
+     "candidates": [],
+     "en": "The student ID could not be read with confidence",
+     "ar": "تعذّرت قراءة رقم الطالب بثقة"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T05:36:17.574789",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "The student ID could not be read with confidence",
+    "ar": "تعذّرت قراءة رقم الطالب بثقة"
+   }
+  },
+  "review_item_old_dup": {
+   "status": 200,
+   "body": {
+    "id": 9,
+    "scan_page_id": 20,
+    "attempt_id": null,
+    "question_id": null,
+    "kind": "identifier",
+    "code": "student_already_scanned",
+    "reading": {
+     "kind": "shaded",
+     "status": "clear",
+     "value": "????",
+     "candidates": [],
+     "en": "This student already has a graded sheet",
+     "ar": "لهذا الطالب ورقة مصححة بالفعل"
+    },
+    "status": "open",
+    "resolution": {},
+    "resolved_by": null,
+    "resolved_at": null,
+    "created_at": "2026-11-02T05:36:17.574789",
+    "actions": [
+     "assign",
+     "accept",
+     "fix",
+     "replace",
+     "dismiss"
+    ],
+    "has_crop": false,
+    "en": "This student already has a graded sheet",
+    "ar": "لهذا الطالب ورقة مصححة بالفعل"
+   }
+  }
+ },
+ "_source_round3": "2026-11-03 (UI fix round): batch_v3 / review_items_v3 / review_item_v3_* follow the round-3 contract the backend is changing in parallel (review_count = questions only, student identified | unidentified | confirm, one-sentence message with ' — ', identifier reading student_name / masked_id / other_page_no / other_file_name, value null when nothing was read, items with page_no / file_name / batch_id / batch_created_at); batch_old_identity / review_items_old / review_item_old_* are the shapes the stack answered before it (identity counted in review_count, ' - … (…)' messages, value '??', no page fields). Re-record from the real routes once the backend lands."
+}

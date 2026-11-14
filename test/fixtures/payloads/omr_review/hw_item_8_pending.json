@@ -1,0 +1,104 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/review-items/8 -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "id": 8,
+  "scan_page_id": 4,
+  "attempt_id": 2,
+  "question_id": 4,
+  "kind": "short_answer",
+  "code": "short_answer",
+  "reading": {
+   "kind": "short_answer",
+   "status": "suggestion",
+   "final": false,
+   "needs_review": true,
+   "max": 5.0,
+   "suggested_score": null,
+   "reading": {
+    "text": "Plants make glucose and oxygen using light"
+   },
+   "crop": {
+    "page_id": 4,
+    "box": [
+     0.07,
+     0.23,
+     0.8600000000000001,
+     0.33499999999999996
+    ],
+    "has_crop": true
+   },
+   "reasons": [
+    "suggestion_pending"
+   ],
+   "text": "Plants make glucose and oxygen using light",
+   "corrected": true,
+   "lang": "en",
+   "points": 5.0,
+   "pending": true,
+   "en": "Short answer: confirm or set the score",
+   "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-02T08:42:25.186046",
+  "actions": [
+   "accept",
+   "set_score",
+   "fix_text"
+  ],
+  "has_crop": true,
+  "en": "Short answer: confirm or set the score",
+  "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها",
+  "crop_url": "/api/v1/exam/omr/images/crop/8?exp=1793609545&sig=668af1a7e99024bf626950626baa2e56",
+  "system_reading": {
+   "reading_id": 4,
+   "unit": "line",
+   "lang": "en",
+   "reading": {
+    "text": "Plants need water",
+    "confidence": 0.92,
+    "engine": "trocr-small-handwritten@fp32-2432e24",
+    "review": false,
+    "reasons": [],
+    "blank": false,
+    "lang": "en",
+    "unit": "line",
+    "threshold": 0.876,
+    "lines": 1,
+    "words": [],
+    "ms": 36.7
+   },
+   "blanks": null,
+   "box": [
+    0.07,
+    0.23,
+    0.8600000000000001,
+    0.33499999999999996
+   ]
+  },
+  "question": {
+   "question_id": 4,
+   "type": "short_answer",
+   "points": 5.0,
+   "lang": "en",
+   "step": 0.5,
+   "blanks": null,
+   "key": {
+    "model": "Plants make glucose and oxygen from light",
+    "keywords": [
+     "glucose",
+     "oxygen"
+    ]
+   }
+  },
+  "page": {
+   "id": 4,
+   "page_label": null,
+   "status": "review",
+   "url": "/api/v1/exam/exams/1/omr/pages/4"
+  }
+ }
+}

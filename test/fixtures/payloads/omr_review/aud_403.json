@@ -1,0 +1,10 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/students -> 403, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_students.py (back worktree wt-back-omr)",
+ "_status": 403,
+ "payload": {
+  "detail": {
+   "code": "forbidden",
+   "message": "ليس لديك صلاحية إدارة هذا الاختبار"
+  }
+ }
+}

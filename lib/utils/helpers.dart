@@ -1,14 +1,17 @@
 /// Helper utility functions.
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' show DateFormat;
+import 'package:flutter_education_app/core/app_time.dart';
 import '../config/app_config.dart';
 import '../config/theme/theme_config_provider.dart';
-import '../features/student/models.dart';
-import '../features/teacher/sessions/components/session_form_sheet.dart';
-import '../features/teacher/sessions/sessions_provider.dart';
-import '../main.dart';
+import 'package:flutter_education_app/features/home/student/models.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/session_form_sheet.dart';
+import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Saudi Arabia Timezone  (AST = UTC+3, no DST)
@@ -38,9 +41,6 @@ extension SaudiDateTimeString on String {
 
 /// Extension on [DateTime] for Saudi Arabia / Egypt time conversions.
 extension SaudiDateTime on DateTime {
-  static final _astTimeZone =
-      DateTime.now().timeZoneOffset; // unused – kept for docs
-
   /// Convert any [DateTime] (UTC or local) to AST (UTC+3).
   DateTime toAst() {
     final utc = isUtc ? this : toUtc();
@@ -50,7 +50,7 @@ extension SaudiDateTime on DateTime {
   /// Format this datetime in AST and return a display string.
   /// Falls back to the raw value if [pattern] is invalid.
   String toAstString([String pattern = 'MMM dd, yyyy hh:mm a']) {
-    return DateFormat(pattern).format(toAst());
+    return AppTime.wall(toAst(), pattern: pattern);
   }
 
   /// true if this datetime is in AST (offset == +03:00).
@@ -60,17 +60,17 @@ extension SaudiDateTime on DateTime {
 class Helpers {
   /// Format date to readable string (AST)
   static String formatDate(DateTime date) {
-    return DateFormat('MMM dd, yyyy').format(date.toAst());
+    return AppTime.date(date.toUtc(), pattern: 'MMM dd, yyyy');
   }
 
   /// Format datetime to readable string (AST)
   static String formatDateTime(DateTime date) {
-    return DateFormat('MMM dd, yyyy hh:mm a').format(date.toAst());
+    return AppTime.dateTime(date.toUtc());
   }
 
   /// Format time (AST)
   static String formatTime(DateTime date) {
-    return DateFormat('hh:mm a').format(date.toAst());
+    return AppTime.time(date.toUtc());
   }
 
   /// Format currency
@@ -110,41 +110,8 @@ class Helpers {
 
   /// Show snackbar message
   static void showMessage(String message, {bool isError = false}) {
-    if (navigatorKey.currentContext == null) {
-      return;
-    }
-    BuildContext context = navigatorKey.currentContext!;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Directionality(
-          textDirection: pageDirection,
-          child: Wrap(
-            children: [
-              Icon(
-                !isError ? Icons.check_circle_rounded : Icons.error_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                message,
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-        backgroundColor: !isError
-            ? context.colors.success
-            : context.colors.danger,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-    );
+    // above every route (open sheets / dialogs no longer hide it); nothing to draw on before the app has a Navigator
+    showAppNotice(message, error: isError);
   }
 
   static TextDirection get pageDirection =>
@@ -180,19 +147,20 @@ class Helpers {
     builder: (_) => Directionality(
       textDirection: Helpers.pageDirection,
       child: AlertDialog(
+        scrollable: true,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(context.colors.radiusMedium),
         ),
         title: Text(
           confirm ?? 'logout'.tr,
-          style: const TextStyle(
-            fontFamily: 'tajawal',
+          style: TextStyle(
+            fontFamily: AppFonts.family,
             fontWeight: FontWeight.w700,
           ),
         ),
         content: Text(
           title ?? 'هل أنت متأكد أنك تريد تسجيل الخروج؟',
-          style: TextStyle(fontFamily: 'bahji'),
+          style: TextStyle(fontFamily: AppFonts.display),
         ),
         actions: [
           TextButton(
@@ -206,14 +174,14 @@ class Helpers {
             child: Text(
               cancel ?? 'cancel'.tr,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 color: context.colors.textMedium,
               ),
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: context.colors.danger,
+              backgroundColor: context.colors.dangerBase,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -227,8 +195,8 @@ class Helpers {
             },
             child: Text(
               confirm ?? 'exit'.tr,
-              style: const TextStyle(
-                fontFamily: 'tajawal',
+              style: TextStyle(
+                fontFamily: AppFonts.family,
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
               ),
@@ -239,19 +207,14 @@ class Helpers {
     ),
   );
 
+  /// The width of a centred page card in this window — the page-width roles of D-304 ([AppWidth]); BasePage
+  /// measures the room it really has instead. (Was a fixed 650 between 900 and 1100 px, whatever the page asked.)
   static double calculateRemainingWidth(
     BuildContext context, {
     double? maxWith,
   }) {
-    return context.width >= 1100
-        ? (maxWith ?? 900)
-        : context.width >= 900
-        ? 650
-        : context.width >= 900
-        ? 500
-        : context.width >= 600
-        ? context.width - 70
-        : context.width;
+    if (context.width < AppWidth.phoneMax) return context.width;
+    return AppWidth.content.inside(context.width, max: maxWith);
   }
 
   static void showAddSessionSheet(
@@ -260,7 +223,7 @@ class Helpers {
     TeacherSessionItem? existing,
     bool? openLive,
   }) {
-    showModalBottomSheet(
+    showAppModalSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

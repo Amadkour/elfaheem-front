@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AppNetworkImage
@@ -54,13 +55,23 @@ class AppNetworkImage extends StatelessWidget {
               height: height,
               child: ImageFallback(dark: isDark),
             ),
+            // While it loads: the warm input tone where the picture will be (no spinner per picture), then the
+            // picture fades in over it.
             loadingBuilder: (_, child, progress) {
               if (progress == null) return child;
               return Container(
                 width: width,
                 height: height,
-                color: color ?? context.colors.cardBg,
-                child: Center(child: AppLoadingIndicator()),
+                color: color ?? context.colors.inputBg,
+              );
+            },
+            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+              if (wasSynchronouslyLoaded) return child;
+              return AnimatedOpacity(
+                opacity: frame == null ? 0 : 1,
+                duration: AppMotion.of(context).slow,
+                curve: Curves.easeOut,
+                child: child,
               );
             },
           );
@@ -264,7 +275,7 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
     return AnimatedBuilder(
       animation: _bgAnimController,
       builder: (_, child) => Scaffold(
-        backgroundColor: Colors.black.withValues(alpha: opacity),
+        backgroundColor: context.colors.heroShade.withValues(alpha: opacity),
         body: Stack(
           children: [
             // ── Background tap to dismiss ────────────────────────
@@ -304,10 +315,10 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
                         child: Image.network(
                           widget.url,
                           fit: BoxFit.contain,
-                          errorBuilder: (_, _, _) => const Icon(
+                          errorBuilder: (_, _, _) => Icon(
                             Icons.broken_image_outlined,
-                            color: Colors.white30,
-                            size: 64,
+                            color: context.colors.onHeroMuted,
+                            size: AppIconSize.hero,
                           ),
                           loadingBuilder: (_, child, progress) {
                             if (progress == null) return child;
@@ -320,17 +331,16 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   SizedBox(
-                                    width: 40,
-                                    height: 40,
+                                    width: AppIconSize.hero,
+                                    height: AppIconSize.hero,
                                     child: AppLoadingIndicator(),
                                   ),
                                   if (value != null) ...[
-                                    const SizedBox(height: 12),
+                                    AppSpace.gapSm,
                                     Text(
                                       '${(value * 100).toInt()}%',
-                                      style: const TextStyle(
-                                        color: Colors.white38,
-                                        fontSize: 12,
+                                      style: AppType.meta(context).copyWith(
+                                        color: context.colors.onHeroMuted, fontFeatures: const [FontFeature.tabularFigures()],
                                       ),
                                     ),
                                   ],
@@ -348,9 +358,9 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
 
             // ── Top bar: close + zoom indicator ──────────────────
             Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              left: 12,
-              right: 12,
+              top: MediaQuery.of(context).padding.top + AppSpace.xs,
+              left: AppSpace.sm,
+              right: AppSpace.sm,
               child: AnimatedOpacity(
                 opacity: _isDragging ? 0.0 : 1.0,
                 duration: const Duration(milliseconds: 150),
@@ -360,10 +370,10 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
                     // Close button
                     _GlassButton(
                       onTap: _dismiss,
-                      child: const Icon(
+                      child: Icon(
                         Icons.close_rounded,
-                        color: Colors.white,
-                        size: 20,
+                        color: context.colors.onHero,
+                        size: AppIconSize.md,
                       ),
                     ),
                     // Zoom level pill
@@ -376,19 +386,17 @@ class _FullscreenImageViewerState extends State<_FullscreenImageViewer>
             // ── Bottom hint (swipe to dismiss) ───────────────────
             if (isAtBaseScale)
               Positioned(
-                bottom: MediaQuery.of(context).padding.bottom + 20,
+                bottom: MediaQuery.of(context).padding.bottom + AppSpace.lg,
                 left: 0,
                 right: 0,
                 child: AnimatedOpacity(
                   opacity: _isDragging ? 0 : 0.45,
                   duration: const Duration(milliseconds: 200),
-                  child: const Center(
+                  child: Center(
                     child: Text(
                       'Swipe down to close  ·  Double-tap to zoom',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        letterSpacing: 0.3,
+                      style: AppType.meta(context).copyWith(
+                        color: context.colors.onHero,
                       ),
                     ),
                   ),
@@ -415,12 +423,12 @@ class _GlassButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 40,
-        height: 40,
+        width: AppTouch.min,
+        height: AppTouch.min,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.black.withValues(alpha: 0.45),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          color: context.colors.heroShade.withValues(alpha: 0.45),
+          border: Border.all(color: context.colors.onHero.withValues(alpha: 0.15), width: AppBorder.hairline),
         ),
         child: Center(child: child),
       ),
@@ -436,52 +444,39 @@ class _ZoomPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        color: context.colors.heroShade.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: context.colors.onHero.withValues(alpha: 0.15), width: AppBorder.hairline),
       ),
       child: Text(
         '${scale.toStringAsFixed(1)}×',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
+        style: AppType.meta(context).copyWith(
+          color: context.colors.onHero,
           fontWeight: FontWeight.w600,
-          fontFeatures: [FontFeature.tabularFigures()],
+          fontFeatures: const [FontFeature.tabularFigures()],
         ),
       ),
     );
   }
 }
 
+/// What a picture that failed to load shows: a calm tinted surface with a quiet school mark (peach on light pages,
+/// the deep brand tone on dark ones), never a gradient wash.
 class ImageFallback extends StatelessWidget {
   final bool dark;
 
   const ImageFallback({super.key, this.dark = false});
 
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      gradient: dark
-          ? LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: darkImageBackground(context),
-            )
-          : context.colors.accentGradient,
-    ),
-    child: const Center(
-      child: Icon(Icons.school_rounded, size: 22, color: Colors.white70),
-    ),
-  );
-}
-
-List<Color> darkImageBackground(BuildContext context) {
-  final primary = context.colors.primary;
-  return [
-    Color.lerp(primary, Colors.black, 0.80)!,
-    Color.lerp(primary, Color(0xFFFFD700), 0.28)!,
-    Color.lerp(primary, Colors.black, 0.32)!,
-  ];
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return ColoredBox(
+      color: dark ? c.primaryDark : c.blockPeach,
+      child: Center(
+        child: Icon(Icons.school_rounded, size: AppIconSize.lg, color: dark ? c.onHeroMuted : c.blockMuted(c.blockPeach)),
+      ),
+    );
+  }
 }

@@ -1,0 +1,82 @@
+{
+ "items": [
+  {
+   "key": "exam:1:exam_appeals",
+   "kind": "exam_appeals",
+   "priority": "high",
+   "score": 75,
+   "title_ar": "افصل في تظلّم على «Midterm»",
+   "title_en": "Decide 1 appeal on “Midterm”",
+   "why_ar": "طلاب طلبوا إعادة التصحيح — أقدمها منذ يوم",
+   "why_en": "Students asked for a regrade — oldest 1 day ago",
+   "count": 1,
+   "course_id": 100,
+   "course_name": null,
+   "org_id": 1,
+   "exam_id": 1,
+   "exam_title": "Midterm",
+   "at": "2026-11-07T00:19:08.889331",
+   "when": null,
+   "fp": "3f22d6d875f4",
+   "students": [],
+   "action": {
+    "type": "exam_appeals",
+    "exam_id": 1,
+    "exam_title": "Midterm",
+    "org_id": 1
+   }
+  },
+  {
+   "key": "exam:1:exam_grading",
+   "kind": "exam_grading",
+   "priority": "high",
+   "score": 73,
+   "title_ar": "راجع إجابتين في «Midterm»",
+   "title_en": "Review 2 answers in “Midterm”",
+   "why_ar": "تنتظر قرارك قبل إعلان النتائج — أقدمها منذ 3 أيام",
+   "why_en": "They wait for your decision before results go out — oldest 3 days ago",
+   "count": 2,
+   "course_id": 100,
+   "course_name": null,
+   "org_id": 1,
+   "exam_id": 1,
+   "exam_title": "Midterm",
+   "at": "2026-11-05T00:19:08.889331",
+   "when": null,
+   "fp": "48e0d1fa9385",
+   "students": [],
+   "action": {
+    "type": "exam_review",
+    "exam_id": 1,
+    "exam_title": "Midterm",
+    "org_id": 1
+   }
+  },
+  {
+   "key": "exam:1:exam_scan_review",
+   "kind": "exam_scan_review",
+   "priority": "medium",
+   "score": 55,
+   "title_ar": "أكمل قراءة أوراق «Midterm»",
+   "title_en": "Finish reading the sheets of “Midterm”",
+   "why_ar": "حالة واحدة لم يتأكد منها القارئ الآلي — قرارك يحسمها",
+   "why_en": "1 case the scanner wasn't sure about — your call settles it",
+   "count": 1,
+   "course_id": 100,
+   "course_name": null,
+   "org_id": 1,
+   "exam_id": 1,
+   "exam_title": "Midterm",
+   "at": "2026-11-08T00:19:09.365919",
+   "when": null,
+   "fp": "3f22d6d875f4",
+   "students": [],
+   "action": {
+    "type": "omr_review",
+    "exam_id": 1,
+    "exam_title": "Midterm",
+    "org_id": 1
+   }
+  }
+ ]
+}

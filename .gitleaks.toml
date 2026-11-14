@@ -1,0 +1,80 @@
+# gitleaks configuration (CI job "secrets" in .github/workflows/ci.yml): the default rules, plus allowlists for
+# PROVEN false positives only. Each entry names the rule, the file and the exact value shape it lets through.
+# A real secret is never allowlisted: remove it from the tree and rotate it.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+# Firebase client configuration. These "AIza…" keys identify the Firebase project to Google and ship inside every
+# app and web build; they are not secrets (https://firebase.google.com/docs/projects/api-keys). Access is guarded by
+# Firebase security rules and the keys' API / app restrictions in the Google Cloud console. Only these files and
+# only an AIza-shaped value (gcp-api-key, and generic-api-key which reports the same `apiKey:` value once the first is
+# allowlisted): an AIza key anywhere else, or any other value in these files, still fails the scan.
+description = "Firebase client API keys in the generated Firebase config files"
+targetRules = ["gcp-api-key", "generic-api-key"]
+condition = "AND"          # path AND value must both match (the default, OR, would allowlist the whole file)
+regexes = ['''^AIza[0-9A-Za-z_-]{35}$''']
+paths = [
+  '''(^|/)lib/firebase_options\.dart$''',
+  '''(^|/)android/app/google-services\.json$''',
+  '''(^|/)web/firebase-messaging-sw\.js$''',
+  # the Apple apps' GoogleService-Info.plist (iOS and macOS share one Firebase app, com.doubley.nextbrain, D-145):
+  # the same public client key as firebase_options.dart's ios block, downloaded by `firebase apps:sdkconfig IOS`
+  '''(^|/)ios/Runner/GoogleService-Info\.plist$''',
+  '''(^|/)macos/Runner/GoogleService-Info\.plist$''',
+]
+
+[[allowlists]]
+# test/ui/guest_live_layout_test.dart: a made-up guest-link token for the layout harness (no server issued it).
+description = "guest live layout test: fixture guest-link token"
+targetRules = ["generic-api-key"]
+condition = "AND"          # path AND value must both match (the default, OR, would allowlist the whole file)
+paths = ['''(^|/)test/ui/guest_live_layout_test\.dart$''']
+regexes = ['''^3f9a1c2e7b8d4f6a9c0e1b2d3f4a5c6e7d8f9a0b1c2d3e4f$''']
+
+[[allowlists]]
+# lib/features/live/live_presenter_cam.dart: `storageKey` is the NAME of a local preference
+# ('live.presenter_cam.v1'), not a key.
+description = "presenter camera: a preference key name"
+targetRules = ["generic-api-key"]
+condition = "AND"          # path AND value must both match (the default, OR, would allowlist the whole file)
+paths = ['''(^|/)lib/features/live/live_presenter_cam\.dart$''']
+regexes = ['''^live\.presenter_cam\.v1$''']
+
+[[allowlists]]
+# Made-up values in tests (no server issued them): link / builder tokens of layout harnesses, an OMR issue code
+# (hard_item_5_key_missing) and a RAG alert key (rag.p95_latency). Exact values only.
+description = "tests: made-up tokens and key names"
+targetRules = ["generic-api-key"]
+condition = "AND"          # path AND value must both match (the default, OR, would allowlist the whole file)
+paths = [
+  '''(^|/)test/export/export_link_pending_test\.dart$''',
+  '''(^|/)test/org/omr_review_written_test\.dart$''',
+  '''(^|/)test/org/rag_alerts_test\.dart$''',
+  '''(^|/)test/ui/app_releases_layout_test\.dart$''',
+  '''(^|/)test/ui/export_pages_layout_test\.dart$''',
+]
+regexes = [
+  '''^abcDEF123_-xyz$''',
+  '''^hard_item_5_key_missing$''',
+  '''^rag\.p95_latency$''',
+  '''^nbb_6f1d0c5e2a9b47d8a3c1e0f9b8a7d6c5e4f3a2b1c0d9e8f7$''',
+  '''^aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3zA5bC7dE9f$''',
+  '''^aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3zA5bC7dE9fG1hJ3kL5mN7$''',
+]
+
+[[allowlists]]
+# test/fixtures/points/*.json: real responses captured by ../back/scripts/dev/capture_points_fixtures.py from a
+# FRESH throw-away SQLite database and the LiveKit dev server: the join tokens are JWTs signed with LiveKit's public
+# dev key (iss "devkey", ws://localhost:7880, expired 2026-10-28), the checkout / meeting-link tokens are that
+# database's random rows. JWT-shaped values in this folder only, and the two random tokens by exact value.
+description = "points wire fixtures: dev-server tokens of a throw-away database"
+targetRules = ["jwt", "generic-api-key"]
+condition = "AND"          # path AND value must both match (the default, OR, would allowlist the whole file)
+paths = ['''(^|/)test/fixtures/points/[a-z_]+\.json$''']
+regexes = [
+  '''^eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$''',
+  '''^edfb84fb3198420abef6c5ad57770875$''',
+  '''^oZMSHOVXL-vOxCeW_5Bvy8RHAyEukASE$''',
+]

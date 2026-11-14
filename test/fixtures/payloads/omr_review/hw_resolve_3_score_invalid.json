@@ -1,0 +1,17 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/review-items/3/resolve -> 422, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr)",
+ "_status": 422,
+ "_request": {
+  "action": "set_score",
+  "score": 4.3
+ },
+ "payload": {
+  "detail": {
+   "code": "score_invalid",
+   "message": "الدرجة من 0 إلى 5 بخطوة 0.5",
+   "max": 5.0,
+   "step": 0.5,
+   "message_en": "The score is 0 to 5 in steps of 0.5."
+  }
+ }
+}

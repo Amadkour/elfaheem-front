@@ -8,18 +8,71 @@
 //   • Helpers.showMessage / pageDirection (utils/helpers.dart)
 library;
 
+import 'package:flutter_education_app/design/app_side_sheet.dart';
+import 'package:flutter_education_app/design/app_sheet_header.dart';
+export 'package:flutter_education_app/design/app_badges.dart' show AppTone;
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 
+import 'admin_premium_widgets.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_search_field.dart';
+import 'package:flutter_education_app/design/app_badges.dart' show appColorGlyph;
+import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/design/app_states.dart';
+
+
+/// How long every admin search box waits after the LAST keystroke before it
+/// sends a request. Change it here to change all of them.
+const Duration kSearchDelay = Duration(milliseconds: 400);
+
+/// Runs [run] only after [delay] of silence: every new call cancels the pending
+/// one, so typing "ahmed" sends ONE request (400 ms after the last letter), not five.
+/// [flush] runs it now (Enter key / clear button); always [dispose] it.
+class Debouncer {
+  Debouncer([this.delay = kSearchDelay]);
+
+  final Duration delay;
+  Timer? _t;
+
+  bool get isPending => _t?.isActive ?? false;
+
+  void run(VoidCallback action) {
+    _t?.cancel();
+    _t = Timer(delay, action);
+  }
+
+  void flush(VoidCallback action) {
+    _t?.cancel();
+    action();
+  }
+
+  void cancel() => _t?.cancel();
+
+  void dispose() => _t?.cancel();
+}
 
 /// Arabic / English inline text (the admin screens ship with both).
 String t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
+
+/// The "from -> to" arrow in the reading direction (D-770): the arrow character is
+/// not mirrored, so in Arabic a plain one points from the end back to the start.
+/// Put it between two values in a sentence or a chip: `'$a $dirArrow $b'`.
+String get dirArrow => AppConfig.lang == 'ar' ? '←' : '→';
 
 /// Translates [key] with `.tr`, then fills `{name}` placeholders from [params].
 String trp(String key, Map<String, Object?> params) {
@@ -34,7 +87,7 @@ TextDirection get dir => Helpers.pageDirection;
 /// While viewing as an admin the server treats the session as that admin, so
 /// the super-only UI (Admins, view-as buttons) must disappear too.
 bool isSuperNow(BuildContext context) =>
-    context.read<AuthProvider>().isSuper &&
+    context.read<MyAuthProvider>().isSuper &&
         !(ViewAsState.active && ViewAsState.instance.role == 'admin');
 
 // ── toast ────────────────────────────────────────────────────────────────────
@@ -48,20 +101,9 @@ final GlobalKey<ScaffoldMessengerState> rootMessengerKey =
 GlobalKey<ScaffoldMessengerState>();
 
 void toast(String message, {bool error = false}) {
-  // 1) preferred: the app-level messenger (no BuildContext involved)
-  final messenger = rootMessengerKey.currentState;
-  if (messenger != null) {
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message, style: const TextStyle(fontFamily: 'tajawal')),
-          backgroundColor: error ? Colors.red.shade700 : null,
-        ),
-      );
-    return;
-  }
-  // 2) fallback: the old helper, but never let a stale context crash the caller
+  // 0) above EVERY route (sheets / dialogs included) — a SnackBar sat behind open overlays
+  if (showAppNotice(message, error: error)) return;
+  // 1) fallback: the old helper, but never let a stale context crash the caller
   try {
     Helpers.showMessage(message, isError: error);
   } catch (e) {
@@ -69,27 +111,38 @@ void toast(String message, {bool error = false}) {
   }
 }
 
+/// THE money formatter: Latin digits with thousands separators ("12,480", "1,234.50"), two decimals only when the
+/// amount has a fraction, then the currency code when given.
 String money(num v, [String? currency]) {
-  final s = v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+  final fixed = v.abs().toStringAsFixed(v == v.roundToDouble() ? 0 : 2);
+  final dot = fixed.indexOf('.');
+  final intPart = dot < 0 ? fixed : fixed.substring(0, dot);
+  final frac = dot < 0 ? '' : fixed.substring(dot);
+  final grouped = intPart.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
+  final neg = v < 0 && fixed.replaceAll(RegExp(r'[0.]'), '').isNotEmpty ? '-' : '';
+  final s = '$neg$grouped$frac';
   return currency == null || currency.isEmpty ? s : '$s $currency';
 }
 
+/// "2026-10-28". A UTC instant ("…Z" / an offset) is shown on the platform / organization's calendar (AppTime);
+/// a naive string (a picked local date, a calendar day) is shown as it is, never shifted.
 String shortDate(String? iso) {
   if (iso == null || iso.isEmpty) return '—';
   final d = DateTime.tryParse(iso);
   if (d == null) return '—';
-  final l = d.isUtc ? d.toLocal() : d;
+  final l = d.isUtc ? AppTime.toZone(d) : d;
   String two(int n) => n.toString().padLeft(2, '0');
   return '${l.year}-${two(l.month)}-${two(l.day)}';
 }
 
+/// "2026-10-28 2:05 PM" — the AppTime zone and its 12h / 24h choice.
 String shortDateTime(String? iso) {
   if (iso == null || iso.isEmpty) return '—';
   final d = DateTime.tryParse(iso);
   if (d == null) return '—';
-  final l = d.isUtc ? d.toLocal() : d;
+  final l = d.isUtc ? AppTime.toZone(d) : d;
   String two(int n) => n.toString().padLeft(2, '0');
-  return '${l.year}-${two(l.month)}-${two(l.day)} ${two(l.hour)}:${two(l.minute)}';
+  return '${l.year}-${two(l.month)}-${two(l.day)} ${AppTime.clockMinutes(l.hour * 60 + l.minute)}';
 }
 
 // ── tolerant JSON readers ────────────────────────────────────────────────────
@@ -108,6 +161,9 @@ List<Map<String, dynamic>> asMapList(dynamic v) => v is List
 
 // ── dialogs ──────────────────────────────────────────────────────────────────
 
+/// The confirm dialog's mark (54 px: a 48 px target plus its own breathing room, test/org/omr_r2_ui_test.dart).
+const double _confirmMark = AppTouch.min + AppSpace.xxs + 2;
+
 Future<bool> confirm(
     BuildContext context, {
       required String message,
@@ -120,22 +176,41 @@ Future<bool> confirm(
     builder: (ctx) => Directionality(
       textDirection: dir,
       child: AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: Text(message, style: const TextStyle(fontFamily: 'tajawal')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('exam_cancel'.tr,
-                style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
+        // long messages / big text scale / 320 px: scroll inside the dialog instead of overflowing
+        scrollable: true,
+        insetPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.lg),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sheet)),
+        // centred: a scrollable dialog stretches its icon slot, which drew the badge as a full-width bar; the theme's
+        // primary (AdminPalette.blue is the success gradient, off-theme in most palettes)
+        icon: Center(
+          child: ServiceIcon(
+            icon: danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
+            colors: danger ? AdminPalette.rose : [c.primaryLight, c.primary],
+            size: _confirmMark,
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
+        ),
+        content: Text(message, textAlign: TextAlign.center, style: AppType.body(ctx).copyWith(height: 1.5)),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
+        actions: [
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(AppSpace.xxxl * 2, AppTouch.min),
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
+              side: BorderSide(color: c.divider),
+            ),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('exam_cancel'.tr, style: AppType.label(ctx).copyWith(color: c.textMedium)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(AppSpace.xxxl * 2, AppTouch.min),
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
               backgroundColor: danger ? c.danger : c.primary,
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(confirmLabel ?? 'confirm'.tr,
-                style: const TextStyle(
-                    fontFamily: 'tajawal', color: Colors.white)),
+                style: AppType.label(ctx).copyWith(color: c.onHero, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -192,12 +267,18 @@ class _AskTextDialogState extends State<_AskTextDialog> {
     return Directionality(
       textDirection: dir,
       child: AlertDialog(
-        title: Text(widget.title, style: const TextStyle(fontFamily: 'tajawal')),
+        scrollable: true,
+        insetPadding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.lg),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sheet)),
+        title: Text(widget.title, style: AppType.headline(context)),
         content: TextField(
           controller: _ctrl,
           autofocus: true,
           maxLines: widget.multiline ? 4 : 1,
-          decoration: InputDecoration(hintText: widget.hint),
+          // Enter answers (a multi-line box: Ctrl+Enter on web / desktop, design/app_keyboard.dart)
+          onSubmitted: (_) => Navigator.pop(context, _ctrl.text.trim()),
+          style: appFieldTextStyle(context),
+          decoration: appFieldDecoration(context, hint: widget.hint),
         ),
         actions: [
           TextButton(
@@ -212,60 +293,26 @@ class _AskTextDialogState extends State<_AskTextDialog> {
   }
 }
 
-/// Full-height modal sheet that survives the keyboard.
-Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder) {
-  return showModalBottomSheet<T>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    builder: (ctx) => Directionality(
-      textDirection: dir,
-      child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: Container(
-          constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(ctx).size.height * 0.92),
-          decoration: BoxDecoration(
-            color: ctx.colors.cardBg,
-            borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: builder(ctx),
-        ),
-      ),
-    ),
-  );
-}
+/// The app's sheet (D-710): a content-sized dialog on wide windows, a bottom sheet on phones, the full-height side
+/// panel with [AppSheetMode.side] (editors and detail panels only). Survives the keyboard.
+Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder, {AppSheetMode mode = AppSheetMode.auto, double? width}) =>
+    showAppSideSheet<T>(context,
+        mode: mode, width: width, builder: (ctx) => Directionality(textDirection: dir, child: Builder(builder: builder)));
 
 // ── small widgets ────────────────────────────────────────────────────────────
 
+/// The admin pages' sheet header: the kit's [AppSheetHeader] (a tinted band in [tone], an optional [icon]).
 class SheetHeader extends StatelessWidget {
-  const SheetHeader(this.title, {super.key, this.trailing});
+  const SheetHeader(this.title, {super.key, this.trailing, this.tone = AppTone.brand, this.icon, this.subtitle});
   final String title;
   final Widget? trailing;
+  final AppTone tone;
+  final IconData? icon;
+  final String? subtitle;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
-      child: Row(children: [
-        Expanded(
-          child: Text(title,
-              style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                  color: c.textDark)),
-        ),
-        ?trailing,
-        IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: Icon(Icons.close_rounded, color: c.textMedium)),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => AppSheetHeader(title,
+      trailing: trailing, tone: tone, icon: icon, subtitle: subtitle, closeTooltip: t('إغلاق', 'Close'));
 }
 
 class StatusChip extends StatelessWidget {
@@ -273,58 +320,81 @@ class StatusChip extends StatelessWidget {
   final String label;
   final Color color;
 
+  /// A full pill on an opaque tint of [color]; the label keeps AA on it and ellipsizes instead of clipping.
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Text(label,
-        style: TextStyle(
-            fontFamily: 'tajawal',
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            color: color)),
-  );
+  Widget build(BuildContext context) {
+    final tint = Color.alphaBlend(color.withValues(alpha: 0.14), context.colors.cardBg);
+    final ink = context.colors.blockAccentInk(color, tint);
+    // an error / failed or achievement state never rests on colour alone (D-862)
+    final glyph = appColorGlyph(context, color);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs / 2),
+      decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(AppRadius.pill)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (glyph != null) ...[Icon(glyph, size: AppIconSize.xs, color: ink), const SizedBox(width: AppSpace.xxs)],
+        Flexible(
+          child: Text(label,
+              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.overline(context).copyWith(color: ink)),
+        ),
+      ]),
+    );
+  }
 }
 
 class Section extends StatelessWidget {
-  const Section({super.key, required this.title, required this.child, this.trailing});
+  const Section({
+    super.key,
+    required this.title,
+    required this.child,
+    this.trailing,
+    this.icon,
+    this.colors,
+  });
   final String title;
   final Widget child;
   final Widget? trailing;
 
+  /// Optional icon shown before the title, in a faint well of [colors]' base tone.
+  final IconData? icon;
+  final List<Color>? colors;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    // Material (not a decorated Container) so ListTile / SwitchListTile children
-    // can paint their background + ink splash on it. A Container's own colour sits
-    // between them and the Material ancestor and hides the effects (Flutter asserts).
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+    // Paper on a warm hairline, no resting shadow (D-612). Material (not a decorated Container) so ListTile /
+    // SwitchListTile children paint their background + ink splash on it.
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.md),
       child: Material(
         color: c.cardBg,
         clipBehavior: Clip.antiAlias, // keeps splashes inside the rounded corners
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: c.divider),
+          borderRadius: AppRadius.cardAll,
+          side: BorderSide(color: c.divider, width: AppBorder.hairline),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: AppSpace.card,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Expanded(
-                child: Text(title,
-                    style: TextStyle(
-                        fontFamily: 'tajawal',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                        color: c.textDark)),
-              ),
-              ?trailing,
-            ]),
-            const SizedBox(height: 10),
+            // the trailing widget keeps its own width up to half the row (a long status ellipsizes, never overflows)
+            LayoutBuilder(
+              builder: (context, box) => Row(children: [
+                if (icon != null) ...[
+                  ServiceIcon(icon: icon!, colors: colors ?? AdminPalette.blue, size: AppIconSize.hero),
+                  const SizedBox(width: AppSpace.sm),
+                ],
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+                  ),
+                ),
+                if (trailing != null) ...[
+                  const SizedBox(width: AppSpace.xs),
+                  ConstrainedBox(constraints: BoxConstraints(maxWidth: box.maxWidth / 2), child: trailing!),
+                ],
+              ]),
+            ),
+            const SizedBox(height: AppSpace.sm),
             child,
           ]),
         ),
@@ -338,26 +408,20 @@ class KeyValue extends StatelessWidget {
   final String k;
   final String v;
 
+  /// The key column: room for "Created at" at 12 px beside a value.
+  static const double _keyWidth = AppSpace.xxxl + AppSpace.xxl - AppSpace.xxs / 2;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         SizedBox(
-          width: 110,
-          child: Text(k,
-              style: TextStyle(
-                  fontFamily: 'tajawal', fontSize: 12.5, color: c.textLight)),
+          width: _keyWidth,
+          child: Text(k, style: AppType.meta(context).copyWith(color: c.textLight)),
         ),
-        Expanded(
-          child: Text(v.isEmpty ? '—' : v,
-              style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: c.textDark)),
-        ),
+        Expanded(child: Text(v.isEmpty ? '—' : v, style: AppType.row(context).copyWith(color: c.textDark))),
       ]),
     );
   }
@@ -368,22 +432,23 @@ class EmptyState extends StatelessWidget {
   final String message;
   final IconData icon;
 
+  /// The kit's drawn plate with the message as its one line (scrolls when the slot is short).
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 52, color: c.textLight),
-          const SizedBox(height: 10),
-          Text(message,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
-        ]),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpace.lg),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            AppStatePlate(icon: icon, tone: AppBlockTone.sky, size: AppSpace.xxxl + AppSpace.xl),
+            const SizedBox(height: AppSpace.md),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+              child: Text(message,
+                  textAlign: TextAlign.center,
+                  style: AppType.body(context).copyWith(height: 1.5, color: context.colors.textMedium)),
+            ),
+          ]),
+        ),
+      );
 }
 
 class ErrorRetry extends StatelessWidget {
@@ -394,21 +459,21 @@ class ErrorRetry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // scrolls when the space is short (a fixed-height slot, a phone in landscape, a large text scale)
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpace.lg),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.error_outline_rounded, size: 48, color: c.danger),
-          const SizedBox(height: 10),
-          Text(message,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded),
-            label: Text('retry'.tr),
+          AppStatePlate(
+              icon: Icons.cloud_off_rounded, tone: AppBlockTone.peach, accent: c.danger, size: AppSpace.xxxl + AppSpace.xl),
+          const SizedBox(height: AppSpace.md),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+            child: Text(message,
+                textAlign: TextAlign.center, style: AppType.body(context).copyWith(height: 1.5, color: c.textMedium)),
           ),
+          const SizedBox(height: AppSpace.md),
+          AppButton.primary(label: 'retry'.tr, icon: Icons.refresh_rounded, onPressed: onRetry),
         ]),
       ),
     );
@@ -444,7 +509,7 @@ class Field extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: TextFormField(
         controller: controller,
         enabled: enabled,
@@ -453,20 +518,12 @@ class Field extends StatelessWidget {
         maxLines: obscure ? 1 : maxLines,
         textDirection: ltr ? TextDirection.ltr : null,
         validator: validator,
-        style: const TextStyle(fontFamily: 'tajawal'),
-        decoration: InputDecoration(
+        style: appFieldTextStyle(context),
+        // the kit's well (warm fill, radius 14, hairline, the 2 px focus ring); the label stays inside the well so the
+        // many admin forms keep their compact rhythm
+        decoration: appFieldDecoration(context, hint: hint, enabled: enabled).copyWith(
           labelText: label,
-          hintText: hint,
-          filled: true,
-          fillColor: c.inputBg,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: c.divider),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: c.divider),
-          ),
+          labelStyle: AppType.label(context).copyWith(color: c.textMedium),
         ),
       ),
     );
@@ -494,24 +551,23 @@ class ChoiceRow<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (label != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(label!,
-                style: TextStyle(
-                    fontFamily: 'tajawal', fontSize: 12.5, color: c.textLight)),
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+            child: AppFieldLabel(label!),
           ),
-        Wrap(spacing: 8, runSpacing: 6, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final e in options.entries)
             ChoiceChip(
-              label: Text(e.value,
-                  style: TextStyle(
-                      fontFamily: 'tajawal',
-                      color: e.key == value ? Colors.white : c.textDark)),
+              label: Text(e.value, style: AppType.label(context).copyWith(color: e.key == value ? c.onHero : c.textDark)),
               selected: e.key == value,
+              showCheckmark: false,
               selectedColor: c.primary,
+              backgroundColor: c.inputBg,
+              side: BorderSide(color: e.key == value ? c.primary : c.divider),
+              shape: const StadiumBorder(),
               onSelected: (_) => onChanged(e.key),
             ),
         ]),
@@ -531,40 +587,28 @@ class SearchBox extends StatefulWidget {
 }
 
 class _SearchBoxState extends State<SearchBox> {
-  final _ctrl = TextEditingController();
-  DateTime _last = DateTime.now();
+  String _sent = '';
 
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _changed(String v) {
-    final stamp = _last = DateTime.now();
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted && stamp == _last) widget.onChanged(v.trim());
-    });
+  void _send(String v) {
+    final q = v.trim();
+    if (!mounted || q == _sent) return; // nothing new -> no request
+    _sent = q;
+    widget.onChanged(q);
   }
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return TextField(
-      controller: _ctrl,
-      onChanged: _changed,
-      style: const TextStyle(fontFamily: 'tajawal'),
-      decoration: InputDecoration(
-        hintText: widget.hint ?? 'admin_search'.tr,
-        prefixIcon: const Icon(Icons.search_rounded),
-        filled: true,
-        fillColor: c.inputBg,
-        isDense: true,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: c.divider),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      AppSearchField(hint: widget.hint ?? 'admin_search'.tr, debounce: kSearchDelay, onChanged: _send);
+}
+
+/// A student / teacher / course named by an admin row, as a link to its detail (`{id, name}` or `{id, name_ar,
+/// name_en}`, D-290); the row keeps its own tap. A dash when the row has none.
+Widget adminEntityCell(BuildContext context, EntityKind kind, Object? json) {
+  final j = asMap(json);
+  final id = asInt(j['id']);
+  if (id <= 0) return Text('—', style: AppType.row(context));
+  return EntityChip(EntityRef(kind, id,
+      label: asStrOrNull(j['name']) ?? asStrOrNull(j['name_ar']),
+      labelEn: asStrOrNull(j['name_en']),
+      imageUrl: asStrOrNull(j['image_url'])));
 }

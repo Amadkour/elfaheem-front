@@ -1,0 +1,24 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/omr/pages/2/replace -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_replace.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "accepted": false,
+  "page_id": 2,
+  "code": "blurry",
+  "en": "Too blurry, hold steady.",
+  "ar": "الصورة غير واضحة، ثبّت الهاتف.",
+  "issues": [
+   {
+    "code": "blurry",
+    "en": "Too blurry, hold steady.",
+    "ar": "الصورة غير واضحة، ثبّت الهاتف.",
+    "details": {
+     "sigma_mm": 0.78
+    }
+   }
+  ],
+  "ms": 74.9,
+  "page_en": "Page 2 is too blurry. Please upload a clearer image of it.",
+  "page_ar": "الصفحة 2 غير واضحة (مهزوزة). يرجى رفع صورة أوضح لها."
+ }
+}

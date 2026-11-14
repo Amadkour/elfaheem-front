@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://nextbrain.site/ar/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/en/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/ar/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/privacy/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/en/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/privacy/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/privacy/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/ar/terms/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/terms/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/terms/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/terms/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/en/terms/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/terms/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/terms/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/terms/"/>
+  </url>
+</urlset>

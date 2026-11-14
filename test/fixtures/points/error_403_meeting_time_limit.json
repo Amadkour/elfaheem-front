@@ -1,0 +1,14 @@
+{
+ "_source": {
+  "route": "POST /api/v1/me/calendar/meetings/2/join",
+  "status": 403,
+  "uid": 3
+ },
+ "payload": {
+  "detail": {
+   "code": "meeting_time_limit",
+   "message": "انتهى الوقت المتاح لهذا الاجتماع",
+   "reason": "daily_limit"
+  }
+ }
+}

@@ -1,0 +1,19 @@
+{
+ "_source": {
+  "route": "POST /api/v1/me/calendar/meetings/2/join",
+  "status": 402,
+  "uid": 2
+ },
+ "payload": {
+  "detail": {
+   "code": "live_plan_required",
+   "message": "انتهى وقتك المجاني لليوم — اشترك في باقة الاجتماعات للمتابعة",
+   "reason": "daily_limit",
+   "price_points": 30,
+   "days": 30,
+   "balance": 0,
+   "daily_minutes": 15,
+   "daily_left": 0
+  }
+ }
+}

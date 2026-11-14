@@ -9,7 +9,7 @@
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>used to save records</string>
 		<key>CFBundleDisplayName</key>
-		<string>Flutter Education App</string>
+		<string>NextBrain</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -17,20 +17,33 @@
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
-		<string>flutter_education_app</string>
+		<string>NextBrain</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
 		<string>$(FLUTTER_BUILD_NAME)</string>
 		<key>CFBundleSignature</key>
 		<string>????</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<!-- Firebase Auth returns here after "Continue with Google" (the encoded iOS app id of nextbrain-2y, D-145) -->
+					<string>app-1-647242717565-ios-9e1944ca9c37d70bd69414</string>
+					<string>com.googleusercontent.apps.647242717565-t2inc3ig4t92ek8geavqtgot7vadsb28</string>
+				</array>
+			</dict>
+		</array>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>NSAppTransportSecurity</key>
 		<dict>
-			<key>NSAllowsArbitraryLoads</key>
+			<key>NSAllowsLocalNetworking</key>
 			<true/>
 		</dict>
 		<key>NSBonjourServices</key>
@@ -39,15 +52,27 @@
 			<string>_https._tcp</string>
 		</array>
 		<key>NSCameraUsageDescription</key>
-		<string>$(PRODUCT_NAME) uses your camera</string>
+		<string>$(PRODUCT_NAME) uses your camera for live classes and to scan organization join QR codes.</string>
+		<key>NSFaceIDUsageDescription</key>
+		<string>Face ID lets you sign in to $(PRODUCT_NAME) quickly and securely without typing your password.</string>
 		<key>NSLocalNetworkUsageDescription</key>
 		<string>This app requires local network access for realtime audio and video communication.</string>
+		<key>NSBluetoothAlwaysUsageDescription</key>
+		<string>Bluetooth is used to check in to a lesson through nearby classmates when you have no internet.</string>
+		<key>NSBluetoothPeripheralUsageDescription</key>
+		<string>Bluetooth lets nearby classmates without internet send their attendance through your phone.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Your location can be checked to confirm you are in the classroom when the teacher requires it.</string>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>$(PRODUCT_NAME) uses your microphone</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>حفظ تسجيلات الحصص</string>
 		<key>NSScreenCaptureUsageDescription</key>
 		<string>Screen recording is used to record live sessions for later review</string>
+		<key>RTCAppGroupIdentifier</key>
+		<string>group.com.doubley.nextbrain</string>
+		<key>RTCScreenSharingExtension</key>
+		<string>com.doubley.nextbrain.BroadcastUploadExtension</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>
@@ -62,6 +87,8 @@
 			<string>fetch</string>
 			<string>remote-notification</string>
 			<string>voip</string>
+			<string>bluetooth-central</string>
+			<string>bluetooth-peripheral</string>
 		</array>
 		<key>UILaunchStoryboardName</key>
 		<string>LaunchScreen</string>

@@ -1,0 +1,20 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/students?q=sara -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_students.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "items": [
+   {
+    "student_id": 24,
+    "name": "Sara Nabil",
+    "identifier": null,
+    "has_identifier": false
+   }
+  ],
+  "total": 1,
+  "source": "academic_id",
+  "label": {
+   "en": "Academic ID",
+   "ar": "الرقم الأكاديمي"
+  }
+ }
+}

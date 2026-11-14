@@ -1,0 +1,43 @@
+{
+ "_source": {
+  "route": "PUT /api/v1/exam/omr/templates/5/boxes",
+  "status": 422,
+  "request": {
+   "kind": "answers",
+   "n": 3,
+   "bubbles": [
+    {
+     "label": "A",
+     "cx": 49.8,
+     "cy": 117.594,
+     "r": 2.356
+    },
+    {
+     "label": "B",
+     "cx": 57.3,
+     "cy": 117.594,
+     "r": 2.356
+    },
+    {
+     "label": "C",
+     "cx": 64.8,
+     "cy": 117.594,
+     "r": 2.356
+    }
+   ]
+  },
+  "how": "back tests/exam_engine/e2e_omr_templates.py run unchanged (inline jobs, SQLite, 2026-11-02); reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "detail": {
+   "code": "bubble_labels",
+   "message": "يجب أن تبقى حروف الفقاعات كما هي",
+   "expected": [
+    "A",
+    "B",
+    "C",
+    "D"
+   ]
+  }
+ }
+}

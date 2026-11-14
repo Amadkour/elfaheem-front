@@ -8,12 +8,13 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
-import '../../utils/widget/app_loading_indicator.dart';
 import 'admin_common.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, appErrorMessage;
 
 Future<void> showIncomeBreakdown(BuildContext context) =>
     showAdminSheet(context, (_) => const _BreakdownSheet());
@@ -48,7 +49,7 @@ class _BreakdownSheetState extends State<_BreakdownSheet> {
     } on ApiException catch (e) {
       error = e.message;
     } catch (e) {
-      error = '$e';
+      error = appErrorMessage(e);
     }
     if (mounted) setState(() => loading = false);
   }
@@ -70,7 +71,7 @@ class _BreakdownSheetState extends State<_BreakdownSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     if (loading) {
-      return const SizedBox(height: 260, child: Center(child: AppLoadingIndicator()));
+      return const SizedBox(height: 260, child: AppListSkeleton(items: 3, withAvatar: false));
     }
     if (data == null) {
       return SizedBox(height: 260, child: ErrorRetry(message: error ?? 'admin_could_not_load_data'.tr, onRetry: _load));
@@ -83,17 +84,17 @@ class _BreakdownSheetState extends State<_BreakdownSheet> {
     final subs = asMapList(data!['subscriptions']);
 
     Widget hint(String text) =>
-        Text(text, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight));
+        Text(text, style: AppType.meta(context).copyWith(color: c.textLight));
 
     return Column(mainAxisSize: MainAxisSize.min, children: [
       SheetHeader('admin_inc_title'.tr),
       Flexible(
         child: ListView(
           shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.lg),
           children: [
             hint('admin_inc_hint'.tr),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             if (currencies.isEmpty) EmptyState('admin_inc_empty'.tr),
             for (final r in currencies)
               Section(
@@ -119,7 +120,7 @@ class _BreakdownSheetState extends State<_BreakdownSheet> {
                   for (final r in byPlan)
                     KeyValue(
                       '${_planLabel(asStr(r['plan']))} • ${asStr(r['currency'])} (${asInt(r['count'])})',
-                      '${money(asDouble(r['course_income']), asStr(r['currency']))} → ${money(asDouble(r['collected']), asStr(r['currency']))}',
+                      '${money(asDouble(r['course_income']), asStr(r['currency']))} $dirArrow ${money(asDouble(r['collected']), asStr(r['currency']))}',
                     ),
                 ]),
               ),

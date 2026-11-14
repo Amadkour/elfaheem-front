@@ -1,0 +1,58 @@
+{
+ "column": {
+  "key": "midterm",
+  "label": "Midterm",
+  "max_value": 16.0,
+  "editable": true,
+  "is_locked": false
+ },
+ "paper_max": 8.0,
+ "rounding_step": 0.5,
+ "rows": [
+  {
+   "student_id": 11,
+   "name": "S11",
+   "score": 8.0,
+   "max_score": 8.0,
+   "old": 4.0,
+   "new": 16.0,
+   "changed": true,
+   "overwrites": true,
+   "blocked": null,
+   "row_exists": true,
+   "scan_page_id": 1
+  },
+  {
+   "student_id": 12,
+   "name": "S12",
+   "score": 5.0,
+   "max_score": 8.0,
+   "old": null,
+   "new": 10.0,
+   "changed": true,
+   "overwrites": false,
+   "blocked": null,
+   "row_exists": true,
+   "scan_page_id": 2
+  },
+  {
+   "student_id": 13,
+   "name": "S13",
+   "score": 8.0,
+   "max_score": 8.0,
+   "old": null,
+   "new": 16.0,
+   "changed": true,
+   "overwrites": false,
+   "blocked": null,
+   "row_exists": true,
+   "scan_page_id": 3
+  }
+ ],
+ "summary": {
+  "students": 3,
+  "changes": 3,
+  "overwrites": 1,
+  "blocked": 0
+ }
+}

@@ -1,0 +1,58 @@
+{
+ "_source": {
+  "route": "POST /api/v1/exam/omr/templates/learn",
+  "status": 202,
+  "request": {
+   "name": "School sheet 50",
+   "hints": "{\"questions\": 50, \"options\": 4, \"per_column\": 25, \"layout\": \"columns\", \"id_columns\": 10, \"id_kind\": \"shaded\", \"forms\": \"ABCD\", \"one_choice_per_question\": true}"
+  },
+  "how": "back tests/exam_engine/e2e_omr_templates.py run unchanged (inline jobs, SQLite, 2026-11-02); reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "id": 5,
+  "family_id": "0554b5be-0242-4221-81f0-29df6d105327",
+  "version": 1,
+  "name": "School sheet 50",
+  "description": null,
+  "status": "draft",
+  "owner_id": 10,
+  "owner_role": "teacher",
+  "questions": 0,
+  "validation_ok": false,
+  "approved_by": null,
+  "approved_at": null,
+  "review_note": null,
+  "created_at": "2026-11-02T05:30:46.878185",
+  "hints": {
+   "questions": 50,
+   "options": 4,
+   "per_column": 25,
+   "id_columns": 10,
+   "layout": "columns",
+   "id_kind": "shaded",
+   "forms": "ABCD",
+   "one_choice_per_question": true
+  },
+  "spec": {},
+  "learned": {
+   "state": "queued"
+  },
+  "validation": {
+   "ok": false,
+   "errors": [],
+   "warnings": [],
+   "pending": "learning"
+  },
+  "options": null,
+  "option_labels": [],
+  "id_kind": "shaded",
+  "id_digits": null,
+  "forms_on_sheet": [],
+  "builtin": null,
+  "printable": false,
+  "name_en": "School sheet 50",
+  "name_ar": "School sheet 50",
+  "learning_state": "queued",
+  "preview_url": "/api/v1/exam/omr/templates/5/image?kind=preview"
+ }
+}

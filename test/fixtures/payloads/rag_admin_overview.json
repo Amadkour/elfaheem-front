@@ -1,0 +1,1059 @@
+{
+ "_source": {
+  "route": "GET /api/v1/rag/admin/overview?days=30",
+  "uid": 1
+ },
+ "payload": {
+  "days": 30,
+  "totals": {
+   "asked": 5000,
+   "answered": 5000,
+   "found": 4500,
+   "failed": 0,
+   "pending": 0,
+   "rated": 3317,
+   "helpful": 1670,
+   "askers": 1
+  },
+  "latency_ms": {
+   "p50": 345,
+   "p90": 11940,
+   "max": 15995
+  },
+  "by_day": [
+   {
+    "day": "2026-09-29",
+    "asked": 122,
+    "found": 112,
+    "helpful": 46,
+    "unhelpful": 38
+   },
+   {
+    "day": "2026-09-30",
+    "asked": 157,
+    "found": 141,
+    "helpful": 53,
+    "unhelpful": 45
+   },
+   {
+    "day": "2026-10-01",
+    "asked": 183,
+    "found": 164,
+    "helpful": 61,
+    "unhelpful": 55
+   },
+   {
+    "day": "2026-10-02",
+    "asked": 161,
+    "found": 144,
+    "helpful": 51,
+    "unhelpful": 57
+   },
+   {
+    "day": "2026-10-03",
+    "asked": 183,
+    "found": 163,
+    "helpful": 69,
+    "unhelpful": 54
+   },
+   {
+    "day": "2026-10-04",
+    "asked": 192,
+    "found": 180,
+    "helpful": 58,
+    "unhelpful": 66
+   },
+   {
+    "day": "2026-10-05",
+    "asked": 185,
+    "found": 161,
+    "helpful": 58,
+    "unhelpful": 58
+   },
+   {
+    "day": "2026-10-06",
+    "asked": 175,
+    "found": 158,
+    "helpful": 57,
+    "unhelpful": 60
+   },
+   {
+    "day": "2026-10-07",
+    "asked": 172,
+    "found": 152,
+    "helpful": 52,
+    "unhelpful": 61
+   },
+   {
+    "day": "2026-10-08",
+    "asked": 169,
+    "found": 156,
+    "helpful": 56,
+    "unhelpful": 48
+   },
+   {
+    "day": "2026-10-09",
+    "asked": 147,
+    "found": 133,
+    "helpful": 41,
+    "unhelpful": 51
+   },
+   {
+    "day": "2026-10-10",
+    "asked": 172,
+    "found": 158,
+    "helpful": 57,
+    "unhelpful": 52
+   },
+   {
+    "day": "2026-10-11",
+    "asked": 165,
+    "found": 144,
+    "helpful": 50,
+    "unhelpful": 57
+   },
+   {
+    "day": "2026-10-12",
+    "asked": 184,
+    "found": 166,
+    "helpful": 72,
+    "unhelpful": 59
+   },
+   {
+    "day": "2026-10-13",
+    "asked": 167,
+    "found": 148,
+    "helpful": 56,
+    "unhelpful": 54
+   },
+   {
+    "day": "2026-10-14",
+    "asked": 190,
+    "found": 168,
+    "helpful": 67,
+    "unhelpful": 53
+   },
+   {
+    "day": "2026-10-15",
+    "asked": 160,
+    "found": 146,
+    "helpful": 57,
+    "unhelpful": 54
+   },
+   {
+    "day": "2026-10-16",
+    "asked": 176,
+    "found": 153,
+    "helpful": 49,
+    "unhelpful": 63
+   },
+   {
+    "day": "2026-10-17",
+    "asked": 163,
+    "found": 147,
+    "helpful": 57,
+    "unhelpful": 54
+   },
+   {
+    "day": "2026-10-18",
+    "asked": 193,
+    "found": 179,
+    "helpful": 70,
+    "unhelpful": 61
+   },
+   {
+    "day": "2026-10-19",
+    "asked": 174,
+    "found": 164,
+    "helpful": 63,
+    "unhelpful": 52
+   },
+   {
+    "day": "2026-10-20",
+    "asked": 173,
+    "found": 151,
+    "helpful": 65,
+    "unhelpful": 57
+   },
+   {
+    "day": "2026-10-21",
+    "asked": 169,
+    "found": 153,
+    "helpful": 59,
+    "unhelpful": 56
+   },
+   {
+    "day": "2026-10-22",
+    "asked": 183,
+    "found": 167,
+    "helpful": 63,
+    "unhelpful": 61
+   },
+   {
+    "day": "2026-10-23",
+    "asked": 164,
+    "found": 148,
+    "helpful": 58,
+    "unhelpful": 64
+   },
+   {
+    "day": "2026-10-24",
+    "asked": 162,
+    "found": 147,
+    "helpful": 51,
+    "unhelpful": 56
+   },
+   {
+    "day": "2026-10-25",
+    "asked": 161,
+    "found": 146,
+    "helpful": 58,
+    "unhelpful": 45
+   },
+   {
+    "day": "2026-10-26",
+    "asked": 172,
+    "found": 154,
+    "helpful": 47,
+    "unhelpful": 70
+   },
+   {
+    "day": "2026-10-27",
+    "asked": 173,
+    "found": 152,
+    "helpful": 54,
+    "unhelpful": 62
+   },
+   {
+    "day": "2026-10-28",
+    "asked": 53,
+    "found": 45,
+    "helpful": 15,
+    "unhelpful": 24
+   }
+  ],
+  "contexts": {
+   "app": {
+    "asked": 823,
+    "found": 823
+   },
+   "org": {
+    "asked": 1677,
+    "found": 1677
+   },
+   "docs": {
+    "asked": 2500,
+    "found": 2000
+   }
+  },
+  "generators": {
+   "none": 1000,
+   "extractive": 2000,
+   "llm": 1500,
+   "qa": 500
+  },
+  "not_found": [
+   {
+    "question": "مَا هُوَ مَوْعِدُ الامْتِحَانِ؟ 58",
+    "count": 10,
+    "context": "docs",
+    "org_id": 2,
+    "query_id": 4559
+   },
+   {
+    "question": "ما هو موعد الامتحان؟ 148",
+    "count": 9,
+    "context": "docs",
+    "org_id": 1,
+    "query_id": 4949
+   },
+   {
+    "question": "مَا هُوَ مَوْعِدُ الامْتِحَانِ؟ 38",
+    "count": 9,
+    "context": "docs",
+    "org_id": 1,
+    "query_id": 4539
+   },
+   {
+    "question": "ما هو  موعد الامتحان 158",
+    "count": 8,
+    "context": "docs",
+    "org_id": null,
+    "query_id": 4959
+   },
+   {
+    "question": "where is the LIBRARY 128",
+    "count": 8,
+    "context": "docs",
+    "org_id": 1,
+    "query_id": 4929
+   },
+   {
+    "question": "ما هو  موعد الامتحان 18",
+    "count": 8,
+    "context": "docs",
+    "org_id": 1,
+    "query_id": 4519
+   },
+   {
+    "question": "ما هو  موعد الامتحان 8",
+    "count": 8,
+    "context": "docs",
+    "org_id": 1,
+    "query_id": 4509
+   },
+   {
+    "question": "مَا هُوَ مَوْعِدُ الامْتِحَانِ؟ 238",
+    "count": 8,
+    "context": "docs",
+    "org_id": 2,
+    "query_id": 4439
+   },
+   {
+    "question": "ما هو  موعد الامتحان 198",
+    "count": 7,
+    "context": "docs",
+    "org_id": 2,
+    "query_id": 4999
+   },
+   {
+    "question": "ما هو  موعد الامتحان 168",
+    "count": 7,
+    "context": "docs",
+    "org_id": 1,
+    "query_id": 4969
+   },
+   {
+    "question": "ما هو موعد الامتحان؟ 88",
+    "count": 7,
+    "context": "docs",
+    "org_id": 1,
+    "query_id": 4889
+   },
+   {
+    "question": "مَا هُوَ مَوْعِدُ الامْتِحَانِ؟ 298",
+    "count": 7,
+    "context": "docs",
+    "org_id": 1,
+    "query_id": 4799
+   },
+   {
+    "question": "where is the LIBRARY 268",
+    "count": 7,
+    "context": "docs",
+    "org_id": 1,
+    "query_id": 4769
+   },
+   {
+    "question": "Where is the library? 178",
+    "count": 7,
+    "context": "docs",
+    "org_id": null,
+    "query_id": 4679
+   },
+   {
+    "question": "ما هو موعد الامتحان؟ 48",
+    "count": 7,
+    "context": "docs",
+    "org_id": 2,
+    "query_id": 4549
+   },
+   {
+    "question": "مَا هُوَ مَوْعِدُ الامْتِحَانِ؟ 278",
+    "count": 7,
+    "context": "docs",
+    "org_id": 2,
+    "query_id": 4479
+   },
+   {
+    "question": "ما هو  موعد الامتحان 118",
+    "count": 7,
+    "context": "docs",
+    "org_id": null,
+    "query_id": 4319
+   },
+   {
+    "question": "ما هو  موعد الامتحان 108",
+    "count": 7,
+    "context": "docs",
+    "org_id": null,
+    "query_id": 4309
+   },
+   {
+    "question": "ما هو  موعد الامتحان 188",
+    "count": 6,
+    "context": "docs",
+    "org_id": 1,
+    "query_id": 4989
+   },
+   {
+    "question": "ما هو موعد الامتحان؟ 228",
+    "count": 6,
+    "context": "docs",
+    "org_id": null,
+    "query_id": 4729
+   }
+  ],
+  "unhelpful": [
+   {
+    "id": 4996,
+    "query_id": 4996,
+    "question": "How do I reset my password? 195",
+    "answer": "x",
+    "comment": null,
+    "context": "app",
+    "org_id": null,
+    "generator": "extractive",
+    "at": null
+   },
+   {
+    "id": 4993,
+    "query_id": 4993,
+    "question": "مَا هُوَ مَوْعِدُ الامْتِحَانِ؟ 192",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": 1,
+    "generator": "qa",
+    "at": null
+   },
+   {
+    "id": 4991,
+    "query_id": 4991,
+    "question": "مَا هُوَ مَوْعِدُ الامْتِحَانِ؟ 190",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": 2,
+    "generator": "llm:qwen3",
+    "at": null
+   },
+   {
+    "id": 4987,
+    "query_id": 4987,
+    "question": "كيف أغير كلمة المرور 186",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": 2,
+    "generator": "extractive",
+    "at": null
+   },
+   {
+    "id": 4979,
+    "query_id": 4979,
+    "question": "Who teaches physics? 178",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": 2,
+    "generator": "none",
+    "at": null
+   },
+   {
+    "id": 4978,
+    "query_id": 4978,
+    "question": "How do I reset my password? 177",
+    "answer": "x",
+    "comment": null,
+    "context": "org",
+    "org_id": 2,
+    "generator": "extractive (model fallback)",
+    "at": null
+   },
+   {
+    "id": 4976,
+    "query_id": 4976,
+    "question": "where is the LIBRARY 175",
+    "answer": "x",
+    "comment": null,
+    "context": "org",
+    "org_id": 2,
+    "generator": "extractive",
+    "at": null
+   },
+   {
+    "id": 4975,
+    "query_id": 4975,
+    "question": "Who teaches physics? 174",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": null,
+    "generator": "llm:qwen3",
+    "at": null
+   },
+   {
+    "id": 4971,
+    "query_id": 4971,
+    "question": "كيف أغير كلمة المرور 170",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": null,
+    "generator": "llm:qwen3",
+    "at": null
+   },
+   {
+    "id": 4968,
+    "query_id": 4968,
+    "question": "where is the LIBRARY 167",
+    "answer": "x",
+    "comment": null,
+    "context": "org",
+    "org_id": 2,
+    "generator": "extractive (model fallback)",
+    "at": null
+   },
+   {
+    "id": 4963,
+    "query_id": 4963,
+    "question": "Who teaches physics? 162",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": null,
+    "generator": "qa",
+    "at": null
+   },
+   {
+    "id": 4957,
+    "query_id": 4957,
+    "question": "ما هو موعد الامتحان؟ 156",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": 2,
+    "generator": "extractive",
+    "at": null
+   },
+   {
+    "id": 4956,
+    "query_id": 4956,
+    "question": "كيف أغير كلمة المرور 155",
+    "answer": "x",
+    "comment": null,
+    "context": "org",
+    "org_id": 1,
+    "generator": "extractive",
+    "at": null
+   },
+   {
+    "id": 4953,
+    "query_id": 4953,
+    "question": "where is the LIBRARY 152",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": 2,
+    "generator": "qa",
+    "at": null
+   },
+   {
+    "id": 4943,
+    "query_id": 4943,
+    "question": "where is the LIBRARY 142",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": 2,
+    "generator": "qa",
+    "at": null
+   },
+   {
+    "id": 4940,
+    "query_id": 4940,
+    "question": "ما هو  موعد الامتحان 139",
+    "answer": "x",
+    "comment": null,
+    "context": "org",
+    "org_id": 2,
+    "generator": "none:small_talk",
+    "at": null
+   },
+   {
+    "id": 4936,
+    "query_id": 4936,
+    "question": "Who teaches physics? 135",
+    "answer": "x",
+    "comment": null,
+    "context": "org",
+    "org_id": 2,
+    "generator": "extractive",
+    "at": null
+   },
+   {
+    "id": 4934,
+    "query_id": 4934,
+    "question": "مَا هُوَ مَوْعِدُ الامْتِحَانِ؟ 133",
+    "answer": "x",
+    "comment": null,
+    "context": "org",
+    "org_id": 2,
+    "generator": "llm:qwen3",
+    "at": null
+   },
+   {
+    "id": 4931,
+    "query_id": 4931,
+    "question": "where is the LIBRARY 130",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": null,
+    "generator": "llm:qwen3",
+    "at": null
+   },
+   {
+    "id": 4930,
+    "query_id": 4930,
+    "question": "Who teaches physics? 129",
+    "answer": "x",
+    "comment": null,
+    "context": "app",
+    "org_id": null,
+    "generator": "none:small_talk",
+    "at": null
+   },
+   {
+    "id": 4924,
+    "query_id": 4924,
+    "question": "ما هو موعد الامتحان؟ 123",
+    "answer": "x",
+    "comment": null,
+    "context": "org",
+    "org_id": 2,
+    "generator": "llm:qwen3",
+    "at": null
+   },
+   {
+    "id": 4923,
+    "query_id": 4923,
+    "question": "ما هو  موعد الامتحان 122",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": 2,
+    "generator": "qa",
+    "at": null
+   },
+   {
+    "id": 4922,
+    "query_id": 4922,
+    "question": "مَا هُوَ مَوْعِدُ الامْتِحَانِ؟ 121",
+    "answer": "x",
+    "comment": null,
+    "context": "app",
+    "org_id": null,
+    "generator": "extractive",
+    "at": null
+   },
+   {
+    "id": 4921,
+    "query_id": 4921,
+    "question": "Where is the library? 120",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": 1,
+    "generator": "llm:qwen3",
+    "at": null
+   },
+   {
+    "id": 4919,
+    "query_id": 4919,
+    "question": "where is the LIBRARY 118",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": null,
+    "generator": "none",
+    "at": null
+   },
+   {
+    "id": 4917,
+    "query_id": 4917,
+    "question": "ما هو  موعد الامتحان 116",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": null,
+    "generator": "extractive",
+    "at": null
+   },
+   {
+    "id": 4915,
+    "query_id": 4915,
+    "question": "ما هو موعد الامتحان؟ 114",
+    "answer": "x",
+    "comment": null,
+    "context": "docs",
+    "org_id": 2,
+    "generator": "llm:qwen3",
+    "at": null
+   },
+   {
+    "id": 4914,
+    "query_id": 4914,
+    "question": "Where is the library? 113",
+    "answer": "x",
+    "comment": null,
+    "context": "org",
+    "org_id": 1,
+    "generator": "llm:qwen3",
+    "at": null
+   },
+   {
+    "id": 4912,
+    "query_id": 4912,
+    "question": "How do I reset my password? 111",
+    "answer": "x",
+    "comment": null,
+    "context": "org",
+    "org_id": 2,
+    "generator": "extractive",
+    "at": null
+   },
+   {
+    "id": 4908,
+    "query_id": 4908,
+    "question": "Where is the library? 107",
+    "answer": "x",
+    "comment": null,
+    "context": "app",
+    "org_id": null,
+    "generator": "extractive (model fallback)",
+    "at": null
+   }
+  ],
+  "documents": [
+   {
+    "scope": "app",
+    "status": "ready",
+    "count": 1
+   }
+  ],
+  "queue": {
+   "waiting": 0,
+   "jobs": {}
+  },
+  "exam_drafts": {
+   "total": 0,
+   "done": 0,
+   "questions": 0,
+   "llm": 0
+  },
+  "qa": {
+   "pairs": 0,
+   "enabled": 0,
+   "direct": 500,
+   "example": 500
+  },
+  "cache": {
+   "entries": 1,
+   "hits": 1000
+  },
+  "llm": {
+   "provider": "",
+   "profile": "",
+   "model": "",
+   "fast_model": "",
+   "available": false,
+   "external": false,
+   "local": false,
+   "endpoint": "api.anthropic.com"
+  },
+  "monitoring": {
+   "days": 30,
+   "since": "2026-09-29T00:00:00Z",
+   "questions": 5000,
+   "latency_ms": {
+    "p50": 345,
+    "p95": 13618,
+    "by_path": {
+     "qa_direct": {
+      "questions": 500,
+      "count": 500,
+      "p50": 50,
+      "p95": 78
+     },
+     "cache": {
+      "questions": 1000,
+      "count": 1000,
+      "p50": 23,
+      "p95": 39
+     },
+     "extractive": {
+      "questions": 2500,
+      "count": 2500,
+      "p50": 443,
+      "p95": 7547
+     },
+     "model": {
+      "questions": 1000,
+      "count": 1000,
+      "p50": 11940,
+      "p95": 15352
+     }
+    }
+   },
+   "cache_hit_rate": 0.2,
+   "qa_direct_rate": 0.1,
+   "qa_example_rate": 0.1,
+   "no_answer_rate": 0.1,
+   "fallback_rate": 0.1,
+   "helpful_rate": 0.5035,
+   "counts": {
+    "no_answer": 500,
+    "cache_hits": 1000,
+    "qa_direct": 500,
+    "qa_example": 500,
+    "fallback": 500,
+    "rated": 3317,
+    "helpful": 1670
+   },
+   "by_day": [
+    {
+     "day": "2026-09-29",
+     "questions": 122,
+     "no_answer": 10,
+     "cache_hits": 21,
+     "qa_direct": 20,
+     "p50_ms": 335
+    },
+    {
+     "day": "2026-09-30",
+     "questions": 157,
+     "no_answer": 16,
+     "cache_hits": 28,
+     "qa_direct": 13,
+     "p50_ms": 386
+    },
+    {
+     "day": "2026-10-01",
+     "questions": 183,
+     "no_answer": 19,
+     "cache_hits": 35,
+     "qa_direct": 27,
+     "p50_ms": 294
+    },
+    {
+     "day": "2026-10-02",
+     "questions": 161,
+     "no_answer": 17,
+     "cache_hits": 32,
+     "qa_direct": 13,
+     "p50_ms": 350
+    },
+    {
+     "day": "2026-10-03",
+     "questions": 183,
+     "no_answer": 20,
+     "cache_hits": 37,
+     "qa_direct": 16,
+     "p50_ms": 353
+    },
+    {
+     "day": "2026-10-04",
+     "questions": 192,
+     "no_answer": 12,
+     "cache_hits": 43,
+     "qa_direct": 25,
+     "p50_ms": 243
+    },
+    {
+     "day": "2026-10-05",
+     "questions": 185,
+     "no_answer": 24,
+     "cache_hits": 37,
+     "qa_direct": 18,
+     "p50_ms": 307
+    },
+    {
+     "day": "2026-10-06",
+     "questions": 175,
+     "no_answer": 17,
+     "cache_hits": 33,
+     "qa_direct": 22,
+     "p50_ms": 310
+    },
+    {
+     "day": "2026-10-07",
+     "questions": 172,
+     "no_answer": 20,
+     "cache_hits": 29,
+     "qa_direct": 15,
+     "p50_ms": 386
+    },
+    {
+     "day": "2026-10-08",
+     "questions": 169,
+     "no_answer": 13,
+     "cache_hits": 43,
+     "qa_direct": 13,
+     "p50_ms": 340
+    },
+    {
+     "day": "2026-10-09",
+     "questions": 147,
+     "no_answer": 14,
+     "cache_hits": 31,
+     "qa_direct": 15,
+     "p50_ms": 336
+    },
+    {
+     "day": "2026-10-10",
+     "questions": 172,
+     "no_answer": 14,
+     "cache_hits": 33,
+     "qa_direct": 9,
+     "p50_ms": 436
+    },
+    {
+     "day": "2026-10-11",
+     "questions": 165,
+     "no_answer": 21,
+     "cache_hits": 34,
+     "qa_direct": 15,
+     "p50_ms": 391
+    },
+    {
+     "day": "2026-10-12",
+     "questions": 184,
+     "no_answer": 18,
+     "cache_hits": 37,
+     "qa_direct": 15,
+     "p50_ms": 427
+    },
+    {
+     "day": "2026-10-13",
+     "questions": 167,
+     "no_answer": 19,
+     "cache_hits": 35,
+     "qa_direct": 16,
+     "p50_ms": 401
+    },
+    {
+     "day": "2026-10-14",
+     "questions": 190,
+     "no_answer": 22,
+     "cache_hits": 40,
+     "qa_direct": 16,
+     "p50_ms": 302
+    },
+    {
+     "day": "2026-10-15",
+     "questions": 160,
+     "no_answer": 14,
+     "cache_hits": 35,
+     "qa_direct": 18,
+     "p50_ms": 367
+    },
+    {
+     "day": "2026-10-16",
+     "questions": 176,
+     "no_answer": 23,
+     "cache_hits": 41,
+     "qa_direct": 17,
+     "p50_ms": 247
+    },
+    {
+     "day": "2026-10-17",
+     "questions": 163,
+     "no_answer": 16,
+     "cache_hits": 40,
+     "qa_direct": 18,
+     "p50_ms": 249
+    },
+    {
+     "day": "2026-10-18",
+     "questions": 193,
+     "no_answer": 14,
+     "cache_hits": 45,
+     "qa_direct": 17,
+     "p50_ms": 334
+    },
+    {
+     "day": "2026-10-19",
+     "questions": 174,
+     "no_answer": 10,
+     "cache_hits": 32,
+     "qa_direct": 18,
+     "p50_ms": 361
+    },
+    {
+     "day": "2026-10-20",
+     "questions": 173,
+     "no_answer": 22,
+     "cache_hits": 31,
+     "qa_direct": 21,
+     "p50_ms": 315
+    },
+    {
+     "day": "2026-10-21",
+     "questions": 169,
+     "no_answer": 16,
+     "cache_hits": 37,
+     "qa_direct": 23,
+     "p50_ms": 269
+    },
+    {
+     "day": "2026-10-22",
+     "questions": 183,
+     "no_answer": 16,
+     "cache_hits": 31,
+     "qa_direct": 15,
+     "p50_ms": 374
+    },
+    {
+     "day": "2026-10-23",
+     "questions": 164,
+     "no_answer": 16,
+     "cache_hits": 30,
+     "qa_direct": 19,
+     "p50_ms": 371
+    },
+    {
+     "day": "2026-10-24",
+     "questions": 162,
+     "no_answer": 15,
+     "cache_hits": 24,
+     "qa_direct": 18,
+     "p50_ms": 426
+    },
+    {
+     "day": "2026-10-25",
+     "questions": 161,
+     "no_answer": 15,
+     "cache_hits": 29,
+     "qa_direct": 14,
+     "p50_ms": 408
+    },
+    {
+     "day": "2026-10-26",
+     "questions": 172,
+     "no_answer": 18,
+     "cache_hits": 31,
+     "qa_direct": 13,
+     "p50_ms": 469
+    },
+    {
+     "day": "2026-10-27",
+     "questions": 173,
+     "no_answer": 21,
+     "cache_hits": 31,
+     "qa_direct": 16,
+     "p50_ms": 354
+    },
+    {
+     "day": "2026-10-28",
+     "questions": 53,
+     "no_answer": 8,
+     "cache_hits": 15,
+     "qa_direct": 5,
+     "p50_ms": 286
+    }
+   ]
+  }
+ }
+}

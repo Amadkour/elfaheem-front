@@ -19,7 +19,6 @@
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		AFE36F6E56A383CC1FD504CD /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C43C720954CCBF8E99C9DEF3 /* Pods_RunnerTests.framework */; };
 		C35BF02471D712F549524545 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04862DD298DED609BD480EC8 /* Pods_Runner.framework */; };
-		F16FB0BD301AD42B00128348 /* LocalDebugRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16FB0BC301AD42B00128348 /* LocalDebugRecorder.swift */; };
 		F196F85F2FDDD119007B4DA0 /* ReplayKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F196F85E2FDDD119007B4DA0 /* ReplayKit.framework */; };
 		F196F8662FDDD119007B4DA0 /* BroadcastUploadExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F196F85D2FDDD119007B4DA0 /* BroadcastUploadExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -93,7 +92,6 @@
 		C43C720954CCBF8E99C9DEF3 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9C2D516D200A1F472ABFCFB /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		E7F298D719867581F9E869E0 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
-		F16FB0BC301AD42B00128348 /* LocalDebugRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDebugRecorder.swift; sourceTree = "<group>"; };
 		F196F85D2FDDD119007B4DA0 /* BroadcastUploadExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BroadcastUploadExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F196F85E2FDDD119007B4DA0 /* ReplayKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ReplayKit.framework; path = System/Library/Frameworks/ReplayKit.framework; sourceTree = SDKROOT; };
 		F1CB7FFC2FE014CE0031B1B1 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
@@ -219,7 +217,6 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
-				F16FB0BC301AD42B00128348 /* LocalDebugRecorder.swift */,
 				F1CB7FFC2FE014CE0031B1B1 /* Runner.entitlements */,
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
@@ -520,7 +517,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F16FB0BD301AD42B00128348 /* LocalDebugRecorder.swift in Sources */,
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 			);
@@ -633,7 +629,7 @@
 				DEVELOPMENT_TEAM = MVHKS8482X;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Elfaheem;
+				INFOPLIST_KEY_CFBundleDisplayName = NextBrain;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -641,7 +637,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.softkour.alfaheem;
+				PRODUCT_BUNDLE_IDENTIFIER = com.doubley.nextbrain;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
@@ -660,7 +656,7 @@
 				DEVELOPMENT_TEAM = MVHKS8482X;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.flutterEducationApp.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.doubley.nextbrain.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -679,7 +675,7 @@
 				DEVELOPMENT_TEAM = MVHKS8482X;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.flutterEducationApp.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.doubley.nextbrain.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
@@ -696,7 +692,7 @@
 				DEVELOPMENT_TEAM = MVHKS8482X;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.flutterEducationApp.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.doubley.nextbrain.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
@@ -827,7 +823,7 @@
 				DEVELOPMENT_TEAM = MVHKS8482X;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Elfaheem;
+				INFOPLIST_KEY_CFBundleDisplayName = NextBrain;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -835,7 +831,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.softkour.alfaheem;
+				PRODUCT_BUNDLE_IDENTIFIER = com.doubley.nextbrain;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
@@ -858,7 +854,7 @@
 				DEVELOPMENT_TEAM = MVHKS8482X;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Elfaheem;
+				INFOPLIST_KEY_CFBundleDisplayName = NextBrain;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -866,7 +862,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.softkour.alfaheem;
+				PRODUCT_BUNDLE_IDENTIFIER = com.doubley.nextbrain;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
@@ -905,7 +901,7 @@
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.softkour.alfaheem.BroadcastUploadExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.doubley.nextbrain.BroadcastUploadExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -948,7 +944,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.softkour.alfaheem.BroadcastUploadExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.doubley.nextbrain.BroadcastUploadExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -989,7 +985,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.softkour.alfaheem.BroadcastUploadExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.doubley.nextbrain.BroadcastUploadExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

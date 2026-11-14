@@ -1,7 +1,29 @@
+// lib/utils/widget/text_field.dart
+//
+// The older text field. It wears the kit's well (appFieldDecoration, lib/design/app_inputs.dart): warm fill, radius
+// 14, a hairline at rest, the 2 px ring on focus, the error under the well. Its one [label] is the placeholder: the
+// screens that use it draw their own label above (`_Labeled`, a section label), so the field adds none. New screens
+// use AppField (label above, hint inside).
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_inputs.dart' show appFieldDecoration, appFieldTextStyle;
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 import '../../config/theme/theme_config_provider.dart';
+
+/// The outline of the older text fields, in the kit's look (a calm hairline, the 2 px focus ring).
+OutlineInputBorder myFieldBorder(BuildContext context, {bool focused = false, bool error = false}) {
+  final c = context.colors;
+  return OutlineInputBorder(
+    borderRadius: AppRadius.controlAll,
+    borderSide: BorderSide(
+      color: error ? c.danger : (focused ? c.primary : c.divider),
+      width: focused ? AppBorder.focus : AppBorder.hairline,
+    ),
+  );
+}
 
 class MyTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -21,11 +43,7 @@ class MyTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      shadowColor: const Color.fromRGBO(0, 0, 0, 0.25),
-      color: context.colors.inputBg,
-      borderRadius: BorderRadius.circular(10),
-      elevation: 4,
-      clipBehavior: Clip.antiAliasWithSaveLayer,
+      type: MaterialType.transparency,
       child: TextFormField(
         textDirection: pageDirection,
         validator: validator,
@@ -33,28 +51,12 @@ class MyTextField extends StatelessWidget {
         keyboardType: keyboard,
         textInputAction: TextInputAction.next,
         controller: controller,
-        style:  TextStyle(
-            fontFamily: 'tajawal',
-            fontWeight: FontWeight.w500,
-            fontSize: 15,
-          color: context.colors.textDark,
-        ),
-        decoration: InputDecoration(
+        enabled: enable,
+        style: appFieldTextStyle(context),
+        decoration: appFieldDecoration(context, hint: label, enabled: enable ?? true).copyWith(
           hintTextDirection: pageDirection,
           floatingLabelBehavior: FloatingLabelBehavior.never,
-          fillColor: context.colors.inputBg,
-
           alignLabelWithHint: true,
-          hint: Text(
-            label,
-            style:  TextStyle(
-                fontFamily: 'tajawal',
-                fontWeight: FontWeight.w600,
-              color: context.colors.textDark,
-            ),
-            textDirection: TextDirection.rtl,
-          ),
-          border: const OutlineInputBorder(borderSide: BorderSide.none),
         ),
       ),
     );

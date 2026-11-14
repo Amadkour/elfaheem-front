@@ -1,0 +1,1257 @@
+// lib/design/studio/studio_controller.dart
+//
+// The studio's brain, pure (no widgets, unit-tested in test/export/studio_controller_test.dart): selection,
+// move / resize gestures with smart guides and grid snapping, align / distribute, nudge, duplicate, delete,
+// z order, copy / cut / paste (an internal clipboard), lock / unlock, the in-place text edit, undo / redo and zoom. Every change goes through the host's [StudioAdapter]; the controller only keeps
+// the selection, the live rects of a gesture in progress and the history.
+//
+// Two listenables, so a drag stays at 60 fps:
+//   the controller itself   structure: items, selection, history, zoom (the canvas rebuilds its item list)
+//   [live]                  every pointer move of a gesture (only the moving items and the overlay repaint)
+library;
+
+import 'dart:math' as math;
+import 'dart:ui' show Offset, Rect, Size;
+
+import 'package:flutter/foundation.dart';
+
+import 'studio_model.dart';
+
+class StudioController<P> extends ChangeNotifier {
+  StudioController({
+    required this.adapter,
+    required StudioPage page,
+    this.clampToPage = true,
+    bool snapEnabled = true,
+    this.grid,
+    this.snapThresholdPx = 6,
+    this.minSize = const Size(8, 8),
+    this.nudgeStep = 1,
+    this.nudgeBigStep = 10,
+    this.historyLimit = 60,
+    this.coalesceWindow = const Duration(seconds: 1),
+    this.pasteOffset,
+    DateTime Function()? clock,
+  })  : _page = page,
+        _snap = snapEnabled,
+        _clock = clock ?? DateTime.now {
+    _items = adapter.readItems();
+    _readGroups();
+  }
+
+  final StudioAdapter<P> adapter;
+
+  /// Keep items inside the page while moving / resizing / nudging.
+  bool clampToPage;
+
+  /// The snap grid in page units (x step, y step); null = no grid. The export page's 2 % grid is
+  /// `Size(width * .02, height * .02)`.
+  Size? grid;
+
+  /// How close (screen pixels) an edge must come to a guide to snap to it.
+  double snapThresholdPx;
+
+  /// The default smallest item size (page units), when an item has no [StudioItem.minSize].
+  Size minSize;
+  double nudgeStep, nudgeBigStep;
+  int historyLimit;
+
+  /// Steps recorded with `coalesce: true` under the same label within this window become one step.
+  Duration coalesceWindow;
+
+  /// How far each paste lands from the copied items (page units); null = ([nudgeBigStep], [nudgeBigStep]). The
+  /// export page passes 4 mm.
+  Offset? pasteOffset;
+  final DateTime Function() _clock;
+
+  StudioPage _page;
+  bool _snap;
+  bool _alignToPage = false;
+  List<StudioItem<P>> _items = const [];
+  final _selection = <String>{};
+  final _live = <String, Rect>{};
+  final _liveRot = <String, double>{};
+  List<StudioGuide> _guides = const [];
+  _Gesture? _gesture;
+  final _undo = <_Step>[];
+  final _redo = <_Step>[];
+  final _liveSignal = _Signal();
+
+  /// Fires on every pointer move of a gesture (live rects, guides).
+  Listenable get live => _liveSignal;
+
+  // ── Page & items ─────────────────────────────────────────────────────────────────────────────────────────
+  StudioPage get page => _page;
+  set page(StudioPage p) {
+    if (p == _page) return;
+    _page = p;
+    notifyListeners();
+  }
+
+  /// Every item, bottom first, as the adapter last reported them.
+  List<StudioItem<P>> get items => _items;
+
+  StudioItem<P>? itemById(String id) {
+    for (final i in _items) {
+      if (i.id == id) return i;
+    }
+    return null;
+  }
+
+  /// The z index of an item (0 = bottom), -1 when unknown.
+  int zOf(String id) => _items.indexWhere((i) => i.id == id);
+
+  /// The rect to draw: the live one while a gesture moves the item, else the stored one.
+  Rect? rectOf(String id) => _live[id] ?? itemById(id)?.rect;
+
+  /// Re-reads the items from the adapter (after the host changed its model outside [record]) and drops a
+  /// selection whose item is gone.
+  void refresh() {
+    _items = adapter.readItems();
+    _readGroups();
+    _selection.removeWhere((id) => itemById(id) == null);
+    if (_editing != null && itemById(_editing!) == null) _editing = null;
+    notifyListeners();
+  }
+
+  // ── Selection ────────────────────────────────────────────────────────────────────────────────────────────
+  Set<String> get selection => Set.unmodifiable(_selection);
+  bool isSelected(String id) => _selection.contains(id);
+
+  /// The one selected item, or null when none or several are selected.
+  StudioItem<P>? get single => _selection.length == 1 ? itemById(_selection.first) : null;
+
+  /// Selects [id] alone, or with [additive] (shift / ctrl click) toggles it in the selection. Null clears.
+  void select(String? id, {bool additive = false}) {
+    if (id == null) return clearSelection();
+    if (itemById(id) == null) return;
+    final members = _groupMembers(id);
+    if (additive) {
+      if (_selection.containsAll(members)) {
+        _selection.removeAll(members);
+      } else {
+        _selection.addAll(members);
+      }
+    } else {
+      if (_selection.length == members.length && _selection.containsAll(members)) return;
+      _selection
+        ..clear()
+        ..addAll(members);
+    }
+    notifyListeners();
+  }
+
+  // ── Groups (Ctrl+G): selecting one member selects the group; the layers panel can still pick one ───────────
+  final Map<String, String> _groups = {};
+
+  void _readGroups() {
+    final Object a = adapter;
+    if (a is StudioGroupAdapter) {
+      _groups
+        ..clear()
+        ..addAll(a.readGroups());
+    }
+    _groups.removeWhere((id, _) => itemById(id) == null);
+    final counts = <String, int>{};
+    for (final g in _groups.values) {
+      counts[g] = (counts[g] ?? 0) + 1;
+    }
+    _groups.removeWhere((_, g) => (counts[g] ?? 0) < 2); // a group of one is no group
+  }
+
+  /// The group of item [id], or null.
+  String? groupOf(String id) => _groups[id];
+
+  Set<String> _groupMembers(String id) {
+    final g = _groups[id];
+    if (g == null) return {id};
+    return {for (final e in _groups.entries) if (e.value == g && itemById(e.key)?.visible == true) e.key, id};
+  }
+
+  bool get canGroup => _editable.length >= 2;
+  bool get canUngroup => _selection.any(_groups.containsKey);
+
+  /// The editable selected items become one group (one undo step).
+  void group() {
+    final ids = {for (final i in _editable) i.id};
+    if (ids.length < 2) return;
+    _writeGroups(ids, 'g${_clock().microsecondsSinceEpoch.toRadixString(36)}');
+  }
+
+  /// The selected groups are dissolved (one undo step).
+  void ungroup() {
+    final groups = {for (final id in _selection) ?_groups[id]};
+    if (groups.isEmpty) return;
+    _writeGroups({for (final e in _groups.entries) if (groups.contains(e.value)) e.key}, null);
+  }
+
+  void _writeGroups(Set<String> ids, String? group) {
+    final Object a = adapter;
+    if (a is StudioGroupAdapter) {
+      record(group == null ? 'ungroup' : 'group', () => a.writeGroups(ids, group));
+    } else {
+      for (final id in ids) {
+        if (group == null) {
+          _groups.remove(id);
+        } else {
+          _groups[id] = group;
+        }
+      }
+      notifyListeners();
+    }
+  }
+
+  /// Copies keep their originals' grouping among themselves, never with the originals.
+  void _regroupCopies(List<StudioItem<P>> copies) {
+    final Object a = adapter;
+    final current = a is StudioGroupAdapter ? a.readGroups() : Map<String, String>.of(_groups);
+    final fresh = <String, String>{};
+    for (final c in copies) {
+      final old = current[c.id];
+      if (old == null || itemById(c.id) == null) continue;
+      final g = fresh.putIfAbsent(old, () => 'g${_clock().microsecondsSinceEpoch.toRadixString(36)}${fresh.length}');
+      if (a is StudioGroupAdapter) {
+        a.writeGroups({c.id}, g);
+      } else {
+        _groups[c.id] = g;
+      }
+    }
+  }
+
+  void selectAll() {
+    _selection
+      ..clear()
+      ..addAll(_items.where((i) => i.visible).map((i) => i.id));
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    if (_selection.isEmpty) return;
+    _selection.clear();
+    notifyListeners();
+  }
+
+  /// Marquee: selects the visible, unlocked items the rect touches (page units).
+  void selectInRect(Rect r, {bool additive = false}) {
+    if (!additive) _selection.clear();
+    for (final i in _items) {
+      if (i.visible && !i.locked && i.rect.overlaps(r)) _selection.add(i.id);
+    }
+    notifyListeners();
+  }
+
+  /// The bounds of the selection (live rects during a gesture), or null.
+  Rect? get selectionBounds => _bounds(_selection.map(rectOf).whereType<Rect>());
+
+  /// The selected items a gesture or a command may change.
+  List<StudioItem<P>> get _editable =>
+      [for (final i in _items) if (_selection.contains(i.id) && i.visible && !i.locked) i];
+
+  bool get hasEditableSelection => _editable.isNotEmpty;
+
+  /// The single selected item when it can be resized (shows the 8 handles).
+  StudioItem<P>? get resizable {
+    final s = single;
+    return s != null && s.visible && !s.locked && s.resize != StudioResize.none ? s : null;
+  }
+
+  // ── Gestures (one undo step each) ───────────────────────────────────────────────────────────────────────
+  bool get dragging => _gesture != null;
+
+  /// The guides of the gesture in progress (page units).
+  List<StudioGuide> get guides => _guides;
+
+  /// Starts moving the editable selection. Returns false when nothing can move.
+  bool beginMove() {
+    _lastMove = null;
+    final ids = _editable;
+    if (ids.isEmpty) return false;
+    _gesture = _Gesture(
+      start: {for (final i in ids) i.id: i.rect},
+      targets: _targetsExcluding(ids.map((i) => i.id).toSet()),
+    );
+    return true;
+  }
+
+  /// [delta] is the TOTAL pointer travel since [beginMove], in page units. [constrain] (shift) keeps the move on
+  /// the dominant axis. Returns the active guides.
+  List<StudioGuide> updateMove(Offset delta, {bool constrain = false}) {
+    final g = _gesture;
+    if (g == null || g.handle != null || g.rotating) return const [];
+    // the same pointer position again (a repeated event): the snap maths would give the same answer
+    if (_lastMove == delta && _lastConstrain == constrain) return _guides;
+    _lastMove = delta;
+    _lastConstrain = constrain;
+    var d = delta;
+    if (constrain) d = d.dx.abs() >= d.dy.abs() ? Offset(d.dx, 0) : Offset(0, d.dy);
+    final b0 = _bounds(g.start.values)!;
+    var b = b0.shift(d);
+    if (_snap) {
+      final thr = _threshold;
+      final sx = constrain && d.dx == 0 ? 0.0 : _snapAxis([b.left, b.center.dx, b.right], g.targets._xs, thr, grid?.width);
+      final sy = constrain && d.dy == 0 ? 0.0 : _snapAxis([b.top, b.center.dy, b.bottom], g.targets._ys, thr, grid?.height);
+      d += Offset(sx, sy);
+      b = b0.shift(d);
+    }
+    if (clampToPage) {
+      d += Offset(_clampShift(b.left, b.right, _page.width), _clampShift(b.top, b.bottom, _page.height));
+      b = b0.shift(d);
+    }
+    _live
+      ..clear()
+      ..addAll(g.start.map((id, r) => MapEntry(id, r.shift(d))));
+    _guides = _snap ? _guidesFor(b, g.targets) : const [];
+    _liveSignal.fire();
+    return _guides;
+  }
+
+  /// Starts resizing the single resizable item from [handle]. Returns false when it cannot.
+  bool beginResize(StudioHandle handle) {
+    final it = resizable;
+    if (it == null) return false;
+    final mode = it.resize;
+    if (mode == StudioResize.horizontal && !handle.horizontal) return false;
+    if (mode == StudioResize.vertical && !handle.vertical) return false;
+    _gesture = _Gesture(start: {it.id: it.rect}, targets: _targetsExcluding({it.id}), handle: handle, item: it);
+    return true;
+  }
+
+  // ── Rotation ─────────────────────────────────────────────────────────────────────────────────────────────
+  /// The single selected item when it may be turned: the adapter stores rotations ([StudioRotateAdapter]).
+  StudioItem<P>? get rotatable {
+    final s = single;
+    final Object a = adapter;
+    return a is StudioRotateAdapter && s != null && s.visible && !s.locked ? s : null;
+  }
+
+  /// A rotate gesture is in progress.
+  bool get rotating => _gesture?.rotating ?? false;
+
+  /// The rotation to draw: the live one while a rotate gesture turns the item, else the stored one.
+  double rotationOf(String id) => _liveRot[id] ?? itemById(id)?.rotation ?? 0;
+
+  /// Starts turning the rotatable item; [pointerAngle] is the pointer's angle (degrees) about the item's centre.
+  bool beginRotate(double pointerAngle) {
+    final it = rotatable;
+    if (it == null) return false;
+    _gesture = _Gesture(start: {it.id: it.rect}, targets: _targetsExcluding({it.id}), item: it, rotating: true, pointer0: pointerAngle);
+    return true;
+  }
+
+  /// [pointerAngle] is the pointer's current angle (degrees) about the item's centre; [snap] (shift) rounds the
+  /// result to [rotateSnap] degrees. Returns the new rotation, normalized to (-180, 180].
+  double? updateRotate(double pointerAngle, {bool snap = false}) {
+    final g = _gesture;
+    if (g == null || !g.rotating) return null;
+    final it = g.item!;
+    var a = it.rotation + (pointerAngle - g.pointer0);
+    if (snap) a = (a / rotateSnap).round() * rotateSnap;
+    a = normalizeAngle(a);
+    _liveRot
+      ..clear()
+      ..[it.id] = a;
+    _liveSignal.fire();
+    return a;
+  }
+
+  /// The step (degrees) a shift-rotate rounds to.
+  double rotateSnap = 15;
+
+  /// [a] in (-180, 180].
+  static double normalizeAngle(double a) {
+    var v = a % 360;
+    if (v > 180) v -= 360;
+    if (v <= -180) v += 360;
+    return v;
+  }
+
+  /// [delta] is the TOTAL pointer travel since [beginResize] (page units). [keepAspect] (shift) keeps the ratio
+  /// of any item; [StudioResize.aspect] items always keep it.
+  List<StudioGuide> updateResize(Offset delta, {bool keepAspect = false}) {
+    final g = _gesture;
+    final h = g?.handle;
+    if (g == null || h == null) return const [];
+    final it = g.item!;
+    final start = g.start[it.id]!;
+    final turned = it.rotation != 0;
+    // A turned item is resized in its OWN frame (the pointer travel is turned back), without snapping or page
+    // clamping (those work on the upright box); the opposite edge / corner stays where it is on the page.
+    final r = resizeRect(
+      start: start,
+      handle: h,
+      delta: turned ? _rot(delta, -it.rotation) : delta,
+      mode: it.resize,
+      keepAspect: keepAspect,
+      min: it.minSize ?? minSize,
+      targets: _snap && !turned ? g.targets : null,
+      clamp: turned ? false : null,
+    );
+    final out = turned ? _turnedResult(start, r, it.rotation) : r;
+    _live
+      ..clear()
+      ..[it.id] = out;
+    _guides = _snap && !turned ? _guidesFor(r, g.targets) : const [];
+    _liveSignal.fire();
+    return _guides;
+  }
+
+  /// The stored rect of a turned item resized in its own frame: [local] is the new box in the upright frame about
+  /// the centre of [start]; the box's centre is turned back onto the page so the anchored side does not move.
+  static Rect _turnedResult(Rect start, Rect local, double degrees) {
+    final c0 = start.center;
+    final c1 = c0 + _rot(local.center - c0, degrees);
+    return Rect.fromCenter(center: c1, width: local.width, height: local.height);
+  }
+
+  static Offset _rot(Offset d, double degrees) {
+    final a = degrees * math.pi / 180;
+    return Offset(d.dx * math.cos(a) - d.dy * math.sin(a), d.dx * math.sin(a) + d.dy * math.cos(a));
+  }
+
+  /// Ends the gesture: the live rects are written as ONE undo step (nothing when nothing moved).
+  void endGesture({String label = 'move'}) {
+    final g = _gesture;
+    if (g == null) return;
+    final changed = {
+      for (final e in _live.entries)
+        if (g.start[e.key] != e.value) e.key: e.value,
+    };
+    final turned = {
+      for (final e in _liveRot.entries)
+        if (itemById(e.key)?.rotation != e.value) e.key: e.value,
+    };
+    _gesture = null;
+    _live.clear();
+    _liveRot.clear();
+    _guides = const [];
+    _lastMove = null;
+    if (changed.isEmpty && turned.isEmpty) {
+      _liveSignal.fire();
+      return;
+    }
+    final Object a = adapter;
+    if (turned.isNotEmpty && a is StudioRotateAdapter) {
+      record('rotate', () => a.writeRotations(turned));
+    } else {
+      record(g.handle == null ? label : 'resize', () => adapter.writeRects(changed));
+    }
+    _liveSignal.fire();
+  }
+
+  Offset? _lastMove;
+  bool _lastConstrain = false;
+
+  /// Drops the gesture without changing anything.
+  void cancelGesture() {
+    if (_gesture == null) return;
+    _gesture = null;
+    _lastMove = null;
+    _liveRot.clear();
+    _live.clear();
+    _guides = const [];
+    _liveSignal.fire();
+  }
+
+  /// The resize maths, exposed for tests and hosts: the new rect of [start] dragged by [delta] from [handle].
+  Rect resizeRect({
+    required Rect start,
+    required StudioHandle handle,
+    required Offset delta,
+    StudioResize mode = StudioResize.free,
+    bool keepAspect = false,
+    Size? min,
+    StudioSnapTargets? targets,
+    bool? clamp,
+  }) {
+    final clampToPage = clamp ?? this.clampToPage;
+    final mn = min ?? minSize;
+    final minW = math.min(mn.width, _page.width), minH = math.min(mn.height, _page.height);
+    final dx = mode == StudioResize.vertical ? 0.0 : delta.dx;
+    final dy = mode == StudioResize.horizontal ? 0.0 : delta.dy;
+    final aspect = mode == StudioResize.aspect ||
+        (keepAspect && mode != StudioResize.horizontal && mode != StudioResize.vertical);
+    final thr = _threshold;
+    final gx = grid?.width, gy = grid?.height;
+
+    if (!aspect) {
+      var l = start.left, t = start.top, r = start.right, b = start.bottom;
+      if (handle.movesLeft) l += dx;
+      if (handle.movesRight) r += dx;
+      if (handle.movesTop) t += dy;
+      if (handle.movesBottom) b += dy;
+      if (targets != null) {
+        if (handle.movesLeft) l += _snapAxis([l], targets._xs, thr, gx);
+        if (handle.movesRight) r += _snapAxis([r], targets._xs, thr, gx);
+        if (handle.movesTop) t += _snapAxis([t], targets._ys, thr, gy);
+        if (handle.movesBottom) b += _snapAxis([b], targets._ys, thr, gy);
+      }
+      if (clampToPage) {
+        if (handle.movesLeft) l = math.max(l, 0);
+        if (handle.movesRight) r = math.min(r, _page.width);
+        if (handle.movesTop) t = math.max(t, 0);
+        if (handle.movesBottom) b = math.min(b, _page.height);
+      }
+      if (r - l < minW) {
+        if (handle.movesLeft) {
+          l = r - minW;
+        } else {
+          r = l + minW;
+        }
+      }
+      if (b - t < minH) {
+        if (handle.movesTop) {
+          t = b - minH;
+        } else {
+          b = t + minH;
+        }
+      }
+      return Rect.fromLTRB(l, t, r, b);
+    }
+
+    // Aspect: one scale factor, anchored on the opposite corner / edge (an edge handle keeps the other axis centred).
+    final w0 = start.width <= 0 ? 1.0 : start.width, h0 = start.height <= 0 ? 1.0 : start.height;
+    final ax = handle.movesLeft ? start.right : (handle.movesRight ? start.left : start.center.dx);
+    final ay = handle.movesTop ? start.bottom : (handle.movesBottom ? start.top : start.center.dy);
+    final sx = (w0 + (handle.movesLeft ? -dx : dx)) / w0;
+    final sy = (h0 + (handle.movesTop ? -dy : dy)) / h0;
+    var s = handle.isCorner ? ((sx - 1).abs() >= (sy - 1).abs() ? sx : sy) : (handle.horizontal ? sx : sy);
+    if (targets != null) {
+      double? best;
+      if (handle.horizontal) {
+        final edge = handle.movesLeft ? ax - w0 * s : ax + w0 * s;
+        final d = _snapAxis([edge], targets._xs, thr, gx);
+        if (d != 0) best = ((edge + d) - ax).abs() / w0;
+      }
+      if (handle.vertical) {
+        final edge = handle.movesTop ? ay - h0 * s : ay + h0 * s;
+        final d = _snapAxis([edge], targets._ys, thr, gy);
+        if (d != 0) {
+          final cand = ((edge + d) - ay).abs() / h0;
+          if (best == null || (cand - s).abs() < (best - s).abs()) best = cand;
+        }
+      }
+      if (best != null) s = best;
+    }
+    final sMin = math.max(minW / w0, minH / h0);
+    if (clampToPage) {
+      double room(bool start, bool end, double anchor, double size) =>
+          start ? anchor : (end ? size - anchor : 2 * math.min(anchor, size - anchor));
+      final availW = room(handle.movesLeft, handle.movesRight, ax, _page.width);
+      final availH = room(handle.movesTop, handle.movesBottom, ay, _page.height);
+      s = math.min(s, math.min(availW / w0, availH / h0));
+    }
+    s = math.max(s, sMin);
+    final w = w0 * s, hh = h0 * s;
+    final l = handle.movesLeft ? ax - w : (handle.movesRight ? ax : ax - w / 2);
+    final t = handle.movesTop ? ay - hh : (handle.movesBottom ? ay : ay - hh / 2);
+    return Rect.fromLTWH(l, t, w, hh);
+  }
+
+  // ── Grid, rulers, reveal ─────────────────────────────────────────────────────────────────────────────────
+  bool _showGrid = false, _showRulers = false;
+
+  /// Draw [grid] on the page (snapping to it works whenever [grid] is set and snapping is on).
+  bool get showGrid => _showGrid && grid != null;
+  set showGrid(bool v) {
+    if (v == _showGrid) return;
+    _showGrid = v;
+    notifyListeners();
+  }
+
+  /// Rulers in page units along the canvas's top and start edges.
+  bool get showRulers => _showRulers;
+  set showRulers(bool v) {
+    if (v == _showRulers) return;
+    _showRulers = v;
+    notifyListeners();
+  }
+
+  /// Sets the snap grid (null = none) and shows it.
+  void setGrid(Size? g) {
+    grid = g;
+    _showGrid = g != null;
+    notifyListeners();
+  }
+
+  String? _reveal;
+
+  /// Asks the canvas to pan so item [id] is in view (e.g. above a panel that just opened).
+  void reveal(String id) {
+    _reveal = id;
+    notifyListeners();
+  }
+
+  /// The pending reveal (the canvas takes it once).
+  String? takeReveal() {
+    final r = _reveal;
+    _reveal = null;
+    return r;
+  }
+
+  // ── Snapping ─────────────────────────────────────────────────────────────────────────────────────────────
+  bool get snapEnabled => _snap;
+  set snapEnabled(bool v) {
+    if (v == _snap) return;
+    _snap = v;
+    notifyListeners();
+  }
+
+  void toggleSnap() => snapEnabled = !_snap;
+
+  /// The snap distance in page units at the current zoom.
+  double get _threshold => snapThresholdPx / math.max(scale, 1e-6);
+
+  /// What the moving item can snap to: the page's edges and centre, and every other visible item's edges and
+  /// centres. Public for tests.
+  StudioSnapTargets targetsExcluding(Set<String> ids) => _targetsExcluding(ids);
+
+  StudioSnapTargets _targetsExcluding(Set<String> ids) {
+    final xs = <_Target>[
+      _Target(0, null),
+      _Target(_page.width / 2, null),
+      _Target(_page.width, null),
+    ];
+    final ys = <_Target>[
+      _Target(0, null),
+      _Target(_page.height / 2, null),
+      _Target(_page.height, null),
+    ];
+    for (final i in _items) {
+      if (!i.visible || ids.contains(i.id)) continue;
+      final r = i.rect;
+      xs.addAll([_Target(r.left, r), _Target(r.center.dx, r), _Target(r.right, r)]);
+      ys.addAll([_Target(r.top, r), _Target(r.center.dy, r), _Target(r.bottom, r)]);
+    }
+    return StudioSnapTargets._(xs, ys);
+  }
+
+  /// The shift that brings the nearest of [moving] onto a target within [thr]; else onto the grid (the first
+  /// value, i.e. the leading edge); else 0.
+  static double _snapAxis(List<double> moving, List<_Target> targets, double thr, double? grid) {
+    double? best;
+    for (final m in moving) {
+      for (final t in targets) {
+        final d = t.pos - m;
+        if (d.abs() <= thr && (best == null || d.abs() < best.abs())) best = d;
+      }
+    }
+    if (best != null) return best;
+    if (grid != null && grid > 0) {
+      final m = moving.first;
+      return (m / grid).round() * grid - m;
+    }
+    return 0;
+  }
+
+  List<StudioGuide> _guidesFor(Rect b, StudioSnapTargets t) {
+    const eps = 1e-6;
+    final out = <StudioGuide>[];
+    final seenX = <double>{}, seenY = <double>{};
+    for (final x in t._xs) {
+      if ((x.pos - b.left).abs() > eps && (x.pos - b.center.dx).abs() > eps && (x.pos - b.right).abs() > eps) continue;
+      final s = x.source;
+      final start = s == null ? 0.0 : math.min(s.top, b.top);
+      final end = s == null ? _page.height : math.max(s.bottom, b.bottom);
+      if (seenX.add(x.pos)) {
+        out.add(StudioGuide(vertical: true, position: x.pos, start: start, end: end));
+      } else {
+        final i = out.indexWhere((g) => g.vertical && g.position == x.pos);
+        final g = out[i];
+        out[i] = StudioGuide(vertical: true, position: x.pos, start: math.min(g.start, start), end: math.max(g.end, end));
+      }
+    }
+    for (final y in t._ys) {
+      if ((y.pos - b.top).abs() > eps && (y.pos - b.center.dy).abs() > eps && (y.pos - b.bottom).abs() > eps) continue;
+      final s = y.source;
+      final start = s == null ? 0.0 : math.min(s.left, b.left);
+      final end = s == null ? _page.width : math.max(s.right, b.right);
+      if (seenY.add(y.pos)) {
+        out.add(StudioGuide(vertical: false, position: y.pos, start: start, end: end));
+      } else {
+        final i = out.indexWhere((g) => !g.vertical && g.position == y.pos);
+        final g = out[i];
+        out[i] = StudioGuide(vertical: false, position: y.pos, start: math.min(g.start, start), end: math.max(g.end, end));
+      }
+    }
+    return out;
+  }
+
+  static double _clampShift(double lo, double hi, double size) {
+    if (hi - lo >= size) return -lo;
+    if (lo < 0) return -lo;
+    if (hi > size) return size - hi;
+    return 0;
+  }
+
+  // ── Commands (one undo step each) ───────────────────────────────────────────────────────────────────────
+  /// Align to the page when [alignToPage] is on or one item is selected, else to the selection's bounds.
+  bool get alignToPage => _alignToPage;
+  set alignToPage(bool v) {
+    if (v == _alignToPage) return;
+    _alignToPage = v;
+    notifyListeners();
+  }
+
+  /// [toPage] true aligns to the page, false to the selection's bounds, null follows [alignToPage] (a single item
+  /// always aligns to the page).
+  void align(StudioAlign a, {bool? toPage}) {
+    final its = _editable;
+    if (its.isEmpty) return;
+    final ref = ((toPage ?? _alignToPage) || its.length == 1) ? _page.rect : _bounds(its.map((i) => i.rect))!;
+    _writeRects('align', {
+      for (final i in its)
+        i.id: switch (a) {
+          StudioAlign.left => i.rect.translate(ref.left - i.rect.left, 0),
+          StudioAlign.centerH => i.rect.translate(ref.center.dx - i.rect.center.dx, 0),
+          StudioAlign.right => i.rect.translate(ref.right - i.rect.right, 0),
+          StudioAlign.top => i.rect.translate(0, ref.top - i.rect.top),
+          StudioAlign.middle => i.rect.translate(0, ref.center.dy - i.rect.center.dy),
+          StudioAlign.bottom => i.rect.translate(0, ref.bottom - i.rect.bottom),
+        },
+    });
+  }
+
+  /// Equal gaps between 3 or more items, the outer two staying where they are.
+  bool get canDistribute => _editable.length >= 3;
+
+  void distribute(StudioAxis axis) {
+    final its = _editable;
+    if (its.length < 3) return;
+    final h = axis == StudioAxis.horizontal;
+    its.sort((a, b) => h ? a.rect.left.compareTo(b.rect.left) : a.rect.top.compareTo(b.rect.top));
+    final lo = h ? its.first.rect.left : its.first.rect.top;
+    final hi = its.map((i) => h ? i.rect.right : i.rect.bottom).reduce(math.max);
+    final sum = its.fold<double>(0, (s, i) => s + (h ? i.rect.width : i.rect.height));
+    final gap = (hi - lo - sum) / (its.length - 1);
+    var at = lo;
+    final out = <String, Rect>{};
+    for (final i in its) {
+      out[i.id] = h ? i.rect.translate(at - i.rect.left, 0) : i.rect.translate(0, at - i.rect.top);
+      at += (h ? i.rect.width : i.rect.height) + gap;
+    }
+    _writeRects('distribute', out);
+  }
+
+  /// Arrow keys: [dx], [dy] in steps (-1, 0, 1); [big] (shift) uses [nudgeBigStep]. Repeated nudges within
+  /// [coalesceWindow] are one undo step.
+  void nudge(int dx, int dy, {bool big = false}) {
+    final its = _editable;
+    if (its.isEmpty) return;
+    final step = big ? nudgeBigStep : nudgeStep;
+    var d = Offset(dx * step, dy * step);
+    if (clampToPage) {
+      final b = _bounds(its.map((i) => i.rect))!.shift(d);
+      d += Offset(_clampShift(b.left, b.right, _page.width), _clampShift(b.top, b.bottom, _page.height));
+    }
+    if (d == Offset.zero) return;
+    _writeRects('nudge', {for (final i in its) i.id: i.rect.shift(d)}, coalesce: true);
+  }
+
+  /// Copies the selection (locked items too), moved by [nudgeBigStep], and selects the copies.
+  void duplicate() {
+    final its = [for (final i in _items) if (_selection.contains(i.id)) i];
+    if (its.isEmpty) return;
+    final copies = <StudioItem<P>>[];
+    for (final i in its) {
+      final c = adapter.cloneItem(i);
+      var r = i.rect.shift(Offset(nudgeBigStep, nudgeBigStep));
+      if (clampToPage) r = r.shift(Offset(_clampShift(r.left, r.right, _page.width), _clampShift(r.top, r.bottom, _page.height)));
+      copies.add(c.copyWith(rect: r, locked: false));
+    }
+    record('duplicate', () {
+      adapter.addItems(copies);
+      _regroupCopies(copies);
+    });
+    // an adapter may add fewer copies than asked (a limit on the number of items): select the ones that exist
+    _selection
+      ..clear()
+      ..addAll([for (final c in copies) if (itemById(c.id) != null) c.id]);
+    notifyListeners();
+  }
+
+  /// Deletes the selected items that are not locked.
+  void deleteSelection() {
+    final ids = {for (final i in _items) if (_selection.contains(i.id) && !i.locked) i.id};
+    if (ids.isEmpty) return;
+    record('delete', () => adapter.removeItems(ids));
+    _selection.removeAll(ids);
+    notifyListeners();
+  }
+
+  // ── Clipboard (internal, per controller) ────────────────────────────────────────────────────────────────
+  List<StudioItem<P>> _clipboard = const [];
+  int _pastes = 0;
+
+  /// Something was copied or cut.
+  bool get canPaste => _clipboard.isNotEmpty;
+
+  /// The number of items on the clipboard.
+  int get clipboardLength => _clipboard.length;
+
+  /// Copies the selection (locked items too). The payloads are copied now ([StudioAdapter.cloneItem]), so a later
+  /// edit of the original never changes what is pasted.
+  void copy() {
+    final its = [for (final i in _items) if (_selection.contains(i.id)) i];
+    if (its.isEmpty) return;
+    _clipboard = List.unmodifiable([for (final i in its) adapter.cloneItem(i)]);
+    _pastes = 0;
+    notifyListeners();
+  }
+
+  /// Copies the selection and deletes what is not locked; the first paste lands where the items were.
+  void cut() {
+    final its = [for (final i in _items) if (_selection.contains(i.id)) i];
+    if (its.isEmpty) return;
+    copy();
+    _pastes = -1;
+    deleteSelection();
+  }
+
+  /// Adds copies of the clipboard on top, each paste [pasteOffset] further from the copied items, unlocked, and
+  /// selects them. One undo step.
+  void paste() {
+    if (_clipboard.isEmpty) return;
+    _pastes++;
+    final step = pasteOffset ?? Offset(nudgeBigStep, nudgeBigStep);
+    var d = step * _pastes.toDouble();
+    if (clampToPage) {
+      final b = _bounds(_clipboard.map((i) => i.rect))!.shift(d);
+      d += Offset(_clampShift(b.left, b.right, _page.width), _clampShift(b.top, b.bottom, _page.height));
+    }
+    final copies = [
+      for (final i in _clipboard) adapter.cloneItem(i).copyWith(rect: i.rect.shift(d), locked: false, visible: true),
+    ];
+    record('paste', () {
+      adapter.addItems(copies);
+      _regroupCopies(copies);
+    });
+    _selection
+      ..clear()
+      ..addAll([for (final c in copies) if (itemById(c.id) != null) c.id]);
+    notifyListeners();
+  }
+
+  // ── Lock ─────────────────────────────────────────────────────────────────────────────────────────────────
+  /// The adapter can lock items ([StudioLockAdapter]) and the selection is not empty.
+  bool get canLock {
+    final Object a = adapter;
+    return a is StudioLockAdapter && a.canLock && _selection.isNotEmpty;
+  }
+
+  /// Every selected item is locked.
+  bool get selectionLocked {
+    final its = [for (final i in _items) if (_selection.contains(i.id)) i];
+    return its.isNotEmpty && its.every((i) => i.locked);
+  }
+
+  /// Locks or unlocks the selection (one undo step). Locked items stay selectable (their properties can be
+  /// edited) but never move, resize, nudge, align or get deleted from the canvas.
+  void setLocked(bool locked) {
+    if (!canLock) return;
+    final ids = {for (final i in _items) if (_selection.contains(i.id) && i.locked != locked) i.id};
+    if (ids.isEmpty) return;
+    record(locked ? 'lock' : 'unlock', () => (adapter as StudioLockAdapter).setLocked(ids, locked));
+  }
+
+  void toggleLock() => setLocked(!selectionLocked);
+
+  // ── Layers (the layers panel's commands, one undo step each) ───────────────────────────────────────────────
+  /// The adapter can lock items from the layers panel.
+  bool get layersCanLock {
+    final Object a = adapter;
+    return a is StudioLockAdapter && a.canLock;
+  }
+
+  /// The adapter offers the eye toggle ([StudioLayersAdapter.canHide]).
+  bool get layersCanHide {
+    final Object a = adapter;
+    return a is StudioLayersAdapter && a.canHide;
+  }
+
+  /// The adapter offers the inline rename.
+  bool get layersCanRename {
+    final Object a = adapter;
+    return a is StudioLayersAdapter && a.canRename;
+  }
+
+  /// Locks or unlocks the layers [ids] (any items, selected or not).
+  void setLockedIds(Set<String> ids, bool locked) {
+    final Object a = adapter;
+    if (a is! StudioLockAdapter || !a.canLock) return;
+    final todo = {for (final i in _items) if (ids.contains(i.id) && i.locked != locked) i.id};
+    if (todo.isEmpty) return;
+    record(locked ? 'lock' : 'unlock', () => a.setLocked(todo, locked));
+  }
+
+  /// Shows or hides the layers [ids]. Hidden items drop out of the selection.
+  void setVisibleIds(Set<String> ids, bool visible) {
+    final Object a = adapter;
+    if (a is! StudioLayersAdapter || !a.canHide) return;
+    final todo = {for (final i in _items) if (ids.contains(i.id) && i.visible != visible) i.id};
+    if (todo.isEmpty) return;
+    if (a.hideIsUndoable) {
+      record(visible ? 'show' : 'hide', () => a.setVisible(todo, visible));
+    } else {
+      a.setVisible(todo, visible);
+      refresh();
+    }
+    if (!visible) {
+      _selection.removeAll(todo);
+      notifyListeners();
+    }
+  }
+
+  /// Renames the layer [id] (one undo step).
+  void renameLayer(String id, String name) {
+    final Object a = adapter;
+    if (a is! StudioLayersAdapter || !a.canRename || itemById(id) == null) return;
+    record('rename', () => a.rename(id, name.trim()));
+  }
+
+  /// Moves layer [id] to z index [toZ] (0 = bottom), keeping the others' order. One undo step.
+  void moveLayer(String id, int toZ) {
+    final before = [for (final i in _items) i.id];
+    if (!before.remove(id)) return;
+    before.insert(toZ.clamp(0, before.length), id);
+    if (listEquals(before, [for (final i in _items) i.id])) return;
+    record('arrange', () => adapter.reorder(before));
+  }
+
+  /// Selects exactly [ids] (visible items that exist).
+  void selectIds(Iterable<String> ids) {
+    final next = {for (final i in _items) if (i.visible && ids.contains(i.id)) i.id};
+    if (setEquals(next, _selection)) return;
+    _selection
+      ..clear()
+      ..addAll(next);
+    notifyListeners();
+  }
+
+  /// Selects every visible layer between [a] and [b] in z order (shift click in the layers panel).
+  void selectRange(String a, String b, {bool additive = false}) {
+    final za = zOf(a), zb = zOf(b);
+    if (za < 0 || zb < 0) return;
+    final lo = math.min(za, zb), hi = math.max(za, zb);
+    final ids = {for (var z = lo; z <= hi; z++) if (_items[z].visible) _items[z].id};
+    selectIds(additive ? {..._selection, ...ids} : ids);
+  }
+
+  // ── Match size ───────────────────────────────────────────────────────────────────────────────────────────
+  /// Two or more items can be given the same width / height.
+  bool get canMatchSize => _editable.length >= 2;
+
+  /// Gives every editable selected item the width and / or height of the FIRST selected one (the key object),
+  /// keeping each item's top-left corner. An item that cannot change that axis ([StudioResize]) keeps it.
+  void matchSize({bool width = false, bool height = false}) {
+    final its = _editable;
+    if (its.length < 2 || (!width && !height)) return;
+    final key = itemById(_selection.first) ?? its.first;
+    final out = <String, Rect>{};
+    for (final i in its) {
+      if (i.id == key.id) continue;
+      final canW = i.resize != StudioResize.vertical && i.resize != StudioResize.none;
+      final canH = i.resize != StudioResize.horizontal && i.resize != StudioResize.none;
+      var w = width && canW ? key.rect.width : i.rect.width;
+      var h = height && canH ? key.rect.height : i.rect.height;
+      if (i.resize == StudioResize.aspect && (width ^ height) && i.rect.width > 0 && i.rect.height > 0) {
+        final k = width ? w / i.rect.width : h / i.rect.height;
+        w = i.rect.width * k;
+        h = i.rect.height * k;
+      }
+      var r = Rect.fromLTWH(i.rect.left, i.rect.top, w, h);
+      if (clampToPage) {
+        r = r.shift(Offset(_clampShift(r.left, r.right, _page.width), _clampShift(r.top, r.bottom, _page.height)));
+      }
+      out[i.id] = r;
+    }
+    _writeRects('match size', out);
+  }
+
+  // ── In-place text edit ──────────────────────────────────────────────────────────────────────────────────
+  String? _editing;
+
+  /// The item whose text is being edited on the canvas, or null.
+  String? get editingId => _editing;
+
+  /// Asks the canvas to open its in-place editor on [id] (a double click does the same). False when the item is
+  /// unknown, hidden or locked; the canvas closes it again when its `inlineText` has no text for the item.
+  bool startTextEdit(String id) {
+    final it = itemById(id);
+    if (it == null || !it.visible || it.locked) return false;
+    cancelGesture();
+    _editing = id;
+    _selection
+      ..clear()
+      ..add(id);
+    notifyListeners();
+    return true;
+  }
+
+  /// Closes the editor without a change.
+  void endTextEdit() {
+    if (_editing == null) return;
+    _editing = null;
+    notifyListeners();
+  }
+
+  /// Writes the edited [text] through the host's [apply] as ONE undo step (labelled 'text') and closes the editor.
+  /// [apply] may record on its own: a [record] inside a [record] is part of the outer step.
+  void commitText(String id, String text, void Function(StudioItem<P> item, String text) apply) {
+    final it = itemById(id);
+    _editing = null;
+    if (it == null || it.locked) {
+      notifyListeners();
+      return;
+    }
+    record('text', () => apply(it, text));
+  }
+
+  void bringForward() => _arrange((ids, sel) {
+        for (var i = ids.length - 2; i >= 0; i--) {
+          if (sel.contains(ids[i]) && !sel.contains(ids[i + 1])) {
+            final t = ids[i];
+            ids[i] = ids[i + 1];
+            ids[i + 1] = t;
+          }
+        }
+      });
+
+  void sendBackward() => _arrange((ids, sel) {
+        for (var i = 1; i < ids.length; i++) {
+          if (sel.contains(ids[i]) && !sel.contains(ids[i - 1])) {
+            final t = ids[i];
+            ids[i] = ids[i - 1];
+            ids[i - 1] = t;
+          }
+        }
+      });
+
+  void bringToFront() => _arrange((ids, sel) {
+        final picked = ids.where(sel.contains).toList();
+        ids
+          ..removeWhere(sel.contains)
+          ..addAll(picked);
+      });
+
+  void sendToBack() => _arrange((ids, sel) {
+        final picked = ids.where(sel.contains).toList();
+        ids
+          ..removeWhere(sel.contains)
+          ..insertAll(0, picked);
+      });
+
+  void _arrange(void Function(List<String> ids, Set<String> sel) change) {
+    if (_selection.isEmpty) return;
+    final before = [for (final i in _items) i.id];
+    final ids = List.of(before);
+    change(ids, _selection);
+    if (listEquals(ids, before)) return;
+    record('arrange', () => adapter.reorder(ids));
+  }
+
+  void _writeRects(String label, Map<String, Rect> rects, {bool coalesce = false}) {
+    final changed = {
+      for (final e in rects.entries)
+        if (itemById(e.key)?.rect != e.value) e.key: e.value,
+    };
+    if (changed.isEmpty) return;
+    record(label, () => adapter.writeRects(changed), coalesce: coalesce);
+  }
+
+  // ── History ──────────────────────────────────────────────────────────────────────────────────────────────
+  /// Runs a host change of its own model as ONE undo step: `controller.record('font', () => model.font = f)`.
+  /// With [coalesce], a step with the same label recorded within [coalesceWindow] (and the same selection)
+  /// merges into the previous one: a slider dragged through 40 values is one undo.
+  /// A [record] inside another one (a host helper that records on its own) runs as part of the outer step.
+  void record(String label, VoidCallback mutate, {bool coalesce = false}) {
+    if (_recording > 0) {
+      mutate();
+      return;
+    }
+    if (_gesture != null) cancelGesture();
+    final before = adapter.snapshot();
+    final selBefore = Set.of(_selection);
+    _recording++;
+    try {
+      mutate();
+    } finally {
+      _recording--;
+    }
+    final after = adapter.snapshot();
+    final now = _clock();
+    final last = _undo.isEmpty ? null : _undo.last;
+    if (coalesce &&
+        last != null &&
+        _redo.isEmpty &&
+        last.coalesce &&
+        last.label == label &&
+        setEquals(last.selAfter, selBefore) &&
+        now.difference(last.at) <= coalesceWindow) {
+      _undo[_undo.length - 1] = last.withAfter(after, now);
+    } else {
+      _undo.add(_Step(label, before, after, selBefore, selBefore, now, coalesce));
+      if (_undo.length > historyLimit) _undo.removeAt(0);
+    }
+    _redo.clear();
+    refresh();
+  }
+
+  int _recording = 0;
+
+  bool get canUndo => _undo.isNotEmpty;
+  bool get canRedo => _redo.isNotEmpty;
+  String? get undoLabel => _undo.isEmpty ? null : _undo.last.label;
+  String? get redoLabel => _redo.isEmpty ? null : _redo.last.label;
+  int get historyLength => _undo.length;
+
+  void undo() {
+    if (_undo.isEmpty) return;
+    cancelGesture();
+    final s = _undo.removeLast();
+    adapter.restore(s.before);
+    _redo.add(s);
+    _restoreSelection(s.selBefore);
+  }
+
+  void redo() {
+    if (_redo.isEmpty) return;
+    cancelGesture();
+    final s = _redo.removeLast();
+    adapter.restore(s.after);
+    _undo.add(s.withAt(_clock().subtract(coalesceWindow * 2)));
+    _restoreSelection(s.selAfter);
+  }
+
+  /// Forgets the history (after loading another design).
+  void clearHistory() {
+    _undo.clear();
+    _redo.clear();
+    notifyListeners();
+  }
+
+  void _restoreSelection(Set<String> sel) {
+    _selection
+      ..clear()
+      ..addAll(sel);
+    refresh();
+  }
+
+  // ── Zoom ─────────────────────────────────────────────────────────────────────────────────────────────────
+  static const zoomSteps = <double>[.25, .33, .5, .67, .75, 1, 1.25, 1.5, 2, 3, 4];
+  static const double minZoom = .25, maxZoom = 4;
+
+  /// "Fit page" may go below [minZoom] on a small window so the page always fits.
+  static const double minFitZoom = .05;
+
+  double _zoom = 1;
+  bool _fit = true;
+  double _fitZoom = 1;
+
+  /// The zoom in effect (1 = 100 %: one page unit = [StudioPage.unitPx] screen pixels).
+  double get zoom => _fit ? _fitZoom : _zoom;
+
+  /// Screen pixels per page unit.
+  double get scale => zoom * _page.unitPx;
+  bool get fitted => _fit;
+
+  /// The zoom that fits the page in [viewport] with [padding] on every side. [extra] (page units) is paper drawn
+  /// around the page that must fit too (StudioCanvas.paperInsets: horizontal, vertical sums).
+  double fitZoomFor(Size viewport, {double padding = 24, Size extra = Size.zero}) {
+    final w = (viewport.width - padding * 2) / ((_page.width + extra.width) * _page.unitPx);
+    final h = (viewport.height - padding * 2) / ((_page.height + extra.height) * _page.unitPx);
+    final z = math.min(w, h);
+    if (!z.isFinite || z <= 0) return minFitZoom;
+    return z.clamp(minFitZoom, maxZoom).toDouble();
+  }
+
+  /// The canvas reports its size (after layout); notifies only when the fitted zoom changes.
+  void setViewport(Size viewport, {double padding = 24, Size extra = Size.zero}) {
+    final z = fitZoomFor(viewport, padding: padding, extra: extra);
+    if ((z - _fitZoom).abs() < 1e-9) return;
+    _fitZoom = z;
+    if (_fit) notifyListeners();
+  }
+
+  void setZoom(double z) {
+    final v = z.clamp(math.min(minZoom, zoom), maxZoom).toDouble();
+    if (!_fit && v == _zoom) return;
+    _fit = false;
+    _zoom = v;
+    notifyListeners();
+  }
+
+  void zoomIn() {
+    final z = zoom;
+    setZoom(zoomSteps.firstWhere((s) => s > z + 1e-3, orElse: () => maxZoom));
+  }
+
+  void zoomOut() {
+    final z = zoom;
+    final lower = zoomSteps.where((s) => s < z - 1e-3);
+    setZoom(lower.isEmpty ? math.min(z, minZoom) : lower.last);
+  }
+
+  void fitPage() {
+    if (_fit) return;
+    _fit = true;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _liveSignal.dispose();
+    super.dispose();
+  }
+
+  static Rect? _bounds(Iterable<Rect> rects) {
+    Rect? b;
+    for (final r in rects) {
+      b = b == null ? r : b.expandToInclude(r);
+    }
+    return b;
+  }
+}
+
+/// The snap targets of a gesture (page units); built once when the gesture starts.
+class StudioSnapTargets {
+  StudioSnapTargets._(this._xs, this._ys);
+  final List<_Target> _xs, _ys;
+
+  /// The x positions (for tests).
+  List<double> get xPositions => [for (final t in _xs) t.pos];
+  List<double> get yPositions => [for (final t in _ys) t.pos];
+}
+
+class _Target {
+  const _Target(this.pos, this.source);
+  final double pos;
+
+  /// The item the line comes from, null for the page.
+  final Rect? source;
+}
+
+class _Gesture {
+  _Gesture({required this.start, required this.targets, this.handle, this.item, this.rotating = false, this.pointer0 = 0});
+  final bool rotating;
+  final double pointer0;
+  final Map<String, Rect> start;
+  final StudioSnapTargets targets;
+  final StudioHandle? handle;
+  final StudioItem<Object?>? item;
+}
+
+class _Step {
+  const _Step(this.label, this.before, this.after, this.selBefore, this.selAfter, this.at, this.coalesce);
+  final String label;
+  final Object before, after;
+  final Set<String> selBefore, selAfter;
+  final DateTime at;
+  final bool coalesce;
+
+  _Step withAfter(Object a, DateTime now) => _Step(label, before, a, selBefore, selAfter, now, coalesce);
+  _Step withAt(DateTime t) => _Step(label, before, after, selBefore, selAfter, t, coalesce);
+}
+
+class _Signal extends ChangeNotifier {
+  void fire() => notifyListeners();
+}

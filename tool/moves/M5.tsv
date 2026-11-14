@@ -1,0 +1,5 @@
+# M5 attendance
+lib/features/shared/attendance	lib/features/attendance
+lib/features/student/attendance	lib/features/attendance/student
+lib/features/student/analysis/attendance	lib/features/attendance/analysis/student
+lib/features/teacher/analysis/attendance	lib/features/attendance/analysis/teacher

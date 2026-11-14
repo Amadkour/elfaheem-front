@@ -1,0 +1,63 @@
+{
+ "_source": "GET /api/v1/exam/exams/1/omr/changes -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "items": [
+   {
+    "id": 3,
+    "entity": "identifier",
+    "entity_id": 7,
+    "field": "student_id",
+    "old": {
+     "value": "2024000101",
+     "code": "student_already_scanned",
+     "student_id": null
+    },
+    "new": {
+     "action": "replace"
+    },
+    "actor_id": 10,
+    "reason": null,
+    "at": "2026-11-02T05:36:18.599376"
+   },
+   {
+    "id": 2,
+    "entity": "identifier",
+    "entity_id": 5,
+    "field": "student_id",
+    "old": {
+     "value": "9999999999",
+     "code": "identifier_no_match",
+     "student_id": null
+    },
+    "new": {
+     "action": "assign",
+     "student_id": 106
+    },
+    "actor_id": 10,
+    "reason": null,
+    "at": "2026-11-02T05:36:16.575032"
+   },
+   {
+    "id": 1,
+    "entity": "form",
+    "entity_id": 2,
+    "field": "code",
+    "old": {
+     "markers": {
+      "printed": "A",
+      "qr": "B"
+     },
+     "code": "form_unconfirmed"
+    },
+    "new": {
+     "action": "confirm",
+     "form": "B"
+    },
+    "actor_id": 10,
+    "reason": null,
+    "at": "2026-11-02T05:36:12.504805"
+   }
+  ]
+ }
+}

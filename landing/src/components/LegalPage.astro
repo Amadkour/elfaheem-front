@@ -1,0 +1,427 @@
+---
+// One legal page (D-308): the Privacy policy or the Terms of service, in Arabic or English, as plain crawlable HTML.
+// Served at /<lang>/<doc>/ and, for the URLs given to Google's OAuth verification, at /privacy/ and /terms/ (English,
+// with the Arabic one link away). The text comes from src/data/legal.ts (bundled, or the live edit at build time).
+import Base from '../layouts/Base.astro';
+import { APP, SITE } from '../config';
+import { loadLegal, pick, blocks, linkify, dateLabel, CONTACT_EMAIL, type LegalDocId } from '../data/legal';
+import logo from '../assets/logo_mark.png';
+import { Image } from 'astro:assets';
+
+interface Props {
+  lang: 'ar' | 'en';
+  doc: LegalDocId;
+  /** The bare /privacy/ or /terms/ URL (English, canonical to itself). */
+  root?: boolean;
+  preload: string[];
+}
+const { lang, doc, root = false, preload } = Astro.props;
+const d = await loadLegal(doc);
+const other = lang === 'ar' ? 'en' : 'ar';
+const other_doc: LegalDocId = doc === 'privacy' ? 'terms' : 'privacy';
+const path = root ? `/${doc}/` : `/${lang}/${doc}/`;
+const L = {
+  ar: {
+    name: 'نكست برين',
+    kicker: 'المستندات القانونية',
+    effective: 'سارية منذ',
+    version: 'الإصدار',
+    minutes: (n: number) => (n <= 1 ? 'دقيقة قراءة' : n === 2 ? 'دقيقتا قراءة' : n <= 10 ? `${n} دقائق قراءة` : `${n} دقيقة قراءة`),
+    glance: 'باختصار',
+    toc: 'في هذه الصفحة',
+    section: 'القسم',
+    contactTitle: 'عندك سؤال عن بياناتك؟',
+    contactBody: 'نرد على كل طلب خلال 30 يومًا.',
+    emailUs: 'راسلنا',
+    other: doc === 'privacy' ? 'شروط الاستخدام' : 'سياسة الخصوصية',
+    openApp: 'افتح التطبيق',
+    switchLabel: 'English',
+    home: 'الرئيسية',
+    rights: 'جميع الحقوق محفوظة',
+    by: 'نكست برين من DoubleY',
+    top: 'إلى الأعلى',
+  },
+  en: {
+    name: 'NextBrain',
+    kicker: 'Legal',
+    effective: 'Effective',
+    version: 'Version',
+    minutes: (n: number) => (n <= 1 ? '1 min read' : `${n} min read`),
+    glance: 'At a glance',
+    toc: 'On this page',
+    section: 'Section',
+    contactTitle: 'Questions about your data?',
+    contactBody: 'We answer every request within 30 days.',
+    emailUs: 'Email us',
+    other: doc === 'privacy' ? 'Terms of Service' : 'Privacy Policy',
+    openApp: 'Open the app',
+    switchLabel: 'العربية',
+    home: 'Home',
+    rights: 'All rights reserved',
+    by: 'NextBrain by DoubleY',
+    top: 'Back to top',
+  },
+}[lang];
+
+const title = pick(d.title, lang);
+const intro = pick(d.intro, lang);
+const highlights = d.highlights.map((h) => pick(h, lang)).filter(Boolean);
+const sections = d.sections
+  .map((s) => ({ id: s.id, title: pick(s.title, lang), body: blocks(pick(s.body, lang)) }))
+  .filter((s) => s.title || s.body.length);
+const words = d.sections.reduce((n, s) => n + (pick(s.body, lang) + ' ' + pick(s.title, lang)).split(/\s+/).length, 0);
+const minutes = Math.max(1, Math.ceil(words / 200));
+const effective = dateLabel(d.effective_date, lang);
+const description = intro.length > 160 ? intro.slice(0, 157).trimEnd() + '…' : intro;
+const year = new Date().getFullYear();
+const num = (i: number) => String(i + 1).padStart(2, '0');
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: title,
+    url: SITE + path,
+    inLanguage: lang,
+    dateModified: d.effective_date,
+    publisher: { '@type': 'Organization', name: 'NextBrain', url: SITE, email: CONTACT_EMAIL },
+  },
+];
+---
+
+<Base
+  lang={lang}
+  title={`${title} · ${L.name}`}
+  description={description}
+  path={path}
+  ogAlt={title}
+  jsonLd={jsonLd}
+  preload={preload}
+  alternates={{ ar: `/ar/${doc}/`, en: `/en/${doc}/`, xdefault: `/${doc}/` }}
+>
+  <a class="skip" href="#legal">{lang === 'ar' ? 'تخطَّ إلى المحتوى' : 'Skip to content'}</a>
+  <header class="header">
+    <div class="wrap header__in">
+      <a class="brand" href={`/${lang}/`} aria-label={L.name}>
+        <Image src={logo} alt="" width={96} height={54} loading="eager" />
+        <span>{L.name}</span>
+      </a>
+      <div class="header__end">
+        <a class="langsw" href={`/${other}/${doc}/`} hreflang={other} lang={other} data-setlang={other}>{L.switchLabel}</a>
+        <a class="btn" href={`${APP}/login`}>{L.openApp}</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="legal" class="legal">
+    <section class="legal__hero">
+      <div class="wrap legal__heroin">
+        <p class="legal__kicker">{L.kicker}</p>
+        <h1 id="top">{title}</h1>
+        {intro && <p class="legal__intro">{intro}</p>}
+        <ul class="legal__meta" aria-label={L.kicker}>
+          <li><time datetime={d.effective_date}>{L.effective} {effective}</time></li>
+          {d.version && <li>{L.version} {d.version}</li>}
+          <li>{L.minutes(minutes)}</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="wrap legal__grid">
+      <nav class="legal__toc" aria-label={L.toc}>
+        <p class="legal__tocTitle">{L.toc}</p>
+        <ol>
+          {sections.map((s) => (
+            <li>
+              <a href={`#${s.id}`}>{s.title}</a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+
+      <div class="legal__body">
+        {highlights.length > 0 && (
+          <aside class="legal__glance" aria-labelledby="glance-t">
+            <h2 id="glance-t">{L.glance}</h2>
+            <ul>
+              {highlights.map((h) => (
+                <li>{h}</li>
+              ))}
+            </ul>
+          </aside>
+        )}
+
+        {sections.map((s, i) => (
+          <section id={s.id} class="legal__section" aria-labelledby={`${s.id}-t`}>
+            <p class="legal__num">
+              {L.section} {num(i)}
+            </p>
+            <h2 id={`${s.id}-t`}>{s.title}</h2>
+            {s.body.map((b) =>
+              b.kind === 'p' ? (
+                <p>{linkify(b.text).map((x) => (x.href ? <a href={x.href} dir="ltr">{x.text}</a> : x.text))}</p>
+              ) : (
+                <ul>
+                  {b.items.map((it) => (
+                    <li>{linkify(it).map((x) => (x.href ? <a href={x.href} dir="ltr">{x.text}</a> : x.text))}</li>
+                  ))}
+                </ul>
+              ),
+            )}
+          </section>
+        ))}
+
+        <section class="legal__contact" aria-labelledby="contact-t">
+          <h2 id="contact-t">{L.contactTitle}</h2>
+          <p>
+            {L.contactBody} <a href={`mailto:${CONTACT_EMAIL}`} dir="ltr">{CONTACT_EMAIL}</a>
+          </p>
+          <p class="legal__actions">
+            <a class="btn" href={`mailto:${CONTACT_EMAIL}`}>{L.emailUs}</a>
+            <a class="btn btn--ghost" href={`/${lang}/${other_doc}/`}>{L.other}</a>
+          </p>
+        </section>
+        <p class="legal__totop"><a href="#top">{L.top}</a></p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer__in">
+      <div>
+        <strong>{L.name}</strong>
+        <small>{L.by}</small>
+        <small>© {year} {L.name}. {L.rights}.</small>
+      </div>
+      <nav aria-label={L.kicker}>
+        <a href={`/${lang}/`}>{L.home}</a>
+        <a href={`/${lang}/privacy/`} aria-current={doc === 'privacy' ? 'page' : undefined}>{lang === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}</a>
+        <a href={`/${lang}/terms/`} aria-current={doc === 'terms' ? 'page' : undefined}>{lang === 'ar' ? 'شروط الاستخدام' : 'Terms of Service'}</a>
+        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+        <a href={`/${other}/${doc}/`} hreflang={other} lang={other} data-setlang={other}>{L.switchLabel}</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script is:inline>
+    // the language switch remembers the choice, like the home page's
+    document.querySelectorAll('[data-setlang]').forEach(function (a) {
+      a.addEventListener('click', function () {
+        try {
+          localStorage.setItem('nb_lang', a.getAttribute('data-setlang'));
+        } catch (e) {}
+      });
+    });
+  </script>
+</Base>
+
+<style>
+  .legal__hero {
+    background: linear-gradient(160deg, var(--hero-from), var(--hero-to));
+    color: var(--on-hero);
+    padding-block: 48px 56px;
+  }
+  .legal__heroin {
+    max-width: 880px;
+  }
+  .legal__kicker {
+    display: inline-block;
+    margin: 0 0 12px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--on-hero) 14%, transparent);
+    color: var(--on-hero-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .legal__hero h1 {
+    font-size: clamp(1.9rem, 4.5vw, 2.8rem);
+    margin-bottom: 16px;
+  }
+  .legal__intro {
+    color: var(--on-hero-muted);
+    font-size: 1.08rem;
+    max-width: 70ch;
+  }
+  .legal__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    padding: 0;
+    margin: 20px 0 0;
+  }
+  .legal__meta li {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--on-hero) 28%, transparent);
+    color: var(--on-hero);
+    font-size: 0.9rem;
+  }
+  .legal__grid {
+    display: grid;
+    gap: 24px;
+    padding-block: 32px 48px;
+  }
+  .legal__toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+  }
+  .legal__tocTitle {
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+  .legal__toc ol {
+    margin: 0;
+    padding-inline-start: 1.4em;
+    columns: 1;
+  }
+  .legal__toc li {
+    padding-block: 2px;
+  }
+  .legal__toc a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+  .legal__toc a:hover {
+    color: var(--link);
+    text-decoration: underline;
+  }
+  .legal__body {
+    min-width: 0;
+    max-width: 760px;
+  }
+  .legal__glance {
+    background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 24px;
+  }
+  .legal__glance h2 {
+    font-size: 1.1rem;
+  }
+  .legal__glance ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+  }
+  .legal__glance li {
+    position: relative;
+    padding-inline-start: 32px;
+  }
+  .legal__glance li::before {
+    content: '✓';
+    position: absolute;
+    inset-inline-start: 0;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 15%, transparent);
+  }
+  .legal__section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+    scroll-margin-top: 80px;
+  }
+  .legal__num {
+    margin: 0 0 4px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .legal__section h2 {
+    font-size: 1.3rem;
+    margin-bottom: 12px;
+  }
+  .legal__section ul {
+    padding-inline-start: 1.3em;
+    margin: 0 0 1em;
+  }
+  .legal__section li {
+    margin-bottom: 6px;
+  }
+  .legal__section p:last-child,
+  .legal__section ul:last-child {
+    margin-bottom: 0;
+  }
+  .legal__section a,
+  .legal__contact a:not(.btn) {
+    overflow-wrap: anywhere;
+  }
+  .legal__contact {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-top: 24px;
+  }
+  .legal__contact h2 {
+    font-size: 1.2rem;
+  }
+  .legal__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 16px 0 0;
+  }
+  .legal__totop {
+    margin: 24px 0 0;
+  }
+  @media (min-width: 1000px) {
+    .legal__grid {
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 48px;
+      align-items: start;
+    }
+    .legal__toc {
+      position: sticky;
+      top: 88px;
+      max-height: calc(100vh - 112px);
+      overflow: auto;
+    }
+  }
+  @media (max-width: 999px) {
+    .legal__toc ol {
+      columns: 2;
+      column-gap: 24px;
+    }
+  }
+  @media (max-width: 560px) {
+    .legal__toc ol {
+      columns: 1;
+    }
+    .legal__section {
+      padding: 20px 16px;
+    }
+    .legal__hero {
+      padding-block: 32px 40px;
+    }
+  }
+  @media print {
+    .header,
+    .footer,
+    .legal__toc,
+    .legal__actions,
+    .legal__totop {
+      display: none;
+    }
+    .legal__hero {
+      background: none;
+      color: inherit;
+    }
+  }
+</style>

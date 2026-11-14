@@ -1,0 +1,9 @@
+{
+ "source": "back tests/org_v2/e2e_course_students.py (CS_DUMP)",
+ "payload": {
+  "sent": 1,
+  "parents": 2,
+  "skipped": [],
+  "nudged_at": "2026-11-13T14:41:17.503732"
+ }
+}

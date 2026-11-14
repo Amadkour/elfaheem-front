@@ -1,0 +1,5 @@
+# M7 certificates + data lab
+lib/features/teacher/certificates	lib/features/certificates
+lib/features/shared/certificates_issue	lib/features/certificates/issue
+lib/features/student/certificates	lib/features/certificates/student
+lib/features/teacher/data_lab	lib/features/data_lab

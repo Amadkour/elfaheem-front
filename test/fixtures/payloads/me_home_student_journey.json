@@ -1,0 +1,239 @@
+{
+ "_source": {
+  "route": "GET /api/v1/me/home",
+  "uid": 6
+ },
+ "payload": {
+  "now": "2026-11-07T23:24:26.955511",
+  "today_date": "2026-11-08",
+  "timezone": "Africa/Cairo",
+  "role": "student",
+  "today": [],
+  "upcoming": [],
+  "attention": {
+   "counts": {},
+   "total": 0,
+   "by_org": {},
+   "items": [],
+   "tabs": [
+    "home",
+    "profile",
+    "parent.link",
+    "parent.alerts",
+    "admin.support",
+    "admin.finance",
+    "org.people",
+    "org.academics",
+    "org.timetable",
+    "org.services",
+    "org.settings"
+   ]
+  },
+  "inbox_preview": [],
+  "inbox_counts": {
+   "todo": 0,
+   "news": 0,
+   "offers": 0,
+   "done": 0,
+   "overdue": 0,
+   "due_soon": 0,
+   "mandatory": 0
+  },
+  "notifications_unread": 0,
+  "org_overview": {
+   "items": [
+    {
+     "organization": {
+      "id": 1,
+      "parent_id": null,
+      "path": "/1/",
+      "depth": 0,
+      "name_ar": "جامعة",
+      "name_en": "Uni",
+      "type": "university",
+      "description": null,
+      "logo_url": null,
+      "color": null,
+      "join_mode": "approval",
+      "is_active": true,
+      "status": "approved",
+      "website": null,
+      "contact_email": null,
+      "contact_phone": null,
+      "address": null,
+      "review_note": null
+     },
+     "roles": [
+      "student"
+     ],
+     "membership": {
+      "id": 2,
+      "role": "student",
+      "status": "active",
+      "starts_at": null,
+      "expires_at": null
+     },
+     "manage": null,
+     "todo": {
+      "total": 0,
+      "forms": 0,
+      "mandatory": 0,
+      "overdue": 0,
+      "due_soon": 0,
+      "next_due_at": null
+     },
+     "approvals": {
+      "form_responses": 0,
+      "complaints": 0,
+      "overdue_complaints": 0,
+      "assigned_to_me": 0,
+      "join_requests": 0,
+      "unit_requests": 0,
+      "total": 0
+     },
+     "news": 0,
+     "requests_in_progress": 0
+    }
+   ],
+   "has_live_membership": true,
+   "default_org_id": 1,
+   "suggested_mode": "organization",
+   "independent_courses": 0,
+   "pending_total": 0,
+   "now": "2026-11-07T23:24:27.145168"
+  },
+  "orgs_enabled": true,
+  "scope": "personal",
+  "live_now": [],
+  "courses_progress": [],
+  "journey": {
+   "source": "roadmap",
+   "anchor_course_id": 1,
+   "field": {
+    "id": 3,
+    "name_ar": "بايثون",
+    "name_en": "Python"
+   },
+   "next": {
+    "id": 2,
+    "name_ar": "Py2",
+    "name_en": "Py2",
+    "image_url": null,
+    "type": "recorded",
+    "level": "intermediate",
+    "tags": [],
+    "category": {
+     "id": 3,
+     "name_ar": "بايثون",
+     "name_en": "Python"
+    },
+    "teacher": {
+     "id": 1,
+     "name": "TeacherOne",
+     "image_url": null
+    },
+    "is_published": true,
+    "is_private": false,
+    "is_free": true,
+    "final_price": 0.0,
+    "price": 0.0,
+    "currency": "EGP",
+    "state": "not_started",
+    "progress": 0.0,
+    "kind": "start"
+   },
+   "done": 1,
+   "total": 3,
+   "steps": [
+    {
+     "id": 1,
+     "name_ar": "Py1",
+     "name_en": "Py1",
+     "image_url": null,
+     "type": "recorded",
+     "level": "beginner",
+     "tags": [
+      "Python",
+      "basics"
+     ],
+     "category": {
+      "id": 3,
+      "name_ar": "بايثون",
+      "name_en": "Python"
+     },
+     "teacher": {
+      "id": 1,
+      "name": "TeacherOne",
+      "image_url": null
+     },
+     "is_published": true,
+     "is_private": false,
+     "is_free": true,
+     "final_price": 0.0,
+     "price": 0.0,
+     "currency": "EGP",
+     "state": "completed",
+     "progress": 100.0,
+     "current": false
+    },
+    {
+     "id": 2,
+     "name_ar": "Py2",
+     "name_en": "Py2",
+     "image_url": null,
+     "type": "recorded",
+     "level": "intermediate",
+     "tags": [],
+     "category": {
+      "id": 3,
+      "name_ar": "بايثون",
+      "name_en": "Python"
+     },
+     "teacher": {
+      "id": 1,
+      "name": "TeacherOne",
+      "image_url": null
+     },
+     "is_published": true,
+     "is_private": false,
+     "is_free": true,
+     "final_price": 0.0,
+     "price": 0.0,
+     "currency": "EGP",
+     "state": "not_started",
+     "progress": 0.0,
+     "current": true
+    },
+    {
+     "id": 3,
+     "name_ar": "Py3",
+     "name_en": "Py3",
+     "image_url": null,
+     "type": "recorded",
+     "level": "advanced",
+     "tags": [],
+     "category": {
+      "id": 3,
+      "name_ar": "بايثون",
+      "name_en": "Python"
+     },
+     "teacher": {
+      "id": 1,
+      "name": "TeacherOne",
+      "image_url": null
+     },
+     "is_published": true,
+     "is_private": false,
+     "is_free": true,
+     "final_price": 0.0,
+     "price": 0.0,
+     "currency": "EGP",
+     "state": "not_started",
+     "progress": 0.0,
+     "current": false
+    }
+   ]
+  },
+  "journey_hint": null
+ }
+}

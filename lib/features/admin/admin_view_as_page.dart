@@ -2,22 +2,24 @@
 //
 // Pick a student / teacher → the app switches to that user's own dashboard, read-only.
 // The server enforces everything (see services/view_as.py); this page only starts the mode.
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/app_loading_indicator.dart';
-import '../../utils/widget/paged_progress.dart';
 import '../../utils/widget/view_as_state.dart';
 import 'admin_common.dart';
-import 'package:flutter/cupertino.dart';
+import 'admin_list.dart' show AdminAvatar;
+import 'admin_page.dart';
+import 'package:flutter_education_app/design/app_badges.dart';
+import 'package:flutter_education_app/design/app_data_table.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppEmpty;
+import 'package:flutter_education_app/design/app_states.dart' show appErrorMessage;
+import 'package:flutter_education_app/design/app_tabs.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_username.dart';
 
 /// Starts view-as for [id] and lands on that user's own home. ONE place for every entry point
 /// (this page, the student/teacher lists, the user detail sheet).
@@ -45,76 +47,43 @@ class AdminViewAsPage extends StatefulWidget {
 
 class _AdminViewAsPageState extends State<AdminViewAsPage> {
   static const _pageSize = 20;
+  static const _roles = ['student', 'teacher', 'admin'];
 
   final _api = ApiClient();
-  final _q = TextEditingController();
-  final _scroll = ScrollController();
 
   String _role = 'student';
+  String _search = '';
   List<Map<String, dynamic>> _items = [];
   int _page = 0; // last page received
-  int _received =
-      0; // rows received from the server (incl. rows hidden client-side)
-  int _hidden = 0; // super-admin rows dropped from the admin tab
+  int _received = 0; // rows received from the server (incl. rows hidden client-side)
   int _total = 0; // server total for the current filter
   bool _loading = false; // first page
   bool _loadingMore = false; // next pages
   String? _error;
-  Timer? _debounce;
-  int _req =
-      0; // ignores out-of-order responses (older reply must not overwrite a newer one)
+  int _req = 0; // ignores out-of-order responses (older reply must not overwrite a newer one)
 
   bool get _hasMore => _received < _total;
-
-  /// What we show as "total": the server total minus the super-admins we already know are hidden.
-  int get _shownTotal => _hasMore
-      ? (_total - _hidden).clamp(_items.length, _total)
-      : _items.length;
 
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(_onScroll);
     _load();
   }
 
   @override
-  void dispose() {
-    _debounce?.cancel();
-    _scroll.dispose();
-    _q.dispose();
-    super.dispose();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    AdminRefreshScope.register(context, _load);
   }
 
-  /// Search as you type (350 ms after the last key) — no need to press enter.
-  void _onSearchChanged(String _) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 350), _load);
-  }
-
-  /// Near the bottom → fetch the next page automatically.
-  void _onScroll() {
-    if (_scroll.hasClients && _scroll.position.extentAfter < 320) _loadMore();
-  }
-
-  /// If the first pages don't even fill the screen there is nothing to scroll, so keep loading.
-  void _fillViewport() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scroll.hasClients) return;
-      if (_scroll.position.maxScrollExtent <= 0 && _hasMore) _loadMore();
-    });
-  }
-
-  Future<({List<Map<String, dynamic>> rows, int received, int total})> _fetch(
-    int page,
-  ) async {
+  Future<({List<Map<String, dynamic>> rows, int received, int total})> _fetch(int page) async {
     final r = await _api.get(
       '/api/v1/admin/users',
       queryParams: {
         'role': _role,
         'page': page,
         'size': _pageSize,
-        if (_q.text.trim().isNotEmpty) 'search': _q.text.trim(),
+        if (_search.isNotEmpty) 'search': _search,
       },
     );
     final map = r is Map ? r : const {};
@@ -123,16 +92,15 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
     // role=admin also returns super-admins, and the server refuses to view those.
-    final rows = _role == 'admin'
-        ? all.where((u) => '${u['role']}' != 'super-admin').toList()
-        : all;
+    final rows = _role == 'admin' ? all.where((u) => '${u['role']}' != 'super-admin').toList() : all;
     final total = (map['total'] as num?)?.toInt() ?? all.length;
     return (rows: rows, received: all.length, total: total);
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool reset = false}) async {
     final req = ++_req;
     setState(() {
+      if (reset) _items = []; // another role / search: never show the previous one's rows while loading
       _loading = true;
       _loadingMore = false;
       _error = null;
@@ -144,23 +112,17 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
         _items = r.rows;
         _page = 1;
         _received = r.received;
-        _hidden = r.received - r.rows.length;
         _total = r.total;
         _loading = false;
       });
-      if (_scroll.hasClients) _scroll.jumpTo(0);
-      _fillViewport();
     } catch (e) {
       if (!mounted || req != _req) return;
       setState(() {
-        _items = [];
-        _page = 0;
-        _received = 0;
-        _hidden = 0;
-        _total = 0;
-        _error = e is ApiException ? e.message : '$e';
+        // a failed reload keeps the rows already shown; only a first load can end in the error state
+        _error = appErrorMessage(e);
         _loading = false;
       });
+      if (_items.isNotEmpty) toast(_error!, error: true);
     }
   }
 
@@ -176,237 +138,128 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
         _items = [..._items, ...r.rows.where((u) => !known.contains(u['id']))];
         _page += 1;
         _received += r.received;
-        _hidden += r.received - r.rows.length;
         _total = r.total;
         _loadingMore = false;
       });
-      _fillViewport();
     } catch (e) {
       if (!mounted || req != _req) return;
       setState(() => _loadingMore = false);
-      toast(e is ApiException ? e.message : '$e', error: true);
+      toast(appErrorMessage(e), error: true);
     }
   }
 
   void _open(Map<String, dynamic> u) => startViewAs(
-    Navigator.of(context, rootNavigator: true),
-    id: (u['id'] as num).toInt(),
-    name: '${u['name']}',
-    role: _role,
-  );
+        Navigator.of(context, rootNavigator: true),
+        id: (u['id'] as num).toInt(),
+        name: '${u['name']}',
+        role: _role,
+      );
 
   @override
   Widget build(BuildContext context) {
     if (!isSuperNow(context)) {
-      return BasePage(
-        useWebCard: true,
-        appBar: ScreenAppBar(title: 'view_as_user'.tr),
-        child: EmptyState(
-          'admin_super_admin_only'.tr,
-          icon: Icons.lock_rounded,
-        ),
+      return AdminPage(
+        title: 'view_as_user'.tr,
+        icon: Icons.visibility_rounded,
+        body: Center(child: EmptyState('admin_super_admin_only'.tr, icon: Icons.lock_rounded)),
       );
     }
 
-    Widget list;
-    if (_loading) {
-      list = const Center(child: AppLoadingIndicator());
-    } else if (_error != null) {
-      list = ErrorRetry(message: _error!, onRetry: _load);
-    } else if (_items.isEmpty) {
-      list = EmptyState('admin_nothing_here_yet'.tr);
-    } else {
-      list = RefreshIndicator(
-        onRefresh: _load,
-        child: ListView.builder(
-          controller: _scroll,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
-          itemCount: _items.length + 1,
-          itemBuilder: (_, i) {
-            if (i == _items.length) {
-              return PagedListFooter(
-                loadingMore: _loadingMore,
-                hasMore: _hasMore,
-              );
-            }
-            return _ViewAsTile(user: _items[i], onTap: () => _open(_items[i]));
+    final state = _error != null && _items.isEmpty
+        ? AppTableState.error
+        : (_loading && _items.isEmpty ? AppTableState.loading : AppTableState.ready);
+
+    final table = AppDataTable<Map<String, dynamic>>(
+      state: state,
+      errorText: _error,
+      onRetry: _load,
+      rows: _items,
+      rowId: (u) => u['id'] as Object,
+      searchHint: 'admin_search_by_name_or_e_mail'.tr,
+      onSearch: (v) {
+        final q = v.trim();
+        if (q == _search) return;
+        _search = q;
+        _load(reset: true);
+      },
+      columns: [
+        AppTableColumn<Map<String, dynamic>>(
+          key: 'name',
+          label: 'name_label'.tr,
+          primary: true,
+          flex: 3,
+          cell: (ctx, u) {
+            final name = '${u['name'] ?? ''}'.trim();
+            return Row(children: [
+              AdminAvatar(name: name, url: '${u['image_url'] ?? ''}', size: 36),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text(name.isEmpty ? '—' : name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(ctx)),
+                  AppUsernameLine(usernameFrom(u)),
+                ]),
+              ),
+            ]);
           },
         ),
-      );
-    }
-
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
-      appBar: ScreenAppBar(title: 'view_as_user'.tr),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: SegmentedButton<String>(
-                  segments: [
-                    ButtonSegment(
-                      value: 'student',
-                      label: Text('student'.tr),
-                      icon: const Icon(Icons.school_rounded),
-                    ),
-                    ButtonSegment(
-                      value: 'teacher',
-                      label: Text('teacher'.tr),
-                      icon: const Icon(Icons.person_pin_rounded),
-                    ),
-                    ButtonSegment(
-                      value: 'admin',
-                      label: Text('admin_role_admin'.tr),
-                      icon: const Icon(Icons.admin_panel_settings_rounded),
-                    ),
-                  ],
-                  selected: {_role},
-                  onSelectionChanged: (s) {
-                    _role = s.first;
-                    _load();
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-                child: TextField(
-                  controller: _q,
-                  onChanged: _onSearchChanged,
-                  onSubmitted: (_) => _load(),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    hintText: 'admin_search_by_name_or_e_mail'.tr,
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.arrow_forward_rounded),
-                      onPressed: _load,
-                    ),
-                  ),
-                ),
-              ),
-              if (!_loading && _error == null && _items.isNotEmpty && _shownTotal>20)
-                PagedCountCard(
-                  loaded: _items.length,
-                  total: _shownTotal,
-                  loadingMore: _loadingMore,
-                  done: !_hasMore,
-                ),
-              Expanded(child: list),
-            ],
-          ),
+        AppTableColumn<Map<String, dynamic>>.text(
+          key: 'email',
+          label: 'admin_email'.tr,
+          flex: 3,
+          text: (u) => '${u['gmail'] ?? ''}',
         ),
-      ),
+        AppTableColumn<Map<String, dynamic>>(
+          key: 'status',
+          label: 'status'.tr,
+          flex: 1,
+          showOnPhone: false,
+          cell: (ctx, u) => u['is_active'] == false
+              ? AppStatusBadge(label: 'admin_inactive'.tr, tone: AppTone.warning, dense: true)
+              : AppStatusBadge(label: 'exam_status_active'.tr, tone: AppTone.success, dense: true),
+        ),
+      ],
+      onRowTap: _open,
+      rowActions: (u) => [
+        AppRowAction<Map<String, dynamic>>(
+          icon: Icons.visibility_rounded,
+          label: 'view_as_user'.tr,
+          onTap: () => _open(u),
+        ),
+      ],
+      empty: _search.isNotEmpty
+          ? AppEmpty(icon: Icons.search_off_rounded, title: 'ds_no_results'.tr)
+          : AppEmpty(icon: Icons.inbox_outlined, title: 'admin_nothing_here_yet'.tr),
+      onLoadMore: _loadMore,
+      hasMore: _hasMore,
+      loadingMore: _loadingMore,
     );
-  }
-}
 
-class _ViewAsTile extends StatelessWidget {
-  const _ViewAsTile({required this.user, required this.onTap});
-
-  final Map<String, dynamic> user;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final name = '${user['name'] ?? ''}'.trim();
-    final image = '${user['image_url'] ?? ''}';
-    final active = user['is_active'] != false;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: c.divider),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [c.primary, c.primaryDark],
-                    ),
-                  ),
-                  child: CircleAvatar(
-                    radius: 23,
-                    backgroundColor: c.cardBg,
-                    backgroundImage: image.isNotEmpty
-                        ? NetworkImage(image)
-                        : null,
-                    child: image.isEmpty
-                        ? Text(
-                            name.isEmpty
-                                ? '?'
-                                : name.characters.first.toUpperCase(),
-                            style: TextStyle(
-                              color: c.primary,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          )
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name.isEmpty ? '—' : name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'tajawal',
-                          fontWeight: FontWeight.w800,
-                          color: c.textDark,
-                        ),
-                      ),
-                      Text(
-                        '${user['gmail'] ?? ''}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textDirection: TextDirection.ltr,
-                        style: TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 12,
-                          color: c.textLight,
-                        ),
-                      ),
-                      if (!active)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: StatusChip('admin_inactive'.tr, c.warning),
-                        ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(9),
-                  decoration: BoxDecoration(
-                    color: c.primary.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(CupertinoIcons.eye, size: 20, color: c.primary),
-                ),
-              ],
-            ),
+    return AdminPage(
+      title: 'view_as_user'.tr,
+      subtitle: 'admin_view_only'.tr,
+      icon: Icons.visibility_rounded,
+      onRefresh: _load,
+      width: AppWidth.content,
+      body: Padding(
+        padding: AdminPage.bodyPadding(context),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppTabs(
+            expand: true,
+            items: [
+              AppTabItem('student'.tr, icon: Icons.school_rounded),
+              AppTabItem('teacher'.tr, icon: Icons.person_pin_rounded),
+              AppTabItem('admin_role_admin'.tr, icon: Icons.admin_panel_settings_rounded),
+            ],
+            index: _roles.indexOf(_role),
+            onChanged: (i) {
+              if (_roles[i] == _role) return;
+              _role = _roles[i];
+              _load(reset: true);
+            },
           ),
-        ),
+          const SizedBox(height: AppSpace.sm),
+          Expanded(child: table),
+        ]),
       ),
     );
   }
@@ -421,7 +274,7 @@ class ViewAsBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Logging out while in view-as left the mode ON (every later request kept sending X-View-As).
-    final signedIn = context.select<AuthProvider, bool>(
+    final signedIn = context.select<MyAuthProvider, bool>(
       (a) => a.isAuthenticated,
     );
     if (!signedIn && ViewAsState.active) {
@@ -443,43 +296,37 @@ class ViewAsBanner extends StatelessWidget {
             Directionality(
               textDirection: pageDirection,
               child: Material(
-                color: const Color(0xFFB45309),
+                color: context.colors.warning,
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                      horizontal: AppSpace.sm,
+                      vertical: AppSpace.xs,
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.visibility_rounded,
-                          color: Colors.white,
+                          color: context.colors.onHero,
                           size: 18,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpace.xs),
                         Expanded(
                           child: Text(
                             '${'admin_view_only'.tr}: ${s.name}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: 'tajawal',
-                              decoration: TextDecoration.none,
-                              fontSize: 13,
-                            ),
+                            style: AppType.label(context).copyWith(color: context.colors.onHero, fontWeight: FontWeight.w600, decoration: TextDecoration.none),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpace.xs),
                         FilledButton.icon(
                           style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFFB45309),
+                            backgroundColor: context.colors.onHero,
+                            foregroundColor: context.colors.warning,
                             visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
                           ),
                           icon: const Icon(
                             Icons.admin_panel_settings_rounded,
@@ -487,11 +334,7 @@ class ViewAsBanner extends StatelessWidget {
                           ),
                           label: Text(
                             'admin_back_to_admin'.tr,
-                            style: const TextStyle(
-                              fontFamily: 'tajawal',
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12.5,
-                            ),
+                            style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600),
                           ),
                           onPressed: exit,
                         ),

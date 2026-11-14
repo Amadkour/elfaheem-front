@@ -1,0 +1,402 @@
+# codemagic.yaml — every app build runs on Codemagic (D-144, docs/release/APP_RELEASES_CODEMAGIC.md).
+#
+# D-146: the SAME workflows also run on the owner's own computer, for free, through tools/runner/nextbrain_runner.py (the
+# default "Build on: My computer"). It reads this file at the commit it builds and runs every script step (bash, or
+# PowerShell for windows-website), skipping a step that uses sudo. Keep the steps runnable there: no Codemagic-only
+# tools in the website workflows (`publishing`, `ios_signing` and `integrations` are Codemagic's and stay in the store
+# workflows), files to upload in build/nb-upload, and `zip -qr <dest> <paths>` as the only zip form (Git Bash has no zip;
+# tools/runner/zip_shim.py stands in).
+#
+# The builds are started by OUR server, never by a push: Super Admin → App versions → New version calls
+# POST https://api.codemagic.io/builds {appId, workflowId, branch, environment: {variables: {…}}} with:
+#   NB_RELEASE_ID      the release row (labels the build, names the upload)
+#   NB_BUILD_NAME      x.y.z      → --build-name
+#   NB_BUILD_NUMBER    n          → --build-number (Android versionCode / iOS CFBundleVersion)
+#   NB_NOTES_EN / NB_NOTES_AR     what's new (the store release notes; the website shows them from our server)
+#   NB_PLAY_TRACK      internal | alpha | beta | production (android-store)
+#   NB_PACKAGE_NAME    the Play package name the version was created for (recorded only in phase 1, see android-store)
+#   NB_GATE            test_first (the analyzer + the CI test suites must pass before the build) | direct
+#   NB_API_URL         our API base (https://nextbrain.site/api): where the website workflows upload their files
+#   NB_UPLOAD_TOKEN    website channel only: the per-release upload token (scripts/release/upload_artifacts.sh)
+#
+# Channels: "store" workflows hand the build to the store (android-store → Google Play, ios-store → App Store
+# Connect); "website" workflows upload their files to our server, which keeps them in MinIO and offers them in the
+# web app's download banner and the in-app update dialog.
+#
+# What the owner sets up once in Codemagic (never in this repo):
+#   • Team settings → Code signing identities → Android keystores: the release keystore, reference name
+#     `android_signing` (the same key as today's APKs, or installing a new APK over an old one fails).
+#   • Environment variable group `play_store`: GCLOUD_SERVICE_ACCOUNT_CREDENTIALS = the Play Console service account
+#     JSON (secure).
+#   • iOS (only when the App Store is set up): Team integrations → Developer Portal → an App Store Connect API key
+#     named `app_store`; group `app_store` for anything else iOS needs. ios_signing fetches the profiles itself.
+#   • Codemagic → Teams / User settings → Integrations → Codemagic API: the token for our server's
+#     CODEMAGIC_API_TOKEN, and the application id (in the app's URL) for CODEMAGIC_APP_ID.
+# Instance types: Android, web and iOS run on mac_mini_m2 (the only machine of Codemagic's free minutes);
+# linux_x2 and windows_x2 need billing enabled on the Codemagic team.
+#
+# Symbols: every native build is obfuscated like scripts/build_release.sh; the symbols are kept as a Codemagic
+# artifact (debug-info-<version>+<build>-<platform>.zip). Keep them — they are the only way to read a stack trace:
+#   flutter symbolize -i trace.txt -d app.android-arm64.symbols
+
+definitions:
+  flutter_version: &flutter_version 3.47.7 # = .github/workflows/ci.yml (keep them equal)
+
+  scripts:
+    - &check_vars
+      name: Release variables
+      script: |
+        set -euo pipefail
+        : "${NB_BUILD_NAME:?NB_BUILD_NAME is not set: start this build from App versions on the dashboard}"
+        : "${NB_BUILD_NUMBER:?NB_BUILD_NUMBER is not set}"
+        [[ "$NB_BUILD_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "NB_BUILD_NAME must be x.y.z (got $NB_BUILD_NAME)"; exit 1; }
+        [[ "$NB_BUILD_NUMBER" =~ ^[0-9]+$ ]] || { echo "NB_BUILD_NUMBER must be a whole number"; exit 1; }
+        echo "release ${NB_RELEASE_ID:-?}: ${NB_BUILD_NAME}+${NB_BUILD_NUMBER} · gate ${NB_GATE:-test_first} · $(git rev-parse --short HEAD) on ${CM_BRANCH:-?}"
+        echo "NB_SYMBOLS=build/debug-info/${NB_BUILD_NAME}+${NB_BUILD_NUMBER}" >> "$CM_ENV"
+
+    - &pub_get
+      name: flutter pub get
+      script: flutter pub get
+
+    # NB_GATE=test_first: the CI gate (.github/workflows/ci.yml) before anything is built. live_events_soak_test is
+    # left out: a soak test with a known flake that can hang (it is not a release check).
+    - &gate
+      name: Gate (NB_GATE=test_first) — analyzer + the CI test suites
+      script: |
+        set -euo pipefail
+        if [ "${NB_GATE:-test_first}" != "test_first" ]; then echo "NB_GATE=${NB_GATE}: building without tests"; exit 0; fi
+        flutter analyze --no-fatal-infos --fatal-warnings
+        org_tests="$(find test/org -name '*_test.dart' ! -name 'live_events_soak_test.dart' | sort)"
+        flutter test $org_tests test/export/ test/ui/ test/auth/ test/access/ test/admin/ test/contract/
+        flutter test test/perf -j 1
+
+    # Release notes for the store publishers (Codemagic reads release_notes.json at the project root: [{language,
+    # text}]). Google Play keeps 500 characters per language.
+    - &store_release_notes
+      name: Store release notes (NB_NOTES_EN / NB_NOTES_AR)
+      script: |
+        python3 - <<'PY'
+        import json, os
+        ar_code = os.environ.get("NB_NOTES_AR_LOCALE", "ar")
+        notes = []
+        for code, var in (("en-US", "NB_NOTES_EN"), (ar_code, "NB_NOTES_AR")):
+            text = (os.environ.get(var) or "").strip()
+            if text:
+                notes.append({"language": code, "text": text[:500]})
+        if notes:
+            with open("release_notes.json", "w", encoding="utf-8") as f:
+                json.dump(notes, f, ensure_ascii=False)
+            print("release_notes.json:", ", ".join(n["language"] for n in notes))
+        else:
+            print("no release notes")
+        PY
+
+    - &zip_symbols
+      name: Keep the symbols
+      script: |
+        set -euo pipefail
+        if [ -d "$NB_SYMBOLS" ]; then
+          (cd "$NB_SYMBOLS" && zip -qr "$CM_BUILD_DIR/build/debug-info-${NB_BUILD_NAME}+${NB_BUILD_NUMBER}-${NB_PLATFORM}.zip" .)
+          ls -la "$CM_BUILD_DIR"/build/debug-info-*.zip
+        fi
+
+    - &upload
+      name: Upload the files to our server
+      script: bash scripts/release/upload_artifacts.sh build/nb-upload
+
+workflows:
+  # ── Android → Google Play ────────────────────────────────────────────────────────────────────────────────────
+  # PACKAGE NAME: the applicationId is com.doubley.nextbrain (android/app/build.gradle.kts, D-145; it was
+  # com.example.flutter_education_app, which Google Play refuses). The server's PLAY_PACKAGE_NAME must say the same,
+  # or it keeps this channel "not ready". NB_PACKAGE_NAME is NOT applied to the build: changing the applicationId
+  # makes a different app (a new Firebase Android client / google-services.json, and everyone reinstalls), so it is
+  # a code change, not a build option.
+  android-store:
+    name: Android → Google Play
+    labels:
+      - android
+      - store
+      - nb-release-$NB_RELEASE_ID
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    environment:
+      flutter: *flutter_version
+      java: 17
+      groups:
+        - play_store
+      vars:
+        NB_PLATFORM: android
+        NB_NOTES_AR_LOCALE: ar
+      # gradle reads ANDROID_KEYSTORE_PATH / _PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD (D-026) and refuses
+      # a release build in CI without them
+      android_signing:
+        - keystore: android_signing
+          keystore_environment_variable: ANDROID_KEYSTORE_PATH
+          keystore_password_environment_variable: ANDROID_KEYSTORE_PASSWORD
+          key_alias_environment_variable: ANDROID_KEY_ALIAS
+          key_password_environment_variable: ANDROID_KEY_PASSWORD
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - $HOME/.pub-cache
+    scripts:
+      - *check_vars
+      - name: Play track (NB_PLAY_TRACK)
+        script: |
+          set -euo pipefail
+          track="${NB_PLAY_TRACK:-internal}"
+          case "$track" in internal|alpha|beta|production) ;; *) echo "NB_PLAY_TRACK must be internal, alpha, beta or production (got $track)"; exit 1 ;; esac
+          # GOOGLE_PLAY_TRACK overrides publishing.google_play.track (Codemagic's documented override for API builds)
+          echo "GOOGLE_PLAY_TRACK=$track" >> "$CM_ENV"
+          echo "track: $track · package (recorded): ${NB_PACKAGE_NAME:-—}"
+      - *pub_get
+      - *gate
+      - name: flutter build appbundle
+        script: |
+          set -euo pipefail
+          flutter build appbundle --release --obfuscate --split-debug-info="$NB_SYMBOLS/android" \
+            --build-name="$NB_BUILD_NAME" --build-number="$NB_BUILD_NUMBER"
+      - *store_release_notes
+      - *zip_symbols
+    artifacts:
+      - build/app/outputs/bundle/release/*.aab
+      - build/app/outputs/mapping/release/mapping.txt
+      - build/debug-info-*.zip
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal # the version's track comes from GOOGLE_PLAY_TRACK (set from NB_PLAY_TRACK above)
+
+  # ── Android → our website (APKs in MinIO) ──────────────────────────────────────────────────────────────────────
+  # Three APKs with the SAME versionCode (D-137): arm64-v8a, armeabi-v7a and universal, each built with
+  # --target-platform. Not --split-per-abi: its per-ABI versionCode offsets would make a later universal APK a
+  # "downgrade" of an installed split one, and the update check compares build numbers.
+  android-website:
+    name: Android → website (APK)
+    labels:
+      - android
+      - website
+      - nb-release-$NB_RELEASE_ID
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    environment:
+      flutter: *flutter_version
+      java: 17
+      vars:
+        NB_PLATFORM: android
+      android_signing:
+        - keystore: android_signing
+          keystore_environment_variable: ANDROID_KEYSTORE_PATH
+          keystore_password_environment_variable: ANDROID_KEYSTORE_PASSWORD
+          key_alias_environment_variable: ANDROID_KEY_ALIAS
+          key_password_environment_variable: ANDROID_KEY_PASSWORD
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - $HOME/.pub-cache
+    scripts:
+      - *check_vars
+      - *pub_get
+      - *gate
+      - name: flutter build apk (arm64-v8a, armeabi-v7a, universal)
+        script: |
+          set -euo pipefail
+          mkdir -p build/nb-upload
+          name="NextBrain-${NB_BUILD_NAME}-${NB_BUILD_NUMBER}"
+          for variant in arm64-v8a:android-arm64 armeabi-v7a:android-arm universal:; do
+            abi="${variant%%:*}"; target="${variant#*:}"
+            echo "==> $abi"
+            flutter build apk --release ${target:+--target-platform=$target} \
+              --obfuscate --split-debug-info="$NB_SYMBOLS/android-$abi" \
+              --build-name="$NB_BUILD_NAME" --build-number="$NB_BUILD_NUMBER"
+            cp build/app/outputs/flutter-apk/app-release.apk "build/nb-upload/${name}-${abi}.apk"
+          done
+          ls -la build/nb-upload
+      - *zip_symbols
+      - *upload
+    artifacts:
+      - build/nb-upload/*.apk
+      - build/debug-info-*.zip
+
+  # ── iOS → App Store Connect (OFF until the owner sets up an Apple account; the server keeps ios:store "not
+  # ready" until then). iPhone users install the web app meanwhile — there is no "website" channel for iOS. ────
+  ios-store:
+    name: iOS → App Store
+    labels:
+      - ios
+      - store
+      - nb-release-$NB_RELEASE_ID
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    integrations:
+      app_store_connect: app_store
+    environment:
+      flutter: *flutter_version
+      xcode: latest
+      cocoapods: default
+      groups:
+        - app_store
+      vars:
+        NB_PLATFORM: ios
+        NB_NOTES_AR_LOCALE: ar-SA
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.doubley.nextbrain # = IOS_BUNDLE_ID on the server
+    scripts:
+      - *check_vars
+      - name: Code signing settings on the Xcode project
+        script: xcode-project use-profiles
+      - *pub_get
+      - *gate
+      - name: flutter build ipa
+        script: |
+          set -euo pipefail
+          flutter build ipa --release --obfuscate --split-debug-info="$NB_SYMBOLS/ios" \
+            --build-name="$NB_BUILD_NAME" --build-number="$NB_BUILD_NUMBER" \
+            --export-options-plist=/Users/builder/export_options.plist
+      - *store_release_notes
+      - *zip_symbols
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - build/debug-info-*.zip
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # sent for review; Apple's review still decides, then it goes out on approval
+        submit_to_app_store: true
+        release_type: AFTER_APPROVAL
+
+  # ── Web → our server (the site itself: the server unpacks the zip and switches `current`, D-143) ─────────────────
+  web-website:
+    name: Web → website
+    labels:
+      - web
+      - website
+      - nb-release-$NB_RELEASE_ID
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    environment:
+      flutter: *flutter_version
+      vars:
+        NB_PLATFORM: web
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+    scripts:
+      - *check_vars
+      - *pub_get
+      - *gate
+      - name: flutter build web
+        script: |
+          set -euo pipefail
+          # dart2js minifies the web build; --obfuscate / --split-debug-info do not apply to web
+          # served at https://nextbrain.site/app/ (D-270); MSYS_NO_PATHCONV: Git Bash (the Windows runner) would rewrite /app/
+          MSYS_NO_PATHCONV=1 flutter build web --release --base-href /app/ \
+            --dart-define=API_BASE_URL=https://nextbrain.site/api \
+            --dart-define=LIVEKIT_URL=wss://nextbrain.site/livekit \
+            --build-name="$NB_BUILD_NAME" --build-number="$NB_BUILD_NUMBER"
+          # D-171: content-hashed main script (cached `immutable` by nginx) + .gz / .br copies for gzip_static /
+          # brotli_static (.br only where the `brotli` command exists)
+          dart run scripts/web/postbuild.dart build/web
+          mkdir -p build/nb-upload
+          (cd build/web && zip -qr "$CM_BUILD_DIR/build/nb-upload/NextBrain-${NB_BUILD_NAME}-${NB_BUILD_NUMBER}-web.zip" .)
+          ls -la build/nb-upload
+      - *upload
+    artifacts:
+      - build/nb-upload/*.zip
+
+  # ── Linux desktop → our website (.deb + .tar.gz, the preview of D-137) ──────────────────────────────────────────
+  linux-website:
+    name: Linux → website (.deb, .tar.gz)
+    labels:
+      - linux
+      - website
+      - nb-release-$NB_RELEASE_ID
+    instance_type: linux_x2
+    max_build_duration: 90
+    environment:
+      flutter: *flutter_version
+      vars:
+        NB_PLATFORM: linux
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+    scripts:
+      - *check_vars
+      - name: Linux build packages
+        script: |
+          set -euo pipefail
+          sudo apt-get update -qq || echo "apt-get update reported errors (continuing)"
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev \
+            libjsoncpp-dev dpkg-dev libasound2-dev libpulse-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - *pub_get
+      - *gate
+      - name: flutter build linux + packages
+        script: |
+          set -euo pipefail
+          flutter config --enable-linux-desktop
+          flutter build linux --release --obfuscate --split-debug-info="$NB_SYMBOLS/linux" \
+            --build-name="$NB_BUILD_NAME" --build-number="$NB_BUILD_NUMBER"
+          bash scripts/release/package_linux.sh build/linux/x64/release/bundle build/nb-upload "$NB_BUILD_NAME" "$NB_BUILD_NUMBER"
+      - *zip_symbols
+      - *upload
+    artifacts:
+      - build/nb-upload/*.deb
+      - build/nb-upload/*.tar.gz
+      - build/debug-info-*.zip
+
+  # ── Windows desktop → our website (a zip of the release folder) ──────────────────────────────────────────────────
+  # Windows steps run in PowerShell; the upload uses Git's bash (Git for Windows is on Codemagic's Windows image).
+  # Not signed: SmartScreen warns on first start until a code-signing certificate exists (D-137 "Not done").
+  windows-website:
+    name: Windows → website (zip)
+    labels:
+      - windows
+      - website
+      - nb-release-$NB_RELEASE_ID
+    instance_type: windows_x2
+    max_build_duration: 90
+    environment:
+      flutter: *flutter_version
+      vars:
+        NB_PLATFORM: windows
+    scripts:
+      - name: Release variables
+        script: |
+          if (-not ($env:NB_BUILD_NAME -match '^[0-9]+\.[0-9]+\.[0-9]+$')) { Write-Error "NB_BUILD_NAME must be x.y.z: start this build from App versions on the dashboard"; exit 1 }
+          if (-not ($env:NB_BUILD_NUMBER -match '^[0-9]+$')) { Write-Error "NB_BUILD_NUMBER must be a whole number"; exit 1 }
+          Write-Output "release $env:NB_RELEASE_ID : $env:NB_BUILD_NAME+$env:NB_BUILD_NUMBER, gate $env:NB_GATE"
+      - name: flutter pub get
+        script: flutter pub get
+      - name: Gate (NB_GATE=test_first) — analyzer + the CI test suites
+        script: |
+          if ($env:NB_GATE -eq 'direct') { Write-Output "NB_GATE=direct: building without tests"; exit 0 }
+          flutter analyze --no-fatal-infos --fatal-warnings
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $org = Get-ChildItem test/org -Recurse -Filter *_test.dart | Where-Object { $_.Name -ne 'live_events_soak_test.dart' } | ForEach-Object { $_.FullName }
+          flutter test @org test/export/ test/ui/ test/auth/ test/contract/
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          flutter test test/perf -j 1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: flutter build windows + zip
+        script: |
+          $symbols = "build/debug-info/$($env:NB_BUILD_NAME)+$($env:NB_BUILD_NUMBER)/windows"
+          flutter config --enable-windows-desktop
+          flutter build windows --release --obfuscate "--split-debug-info=$symbols" "--build-name=$env:NB_BUILD_NAME" "--build-number=$env:NB_BUILD_NUMBER"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force build/nb-upload | Out-Null
+          $name = "NextBrain-$($env:NB_BUILD_NAME)-$($env:NB_BUILD_NUMBER)-windows-x64.zip"
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "build/nb-upload/$name" -Force
+          Compress-Archive -Path "$symbols/*" -DestinationPath "build/debug-info-$($env:NB_BUILD_NAME)+$($env:NB_BUILD_NUMBER)-windows.zip" -Force
+          Get-ChildItem build/nb-upload
+      - name: Upload the files to our server
+        script: |
+          $bash = Join-Path $env:ProgramFiles 'Git\bin\bash.exe'
+          if (-not (Test-Path $bash)) { $bash = 'bash' }
+          & $bash scripts/release/upload_artifacts.sh build/nb-upload
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    artifacts:
+      - build/nb-upload/*.zip
+      - build/debug-info-*.zip

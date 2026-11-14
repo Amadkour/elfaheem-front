@@ -1,0 +1,376 @@
+import 'dart:developer';
+import 'dart:typed_data';
+
+import 'package:cross_file/cross_file.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/base_provider.dart';
+import 'package:flutter_education_app/features/courses/course_scope.dart' show modeCourseScopeQuery;
+import 'package:flutter_education_app/core/live/live_events_client.dart';
+import 'package:http/http.dart' hide MultipartFile;
+import 'package:flutter_education_app/config/storage_service.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/auth/login_screen.dart';
+import 'package:flutter_education_app/features/auth/username.dart' show UsernameError, UsernameRules;
+import 'package:flutter_education_app/features/home/student/models.dart';
+import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
+import 'package:flutter_education_app/features/profile/teacher/switch_device_requests/teacher_device_requests_provider.dart';
+import 'package:path/path.dart' as p;
+
+enum PasswordStep { form, otp }
+
+class ProfileProvider extends BaseProvider {
+  final StorageService _storage;
+
+  ProfileProvider({required StorageService storage, ApiClient? api})
+    : _api = api ?? ApiClient(),
+      _storage = storage {
+    _loadCachedMode();
+  }
+
+  void _loadCachedMode() {
+    bool? saved = _storage.loadMode;
+    if (saved != null) {
+      darkMode = saved;
+    }
+  }
+
+  Future<void> changeMode(bool isDark) async {
+    await _storage.saveMode(isDark);
+    darkMode = isDark;
+    notifyListeners();
+  }
+
+  void initData(UserModel? u) {
+    isLoading = true;
+    notifyListeners();
+    id = u?.id ?? 0;
+    name = u?.name ?? '';
+    email = u?.gmail ?? '';
+    dob = u?.dob ?? '';
+    country = u?.country ?? '';
+    imageUrl = u?.imageUrl ?? '';
+    role = u?.role ?? '';
+    phone = u?.phone ?? '';
+    username = u?.username ?? '';
+    usernameChangeAvailableAt = u?.usernameChangeAvailableAt;
+    isLoading = false;
+    notifyListeners();
+  }
+
+  // ── Fields ────────────────────────────────────────────────────────────────
+  XFile? imageFile;
+  Uint8List? imageByte;
+  int id = 0;
+  String name = '';
+  String email = '';
+  String phone = '';
+  String dob = '';
+  String bio = '';
+  String country = '';
+  String imageUrl = '';
+  String role = '';
+
+  /// The @username without the "@" ('' = none).
+  String username = '';
+
+  /// When the username may be changed again (UTC); null = now (D-071 v2 cooldown; removing is always allowed).
+  DateTime? usernameChangeAvailableAt;
+
+  /// A USERNAME_* error of the last [updateProfile] (shown on the username field with its suggestions).
+  UsernameError? usernameError;
+  bool _notificationsEnabled = true;
+
+  bool get notificationsEnabled => _notificationsEnabled;
+
+  @override
+  bool isLoading = false;
+
+  void toggleNotifications(bool value) {
+    _notificationsEnabled = value;
+    notifyListeners();
+  }
+
+  Future<void> changeImage(XFile file) async {
+    imageFile = file;
+    imageByte = await file.readAsBytes();
+    notifyListeners();
+  }
+
+  PasswordStep _passwordStep = PasswordStep.form;
+
+  PasswordStep get passwordStep => _passwordStep;
+
+  void resetPasswordStep() {
+    _passwordStep = PasswordStep.form;
+    notifyListeners();
+  }
+
+  Future<UserModel?> uploadImage() async {
+    try {
+      final ext = p
+          .extension(imageFile!.path)
+          .replaceFirst('.', '')
+          .toLowerCase();
+      final mimeType = switch (ext) {
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        _ => 'image/jpeg',
+      };
+      final bytes = await imageFile!.readAsBytes();
+      final filename = p.basename(imageFile!.path).isNotEmpty
+          ? p.basename(imageFile!.path)
+          : 'image.${ext.isEmpty ? 'jpg' : ext}';
+
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: filename,
+          contentType: MediaType.parse(mimeType),
+        ),
+      });
+      final response = await _api.dio.post(
+        '/api/v1/auth/me/image',
+        data: formData,
+      );
+      if (response.statusCode != 200) return null;
+      return UserModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      log('uploadImage ❌ ${e.response?.statusCode}: ${e.response?.data}');
+      return null;
+    } catch (e) {
+      log('uploadImage ❌ unexpected: $e');
+      return null;
+    }
+  }
+
+  /// Removes the picture (D-880): an unsaved pick is only dropped; a stored one is deleted on the server at once
+  /// (`DELETE /auth/me/image`, harmless twice). Returns the updated account when the server was asked (save it with
+  /// `MyAuthProvider.saveUserLocally` so every avatar shows the initial), null otherwise; throws [ApiException].
+  Future<UserModel?> removeImage() async {
+    final hadStored = imageUrl.isNotEmpty;
+    imageFile = null;
+    imageByte = null;
+    UserModel? updated;
+    if (hadStored) {
+      final r = await (_api.delete('/api/v1/auth/me/image'));
+      if (r is Map<String, dynamic>) updated = UserModel.fromJson(r);
+      imageUrl = '';
+    }
+    notifyListeners();
+    return updated;
+  }
+
+  // ── Update profile ────────────────────────────────────────────────────────
+  Future<UserModel?> updateProfile({
+    String? name,
+    String? phone,
+    String? dob,
+    String? bio,
+    String? country,
+    String? password,
+    String? mfaCode,
+    String? username,
+  }) async {
+    _setLoading(true);
+    usernameError = null;
+    try {
+      final body = <String, dynamic>{};
+      // A phone change is re-authenticated (400 REAUTH_REQUIRED without it; 409 PHONE_TAKEN; the server
+      // resets phone_verified, so the caller runs the OTP step afterwards).
+      if (password != null) body['password'] = password;
+      if (mfaCode != null && mfaCode.isNotEmpty) body['code'] = mfaCode;
+      if (name != null && name.isNotEmpty) body['name'] = name;
+      if (phone != null && phone.isNotEmpty) body['phone'] = phone;
+      if (dob != null && dob.isNotEmpty) body['dob'] = dob;
+      if (bio != null && bio.isNotEmpty) body['bio'] = bio;
+      if (country != null && country.isNotEmpty) body['country'] = country;
+      // [username]: null = unchanged (not sent), '' = remove it (sent as null), otherwise the new one
+      final handle = username == null ? null : UsernameRules.normalize(username);
+      if (handle != null) body['username'] = handle.isEmpty ? null : handle;
+      final r = await run(() async {
+        try {
+          return await ApiClient().put('/api/v1/auth/me', body: body);
+        } on ApiException catch (e) {
+          if (handle != null) usernameError = UsernameError.from(e, submitted: handle);
+          rethrow;
+        }
+      });
+      if (r != null && r is Map) {
+        _setLoading(false);
+        return UserModel.fromJson(r as Map<String, dynamic>);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ── Change password ───────────────────────────────────────────────────────
+  Future<String?> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    _setLoading(true);
+    try {
+      final r = await run(
+        () => ApiClient().put(
+          '/api/v1/auth/change-password',
+          body: {
+            'gmail': email,
+            'old_password': oldPassword,
+            'new_password': newPassword,
+          },
+        ),
+      );
+      if (r != null && r is Map) {
+        // every other device is signed out; this one continues with the pair the server returns
+        final access = r['access_token'];
+        final refresh = r['refresh_token'];
+        if (access is String && refresh is String) {
+          await ApiClient().saveTokens(access: access, refresh: refresh);
+        }
+        return r['message'] as String;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  void _setLoading(bool v) {
+    isLoading = v;
+    notifyListeners();
+  }
+
+  final ApiClient _api;
+
+  // ── Favourites ────────────────────────────────────────────────────────────
+  List<CourseModel> _favourites = [];
+
+  bool darkMode = false;
+
+  Future<void> fetchMyFavorites() async {
+    final r = await run(() => _api.get('/api/v1/my-favorites', queryParams: modeCourseScopeQuery())); // the mode's side
+    if (r is List) {
+      _favourites = r.map((e) => CourseModel.fromJson(e)).toList();
+      notifyListeners();
+    }
+  }
+
+  // ── Logout ────────────────────────────────────────────────────────────────
+  /// Calls POST /api/v1/auth/logout, clears local state, and navigates to
+  /// the login screen.
+  ///
+  /// Pass [fcmToken] if you want to remove only this device's push token;
+  /// omit it to remove all devices (full logout).
+  Future<void> logout(BuildContext context, {String? fcmToken}) async {
+    // this device's refresh token → only this session is revoked server-side (shared with MyAuthProvider.logout)
+    await _api.signOutServer();
+
+    await _api.clearTokens();
+    LiveEventsClient.instance.sessionChanged();
+    _reset();
+
+    if (context.mounted) {
+      context.read<TeacherTransfersProvider>().reset();
+      context.read<TeacherDeviceRequestsProvider>().reset();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          settings: RouteSettings(name: '/login'),
+          builder: (_) => const LoginScreen(),
+        ),
+        (route) => false,
+      );
+    }
+  }
+
+  // ── Delete account ────────────────────────────────────────────────────────
+  /// Sends DELETE /api/v1/auth/me.
+  ///
+  /// On success the account is deactivated for 14 days, after which it is
+  /// permanently deleted server-side. Returns the ISO-8601 `delete_after`
+  /// date string, or null on failure.
+  ///
+  /// The caller should show a confirmation dialog BEFORE calling this, and ask for the current
+  /// [password] (+ [mfaCode] for two-step accounts): the server re-authenticates the deletion (S9).
+  Future<String?> deleteAccount(BuildContext context, {required String password, String? mfaCode}) async {
+    _setLoading(true);
+    try {
+      final r = await run(() => _api.delete('/api/v1/auth/me', body: {
+        'password': password,
+        if (mfaCode != null && mfaCode.isNotEmpty) 'code': mfaCode,
+      }));
+      if (r != null && r is Map) {
+        final deleteAfter = r['delete_after'] as String?;
+
+        // Clear local tokens and state exactly like logout
+        await _api.clearTokens();
+        LiveEventsClient.instance.sessionChanged();
+        _reset();
+
+        if (context.mounted) {
+          context.read<TeacherTransfersProvider>().reset();
+          context.read<TeacherDeviceRequestsProvider>().reset();
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+        return deleteAfter;
+      }
+      return null;
+    } catch (e) {
+      log('deleteAccount ❌ $e');
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  void _reset() {
+    _favourites = [];
+    imageFile = null;
+    imageByte = null;
+    id = 0;
+    name = '';
+    email = '';
+    phone = '';
+    dob = '';
+    bio = '';
+    country = '';
+    imageUrl = '';
+    role = '';
+    notifyListeners();
+  }
+
+  //   ================================[favorite]=====================
+  void setQuery(String q) {
+    _query = q;
+    notifyListeners();
+  }
+
+  String _query = '';
+
+  List<CourseModel> get favourites {
+    if (_query.isEmpty) return List.unmodifiable(_favourites);
+    final q = _query.toLowerCase();
+    return _favourites
+        .where(
+          (s) =>
+              (s.titleAr?.toLowerCase().contains(q) ?? false) ||
+              (s.titleEn?.toLowerCase().contains(q) ?? false) ||
+              (s.descriptionAr?.toLowerCase().contains(q) ?? false) ||
+              (s.descriptionAr?.toLowerCase().contains(q) ?? false) ||
+              (s.descriptionEn?.toLowerCase().contains(q) ?? false),
+        )
+        .toList();
+  }
+}

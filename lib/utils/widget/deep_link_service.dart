@@ -2,6 +2,8 @@
 //
 // Share links:  https://nextbrain.site/c/<courseId>?ref=<sharerUserId>
 // Opening one lands on `/c/<id>?ref=<uid>` (Flutter's default deep linking feeds it to onGenerateRoute).
+// Profile links (D-074): https://nextbrain.site/@<username> → `/@<username>` → the public profile page
+// (features/profile/public_profile/; parsed by `profileLinkFrom`).
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -9,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/api_client.dart';
+import 'package:flutter_education_app/features/profile/public_profile/public_profile.dart' show ProfileLink, profileLinkFrom, profileUrl;
 import '../../main.dart';
 import 'app_navigator.dart';
 
@@ -25,6 +28,7 @@ class DeepLinkService {
   static const siteBase = 'https://nextbrain.site';
 
   CourseLink? _pending;
+  ProfileLink? _pendingProfile;
 
   /// `/c/12?ref=5` (or a full URL) → CourseLink, else null.
   static CourseLink? parse(String? routeName) {
@@ -39,10 +43,28 @@ class DeepLinkService {
     return null;
   }
 
+  /// `/@ahmed`, `@Ahmed` or `https://nextbrain.site/@ahmed` → ProfileLink, else null (D-074).
+  static ProfileLink? parseProfile(String? routeName) => profileLinkFrom(routeName);
+
   /// Visitor isn't logged in: remember the link, open it right after login (see _Guard in main.dart).
-  void setPending(CourseLink l) => _pending = l;
+  void setPending(CourseLink l) {
+    _pending = l;
+    _pendingProfile = null;
+  }
+
+  /// Same for a profile link (the last link opened wins).
+  void setPendingProfile(ProfileLink l) {
+    _pendingProfile = l;
+    _pending = null;
+  }
 
   void consumePending() {
+    final p = _pendingProfile;
+    if (p != null) {
+      _pendingProfile = null;
+      AppNavigator.openProfile(p.username);
+      return;
+    }
     final l = _pending;
     if (l == null) return;
     _pending = null;
@@ -63,11 +85,25 @@ class DeepLinkService {
   static String buildLink(int courseId, int? myUserId) =>
       '$siteBase/c/$courseId${myUserId != null ? '?ref=$myUserId' : ''}';
 
+  /// A profile link through the native share sheet; falls back to copying it (like [shareCourse]).
+  /// Returns true when the link was copied instead of shared.
+  static Future<bool> shareProfile({required String username, required String name}) async {
+    final link = profileUrl(username);
+    try {
+      // ignore: deprecated_member_use
+      await Share.share('$name\n$link', subject: name);
+      return false;
+    } catch (_) {
+      await Clipboard.setData(ClipboardData(text: link));
+      return true;
+    }
+  }
+
   /// Native share sheet; falls back to copying the link (desktop browsers).
   /// Returns true when the link was copied instead of shared.
   static Future<bool> shareCourse({required int courseId, required String courseName}) async {
     final ctx = navigatorKey.currentContext;
-    final uid = ctx?.read<AuthProvider>().currentUser?.id;
+    final uid = ctx?.read<MyAuthProvider>().currentUser?.id;
     final link = buildLink(courseId, uid);
     try {
       // ignore: deprecated_member_use

@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
@@ -19,7 +20,7 @@ class PagedCountCard extends StatelessWidget {
     required this.loadingMore,
     required this.done,
     this.icon = Icons.groups_rounded,
-    this.margin = const EdgeInsets.fromLTRB(16, 0, 16, 8),
+    this.margin = const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
   });
 
   final int loaded;
@@ -31,6 +32,9 @@ class PagedCountCard extends StatelessWidget {
   final IconData icon;
   final EdgeInsetsGeometry margin;
 
+  /// The progress bar's thickness.
+  static const double _bar = 6;
+
   static String _label(int loaded, int total) => 'admin_showing_count'.tr
       .replaceAll('{loaded}', '$loaded')
       .replaceAll('{total}', '$total');
@@ -41,58 +45,48 @@ class PagedCountCard extends StatelessWidget {
     final progress = total <= 0 ? 1.0 : (loaded / total).clamp(0.0, 1.0);
     return Container(
       margin: margin,
-      padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.md, AppSpace.sm),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.primary.withValues(alpha: 0.22)),
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.centerStart,
-          end: AlignmentDirectional.centerEnd,
-          colors: [
-            c.primary.withValues(alpha: 0.12),
-            c.primary.withValues(alpha: 0.03),
-          ],
-        ),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: c.divider, width: AppBorder.hairline),
+        color: c.cardBg,
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(AppSpace.xs),
             decoration: BoxDecoration(
-              color: c.primary.withValues(alpha: 0.15),
+              color: c.inputBg,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 20, color: c.primary),
+            child: Icon(icon, size: AppIconSize.md, color: c.textMedium),
           ),
-          const SizedBox(width: 12),
+          AppSpace.gapSm,
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 TweenAnimationBuilder<double>(
                   tween: Tween(end: loaded.toDouble()),
-                  duration: const Duration(milliseconds: 350),
+                  duration: AppMotion.of(context).slow,
                   builder: (_, v, _) => Text(
                     _label(v.round(), total),
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13.5,
+                    style: AppType.bodyStrong(context).copyWith(
                       color: c.textDark,
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
+                AppSpace.gapXs,
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   child: TweenAnimationBuilder<double>(
                     tween: Tween(end: progress),
-                    duration: const Duration(milliseconds: 400),
+                    duration: AppMotion.of(context).slow,
                     curve: Curves.easeOutCubic,
                     builder: (_, v, _) => LinearProgressIndicator(
                       value: v,
-                      minHeight: 6,
-                      backgroundColor: c.primary.withValues(alpha: 0.12),
+                      minHeight: _bar,
+                      backgroundColor: c.inputBg,
                       valueColor: AlwaysStoppedAnimation(
                         done ? c.success : c.primary,
                       ),
@@ -102,18 +96,18 @@ class PagedCountCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          AppSpace.gapSm,
           SizedBox(
-            width: 22,
-            height: 22,
+            width: AppIconSize.md,
+            height: AppIconSize.md,
             child: loadingMore
-                ? CircularProgressIndicator(strokeWidth: 2.4, color: c.primary)
+                ? CircularProgressIndicator(strokeWidth: AppBorder.focus, color: c.primary)
                 : done
-                ? Icon(Icons.check_circle_rounded, color: c.success, size: 22)
+                ? Icon(Icons.check_circle_rounded, color: c.success, size: AppIconSize.md)
                 : Icon(
                     Icons.keyboard_double_arrow_down_rounded,
                     color: c.textLight,
-                    size: 22,
+                    size: AppIconSize.md,
                   ),
           ),
         ],
@@ -137,38 +131,38 @@ class PagedListFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 18),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
       child: Center(
         child: loadingMore
             ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
-                    width: 16,
-                    height: 16,
+                    width: AppIconSize.sm,
+                    height: AppIconSize.sm,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2,
+                      strokeWidth: AppBorder.focus,
                       color: c.primary,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'admin_loading_more'.tr,
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 12.5,
-                      color: c.textMedium,
+                  AppSpace.gapXs,
+                  Flexible(
+                    child: Text(
+                      'admin_loading_more'.tr,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context).copyWith(
+                        color: c.textMedium,
+                      ),
                     ),
                   ),
                 ],
               )
             : hasMore
-            ? const SizedBox(height: 16)
+            ? const SizedBox(height: AppSpace.md)
             : Text(
                 'admin_all_loaded'.tr,
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 12,
+                style: AppType.meta(context).copyWith(
                   color: c.textLight,
                 ),
               ),

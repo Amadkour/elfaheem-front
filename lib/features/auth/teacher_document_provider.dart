@@ -2,14 +2,16 @@
 // features/auth/teacher_documents/teacher_document_provider.dart
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'teacher_onboarding_token.dart';
 import 'dart:developer';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 
-import '../../../core/api_client.dart';
-import '../../../core/base_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/base_provider.dart';
 import 'teacher_document_model.dart';
 
 // File extensions accepted for a document: any common image format or PDF.
@@ -60,16 +62,9 @@ class TeacherDocumentProvider extends BaseProvider {
   bool isFinalized = false;
 
   // ── Load teacher's own overview ──────────────────────────────────────────
-  // NOTE: this is a GET with no body — the backend identifies the teacher
-  // from the auth token, not from an email field. `email` is kept as a
-  // parameter only so existing call sites (which pass it) don't need to
-  // change; it is intentionally unused in the request itself.
-  //
-  // The previous version of this method POSTed {'email': email} to
-  // '/api/v1/auth/teacher-documents', but that path is the *create document*
-  // endpoint (POST expects a JSON body with file_url, required_document_type_id
-  // or custom_title). Posting just {'email': ...} there would 422 every time
-  // and never actually return the overview — this GET is the fix.
+  // POST /teacher-documents/overview {email}. The server identifies the teacher from the onboarding token
+  // (`X-Onboarding-Token`, during registration) or the access token (a logged-in teacher); `email` must be that
+  // same account (403 onboarding_user_mismatch otherwise). Not POST /teacher-documents: that one creates a document.
   Future<void> loadOverview(String email) async {
     isLoadingOverview = true;
     notifyListeners();
@@ -78,6 +73,7 @@ class TeacherDocumentProvider extends BaseProvider {
       final res = await _api.post(
         '/api/v1/auth/teacher-documents/overview',
         body: {'email': email},
+        headers: TeacherOnboardingToken.headers,
       );
       if (res != null && res is Map) {
         _overview = TeacherDocumentsOverview.fromJson(
@@ -104,7 +100,7 @@ class TeacherDocumentProvider extends BaseProvider {
         _publicDocs = (res)
             .map(
               (e) => TeacherDocumentModel.fromJson(e as Map<String, dynamic>),
-            )
+        )
             .toList();
       }
     } catch (e) {
@@ -140,27 +136,29 @@ class TeacherDocumentProvider extends BaseProvider {
         fileName: fileName,
         filePath: filePath,
         fileBytes: fileBytes,
+        headers: TeacherOnboardingToken.headers,
       );
       if (uploadRes == null || uploadRes is! Map) return false;
 
       final res = await _api.post(
         '/api/v1/auth/teacher-documents',
         body: {
-          'email': email,
-          'file_url': uploadRes['file_url'],
-          'file_name': uploadRes['file_name'],
-          'file_type': uploadRes['file_type'],
-          'file_size': uploadRes['file_size'],
-          'required_document_type_id': ?requiredTypeId,
-          'custom_title': ?customTitle,
-        },
+      'email': email,
+      'file_url': uploadRes['file_url'],
+      'file_name': uploadRes['file_name'],
+      'file_type': uploadRes['file_type'],
+      'file_size': uploadRes['file_size'],
+      'required_document_type_id': ?requiredTypeId,
+      'custom_title': ?customTitle,
+      },
+        headers: TeacherOnboardingToken.headers,
       );
       if (res == null) return false;
 
       await loadOverview(email);
       return true;
     } catch (e) {
-      errorMessage = e is ApiException ? e.message : e.toString();
+      errorMessage = ApiException.from(e).message;
       log('_uploadThenAttach ❌ $e');
       return false;
     } finally {
@@ -204,24 +202,24 @@ class TeacherDocumentProvider extends BaseProvider {
   // Uses file_picker so the teacher can browse their files, not just the
   // camera roll — needed for scanned PDFs (IDs, certificates, etc.).
   Future<void> pickAndUploadRequiredFile(
-    int requiredTypeId, {
-    required String email,
-  }) async {
-    // FilePicker.pickFiles(...) is not a valid call — pickFiles lives on
-    // the FilePicker.platform singleton, not as a static method.
-    final result = await FilePicker.pickFiles(
+      int requiredTypeId, {
+        required String email,
+      }) async {
+    // file_picker v12+: pickFile() returns PlatformFile? (null if cancelled).
+    // The old `withData` flag is gone — bytes are read via readAsBytes().
+    final f = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: kDocumentAllowedExtensions,
-      withData: true, // ensures bytes are available on web too
     );
-    if (result == null || result.files.isEmpty) return;
-    final f = result.files.first;
+    if (f == null) return;
+
+    final bytes = await f.readAsBytes(); // works on web and mobile
 
     await _uploadThenAttach(
       key: 'req_$requiredTypeId',
       fileName: f.name,
-      filePath: f.path,
-      fileBytes: f.bytes,
+      filePath: kIsWeb ? null : f.path, // no real file path on web
+      fileBytes: bytes,
       requiredTypeId: requiredTypeId,
       email: email,
     );
@@ -247,9 +245,9 @@ class TeacherDocumentProvider extends BaseProvider {
 
   // ── Custom document: quick camera/gallery photo ─────────────────────────
   Future<void> pickAndUploadCustom(
-    int entryIndex, {
-    required String email,
-  }) async {
+      int entryIndex, {
+        required String email,
+      }) async {
     if (entryIndex < 0 || entryIndex >= _customEntries.length) return;
     final entry = _customEntries[entryIndex];
     if (entry.title.trim().isEmpty) return; // guard: title must be set first
@@ -274,26 +272,26 @@ class TeacherDocumentProvider extends BaseProvider {
 
   // ── Custom document: any image OR a PDF, via file_picker ──────────────────
   Future<void> pickAndUploadCustomFile(
-    int entryIndex, {
-    required String email,
-  }) async {
+      int entryIndex, {
+        required String email,
+      }) async {
     if (entryIndex < 0 || entryIndex >= _customEntries.length) return;
     final entry = _customEntries[entryIndex];
     if (entry.title.trim().isEmpty) return; // guard: title must be set first
 
-    final result = await FilePicker.pickFiles(
+    final f = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: kDocumentAllowedExtensions,
-      withData: true,
     );
-    if (result == null || result.files.isEmpty) return;
-    final f = result.files.first;
+    if (f == null) return;
+
+    final bytes = await f.readAsBytes();
 
     final ok = await _uploadThenAttach(
       key: 'custom_$entryIndex',
       fileName: f.name,
-      filePath: f.path,
-      fileBytes: f.bytes,
+      filePath: kIsWeb ? null : f.path,
+      fileBytes: bytes,
       customTitle: entry.title.trim(),
       email: email,
     );
@@ -303,7 +301,7 @@ class TeacherDocumentProvider extends BaseProvider {
   // ── Delete ────────────────────────────────────────────────────────────────
   Future<bool> deleteDocument(int documentId, {required String email}) async {
     try {
-      await _api.delete('/api/v1/auth/teacher-documents/$documentId');
+      await _api.delete('/api/v1/auth/teacher-documents/$documentId', headers: TeacherOnboardingToken.headers);
       await loadOverview(email);
       return true;
     } catch (e) {
@@ -327,17 +325,19 @@ class TeacherDocumentProvider extends BaseProvider {
       final res = await _api.post(
         '/api/v1/auth/teacher-documents/finalize',
         body: {'email': email},
+        headers: TeacherOnboardingToken.headers,
       );
       if (res != null && res is Map) {
         _overview = TeacherDocumentsOverview.fromJson(
           res as Map<String, dynamic>,
         );
         isFinalized = true;
+        TeacherOnboardingToken.clear(); // onboarding is over: the token has no further use
         return true;
       }
       return false;
     } catch (e) {
-      errorMessage = e is ApiException ? e.message : e.toString();
+      errorMessage = ApiException.from(e).message;
       log('finalizeRegistration ❌ $e');
       await loadOverview(email); // refresh so the UI shows what's still missing
       return false;
@@ -351,5 +351,5 @@ class TeacherDocumentProvider extends BaseProvider {
 // ── Local form model for an in-progress custom document entry ────────────────
 class _CustomDocEntry {
   String title = '';
-  // Could extend with a picked XFile preview, but we upload immediately on pick.
+// Could extend with a picked XFile preview, but we upload immediately on pick.
 }

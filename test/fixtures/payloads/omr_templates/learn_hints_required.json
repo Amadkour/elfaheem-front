@@ -1,0 +1,22 @@
+{
+ "_source": {
+  "route": "POST /api/v1/exam/omr/templates/learn",
+  "status": 422,
+  "request": {
+   "hints": {
+    "questions": 50,
+    "options": 4,
+    "id_kind": "shaded"
+   }
+  },
+  "how": "scratch script on back tests/exam_engine/e2e_omr_fixture.py (same set-up as e2e_omr_templates.py: inline jobs, SQLite, engine-printed sheet + pen marks, 2026-11-02); reply recorded from TestClient"
+ },
+ "payload": {
+  "detail": {
+   "code": "hints_required",
+   "message": "عدد أعمدة رقم الطالب مطلوب للرقم المظلّل",
+   "key": "id_columns",
+   "message_en": "id_columns is required for a shaded student ID."
+  }
+ }
+}

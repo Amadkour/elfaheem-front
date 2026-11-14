@@ -1,0 +1,17 @@
+{
+ "_source": "POST /api/v1/exam/exams/2/review-items/1/resolve -> 422, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_hardening.py (back worktree wt-back-omr)",
+ "_status": 422,
+ "_request": {
+  "action": "confirm",
+  "form": "A"
+ },
+ "payload": {
+  "detail": {
+   "code": "action_invalid",
+   "message": "إجراء غير مسموح لهذا النوع",
+   "allowed": [
+    "dismiss"
+   ]
+  }
+ }
+}

@@ -1,6 +1,4 @@
 <!DOCTYPE html><html><head>
-  <script src="video_protection.js"></script>
-
   <script>
   // Prevent Flutter from trying to load Noto Color Emoji from Google
   window._flutter = window._flutter || {};
@@ -11,28 +9,108 @@
   };
 </script>
   <base href="$FLUTTER_BASE_HREF">
+  <!-- CanvasKit (the renderer) comes from gstatic: open the connection while the page is still being parsed -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <!-- after <base>: a relative src before it resolved against the page (e.g. /c/11 → /c/video_protection.js) -->
+  <!-- defer: a blocking script in <head> holds the first paint (the splash below). It only patches createElement for the
+       <video> elements the course player makes much later, and runs before DOMContentLoaded, long before Dart starts. -->
+  <script src="video_protection.js" defer></script>
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="NextBrain — منصة تعليمية: دورات مسجّلة وجلسات مباشرة وحضور ومؤسسات. An education platform: recorded courses, live sessions, attendance and organizations.">
 
-  <!-- iOS meta tags & icons -->
+  <!-- Installable app (PWA): Chrome / Edge install from the manifest, iPhone / iPad via Safari "Add to Home Screen".
+       Keep these OUTSIDE the flutter_native_splash blocks (that tool rewrites this file).
+       Status bar "default", never "black-translucent", and no viewport-fit=cover: Flutter web does not pad for the notch. -->
+  <meta name="theme-color" content="#FBF7EC" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0F7B5F" media="(prefers-color-scheme: dark)">
+  <meta name="robots" content="noindex">
+  <meta name="application-name" content="NextBrain">
+  <meta name="author" content="DoubleY">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="flutter_education_app">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="NextBrain">
+  <meta name="format-detection" content="telephone=no">
+  <!-- 180x180, opaque (iOS paints transparent pixels black) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/Icon-180.png">
+  <!-- iOS launch screens of the home-screen app (cream + the same logo, at the same CSS size as the web splash below).
+       iOS picks the one whose media query matches the device exactly; none matching = a blank launch. -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1320-2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><!-- iPhone 16/17 Pro Max -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1260-2736.png" media="(device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><!-- iPhone Air -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1206-2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><!-- iPhone 16 Pro, 17, 17 Pro -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1290-2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><!-- iPhone 14 Pro Max, 15 Plus/Pro Max, 16 Plus -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1179-2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><!-- iPhone 14 Pro, 15, 15 Pro, 16 -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1284-2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><!-- iPhone 12/13 Pro Max, 14 Plus -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1170-2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><!-- iPhone 12, 13, 14, 16e -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1125-2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><!-- iPhone X/XS/11 Pro, 12/13 mini -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1242-2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><!-- iPhone XS Max, 11 Pro Max -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-828-1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><!-- iPhone XR, 11 -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1242-2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><!-- iPhone 6-8 Plus -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-750-1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><!-- iPhone SE 2/3, 6-8 -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-2064-2752.png" media="(device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><!-- iPad Pro 13 (M4+), iPad Air 13 (M3) -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-2752-2064.png" media="(device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"><!-- iPad Pro 13 (M4+), iPad Air 13 (M3) -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-2048-2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><!-- iPad Pro 12.9, iPad Air 13 (M2) -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-2732-2048.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"><!-- iPad Pro 12.9, iPad Air 13 (M2) -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1668-2420.png" media="(device-width: 834px) and (device-height: 1210px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><!-- iPad Pro 11 (M4+) -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-2420-1668.png" media="(device-width: 834px) and (device-height: 1210px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"><!-- iPad Pro 11 (M4+) -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1668-2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><!-- iPad Pro 11 -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-2388-1668.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"><!-- iPad Pro 11 -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1640-2360.png" media="(device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><!-- iPad Air 10.9/11, iPad 10th+ -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-2360-1640.png" media="(device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"><!-- iPad Air 10.9/11, iPad 10th+ -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1668-2224.png" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><!-- iPad Air 3, iPad Pro 10.5 -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-2224-1668.png" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"><!-- iPad Air 3, iPad Pro 10.5 -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1620-2160.png" media="(device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><!-- iPad 7-9 (10.2) -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-2160-1620.png" media="(device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"><!-- iPad 7-9 (10.2) -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1488-2266.png" media="(device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><!-- iPad mini 6/7 -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-2266-1488.png" media="(device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"><!-- iPad mini 6/7 -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-1536-2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><!-- iPad mini 5, iPad 9.7 -->
+  <link rel="apple-touch-startup-image" href="splash/ios/apple-splash-2048-1536.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"><!-- iPad mini 5, iPad 9.7 -->
+
+  <!-- Install prompt capture (Chrome / Edge / Android). The Dart side reads window.nbPwa, listens for
+       'nb-pwa-installable' / 'nb-pwa-installed' and calls window.nbPwaPrompt() -> 'accepted' | 'dismissed' | 'unavailable'.
+       Must run before flutter_bootstrap.js: beforeinstallprompt can fire before Dart is up. -->
+  <script>
+    (function () {
+      var nbPwa = window.nbPwa = { deferred: null, installed: false };
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        nbPwa.deferred = e;
+        window.dispatchEvent(new Event('nb-pwa-installable'));
+      });
+      window.addEventListener('appinstalled', function () {
+        nbPwa.deferred = null;
+        nbPwa.installed = true;
+        window.dispatchEvent(new Event('nb-pwa-installed'));
+      });
+      window.nbPwaPrompt = async function () {
+        const d = nbPwa.deferred;
+        if (!d) return 'unavailable';
+        nbPwa.deferred = null;
+        try {
+          d.prompt();
+          const r = await d.userChoice;
+          return r && r.outcome || 'dismissed';
+        } catch (e) {
+          return 'unavailable';
+        }
+      };
+    })();
+  </script>
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
 
-  <title>flutter_education_app</title>
+  <title>NextBrain</title>
   <link rel="manifest" href="manifest.json">
 
 
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
   
   
-  <script src="recorder_compositor.js"></script>
+  <!-- defer, like video_protection.js: Dart reaches window._elfaheemCompositor only when a teacher starts a recording -->
+  <script src="recorder_compositor.js" defer></script>
 
   
   
@@ -52,12 +130,16 @@
       removeSplashFromWeb();
     });
   </script>
-  <script>
-    // Remove the splash as soon as Flutter has drawn its first frame.
-    window.addEventListener('flutter-first-frame', function () {
-      removeSplashFromWeb();
-    });
-  </script>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   <style id="splash-screen-style">
     html {
       height: 100%
@@ -118,7 +200,7 @@
 
     @media (prefers-color-scheme: dark) {
       body {
-        background-color: #0C1511;
+        background-color: #0F7B5F;
           }
     }
   </style>
@@ -136,6 +218,11 @@
       <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
       <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
   </picture>
+  
+  
+  
+  
+  
   
   
   

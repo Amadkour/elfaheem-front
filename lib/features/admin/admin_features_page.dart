@@ -1,913 +1,525 @@
-// lib/features/admin/admin_features_page.dart — hide / unhide app features per platform.
-// Features are grouped into classes (tabs); 20 are loaded at a time and the next page is appended on scroll.
-// Super-admin: sees everything, can let admins manage a feature and can add new features.
-// Admin: the backend only sends the features that were granted to admins.
+// lib/features/admin/admin_features_page.dart
+//
+// Feature catalog (super admin / admins): every switchable part of the app in ONE grouped list.
+//   • search (name / key / description), filters: group · on/off · "organization admins may manage"
+//   • the switch = shown / hidden on every platform; the detail sheet has per-platform control, the admin grant,
+//     the organization grant, the description, and delete (features added from here only)
+//   • "Add feature": key + Arabic / English names + group (existing or new) + description + grants
+// A feature switched OFF here disappears for everyone — organization admins can never switch it back on.
+// The super admin sees the AI controls first (admin_ai_controls.dart, D-780): the same keys, switched on every platform.
+// The app bar opens the app features guide (admin_feature_guide.dart): user-level features built on these switches,
+// with what the app assistant explains about each.
+//
+// GET/POST /api/v1/admin/features/catalog · PUT …/catalog/{key}/org-manageable · PUT …/catalog/{key}/description ·
+// DELETE …/catalog/{key} · PUT /api/v1/admin/features/{key} {hidden, platforms} · PUT /api/v1/admin/features/{key}/access
 library;
 
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 
-import '../../config/app_config.dart';
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/app_loading_indicator.dart';
-import '../../utils/widget/base_page.dart';
-import '../../utils/widget/paged_progress.dart';
-import 'admin_common.dart';
-import 'admin_models.dart';
-import 'admin_providers.dart';
+import '../org/org_v3.dart';
+import 'admin_ai_controls.dart' show AiControlsSection;
+import 'admin_common.dart' show asMap, asMapList, t;
+import 'admin_feature_guide.dart' show AdminFeatureGuidePage;
+import 'admin_labels.dart' show disposeAfterRoute;
+import 'admin_page.dart';
+import 'cfg_common.dart';
 
-class AdminFeaturesPage extends StatelessWidget {
+const _catalog = '/api/v1/admin/features/catalog';
+const _features = '/api/v1/admin/features';
+const _platformNames = {'android': 'Android', 'ios': 'iOS', 'web': 'Web'};
+
+class AdminFeaturesPage extends StatefulWidget {
   const AdminFeaturesPage({super.key});
 
   @override
-  Widget build(BuildContext context) => ChangeNotifierProvider(
-    create: (_) => AdminFeaturesProvider()..load(),
-    child: const _View(),
-  );
+  State<AdminFeaturesPage> createState() => _AdminFeaturesPageState();
 }
 
-class _View extends StatefulWidget {
-  const _View();
+enum _State { all, on, off }
 
-  @override
-  State<_View> createState() => _ViewState();
-}
+class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
+  Map<String, dynamic>? _data;
+  ApiException? _error;
+  String _q = '';
+  String? _group;
+  _State _state = _State.all;
+  bool _orgOnly = false;
+  final Set<String> _busy = {};
 
-class _ViewState extends State<_View> {
-  final _scroll = ScrollController();
+  bool get _super => _data?['is_super_admin'] == true;
+  List<Map<String, dynamic>> get _items => asMapList(_data?['items']);
+  List<Map<String, dynamic>> get _tabs => asMapList(_data?['tabs']);
+  List<String> get _platforms => [for (final p in (_data?['platforms'] as List? ?? const ['android', 'ios', 'web'])) '$p'];
 
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(_onScroll);
+    _load();
   }
 
-  @override
-  void dispose() {
-    _scroll.removeListener(_onScroll);
-    _scroll.dispose();
-    super.dispose();
+  /// The AI controls section reloads with the list (D-802): pull-to-refresh, or a key switched in the list below.
+  int _aiGeneration = 0;
+
+  Future<void> _refresh() {
+    setState(() => _aiGeneration++);
+    return _load();
   }
 
-  /// Near the bottom → append the next page automatically.
-  void _onScroll() {
-    if (_scroll.hasClients && _scroll.position.extentAfter < 320) {
-      context.read<AdminFeaturesProvider>().loadMore();
+  Future<void> _load() async {
+    final r = await orgCall(() => ApiClient().get(_catalog), quiet: true);
+    if (!mounted) return;
+    // a failed refresh keeps the loaded list: a notice, never an empty page
+    if (!r.ok && _data != null) {
+      showAppNotice(orgErrorText(r.error!), error: true);
+      return;
     }
-  }
-
-  /// Too few rows to scroll yet → keep loading until the list fills the screen.
-  void _fillViewport(AdminFeaturesProvider p) {
-    if (p.loadMoreFailed || !p.hasMore || p.loadingMore || p.isLoading) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scroll.hasClients) return;
-      if (_scroll.position.maxScrollExtent <= 0) p.loadMore();
+    setState(() {
+      if (r.ok) {
+        _data = r.map;
+        _error = null;
+      } else {
+        _error = r.error;
+      }
     });
   }
 
-  Future<void> _selectTab(AdminFeaturesProvider p, int i) async {
-    await p.selectTab(i);
-    if (_scroll.hasClients) _scroll.jumpTo(0);
+  void _take(OrgCall r) {
+    if (r.ok && r.map['items'] is List) setState(() => _data = r.map);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final p = context.watch<AdminFeaturesProvider>();
-    final c = context.colors;
-    final isAr = AppConfig.lang == 'ar';
+  String _title(Map<String, dynamic> f) {
+    final s = t('${f['title_ar'] ?? ''}', '${f['title_en'] ?? ''}').trim();
+    return s.isEmpty ? '${f['key']}' : s;
+  }
 
-    final items = p.currentItems;
-    Widget body;
-    if (p.tabs.isEmpty && (p.isLoading || !p.loaded)) {
-      body = const Center(child: AppLoadingIndicator());
-    } else if (p.tabs.isEmpty) {
-      body = ErrorRetry(
-        message: p.error ?? 'admin_could_not_load_data'.tr,
-        onRetry: p.refresh,
-      );
-    } else {
-      _fillViewport(p);
-      body = Column(
-        children: [
-          // pinned: class tabs + "Showing 40 of 134" progress card
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-            child: _TabsBar(
-              p: p,
-              onSelect: (i) {
-                if (i != p.selectedTabIndex) _selectTab(p, i);
-              },
-            ),
-          ),
-          if ((items.isNotEmpty || p.total > 0) && p.total > 20)
-            PagedCountCard(
-              loaded: items.length,
-              total: p.total,
-              loadingMore: p.loadingMore,
-              done: !p.hasMore,
-              icon: Icons.toggle_on_rounded,
-              margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-            ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: p.refresh,
-              child: ListView(
-                controller: _scroll,
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(14, 4, 14, 90),
-                children: [
-                  if (p.isLoading)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 8),
-                      child: LinearProgressIndicator(minHeight: 2),
-                    ),
-                  Text(
-                    'admin_hide_a_feature_on_a_platform_the_app'.tr,
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 12.5,
-                      color: c.textMedium,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  if (items.isEmpty && !p.isLoading)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: Center(
-                        child: Text(
-                          isAr ? 'لا توجد ميزات' : 'No features',
-                          style: TextStyle(
-                            fontFamily: 'tajawal',
-                            color: c.textMedium,
-                          ),
-                        ),
-                      ),
-                    ),
-                  for (final f in items) _FeatureRow(f, platforms: p.platforms),
-                  if (items.isNotEmpty)
-                    PagedListFooter(
-                      loadingMore: p.loadingMore,
-                      hasMore: p.hasMore,
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
+  String? _desc(Map<String, dynamic> f) {
+    final s = t('${f['description_ar'] ?? ''}', '${f['description_en'] ?? ''}').trim();
+    return s.isEmpty ? null : s;
+  }
+
+  List<Map<String, dynamic>> get _filtered {
+    final q = _q.trim().toLowerCase();
+    return _items.where((f) {
+      if (_group != null && f['tab'] != _group) return false;
+      final hidden = f['hidden'] == true;
+      if (_state == _State.on && hidden) return false;
+      if (_state == _State.off && !hidden) return false;
+      if (_orgOnly && f['org_manageable'] != true) return false;
+      if (q.isEmpty) return true;
+      return '${f['key']} ${f['title_ar']} ${f['title_en']} ${f['description_ar'] ?? ''} ${f['description_en'] ?? ''}'
+          .toLowerCase()
+          .contains(q);
+    }).toList();
+  }
+
+  // ── actions ───────────────────────────────────────────────────────────────
+
+  Future<void> _setVisible(Map<String, dynamic> f, bool visible, {List<String>? platforms}) async {
+    final key = '${f['key']}';
+    if (_busy.contains(key)) return;
+    if (!visible) {
+      // switching a feature OFF hides it in every app immediately: say which one, and for whom
+      final hiddenNow = {for (final p in (f['platforms'] as List? ?? const [])) '$p'};
+      final everywhere = (platforms ?? _platforms).toSet().union(hiddenNow).containsAll(_platforms);
+      if (everywhere) {
+        final ok = await appConfirm(context,
+            danger: true,
+            confirmLabel: t('إخفاء', 'Hide'),
+            message: t('إخفاء «${_title(f)}» عن كل المستخدمين؟ سيختفي من كل التطبيقات فوراً، ولا يستطيع مديرو المؤسسات إعادته.',
+                'Hide "${_title(f)}" for everyone? It disappears from every app immediately and organization admins cannot bring it back.'));
+        if (!ok || !mounted) return;
+      }
     }
-
-    return BasePage(
-      useWebCard: true,
-      maxWith: 1100,
-      appBar: ScreenAppBar(title: 'app_feature'.tr),
-      // adding features is a super-admin-only tool
-      floatingActionButton: p.canAddCustom
-          ? FloatingActionButton.extended(
-              heroTag: "features_float",
-              key: ValueKey("features_float"),
-              backgroundColor: c.primary,
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (_) => _AddFeatureDialog(provider: p),
-              ),
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
-              label: Text(
-                isAr ? 'ميزة جديدة' : 'New feature',
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
-                  color: Colors.white,
-                ),
-              ),
-            )
-          : null,
-      child: body,
-    );
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-//  Tabs bar: scrollable on web (arrows + scrollbar + mouse drag)
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _TabsBar extends StatefulWidget {
-  const _TabsBar({required this.p, required this.onSelect});
-
-  final AdminFeaturesProvider p;
-  final void Function(int index) onSelect;
-
-  @override
-  State<_TabsBar> createState() => _TabsBarState();
-}
-
-class _TabsBarState extends State<_TabsBar> {
-  final _ctrl = ScrollController();
-  bool _canBack = false; // can scroll toward the start
-  bool _canForward = false; // can scroll toward the end
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl.addListener(_update);
-    _lastIndex = widget.p.selectedTabIndex;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _update());
-  }
-
-  int _lastIndex = -1;
-
-  @override
-  void didUpdateWidget(covariant _TabsBar old) {
-    super.didUpdateWidget(old);
-    // Rebuilds happen on every page append — only follow the selection when the TAB changed,
-    // otherwise the bar would keep jumping while the user scrolls it by hand.
-    final changed = widget.p.selectedTabIndex != _lastIndex;
-    _lastIndex = widget.p.selectedTabIndex;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _update();
-      if (changed) _revealSelected();
-    });
-  }
-
-  @override
-  void dispose() {
-    _ctrl.removeListener(_update);
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _update() {
-    if (!mounted || !_ctrl.hasClients) return;
-    final pos = _ctrl.position;
-    final back = pos.pixels > 2;
-    final fwd = pos.pixels < pos.maxScrollExtent - 2;
-    if (back != _canBack || fwd != _canForward) {
+    setState(() => _busy.add(key));
+    final r = await orgCall(() => ApiClient().put('$_features/${Uri.encodeComponent(key)}',
+        body: {'hidden': !visible, 'platforms': platforms}));
+    if (!mounted) return;
+    setState(() => _busy.remove(key));
+    if (r.ok) {
+      _aiGeneration++;
       setState(() {
-        _canBack = back;
-        _canForward = fwd;
+        final cur = {for (final p in (f['platforms'] as List? ?? const [])) '$p'};
+        final targets = platforms ?? _platforms;
+        visible ? cur.removeAll(targets) : cur.addAll(targets);
+        f['platforms'] = cur.toList()..sort();
+        f['hidden'] = cur.isNotEmpty;
+        f['hidden_everywhere'] = cur.length >= _platforms.length;
       });
     }
   }
 
-  /// Keeps the selected pill in view after a tab change.
-  void _revealSelected() {
-    final n = widget.p.tabs.length;
-    if (!_ctrl.hasClients || n < 2) return;
-    final frac = widget.p.selectedTabIndex / (n - 1);
-    _ctrl.animateTo(
-      (_ctrl.position.maxScrollExtent * frac).clamp(
-        0.0,
-        _ctrl.position.maxScrollExtent,
-      ),
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-    );
+  Future<void> _setAccess(Map<String, dynamic> f, bool allow) async {
+    final id = 'access:${f['key']}';
+    if (!_busy.add(id)) return;
+    final r = await orgCall(() => ApiClient().put('$_features/${Uri.encodeComponent('${f['key']}')}/access', body: {'allow_to_admin': allow}));
+    _busy.remove(id);
+    if (r.ok && mounted) setState(() => f['allow_to_admin'] = allow);
   }
 
-  void _scrollBy(double delta) {
-    if (!_ctrl.hasClients) return;
-    _ctrl.animateTo(
-      (_ctrl.offset + delta).clamp(0.0, _ctrl.position.maxScrollExtent),
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
-    );
+  Future<void> _setOrg(Map<String, dynamic> f, bool on) async {
+    final id = 'org:${f['key']}';
+    if (!_busy.add(id)) return;
+    final r = await orgCall(() => ApiClient().put('$_catalog/${Uri.encodeComponent('${f['key']}')}/org-manageable', body: {'org_manageable': on}),
+        ok: on ? t('يمكن لمديري المؤسسات التحكم بها الآن', 'Organization admins can control it now') : t('أصبحت بيد المنصة فقط', 'Now controlled by the platform only'));
+    _busy.remove(id);
+    _take(r);
+    if (r.ok) f['org_manageable'] = on;
   }
 
-  Widget _arrow(IconData icon, bool enabled, VoidCallback onTap) {
-    final c = context.colors;
-    return SizedBox(
-      width: 38,
-      child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 150),
-        opacity: enabled ? 1 : 0,
-        child: IgnorePointer(
-          ignoring: !enabled,
-          child: Center(
-            child: Material(
-              color: c.cardBg,
-              elevation: 1.5,
-              shadowColor: Colors.black26,
-              shape: CircleBorder(side: BorderSide(color: c.divider)),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: onTap,
-                child: Padding(
-                  padding: const EdgeInsets.all(5),
-                  child: Icon(icon, size: 20, color: c.textMedium),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+  Future<void> _delete(Map<String, dynamic> f) async {
+    final ok = await appConfirm(context,
+        danger: true,
+        confirmLabel: t('حذف', 'Delete'),
+        message: t('حذف «${_title(f)}» نهائياً؟ سيُزال من القائمة ومن إعدادات كل المؤسسات.',
+            'Delete "${_title(f)}" for good? It is removed from the list and from every organization\'s settings.'));
+    if (!ok) return;
+    _take(await orgCall(() => ApiClient().delete('$_catalog/${Uri.encodeComponent('${f['key']}')}'), ok: t('تم الحذف', 'Deleted')));
   }
+
+  // ── UI ────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final p = widget.p;
-    final rtl = Directionality.of(context) == TextDirection.rtl;
-    // ShaderMask works in physical left→right space, so swap the sides in RTL.
-    final fadeLeft = rtl ? _canForward : _canBack;
-    final fadeRight = rtl ? _canBack : _canForward;
-
-    final pills = Row(
-      children: [
-        for (int i = 0; i < p.tabs.length; i++)
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: 8),
-            child: _TabPill(
-              label: p.tabs[i].label(context),
-              count: p.tabs[i].count,
-              selected: i == p.selectedTabIndex,
-              onTap: () => widget.onSelect(i),
-            ),
-          ),
-      ],
-    );
-
-    return SizedBox(
-      height: 46,
-      child: Row(
-        children: [
-          _arrow(
-            rtl ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
-            _canBack,
-            () => _scrollBy(-240),
-          ),
-          Expanded(
-            child: NotificationListener<ScrollMetricsNotification>(
-              onNotification: (_) {
-                WidgetsBinding.instance.addPostFrameCallback((_) => _update());
-                return false;
-              },
-              child: ScrollConfiguration(
-                // allow dragging with the mouse / trackpad on web + desktop
-                behavior: ScrollConfiguration.of(context).copyWith(
-                  scrollbars: false,
-                  dragDevices: {
-                    PointerDeviceKind.touch,
-                    PointerDeviceKind.mouse,
-                    PointerDeviceKind.trackpad,
-                    PointerDeviceKind.stylus,
-                  },
-                ),
-                child: ShaderMask(
-                  blendMode: BlendMode.dstIn,
-                  shaderCallback: (r) => LinearGradient(
-                    colors: [
-                      fadeLeft ? Colors.transparent : Colors.black,
-                      Colors.black,
-                      Colors.black,
-                      fadeRight ? Colors.transparent : Colors.black,
-                    ],
-                    stops: const [0, 0.08, 0.92, 1],
-                  ).createShader(r),
-                  child: SingleChildScrollView(
-                    controller: _ctrl,
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 4,
-                      horizontal: 4,
-                    ),
-                    child: pills,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          _arrow(
-            rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
-            _canForward,
-            () => _scrollBy(240),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One class (tab): gradient pill when selected, with the number of features in a small badge.
-class _TabPill extends StatelessWidget {
-  const _TabPill({
-    required this.label,
-    required this.count,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final int count;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            gradient: selected
-                ? LinearGradient(colors: [c.primary, c.primaryDark])
-                : null,
-            color: selected ? null : c.cardBg,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: selected ? Colors.transparent : c.divider,
-            ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: c.primary.withValues(alpha: 0.30),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                  color: selected ? Colors.white : c.textMedium,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 7,
-                  vertical: 1.5,
-                ),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? Colors.white.withValues(alpha: 0.25)
-                      : c.primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '$count',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: selected ? Colors.white : c.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-//  One feature
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _FeatureRow extends StatelessWidget {
-  const _FeatureRow(this.f, {required this.platforms});
-
-  final FeatureItem f;
-  final List<String> platforms;
-
-  static String _platformName(String p) {
-    switch (p.toLowerCase()) {
-      case 'ios':
-        return 'iOS';
-      case 'android':
-        return 'Android';
-      case 'web':
-        return 'Web';
-    }
-    return p;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final p = context.read<AdminFeaturesProvider>();
-    final busy = context.select<AdminFeaturesProvider, bool>(
-      (x) => x.isLoading,
-    );
-    final isAr = AppConfig.lang == 'ar';
-    final hiddenAnywhere = f.isHiddenAnywhere;
-    final allowed = f.allowToAdmin;
-    // second-language name, shown small under the main label
-    final other = isAr ? f.labelEn : f.labelAr;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: hiddenAnywhere
-            ? Color.alphaBlend(c.warning.withValues(alpha: 0.06), c.cardBg)
-            : c.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: hiddenAnywhere ? c.warning.withValues(alpha: 0.6) : c.divider,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      f.label,
-                      style: TextStyle(
-                        fontFamily: 'tajawal',
-                        fontWeight: FontWeight.w800,
-                        color: c.textDark,
-                      ),
-                    ),
-                    if (other.isNotEmpty && other != f.label && other != f.key)
-                      Text(
-                        other,
-                        style: TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 12,
-                          color: c.textMedium,
-                        ),
-                      ),
-                    Text(
-                      f.key,
-                      textDirection: TextDirection.ltr,
-                      style: TextStyle(fontSize: 11.5, color: c.textLight),
-                    ),
-                  ],
-                ),
-              ),
-              Switch(
-                // ON = visible everywhere, OFF = hidden on at least one platform
-                value: !hiddenAnywhere,
-                activeTrackColor: c.success,
-                onChanged: busy ? null : (visible) => p.set(f.key, !visible),
-              ),
-            ],
-          ),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final pl in platforms)
-                FilterChip(
-                  label: Text(
-                    _platformName(pl),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  selected: f.isHiddenOn(pl),
-                  selectedColor: c.warning.withValues(alpha: 0.3),
-                  avatar: Icon(
-                    f.isHiddenOn(pl)
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
-                    size: 16,
-                  ),
-                  onSelected: busy
-                      ? null
-                      : (hide) => p.set(f.key, hide, platforms: [pl]),
-                ),
-            ],
-          ),
-          // Super-admin only: grant this feature to admins.
-          if (p.isSuperAdmin) ...[
-            Divider(height: 18, color: c.divider),
-            Row(
-              children: [
-                Icon(
-                  Icons.admin_panel_settings_rounded,
-                  size: 16,
-                  color: allowed ? c.success : c.textLight,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    isAr ? 'يمكن للمدير التحكم بها' : 'Admins can manage this',
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 12,
-                      color: allowed ? c.success : c.textMedium,
-                    ),
-                  ),
-                ),
-                Switch(
-                  value: allowed,
-                  activeTrackColor: c.success,
-                  onChanged: busy ? null : (v) => p.setAllowToAdmin(f.key, v),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-//  Add a feature (super-admin)
-//  Needs: class (existing or new) · key · Arabic name · English name
-// ═════════════════════════════════════════════════════════════════════════════
-
-class _AddFeatureDialog extends StatefulWidget {
-  const _AddFeatureDialog({required this.provider});
-
-  final AdminFeaturesProvider provider;
-
-  @override
-  State<_AddFeatureDialog> createState() => _AddFeatureDialogState();
-}
-
-class _AddFeatureDialogState extends State<_AddFeatureDialog> {
-  static final _keyRe = RegExp(r'^[A-Za-z0-9_][A-Za-z0-9_.\-]*$');
-
-  final _key = TextEditingController();
-  final _titleAr = TextEditingController();
-  final _titleEn = TextEditingController();
-  final _tabAr = TextEditingController();
-  final _tabEn = TextEditingController();
-
-  String? _tabId; // chosen existing class
-  late bool _newTab; // true = create a new class
-  bool _allow = false;
-  bool _hideNow = false;
-  bool _saving = false;
-  String? _err;
-
-  @override
-  void initState() {
-    super.initState();
-    final tabs = widget.provider.tabs;
-    _newTab = tabs.isEmpty;
-    final i = widget.provider.selectedTabIndex;
-    if (tabs.isNotEmpty && i >= 0 && i < tabs.length) _tabId = tabs[i].id;
-  }
-
-  @override
-  void dispose() {
-    for (final x in [_key, _titleAr, _titleEn, _tabAr, _tabEn]) {
-      x.dispose();
-    }
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final isAr = AppConfig.lang == 'ar';
-    final required = isAr ? 'كل الحقول مطلوبة' : 'All fields are required';
-    final key = _key.text.trim();
-    final ar = _titleAr.text.trim();
-    final en = _titleEn.text.trim();
-    final tAr = _tabAr.text.trim();
-    final tEn = _tabEn.text.trim();
-
-    String? err;
-    if (key.isEmpty || ar.isEmpty || en.isEmpty) {
-      err = required;
-    } else if (!_keyRe.hasMatch(key)) {
-      err = isAr
-          ? 'المفتاح: حروف إنجليزية وأرقام و _ . - فقط'
-          : 'Key: letters, digits and _ . - only';
-    } else if (_newTab && (tAr.isEmpty || tEn.isEmpty)) {
-      err = isAr
-          ? 'اكتب اسم التصنيف بالعربية والإنجليزية'
-          : 'Enter the class name in Arabic and English';
-    } else if (!_newTab && _tabId == null) {
-      err = isAr ? 'اختر تصنيفًا' : 'Choose a class';
-    }
-    if (err != null) {
-      setState(() => _err = err);
-      return;
-    }
-
-    setState(() {
-      _saving = true;
-      _err = null;
-    });
-    final ok = await widget.provider.createFeature(
-      key: key,
-      titleAr: ar,
-      titleEn: en,
-      tabId: _newTab ? null : _tabId,
-      tabAr: _newTab ? tAr : null,
-      tabEn: _newTab ? tEn : null,
-      allowToAdmin: _allow,
-      hidden: _hideNow,
-    );
-    if (!mounted) return;
-    if (ok) {
-      Navigator.of(context).pop();
-    } else {
-      setState(
-        () => _saving = false,
-      ); // the server's message was already toasted
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final tabs = widget.provider.tabs;
-    final isAr = AppConfig.lang == 'ar';
-    TextStyle label([Color? color]) => TextStyle(
-      fontFamily: 'tajawal',
-      fontSize: 12.5,
-      fontWeight: FontWeight.w700,
-      color: color ?? c.textMedium,
-    );
-
-    return AlertDialog(
-      title: Text(
-        AppConfig.lang == 'ar' ? 'إضافة ميزة جديدة' : 'Add a new feature',
-        style: const TextStyle(
-          fontFamily: 'tajawal',
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-      content: SizedBox(
-        width: 420,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(isAr ? 'التصنيف' : 'Class (tab)', style: label()),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  for (final t in tabs)
-                    ChoiceChip(
-                      label: Text(
-                        t.label(context),
-                        style: const TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 12,
-                        ),
-                      ),
-                      selected: !_newTab && _tabId == t.id,
-                      onSelected: _saving
-                          ? null
-                          : (_) => setState(() {
-                              _newTab = false;
-                              _tabId = t.id;
-                            }),
-                    ),
-                  ChoiceChip(
-                    avatar: const Icon(Icons.add_rounded, size: 16),
-                    label: Text(
-                      isAr ? 'تصنيف جديد' : 'New class',
-                      style: const TextStyle(
-                        fontFamily: 'tajawal',
-                        fontSize: 12,
-                      ),
-                    ),
-                    selected: _newTab,
-                    onSelected: _saving
-                        ? null
-                        : (_) => setState(() => _newTab = true),
-                  ),
-                ],
-              ),
-              if (_newTab) ...[
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _tabAr,
-                  enabled: !_saving,
-                  decoration: InputDecoration(
-                    labelText: isAr
-                        ? 'اسم التصنيف بالعربية'
-                        : 'Class name (Arabic)',
-                  ),
-                ),
-                TextField(
-                  controller: _tabEn,
-                  enabled: !_saving,
-                  textDirection: TextDirection.ltr,
-                  decoration: InputDecoration(
-                    labelText: isAr
-                        ? 'اسم التصنيف بالإنجليزية'
-                        : 'Class name (English)',
-                  ),
-                ),
-              ],
-              const SizedBox(height: 14),
-              TextField(
-                controller: _key,
-                enabled: !_saving,
-                textDirection: TextDirection.ltr,
-                decoration: InputDecoration(
-                  labelText: isAr ? 'مفتاح الميزة (Key)' : 'Feature key',
-                  hintText: 'profile.delete_account',
-                ),
-              ),
-              TextField(
-                controller: _titleAr,
-                enabled: !_saving,
-                decoration: InputDecoration(
-                  labelText: isAr ? 'الاسم بالعربية' : 'Name (Arabic)',
-                ),
-              ),
-              TextField(
-                controller: _titleEn,
-                enabled: !_saving,
-                textDirection: TextDirection.ltr,
-                decoration: InputDecoration(
-                  labelText: isAr ? 'الاسم بالإنجليزية' : 'Name (English)',
-                ),
-              ),
-              const SizedBox(height: 6),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                value: _allow,
-                activeTrackColor: c.success,
-                onChanged: _saving ? null : (v) => setState(() => _allow = v),
-                title: Text(
-                  isAr ? 'السماح للمدير بالتحكم بها' : 'Let admins manage it',
-                  style: label(c.textDark),
-                ),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                value: _hideNow,
-                activeTrackColor: c.warning,
-                onChanged: _saving ? null : (v) => setState(() => _hideNow = v),
-                title: Text(
-                  isAr
-                      ? 'إخفاؤها الآن على كل المنصات'
-                      : 'Hide it now on all platforms',
-                  style: label(c.textDark),
-                ),
-              ),
-              if (_err != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    _err!,
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 12,
-                      color: c.warning,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
+    return AdminPage(
+      helpPageId: 'admin.features',
+      width: AppWidth.wide,
+      title: t('الميزات', 'Features'),
+      subtitle: t('ما تخفيه هنا يختفي من التطبيق لكل المستخدمين فوراً.', 'What you hide here disappears from the app for everyone, right away.'),
+      icon: Icons.dashboard_customize_rounded,
+      onRefresh: _refresh,
+      primaryAction: _super && _data != null
+          ? AppButton.primary(label: t('ميزة جديدة', 'New feature'), icon: Icons.add_rounded, onPressed: _openCreate)
+          : null,
       actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: Text(
-            isAr ? 'إلغاء' : 'Cancel',
-            style: const TextStyle(fontFamily: 'tajawal'),
-          ),
+        AppIconButton(
+            tooltip: t('دليل ميزات التطبيق (للمساعد)', 'App features guide (assistant)'),
+            icon: Icons.menu_book_rounded,
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeatureGuidePage()))),
+      ],
+      body: _error != null
+          ? cfgErrorState(_error, onRetry: _load)
+          : _data == null
+              ? const AppListSkeleton(items: 8)
+              : _list(context),
+    );
+  }
+
+  Widget _list(BuildContext context) {
+    final shown = _filtered;
+    // flatten: group header rows + feature rows (one lazy list, fine for hundreds of features)
+    final order = [for (final tb in _tabs) '${tb['id']}'];
+    final names = {for (final tb in _tabs) '${tb['id']}': t('${tb['title_ar']}', '${tb['title_en']}')};
+    final byGroup = <String, List<Map<String, dynamic>>>{};
+    for (final f in shown) {
+      byGroup.putIfAbsent('${f['tab']}', () => []).add(f);
+    }
+    final rows = <Object>[];
+    for (final g in [...order, ...byGroup.keys.where((k) => !order.contains(k))]) {
+      final list = byGroup[g];
+      if (list == null || list.isEmpty) continue;
+      rows.add((g, names[g] ?? t('${list.first['tab_ar']}', '${list.first['tab_en']}'), list.length, list.where((f) => f['hidden'] == true).length));
+      rows.addAll(list);
+    }
+    final counts = asMap(_data!['counts']);
+    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
+
+    return AppRefresh(
+      onRefresh: _refresh,
+      child: CustomScrollView(slivers: [
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, 0),
+          sliver: SliverList.list(children: [
+            // D-780: the AI features first — one platform-wide switch each, enforced by the server too
+            if (_super) ...[AiControlsSection(onChanged: _load, generation: _aiGeneration), AppSpace.gapMd],
+            AppKpiGrid(maxColumns: 3, children: [
+              AppKpiCard(icon: Icons.widgets_rounded, value: '${counts['total'] ?? _items.length}', label: t('ميزة', 'Features')),
+              AppKpiCard(icon: Icons.visibility_off_rounded, value: '${counts['hidden'] ?? 0}', label: t('مخفية', 'Hidden')),
+              AppKpiCard(icon: Icons.account_balance_rounded, value: '${counts['org_manageable'] ?? 0}', label: t('بيد المؤسسات', 'Org-managed')),
+            ]),
+            AppSpace.gapMd,
+            AppSearchField(
+              hint: t('ابحث بالاسم أو المفتاح أو الوصف', 'Search by name, key or description'),
+              onChanged: (v) => setState(() => _q = v),
+            ),
+            AppSpace.gapSm,
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              AppChoiceChip(label: t('الكل', 'All'), selected: _state == _State.all, onTap: () => setState(() => _state = _State.all)),
+              AppChoiceChip(label: t('ظاهرة', 'Shown'), icon: Icons.visibility_rounded, selected: _state == _State.on, onTap: () => setState(() => _state = _State.on)),
+              AppChoiceChip(label: t('مخفية', 'Hidden'), icon: Icons.visibility_off_rounded, selected: _state == _State.off, onTap: () => setState(() => _state = _State.off)),
+              AppChoiceChip(
+                  label: t('بيد المؤسسات', 'Org-managed'),
+                  icon: Icons.account_balance_rounded,
+                  selected: _orgOnly,
+                  onTap: () => setState(() => _orgOnly = !_orgOnly)),
+            ]),
+            AppSpace.gapSm,
+            AppPicker<String>(
+              label: t('المجموعة', 'Group'),
+              icon: Icons.folder_open_rounded,
+              value: _group,
+              allowNone: true,
+              noneLabel: t('كل المجموعات', 'All groups'),
+              options: {for (final tb in _tabs) '${tb['id']}': '${names['${tb['id']}']} (${tb['count']})'},
+              onChanged: (v) => setState(() => _group = v),
+            ),
+            AppSpace.gapXs,
+          ]),
         ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          style: FilledButton.styleFrom(backgroundColor: c.primary),
-          child: _saving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: AppLoadingIndicator(showLogo: false,),
-                )
-              : Text(
-                  isAr ? 'إضافة' : 'Add',
-                  style: const TextStyle(
-                    fontFamily: 'tajawal',
-                    color: Colors.white,
+        if (rows.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: AppEmpty(icon: Icons.search_off_rounded, title: t('لا توجد ميزات مطابقة', 'No matching features'),
+                actionLabel: t('مسح الفلاتر', 'Clear filters'),
+                onAction: () => setState(() {
+                      _q = '';
+                      _group = null;
+                      _state = _State.all;
+                      _orgOnly = false;
+                    })),
+          )
+        else
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(gutter, AppSpace.xxs, gutter, AppSpace.xxl),
+            sliver: SliverList.builder(
+              itemCount: rows.length,
+              itemBuilder: (_, i) {
+                final row = rows[i];
+                if (row is (String, String, int, int)) {
+                  return Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs, AppSpace.md, AppSpace.xxs, AppSpace.xs),
+                    child: Row(children: [
+                      Expanded(child: Text(row.$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context))),
+                      AppSpace.gapXs,
+                      Text(row.$4 > 0 ? t('${row.$3} · ${row.$4} مخفية', '${row.$3} · ${row.$4} hidden') : '${row.$3}',
+                          style: AppType.meta(context)),
+                    ]),
+                  );
+                }
+                return _row(context, row as Map<String, dynamic>);
+              },
+            ),
+          ),
+      ]),
+    );
+  }
+
+  Widget _row(BuildContext context, Map<String, dynamic> f) {
+    final key = '${f['key']}';
+    final plats = [for (final p in (f['platforms'] as List? ?? const [])) '$p'];
+    final partial = plats.isNotEmpty && f['hidden_everywhere'] != true;
+    final desc = _desc(f);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
+      child: AppCard(
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.xs, AppSpace.xs, AppSpace.xs),
+        onTap: () => _openDetail(f),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(_title(f), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context)),
+              Text(key, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: AppType.meta(context)),
+              if (desc != null) Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+              if (partial || f['org_manageable'] == true || f['is_custom'] == true) ...[
+                const SizedBox(height: AppSpace.xs),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+                  if (partial)
+                    AppStatusBadge(
+                        label: t('مخفية على: ', 'Hidden on: ') + plats.map((p) => _platformNames[p] ?? p).join('، '),
+                        tone: AppTone.warning,
+                        icon: Icons.devices_rounded),
+                  if (f['org_manageable'] == true)
+                    AppStatusBadge(label: t('بيد المؤسسات', 'Org-managed'), tone: AppTone.brand, icon: Icons.account_balance_rounded),
+                  if (f['is_custom'] == true) AppStatusBadge(label: t('مضافة', 'Custom')),
+                ]),
+              ],
+            ]),
+          ),
+          AppSpace.gapXs,
+          AppSwitch(
+            value: f['hidden'] != true,
+            semanticLabel: _title(f),
+            onChanged: _busy.contains(key) ? null : (v) => _setVisible(f, v),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _openDetail(Map<String, dynamic> f) async {
+    final descAr = TextEditingController(text: '${f['description_ar'] ?? ''}');
+    final descEn = TextEditingController(text: '${f['description_en'] ?? ''}');
+    await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+          final busyAccess = _busy.contains('access:${f['key']}');
+          final busyOrg = _busy.contains('org:${f['key']}');
+          final plats = {for (final p in (f['platforms'] as List? ?? const [])) '$p'};
+          Future<void> run(Future<void> Function() fn) async {
+            await fn();
+            if (ctx.mounted) set(() {});
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              AppSheetHeader(_title(f)),
+              SelectableText('${f['key']}', textDirection: TextDirection.ltr, style: AppType.meta(ctx)),
+              AppSpace.gapSm,
+              Text(t('الظهور حسب المنصة', 'Visibility per platform'), style: AppType.label(ctx)),
+              for (final p in _platforms)
+                AppSwitchTile(
+                  dense: true,
+                  icon: p == 'web' ? Icons.language_rounded : (p == 'ios' ? Icons.phone_iphone_rounded : Icons.android_rounded),
+                  title: _platformNames[p] ?? p,
+                  value: !plats.contains(p),
+                  onChanged: _busy.contains('${f['key']}') ? null : (v) => run(() => _setVisible(f, v, platforms: [p])),
+                ),
+              if (_super) ...[
+                const Divider(height: AppSpace.lg),
+                Text(t('من يمكنه التحكم', 'Who may control it'), style: AppType.label(ctx)),
+                AppSwitchTile(
+                  icon: Icons.admin_panel_settings_rounded,
+                  title: t('مديرو المنصة', 'Platform admins'),
+                  subtitle: t('يظهر لهم المفتاح ويمكنهم إخفاؤها.', 'They see this switch and may hide it.'),
+                  value: f['allow_to_admin'] == true,
+                  onChanged: busyAccess ? null : (v) => run(() => _setAccess(f, v)),
+                ),
+                AppSwitchTile(
+                  icon: Icons.account_balance_rounded,
+                  title: t('مديرو المؤسسات', 'Organization admins'),
+                  subtitle: t('يمكنهم إيقافها داخل مؤسستهم فقط. إيقافك هنا يغلب دائماً.',
+                      'They may switch it off inside their organization only. Your OFF here always wins.'),
+                  value: f['org_manageable'] == true,
+                  onChanged: busyOrg ? null : (v) => run(() => _setOrg(f, v)),
+                ),
+                const Divider(height: AppSpace.lg),
+                Text(t('الوصف', 'Description'), style: AppType.label(ctx)),
+                const SizedBox(height: AppSpace.xs),
+                AppField(controller: descAr, label: t('بالعربية', 'Arabic'), maxLines: 2),
+                AppField(controller: descEn, label: t('بالإنجليزية', 'English'), maxLines: 2, ltr: true),
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: AppButton.secondary(
+                    icon: Icons.save_rounded,
+                    label: t('حفظ الوصف', 'Save description'),
+                    onPressed: () => run(() async {
+                      final r = await orgCall(
+                          () => ApiClient().put('$_catalog/${Uri.encodeComponent('${f['key']}')}/description',
+                              body: {'description_ar': descAr.text.trim(), 'description_en': descEn.text.trim()}),
+                          ok: t('تم الحفظ', 'Saved'));
+                      if (r.ok) {
+                        f['description_ar'] = descAr.text.trim();
+                        f['description_en'] = descEn.text.trim();
+                        _take(r);
+                      }
+                    }),
                   ),
                 ),
-        ),
-      ],
-    );
+                if (f['deletable'] == true) ...[
+                  AppSpace.gapSm,
+                  AppButton.danger(
+                    dangerOutline: true,
+                    icon: Icons.delete_outline_rounded,
+                    label: t('حذف الميزة', 'Delete feature'),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await _delete(f);
+                    },
+                  ),
+                ] else
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpace.xs),
+                    child: Text(t('ميزة أساسية في التطبيق — يمكن إخفاؤها ولا يمكن حذفها.', 'A built-in feature — it can be hidden but not deleted.'),
+                        style: AppType.meta(ctx)),
+                  ),
+              ],
+            ]),
+          );
+        }));
+    disposeAfterRoute([descAr, descEn]);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _openCreate() async {
+    final key = TextEditingController(), ar = TextEditingController(), en = TextEditingController();
+    final dAr = TextEditingController(), dEn = TextEditingController();
+    final gAr = TextEditingController(), gEn = TextEditingController();
+    String? group = _group ?? (_tabs.isEmpty ? null : '${_tabs.first['id']}');
+    bool newGroup = false, admins = false, orgs = false, hidden = false, busy = false;
+    final names = {for (final tb in _tabs) '${tb['id']}': t('${tb['title_ar']}', '${tb['title_en']}')};
+    await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              AppSheetHeader(t('ميزة جديدة', 'New feature')),
+              AppBanner(
+                  icon: Icons.info_outline_rounded,
+                  text: t('المفتاح يجب أن يطابق ما يستخدمه التطبيق (ParentComponent / ValueKey).',
+                      'The key must match what the app uses (ParentComponent / ValueKey).')),
+              const SizedBox(height: AppSpace.sm),
+              AppField(controller: key, label: t('المفتاح (مثل profile.chat)', 'Key (e.g. profile.chat)'), ltr: true),
+              AppField(controller: ar, label: t('الاسم بالعربية', 'Arabic name')),
+              AppField(controller: en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
+              Row(children: [
+                Expanded(child: Text(t('المجموعة', 'Group'), style: AppType.label(ctx))),
+                AppChoiceChip(label: t('مجموعة جديدة', 'New group'), icon: Icons.add_rounded, selected: newGroup, onTap: () => set(() => newGroup = !newGroup)),
+              ]),
+              const SizedBox(height: AppSpace.xs),
+              if (newGroup) ...[
+                AppField(controller: gAr, label: t('اسم المجموعة بالعربية', 'Group name (Arabic)')),
+                AppField(controller: gEn, label: t('اسم المجموعة بالإنجليزية', 'Group name (English)'), ltr: true),
+              ] else
+                AppPicker<String>(label: t('المجموعة', 'Group'), value: group, options: names, onChanged: (v) => set(() => group = v)),
+              AppField(controller: dAr, label: t('الوصف بالعربية (اختياري)', 'Arabic description (optional)'), maxLines: 2),
+              AppField(controller: dEn, label: t('الوصف بالإنجليزية (اختياري)', 'English description (optional)'), maxLines: 2, ltr: true),
+              AppSwitchTile(
+                  title: t('يتحكم بها مديرو المنصة', 'Platform admins may control it'),
+                  value: admins,
+                  onChanged: (v) => set(() => admins = v)),
+              AppSwitchTile(
+                  title: t('يتحكم بها مديرو المؤسسات', 'Organization admins may control it'),
+                  value: orgs,
+                  onChanged: (v) => set(() => orgs = v)),
+              AppSwitchTile(title: t('ابدأ وهي مخفية', 'Start hidden'), value: hidden, onChanged: (v) => set(() => hidden = v)),
+              AppSpace.gapSm,
+              AppButton.primary(
+                label: t('إضافة', 'Add'),
+                icon: Icons.add_rounded,
+                busy: busy,
+                onPressed: busy
+                    ? null
+                    : () async {
+                        if (key.text.trim().isEmpty || ar.text.trim().isEmpty || en.text.trim().isEmpty) {
+                          return appToast(t('المفتاح والاسمان مطلوبة', 'Key and both names are required'), error: true);
+                        }
+                        if (newGroup && (gAr.text.trim().isEmpty || gEn.text.trim().isEmpty)) {
+                          return appToast(t('اكتب اسمي المجموعة', 'Enter both group names'), error: true);
+                        }
+                        set(() => busy = true);
+                        final r = await orgCall(
+                            () => ApiClient().post(_catalog, body: {
+                                  'key': key.text.trim(),
+                                  'title_ar': ar.text.trim(),
+                                  'title_en': en.text.trim(),
+                                  if (newGroup) ...{'tab_ar': gAr.text.trim(), 'tab_en': gEn.text.trim()} else 'tab_id': group,
+                                  'description_ar': dAr.text.trim(),
+                                  'description_en': dEn.text.trim(),
+                                  'allow_to_admin': admins,
+                                  'org_manageable': orgs,
+                                  'hidden': hidden,
+                                }),
+                            ok: t('تمت إضافة الميزة', 'Feature added'));
+                        if (!ctx.mounted) return;
+                        set(() => busy = false);
+                        if (r.ok) {
+                          _take(r);
+                          Navigator.pop(ctx);
+                        }
+                      },
+              ),
+            ]),
+          );
+        }));
+    disposeAfterRoute([key, ar, en, dAr, dEn, gAr, gEn]);
   }
 }

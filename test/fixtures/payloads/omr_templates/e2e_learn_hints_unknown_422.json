@@ -1,0 +1,34 @@
+{
+ "_source": {
+  "route": "POST /api/v1/exam/omr/templates/learn",
+  "status": 422,
+  "request": {
+   "name": "x",
+   "hints": "{\"questions\": 50, \"colour\": 1}"
+  },
+  "how": "back tests/exam_engine/e2e_omr_templates.py run unchanged (inline jobs, SQLite, 2026-11-02); reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "detail": {
+   "code": "hints_unknown_keys",
+   "message": "حقول غير معروفة في وصف الورقة",
+   "keys": [
+    "colour"
+   ],
+   "allowed": [
+    "direction",
+    "forms",
+    "id_columns",
+    "id_kind",
+    "labels",
+    "layout",
+    "one_choice_per_question",
+    "option_direction",
+    "options",
+    "page_mm",
+    "per_column",
+    "questions"
+   ]
+  }
+ }
+}

@@ -1,0 +1,17 @@
+{
+ "_source": {
+  "route": "GET /api/v1/admin/points/settings",
+  "status": 200,
+  "uid": 4
+ },
+ "payload": {
+  "live_meeting_free_minutes": 15,
+  "live_meeting_price_points": 30,
+  "live_meeting_plan_days": 30,
+  "points_price": 1.0,
+  "points_currency": "SAR",
+  "points_topup_min": 10,
+  "live_meeting_free_minutes_daily": 15,
+  "points_card_enabled": true
+ }
+}

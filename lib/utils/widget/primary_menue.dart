@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 
 class MyPrimaryMenu extends StatelessWidget {
   const MyPrimaryMenu(
@@ -26,17 +27,15 @@ class MyPrimaryMenu extends StatelessWidget {
     return Material(
       shadowColor: const Color.fromRGBO(0, 0, 0, 0.25),
       color: context.colors.inputBg,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(AppRadius.control),
+      clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
 
         controller: controller,
         shape: Border.all(style: BorderStyle.none),
         title: Text(
           initValue == null ? label : initValue!['text'].toString().tr,
-          style:  TextStyle(
-            fontFamily: 'tajawal',
-            fontWeight: FontWeight.w100,
-            fontSize: 17,
+          style: AppType.row(context).copyWith(
             color: context.colors.textDark,
           ),
         ),
@@ -44,8 +43,8 @@ class MyPrimaryMenu extends StatelessWidget {
             options.length,
             (int i) => Column(
                   children: [
-                    DecoratedBox(
-                      decoration:  BoxDecoration(color: context.colors.background),
+                    Material( // not a coloured DecoratedBox: it hid the tile colour / ink (ListTile asserts)
+                      color: context.colors.background,
                       child: ListTile(
                         tileColor: context.colors.inputBg,
                         splashColor: Colors.transparent,
@@ -53,28 +52,25 @@ class MyPrimaryMenu extends StatelessWidget {
                         leading: haveLogo
                             ? (Image.network(
                                 options[i]['logo'],
-                                width: 25,
-                                height: 25,
+                                width: AppIconSize.lg,
+                                height: AppIconSize.lg,
                                 errorBuilder: (q, w, e) => Icon(Icons.category),
                               ))
                             : null,
                         title: Text(
                           options[i]['text'].toString().tr,
-                          style:  TextStyle(
-                            fontFamily: 'tajawal',
-                            fontWeight: FontWeight.w100,
-                            fontSize: 17,
+                          style: AppType.row(context).copyWith(
                             color: context.colors.textMedium,
                           ),
                         ),
                         trailing:(initValue?['text']==options[i]['text'])?
                         Icon( CupertinoIcons.check_mark_circled_solid,color: context.colors.primary,):
-                        Icon( CupertinoIcons.circle,color: context.colors.secondText.withAlpha(100),),
+                        Icon( CupertinoIcons.circle,color: context.colors.secondText,),
                         onTap: () => onChange(i),
                       ),
                     ),
                     i < options.length - 1
-                        ? const Divider(height: 0)
+                        ? Divider(height: 0, thickness: AppBorder.hairline, color: context.colors.divider)
                         : SizedBox.shrink()
                   ],
                 )),

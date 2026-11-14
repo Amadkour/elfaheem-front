@@ -1,0 +1,106 @@
+import type { ar } from './ar';
+type Dict = typeof ar;
+
+export const en: Dict = {
+  lang: 'en',
+  dir: 'ltr',
+  locale: 'en',
+  name: 'NextBrain',
+  title: 'NextBrain | Live and recorded courses, all in one platform',
+  description:
+    'Learn with NextBrain: live and recorded courses with protected video, exams with instant results and an AI study assistant. For students, teachers and institutions.',
+  ogAlt: 'NextBrain logo',
+  skip: 'Skip to content',
+  nav: { how: 'How it works', features: 'Features', entry: 'Get started', faq: 'FAQ' },
+  menuLabel: 'Main navigation',
+  login: 'Log in',
+  switchTo: { label: 'العربية', title: 'التبديل إلى العربية', lang: 'ar' },
+  hero: {
+    kicker: 'One complete learning platform',
+    title: 'Find the right course in seconds',
+    iWant: 'I want to learn',
+    forLevel: 'for',
+    subject: 'Subject',
+    level: 'Level',
+    mode: 'Study mode',
+    anySubject: 'any subject',
+    anyLevel: 'any level',
+    modes: { any: 'anywhere', online: 'online', center: 'at a center' },
+    cta: 'Show matching courses',
+    browse: 'Browse all courses',
+    resultEmpty: '—',
+    resultLine: '{courses} · {teachers}',
+    courses: { one: '1 course', two: '{n} courses', few: '{n} courses', many: '{n} courses', other: '{n} courses' },
+    teachers: { one: '1 teacher', two: '{n} teachers', few: '{n} teachers', many: '{n} teachers', other: '{n} teachers' },
+  },
+  trust: {
+    title: 'A platform that grows with its students and teachers',
+    stats: { students: 'students', teachers: 'teachers', courses: 'courses' },
+    badges: [
+      'Arabic and English',
+      'Protected video',
+      'Live classes with recordings',
+      'Phone, web and desktop',
+      'Secure online payments',
+    ],
+  },
+  how: {
+    title: 'How it works',
+    steps: [
+      { t: 'Find your course', d: 'Pick a subject, level and study mode, then compare courses and teachers.' },
+      { t: 'Subscribe or try as a guest', d: 'Browse courses without an account; subscribe and pay securely when you are ready.' },
+      { t: 'Learn live and recorded', d: 'Join live classes and revisit recorded lessons whenever you like.' },
+    ],
+  },
+  features: {
+    title: 'Everything you need to learn, in one place',
+    items: [
+      { t: 'Live classes', d: 'Live audio and video classes with screen sharing, recorded so you can review them later.' },
+      { t: 'Recorded lessons, protected video', d: 'Watch lessons any time. Video is protected against unauthorized recording and copying.' },
+      { t: 'Exams with instant results', d: 'Online exams are graded automatically so you see your level and track progress.' },
+      { t: 'Attendance', d: 'Simple attendance tracking for students, teachers and parents.' },
+      { t: 'AI study assistant', d: 'Ask about the platform and your lessons and get answers grounded in course content.' },
+      { t: 'Institutions, timetables, dashboards', d: 'For schools and centers: timetables, departments, roles and a management dashboard.' },
+    ],
+  },
+  preview: {
+    label: 'A look at courses on the platform',
+    students: '{n} students',
+    online: 'Online',
+    center: 'In a center',
+    rating: 'Rated {n} out of 5',
+  },
+  testimonials: {
+    title: 'What learners say',
+    region: 'Learner reviews',
+    prev: 'Previous reviews',
+    next: 'Next reviews',
+    stars: '{n} out of 5 stars',
+  },
+  entry: {
+    title: 'Who are you? Start here',
+    cards: [
+      { t: 'Student', d: 'Discover courses and start learning today.', cta: 'Browse courses', k: 'student' },
+      { t: 'Teacher', d: 'Create courses, teach live and follow your students.', cta: 'Join as a teacher', k: 'teacher' },
+      { t: 'Institution', d: 'Run your school or center with timetables and dashboards.', cta: 'Register your institution', k: 'institution' },
+    ],
+  },
+  faq: {
+    title: 'Frequently asked questions',
+    items: [
+      { q: 'Is there a free trial?', a: 'You can browse courses and read their details as a guest without an account. Some teachers offer trial lessons, shown on the course page.' },
+      { q: 'Which devices are supported?', a: 'Android and iPhone apps, any web browser, and desktop.' },
+      { q: 'How does payment work?', a: 'You pay online inside the platform using secure payment methods. We do not store your card details.' },
+      { q: 'Can I download videos?', a: 'Yes, but only in the phone and desktop apps. Downloads are encrypted inside the app and do not play outside it. Downloads are not available in the browser.' },
+      { q: 'How do live classes work?', a: 'Join the class room from the app or browser in one tap, take part with audio and video, and the teacher may record the class for later.' },
+      { q: 'How does an institution join?', a: 'Choose "Institution", register your organization, then add teachers and students and set up departments and timetables from the dashboard.' },
+      { q: 'Is the platform available in Arabic?', a: 'Yes. The interface is in Arabic and English and you can switch at any time.' },
+    ],
+  },
+  sticky: 'Start learning',
+  footer: {
+    tagline: 'An Arabic and English learning platform for live and recorded courses.',
+    links: 'Links',
+    rights: 'All rights reserved',
+  },
+};

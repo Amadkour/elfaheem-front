@@ -1,0 +1,31 @@
+{
+ "_source": {
+  "route": "POST /api/v1/models/downloads/5/cancel",
+  "status": 200,
+  "request": null,
+  "how": "back tests/modelhub/e2e_modelhub.py (MODELHUB_MODE=test, inline), reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "id": 5,
+  "model_id": 27,
+  "ref": "gen-cancel@v1",
+  "role": "generation",
+  "status": "cancelled",
+  "bytes_done": 16384,
+  "bytes_total": 600000,
+  "percent": 2.7,
+  "speed_bps": 0.0,
+  "eta_s": null,
+  "error": null,
+  "files": {
+   "model": {
+    "done": 16384,
+    "total": 600000,
+    "status": "running"
+   }
+  },
+  "activate_after": false,
+  "created_at": "2026-11-02T03:05:26.741583",
+  "finished_at": "2026-11-02T03:05:28.085832"
+ }
+}

@@ -1,6 +1,6 @@
 // lib/utils/widget/app_loading_indicator.dart
 //
-// App-branded loading indicator: the ElFaheem logo sitting inside a
+// App-branded loading indicator: the NextBrain logo sitting inside a
 // rotating accent ring, with a gentle pulse. Drop-in replacement for
 // CircularProgressIndicator anywhere the app shows a loading state —
 // splash screen, full-page loaders, list loading states, etc.

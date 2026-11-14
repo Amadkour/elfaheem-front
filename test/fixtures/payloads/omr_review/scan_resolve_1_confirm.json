@@ -1,0 +1,61 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/review-items/1/resolve -> 200, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_scan.py (back worktree wt-back-omr)",
+ "_status": 200,
+ "payload": {
+  "item": {
+   "id": 1,
+   "scan_page_id": 2,
+   "attempt_id": null,
+   "question_id": null,
+   "kind": "form",
+   "code": "form_unconfirmed",
+   "reading": {
+    "markers": {
+     "qr": "B",
+     "printed": "A"
+    },
+    "configured": [
+     "qr",
+     "printed"
+    ],
+    "forms": [
+     "A",
+     "B"
+    ],
+    "reason": "markers_disagree",
+    "read": {
+     "qr": "B",
+     "printed": "A"
+    },
+    "en": "Model could not be confirmed",
+    "ar": "تعذّر تأكيد النموذج"
+   },
+   "status": "resolved",
+   "resolution": {
+    "action": "confirm",
+    "form": "B"
+   },
+   "resolved_by": 10,
+   "resolved_at": "2026-11-02T05:36:12.502181",
+   "created_at": "2026-11-02T05:36:11.990707",
+   "actions": [
+    "confirm",
+    "dismiss"
+   ],
+   "has_crop": true,
+   "en": "Model could not be confirmed",
+   "ar": "تعذّر تأكيد النموذج"
+  },
+  "page_status": "processed",
+  "open_items_on_page": 0,
+  "attempt": {
+   "id": 2,
+   "state": "graded",
+   "score": 11.0,
+   "max_score": 11.0,
+   "percentage": 100.0,
+   "passed": true
+  },
+  "next_item_id": null
+ }
+}

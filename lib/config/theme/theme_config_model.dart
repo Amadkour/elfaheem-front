@@ -11,12 +11,14 @@
 
 import 'dart:ui';
 
+import '../../design/app_contrast.dart';
+
 class ThemeConfigModel {
   // ── Primary family ──────────────────────────────────────────────────────
   final Color primary;
   final Color primaryDark;
   final Color primaryLight;
-  final Color lightPrimary; // primary @ 12 % opacity
+  final Color lightPrimary; // primary @ 6 % opacity (D-728)
   final Color accent; // == primary (monochromatic)
   final Color primaryTint;
   final Color primaryTintDark;
@@ -30,7 +32,9 @@ class ThemeConfigModel {
   final Color danger;
   final Color warning;
   final Color purple;
-  final Color secondText;
+  final Color secondText; // light mode
+  /// Dark-mode [secondText]: `dark_second_text`, else the theme's `dark_text_light`.
+  final Color darkSecondText;
 
   // ── Light surfaces ───────────────────────────────────────────────────────
   final Color background;
@@ -86,6 +90,23 @@ class ThemeConfigModel {
   final List<Color> gradientPurple;
   final List<Color> gradientTeal;
 
+  // ── On-hero roles (optional: derived from the palette when the server sends none) ──
+  /// Ink over a gradient hero / the sidebar / the primary top bar (`on_hero`).
+  final Color? onHero;
+  /// The dark tone a hero gradient fades into (`hero_shade`).
+  final Color? heroShade;
+
+  // ── Block tones (optional, D-610) ──
+  /// The sky block tone (`accent3`, schedule / information blocks), sent only by a theme that sets it (the
+  /// warm_editorial preset); null = ThemeConfigProvider derives one from the palette (`ThemeConfigProvider.deriveAccent3`).
+  final Color? accent3;
+
+  // ── Brand gradient stops (optional, D-136: derived from the primary family when absent) ──
+  /// The light outer stop of the brand gradient (`primary_gradient_start`).
+  final Color? primaryGradientStart;
+  /// The deep outer stop of the brand gradient (`primary_gradient_end`).
+  final Color? primaryGradientEnd;
+
   // ── Meta ─────────────────────────────────────────────────────────────────
   final String platform;
   final bool isActive;
@@ -108,6 +129,7 @@ class ThemeConfigModel {
     required this.warning,
     required this.purple,
     required this.secondText,
+    required this.darkSecondText,
     required this.background,
     required this.cardBg,
     required this.textFieldBackground,
@@ -145,6 +167,11 @@ class ThemeConfigModel {
     required this.gradientDanger,
     required this.gradientPurple,
     required this.gradientTeal,
+    this.onHero,
+    this.heroShade,
+    this.accent3,
+    this.primaryGradientStart,
+    this.primaryGradientEnd,
     required this.platform,
     required this.isActive,
     this.updatedAt, required this.surfaceCard,
@@ -160,6 +187,8 @@ class ThemeConfigModel {
     throw FormatException('Invalid hex colour: $hex');
   }
 
+  static Color? _opt(dynamic hex) => hex is String && hex.isNotEmpty ? _c(hex) : null;
+
   static List<Color> _cl(dynamic list) =>
       (list as List).map((e) => _c(e as String)).toList();
 
@@ -170,6 +199,18 @@ class ThemeConfigModel {
   static List<String> _hexList(List<Color> colors) => colors.map(_hex).toList();
 
   // ── Factory ───────────────────────────────────────────────────────────────
+
+  /// Surfaces the light-mode text colours are drawn on.
+  static const lightTextSurfaceKeys = ['background', 'surface_card', 'card_bg', 'text_field_background', 'input_bg'];
+
+  /// Surfaces the dark-mode text colours are drawn on.
+  static const darkTextSurfaceKeys = ['dark_background', 'dark_surface', 'dark_card', 'dark_input', 'input_bg_dark'];
+
+  /// The secondary text colour under [key] in [j], nudged until it reaches WCAG AA (4.5:1) on every surface of
+  /// [surfaceKeys] that [j] carries. The palette is edited by the super admin, so a stored low-contrast value must
+  /// not ship unreadable captions; a colour that already passes comes back unchanged.
+  static Color readableText(Map<String, dynamic> j, String key, List<String> surfaceKeys) => ensureContrast(
+      _c(j[key] as String), [for (final k in surfaceKeys) if (j[k] is String) _c(j[k] as String)]);
 
   factory ThemeConfigModel.fromJson(Map<String, dynamic> j) {
     return ThemeConfigModel(
@@ -191,7 +232,9 @@ class ThemeConfigModel {
       danger: _c(j['danger'] as String),
       warning: _c(j['warning'] as String),
       purple: _c(j['purple'] as String),
-      secondText: _c(j['second_text'] as String),
+      secondText: readableText(j, 'second_text', lightTextSurfaceKeys),
+      darkSecondText: readableText(j, j['dark_second_text'] is String ? 'dark_second_text' : 'dark_text_light',
+          darkTextSurfaceKeys),
 
       // Light surfaces
       background: _c(j['background'] as String),
@@ -202,8 +245,8 @@ class ThemeConfigModel {
 
       // Light text
       textDark: _c(j['text_dark'] as String),
-      textMedium: _c(j['text_medium'] as String),
-      textLight: _c(j['text_light'] as String),
+      textMedium: readableText(j, 'text_medium', lightTextSurfaceKeys),
+      textLight: readableText(j, 'text_light', lightTextSurfaceKeys),
       textAction: _c(j['text_action'] as String),
 
       // Dark surfaces
@@ -215,8 +258,8 @@ class ThemeConfigModel {
 
       // Dark text
       darkTextPrimary: _c(j['dark_text_primary'] as String),
-      darkTextMuted: _c(j['dark_text_muted'] as String),
-      darkTextLight: _c(j['dark_text_light'] as String),
+      darkTextMuted: readableText(j, 'dark_text_muted', darkTextSurfaceKeys),
+      darkTextLight: readableText(j, 'dark_text_light', darkTextSurfaceKeys),
 
       // Input backgrounds
       inputBg: _c(j['input_bg'] as String),
@@ -245,6 +288,13 @@ class ThemeConfigModel {
       gradientPurple: _cl(j['gradient_purple']),
       gradientTeal: _cl(j['gradient_teal']),
 
+      // On-hero roles (optional)
+      onHero: _opt(j['on_hero']),
+      heroShade: _opt(j['hero_shade']),
+      accent3: _opt(j['accent3']),
+      primaryGradientStart: _opt(j['primary_gradient_start']),
+      primaryGradientEnd: _opt(j['primary_gradient_end']),
+
       // Meta
       platform: j['platform'] as String,
       isActive: j['is_active'] as bool,
@@ -271,6 +321,7 @@ class ThemeConfigModel {
     'warning': _hex(warning),
     'purple': _hex(purple),
     'second_text': _hex(secondText),
+    'dark_second_text': _hex(darkSecondText),
     'background': _hex(background),
     'surface_card': _hex(surfaceCard),
     'card_bg': _hex(cardBg),
@@ -309,6 +360,11 @@ class ThemeConfigModel {
     'gradient_danger': _hexList(gradientDanger),
     'gradient_purple': _hexList(gradientPurple),
     'gradient_teal': _hexList(gradientTeal),
+    if (onHero != null) 'on_hero': _hex(onHero!),
+    if (heroShade != null) 'hero_shade': _hex(heroShade!),
+    if (accent3 != null) 'accent3': _hex(accent3!),
+    if (primaryGradientStart != null) 'primary_gradient_start': _hex(primaryGradientStart!),
+    if (primaryGradientEnd != null) 'primary_gradient_end': _hex(primaryGradientEnd!),
     'platform': platform,
     'is_active': isActive,
     'updated_at': updatedAt,

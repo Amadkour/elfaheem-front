@@ -1,0 +1,165 @@
+{
+ "_source": {
+  "route": "GET /api/v1/exam/exams/1/review-items/2",
+  "uid": 10
+ },
+ "payload": {
+  "id": 2,
+  "scan_page_id": 2,
+  "attempt_id": 1,
+  "question_id": 2,
+  "kind": "short_answer",
+  "code": "short_answer",
+  "reading": {
+   "kind": "short_answer",
+   "status": "suggestion",
+   "final": false,
+   "needs_review": true,
+   "max": 3.0,
+   "thresholds": {
+    "low": 0.45,
+    "high": 0.8
+   },
+   "keyword_weight": 0.0,
+   "reading": {
+    "text": "The sun heats the sea and water evaporates. Then rain falls back to the ground.",
+    "confidence": 0.95,
+    "engine": "scripted",
+    "review": false
+   },
+   "crop": {
+    "page_id": 2,
+    "box": [
+     0.0,
+     0.0,
+     1.0,
+     1.0
+    ],
+    "has_crop": true
+   },
+   "reasons": [
+    "similarity_uncalibrated"
+   ],
+   "keywords": [],
+   "coverage": null,
+   "raw_cosine": 0.8333,
+   "suggested_score": null,
+   "band": null,
+   "similarity": null,
+   "embedder": "hash-test@0",
+   "auto": {
+    "tier": "review",
+    "kind": "long",
+    "decided": false,
+    "score": 2.0,
+    "points": [
+     {
+      "idx": 0,
+      "text": "Heat from the sun evaporates water from the sea",
+      "weight": 1.0,
+      "sentence": "The sun heats the sea and water evaporates",
+      "start": 0,
+      "end": 42,
+      "score": 1.0,
+      "state": "matched"
+     },
+     {
+      "idx": 1,
+      "text": "The water vapour cools and condenses into clouds",
+      "weight": 1.0,
+      "sentence": "The sun heats the sea and water evaporates",
+      "start": 0,
+      "end": 42,
+      "score": 0.1,
+      "state": "unsure",
+      "nli": [
+       0.2,
+       0.1
+      ]
+     },
+     {
+      "idx": 2,
+      "text": "Rain falls back to the ground",
+      "weight": 1.0,
+      "sentence": "Then rain falls back to the ground",
+      "start": 44,
+      "end": 78,
+      "score": 1.0,
+      "state": "matched"
+     }
+    ],
+    "keywords": null,
+    "memory": null,
+    "tiers_version": "tiers:test-1"
+   },
+   "text": "The sun heats the sea and water evaporates. Then rain falls back to the ground.",
+   "corrected": false,
+   "lang": "en",
+   "points": 3.0,
+   "pending": false,
+   "en": "Short answer: confirm or set the score",
+   "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها"
+  },
+  "status": "open",
+  "resolution": {},
+  "resolved_by": null,
+  "resolved_at": null,
+  "created_at": "2026-11-12T12:04:55.952938",
+  "actions": [
+   "accept",
+   "set_score",
+   "fix_text"
+  ],
+  "has_crop": true,
+  "en": "Short answer: confirm or set the score",
+  "ar": "إجابة قصيرة: أكّد الدرجة أو عدّلها",
+  "crop_url": "/api/v1/exam/omr/images/crop/2?exp=0&sig=0",
+  "student": {
+   "id": 11,
+   "name": "Student 11"
+  },
+  "page_no": 1,
+  "page_label": "1",
+  "page_file_page": null,
+  "file_name": "b.png",
+  "batch_id": 1,
+  "batch_created_at": "2026-11-12T12:04:54.651317",
+  "system_reading": {
+   "reading_id": 2,
+   "unit": "line",
+   "lang": "en",
+   "reading": {
+    "text": "The sun heats the sea and water evaporates. Then rain falls back to the ground.",
+    "confidence": 0.95,
+    "engine": "scripted",
+    "review": false,
+    "lang": "en",
+    "unit": "line"
+   },
+   "blanks": null,
+   "box": [
+    0.0,
+    0.0,
+    1.0,
+    1.0
+   ]
+  },
+  "question": {
+   "question_id": 2,
+   "type": "short_answer",
+   "points": 3.0,
+   "lang": "en",
+   "step": 0.5,
+   "blanks": null,
+   "key": {
+    "model": "Heat from the sun evaporates water from the sea. The water vapour cools and condenses into clouds. Rain falls back to the ground."
+   }
+  },
+  "page": {
+   "id": 2,
+   "page_label": null,
+   "status": "review",
+   "url": "/api/v1/exam/exams/1/omr/pages/2"
+  }
+ }
+}

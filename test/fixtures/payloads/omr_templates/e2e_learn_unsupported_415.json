@@ -1,0 +1,19 @@
+{
+ "_source": {
+  "route": "POST /api/v1/exam/omr/templates/learn",
+  "status": 415,
+  "request": {
+   "name": "x",
+   "hints": "{\"questions\": 50, \"options\": 4}"
+  },
+  "how": "back tests/exam_engine/e2e_omr_templates.py run unchanged (inline jobs, SQLite, 2026-11-02); reply recorded by wrapping TestClient.request"
+ },
+ "payload": {
+  "detail": {
+   "code": "unsupported_file",
+   "message": "نوع ملف غير مدعوم (PNG، JPEG، WebP، PDF)",
+   "file": "b.txt",
+   "message_en": "Unsupported file type (PNG, JPEG, WebP or PDF)."
+  }
+ }
+}

@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
-import '../../config/theme/app_theme.dart';
-import '../../config/theme/theme_config_provider.dart';
-import '../../utils/widget/primary_button.dart';
-import 'auth_provider.dart';
 import '../../utils/helpers.dart';
-import 'register_screen.dart';
+import 'auth_provider.dart';
+import 'auth_shell.dart';
+import '../../design/app_tokens.dart';
 import 'auth_widgets.dart';
+import 'register_screen.dart';
+import 'username.dart';
 
 class ForgetScreen extends StatefulWidget {
   const ForgetScreen({super.key});
@@ -27,7 +25,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AuthProvider>().loadPolicy();
+      if (mounted) context.read<MyAuthProvider>().loadPolicy();
     });
   }
 
@@ -39,17 +37,20 @@ class _ForgetScreenState extends State<ForgetScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final authProvider = context.read<AuthProvider>();
+    final authProvider = context.read<MyAuthProvider>();
     final success = await authProvider.forgotPassword(
       _emailController.text.trim(),
     );
     if (!mounted) return;
     if (success) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) =>
-            OtpVerificationScreen(email: _emailController.text.trim(),
-              flow: OtpFlowEnum.forget,
-              role: 'student',)),
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationScreen(
+            email: _emailController.text.trim(),
+            flow: OtpFlowEnum.forget,
+            role: 'student',
+          ),
+        ),
       );
     } else {
       Helpers.showMessage(
@@ -61,160 +62,65 @@ class _ForgetScreenState extends State<ForgetScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery
-        .of(context)
-        .size
-        .width > 800;
-
-    return  BasePage(
-        appBar: isWide ?null:ScreenAppBar(title: 'forget_password'.tr),
-        child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
+    return AuthScaffold(
+      title: 'auth_reset_title'.tr,
+      subtitle: 'auth_reset_sub'.tr,
+      builder: (context, isWide) => _buildForm(),
     );
   }
 
-  Widget _buildWideLayout() {
-    return Row(
-      children: [
-        AuthSidebar(),
-        Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: _buildForm(true),
-              ),
+  Widget _buildForm() {
+    return AutofillGroup(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Email / phone (+ @username when the admin allows it) ───────
+            Builder(
+              builder: (context) {
+                final a = context.watch<MyAuthProvider>();
+                final spec = identifierFieldSpec(
+                  email: true,
+                  phone: a.loginAllowsPhone || a.verifyByPhone,
+                  username: a.loginAllowsUsername,
+                );
+                return IconTextField(
+                  controller: _emailController,
+                  label: spec.labelKey.tr,
+                  icon: spec.icon.data,
+                  keyboard: spec.keyboard,
+                  autocorrect: false,
+                  autofillHints: const [AutofillHints.username, AutofillHints.email],
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _submit(),
+                );
+              },
             ),
-          ),
-        ),
-      ],
-    );
-  }
+            const SizedBox(height: AppSpace.md),
 
-  Widget _buildNarrowLayout() {
-    return Center(
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-          child: _buildForm(false),
+            // ── Hint ───────────────────────────────────────────────────────
+            AuthInfoBanner(text: 'reset_link_hint'.tr, icon: Icons.mark_email_unread_outlined),
+            const SizedBox(height: AppSpace.lg),
+
+            // ── Send ───────────────────────────────────────────────────────
+            AuthButton(
+              loading: context.watch<MyAuthProvider>().isLoadingForget,
+              label: 'send_reset_link'.tr,
+              onPressed: _submit,
+            ),
+            const SizedBox(height: AppSpace.md),
+
+            // ── Register link ──────────────────────────────────────────────
+            LinkRow(
+              message: 'auth_no_account'.tr,
+              linkText: 'auth_create_account'.tr,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
+            ),
+          ],
         ),
       ),
     );
-  }
-
-  Widget _buildForm(bool isWeb) {
-    Widget form=Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Back button
-          if(isWeb)
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.arrow_back_ios_rounded, size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  'login'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: context.colors.textDark,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 50),
-
-
-          Text(
-            'forget'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: context.colors.textDark,),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'forget_welcome'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 14,
-              color: context.colors.secondText,
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 50),
-
-          Builder(builder: (context) {
-            final a = context.watch<AuthProvider>();
-            final phoneOk = a.loginAllowsPhone || a.verifyByPhone;
-            return IconTextField(
-              controller: _emailController,
-              label: phoneOk ? 'email_or_phone'.tr : 'email'.tr,
-              icon: phoneOk ? Icons.person_outline : Icons.email_outlined,
-              keyboard: phoneOk ? TextInputType.text : TextInputType.emailAddress,
-            );
-          }),
-          const SizedBox(height: 12),
-
-          // Hint
-          Row(
-            children: [
-              Icon(Icons.info_outline_rounded, size: 13,
-                color: context.colors.primary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'reset_link_hint'.tr,
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 12,
-                  color: context.colors.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 100),
-
-          PrimaryButton(
-            isLoading: context
-                .watch<AuthProvider>()
-                .isLoadingForget,
-            label: 'send_reset_link'.tr,
-            icon: Icons.send_rounded,
-            onPressed: _submit,
-          ),
-          const SizedBox(height: 24),
-
-          LinkRow(
-            message: "doesn't_have_account".tr,
-            linkText: 'register'.tr,
-            onTap: () =>
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                ),
-          ),
-        ],
-      ),);
-    if (isWeb) {
-      return Container(
-      width: context.width > 800 ? 500 : context.width,
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(context.colors.radiusXL),
-        color:context.colors.isDark?context.colors.primaryDark: context.colors.primary.withAlpha(30),
-      ),
-      child: form
-    );
-    }
-
-    return form;
   }
 }

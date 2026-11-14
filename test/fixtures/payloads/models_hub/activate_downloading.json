@@ -1,0 +1,18 @@
+{
+ "_source": {
+  "route": "POST /api/v1/models/23/activate",
+  "status": 202,
+  "how": "modelhub e2e scaffolding, MODELHUB_INLINE=0, a slow local file server"
+ },
+ "payload": {
+  "stage": "downloading",
+  "download_id": 1,
+  "pending": {
+   "model_id": 23,
+   "ref": "gen-next@v1",
+   "stage": "downloading",
+   "at": "2026-11-02T03:18:16.439105",
+   "download_id": 1
+  }
+ }
+}

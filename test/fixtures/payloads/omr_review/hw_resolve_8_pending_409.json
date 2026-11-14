@@ -1,0 +1,14 @@
+{
+ "_source": "POST /api/v1/exam/exams/1/review-items/8/resolve -> 409, recorded 2026-11-02 from the real engine running tests/exam_engine/e2e_omr_written.py (back worktree wt-back-omr)",
+ "_status": 409,
+ "_request": {
+  "action": "accept"
+ },
+ "payload": {
+  "detail": {
+   "code": "suggestion_pending",
+   "message": "الاقتراح يُحسب الآن — أعد المحاولة بعد لحظة",
+   "message_en": "The suggestion is being recomputed. Try again in a moment."
+  }
+ }
+}

@@ -1,0 +1,49 @@
+{
+ "_source": {
+  "route": "GET /api/v1/me/home",
+  "uid": 5
+ },
+ "payload": {
+  "now": "2026-10-29T15:10:34.290486",
+  "today_date": "2026-10-29",
+  "timezone": "Africa/Cairo",
+  "role": "student",
+  "today": [],
+  "upcoming": [],
+  "attention": {
+   "counts": {},
+   "total": 0,
+   "by_org": {},
+   "items": [],
+   "tabs": [
+    "home",
+    "profile",
+    "parent.link",
+    "parent.alerts",
+    "admin.support",
+    "admin.finance",
+    "org.people",
+    "org.academics",
+    "org.timetable",
+    "org.services",
+    "org.settings"
+   ]
+  },
+  "inbox_preview": [],
+  "inbox_counts": {
+   "todo": 0,
+   "news": 0,
+   "offers": 0,
+   "done": 0,
+   "overdue": 0,
+   "due_soon": 0,
+   "mandatory": 0
+  },
+  "notifications_unread": 0,
+  "org_overview": null,
+  "orgs_enabled": true,
+  "live_now": [],
+  "courses_progress": [],
+  "study_prompt": true
+ }
+}

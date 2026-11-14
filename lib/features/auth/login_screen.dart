@@ -1,17 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_network_image.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
+import '../../design/app_charts.dart' show appInk;
+import '../../design/app_kit.dart' show appConfirm;
+import '../../design/app_tokens.dart';
+import '../../design/app_notice.dart';
 import '../../utils/helpers.dart';
-import '../../utils/widget/primary_button.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'auth_provider.dart';
+import 'auth_shell.dart';
 import 'auth_widgets.dart';
+import 'biometric.dart';
+import 'biometric_widgets.dart';
 import 'forget_screen.dart';
+import 'google_auth_flow.dart';
+import 'mfa.dart';
+import 'mfa_verify_screen.dart';
 import 'register_screen.dart';
+import 'username.dart' show IdentifierIconData;
+import '../../utils/widget/parent_component.dart';
+import '../org/org_application_screen.dart';
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_logic.dart' show kCertVerifyFeature;
+import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show openCertVerify;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,22 +37,59 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final bool _obscurePassword = true;
+  final _bio = BiometricAuth.instance;
 
   @override
   void initState() {
     super.initState();
-    // if (AppConfig.testMode) {
-    //   _emailController.text = 'super@c.c';
-    //   _passwordController.text = 'Aa@@aA2291996';
-    // } else {
-      _emailController.clear();
-      _passwordController.clear();
-    // }
+    _emailController.clear();
+    _passwordController.clear();
     // Which identifiers the admin allows (email / phone / either).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AuthProvider>().loadPolicy();
+      if (!mounted) return;
+      context.read<MyAuthProvider>().loadPolicy();
+      _initBiometric();
     });
+  }
+
+  /// A remembered fingerprint account (D-082): its identifier stands in for the field, and the system prompt opens by
+  /// itself once per app run (never right after a sign-out).
+  Future<void> _initBiometric() async {
+    await _bio.load();
+    if (!mounted) return;
+    if (_bio.takeAutoPrompt()) await _biometricLogin();
+  }
+
+  /// The identifier of the remembered account shown at the top of the card, or null (the field is shown then).
+  String? _rememberedIdentifier(BiometricRecord? rec) {
+    final id = rec?.identifier?.trim();
+    return (id == null || id.isEmpty) ? null : id;
+  }
+
+  String get _identifier =>
+      _rememberedIdentifier(_bio.available ? _bio.record : null) ?? _emailController.text.trim();
+
+  Future<void> _biometricLogin() async {
+    final auth = context.read<MyAuthProvider>();
+    final out = await auth.loginWithBiometric();
+    if (!mounted) return;
+    switch (out) {
+      case BiometricOutcome.session:
+        auth.loadCachedUser();
+        Navigator.of(context).pushNamedAndRemoveUntil(auth.homeRoute, (_) => false); // no sign-in page under the home (D-170)
+      case BiometricOutcome.mfa:
+        await openMfaStep(Navigator.of(context), auth);
+      default:
+        final m = biometricOutcomeNotice(out, message: auth.biometricError);
+        if (m != null) showAppNotice(m, error: out != BiometricOutcome.gone);
+    }
+  }
+
+  Future<void> _forgetBiometric() async {
+    final ok = await appConfirm(context, message: 'bio_forget_body'.tr, confirmLabel: 'bio_forget'.tr);
+    if (!ok || !mounted) return;
+    await _bio.forget();
+    _emailController.clear();
   }
 
   @override
@@ -51,24 +101,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    final authProvider = context.read<AuthProvider>();
+    final authProvider = context.read<MyAuthProvider>();
     final success = await authProvider.login(
-      gmail: _emailController.text.trim(),
+      gmail: _identifier,
       password: _passwordController.text,
     );
     if (!mounted) return;
     if (success) {
+      // lets the platform's password manager offer to save the sign-in
+      TextInput.finishAutofillContext();
       authProvider.loadCachedUser();
+      // "Sign in with your fingerprint next time?" — once per account on this phone (D-082)
+      await maybeOfferBiometric(context, authProvider, identifier: _identifier);
       if (mounted) {
-        Navigator.of(context).pushNamed(authProvider.homeRoute);
+        Navigator.of(context).pushNamedAndRemoveUntil(authProvider.homeRoute, (_) => false); // no sign-in page under the home (D-170)
       }
+    } else if (authProvider.mfaStep.kind != MfaStepKind.none) {
+      // two-step verification: the code (or, when the role requires it, the enrollment) comes first
+      await openMfaStep(Navigator.of(context), authProvider);
     } else if (authProvider.needsVerification) {
       Helpers.showMessage('account_not_verified'.tr, isError: false);
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => OtpVerificationScreen(
             // Always the account e-mail from the server (the user may have typed a phone).
-            email: authProvider.pendingGmail ?? _emailController.text.trim(),
+            email: authProvider.pendingGmail ?? _identifier,
             channels: authProvider.pendingChannels,
             phoneNumber: authProvider.pendingPhoneMasked,
             role: authProvider.pendingRole ?? 'student',
@@ -86,260 +143,141 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 800;
-
-    return Consumer<LangProvider>(
-      builder: (context, l, _) {
-        return BasePage(
-          child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
+    return ListenableBuilder(
+      listenable: _bio,
+      builder: (context, _) {
+        final rec = _bio.available ? _bio.record : null;
+        final first = rec?.firstName ?? '';
+        return AuthScaffold(
+          title: first.isNotEmpty ? 'bio_welcome_name'.tr.replaceAll('{name}', first) : 'auth_welcome_back'.tr,
+          subtitle: rec != null ? 'bio_login_sub'.tr : 'auth_login_sub'.tr,
+          builder: (context, isWide) => _buildForm(rec),
         );
       },
     );
   }
 
-  // ── Wide (web) layout: sidebar + form panel ──────────────────────────────
-  Widget _buildWideLayout() {
-    return Row(
-      children: [
-        // Left sidebar
-        AuthSidebar(),
-        // Right form panel
-        Expanded(
-          child: Row(
-            children: [
-              Spacer(),
-              Container(
-                constraints: const BoxConstraints(maxWidth: 600),
-                margin: EdgeInsets.symmetric(vertical: 10),
-                padding: const EdgeInsets.all(0.0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                  color: context.colors.isDark
-                      ? context.colors.cardBg
-                      : context.colors.background,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadiusGeometry.circular(
-                    context.colors.radiusXL,
-                  ),
-                  child: ColoredBox(
-                    color: context.colors.isDark
-                        ? context.colors.cardBg
-                        : context.colors.primary.withAlpha(30),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 48,
-                        vertical: 40,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 440),
-                        child: _buildFormCard(),
-                      ),
-                    ),
-                  ),
-                ),
+  Widget _buildForm(BiometricRecord? rec) {
+    final c = context.colors;
+    // the readable ink of the primary on the card (the raw primary was 3:1 on it, light and dark)
+    final link = appInk(context, c.primary);
+    final guestEnabled = !AppConfig.disableList.contains('guest_mode');
+
+    return AutofillGroup(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── A remembered fingerprint / Face ID account (D-082) ─────────
+            if (rec != null)
+              BiometricQuickSignIn(
+                name: rec.name,
+                initials: rec.initials,
+                identifier: rec.identifier,
+                imageUrl: rec.imageUrl,
+                kind: _bio.kind,
+                busy: context.watch<MyAuthProvider>().isLoadingBiometric,
+                onSignIn: _biometricLogin,
+                onForget: _forgetBiometric,
               ),
-              Spacer(),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Narrow (mobile) layout ────────────────────────────────────────────────
-  Widget _buildNarrowLayout() {
-    return Center(
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-          child: _buildFormCard(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFormCard() {
-    ProfileProvider provider = context.read<ProfileProvider>();
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Lang row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              AppNetworkImage(
-                url: 'assets/images/logo.png',
-                width: 100,
-                height: 100,
-                heroTag: "logo-login",
-                fit: BoxFit.scaleDown,
-                color: context.colors.background,
-              ),
-              LangDropdown(),
-
-              // Screen icon + title
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'login'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: context.colors.textDark,
-            ),
-          ),
-          Text(
-            'login_welcome'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: context.colors.secondText,
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // Email / phone / either — controlled by the admin (login_identifier)
-          Builder(builder: (context) {
-            final a = context.watch<AuthProvider>();
-            final phoneOnly = !a.loginAllowsEmail;
-            final both = a.loginAllowsEmail && a.loginAllowsPhone;
-            return IconTextField(
-              controller: _emailController,
-              label: phoneOnly
-                  ? 'phone'.tr
-                  : both
-                      ? 'email_or_phone'.tr
-                      : 'email'.tr,
-              icon: phoneOnly
-                  ? Icons.phone_outlined
-                  : both
-                      ? Icons.person_outline
-                      : Icons.email_outlined,
-              keyboard: phoneOnly
-                  ? TextInputType.phone
-                  : both
-                      ? TextInputType.text
-                      : TextInputType.emailAddress,
-            );
-          }),
-          const SizedBox(height: 20),
-
-          // Password
-          IconPasswordField(
-            controller: _passwordController,
-            label: 'password'.tr,
-          ),
-          const SizedBox(height: 8),
-
-          // Forgot
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: GestureDetector(
-              onTap: () => Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const ForgetScreen())),
-              child: Text(
-                'forget_password'.tr,
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 13,
-                  color: context.colors.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: context.height / 10),
-
-          // Login button
-          PrimaryButton(
-            isLoading: context.watch<AuthProvider>().isLoadingLogin,
-            label: 'login'.tr,
-            icon: Icons.arrow_forward_rounded,
-            onPressed: _login,
-          ),
-          const SizedBox(height: 24),
-
-          // Register link
-          LinkRow(
-            message: "doesn't_have_account".tr,
-            linkText: 'register'.tr,
-            onTap: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
-          ),
-          SizedBox(height: context.height / 50),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  provider.changeMode(!provider.darkMode);
+            // ── Email / phone / either (+ @username) — controlled by the admin ─
+            // (a remembered account already shows who signs in: its identifier is used, "Not you?" brings the field back)
+            if (_rememberedIdentifier(rec) == null) ...[
+              Builder(
+                builder: (context) {
+                  final spec = context.watch<MyAuthProvider>().identifierSpec;
+                  return IconTextField(
+                    controller: _emailController,
+                    label: spec.labelKey.tr,
+                    icon: spec.icon.data,
+                    keyboard: spec.keyboard,
+                    autocorrect: false,
+                    autofillHints: const [AutofillHints.username, AutofillHints.email],
+                    textInputAction: TextInputAction.next,
+                  );
                 },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  width: 72,
-                  height: 38,
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(40),
-                    gradient: provider.darkMode
-                        ? const LinearGradient(
-                            colors: [Color(0xff0F172A), Color(0xff1E293B)],
-                          )
-                        : context.colors.accentGradient,
-                  ),
-                  child: Stack(
-                    children: [
-                      AnimatedAlign(
-                        duration: const Duration(milliseconds: 500),
-                        curve: Curves.easeInOut,
-                        alignment: provider.darkMode
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 500),
-                          transitionBuilder: (child, animation) {
-                            return RotationTransition(
-                              turns: animation,
-                              child: child,
-                            );
-                          },
-                          child: Container(
-                            key: ValueKey(provider.darkMode),
-                            width: 30,
-                            height: 30,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              provider.darkMode
-                                  ? Icons.dark_mode_rounded
-                                  : Icons.wb_sunny_rounded,
-                              color: provider.darkMode
-                                  ? Colors.indigo
-                                  : Colors.orange,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+              ),
+              const SizedBox(height: AppSpace.md),
+            ],
+
+            // ── Password ───────────────────────────────────────────────────
+            IconPasswordField(
+              controller: _passwordController,
+              label: 'password'.tr,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _login(),
+            ),
+
+            // ── Forgot password (end aligned) ──────────────────────────────
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ForgetScreen())),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(AppTouch.min, AppTouch.min),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+                  foregroundColor: link,
+                ),
+                child: Text('auth_forgot'.tr, style: AppType.label(context).copyWith(color: link, fontWeight: FontWeight.w600)),
+              ),
+            ),
+            const SizedBox(height: AppSpace.xs),
+
+            // ── Sign in ────────────────────────────────────────────────────
+            AuthButton(
+              loading: context.watch<MyAuthProvider>().isLoadingLogin,
+              label: 'auth_sign_in'.tr,
+              onPressed: _login,
+            ),
+            const SizedBox(height: AppSpace.lg),
+
+            // ── or · Continue with Google ──────────────────────────────────
+            const GoogleAuthSection(joining: true, smallIcon: true),
+            const SizedBox(height: AppSpace.md),
+
+            LinkRow(
+              message: 'auth_no_account'.tr,
+              linkText: 'auth_create_account'.tr,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
+            ),
+            const SizedBox(height: AppSpace.xs),
+
+            // ── Institutions apply · explore as a guest ────────────────────
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: AppSpace.xs,
+              runSpacing: AppSpace.xs,
+              children: [
+                // the public check (D-420): no account, no authenticated call
+                ParentComponent(
+                  featureKey: kCertVerifyFeature,
+                  child: AuthTextAction(
+                    icon: Icons.verified_user_outlined,
+                    label: 'cv_entry_title'.tr,
+                    onTap: () => openCertVerify(context),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                // institutions apply here; the platform team approves them before any dashboard opens
+                ParentComponent(
+                  featureKey: 'register.organization',
+                  child: AuthTextAction(
+                    icon: Icons.domain_add_rounded,
+                    label: 'register_organization'.tr,
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgApplicationScreen())),
+                  ),
+                ),
+                if (guestEnabled)
+                  AuthTextAction(
+                    icon: Icons.explore_outlined,
+                    label: 'continue_as_guest'.tr,
+                    onTap: () => startGuest(Navigator.of(context)),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

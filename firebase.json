@@ -3,42 +3,221 @@
     "platforms": {
       "android": {
         "default": {
-          "projectId": "elfaheem",
-          "appId": "1:520907928286:android:c262d4fcaa8a4a4277884f",
+          "projectId": "nextbrain-2y",
+          "appId": "1:647242717565:android:b49304b99ce6da89d69414",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "ios": {
         "default": {
-          "projectId": "elfaheem",
-          "appId": "1:520907928286:ios:0d8cb6a92aa79d6b77884f",
+          "projectId": "nextbrain-2y",
+          "appId": "1:647242717565:ios:9e1944ca9c37d70bd69414",
           "uploadDebugSymbols": false,
           "fileOutput": "ios/Runner/GoogleService-Info.plist"
         }
       },
+      "macos": {
+        "default": {
+          "projectId": "nextbrain-2y",
+          "appId": "1:647242717565:ios:9e1944ca9c37d70bd69414",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
       "dart": {
         "lib/firebase_options.dart": {
-          "projectId": "elfaheem",
+          "projectId": "nextbrain-2y",
           "configurations": {
-            "android": "1:520907928286:android:c262d4fcaa8a4a4277884f",
-            "ios": "1:520907928286:ios:0d8cb6a92aa79d6b77884f",
-            "web": "1:520907928286:web:18b6dc8a8c5f9f5b77884f"
+            "android": "1:647242717565:android:b49304b99ce6da89d69414",
+            "ios": "1:647242717565:ios:9e1944ca9c37d70bd69414",
+            "macos": "1:647242717565:ios:9e1944ca9c37d70bd69414",
+            "web": "1:647242717565:web:7c22c255a55be260d69414",
+            "windows": "1:647242717565:web:b5d10b704f2f574fd69414"
           }
         }
       }
     }
   },
   "hosting": {
-    "public": "build/web",
+    "public": "build/hosting",
     "ignore": [
       "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
+      "**/.last_build_id",
+      "**/.DS_Store",
+      "**/node_modules/**",
+      "**/*.gz",
+      "**/*.br"
+    ],
+    "redirects": [
+      {
+        "source": "/app",
+        "destination": "/app/",
+        "type": 301
+      },
+      {
+        "source": "/ar",
+        "destination": "/ar/",
+        "type": 301
+      },
+      {
+        "source": "/en",
+        "destination": "/en/",
+        "type": 301
+      },
+      {
+        "source": "/c/:id",
+        "destination": "/app/c/:id",
+        "type": 302
+      },
+      {
+        "regex": "^/@(?P<name>[A-Za-z0-9._]+)/?$",
+        "destination": "/app/@:name",
+        "type": 302
+      },
+      {
+        "source": "/verify/:token",
+        "destination": "/app/verify/:token",
+        "type": 302
+      },
+      {
+        "source": "/live/:token",
+        "destination": "/app/live/:token",
+        "type": 302
+      },
+      {
+        "source": "/e/:token",
+        "destination": "/app/e/:token",
+        "type": 302
+      },
+      {
+        "source": "/login",
+        "destination": "/app/login",
+        "type": 302
+      },
+      {
+        "source": "/register",
+        "destination": "/app/register",
+        "type": 302
+      }
     ],
     "rewrites": [
       {
+        "source": "/app/**",
+        "destination": "/app/index.html"
+      }
+    ],
+    "headers": [
+      {
         "source": "**",
-        "destination": "/index.html"
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.gstatic.com https://apis.google.com https://*.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com https://www.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://nextbrain.site wss://nextbrain.site https://*.googleapis.com https://*.gstatic.com https://*.firebaseio.com wss://*.firebaseio.com https://*.google.com https://*.firebase.com https://*.firebaseapp.com; frame-src https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+          }
+        ]
+      },
+      {
+        "source": "/.well-known/**",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          }
+        ]
+      },
+      {
+        "source": "/_astro/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/{index.html,404.html,ar/index.html,en/index.html,sitemap.xml,robots.txt,sw.js,flutter_service_worker.js,firebase-messaging-sw.js}",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/app/main.dart.????????.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/app/main.dart.????????.js_*.part.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/app/canvaskit/????????????????????????????????????????/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/app/",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/app/{index.html,flutter_bootstrap.js,flutter.js,main.dart.js,flutter_service_worker.js,version.json,manifest.json,app_links.json,sw.js,firebase-messaging-sw.js,offline.html,e2ee.worker.dart.js,recorder_compositor.js,video_protection.js}",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/app/assets/{AssetManifest.bin,AssetManifest.bin.json,AssetManifest.json,FontManifest.json,LazyFontManifest.json,assets/translation.json}",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/app/{assets,icons,splash}/**/*.@(otf|ttf|woff|woff2|png|jpg|jpeg|webp|svg)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=86400, stale-while-revalidate=604800"
+          }
+        ]
       }
     ]
   }
