@@ -134,6 +134,7 @@
  "course_stats",
  "course_stats.duration",
  "course_stats.price",
+ "course_stats.rating",
  "course_stats.sessions",
  "course_stats.students",
  "course_students.nudge",
