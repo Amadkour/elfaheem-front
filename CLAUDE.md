@@ -62,7 +62,7 @@ Docs: `D-nnn` references point to `docs/DECISIONS.md` (design decisions and deli
 
 **Networking (`lib/core/api_client.dart`)** — `ApiClient` (`ApiClient()` returns `ApiClient.instance`) is a singleton on Dio with `get/post/put/patch/delete/postForm/postMultipart`, and every method takes an optional `headers:`. It throws only `ApiException`: in UI show `ApiException.from(e).message` (`code` holds server codes such as `DEVICE_MISMATCH`; coded errors outside org screens get bilingual text from `apiErrorText` in `lib/core/api_error_text.dart`). On every request it:
 - refreshes tokens on 401 with rotation (`lib/core/token_storage.dart`: an old refresh token is dead after one use);
-- encrypts the body (envelope `{"n","ct"}`) and, on mobile, pins the server certificate (`_pinnedCertSha256`: a server cert rotation needs the pin list updated);
+- encrypts the body (envelope `{"n","ct"}`) and, on mobile, pins the server's PUBLIC KEY (`lib/core/cert_pin.dart`, D-946: the server renews with `certbot renew --reuse-key`; a key change needs a new app build first, and a refused pin on our host reads "please update the app"). Every client that talks to the API host, the encryption handshake's included, comes from `_pinnedHttpClient()`;
 - adds the device-ID, `X-View-As` and teacher-onboarding headers.
 
 Debug request logs go through `redactForLog`: add any new secret field to `logSensitiveKeys`. The headers in detail, the MFA redirect and `server_busy`: `docs/guides/networking.md`; MFA and fingerprint / Face ID sign-in: `docs/guides/auth-biometric.md`. Cleartext is refused on devices except `127.0.0.1` / `localhost` (offline-video loopback) and `10.0.2.2` (emulator → local stack, D-010): every server, media and LiveKit URL must be https / wss.

@@ -39,6 +39,8 @@ import '../design/app_notice.dart';
 import '../design/app_tokens.dart';
 import '../main.dart'; // navigatorKey
 import 'api_client.dart';
+import 'cert_pin.dart' show CertPin, kPinUpdateCode;
+import '../utils/remote_config_service.dart';
 import 'release/app_downloads.dart' show resolveDownloadUrl;
 import '../features/shared/get_app/get_app_sheet.dart' show getAppLtr;
 import 'display/app_fonts.dart';
@@ -130,6 +132,25 @@ ServerUpdateOffer? serverUpdateOffer(Map<String, dynamic> r, {required String la
   );
 }
 
+/// Why the app must update even though the version check gave no answer, as a translation key — or null.
+///   • the version check failed on a refused certificate pin of the API host (D-946: the server shows a key this
+///     build does not know), or such a refusal was seen on another call → `tls_pin_update_required`;
+///   • the check gave no answer (unreachable) and Remote Config's `force_update_version` (outside the pin) names a
+///     higher build than this one → `app_update_required_generic`.
+/// A readable server answer always wins over Remote Config.
+@visibleForTesting
+String? updateBlockWithoutServer({
+  required Object? serverAnswer,
+  required bool pinFlag,
+  required int rcMinBuild,
+  required int installedBuild,
+}) {
+  if (serverAnswer is Map) return null;
+  if (pinFlag || (serverAnswer is ApiException && serverAnswer.code == kPinUpdateCode)) return 'tls_pin_update_required';
+  if (rcMinBuild > 0 && installedBuild > 0 && installedBuild < rcMinBuild) return 'app_update_required_generic';
+  return null;
+}
+
 class VersionCheckService {
   VersionCheckService._();
   static final VersionCheckService instance = VersionCheckService._();
@@ -146,15 +167,24 @@ class VersionCheckService {
     final installed = int.tryParse(info.buildNumber) ?? 0;
     // both asked at once; either may fail on its own
     final asked = await Future.wait<Object?>([
-      ApiClient.instance.checkVersion(version: info.version, platform: key).then<Object?>((m) => m, onError: (_) => null),
+      // the error is kept: a refused certificate pin (D-946) is itself a reason to update
+      ApiClient.instance.checkVersion(version: info.version, platform: key).then<Object?>((m) => m, onError: (Object e) => e),
       fetchReleasesManifest(releasesManifestUriFor(AppConfig.baseUrl)).then<Object?>((m) => m, onError: (_) => null),
     ]);
     final server = asked[0] is Map<String, dynamic> ? serverUpdateOffer(asked[0] as Map<String, dynamic>, lang: AppConfig.lang, platform: key) : null;
-    if (AppConfig.disableList.contains(kUpdatePromptKey)) return;
+    // Read outside the pinned client: the manifest (package:http, the system's trust) and Remote Config (Firebase).
+    final block = updateBlockWithoutServer(
+      serverAnswer: asked[0],
+      pinFlag: CertPin.updateRequired,
+      rcMinBuild: RemoteConfigService.instance.forceUpdateVersion,
+      installedBuild: installed,
+    );
+    if (block == null && AppConfig.disableList.contains(kUpdatePromptKey)) return;
 
     final bool force;
     final String version, url, notes, source, snoozeId;
     var size = '';
+    var message = '';
     if (server != null) {
       force = server.force;
       version = server.version;
@@ -165,7 +195,19 @@ class VersionCheckService {
     } else {
       final manifest = asked[1] is ReleasesManifest ? asked[1] as ReleasesManifest : ReleasesManifest.empty;
       final release = manifest[key];
-      final need = updateNeedFor(installedBuild: installed, release: release);
+      final need = block != null ? UpdateNeed.force : updateNeedFor(installedBuild: installed, release: release);
+      if (block != null && (release == null || release.build <= installed || release.primaryFile() == null)) {
+        // Blocked, and the manifest names nothing newer: a blocking dialog whose button opens the site (Get the app).
+        return _show(
+          force: true,
+          version: '',
+          url: Uri.parse(AppConfig.baseUrl).replace(path: '/').toString(),
+          source: 'custom',
+          snoozeId: 'blocked',
+          message: block.tr,
+        );
+      }
+      if (block != null) message = block.tr;
       if (need == UpdateNeed.none || release == null) return;
       String? arch;
       if (key == 'android') {
@@ -184,7 +226,20 @@ class VersionCheckService {
       size = formatReleaseSize(file.size);
       snoozeId = '${release.build}';
     }
+    return _show(
+        force: force, version: version, url: url, source: source, snoozeId: snoozeId, size: size, notes: notes, message: message);
+  }
 
+  Future<void> _show({
+    required bool force,
+    required String version,
+    required String url,
+    required String source,
+    required String snoozeId,
+    String size = '',
+    String notes = '',
+    String message = '',
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     if (!force && updateSnoozed(prefs.getString(_laterKey), snoozeId, DateTime.now())) return;
 
@@ -203,6 +258,7 @@ class VersionCheckService {
         size: size,
         notes: notes,
         source: source,
+        message: message,
         onUpdate: () => _open(url),
         onLater: () {
           prefs.setString(_laterKey, '$snoozeId:${DateTime.now().millisecondsSinceEpoch}');
@@ -233,12 +289,16 @@ class UpdateDialog extends StatelessWidget {
     this.size = '',
     this.notes = '',
     this.source = 'website',
+    this.message = '',
   });
 
   final bool force;
   final String version;
   final String size;
   final String notes;
+
+  /// Replaces the body when set (why the update is needed: a refused certificate pin, D-946).
+  final String message;
 
   /// Where the button goes: website (a file to install) | google_play | app_store | custom (D-143).
   final String source;
@@ -249,7 +309,9 @@ class UpdateDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final meta = AppType.meta(context).copyWith(fontFamily: AppFonts.family, height: 1.4);
-    final body = (force ? 'get_app_update_body_force' : 'get_app_update_body').tr.replaceAll('{v}', getAppLtr(version));
+    final body = message.isNotEmpty
+        ? message
+        : (force ? 'get_app_update_body_force' : 'get_app_update_body').tr.replaceAll('{v}', getAppLtr(version));
     return PopScope(
       canPop: !force,
       child: AlertDialog(
