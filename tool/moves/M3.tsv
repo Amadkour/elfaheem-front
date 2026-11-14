@@ -1,0 +1,9 @@
+# M3 courses
+lib/features/shared/course	lib/features/courses
+lib/features/shared/course_profile	lib/features/courses/course_profile
+lib/features/shared/category	lib/features/courses/category
+lib/features/shared/roadmap	lib/features/courses/roadmap
+lib/features/student/courses	lib/features/courses/student
+lib/features/teacher/courses	lib/features/courses/teacher
+lib/features/admin/course_students	lib/features/courses/admin/course_students
+lib/features/admin/course_trash	lib/features/courses/admin/course_trash

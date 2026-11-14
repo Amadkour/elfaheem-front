@@ -1,0 +1,5 @@
+# M6 payments
+lib/features/student/enrollment	lib/features/payments/enrollment
+lib/features/shared/subscription	lib/features/payments/subscription
+lib/features/shared/points	lib/features/payments/points
+lib/features/admin/enrollment_request	lib/features/payments/enrollment_request

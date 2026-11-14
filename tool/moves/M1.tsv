@@ -1,0 +1,3 @@
+# M1 live: the shared live code and the live room
+lib/features/shared/live	lib/features/live
+lib/features/teacher/sessions/live	lib/features/live/room

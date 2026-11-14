@@ -1,0 +1,7 @@
+# M4 sessions: material + video player, the teacher's sessions minus the live room (M1)
+lib/features/shared/session	lib/features/sessions
+lib/features/teacher/sessions/components	lib/features/sessions/teacher/components
+lib/features/teacher/sessions/model	lib/features/sessions/teacher/model
+lib/features/teacher/sessions/students	lib/features/sessions/teacher/students
+lib/features/teacher/sessions/sessions_provider.dart	lib/features/sessions/teacher/sessions_provider.dart
+lib/features/teacher/sessions/sessions_screen.dart	lib/features/sessions/teacher/sessions_screen.dart
