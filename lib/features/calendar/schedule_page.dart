@@ -55,7 +55,7 @@ import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t, asMap;
 import 'package:flutter_education_app/config/app_config.dart';
@@ -474,13 +474,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   }
 
   Future<void> _launch(String url) async {
-    final u = Uri.tryParse(url);
-    if (u == null || !(u.scheme == 'https' || u.scheme == 'http')) return;
-    try {
-      await launchUrl(u, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      showAppNotice(t('تعذر فتح الرابط', 'Could not open the link'), error: true);
-    }
+    await openExternalLink(url, failText: t('تعذر فتح الرابط', 'Could not open the link'));
   }
 
   Future<void> _join(CalEvent e) async {

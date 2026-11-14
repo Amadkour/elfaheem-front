@@ -10,7 +10,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../../config/app_config.dart';
 import '../parent/parent_link_providers.dart';
@@ -245,7 +245,7 @@ class _DetailState extends State<_Detail> {
     }
     final url = p.absoluteUrl('${link['path']}');
     if (doc['file_type'] == 'pdf') {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      await openExternalLink(url);
       return;
     }
     if (!mounted) return;

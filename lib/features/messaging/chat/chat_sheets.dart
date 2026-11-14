@@ -8,7 +8,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import 'package:flutter_education_app/features/messaging/chat/chat_api.dart';
 import 'package:flutter_education_app/features/messaging/chat/chat_models.dart';
@@ -499,7 +499,7 @@ class _ChatImageViewer extends StatelessWidget {
           child: Row(children: [
             const SizedBox(width: AppSpace.md),
             Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: Colors.white))),
-            IconButton(tooltip: 'chat_open_external'.tr, constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min), icon: const Icon(Icons.open_in_new_rounded, color: Colors.white), onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)),
+            IconButton(tooltip: 'chat_open_external'.tr, constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min), icon: const Icon(Icons.open_in_new_rounded, color: Colors.white), onPressed: () => openExternalLink(url)),
             IconButton(tooltip: 'chat_close'.tr, constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min), icon: const Icon(Icons.close_rounded, color: Colors.white), onPressed: () => close()),
             const SizedBox(width: AppSpace.xxs),
           ]),

@@ -16,7 +16,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppOdometer;
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart' show TeacherCourse;
@@ -615,7 +615,7 @@ class _MaterialTile extends StatelessWidget {
     if (m.type == SessionMaterialType.image) {
       await showDialog<void>(context: context, builder: (_) => MaterialImageViewerDialog(url: url, title: m.name));
     } else {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      await openExternalLink(url);
     }
     if (profile.isStudent && !profile.readOnly && material['completed'] != true) {
       try {
@@ -929,10 +929,10 @@ class _StudentCertificate extends StatelessWidget {
           Wrap(spacing: 8, runSpacing: 8, children: [
             if ((cert['url'] ?? '').toString().isNotEmpty)
               AppPill(icon: Icons.download_rounded, label: t('تحميل (English)', 'Download (English)'),
-                  onTap: () => launchUrl(Uri.parse('${cert['url']}'), mode: LaunchMode.externalApplication)),
+                  onTap: () => openExternalLink('${cert['url']}')),
             if ((cert['url_ar'] ?? '').toString().isNotEmpty)
               AppPill(icon: Icons.download_rounded, label: t('تحميل (عربي)', 'Download (Arabic)'),
-                  onTap: () => launchUrl(Uri.parse('${cert['url_ar']}'), mode: LaunchMode.externalApplication)),
+                  onTap: () => openExternalLink('${cert['url_ar']}')),
           ])
         else ...[
           AppProgressBar(value: prog, color: appScoreColor(context, prog)),

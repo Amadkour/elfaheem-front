@@ -17,7 +17,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../admin/admin_common.dart' show asMap, asMapList, t;
 import 'org_v3.dart';
@@ -150,8 +150,8 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
       return;
     }
     await _remember('${r.map['token']}');
-    final url = Uri.tryParse('${r.map['checkout_url'] ?? ''}');
-    if (url != null) await launchUrl(url, mode: LaunchMode.externalApplication);
+    final url = '${r.map['checkout_url'] ?? ''}';
+    if (url.isNotEmpty) await openExternalLink(url);
     if (mounted) setState(() {});
   }
 

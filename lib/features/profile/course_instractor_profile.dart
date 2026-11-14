@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -921,7 +921,7 @@ class _PdfChip extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.chip),
         onTap: () async {
-          await launchUrl(Uri.parse(fileUrl));
+          await openExternalLink(fileUrl);
         },
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: AppTouch.min),

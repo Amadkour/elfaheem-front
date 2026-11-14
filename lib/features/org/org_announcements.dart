@@ -27,7 +27,7 @@ import 'package:flutter_education_app/design/app_mentions.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
@@ -147,10 +147,7 @@ Future<void> openAnnouncementLink(BuildContext context, AnnLink link, {Map<Strin
   final orgId = asInt(o['id']);
   switch (link.kind) {
     case 'url':
-      final uri = Uri.tryParse(link.target);
-      if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        toast(t('تعذّر فتح الرابط', 'Could not open the link'), error: true);
-      }
+      await openExternalLink(link.target, failText: t('تعذّر فتح الرابط', 'Could not open the link'));
       return;
     case 'form':
       await nav.push(MaterialPageRoute(builder: (_) => OrgFormFillScreen(formId: asInt(link.target))));

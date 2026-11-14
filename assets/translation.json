@@ -24694,5 +24694,13 @@
   "image_remove_failed": {
     "en": "Couldn't remove it. Try again.",
     "ar": "تعذّرت الإزالة. حاول مرة أخرى."
+  },
+  "link_refused": {
+    "en": "This link can't be opened from the app.",
+    "ar": "لا يمكن فتح هذا الرابط من التطبيق."
+  },
+  "link_open_failed": {
+    "en": "Couldn't open the link. Try again.",
+    "ar": "تعذّر فتح الرابط. حاول مرة أخرى."
   }
 }

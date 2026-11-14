@@ -32,7 +32,7 @@ import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppA
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
@@ -173,9 +173,7 @@ class _TermsScreenState extends State<TermsScreen> {
 
   Future<void> _email(String to) async {
     final uri = Uri(scheme: 'mailto', path: to);
-    try {
-      if (await launchUrl(uri)) return;
-    } catch (_) {}
+    if (await openExternalLink(uri.toString(), allowMail: true, quiet: true)) return;
     await Clipboard.setData(ClipboardData(text: to));
     showAppNotice('legal_email_copied'.tr);
   }
@@ -566,9 +564,8 @@ class _AboutScreenState extends State<AboutScreen> {
 
   Future<void> _open(ContactInfoModel k) async {
     final uri = _uri(k);
-    try {
-      if (uri != null && await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
-    } catch (_) {/* fall through → copy */}
+    // email and phone contacts open the mail / phone app; anything refused or unopened falls through → copy
+    if (uri != null && await openExternalLink(uri.toString(), allowMail: true, allowTel: true, quiet: true)) return;
     await _copy(k.value);
   }
 

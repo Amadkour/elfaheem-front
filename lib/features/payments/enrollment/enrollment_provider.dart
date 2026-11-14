@@ -22,7 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/payments/enrollment/saved_cards/saved_payment_models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/transfer/transfer_payment_screen.dart';
 import 'package:moyasar/moyasar.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
@@ -614,10 +614,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
     // 3DS challenge happens in the browser; we poll until it finishes.
     final txUrl = r['transaction_url'] as String?;
     if (txUrl != null && txUrl.isNotEmpty) {
-      final uri = Uri.parse(txUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      await openExternalLink(txUrl);
     }
     await _pollVerification();
   }

@@ -12,7 +12,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -512,8 +512,7 @@ class SessionMaterialGrid extends StatelessWidget {
         );
       }
     } else {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (await openExternalLink(uri.toString())) {
         if (!isTeacher && context.mounted) {
           await context.read<CourseDetailProvider>().markMaterialComplete(
             session.id,

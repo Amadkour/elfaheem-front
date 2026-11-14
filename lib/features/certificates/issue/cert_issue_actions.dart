@@ -8,7 +8,7 @@ library;
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -25,9 +25,7 @@ Future<void> certOpenUrl(String? url) async {
     final base = AppConfig.baseUrl.endsWith('/') ? AppConfig.baseUrl.substring(0, AppConfig.baseUrl.length - 1) : AppConfig.baseUrl;
     u = '$base$u';
   }
-  final uri = Uri.tryParse(u);
-  final ok = uri != null && await launchUrl(uri, mode: LaunchMode.externalApplication);
-  if (!ok) showAppNotice('ci_open_failed'.tr, error: true);
+  await openExternalLink(u, failText: 'ci_open_failed'.tr);
 }
 
 /// Saves [bytes] as a file (a download on the web, the device's save flow on phones).

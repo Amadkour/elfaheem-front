@@ -31,11 +31,10 @@ import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../config/app_config.dart';
 import '../config/theme/theme_config_provider.dart';
-import '../design/app_notice.dart';
 import '../design/app_tokens.dart';
 import '../main.dart'; // navigatorKey
 import 'api_client.dart';
@@ -269,12 +268,7 @@ class VersionCheckService {
   }
 
   Future<void> _open(String url) async {
-    try {
-      final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-      if (!ok) showAppNotice('get_app_open_failed'.tr, error: true);
-    } catch (_) {
-      showAppNotice('get_app_open_failed'.tr, error: true);
-    }
+    await openExternalLink(url, failText: 'get_app_open_failed'.tr);
   }
 }
 

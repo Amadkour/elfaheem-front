@@ -26,6 +26,7 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/login_screen.dart';
@@ -452,6 +453,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     if (kIsWeb)
       return true; // a browser cannot tell; the t.me link handles both cases
     try {
+      // a fixed probe for the Telegram app (tg:// on purpose, nothing from the server): S5 exception
       return await canLaunchUrl(Uri.parse('tg://resolve'));
     } catch (_) {
       return false;
@@ -517,17 +519,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   }
 
   Future<void> _open(Uri uri) async {
-    try {
-      if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
-    } catch (_) {}
+    if (await openExternalLink(uri.toString(), quiet: true)) return;
     if (mounted) _snack('could_not_open_link'.tr, error: true);
   }
 
   Future<void> _openTelegram(PhoneLinkSession s) async {
-    if (!kIsWeb && s.telegramAppUrl != null) {
+    final tg = Uri.tryParse(s.telegramAppUrl ?? '');
+    if (!kIsWeb && tg != null && tg.scheme == 'tg') {
       try {
+        // the Telegram app's own tg:// link, and nothing but tg:// (the https t.me link below is the fallback): S5 exception
         if (await launchUrl(
-          Uri.parse(s.telegramAppUrl!),
+          tg,
           mode: LaunchMode.externalApplication,
         )) {
           return;

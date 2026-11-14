@@ -24,7 +24,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import 'package:flutter_education_app/features/messaging/chat/chat_api.dart';
 import 'package:flutter_education_app/features/messaging/chat/chat_models.dart';
@@ -704,9 +704,7 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
   Future<String> _imageUrl(ChatAttachment a) => _urls[a.id] ??= _hub.api.attachmentLink(a.id);
 
   Future<void> _openLink(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await openExternalLink(url);
   }
 
   Future<void> _openAttachment(ChatAttachment a) async {
@@ -715,7 +713,7 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
       if (a.image && mounted) {
         showChatImage(context, url, a.name);
       } else {
-        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        await openExternalLink(url);
       }
     } catch (e) {
       showAppNotice(chatErrorText(e), error: true);

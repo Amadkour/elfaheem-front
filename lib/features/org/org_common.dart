@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
@@ -65,8 +65,7 @@ Map<String, String> dayLabels() => {
 
 Future<void> openFileUrl(String? url) async {
   if (url == null || url.isEmpty) return;
-  final ok = await launchUrl(Uri.parse(orgFileUrl(url)), mode: LaunchMode.externalApplication);
-  if (!ok) toast(t('تعذّر فتح الملف', 'Could not open the file'), error: true);
+  await openExternalLink(orgFileUrl(url), failText: t('تعذّر فتح الملف', 'Could not open the file'));
 }
 
 /// Downloads an Excel template / export through the backend (it returns a file URL) and opens it.

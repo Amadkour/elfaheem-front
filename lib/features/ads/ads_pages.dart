@@ -17,7 +17,7 @@ import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_labels.dart' show disposeAfterRoute;
@@ -120,7 +120,7 @@ class _HomeAdsSliderState extends State<HomeAdsSlider> {
     if (!mounted) return;
     final type = '${target['target_type']}', value = '${target['target_value'] ?? ''}';
     if (type == 'url' && value.isNotEmpty) {
-      await launchUrl(Uri.parse(value), mode: LaunchMode.externalApplication);
+      await openExternalLink(value);
     } else if (type == 'course' && int.tryParse(value) != null) {
       try {
         final r = await ApiClient().get('/api/v1/courses/$value');
@@ -135,7 +135,7 @@ class _HomeAdsSliderState extends State<HomeAdsSlider> {
       // an ad pointing to Downloads is for the app: on the web it opens nothing
       if (linkAvailableHere(value)) Navigator.of(context).pushNamed(value);
     } else if (ad['media_type'] == 'video' && '${ad['media_url'] ?? ''}'.isNotEmpty) {
-      await launchUrl(Uri.parse(orgFileUrl('${ad['media_url']}')), mode: LaunchMode.externalApplication);
+      await openExternalLink(orgFileUrl('${ad['media_url']}'));
     }
   }
 

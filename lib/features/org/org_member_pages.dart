@@ -21,7 +21,7 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 import 'org_member_changes.dart';
 import 'org_schedule_reassign.dart' show pickSlotDate;
 import 'org_my_exams.dart' show examPauseBanner, examPausesOf, openMyExams;
@@ -442,7 +442,7 @@ class _TimetableView extends StatelessWidget {
             change: x,
             onRespond: x.canRespond ? (d) async { if (await respondToChange(x.id, d)) await reload(); } : null,
             onUndo: x.canEdit ? () async { if (await undoChange(orgId, x.id)) await reload(); } : null,
-            onOpenLink: x.onlineUrl == null ? null : () => launchUrl(Uri.parse(x.onlineUrl!), mode: LaunchMode.externalApplication),
+            onOpenLink: x.onlineUrl == null ? null : () => openExternalLink(x.onlineUrl),
           ),
       ],
       if (days.isEmpty)

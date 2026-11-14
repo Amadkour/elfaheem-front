@@ -26,7 +26,7 @@ import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 // transfer / device-request screens already import).
 import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart'; // already used by complaint_attachement_widgets.dart
+import 'package:flutter_education_app/core/share/external_link.dart'; // already used by complaint_attachement_widgets.dart
 
 import 'admin_bulk.dart';
 import 'admin_common.dart' hide StatusChip;
@@ -1180,12 +1180,7 @@ String _failText(String? reason) =>
 
 /// Opens a link outside the app; a bad link or a device that cannot open it is a message, never an exception.
 Future<void> _openUrl(String url, {String? failText}) async {
-  try {
-    final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    if (!ok) toast(failText ?? t('تعذّر فتح الرابط', 'Could not open the link'), error: true);
-  } catch (_) {
-    toast(failText ?? t('تعذّر فتح الرابط', 'Could not open the link'), error: true);
-  }
+  await openExternalLink(url, failText: failText ?? t('تعذّر فتح الرابط', 'Could not open the link'));
 }
 
 class _SwipePending extends StatelessWidget {

@@ -23,13 +23,12 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaint_model.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -56,12 +55,7 @@ String formatFileSize(int? bytes) {
 }
 
 Future<void> _openExternally(BuildContext context, String url) async {
-  final uri = Uri.tryParse(url);
-  if (uri == null) return;
-  final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-  if (!ok && context.mounted) {
-    showAppNotice('could_not_open_file'.tr);
-  }
+  await openExternalLink(url, failText: 'could_not_open_file'.tr);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

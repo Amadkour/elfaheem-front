@@ -40,7 +40,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, asMapList;
 import 'package:flutter_education_app/features/ads/ads_pages.dart' show AdCard;
@@ -1139,7 +1139,7 @@ Future<void> _showAnnouncement(BuildContext context, InboxItem x) => showAppShee
             AppPill(
                 icon: Icons.open_in_new_rounded,
                 label: 'inbox_details'.tr,
-                onTap: () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication)),
+                onTap: () => openExternalLink(link)),
           ],
           if (x.orgId != null) ...[
             const SizedBox(height: 10),
@@ -1166,7 +1166,7 @@ Future<void> _openAd(BuildContext context, InboxItem x) async {
   if (!context.mounted) return;
   final type = '${target['target_type']}', value = '${target['target_value'] ?? ''}';
   if (type == 'url' && value.isNotEmpty) {
-    await launchUrl(Uri.parse(value), mode: LaunchMode.externalApplication);
+    await openExternalLink(value);
   } else if (type == 'course' && int.tryParse(value) != null) {
     try {
       final r = await ApiClient().get('/api/v1/courses/$value');
@@ -1181,6 +1181,6 @@ Future<void> _openAd(BuildContext context, InboxItem x) async {
   } else if (type == 'page' && value.startsWith('/')) {
     Navigator.of(context).pushNamed(value);
   } else if (x.data['media_type'] == 'video' && '${x.data['media_url'] ?? ''}'.isNotEmpty) {
-    await launchUrl(Uri.parse('${x.data['media_url']}'), mode: LaunchMode.externalApplication);
+    await openExternalLink('${x.data['media_url']}');
   }
 }

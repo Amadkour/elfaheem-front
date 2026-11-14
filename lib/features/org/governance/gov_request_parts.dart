@@ -21,7 +21,7 @@ import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../../admin/admin_common.dart' show Debouncer, SheetHeader, asInt, asMap, t;
 import '../org_common.dart' show openFileUrl;
@@ -710,8 +710,7 @@ Future<void> openGovAttachment(BuildContext context, GovAttachment a) async {
     await showDialog<void>(context: context, builder: (_) => GovImagePreview(attachment: a, url: url));
     return;
   }
-  final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-  if (!ok) showAppNotice(t('تعذّر فتح الملف', 'Could not open the file'), error: true);
+  await openExternalLink(url, failText: t('تعذّر فتح الملف', 'Could not open the file'));
 }
 
 /// An image attachment in a dialog (zoomable), with a download button.
@@ -739,7 +738,7 @@ class GovImagePreview extends StatelessWidget {
                 icon: const Icon(Icons.download_rounded),
                 onPressed: () async {
                   final r = await orgCall(() => GovApi.attachmentLink(attachment.id!), quiet: true);
-                  if (r.ok) await launchUrl(Uri.parse(r.data as String), mode: LaunchMode.externalApplication);
+                  if (r.ok) await openExternalLink(r.data as String);
                 },
               ),
               IconButton(tooltip: t('إغلاق', 'Close'), icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),

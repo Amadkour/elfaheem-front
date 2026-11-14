@@ -28,20 +28,14 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/live/meeting_recording.dart';
 
 /// Opens a link outside the app (the drive file, the OAuth page). False when nothing could open it.
 Future<bool> openExternalUrl(String url) async {
-  final uri = Uri.tryParse(url.trim());
-  if (uri == null || !(uri.scheme == 'https' || uri.scheme == 'http')) return false;
-  try {
-    return await launchUrl(uri, mode: LaunchMode.externalApplication);
-  } catch (_) {
-    return false;
-  }
+  return openExternalLink(url, quiet: true);
 }
 
 /// How often GET /me/cloud is asked after the browser opened the auth page.
