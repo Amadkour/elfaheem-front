@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
+import 'package:flutter_education_app/features/payments/enrollment/checkout_callback.dart';
 import 'package:flutter_education_app/features/payments/enrollment/checkout_pages.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/checkout_web_impl.dart' if (dart.library.io) 'package:flutter_education_app/features/payments/enrollment/checkout_stub_impl.dart';
@@ -122,7 +123,7 @@ abstract class PaymentFlowProvider extends BaseProvider {
       final result = await Navigator.of(context).push<String>(
         MaterialPageRoute(fullscreenDialog: true, builder: (_) => page),
       );
-      _handleCheckoutResult(result ?? 'cancelled');
+      await handleCheckoutResult(result ?? 'cancelled', checkoutPaymentIds(session));
     } catch (e) {
       setStep(EnrollStep.failed, reason: '${'payment_open_failed'.tr}: ${apiErrorText(ApiException.from(e))}');
     } finally {
@@ -131,10 +132,31 @@ abstract class PaymentFlowProvider extends BaseProvider {
     }
   }
 
-  void _handleCheckoutResult(String status) {
+  /// How many times a "paid" result page is checked against the server, and the wait between two reads (the
+  /// provider's webhook can land a moment after the redirect). Tests set the wait to zero.
+  @visibleForTesting
+  int confirmTries = 3;
+  @visibleForTesting
+  Duration confirmEvery = const Duration(milliseconds: 1500);
+
+  /// The result page's status → the step. "paid" is the page's word only (S6): success is shown once
+  /// `GET /api/v1/payments/{id}` says `completed` for every payment of the checkout; an unconfirmed or unreadable
+  /// payment shows the pending step (the enrolment follows the server's verified callback), a failed one the failure.
+  @visibleForTesting
+  Future<void> handleCheckoutResult(String status, List<int> paymentIds) async {
     switch (status) {
       case 'paid':
-        setStep(EnrollStep.success);
+        setStep(EnrollStep.verifying);
+        final check = await confirmPaid(paymentIds);
+        if (isDisposed) return;
+        switch (check) {
+          case PaidCheck.confirmed:
+            setStep(EnrollStep.success);
+          case PaidCheck.pending:
+            setStep(EnrollStep.pending);
+          case PaidCheck.failed:
+            setStep(EnrollStep.failed, reason: 'payment_failed_message_generic'.tr);
+        }
       case 'initiated':
         setStep(EnrollStep.pending);
       case 'cancelled':
@@ -142,5 +164,28 @@ abstract class PaymentFlowProvider extends BaseProvider {
       default:
         setStep(EnrollStep.failed, reason: 'payment_failed_message_generic'.tr);
     }
+  }
+
+  /// Reads every payment of the checkout until it is settled ([confirmTries] reads at most).
+  @visibleForTesting
+  Future<PaidCheck> confirmPaid(List<int> paymentIds) async {
+    if (paymentIds.isEmpty) return PaidCheck.pending;
+    var check = PaidCheck.pending;
+    for (var i = 0; i < confirmTries; i++) {
+      if (i > 0) await Future<void>.delayed(confirmEvery);
+      if (isDisposed) return PaidCheck.pending;
+      final statuses = <String?>[];
+      for (final id in paymentIds) {
+        try {
+          final j = asJsonMap(await api.get('/api/v1/payments/$id'));
+          statuses.add(j?['status']?.toString());
+        } catch (_) {
+          statuses.add(null); // unreadable now: not a success, maybe the next read
+        }
+      }
+      check = paymentStatusStep(statuses);
+      if (check != PaidCheck.pending) return check;
+    }
+    return check;
   }
 }

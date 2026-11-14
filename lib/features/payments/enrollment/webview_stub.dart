@@ -25,7 +25,8 @@ class NavigationDecision {
 
 class NavigationRequest {
   final String url;
-  const NavigationRequest(this.url);
+  final bool isMainFrame;
+  const NavigationRequest(this.url, {this.isMainFrame = true});
 }
 
 class WebResourceError {
