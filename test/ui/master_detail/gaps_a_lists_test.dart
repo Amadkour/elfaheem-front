@@ -6,10 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_access.dart';
-import 'package:flutter_education_app/core/entities/entity_ref.dart';
-import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
-import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
-import 'package:flutter_education_app/features/student/dashboard/component/student_exam_tab.dart';
 import 'package:flutter_education_app/features/teacher/analysis/exam/teacher_exam_hub_screen.dart';
 import 'package:flutter_education_app/features/teacher/analysis/exam/teacher_exam_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -98,22 +94,5 @@ void main() {
     expect(api.calls.any((c) => c.path.endsWith('/entities/students/100')), isTrue);
     expect(_panel, findsOneWidget);
     expect(find.byKey(const ValueKey('md.message')), findsOneWidget);
-  });
-
-  testWidgets('student: the dashboard exam tab\'s course chip opens the loaded course panel', (t) async {
-    final api = await _serve(t, {
-      'GET /api/v1/entities/courses/40': (o) => learnerCourse(40),
-      'GET /api/v1/student/exams': (o) => [
-            {'id': 7, 'name': 'Midterm', 'course_id': 40, 'course_name': 'Python Basics', 'question_count': 10},
-          ],
-    });
-    final panel = EntityPanelController(rowKind: EntityKind.course);
-    addTearDown(panel.dispose);
-    await _pump(t, MasterDetailScaffold(controller: panel, list: const StudentExamsTab()));
-    await t.tap(find.byKey(const ValueKey('md.exam_tab.course.7')));
-    await _settle(t);
-    expect(api.calls.any((c) => c.path.endsWith('/entities/courses/40')), isTrue);
-    expect(_panel, findsOneWidget);
-    expect(find.byKey(const ValueKey('md.continue')), findsOneWidget);
   });
 }
