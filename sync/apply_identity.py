@@ -26,6 +26,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from hooks import apply_hooks, hook_files  # noqa: E402  (A-007: Alfaheem's hooks in shared files)
+
 ROOT = Path(__file__).resolve().parent.parent
 CHECK = '--check' in sys.argv
 changed: list[str] = []
@@ -510,6 +513,8 @@ def main() -> int:
     edit('pubspec.yaml', pubspec)
     edit('lib/design/boot_splash.dart', boot_splash)
     edit('CLAUDE.md', claude_md)
+    for rel in hook_files():
+        edit(rel, lambda text, rel=rel: apply_hooks(rel, text))
     for c in changed:
         print(('would change ' if CHECK else 'changed ') + c)
     print(f'{len(changed)} change(s)')
