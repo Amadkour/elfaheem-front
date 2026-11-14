@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 VERBOSE = '--verbose' in sys.argv
 REF = sys.argv[sys.argv.index('--ref') + 1] if '--ref' in sys.argv else 'nextbrain/production'
 
-PATTERN = re.compile(r'NextBrain|نكست برين|nextbrain\.site|com\.doubley\.nextbrain|nextbrain-2y|nextbrain\.2y@|مركز الفهيم')
+PATTERN = re.compile(r'NextBrain|نكست برين|(?i:nextbrain\.site)|com\.doubley\.nextbrain|nextbrain-2y|nextbrain\.2y@|مركز الفهيم')
 FORBIDDEN = {
     '5sI/tocMhHnqTPDXhhj4nfWavN+crxuYvDX13koLqDM=': "NextBrain's SPKI pin (nextbrain.site)",
     '93d682e09f1a3f195d50f3ed70e80c4c45206e527f332d7bd36ea03045141402': "NextBrain's legacy certificate pin",
