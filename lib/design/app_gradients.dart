@@ -28,7 +28,7 @@
 // 3:1 on their circle); a plain inline icon stays flat. The page canvas wears [AppPatternStyle.study], small
 // education line icons, instead of the dots.
 // D-650 round 2: the gradient's end is accent1 (cream), placed past the label so white stays at 4.5:1 where the
-// glyphs sit; the canvas is a dense doodle tile (see the D-649 / D-650 block below).
+// glyphs sit; the page canvas itself is one solid colour (D-948).
 // D-650 round 3 (the 60/40 rule): EVERY brand gradient is 60 % primary and 40 % accent1 — solid primary from 0 to
 // 0.6, then a blend to accent1 at 1.0, mirrored in Arabic. A labelled fill holds the green to just past its label
 // (max(0.6, label end)); the sidebar, the rail and the auth panel run it top → bottom ([AppBrandPanel]) and every
@@ -39,7 +39,6 @@
 library;
 
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
@@ -174,7 +173,7 @@ class AppGradientText extends StatelessWidget {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // D-649 — the brand gradient layer: the green sidebar, the gradient primary button, the gold highlight CTA, the
-// forest → emerald hero with a gold glow, and the faint page pattern. Every colour is derived here from the server's
+// forest → emerald hero with a gold glow, and the faint lattice on the brand panels. Every colour is derived here from the server's
 // theme roles (primary, primary_dark, primary_light, accent / accent1, accent2, on_hero, background); no new server
 // keys. Every ink is checked (ensureContrast) where it actually sits, in both modes. Gradients are static; they
 // mirror in Arabic (AlignmentDirectional).
@@ -186,10 +185,9 @@ class AppGradientText extends StatelessWidget {
 //     last 45 % on a short label, a sliver of the end padding on a long one) — [AppBrandFill], [AppBrandLabel];
 //   · the glyph family ([AppGradientIcon]): primary_light → accent1 on a dark surface (the sidebar, the hero, a dark
 //     card), primary → a half accent1 / half accent2 blend on a light tint, every point at 3:1;
-//   · the page canvas wears a dense doodle field ([AppPatternStyle.study]): ONE tile of small study glyphs, drawn
-//     once into an image per (colour, mode, pixel ratio) and repeated by an image shader.
+//   · (the page canvas's doodle field of study glyphs was removed by D-948: the canvas is one solid colour)
 // D-650 round 3: the sidebar / rail / auth panel are the 60 / 40 gradient top → bottom ([AppBrandPanel],
-// [BrandLayer.sideAt]); the doodle tile is 384 px of 256 glyphs (24 px grid, 10-20 px) at [AppBrandLayer.doodleAlpha].
+// [BrandLayer.sideAt]).
 // D-863: no fill fades into accent1 any more (the production cream #F3E6C4 read as an old caramel at the end of every
 // button and down the sidebar). The button runs primary → a lift toward primary_light (dark mode: primary_light →
 // a step toward primary), the sidebar primary → a deeper shade of itself: one green each, the label's ink on every
@@ -474,36 +472,6 @@ abstract final class AppBrandLayer {
         colors: of(context).sidebar,
         stops: BrandLayer.sideStops,
       );
-
-  /// The doodle field's strength (D-650 r3): ONE token for the page canvas — the primary at this alpha in light mode,
-  /// primary_light at [doodleDarkShare] of it in dark mode. Page headings over it get [AppHeadingHalo] when it would
-  /// drop their ink below AA. Owner picked 15 % (2026-11-12); a setter only for review renders.
-  static double doodleAlpha = 0.15;
-
-  /// Dark mode's share of [doodleAlpha] (the old 3 % : 4 % proportion).
-  static const double doodleDarkShare = 0.75;
-
-  /// The doodle field's colour on this theme's canvas.
-  static Color doodle(BuildContext context) => doodleFor(context.colors);
-
-  /// [doodle] for a theme (tests read it without a widget).
-  static Color doodleFor(ThemeConfigProvider c) {
-    return c.isDark
-        ? c.primaryLight.withValues(alpha: doodleAlpha * doodleDarkShare)
-        : c.primary.withValues(alpha: doodleAlpha);
-  }
-
-  /// The inks of a page-level heading (the title, its muted line, an action link) over the doodle field at its
-  /// darkest point: the lowest contrast any of them gets.
-  static double headingContrast(BuildContext context) => headingContrastFor(context.colors);
-
-  /// [headingContrast] for a theme.
-  static double headingContrastFor(ThemeConfigProvider c) {
-    final under = [c.background, Color.alphaBlend(doodleFor(c), c.background)];
-    return [c.textDark, c.textMedium, ensureContrast(c.primary, [c.background])]
-        .map((ink) => minContrast(ink, under))
-        .reduce(math.min);
-  }
 
   static final Map<int, BrandInk> _inkCache = {};
 
@@ -1131,49 +1099,9 @@ class AppBrandInkState extends State<AppBrandInk> {
   }
 }
 
-/// Marks a page canvas that wears the doodle field (BasePage sets it; a card turns it off for its content).
-class AppDoodleScope extends InheritedWidget {
-  const AppDoodleScope({super.key, required this.on, required super.child});
-
-  final bool on;
-
-  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<AppDoodleScope>()?.on ?? false;
-
-  @override
-  bool updateShouldNotify(AppDoodleScope old) => old.on != on;
-}
-
-/// A page-level heading on the doodle field (D-650 r3): when the field's strength ([AppBrandLayer.doodleAlpha])
-/// would drop the heading's inks below 4.5:1 ([AppBrandLayer.headingContrast]), a soft halo of the page colour
-/// (a blurred backdrop, 8 px) clears the doodles behind it. Nothing at all off the doodle field or inside a card.
-class AppHeadingHalo extends StatelessWidget {
-  const AppHeadingHalo({super.key, required this.child, this.off = false});
-
-  final Widget child;
-
-  /// Never a halo (the content sits on a hero or a brand block, not on the canvas).
-  final bool off;
-
-  /// The halo's blur and its reach past the heading's box (the box's edge stays under the solid part).
-  static const double blur = 8, spread = 6;
-
-  @override
-  Widget build(BuildContext context) {
-    // always on the doodle field: at a low strength the halo still keeps the line visually clean (owner: 15 %)
-    if (off || !AppDoodleScope.of(context)) return child;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: AppRadius.controlAll,
-        boxShadow: [BoxShadow(color: context.colors.background, blurRadius: blur, spreadRadius: spread)],
-      ),
-      child: child,
-    );
-  }
-}
-
 /// The shapes of [AppPattern]: [dots] (kept for callers), [lattice] (staggered small diamonds) for the dark brand
-/// surfaces, [study] (the dense doodle field of study glyphs, D-650) for the page canvas.
-enum AppPatternStyle { dots, lattice, study }
+/// surfaces. Never behind a page (D-948): the canvas is one solid colour.
+enum AppPatternStyle { dots, lattice }
 
 /// A very faint static pattern painted behind [child] (or alone, filling its box): no image asset, no animation, so
 /// Reduce motion has nothing to park. Purely decorative: no semantics, no hit testing.
@@ -1186,12 +1114,7 @@ class AppPattern extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final painter = _PatternPainter(
-      color: color,
-      style: style,
-      ratio: MediaQuery.maybeDevicePixelRatioOf(context) ?? 1,
-      dark: context.colors.isDark,
-    );
+    final painter = _PatternPainter(color: color, style: style);
     final paint = IgnorePointer(
       child: ExcludeSemantics(
         child: RepaintBoundary(child: CustomPaint(painter: painter, size: Size.infinite)),
@@ -1203,12 +1126,10 @@ class AppPattern extends StatelessWidget {
 }
 
 class _PatternPainter extends CustomPainter {
-  _PatternPainter({required this.color, required this.style, required this.ratio, required this.dark});
+  _PatternPainter({required this.color, required this.style});
 
   final Color color;
   final AppPatternStyle style;
-  final double ratio;
-  final bool dark;
 
   /// The grid step: a dot every 22 px on the canvas, a diamond every 26 px on the brand surfaces.
   static const double _dotStep = 22, _latticeStep = 26, _dot = 1, _diamond = 2.2;
@@ -1216,10 +1137,6 @@ class _PatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty || color.a == 0) return;
-    if (style == AppPatternStyle.study) {
-      canvas.drawRect(Offset.zero & size, Paint()..shader = _DoodleTile.shader(color, ratio, dark));
-      return;
-    }
     final p = Paint()..color = color;
     final lattice = style == AppPatternStyle.lattice;
     final step = lattice ? _latticeStep : _dotStep;
@@ -1244,131 +1161,5 @@ class _PatternPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PatternPainter old) =>
-      old.color != color || old.style != style || old.ratio != ratio || old.dark != dark;
-}
-
-/// The page canvas's doodle field (D-650 r2 / r3, the chat-wallpaper look): ONE [tile] px square of small study
-/// glyphs on a [step] px staggered grid (16 × 16 = 256 glyphs, twice r2's density), each nudged, sized and turned by a hash of its cell (a fixed seed). A glyph that
-/// crosses the tile's edge is drawn again on the opposite side, so the tile repeats without a seam. It is drawn once
-/// per (colour, mode, pixel ratio) into an image at the device resolution and painted as a repeating [ImageShader]:
-/// a page paints one rectangle, never a glyph.
-abstract final class _DoodleTile {
-  static const double tile = 384, step = 24, jitter = 5, minPx = 10, maxPx = 20, turn = 0.6;
-
-  static const List<IconData> glyphs = [
-    Icons.menu_book_outlined,
-    Icons.edit_outlined,
-    Icons.draw_outlined,
-    Icons.school_outlined,
-    Icons.lightbulb_outline_rounded,
-    Icons.science_outlined,
-    Icons.biotech_outlined,
-    Icons.straighten_rounded,
-    Icons.calculate_outlined,
-    Icons.public_rounded,
-    Icons.palette_outlined,
-    Icons.music_note_outlined,
-    Icons.laptop_outlined,
-    Icons.schedule_rounded,
-    Icons.star_outline_rounded,
-    Icons.extension_outlined,
-    Icons.abc_rounded,
-    Icons.explore_outlined,
-    Icons.emoji_events_outlined,
-    Icons.attach_file_rounded,
-    Icons.architecture_rounded,
-    Icons.functions_rounded,
-    Icons.psychology_outlined,
-    Icons.backpack_outlined,
-    Icons.auto_stories_outlined,
-    Icons.history_edu_outlined,
-    Icons.quiz_outlined,
-    Icons.translate_rounded,
-    Icons.language_rounded,
-    Icons.calendar_today_outlined,
-    Icons.bookmark_border_rounded,
-    Icons.local_library_outlined,
-    Icons.sports_esports_outlined,
-    Icons.headphones_outlined,
-    Icons.camera_alt_outlined,
-    Icons.rocket_launch_outlined,
-    Icons.eco_outlined,
-    Icons.pie_chart_outline_rounded,
-    Icons.square_foot_rounded,
-    Icons.hub_outlined,
-    Icons.code_rounded,
-    Icons.brush_outlined,
-    Icons.workspace_premium_outlined,
-    Icons.sticky_note_2_outlined,
-  ];
-
-  static final Map<(int, int, bool), ImageShader> _shaders = {};
-
-  static ImageShader shader(Color color, double ratio, bool dark) {
-    final key = (color.toARGB32(), (ratio * 100).round(), dark);
-    final hit = _shaders[key];
-    if (hit != null) return hit;
-    if (_shaders.length > 6) _shaders.clear();
-    final px = math.max(1, (tile * ratio).round());
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder)..scale(px / tile);
-    _paint(canvas, color);
-    final picture = recorder.endRecording();
-    final image = picture.toImageSync(px, px);
-    picture.dispose();
-    final back = tile / px;
-    return _shaders[key] = ImageShader(
-      image,
-      TileMode.repeated,
-      TileMode.repeated,
-      Matrix4.diagonal3Values(back, back, 1).storage,
-      filterQuality: FilterQuality.low,
-    );
-  }
-
-  /// A small deterministic hash of a cell (the fixed seed), 0 ≤ r < 1 for each [salt].
-  static double _rand(int row, int col, int salt) {
-    var h = (row * 73856093) ^ (col * 19349663) ^ (salt * 83492791) ^ 0x5bd1e995;
-    h = (h ^ (h >> 13)) * 0x5bd1e995 & 0x7fffffff;
-    h ^= h >> 15;
-    return (h & 0xffff) / 0x10000;
-  }
-
-  static void _paint(Canvas canvas, Color color) {
-    final n = (tile / step).round();
-    final laid = <(int, int), TextPainter>{};
-    for (var row = 0; row < n; row++) {
-      for (var col = 0; col < n; col++) {
-        final icon = glyphs[(_rand(row, col, 1) * glyphs.length).floor() % glyphs.length];
-        final size = (minPx + (maxPx - minPx) * _rand(row, col, 2)).roundToDouble();
-        final tp = laid[(icon.codePoint, size.toInt())] ??= TextPainter(
-          textDirection: TextDirection.ltr,
-          text: TextSpan(
-            text: String.fromCharCode(icon.codePoint),
-            style: TextStyle(fontFamily: icon.fontFamily, package: icon.fontPackage, fontSize: size, color: color, height: 1),
-          ),
-        )..layout();
-        final x = (col + 0.5 + (row.isOdd ? 0.5 : 0)) * step + (_rand(row, col, 3) - 0.5) * 2 * jitter;
-        final y = (row + 0.5) * step + (_rand(row, col, 4) - 0.5) * 2 * jitter;
-        final angle = (_rand(row, col, 5) - 0.5) * 2 * turn;
-        final reach = size * 0.75;
-        for (final dx in const [-tile, 0.0, tile]) {
-          for (final dy in const [-tile, 0.0, tile]) {
-            final cx = x + dx, cy = y + dy;
-            if (cx + reach < 0 || cx - reach > tile || cy + reach < 0 || cy - reach > tile) continue;
-            canvas
-              ..save()
-              ..translate(cx, cy)
-              ..rotate(angle);
-            tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
-            canvas.restore();
-          }
-        }
-      }
-    }
-    for (final tp in laid.values) {
-      tp.dispose();
-    }
-  }
+  bool shouldRepaint(_PatternPainter old) => old.color != color || old.style != style;
 }

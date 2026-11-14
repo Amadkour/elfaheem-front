@@ -105,32 +105,6 @@ void main() {
     }
   }
 
-  // D-650 r3: the doodle field's strength is ONE token; at the owner's 50 % the page headings' inks (title, muted
-  // line, link) over a doodle stroke fall below AA, so AppHeadingHalo turns on; at 15 % they read without it.
-  test('doodle token: heading inks over the field, halo when below AA', () {
-    final prev = AppBrandLayer.doodleAlpha;
-    addTearDown(() => AppBrandLayer.doodleAlpha = prev);
-    final seen = <String, double>{};
-    for (final alpha in const [0.5, 0.15]) {
-      AppBrandLayer.doodleAlpha = alpha;
-      for (final dark in const [false, true]) {
-        final t = theme(_prod(), dark);
-        final d = AppBrandLayer.doodleFor(t);
-        expect(d.a, closeTo(dark ? alpha * AppBrandLayer.doodleDarkShare : alpha, 0.01));
-        final tag = '${(alpha * 100).round()}% ${dark ? 'dark' : 'light'}';
-        final over = Color.alphaBlend(d, t.background);
-        seen['$tag title'] = contrastRatio(t.textDark, over);
-        seen['$tag muted'] = contrastRatio(t.textMedium, over);
-        seen['$tag any'] = AppBrandLayer.headingContrastFor(t);
-      }
-    }
-    // ignore: avoid_print
-    print('heading contrast over a doodle stroke: ${seen.map((k, v) => MapEntry(k, v.toStringAsFixed(2)))}');
-    // the halo's switch: at the owner's 50 % the heading inks fall below AA, so AppHeadingHalo clears the doodles
-    expect(seen['50% light any']!, lessThan(kWcagAaText));
-    expect(seen['50% dark any']!, lessThan(kWcagAaText));
-  });
-
   // The cream ramp starts past a centred label: hold = max(0.6, (width + label) / 2 + gap) — the 60 / 40 rule.
   test('holdFor: short labels leave the last 40 % to the cream, long ones only the end padding', () {
     expect(AppBrandFill.minHold, 0.6);

@@ -55,7 +55,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
-import 'package:flutter_education_app/design/app_gradients.dart' show AppGradientIcon, AppHeadingHalo;
+import 'package:flutter_education_app/design/app_gradients.dart' show AppGradientIcon;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellScope;
 import 'package:flutter_education_app/design/chrome_button.dart' show ChromeBar;
@@ -381,9 +381,8 @@ const double kHomeWideMin = 960;
 /// True when [width] (the home's content width) takes the desktop dashboard.
 bool homeIsWide(double width) => width >= kHomeWideMin;
 
-/// The width of the page card a wide shell centres over its patterned page background ([BasePage.maxWith]): the
-/// whole body area less a 24 px margin each side (the pattern stays a thin frame at the page edges instead of
-/// fighting the cards), at most [kHomeWideMax]. Null below a desktop body → BasePage's own width.
+/// The width of the page card a wide shell centres on the plain page canvas ([BasePage.maxWith]): the whole body
+/// area less a 24 px margin each side, at most [kHomeWideMax]. Null below a desktop body → BasePage's own width.
 double? homeCardWidth(double area) => area >= kHomeWideMin + 48 ? math.min(kHomeWideMax, area - 48) : null;
 
 /// Marks the side column of a [HomeDashboard]: parts that read it (the "Needs you" strip) draw their narrow form.
@@ -524,8 +523,7 @@ class HomeSectionTitle extends StatelessWidget {
       padding: padding ?? const EdgeInsetsDirectional.fromSTEB(AppSpace.md + AppSpace.xxs, 0, AppSpace.sm, 10), // the start side follows the language (an Arabic title sat 8 px past the cards' edge)
       // The title takes every pixel the action leaves (a Flexible + Spacer pair split the row in halves: the title
       // was cut at half the width and the action floated mid-row instead of sitting at the end).
-      // D-650 r3: a page-colour halo when the doodle field would drop the heading (its muted line, its link) below AA
-      child: AppHeadingHalo(child: LayoutBuilder(builder: (context, box) => Row(children: [
+      child: LayoutBuilder(builder: (context, box) => Row(children: [
         Expanded(child: heading),
         if (actionLabel != null && onAction != null)
           ConstrainedBox(
@@ -537,7 +535,7 @@ class HomeSectionTitle extends StatelessWidget {
               child: Text(actionLabel!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w500, c: appInk(context, c.primary))),
             ),
           ),
-      ]))),
+      ])),
     );
   }
 }
