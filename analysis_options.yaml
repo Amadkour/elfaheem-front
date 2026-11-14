@@ -16,6 +16,11 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+  errors:
+    # S7: print() reaches logcat / the browser console in release builds (the FCM token was readable there). As a
+    # warning the CI gate (--fatal-warnings) keeps it out; a test or tool that prints on purpose says so with
+    # `// ignore: avoid_print`. App logs go through debugPrint / dart:developer log behind AppConfig.testMode.
+    avoid_print: warning
 include: package:flutter_lints/flutter.yaml
 
 linter:
@@ -30,7 +35,7 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
+    avoid_print: true # also in flutter_lints; named here so the `errors:` severity above has its rule
     # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
 
 # Additional information about this file can be found at

@@ -344,6 +344,7 @@ bool displayAudioSupported() {
 }
 
 void _log(String msg) {
+  if (const bool.fromEnvironment('dart.vm.product')) return; // S7: release builds keep the console clean
   // ignore: avoid_print
   print('[web_rec] $msg');
 }

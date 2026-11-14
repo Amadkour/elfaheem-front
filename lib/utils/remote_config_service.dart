@@ -50,14 +50,14 @@ class RemoteConfigService {
       await rc.fetchAndActivate();
     } catch (e) {
       // Network error — defaults are still active, app continues normally
-      print('[RemoteConfig] fetch failed, using defaults: $e');
+      if (kDebugMode) debugPrint('[RemoteConfig] fetch failed, using defaults: $e');
     }
 
     // Listen for real-time config updates (optional but nice to have)
     if (!kIsWeb) {
       rc.onConfigUpdated.listen((event) async {
         await rc.activate();
-        print('[RemoteConfig] config updated: ${event.updatedKeys}');
+        if (kDebugMode) debugPrint('[RemoteConfig] config updated: ${event.updatedKeys}');
       });
     }
   }
