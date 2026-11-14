@@ -1,0 +1,11 @@
+# M10 the shared/ prefix dropped
+lib/features/shared/rag	lib/features/rag
+lib/features/shared/records	lib/features/records
+lib/features/shared/calendar	lib/features/calendar
+lib/features/shared/help	lib/features/help
+lib/features/shared/exports	lib/features/exports
+lib/features/shared/get_app	lib/features/get_app
+lib/features/shared/guest	lib/features/guest
+lib/features/shared/upload	lib/features/upload
+lib/features/shared/share	lib/features/share
+lib/features/shared/downloads	lib/features/downloads

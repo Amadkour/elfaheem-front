@@ -1,0 +1,11 @@
+# M9 profile + messaging
+lib/features/shared/profile	lib/features/profile
+lib/features/shared/public_profile	lib/features/profile/public_profile
+lib/features/shared/study_profile	lib/features/profile/study_profile
+lib/features/teacher/profile	lib/features/profile/teacher
+lib/features/shared/display	lib/features/profile/display
+lib/features/shared/legal	lib/features/profile/legal
+lib/features/shared/passcode	lib/features/profile/passcode
+lib/features/shared/chat	lib/features/messaging/chat
+lib/features/shared/inbox	lib/features/messaging/inbox
+lib/features/shared/notification	lib/features/messaging/notification

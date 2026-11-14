@@ -1,0 +1,24 @@
+# M8 homes + analytics
+lib/features/student/home	lib/features/home/student
+lib/features/student/dashboard	lib/features/home/student/dashboard
+lib/features/student/record	lib/features/home/student/record
+lib/features/student/reward	lib/features/home/student/reward
+lib/features/student/models.dart	lib/features/home/student/models.dart
+lib/features/teacher/home	lib/features/home/teacher
+lib/features/teacher/dashboard	lib/features/home/teacher/dashboard
+lib/features/teacher/todo	lib/features/home/teacher/todo
+lib/features/teacher/schedules	lib/features/home/teacher/schedules
+lib/features/teacher/classroom	lib/features/home/teacher/classroom
+lib/features/shared/analytics	lib/features/analytics
+lib/features/student/analysis/analytics_editorial.dart	lib/features/analytics/student/analytics_editorial.dart
+lib/features/student/analysis/student_analytics_api.dart	lib/features/analytics/student/student_analytics_api.dart
+lib/features/student/analysis/student_analytics_profile_screen.dart	lib/features/analytics/student/student_analytics_profile_screen.dart
+lib/features/student/analysis/student_analytics_provider.dart	lib/features/analytics/student/student_analytics_provider.dart
+lib/features/student/analysis/student_analytics_screen.dart	lib/features/analytics/student/student_analytics_screen.dart
+lib/features/student/analysis/student_analytics_widgets.dart	lib/features/analytics/student/student_analytics_widgets.dart
+lib/features/student/analysis/student_course_analytics_screen.dart	lib/features/analytics/student/student_course_analytics_screen.dart
+lib/features/teacher/analysis/analytics_hub_screen.dart	lib/features/analytics/teacher/analytics_hub_screen.dart
+lib/features/teacher/analysis/analytics_models.dart	lib/features/analytics/teacher/analytics_models.dart
+lib/features/teacher/analysis/teacher_stat_band.dart	lib/features/analytics/teacher/teacher_stat_band.dart
+lib/features/student/analysis/flags	lib/features/analytics/student/flags
+lib/features/teacher/analysis/flags	lib/features/analytics/teacher/flags

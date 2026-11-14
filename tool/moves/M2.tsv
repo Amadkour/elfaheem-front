@@ -1,0 +1,6 @@
+# M2 exams: the exam engine, the student identifier, the two legacy exam folders
+lib/features/shared/exam_engine	lib/features/exams
+lib/features/shared/identity	lib/features/exams/identity
+lib/features/teacher/analysis/exam	lib/features/exams/legacy/teacher
+lib/features/student/analysis/exam	lib/features/exams/legacy/student
+lib/features/shared/models/exam_model.dart	lib/features/exams/legacy/exam_model.dart
