@@ -18,6 +18,7 @@ Uint8List _der(String path) {
   final pem = File('test/fixtures/tls/$path').readAsStringSync();
   final body = pem
       .split('\n')
+      .map((l) => l.trim())
       .where((l) => l.isNotEmpty && !l.startsWith('-----'))
       .join();
   return base64Decode(body);
