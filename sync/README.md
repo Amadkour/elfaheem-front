@@ -43,8 +43,8 @@ rewritten by `apply_identity.py` from the `FIREBASE_*` values in `identity.env`:
 - `web/firebase-messaging-sw.js`, `firebase.json` (from `lib/firebase_options.dart`: re-run after `flutterfire configure`)
 - `ios/Runner/Info.plist`: the Firebase Auth URL scheme (`FIREBASE_IOS_APP_ID`) and, when set,
   `FIREBASE_IOS_REVERSED_CLIENT_ID` for Google sign-in
-- `lib/features/messaging/notification/notification_service.dart`: `webPushVapidKey` (`FIREBASE_WEB_VAPID_KEY`, empty
-  for now: web push is skipped)
+- `lib/features/messaging/notification/notification_service.dart`: `webPushVapidKey` (`FIREBASE_WEB_VAPID_KEY`; an empty
+  value skips web push)
 
-Still owed by the owner: the VAPID key, the iOS OAuth client, the server's FCM service account (backend
+Still owed by the owner: the iOS OAuth client, the server's FCM service account (backend
 `.env.production`).

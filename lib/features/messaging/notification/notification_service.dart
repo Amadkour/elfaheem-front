@@ -58,7 +58,7 @@ class NotificationService {
   /// The Web Push (VAPID) public key of the web app's Firebase project (`alfaheem-d3c8f`, A-006): Project settings →
   /// Cloud Messaging → Web Push certificates. A public key, not a secret.
   static const webPushVapidKey =
-      '';
+      'BOVMf-hXK3LOztcLDhdj8CLD_qkfRAQN9uozHyzrFrDMkNv2HnTT9FG5-T0HuFQI0dyXXx29EEipjgHOpVqzydc';
 
   final FlutterLocalNotificationsPlugin _plugin =
   FlutterLocalNotificationsPlugin();

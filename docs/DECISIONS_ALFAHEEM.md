@@ -75,10 +75,11 @@ project, so an app installed from the old project is not carried over.
   (`app-1-887854198161-ios-ffa59d7c85f3ac430afe30`; the Google sign-in `REVERSED_CLIENT_ID` scheme only once
   `FIREBASE_IOS_REVERSED_CLIENT_ID` is set: the iOS app has no OAuth client yet) and the web-push key in
   `notification_service.dart`.
-- Web push: `FIREBASE_WEB_VAPID_KEY` is empty until the owner generates a key pair (Firebase console, Project
-  settings, Cloud Messaging, Web Push certificates). NextBrain's key must not ship. With an empty key the web app
-  skips `getToken` (a debug log) and the logout unregister, so web users get no push; mobile push is unaffected.
+- Web push: `FIREBASE_WEB_VAPID_KEY` is the public key the owner generated for `alfaheem-d3c8f` (Firebase console,
+  Project settings, Cloud Messaging, Web Push certificates). NextBrain's key must not ship. Should the value ever be
+  empty, the web app skips `getToken` (a debug log) and the logout unregister instead of failing; mobile push is
+  unaffected.
 - `sync/check_identity.py` fails on any Firebase id of `nextbrain-2y` or the old `elfaheem` project, on NextBrain's
   VAPID key, and on a Firebase file that does not name `FIREBASE_PROJECT_ID`.
-- Still owed: the backend's FCM service account for `alfaheem-d3c8f` (server `.env.production`), the VAPID key, the
+- Still owed: the backend's FCM service account for `alfaheem-d3c8f` (server `.env.production`), the
   iOS OAuth client for Google sign-in, Android SHA fingerprints in the Firebase console once the release key exists.
