@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/analytics/analytics_summary.dart';
 import 'package:flutter_education_app/features/shared/analytics/analytics_summary_ui.dart';
-import 'package:flutter_education_app/features/student/analysis/attendance/student_attendance_model.dart';
+import 'package:flutter_education_app/features/attendance/analysis/student/student_attendance_model.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_api.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_screen.dart';

@@ -13,9 +13,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 
-import 'attendance_store.dart';
-import 'attendance_strings.dart';
-import 'teacher_attendance_controller.dart';
+import 'package:flutter_education_app/features/attendance/attendance_store.dart';
+import 'package:flutter_education_app/features/attendance/attendance_strings.dart';
+import 'package:flutter_education_app/features/attendance/teacher_attendance_controller.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AttendanceEvent {

@@ -20,8 +20,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, asMapList;
-import 'package:flutter_education_app/features/shared/attendance/attendance_permissions.dart';
-import 'package:flutter_education_app/features/shared/attendance/relay_transport.dart';
+import 'package:flutter_education_app/features/attendance/attendance_permissions.dart';
+import 'package:flutter_education_app/features/attendance/relay_transport.dart';
 import 'package:flutter_education_app/features/exams/offline/offline_exam_core.dart';
 import 'package:flutter_education_app/features/exams/offline/offline_exam_service.dart';
 

@@ -1,5 +1,5 @@
 import 'package:flutter_education_app/core/api_client.dart';
-import 'attendance_model.dart';
+import 'package:flutter_education_app/features/attendance/analysis/teacher/attendance_model.dart';
 
 class TeacherAttendanceApi {
   final ApiClient _api;

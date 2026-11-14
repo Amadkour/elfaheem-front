@@ -15,7 +15,7 @@ import 'package:flutter_education_app/core/screen_security.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asMap, t;
-import 'package:flutter_education_app/features/shared/attendance/relay_host_provider.dart';
+import 'package:flutter_education_app/features/attendance/relay_host_provider.dart';
 import 'package:flutter_education_app/features/exams/exam_integrity.dart';
 import 'package:flutter_education_app/features/exams/exam_taking.dart';
 import 'package:flutter_education_app/features/exams/exam_page_width.dart';

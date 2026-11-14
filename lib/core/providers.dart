@@ -1,7 +1,7 @@
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_provider.dart';
-import 'package:flutter_education_app/features/student/attendance/attendance_provider.dart';
+import 'package:flutter_education_app/features/attendance/student/attendance_provider.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
 import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
 import 'package:provider/provider.dart';
@@ -10,7 +10,7 @@ import '../config/storage_service.dart' show StorageService;
 import '../config/theme/theme_config_provider.dart';
 import '../features/auth/auth_provider.dart';
 import '../features/auth/teacher_document_provider.dart';
-import '../features/shared/attendance/relay_host_provider.dart';
+import 'package:flutter_education_app/features/attendance/relay_host_provider.dart';
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
 import '../features/shared/notification/notifications_provider.dart';
 import '../features/shared/profile/about/about_terms_provider.dart';

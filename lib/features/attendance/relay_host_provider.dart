@@ -14,11 +14,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_education_app/features/exams/offline/offline_exam_relay.dart';
 
-import 'attendance_crypto.dart';
-import 'attendance_permissions.dart';
-import 'attendance_repository.dart';
-import 'attendance_store.dart';
-import 'relay_transport.dart';
+import 'package:flutter_education_app/features/attendance/attendance_crypto.dart';
+import 'package:flutter_education_app/features/attendance/attendance_permissions.dart';
+import 'package:flutter_education_app/features/attendance/attendance_repository.dart';
+import 'package:flutter_education_app/features/attendance/attendance_store.dart';
+import 'package:flutter_education_app/features/attendance/relay_transport.dart';
 
 class RelayHostProvider extends ChangeNotifier {
   RelayHostProvider({AttendanceRepository? repo, AttendanceStore? store, RelayHost? host})

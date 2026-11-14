@@ -5,7 +5,7 @@ library;
 
 import 'package:flutter_education_app/core/api_client.dart';
 
-import 'attendance_models.dart';
+import 'package:flutter_education_app/features/attendance/attendance_models.dart';
 
 Map<String, dynamic> _m(dynamic d) => d is Map ? Map<String, dynamic>.from(d) : <String, dynamic>{};
 

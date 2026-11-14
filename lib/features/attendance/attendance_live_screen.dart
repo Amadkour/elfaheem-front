@@ -17,8 +17,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import 'attendance_strings.dart';
-import 'teacher_attendance_controller.dart';
+import 'package:flutter_education_app/features/attendance/attendance_strings.dart';
+import 'package:flutter_education_app/features/attendance/teacher_attendance_controller.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppOdometer;
 

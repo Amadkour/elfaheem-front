@@ -9,11 +9,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
-import 'attendance_strings.dart';
-import 'attendance_live_screen.dart';
-import 'teacher_attendance_controller.dart';
+import 'package:flutter_education_app/features/attendance/attendance_strings.dart';
+import 'package:flutter_education_app/features/attendance/attendance_live_screen.dart';
+import 'package:flutter_education_app/features/attendance/teacher_attendance_controller.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
 String _mmss(Duration d) =>

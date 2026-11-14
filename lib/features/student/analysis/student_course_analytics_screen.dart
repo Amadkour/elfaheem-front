@@ -18,10 +18,10 @@ import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountU
 import 'package:flutter_education_app/design/chrome_button.dart' show ChromeIconButton;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import '../../../utils/widget/base_page.dart';
-import '../../teacher/analysis/attendance/attendance_model.dart';
+import 'package:flutter_education_app/features/attendance/analysis/teacher/attendance_model.dart';
 import '../../teacher/data_lab/data_lab_models.dart';
 import 'analytics_editorial.dart';
-import 'attendance/student_attendance_model.dart';
+import 'package:flutter_education_app/features/attendance/analysis/student/student_attendance_model.dart';
 import 'student_analytics_provider.dart';
 import 'student_analytics_profile_screen.dart';
 import 'student_analytics_widgets.dart';

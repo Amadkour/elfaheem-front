@@ -28,7 +28,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import '../../shared/analytics/analytics_summary.dart';
 import '../../shared/analytics/analytics_summary_ui.dart';
 import '../../teacher/data_lab/data_lab_models.dart';
-import 'attendance/student_attendance_model.dart';
+import 'package:flutter_education_app/features/attendance/analysis/student/student_attendance_model.dart';
 import 'flags/student_flags_screen.dart';
 import 'student_analytics_profile_screen.dart';
 import 'student_analytics_provider.dart';

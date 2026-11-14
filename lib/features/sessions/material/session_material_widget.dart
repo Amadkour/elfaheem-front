@@ -38,7 +38,7 @@ import 'package:flutter_education_app/features/courses/course_space/course_sessi
 import 'package:flutter_education_app/features/sessions/teacher/components/guest_link_sheet.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
 import 'package:flutter_education_app/features/student/models.dart';
-import 'package:flutter_education_app/features/teacher/analysis/attendance/teacher_attendance_screen.dart';
+import 'package:flutter_education_app/features/attendance/analysis/teacher/teacher_attendance_screen.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:flutter_education_app/features/sessions/material/components/add_material_sheet.dart';

@@ -36,10 +36,10 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:nearby_connections/nearby_connections.dart';
 
-import 'relay_ble_transport.dart';
-import 'relay_link.dart';
+import 'package:flutter_education_app/features/attendance/relay_ble_transport.dart';
+import 'package:flutter_education_app/features/attendance/relay_link.dart';
 
-export 'relay_link.dart';
+export 'package:flutter_education_app/features/attendance/relay_link.dart';
 
 const String kRelayServiceId = 'com.elfaheem.attendance.relay';
 // CLUSTER (M-to-N): a phone can advertise AND discover at the same time, and one phone can talk

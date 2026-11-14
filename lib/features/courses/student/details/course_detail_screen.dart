@@ -22,7 +22,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:flutter_education_app/features/shared/attendance/attendance_course_entry.dart';
+import 'package:flutter_education_app/features/attendance/attendance_course_entry.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart' show kRoadmapTab;
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_tab.dart';

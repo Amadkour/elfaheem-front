@@ -29,7 +29,7 @@ import 'dart:typed_data';
 import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
 import 'package:flutter/foundation.dart';
 
-import 'relay_link.dart';
+import 'package:flutter_education_app/features/attendance/relay_link.dart';
 
 final UUID _kService = UUID.fromString('7b1c0001-5a3d-4f6e-9c1a-2e8f4d6b9a10');
 final UUID _kRx = UUID.fromString('7b1c0002-5a3d-4f6e-9c1a-2e8f4d6b9a10'); // central -> peripheral

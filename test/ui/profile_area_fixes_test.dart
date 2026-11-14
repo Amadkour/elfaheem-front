@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show notOpenEntries;
-import 'package:flutter_education_app/features/shared/attendance/teacher_attendance_launcher.dart';
+import 'package:flutter_education_app/features/attendance/teacher_attendance_launcher.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show approvalCountText;
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_screen.dart'

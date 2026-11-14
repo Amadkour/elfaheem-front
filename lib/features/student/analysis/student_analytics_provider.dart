@@ -12,9 +12,9 @@ import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../../core/base_provider.dart';
 import '../../../core/home/me_home.dart';
-import '../../teacher/analysis/attendance/attendance_model.dart';
+import 'package:flutter_education_app/features/attendance/analysis/teacher/attendance_model.dart';
 import '../../teacher/data_lab/data_lab_models.dart';
-import 'attendance/student_attendance_model.dart';
+import 'package:flutter_education_app/features/attendance/analysis/student/student_attendance_model.dart';
 import 'student_analytics_api.dart';
 
 /// Present when the session has an attendance record that says so (an empty record = absent, never a crash).

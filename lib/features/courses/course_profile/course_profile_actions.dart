@@ -17,8 +17,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/org/org_academic_pages.dart' show CourseArchiveScreen;
-import 'package:flutter_education_app/features/shared/attendance/attendance_course_entry.dart' show TeacherAttendanceCourseEntry;
-import 'package:flutter_education_app/features/shared/attendance/teacher_attendance_launcher.dart' show LauncherSession;
+import 'package:flutter_education_app/features/attendance/attendance_course_entry.dart' show TeacherAttendanceCourseEntry;
+import 'package:flutter_education_app/features/attendance/teacher_attendance_launcher.dart' show LauncherSession;
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_models.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_parts.dart' show openCourseStudio, orgParseUtcLocal;
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_screen.dart' show cpCall, cpErrorMessage, openCourseProfile;

@@ -12,10 +12,10 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 
-import 'attendance_location.dart';
-import 'attendance_models.dart';
-import 'attendance_repository.dart';
-import 'relay_host_provider.dart';
+import 'package:flutter_education_app/features/attendance/attendance_location.dart';
+import 'package:flutter_education_app/features/attendance/attendance_models.dart';
+import 'package:flutter_education_app/features/attendance/attendance_repository.dart';
+import 'package:flutter_education_app/features/attendance/relay_host_provider.dart';
 
 class TeacherAttendanceController extends ChangeNotifier {
   TeacherAttendanceController._();

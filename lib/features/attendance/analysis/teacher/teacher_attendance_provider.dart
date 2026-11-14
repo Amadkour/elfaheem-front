@@ -2,8 +2,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
-import 'attendance_model.dart';
-import 'teacher_attendance_api.dart';
+import 'package:flutter_education_app/features/attendance/analysis/teacher/attendance_model.dart';
+import 'package:flutter_education_app/features/attendance/analysis/teacher/teacher_attendance_api.dart';
 
 enum AttendanceLoadState { idle, loadingSessions, loadingStudents, error }
 

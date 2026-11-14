@@ -73,14 +73,14 @@ Tests: `test/ui/polish_auth_shared_layout_test.dart` (20 tests: `NotificationsSt
 | shared/downloads/downloads_screen.dart | 4 colours; spinner; hand `RefreshIndicator`; home / delete icon buttons unlabelled; physical gradient | theme; skeleton; `AppRefresh`; tooltips; directional | — |
 | shared/upload/upload_progress_footer.dart · upload_queue_manager.dart | 1 colour; failure text is the raw server body | theme | `task.errorMessage` is logged only, never shown |
 | shared/passcode/passcode_screen.dart | fixed dark / gold palette (17 hexes) ignored theme and light mode; icon-only delete / close keys | live theme tokens; `Semantics` labels | status-strip spinner (fixed 44 px strip) |
-| shared/attendance/attendance_widgets.dart (student + teacher sheets) | 16 colours; 3 `SnackBar` (bug 6); teacher sheet without pull-to-refresh; nested scroll view; unlabelled close buttons; hand time | theme; `showAppNotice`; `_SheetFrame(onRefresh:)` + `TeacherAttendanceController.refresh()` (same code read as the ticker), inner scroll view dropped; tooltips; `AppTime.time` | button / stage spinners; student sheet refresh (it polls live) |
-| shared/attendance/attendance_live_screen.dart | 16 colours | `onHero` / `heroShade` tokens | countdown ring (progress, not loading) |
-| shared/attendance/attendance_course_entry.dart | 20 colours incl. amber gradient hexes | `warning` / `heroEnd(warning)` | share-button spinner |
-| shared/attendance/attendance_teacher_banner.dart | 11 colours + 2 hexes; stop button unlabelled | theme (`heroEnd(warning/success)`); `Semantics` label | no tooltip on purpose: the bar sits above the Navigator (no Overlay) |
-| shared/attendance/attendance_premium.dart | 6 colours; physical gradient | theme; directional | — |
-| shared/attendance/teacher_attendance_launcher.dart | `Colors.grey` ×2 | theme | no pull-to-refresh: the session list is handed in by the caller |
-| shared/attendance/offline_attendance_tab.dart | spinner; hand empty state | skeleton; `AppEmpty` | local cache, no refresh source |
-| shared/attendance/admin_data_lab_page.dart | spinner; hand `RefreshIndicator`; `'$e'`; ± buttons unlabelled | skeleton; `AppRefresh`; API message; tooltips | — |
+| features/attendance/attendance_widgets.dart (student + teacher sheets) | 16 colours; 3 `SnackBar` (bug 6); teacher sheet without pull-to-refresh; nested scroll view; unlabelled close buttons; hand time | theme; `showAppNotice`; `_SheetFrame(onRefresh:)` + `TeacherAttendanceController.refresh()` (same code read as the ticker), inner scroll view dropped; tooltips; `AppTime.time` | button / stage spinners; student sheet refresh (it polls live) |
+| features/attendance/attendance_live_screen.dart | 16 colours | `onHero` / `heroShade` tokens | countdown ring (progress, not loading) |
+| features/attendance/attendance_course_entry.dart | 20 colours incl. amber gradient hexes | `warning` / `heroEnd(warning)` | share-button spinner |
+| features/attendance/attendance_teacher_banner.dart | 11 colours + 2 hexes; stop button unlabelled | theme (`heroEnd(warning/success)`); `Semantics` label | no tooltip on purpose: the bar sits above the Navigator (no Overlay) |
+| features/attendance/attendance_premium.dart | 6 colours; physical gradient | theme; directional | — |
+| features/attendance/teacher_attendance_launcher.dart | `Colors.grey` ×2 | theme | no pull-to-refresh: the session list is handed in by the caller |
+| features/attendance/offline_attendance_tab.dart | spinner; hand empty state | skeleton; `AppEmpty` | local cache, no refresh source |
+| features/attendance/admin_data_lab_page.dart | spinner; hand `RefreshIndicator`; `'$e'`; ± buttons unlabelled | skeleton; `AppRefresh`; API message; tooltips | — |
 | features/courses/category/categories_screen.dart · _provider.dart | Arabic-only strings (bug 8); no pull-to-refresh; 5 colours; physical badge; clear-search unlabelled | bilingual `_tx`; `AppRefresh` on both layouts + `CategoriesProvider.refresh()`; theme; directional; tooltip | own shimmer widgets kept (already skeletons) |
 | features/courses/course_profile/course_profile_screen.dart | 7 colours; hand `RefreshIndicator` | theme; `AppRefresh` | — |
 | features/courses/course_profile/course_profile_parts.dart | hand `RefreshIndicator`; raw `'$e'` | `AppRefresh`; `cpErrorMessage` | — |

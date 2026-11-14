@@ -7,10 +7,10 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart' show modeCourseScopeQuery;
 
-import '../../teacher/analysis/attendance/attendance_model.dart';
+import 'package:flutter_education_app/features/attendance/analysis/teacher/attendance_model.dart';
 import '../../teacher/data_lab/data_lab_api.dart';
 import '../../teacher/data_lab/data_lab_models.dart';
-import 'attendance/student_attendance_model.dart';
+import 'package:flutter_education_app/features/attendance/analysis/student/student_attendance_model.dart';
 
 class StudentAnalyticsApi {
   StudentAnalyticsApi({ApiClient? api, DataLabApi? dataLab})

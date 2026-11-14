@@ -20,8 +20,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 
-import 'attendance_permissions.dart';
-import 'relay_ble_transport.dart';
+import 'package:flutter_education_app/features/attendance/attendance_permissions.dart';
+import 'package:flutter_education_app/features/attendance/relay_ble_transport.dart';
 
 class RadioStatus {
   const RadioStatus({this.gps, this.wifi, this.bluetooth, this.permissions = PermissionOutcome.granted});

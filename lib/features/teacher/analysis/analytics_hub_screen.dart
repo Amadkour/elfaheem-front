@@ -33,7 +33,7 @@ import 'package:flutter_education_app/features/courses/teacher/teacher_courses_p
 import '../data_lab/data_lab_api.dart';
 import '../data_lab/data_lab_models.dart';
 import '../home/teacher_models.dart';
-import 'attendance/teacher_attendance_screen.dart';
+import 'package:flutter_education_app/features/attendance/analysis/teacher/teacher_attendance_screen.dart';
 import 'flags/teacher_read_flags_screen.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppPressScale, AppReveal;

@@ -1,9 +1,9 @@
 // The attendance surfaces after the Warm Editorial restyle (D-610 – D-629): the student check-in sheet in its
 // offline-relay and confirmed states, through expectNoLayoutErrors (320x640 and 1400x900, ar / en, text x 1.3).
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/shared/attendance/attendance_radios.dart';
-import 'package:flutter_education_app/features/shared/attendance/attendance_widgets.dart';
-import 'package:flutter_education_app/features/shared/attendance/student_checkin_provider.dart';
+import 'package:flutter_education_app/features/attendance/attendance_radios.dart';
+import 'package:flutter_education_app/features/attendance/attendance_widgets.dart';
+import 'package:flutter_education_app/features/attendance/student_checkin_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 

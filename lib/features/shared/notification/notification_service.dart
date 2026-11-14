@@ -22,7 +22,7 @@ import 'dart:convert';
 import '../../../utils/widget/app_navigator.dart';
 import 'admin_message_dialogs.dart';
 // Attendance live nudges (silent pushes). Adjust the path if your attendance folder differs.
-import '../attendance/attendance_push.dart';
+import 'package:flutter_education_app/features/attendance/attendance_push.dart';
 
 // TODO: adjust this path if CourseDetailProvider actually lives elsewhere.
 import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';

@@ -24,7 +24,7 @@ Kind: **ND** = checks for new data · **JP** = progress of a job the user waits 
 | features/live/meeting_recording_sheets.dart:544 `RecordingStatusCard` | GET /live/recordings/{rid} | 5 s while not final | detail open | JP | none (`recording_ready` visible only) |
 | student/enrollment/enrollment_provider.dart:631 `_pollVerification` | POST payment verify | 5 s × 18 | after checkout | JP | none (`payment_success` visible push exists) |
 | auth/verified_screen.dart:477 `_pollLink` | checkPhoneLink | 2 s | QR shown | JP | none |
-| shared/attendance/teacher_attendance_controller.dart:313,324, …_provider.dart:115 | attendance code / roster `_sync()` | 5 s | attendance screen | ND | students get silent pushes; teacher roster polls |
+| features/attendance/teacher_attendance_controller.dart:313,324, …_provider.dart:115 | attendance code / roster `_sync()` | 5 s | attendance screen | ND | students get silent pushes; teacher roster polls |
 | teacher/home/queue_work_items.dart:108 | none (old 10 s poll commented out) | 10 s tick | teacher home | C | — |
 | clocks / countdowns / local saves (ads slider, calendar 1 min, exam timers, video position 5 s, room clocks, mic meter, announcements visibility 700 ms) | no HTTP | — | — | C | — |
 

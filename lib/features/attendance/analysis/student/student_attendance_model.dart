@@ -1,4 +1,4 @@
-// lib/features/student/analysis/attendance/student_attendance_model.dart
+// lib/features/attendance/analysis/student/student_attendance_model.dart
 // Models of the student analytics module (attendance itself uses FullAttendance from the teacher module).
 import 'package:flutter_education_app/config/app_config.dart';
 

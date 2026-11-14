@@ -21,14 +21,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
-import 'attendance_live_screen.dart';
-import 'attendance_permissions.dart';
-import 'attendance_radios.dart';
-import 'attendance_strings.dart';
-import 'attendance_ui.dart';
-import 'relay_host_provider.dart';
-import 'student_checkin_provider.dart';
-import 'teacher_attendance_controller.dart';
+import 'package:flutter_education_app/features/attendance/attendance_live_screen.dart';
+import 'package:flutter_education_app/features/attendance/attendance_permissions.dart';
+import 'package:flutter_education_app/features/attendance/attendance_radios.dart';
+import 'package:flutter_education_app/features/attendance/attendance_strings.dart';
+import 'package:flutter_education_app/features/attendance/attendance_ui.dart';
+import 'package:flutter_education_app/features/attendance/relay_host_provider.dart';
+import 'package:flutter_education_app/features/attendance/student_checkin_provider.dart';
+import 'package:flutter_education_app/features/attendance/teacher_attendance_controller.dart';
 
 // Status colours come from the LIVE theme (success / danger / warning), so the sheet follows the app theme
 // and dark mode like every other screen — no fixed colours here.

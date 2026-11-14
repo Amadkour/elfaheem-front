@@ -16,7 +16,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 
-import 'attendance_models.dart';
+import 'package:flutter_education_app/features/attendance/attendance_models.dart';
 
 /// Why location evidence could not be read — shown to the person with a one-tap fix.
 enum LocationProblem { none, serviceOff, denied, deniedForever, noFix }

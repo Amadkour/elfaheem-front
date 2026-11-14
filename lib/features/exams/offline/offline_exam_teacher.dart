@@ -11,7 +11,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, asMapList, t;
-import 'package:flutter_education_app/features/shared/attendance/relay_host_provider.dart';
+import 'package:flutter_education_app/features/attendance/relay_host_provider.dart';
 import 'package:flutter_education_app/features/exams/exam_features.dart' show examAutoCorrectAllowed;
 import 'package:flutter_education_app/features/exams/exam_review_screen.dart';
 import 'package:flutter_education_app/features/exams/offline/offline_exam_core.dart';

@@ -9,8 +9,8 @@ import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 
-import '../features/shared/attendance/attendance_offline_sync.dart';
-import '../features/shared/attendance/attendance_store.dart';
+import 'package:flutter_education_app/features/attendance/attendance_offline_sync.dart';
+import 'package:flutter_education_app/features/attendance/attendance_store.dart';
 import 'package:flutter_education_app/features/exams/offline/offline_exam_service.dart';
 import 'package:flutter_education_app/features/org/advising/adv_draft_store.dart' show AdvDraftStore;
 import 'package:flutter_education_app/features/auth/username_confirm.dart';

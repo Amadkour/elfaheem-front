@@ -16,16 +16,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 
-import 'attendance_models.dart';
-import 'attendance_live_screen.dart';
-import 'attendance_offline_sync.dart';
-import 'attendance_push.dart';
-import 'attendance_store.dart';
-import 'attendance_strings.dart';
-import 'attendance_widgets.dart';
-import 'teacher_attendance_controller.dart';
-import 'teacher_attendance_launcher.dart';
-import 'attendance_ui.dart';
+import 'package:flutter_education_app/features/attendance/attendance_models.dart';
+import 'package:flutter_education_app/features/attendance/attendance_live_screen.dart';
+import 'package:flutter_education_app/features/attendance/attendance_offline_sync.dart';
+import 'package:flutter_education_app/features/attendance/attendance_push.dart';
+import 'package:flutter_education_app/features/attendance/attendance_store.dart';
+import 'package:flutter_education_app/features/attendance/attendance_strings.dart';
+import 'package:flutter_education_app/features/attendance/attendance_widgets.dart';
+import 'package:flutter_education_app/features/attendance/teacher_attendance_controller.dart';
+import 'package:flutter_education_app/features/attendance/teacher_attendance_launcher.dart';
+import 'package:flutter_education_app/features/attendance/attendance_ui.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale;
 

@@ -22,16 +22,16 @@ import 'dart:async';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 
-import 'attendance_crypto.dart';
-import 'attendance_location.dart';
-import 'attendance_models.dart';
-import 'attendance_offline_sync.dart';
-import 'attendance_permissions.dart';
-import 'attendance_radios.dart';
-import 'attendance_repository.dart';
-import 'attendance_store.dart';
-import 'relay_host_provider.dart';
-import 'relay_transport.dart';
+import 'package:flutter_education_app/features/attendance/attendance_crypto.dart';
+import 'package:flutter_education_app/features/attendance/attendance_location.dart';
+import 'package:flutter_education_app/features/attendance/attendance_models.dart';
+import 'package:flutter_education_app/features/attendance/attendance_offline_sync.dart';
+import 'package:flutter_education_app/features/attendance/attendance_permissions.dart';
+import 'package:flutter_education_app/features/attendance/attendance_radios.dart';
+import 'package:flutter_education_app/features/attendance/attendance_repository.dart';
+import 'package:flutter_education_app/features/attendance/attendance_store.dart';
+import 'package:flutter_education_app/features/attendance/relay_host_provider.dart';
+import 'package:flutter_education_app/features/attendance/relay_transport.dart';
 
 enum Stage { network, permissions, relay, witness, send, server }
 

@@ -10,10 +10,10 @@ import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
-import 'attendance_store.dart';
-import 'attendance_strings.dart';
-import 'attendance_widgets.dart';
-import 'attendance_ui.dart';
+import 'package:flutter_education_app/features/attendance/attendance_store.dart';
+import 'package:flutter_education_app/features/attendance/attendance_strings.dart';
+import 'package:flutter_education_app/features/attendance/attendance_widgets.dart';
+import 'package:flutter_education_app/features/attendance/attendance_ui.dart';
 
 class OfflineAttendanceTab extends StatefulWidget {
   const OfflineAttendanceTab({super.key});

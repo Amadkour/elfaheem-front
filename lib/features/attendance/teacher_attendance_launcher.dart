@@ -11,8 +11,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
-import 'attendance_strings.dart';
-import 'attendance_widgets.dart';
+import 'package:flutter_education_app/features/attendance/attendance_strings.dart';
+import 'package:flutter_education_app/features/attendance/attendance_widgets.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 /// Plain data so this file does not depend on the teacher model classes.
