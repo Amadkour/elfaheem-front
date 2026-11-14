@@ -78,9 +78,12 @@ abstract final class AlfaheemCanvas {
   /// it (dark: a deep tint of the same hue). [base] (the upstream canvas) when switched off.
   static Color tint(ThemeConfigProvider c, {required bool dark, required Color base, required Color paper}) {
     if (!enabled) return base;
-    return dark
+    final mix = dark
         ? Color.alphaBlend(sidebarColour(c, dark: true).withValues(alpha: darkTint), base)
         : Color.alphaBlend(hue(c, dark: false).withValues(alpha: lightTint), paper.withValues(alpha: 1));
+    // whole 8-bit channels (a colour blended from it and made opaque again, pinnedBackground, compares equal), and
+    // the server background's own alpha: a translucent one stays translucent, as the upstream code expects
+    return Color(mix.withAlpha((base.a * 255).round()).toARGB32());
   }
 
   /// The lattice's colour on the canvas of [c] in its current mode: the sidebar's hue, lifted a little in dark mode
