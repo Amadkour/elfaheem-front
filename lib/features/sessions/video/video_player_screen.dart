@@ -124,6 +124,14 @@ class VideoPlayerScreen extends StatefulWidget {
     );
   }
 
+  /// Tests: makes the player's controller instead of a platform one (test/ui/vod_player_screen_test.dart).
+  @visibleForTesting
+  static VideoPlayerController Function(Uri url)? debugController;
+
+  /// Tests: answers "is there a downloaded copy?" instead of the offline store (real file IO never completes there).
+  @visibleForTesting
+  static Future<MaterialVariant?> Function(int sessionId, int materialId)? debugLocalCopy;
+
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
@@ -394,15 +402,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   /// Asks the server for the video URLs (this is what counts a view), then plays.
   Future<void> _startPlayback() async {
+    // The lecture this call is for: another lecture picked meanwhile (the list, up next) makes this answer stale —
+    // its URLs must not play under the new title, and its error must not close the player on the new lecture.
+    final lecture = _current;
+    bool stale() => !mounted || !identical(_current, lecture);
     // Downloaded copy? Play it from the encrypted local file. This works
     // offline and does NOT call /play, so no monthly view is consumed.
     if (!kIsWeb && _current.id != 0) {
       try {
-        final local = await OfflineVideoService.instance
-            .localVariant(_current.sessionId, _current.id);
-        if (!mounted) return;
+        final local = await (VideoPlayerScreen.debugLocalCopy ?? OfflineVideoService.instance.localVariant)(
+            _current.sessionId, _current.id);
+        if (stale()) return;
         if (local != null && await _accessEndedForCopy()) return; // refused: the plan ended (D-210)
-        if (!mounted) return;
+        if (stale()) return;
         if (local != null) {
           setState(() {
             _isOffline = true;
@@ -422,9 +434,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         final r = await ApiClient().post(
           '/api/v1/sessions/${_current.sessionId}/materials/${_current.id}/play',
         );
+        if (stale()) return;
         if (r is! Map<String, dynamic>) throw StateError('bad play response');
         final resolved = _current.withPlayData(r);
-        if (!mounted) return;
         final left = r['views_left'];
         setState(() {
           _resolved = resolved;
@@ -435,11 +447,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           _activeVariant = resolved.defaultVideoVariant;
         });
       } on ApiException catch (e) {
-        if (!mounted) return;
+        if (stale()) return;
         await _handlePlayError(e);
         return;
       } catch (_) {
-        if (mounted) {
+        if (!stale()) {
           setState(() {
             _isLoading = false;
             _hasError = true;
@@ -448,7 +460,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         return;
       }
     }
-    if (!mounted) return;
+    if (stale()) return;
     await _initPlayer(_activeVariant, autoPlay: widget.autoPlay);
   }
 
@@ -523,6 +535,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     // NOTE: the old code called _checkWatchThreshold() here. That could notify
     // the provider while the widget tree is being torn down (setState during
     // unmount). The listener already handles completion while playing.
+    // First: no later step that throws (a plugin, a controller) may leave the window protected with no owner.
+    _protectScreen(false);
     _persistPos();
     _initToken++; // cancel any in-flight init
     _saveTimer?.cancel();
@@ -540,7 +554,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _vc?.removeListener(_onVcUpdate);
     _vc?.dispose();
     WakelockPlus.disable().ignore();
-    _protectScreen(false);
     if (kIsWeb) {
       _webFsUnlisten?.call();
       if (_isFullScreen) webfs.exitLandscapeFullscreen();
@@ -581,7 +594,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     // Mobile: stream links only work together with this device's id header (the offline copy's loopback server
     // ignores it; skipping every 127.0.0.1 link broke a build pointed at a local stack over `adb reverse`).
     // Web: a <video> element can't send headers; the server's link already carries the id as ?d=..., so send none.
-    final next = VideoPlayerController.networkUrl(
+    final fake = VideoPlayerScreen.debugController;
+    final next = fake != null ? fake(Uri.parse(variant.url!)) : VideoPlayerController.networkUrl(
       Uri.parse(variant.url!),
       httpHeaders: kIsWeb ? const <String, String>{} : await DeviceIdService.instance.headers(),
       // Keep playing (sound) in background. iOS also needs
