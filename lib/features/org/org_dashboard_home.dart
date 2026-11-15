@@ -46,6 +46,9 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart' show AdminAvatar;
 import 'home/org_home_departments.dart';
 import 'home/org_home_logic.dart';
+import 'home/org_home_persona.dart';
+import 'needs_my_action_page.dart' show NeedsMyActionPage;
+import 'org_institution_health.dart' show institutionHealthLinkAllowed, institutionHealthTitle, openInstitutionHealth;
 import 'home/org_home_premium.dart';
 import 'home/org_home_tasks.dart';
 import 'home/org_setup_checklist.dart';
@@ -59,7 +62,7 @@ import 'org_dashboard_model.dart';
 import 'org_dashboard_screen.dart' show OrgSub, OrgTabs;
 import 'org_dashboard_settings.dart' show showJoinCode, showOrgForm, showOrgSwitcher;
 import 'org_department_dashboard.dart' show openDepartmentDashboard;
-import 'org_institution_wizard.dart' show openInstitutionWizard;
+import 'org_institution_wizard.dart' show institutionWizardAllowed, openInstitutionWizard;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
 import 'org_page_header.dart' show OrgPageFrame, OrgPageHeader, OrgPageRefresh, OrgPushedPage;
 import 'org_providers.dart';
@@ -81,9 +84,13 @@ class OrgAttentionSpec {
     required this.action,
     required this.onTap,
     this.count = 0,
+    this.trailing,
   });
 
   final IconData icon;
+
+  /// A second target before the chevron (UX v3 phase 4: a request's Quick reply); null = none.
+  final Widget? trailing;
 
   /// A count badge at the row's end (phase 5: "Needs my attention"); 0 = none.
   final int count;
@@ -130,7 +137,20 @@ class OrgHomeBody extends StatelessWidget {
     this.greetingName = '',
     this.shortcuts = const [],
     this.onOpenMembers,
+    this.persona,
+    this.switcher,
+    this.blocks = const {},
   });
+
+  /// UX v3 phase 4: the persona whose home this is (orgPersonaSections orders the blocks); null = the D-103 home
+  /// for everyone (the hero, shortcuts, sections by `layout`, the figures).
+  final OrgPersona? persona;
+
+  /// The "View as" chips (OrgPersonaSwitcher) under the header; null = none.
+  final Widget? switcher;
+
+  /// The persona blocks the page builds itself (councils · my courses · More); a missing one is not drawn.
+  final Map<OrgHomeBlock, Widget> blocks;
 
   /// My name for the hero's greeting (D-631); empty = the greeting alone.
   final String greetingName;
@@ -208,6 +228,78 @@ class OrgHomeBody extends StatelessWidget {
     Widget stats(bool wide) => AppKpiGrid(
         children: orgHomeStats(data, waiting: waiting, wide: wide, onWaiting: onWaiting, onUnits: onSeeAllUnits));
     const inset = EdgeInsets.symmetric(horizontal: AppSpace.md);
+    final p = persona;
+    if (p != null) {
+      Widget? block(OrgHomeBlock b) => switch (b) {
+            OrgHomeBlock.needsMe => section(OrgHomeSection.attention),
+            OrgHomeBlock.setup => setup == null ? null : Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs), child: setup!),
+            OrgHomeBlock.faculty => faculty == null ? null : Padding(padding: inset, child: faculty!),
+            OrgHomeBlock.insights => insights,
+            OrgHomeBlock.team || OrgHomeBlock.queue => section(OrgHomeSection.departments),
+            _ => blocks[b],
+          };
+      // (block, widget): the setup card and the Insights slot carry their own bottom gap (an empty one leaves no hole)
+      final list = [for (final b in orgPersonaSections(p)) if (block(b) case final Widget w) (b, w)];
+      final figures = orgPersonaShowsFigures(p);
+      List<Widget> stack(List<(OrgHomeBlock, Widget)> xs, int from) => [
+            for (var i = 0; i < xs.length; i++) ...[
+              if (i > 0 && xs[i - 1].$1 != OrgHomeBlock.setup && xs[i - 1].$1 != OrgHomeBlock.insights) const SizedBox(height: AppSpace.lg),
+              HomeEntrance(index: from + i, child: xs[i].$2),
+            ],
+          ];
+      return LayoutBuilder(builder: (context, box) {
+        final wide = homeIsWide(box.maxWidth);
+        final lead = <Widget>[
+          const SizedBox(height: AppSpace.xs),
+          if (switcher != null) ...[switcher!, const SizedBox(height: AppSpace.sm)],
+          HomeEntrance(
+            index: 0,
+            child: Padding(
+              padding: inset,
+              child: wide && figures
+                  ? IntrinsicHeight(
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        Expanded(flex: 5, child: hero(true)),
+                        const SizedBox(width: AppSpace.lg),
+                        Expanded(flex: 6, child: OrgMembersOverview(data: data, onOpen: onOpenMembers)),
+                      ]),
+                    )
+                  : hero(false),
+            ),
+          ),
+          if (figures && wide) ...[
+            const SizedBox(height: AppSpace.lg),
+            HomeEntrance(index: 1, child: Padding(padding: inset, child: stats(wide))),
+          ],
+          const SizedBox(height: AppSpace.lg),
+        ];
+        if (!wide || list.length < 2) {
+          return _pinnedHeader(header, _pullable(onRefresh, ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
+            ...lead,
+            ...stack(list, 2),
+            // a phone: what needs me comes first, the figures close the page
+            if (figures && !wide) ...[
+              const SizedBox(height: AppSpace.lg),
+              HomeEntrance(index: 2 + list.length, child: Padding(padding: inset, child: stats(false))),
+            ],
+          ])));
+        }
+        // a desktop: what needs me (the longest, the first thing to do) owns the start column; the main work, then More,
+        // the end one
+        final start = [list.first];
+        final end = list.sublist(1);
+        return _pinnedHeader(header, _pullable(onRefresh, ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
+          ...lead,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: stack(start, 2))),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: stack(end, 3))),
+            ]),
+          ),
+        ])));
+      });
+    }
     return LayoutBuilder(builder: (context, box) {
       final top = <Widget>[
         const SizedBox(height: AppSpace.xs),
@@ -438,6 +530,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
     super.initState();
     // the header's Refresh reloads only the dashboard call (never the whole tree)
     _refresh = OrgPageRefresh.register(context, _reload);
+    OrgPersonaStore.instance.ensureLoaded();
   }
 
   @override
@@ -488,9 +581,9 @@ class _OrgHomePageState extends State<OrgHomePage> {
       };
 
   /// "Home" (the organization's name is already on the switcher pill beside it) · my role there.
-  Widget _header(OrgSession s, OrgHomeData? d) => OrgPageHeader(
+  Widget _header(OrgSession s, OrgHomeData? d, {OrgPersona? persona}) => OrgPageHeader(
       title: t('الرئيسية', 'Home'),
-      subtitle: _roleLabel(s, d),
+      subtitle: persona == null ? _roleLabel(s, d) : orgPersonaLabel(persona),
       searchBar: true,
       helpPageId: 'home.org',
       // every session / meeting link of the person, to join, copy or share (D-307)
@@ -621,11 +714,21 @@ class _OrgHomePageState extends State<OrgHomePage> {
     _reportUpdated(dash.loadedAt);
     final alerts = _alerts(context, d);
     final q = dash.tasks;
+    final who = _personas(s, d);
+    final uid = _userId(context);
     return ListenableBuilder(
-      listenable: q,
-      builder: (context, _) => OrgHomeBody(
+      listenable: Listenable.merge([q, OrgPersonaStore.instance]),
+      builder: (context, _) {
+        final persona = OrgPersonaStore.instance.pick(uid, s.currentId, who.held);
+        return OrgHomeBody(
           data: d,
-          header: header,
+          header: _header(s, d, persona: persona),
+          persona: persona,
+          switcher: who.held.length < 2
+              ? null
+              : OrgPersonaSwitcher(
+                  held: who.held, current: persona, onChanged: (p) => OrgPersonaStore.instance.choose(uid, s.currentId, p)),
+          blocks: _blocks(context, s, d, tabs, persona),
           onRefresh: refresh,
           tasks: d.tasks == null ? null : q.items,
           tasksTotal: d.tasks == null ? null : q.total,
@@ -644,6 +747,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
             baseEmpty: alerts.isEmpty && (d.tasks == null || q.items.isEmpty),
             hasTermCard: d.count('term_without_timetable') > 0,
             withDecisions: d.tasks == null,
+            persona: persona,
           ),
           onOpenUnit: (u) => _openUnit(context, u),
           onSeeAllUnits: tabs.has('people', 'departments') ? () => orgJump(context, 'people', sub: 'departments') : null,
@@ -665,8 +769,101 @@ class _OrgHomePageState extends State<OrgHomePage> {
           greetingName: _firstName(context),
           shortcuts: _shortcuts(context, tabs),
           onOpenMembers: tabs.has('people', 'members') ? () => orgJump(context, 'people', sub: 'members') : null,
-        ),
+        );
+      },
     );
+  }
+
+  static int? _userId(BuildContext context) {
+    try {
+      return context.read<MyAuthProvider>().currentUser?.id;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Who I am here (orgHomePersona), from the dashboard payload and my /mine item — no request of its own.
+  static ({OrgPersona primary, List<OrgPersona> held}) _personas(OrgSession s, OrgHomeData d) => orgHomePersona(
+        access: d.access.isNotEmpty ? d.access : s.access,
+        myRole: d.myRole.isNotEmpty ? d.myRole : '${s.current?['my_role'] ?? ''}',
+        memberRole: d.memberRole ?? s.memberRole,
+        facultyOverview: d.canFacultyOverview && govEnabled(),
+        headUnitIds: orgHeadUnitIds(d.raw) ?? orgHeadUnitIds(s.current),
+        deptApprover: orgDeptApprover(s.current?['dept_permissions']),
+      );
+
+  /// The persona's own blocks: councils (dean / head), my courses (teacher) and More (everyone). A block with no
+  /// link I can open is left out (the home draws nothing for it).
+  Map<OrgHomeBlock, Widget> _blocks(BuildContext context, OrgSession s, OrgHomeData d, OrgTabs tabs, OrgPersona p) {
+    final flow = AttentionFlowStore.instance.of(s.currentId);
+    final main = orgPersonaSections(p);
+    OrgAttentionSpec? sub(String section, String key, IconData icon, String title, {int count = 0, String subtitle = ''}) =>
+        tabs.has(section, key) ? orgLinkRow(icon, title, () => orgJump(context, section, sub: key), count: count, subtitle: subtitle) : null;
+    final hasTimetable = tabs.keys.contains('timetable');
+    final institution = orgIsInstitutionItem(s.current);
+    OrgAttentionSpec? link(String key) => switch (key) {
+          'needs_action' => orgLinkRow(Icons.inbox_rounded, t('ينتظر إجرائي', 'Needs my action'),
+              () => orgPush(context, t('ينتظر إجرائي', 'Needs my action'), const NeedsMyActionPage(embedded: true), width: AppWidth.reading),
+              subtitle: t('كل ما ينتظرك في كل مؤسساتك، مع البحث', 'Everything waiting for you, in every organization, searchable')),
+          'insights' when d.canInsights && orgInsightsEnabled && !main.contains(OrgHomeBlock.insights) => orgLinkRow(
+              Icons.insights_rounded,
+              t('المؤشرات', 'Insights'),
+              () => orgPush(
+                  context,
+                  t('المؤشرات', 'Insights'),
+                  ListView(padding: const EdgeInsets.symmetric(vertical: AppSpace.sm), children: [
+                    OrgInsightsSection(orgId: s.currentId, fallback: d.trends.isEmpty ? null : OrgTrendRow(trends: d.trends)),
+                  ]),
+                  width: AppWidth.content)),
+          'faculty' when d.canFacultyOverview && govEnabled() && !main.contains(OrgHomeBlock.faculty) => orgLinkRow(
+              Icons.account_balance_rounded,
+              t('نظرة على الكلية', 'Faculty overview'),
+              () => orgPush(context, t('نظرة على الكلية', 'Faculty overview'), const FacultyOverviewPage())),
+          'health' when s.isOrgAdmin && institution && s.currentId != null &&
+                  institutionHealthLinkAllowed(orgId: s.currentId, orgsEnabled: AppConfig.orgsEnabled, disabled: AppConfig.disableList, manages: true) =>
+            orgLinkRow(Icons.health_and_safety_rounded, institutionHealthTitle(), () => openInstitutionHealth(context, s.currentId!)),
+          'wizard' when s.isOrgAdmin && institution && institutionWizardAllowed() =>
+            orgLinkRow(Icons.route_rounded, t('إعداد المؤسسة', 'Institution setup'), () => openInstitutionWizard(context)),
+          'departments' => sub('people', 'departments', Icons.apartment_rounded, t('الهيكل والإدارات', 'Structure & departments')),
+          'members' => sub('people', 'members', Icons.groups_rounded, t('الأعضاء', 'Members')),
+          'requests' => sub('services', 'governance', Icons.account_tree_rounded, t('المعاملات', 'Requests')),
+          'forms' => sub('services', 'forms', Icons.assignment_rounded, t('النماذج والطلبات', 'Forms & requests')),
+          'complaints' => sub('services', 'complaints', Icons.support_agent_rounded, t('الشكاوى', 'Complaints')),
+          'councils' => sub('services', 'councils', Icons.gavel_rounded, t('المجالس', 'Councils')),
+          'votes' => sub('services', 'votes', Icons.how_to_vote_rounded, t('تصويتاتي', 'My votes'), count: flow?.votesCount ?? 0),
+          'courses' => sub('academics', 'courses', Icons.menu_book_rounded, t('المقررات', 'Courses')),
+          'timetable' when hasTimetable =>
+            orgLinkRow(Icons.calendar_month_rounded, t('الجدول الدراسي', 'Timetable'), () => tabs.go('timetable')),
+          'settings' => orgLinkRow(Icons.tune_rounded, t('الإعدادات والأدوار', 'Settings & roles'), () => tabs.go('settings')),
+          _ => null,
+        };
+    final councils = [
+      ?sub('services', 'votes', Icons.how_to_vote_rounded, t('تصويتاتي', 'My votes'),
+          count: flow?.votesCount ?? 0, subtitle: t('بنود المجالس التي تنتظر صوتك', 'Council items waiting for your vote')),
+      ?sub('services', 'councils', Icons.gavel_rounded, t('المجالس', 'Councils'),
+          subtitle: p == OrgPersona.dean ? t('القرارات والنتائج', 'Decisions and results') : t('جدول الأعمال والجلسات', 'Agenda and sessions')),
+      ?sub('services', 'governance', Icons.account_tree_rounded, t('المعاملات', 'Requests'),
+          subtitle: p == OrgPersona.dean ? t('التصعيدات وما ينتظر القرار', 'Escalations and what awaits a decision') : t('طلبات قسمك', 'Your department\'s requests')),
+    ];
+    final courses = [
+      ?sub('academics', 'courses', Icons.menu_book_rounded, t('مقرراتي', 'My courses')),
+      ?sub('academics', 'sections', Icons.science_rounded, t('سكاشني', 'My sections')),
+      if (hasTimetable) orgLinkRow(Icons.calendar_month_rounded, t('الجدول الدراسي', 'Timetable'), () => tabs.go('timetable')),
+    ];
+    // More: everything else, never what the persona's own blocks already show
+    final skip = {
+      if (main.contains(OrgHomeBlock.councils)) ...['councils', 'votes', 'requests'],
+      if (main.contains(OrgHomeBlock.myCourses)) ...['courses', 'timetable'],
+    };
+    final more = [for (final k in orgPersonaMore(p)) if (!skip.contains(k)) ?link(k)];
+    return {
+      if (main.contains(OrgHomeBlock.councils) && councils.isNotEmpty)
+        OrgHomeBlock.councils: OrgHomeLinksSection(
+            id: 'org.persona.councils', title: p == OrgPersona.dean ? t('المجالس والقرارات', 'Councils & decisions') : t('المجالس', 'Councils'), links: councils),
+      if (main.contains(OrgHomeBlock.myCourses) && courses.isNotEmpty)
+        OrgHomeBlock.myCourses: OrgHomeLinksSection(id: 'org.persona.courses', title: t('تدريسي', 'My teaching'), links: courses),
+      if (more.isNotEmpty) OrgHomeBlock.more: OrgHomeLinksSection(id: 'org.persona.more', title: t('المزيد', 'More'), links: more, max: 4),
+    };
   }
 }
 
@@ -674,8 +871,12 @@ class _OrgHomePageState extends State<OrgHomePage> {
 /// auto-created drafts to approve and — on an older server without `tasks` — the registrar's open decisions. Only
 /// this widget repaints on a feed tick; with nothing to show and an empty queue it is the "all caught up" line.
 class _LiveAttention extends StatelessWidget {
-  const _LiveAttention({required this.baseEmpty, required this.hasTermCard, required this.withDecisions});
+  const _LiveAttention({required this.baseEmpty, required this.hasTermCard, required this.withDecisions, this.persona});
   final bool baseEmpty, hasTermCard, withDecisions;
+
+  /// UX v3 phase 4: staff and teachers get the flow's first rows here (votes · assigned to me, with a Quick reply)
+  /// and the entry row opens NeedsMyActionPage; null / heads / deans keep the per-organization flow page.
+  final OrgPersona? persona;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -686,7 +887,41 @@ class _LiveAttention extends StatelessWidget {
           // Institutions v2 phase 5 (D-997): the heads' and secretaries' one "Needs my attention" page, as one row of
           // this area (GET …/me/attention-flow, asked in parallel with the dashboard) while something waits
           final flow = AttentionFlowStore.instance.of(s.currentId);
-          if (flow != null && flow.total > 0 && s.currentId != null) {
+          final inbox = persona != null && orgPersonaOpensActionInbox(persona!);
+          if (inbox && flow != null && flow.total > 0 && s.currentId != null) {
+            final orgId = s.currentId!;
+            final c = context.colors;
+            Future<void> then(Future<void> f) async {
+              await f;
+              AttentionFlowStore.instance.load(orgId);
+            }
+
+            cards.add(OrgAttentionSpec(
+                icon: Icons.inbox_rounded,
+                severity: flow.overdueCount > 0 ? 'warning' : 'info',
+                title: t('ينتظر إجرائي', 'Needs my action'),
+                subtitle: attentionFlowSummary(flow),
+                action: t('فتح', 'Open'),
+                count: flow.total,
+                onTap: () => then(orgPush(context, t('ينتظر إجرائي', 'Needs my action'), const NeedsMyActionPage(embedded: true), width: AppWidth.reading))));
+            for (final x in orgFlowPicks(flow, persona!)) {
+              cards.add(OrgAttentionSpec(
+                  icon: x.vote ? Icons.how_to_vote_rounded : Icons.assignment_ind_rounded,
+                  severity: x.late ? 'warning' : 'info',
+                  title: x.title,
+                  subtitle: [if (x.vote) t('تصويت ينتظرك', 'Your vote is waiting'), if (x.late) t('متأخر', 'Overdue'), if (x.place.isNotEmpty) x.place].join(' · '),
+                  action: t('فتح', 'Open'),
+                  trailing: persona == OrgPersona.staff && x.replyable
+                      ? IconButton(
+                          key: ValueKey('org.quick_reply.${x.id}'),
+                          tooltip: t('رد سريع', 'Quick reply'),
+                          icon: Icon(Icons.quickreply_outlined, size: AppIconSize.md, color: c.textMedium),
+                          onPressed: () => showOrgQuickReply(context, orgId: orgId, itemId: x.id),
+                        )
+                      : null,
+                  onTap: () => then(AppNavigator.openModule(x.vote ? 'org_council' : 'org_work', targetId: x.id, orgId: orgId))));
+            }
+          } else if (flow != null && flow.total > 0 && s.currentId != null) {
             final orgId = s.currentId!;
             cards.add(OrgAttentionSpec(
                 icon: Icons.inbox_rounded,

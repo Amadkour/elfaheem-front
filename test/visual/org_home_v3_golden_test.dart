@@ -19,6 +19,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/features/org/home/org_home_logic.dart' show OrgDeptTab;
+import 'package:flutter_education_app/features/org/org_attention_flow.dart' show AttentionFlowStore;
 import 'package:flutter_education_app/features/org/org_dashboard_home.dart';
 import 'package:flutter_education_app/features/org/org_dashboard_screen.dart' show OrgTabs;
 import 'package:flutter_education_app/features/org/org_department_dashboard.dart';
@@ -213,4 +214,71 @@ void main() {
   });
   testWidgets('org dept admin', (t) => _render(t, 'org_home_v3_dept_admin', () => _dept(admin: true)));
   testWidgets('org dept member', (t) => _render(t, 'org_home_v3_dept_member', () => _dept(admin: false)));
+  // UX v3 phase 4: a head who teaches (the switcher), a staff member (the flow's rows with a quick reply)
+  for (final (name, role, head) in const [('head', 'teacher', true), ('staff', 'admin_assistant', false), ('teacher', 'teacher', false)]) {
+    testWidgets('org home persona $name', (t) {
+      homePayload = {...memberPayload(), 'access': 'staff', 'member_role': role, 'my_role': role};
+      fake.routes['GET /api/v1/org/public/governance/4/me/attention-flow'] = (_) => _flowJson;
+      AttentionFlowStore.instance.reset();
+      return _render(t, 'org_home_p4_$name', () => _personaHome(role, head: head));
+    });
+  }
 }
+
+// ── UX v3 phase 4: a persona's home (the live page over the fake server) ─────────────────────────────────────────
+
+const _flowJson = {
+  'new_requests': [
+    {'id': 31, 'ref': 'REQ-31', 'title': 'Room change for section 4', 'status': 'open', 'unit': 'Student affairs'},
+  ],
+  'votes_waiting': [
+    {'session_id': 9, 'council': 'Department council', 'item_id': 70, 'title': 'Approve the new elective', 'deadline': null},
+  ],
+  'overdue': [
+    {'id': 12, 'ref': 'REQ-12', 'title': 'Transcript for a transfer', 'status': 'open', 'unit': 'Registrar', 'overdue': true},
+  ],
+  'assigned_to_me': [
+    {'id': 12, 'ref': 'REQ-12', 'title': 'Transcript for a transfer', 'status': 'open', 'unit': 'Registrar', 'overdue': true},
+    {'id': 15, 'ref': 'REQ-15', 'title': 'Enrollment certificate', 'status': 'open', 'unit': 'Registrar'},
+  ],
+  'acting_units': [],
+};
+
+Widget _personaHome(String memberRole, {bool head = false}) {
+  final s = OrgSession()
+    ..loaded = true
+    ..items = [
+      {
+        'id': 4, 'name_ar': 'جامعة النيل الأهلية', 'name_en': 'Nile National University', 'type': 'university', 'status': 'approved',
+        'my_role': memberRole, 'access': 'staff', 'member_role': memberRole, 'depth': 0, 'permissions': const {},
+        'dept_permissions': {'3': {'team': ['view'], 'workflow': ['view', if (head) 'approve']}},
+      },
+    ]
+    ..currentId = 4;
+  final dash = OrgDashController()..ensure(s);
+  const page = SizedBox.shrink();
+  final tabs = OrgTabs()
+    ..keys = const ['home', 'people', 'academics', 'timetable', 'settings']
+    ..sections = {
+      'people': [('members', 'Members', Icons.groups_rounded, page), ('departments', 'Departments', Icons.apartment_rounded, page)],
+      'academics': [('courses', 'Courses', Icons.menu_book_rounded, page), ('sections', 'My sections', Icons.science_rounded, page)],
+      'services': [
+        ('governance', 'Requests', Icons.account_tree_rounded, page),
+        ('councils', 'Councils', Icons.gavel_rounded, page),
+        ('votes', 'My votes', Icons.how_to_vote_rounded, page),
+        ('forms', 'Forms', Icons.assignment_rounded, page),
+      ],
+    };
+  final refresh = OrgPageRefresh();
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider<NotificationsProvider>(create: (_) => NotificationsProvider()),
+      ChangeNotifierProvider<OrgSession>.value(value: s),
+      ChangeNotifierProvider<OrgDashController>.value(value: dash),
+      ChangeNotifierProvider<OrgTabs>.value(value: tabs),
+    ],
+    child: OrgPageRefreshScope(controller: refresh, child: const OrgHomePage()),
+  );
+}
+
+

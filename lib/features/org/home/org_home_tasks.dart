@@ -506,9 +506,11 @@ class OrgAlertRow extends StatelessWidget {
                       style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, c.primary))),
                 ),
               if (spec.count > 0) ...[
+                if (MediaQuery.sizeOf(context).width >= 600) const SizedBox(width: AppSpace.xs),
                 AppCountBadge(count: spec.count, tone: spec.severity == 'danger' ? AppTone.danger : AppTone.brand),
                 const SizedBox(width: AppSpace.xxs),
               ],
+              ?spec.trailing,
               Icon(Icons.chevron_right_rounded, color: c.textLight, size: AppIconSize.lg),
             ]),
           ),
