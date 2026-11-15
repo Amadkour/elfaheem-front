@@ -11,7 +11,9 @@
 //   UnitHeadPicker             the required head field of the unit forms: member picker (no "none") + AssignMeChip
 //   UnitHeadLine · CoreUnitBadge    the head with an "Acting" chip; the lock badge of a core department
 //   DeptArchiveView            plain values: impact cards, the "Move open requests to" picker, the blocked reason
-//   showArchiveDepartmentSheet loads the impact, shows the view, asks appConfirm, then DELETE
+//   showArchiveDepartmentSheet loads the impact, shows the view, asks appConfirm, then DELETE; a refusal is an
+//                              AppErrorBox whose fix (UX v3 phase 6) focuses the picker (pick_reassign) or opens the
+//                              unit's council on its agendas (open_agenda)
 //   CouncilSecretaryActingHint "The chair acts as secretary" (roster `secretary_acting: true`)
 //
 // The pure parts and the views are tested in test/org/institutions_v2_p1_test.dart.
@@ -19,6 +21,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
@@ -29,6 +32,7 @@ import 'org_member_form.dart' show OrgMemberPickField;
 import 'org_providers.dart' show OrgSession;
 import 'org_ui.dart' show orgNameOf;
 import 'org_v3.dart' show OrgCall, orgCall, orgCodeText, orgErrorText;
+import 'governance/gov_wiring.dart' deferred as gov;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Pure parts
@@ -328,6 +332,10 @@ class DeptArchiveView extends StatelessWidget {
     required this.onArchive,
     this.busy = false,
     this.error,
+    this.apiError,
+    this.reassignKey,
+    this.onPickReassign,
+    this.onOpenAgenda,
   });
 
   final String name;
@@ -338,6 +346,15 @@ class DeptArchiveView extends StatelessWidget {
   final VoidCallback onArchive;
   final bool busy;
   final String? error;
+
+  /// The server's refusal (UX v3 phase 6): drawn as an AppErrorBox ([error] is its text) with its fix button.
+  final ApiException? apiError;
+
+  /// Put around the "Move open requests to" picker (the pick_reassign fix scrolls to it and focuses it).
+  final GlobalKey? reassignKey;
+
+  /// The fixes of [apiError]: `pick_reassign` and `open_agenda` (the unit's council, on its agendas).
+  final VoidCallback? onPickReassign, onOpenAgenda;
 
   @override
   Widget build(BuildContext context) {
@@ -373,27 +390,50 @@ class DeptArchiveView extends StatelessWidget {
           ]);
         }),
         const SizedBox(height: AppSpace.md),
-        if (block != null)
-          AppBanner(key: const ValueKey('dept.archive.blocked'), icon: Icons.block_rounded, color: c.danger, text: block)
-        else if (i.openItems > 0) ...[
-          AppDropdown<int>(
-            key: const ValueKey('dept.archive.reassign'),
-            value: reassignTo,
-            decoration: InputDecoration(
-              labelText: t('نقل الطلبات المفتوحة إلى *', 'Move open requests to *'),
-              prefixIcon: const Icon(Icons.move_up_rounded),
+        if (block != null) ...[
+          AppBanner(key: const ValueKey('dept.archive.blocked'), icon: Icons.block_rounded, color: c.danger, text: block),
+          if (i.openAgendaItems > 0 && onOpenAgenda != null) ...[
+            AppSpace.gapXs,
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: AppButton.tonal(
+                  key: const ValueKey('dept.archive.open_agenda'),
+                  icon: Icons.gavel_rounded,
+                  label: t('افتح جدول أعمال المجلس', "Open the council's agenda"),
+                  onPressed: onOpenAgenda),
             ),
-            items: [
-              for (final d in targets)
-                DropdownMenuItem(value: asInt(d['id']), child: Text(orgNameOf(d), maxLines: 1, overflow: TextOverflow.ellipsis)),
-            ],
-            onChanged: onReassign,
+          ],
+        ] else if (i.openItems > 0) ...[
+          KeyedSubtree(
+            key: reassignKey,
+            child: AppDropdown<int>(
+              key: const ValueKey('dept.archive.reassign'),
+              value: reassignTo,
+              decoration: InputDecoration(
+                labelText: t('نقل الطلبات المفتوحة إلى *', 'Move open requests to *'),
+                prefixIcon: const Icon(Icons.move_up_rounded),
+              ),
+              items: [
+                for (final d in targets)
+                  DropdownMenuItem(value: asInt(d['id']), child: Text(orgNameOf(d), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              ],
+              onChanged: onReassign,
+            ),
           ),
           if (targets.isEmpty)
             HeadErrorText(t('لا توجد إدارة أخرى تستقبل الطلبات — أنشئ واحدة أولاً', 'No other department can take the requests — create one first')),
           const SizedBox(height: AppSpace.xs),
         ],
-        if (error != null) ...[
+        if (apiError != null) ...[
+          AppFixScope(
+            fixes: {
+              if (onPickReassign != null) 'pick_reassign': (onPickReassign!, t('اختر الوحدة', 'Choose the unit')),
+              if (onOpenAgenda != null) 'open_agenda': (onOpenAgenda!, t('افتح جدول أعمال المجلس', "Open the council's agenda")),
+            },
+            child: AppErrorBox(key: const ValueKey('dept.archive.error'), error: apiError!, text: error),
+          ),
+          const SizedBox(height: AppSpace.xs),
+        ] else if (error != null) ...[
           HeadErrorText(error),
           const SizedBox(height: AppSpace.xs),
         ],
@@ -456,17 +496,38 @@ Future<bool> showArchiveDepartmentSheet(BuildContext context, Map<String, dynami
     showAppNotice(orgErrorText(r.error!), error: true);
     return false;
   }
-  final impact = DeptImpact.fromJson(r.map);
+  var impact = DeptImpact.fromJson(r.map);
   var targets = const <Map<String, dynamic>>[];
-  if (impact.openItems > 0) {
+  Future<void> loadTargets() async {
     final all = await orgCall(() => s.api.get('${s.base}/departments'), quiet: true);
     targets = reassignTargets(asMapList(all.map['items']), id);
+  }
+
+  if (impact.openItems > 0) {
+    await loadTargets();
     if (!context.mounted) return false;
   }
   int? reassign;
   String? error;
+  ApiException? apiError;
+  final reassignKey = GlobalKey(debugLabel: 'dept.archive.reassign');
+  final orgId = s.currentId;
   var busy = false, done = false;
   await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+        Future<void> pickReassign() async {
+          // the requests arrived after the sheet opened: show the picker first
+          if (impact.openItems == 0) {
+            final n = asInt(apiError?.detail['open_items']);
+            impact = DeptImpact(courses: impact.courses, openItems: n > 0 ? n : 1, councils: impact.councils,
+                openAgendaItems: impact.openAgendaItems, members: impact.members, core: impact.core);
+            await loadTargets();
+            if (!ctx.mounted) return;
+            set(() {});
+            await WidgetsBinding.instance.endOfFrame;
+          }
+          await revealAndFocus(reassignKey);
+        }
+
         return DeptArchiveView(
           name: orgNameOf(dept),
           impact: impact,
@@ -474,7 +535,14 @@ Future<bool> showArchiveDepartmentSheet(BuildContext context, Map<String, dynami
           reassignTo: reassign,
           busy: busy,
           error: error,
-          onReassign: (v) => set(() => reassign = v),
+          apiError: apiError,
+          reassignKey: reassignKey,
+          onPickReassign: pickReassign,
+          onOpenAgenda: orgId == null ? null : () => openUnitCouncilAgenda(ctx, orgId, id),
+          onReassign: (v) => set(() {
+            reassign = v;
+            if (apiError?.fixAction == 'pick_reassign' || apiError?.code == 'dept_has_open_items') apiError = null;
+          }),
           onArchive: () async {
             final ok = await appConfirm(ctx,
                 danger: true,
@@ -486,6 +554,7 @@ Future<bool> showArchiveDepartmentSheet(BuildContext context, Map<String, dynami
             set(() {
               busy = true;
               error = null;
+              apiError = null;
             });
             final res = await api.archive(id, reassignTo: impact.openItems > 0 ? reassign : null);
             if (!ctx.mounted) return;
@@ -498,9 +567,17 @@ Future<bool> showArchiveDepartmentSheet(BuildContext context, Map<String, dynami
             set(() {
               busy = false;
               error = orgErrorText(res.error!);
+              apiError = res.error;
             });
           },
         );
       }));
   return done;
+}
+
+/// The unit's council on its Sessions tab (the agendas): the open_agenda fix of the archive sheet.
+Future<void> openUnitCouncilAgenda(BuildContext context, int orgId, int unitId) async {
+  final nav = Navigator.of(context);
+  await gov.loadLibrary();
+  await gov.govOpenUnitCouncil(nav, orgId, unitId);
 }

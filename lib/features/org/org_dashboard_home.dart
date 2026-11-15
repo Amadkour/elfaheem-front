@@ -1,22 +1,34 @@
 // lib/features/org/org_dashboard_home.dart
 //
-// The organization HOME (D-103, docs/backend/org-dashboard-spec.md): every non-student person of an organization —
-// admin, sub-admin, staff, a member without rights — sees the same calm page with few things in a clear order:
-//   the shared page header (OrgPageHeader: organization · Refresh "Updated …" · calendar · switcher)
-//   A  Departments            the departments the dashboard lists for me, simple cards → the department page with
-//                             only the tabs the server gives me (two taps to any department tab)
-//   B  Needs your attention   `tasks` with one-tap Approve / Decline (optimistic: the row leaves at once, comes back
-//                             with Retry when the call fails, stays gone on 409 already_decided), the organization-wide
-//                             alerts the tasks do not carry, "See all (n)" → OrgTasksPage; an older server without
-//                             `tasks` → its attention cards as rows
-//   C  Insights               OrgInsightsSection (insights/), only with `can_insights`: its own GET …/insights after
-//                             the first frame; an older server → the 30-day OrgTrendRow
-// ordered by `layout` (insights_first for admins, actions_first for staff / members; orgHomeOrder). Phones stack them,
-// a desktop (≥ kHomeWideMin) splits them into two balanced columns (orgHomeColumns).
+// The organization HOME (D-103, docs/backend/org-dashboard-spec.md; role-based since UX v3 phase 4): every
+// non-student person of an organization sees a calm page with few things in a clear order, chosen by WHO they are
+// here (their persona, home/org_home_persona.dart):
+//   the shared page header (OrgPageHeader: organization · the persona as subtitle · Refresh "Updated …" ·
+//   calendar · switcher), then the "View as" chips (OrgPersonaSwitcher) for a person who holds several personas
+//   (a head who also teaches); the choice is kept per user + organization on this device (OrgPersonaStore)
+//   each persona's blocks, top to bottom (orgPersonaSections, at most 4, "what needs me now" first, More last):
+//     admin    needs me · setup checklist / institution wizard card · Insights · More
+//     dean     needs me · faculty overview · councils & decisions · More
+//     head     needs me · my team (the department cards) · councils (votes · agendas · requests) · More
+//     staff    needs me (with the flow's first rows and a Quick reply on assigned requests) · my queue · More
+//     teacher  needs me (votes waiting, then what is assigned to me) · my teaching · More
+//   "Needs me"  `tasks` with one-tap Approve / Decline (optimistic: the row leaves at once, comes back with Retry
+//               when the call fails, stays gone on 409 already_decided), the organization-wide alerts the tasks do
+//               not carry, "See all (n)" → OrgTasksPage, and the live rows (_LiveAttention, GET /me/attention): its
+//               "Needs my action" row opens NeedsMyActionPage (every role but admin, UX v3 phase 6); heads and deans
+//               keep the per-organization attention flow under More (`attention_flow`), admins on that row
+//   More        what the persona's own blocks do not show (orgPersonaMore), every page a tap away: consolidated,
+//               never deleted (the navigation and the command palette still carry them)
+//   only admins and deans see the figures (orgPersonaShowsFigures: the stat row, the members card)
+// Without a persona (an older server, nothing to decide on) it is the D-103 home: A Departments · B Needs your
+// attention · C Insights (OrgInsightsSection, only with `can_insights`; an older server → the 30-day OrgTrendRow),
+// ordered by `layout` (insights_first for admins, actions_first for staff / members; orgHomeOrder). Phones stack
+// the blocks, a desktop (≥ kHomeWideMin) splits them into two balanced columns (orgHomeColumns).
 //   OrgHomePage       the live page: OrgSession + OrgDashController (ONE GET …/dashboard) + OrgTabs; pull / resume /
-//                     live events reload through the controller; the header's Refresh reloads only that call
+//                     live events reload through the controller; the header's Refresh reloads only that call; the
+//                     persona comes from that payload and my /mine item (no request of its own)
 //   OrgHomeBody       presentational, plain values + callbacks (test/ui/org_home_layout_test.dart,
-//                     org_home_v3_layout_test.dart)
+//                     org_home_v3_layout_test.dart, test/org/ux_v3_p4_test.dart)
 //   orgJump / orgPush one tap to a sub-page: the section AND its chip when the section is a tab, else the page is
 //                     pushed on top (phones keep Services inside "More"); back from a pushed page, the home reloads
 //                     only when the organization's attention items changed (OrgDashController.afterReturn).
@@ -805,6 +817,13 @@ class _OrgHomePageState extends State<OrgHomePage> {
           'needs_action' => orgLinkRow(Icons.inbox_rounded, t('ينتظر إجرائي', 'Needs my action'),
               () => orgPush(context, t('ينتظر إجرائي', 'Needs my action'), const NeedsMyActionPage(embedded: true), width: AppWidth.reading),
               subtitle: t('كل ما ينتظرك في كل مؤسساتك، مع البحث', 'Everything waiting for you, in every organization, searchable')),
+          'attention_flow' when s.currentId != null => orgLinkRow(Icons.dashboard_customize_rounded, attentionFlowTitle(), () async {
+                final orgId = s.currentId!;
+                await orgPush(context, attentionFlowTitle(), OrgAttentionFlowPage(orgId: orgId, initial: flow), width: AppWidth.reading);
+                AttentionFlowStore.instance.load(orgId);
+              },
+              count: flow?.total ?? 0,
+              subtitle: t('طلبات وحدتك وتصويتاتها ومتأخراتها في هذه المؤسسة', "Your unit's requests, votes and overdue items here")),
           'insights' when d.canInsights && orgInsightsEnabled && !main.contains(OrgHomeBlock.insights) => orgLinkRow(
               Icons.insights_rounded,
               t('المؤشرات', 'Insights'),
@@ -874,8 +893,9 @@ class _LiveAttention extends StatelessWidget {
   const _LiveAttention({required this.baseEmpty, required this.hasTermCard, required this.withDecisions, this.persona});
   final bool baseEmpty, hasTermCard, withDecisions;
 
-  /// UX v3 phase 4: staff and teachers get the flow's first rows here (votes · assigned to me, with a Quick reply)
-  /// and the entry row opens NeedsMyActionPage; null / heads / deans keep the per-organization flow page.
+  /// UX v3 phase 4: staff and teachers get the flow's first rows here (votes · assigned to me, with a Quick reply);
+  /// the entry row opens NeedsMyActionPage for every persona but admin (phase 6: heads and deans too, their flow
+  /// page under More); null / admin keep the per-organization flow page on the row.
   final OrgPersona? persona;
 
   @override
@@ -887,7 +907,7 @@ class _LiveAttention extends StatelessWidget {
           // Institutions v2 phase 5 (D-997): the heads' and secretaries' one "Needs my attention" page, as one row of
           // this area (GET …/me/attention-flow, asked in parallel with the dashboard) while something waits
           final flow = AttentionFlowStore.instance.of(s.currentId);
-          final inbox = persona != null && orgPersonaOpensActionInbox(persona!);
+          final inbox = persona != null && orgPersonaEntryOpensActionInbox(persona!);
           if (inbox && flow != null && flow.total > 0 && s.currentId != null) {
             final orgId = s.currentId!;
             final c = context.colors;

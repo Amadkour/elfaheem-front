@@ -293,6 +293,16 @@ Set<int> headErrorIdsOf(ApiException e) => {
         if (f.startsWith('heads.') && int.tryParse(f.substring(6).split('.').first) != null) int.parse(f.substring(6).split('.').first),
     };
 
+/// Where the first refused unit sits in the heads list (academic rows first, then service ones, as drawn), as a
+/// fraction of the list (0 = top, 1 = bottom); null = none refused. The lazy list has not built an off-screen row,
+/// so the wizard jumps near it by this fraction first, then scrolls the row itself into view.
+double? headsFirstErrorFraction(List<HeadUnit> rows, Set<int> errors) {
+  final order = [for (final r in rows) if (r.academic) r, for (final r in rows) if (!r.academic) r];
+  final i = order.indexWhere((r) => errors.contains(r.id));
+  if (i < 0) return null;
+  return order.length < 2 ? 0 : i / (order.length - 1);
+}
+
 /// The Home may draw the wizard card: organizations on and the institution kill switch off.
 bool institutionWizardAllowed() => AppConfig.orgsEnabled && !AppConfig.disableList.contains(orgInstitutionFeatureKey);
 
@@ -515,10 +525,14 @@ class HeadsStepView extends StatelessWidget {
     this.meName = '',
     this.errors = const {},
     this.firstErrorKey,
+    this.controller,
   });
 
   /// Put on the first refused unit's row (on-screen order) so the wizard can scroll to it.
   final GlobalKey? firstErrorKey;
+
+  /// The list's scroll controller (the wizard jumps near an off-screen refused row with it).
+  final ScrollController? controller;
 
   final List<HeadUnit> rows;
   final HeadsDraft draft;
@@ -536,6 +550,7 @@ class HeadsStepView extends StatelessWidget {
     final academic = [for (final r in rows) if (r.academic) r];
     final service = [for (final r in rows) if (!r.academic) r];
     return ListView(
+      controller: controller,
       padding: const EdgeInsets.only(bottom: AppSpace.xl),
       children: [
         OrgSectionHeading(t('من يرأس كل وحدة؟', 'Who heads each unit?'),
@@ -1034,6 +1049,7 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
   HeadsDraft _headsDraft = const HeadsDraft();
   Set<int> _headErrors = {};
   final _headErrorKey = GlobalKey(debugLabel: 'heads.first_error');
+  final _headsScroll = ScrollController();
   final _councilErrors = councilsFieldErrors();
   CouncilsSetup? _councils;
   CouncilsDraft _councilsDraft = const CouncilsDraft();
@@ -1050,11 +1066,29 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
+  /// Brings the first refused unit's row into view: the lazy list may not have built it, so jump near it by its
+  /// place in the list (the extent estimate sharpens as rows build), then scroll the row itself.
+  Future<void> _revealHeadError() async {
+    for (var i = 0; i < 4 && mounted; i++) {
+      final ctx = _headErrorKey.currentContext;
+      if (ctx != null && ctx.mounted) {
+        await Scrollable.ensureVisible(ctx, alignment: 0.2, duration: AppMotion.of(ctx).base);
+        return;
+      }
+      final f = headsFirstErrorFraction(_heads ?? const [], _headErrors);
+      if (f == null || !_headsScroll.hasClients) return;
+      final pos = _headsScroll.position;
+      _headsScroll.jumpTo((pos.maxScrollExtent * f).clamp(0.0, pos.maxScrollExtent));
+      await WidgetsBinding.instance.endOfFrame;
+    }
+  }
+
   @override
   void dispose() {
     _nameAr.dispose();
     _nameEn.dispose();
     _councilErrors.dispose();
+    _headsScroll.dispose();
     super.dispose();
   }
 
@@ -1213,10 +1247,7 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
           final bad = headErrorIdsOf(r.error!);
           if (bad.isNotEmpty) {
             setState(() => _headErrors = bad);
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              final ctx = _headErrorKey.currentContext;
-              if (ctx != null) Scrollable.ensureVisible(ctx, alignment: 0.2, duration: AppMotion.of(ctx).base);
-            });
+            WidgetsBinding.instance.addPostFrameCallback((_) => _revealHeadError());
           }
           return _fail(r);
         }
@@ -1242,7 +1273,7 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
             setState(() {});
             WidgetsBinding.instance.addPostFrameCallback((_) => _councilErrors.revealFirst());
           }
-          showAppNotice(r.code == 'council_has_open_agenda' ? councilsOpenAgendaText(r.detail) : orgErrorText(r.error!), error: true);
+          showAppError(mounted ? context : null, r.error!, text: r.code == 'council_has_open_agenda' ? councilsOpenAgendaText(r.detail) : orgErrorText(r.error!));
           return false;
         }
         _councilErrors.clear();
@@ -1254,7 +1285,7 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
   }
 
   bool _fail(OrgCall r) {
-    showAppNotice(orgErrorText(r.error!), error: true);
+    showAppError(context, r.error!, text: orgErrorText(r.error!));
     return false;
   }
 
@@ -1436,6 +1467,7 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
           meName: currentPerson(context).$2,
           errors: _headErrors,
           firstErrorKey: _headErrorKey,
+          controller: _headsScroll,
           onChanged: (d) => setState(() => _headsDraft = d),
           onPick: oid == null ? null : (u) => pickOrgMember(context, oid, title: t('رئيس ${u.name}', 'Head of ${u.name}')),
         );

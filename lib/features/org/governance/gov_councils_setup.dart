@@ -753,7 +753,7 @@ class _OrgCouncilsSetupPageState extends State<OrgCouncilsSetupPage> {
         setState(() {});
         WidgetsBinding.instance.addPostFrameCallback((_) => _errors.revealFirst());
       }
-      showAppNotice(r.code == 'council_has_open_agenda' ? councilsOpenAgendaText(r.detail) : orgErrorText(r.error!), error: true);
+      showAppError(context, r.error!, text: r.code == 'council_has_open_agenda' ? councilsOpenAgendaText(r.detail) : orgErrorText(r.error!));
       return;
     }
     _errors.clear();

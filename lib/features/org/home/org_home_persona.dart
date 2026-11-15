@@ -139,12 +139,12 @@ List<OrgHomeBlock> orgPersonaSections(OrgPersona p) => switch (p) {
     };
 
 /// What each persona keeps under More, in order (a link the person cannot open is left out by the home).
-/// Keys: needs_action · insights · faculty · health · wizard · departments · members · requests · forms ·
+/// Keys: needs_action · attention_flow (heads / deans: the per-organization flow page) · insights · faculty · health · wizard · departments · members · requests · forms ·
 /// complaints · councils · votes · courses · timetable · settings.
 List<String> orgPersonaMore(OrgPersona p) => switch (p) {
       OrgPersona.admin => const ['needs_action', 'departments', 'members', 'health', 'wizard', 'faculty', 'requests', 'settings'],
-      OrgPersona.dean => const ['needs_action', 'insights', 'health', 'departments', 'members', 'requests', 'settings'],
-      OrgPersona.head => const ['needs_action', 'insights', 'faculty', 'members', 'requests', 'timetable', 'settings'],
+      OrgPersona.dean => const ['needs_action', 'attention_flow', 'insights', 'health', 'departments', 'members', 'requests', 'settings'],
+      OrgPersona.head => const ['needs_action', 'attention_flow', 'insights', 'faculty', 'members', 'requests', 'timetable', 'settings'],
       OrgPersona.staff => const ['needs_action', 'requests', 'forms', 'complaints', 'members', 'insights', 'settings'],
       OrgPersona.teacher => const ['needs_action', 'councils', 'votes', 'timetable', 'requests', 'insights', 'settings'],
       OrgPersona.student => const ['requests', 'complaints', 'settings'],
@@ -153,9 +153,13 @@ List<String> orgPersonaMore(OrgPersona p) => switch (p) {
 /// Does this persona's home show the figures (the stat row, the members card)? Only the people who run it.
 bool orgPersonaShowsFigures(OrgPersona p) => p == OrgPersona.admin || p == OrgPersona.dean;
 
-/// The flow's "Needs my attention" row opens NeedsMyActionPage (cross-role, searchable) for these personas; heads
-/// and deans keep their per-organization attention flow page (new requests · votes · overdue · acting units).
+/// These personas get the flow's first rows as previews on the home (votes · assigned to me, Quick reply).
 bool orgPersonaOpensActionInbox(OrgPersona p) => p == OrgPersona.staff || p == OrgPersona.teacher;
+
+/// The flow's "Needs my attention" row opens NeedsMyActionPage (cross-role, searchable) for these personas (UX v3
+/// phase 6: heads and deans too); their per-organization attention flow page (new requests · votes · overdue ·
+/// acting units) stays under More (`attention_flow`). An admin keeps the flow page on the row.
+bool orgPersonaEntryOpensActionInbox(OrgPersona p) => p != OrgPersona.admin && p != OrgPersona.student;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  "What needs me now": preview rows from the attention flow (no request of their own)
@@ -343,6 +347,16 @@ const orgQuickReplies = <(String, String)>[
   ('تم إنجاز طلبك. شكراً لصبرك.', 'Your request is done. Thank you for your patience.'),
 ];
 
+/// Sends [text] again after a failed quick reply (its Retry).
+Future<void> showOrgQuickReplyResend({required int orgId, required int itemId, required String text, GovApi? api}) async {
+  try {
+    await (api ?? GovApi(orgId)).comment(itemId, text);
+    showAppNotice(t('أُرسل الرد', 'Reply sent'));
+  } catch (e) {
+    showAppError(null, e, text: '${t('لم يُرسل الرد', 'The reply was not sent')}: ${ApiException.from(e).message}');
+  }
+}
+
 /// Picks a canned reply and posts it as a comment on the request (the same call as the request page's comment
 /// box). True when it was sent.
 Future<bool> showOrgQuickReply(BuildContext context, {required int orgId, required int itemId, GovApi? api}) async {
@@ -378,7 +392,10 @@ Future<bool> showOrgQuickReply(BuildContext context, {required int orgId, requir
     await (api ?? GovApi(orgId)).comment(itemId, text);
     return true;
   } catch (e) {
-    showAppNotice('${t('لم يُرسل الرد', 'The reply was not sent')}: ${ApiException.from(e).message}', error: true);
+    // the reason in words; a lost connection gets Retry (the same comment again)
+    showAppError(null, e,
+        text: '${t('لم يُرسل الرد', 'The reply was not sent')}: ${ApiException.from(e).message}',
+        onRetry: () => showOrgQuickReplyResend(orgId: orgId, itemId: itemId, text: text, api: api));
     return false;
   }
 }

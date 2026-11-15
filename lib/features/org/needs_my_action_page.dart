@@ -162,7 +162,12 @@ class NeedsMyActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final x = item;
-    return AppCard(
+    return Semantics(
+      button: onOpen != null,
+      label: actionInboxRowSemantics(x),
+      excludeSemantics: true,
+      onTap: onOpen == null ? null : () => onOpen!(x),
+      child: AppCard(
           key: ValueKey('action_inbox.${x.key}'),
           margin: const EdgeInsets.only(bottom: AppSpace.xs),
           onTap: onOpen == null ? null : () => onOpen!(x),
@@ -187,9 +192,20 @@ class NeedsMyActionRow extends StatelessWidget {
             const SizedBox(width: AppSpace.xxs),
             Icon(Icons.chevron_right_rounded, size: AppIconSize.lg, color: c.textLight),
           ]),
-        );
+        ),
+    );
   }
 }
+
+/// What a screen reader says for one inbox row: the title, what is asked and why, then its flags.
+String actionInboxRowSemantics(ActionInboxItem x) => [
+      if (x.title.isNotEmpty) x.title,
+      x.reason.isEmpty ? notifActionLabel(x.action) : '${notifActionLabel(x.action)}: ${x.reason}',
+      if (x.overdue) t('متأخر', 'Overdue'),
+      if (x.urgency >= 2) actionUrgencyLabel(x.urgency),
+      if (x.dueAt != null) '${t('قبل', 'By')} ${AppTime.dateTime(x.dueAt!)}',
+      if ((x.orgName ?? '').isNotEmpty) x.orgName!,
+    ].join('. ');
 
 class NeedsMyActionPage extends StatefulWidget {
   const NeedsMyActionPage({super.key, this.embedded = false});
@@ -206,6 +222,7 @@ class _NeedsMyActionPageState extends State<NeedsMyActionPage> {
   int _total = 0;
   ApiException? _error;
   String _q = '';
+  final _qc = TextEditingController();
   ActionInboxFilter _filter = ActionInboxFilter.all;
   int _seq = 0;
   int _limit = kActionInboxPage;
@@ -215,6 +232,22 @@ class _NeedsMyActionPageState extends State<NeedsMyActionPage> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _qc.dispose();
+    super.dispose();
+  }
+
+  /// The empty state's one action when a search or a filter hides everything: show all again.
+  void _clearFilters() {
+    _qc.clear();
+    setState(() => _filter = ActionInboxFilter.all);
+    if (_q.isNotEmpty) {
+      _q = '';
+      _load();
+    }
   }
 
   /// [limit]: a longer list (load more); otherwise the first page again (open, search, pull to refresh, back from
@@ -277,14 +310,24 @@ class _NeedsMyActionPageState extends State<NeedsMyActionPage> {
     } else if (_error != null && items == null) {
       list = AppErrorBox(error: _error!, onRetry: _load);
     } else if (shown.isEmpty) {
+      final narrowed = _q.isNotEmpty || _filter != ActionInboxFilter.all;
       list = AppEmpty(
-        icon: Icons.task_alt_rounded,
-        title: _q.isNotEmpty || _filter != ActionInboxFilter.all ? t('لا شيء يطابق', 'Nothing matches') : t('لا شيء ينتظرك', 'Nothing is waiting for you'),
-        message: _q.isNotEmpty || _filter != ActionInboxFilter.all ? t('جرّب كلمة أخرى أو أزل التصفية.', 'Try another word or clear the filter.') : t('كل ما يحتاج إجراءك أُنجز.', 'Everything that needed your action is done.'),
+        key: const ValueKey('action_inbox.empty'),
+        icon: narrowed ? Icons.search_off_rounded : Icons.task_alt_rounded,
+        title: narrowed ? t('لا شيء يطابق', 'Nothing matches') : t('لا شيء ينتظرك', 'Nothing is waiting for you'),
+        message: narrowed ? t('جرّب كلمة أخرى أو أزل التصفية.', 'Try another word or clear the filter.') : t('كل ما يحتاج إجراءك أُنجز.', 'Everything that needed your action is done.'),
+        // one helpful action: show everything again, or check again for anything new
+        actionLabel: narrowed ? t('عرض الكل', 'Show everything') : t('تحديث', 'Refresh'),
+        onAction: narrowed ? _clearFilters : _load,
       );
     }
     final top = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSearchField(hint: t('ابحث في ما ينتظرك', 'Search what is waiting for you'), onChanged: _search),
+        AppSearchField(controller: _qc, hint: t('ابحث في ما ينتظرك', 'Search what is waiting for you'), onChanged: _search),
+        if (_error != null && items != null) ...[
+          // a refresh / search / load-more failed: the list stays, the reason and Retry above it
+          AppSpace.gapXs,
+          AppErrorBox(error: _error!, onRetry: _load),
+        ],
         AppSpace.gapXs,
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final f in ActionInboxFilter.values)

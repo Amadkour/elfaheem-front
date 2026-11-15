@@ -12,6 +12,7 @@ library;
 
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/api_error_text.dart' show featureDisabledText;
+import 'package:flutter_education_app/design/app_errors.dart' show appSharedFix, showAppError;
 
 import '../admin/admin_common.dart';
 import 'advising/adv_texts.dart' show advCodeTexts;
@@ -49,7 +50,14 @@ Future<OrgCall> orgCall(Future<dynamic> Function() fn, {String? ok, bool quiet =
     return OrgCall(r ?? true);
   } catch (e) {
     final err = ApiException.from(e);
-    if (!quiet) toast(orgErrorText(err), error: true);
+    if (!quiet) {
+      // UX v3 phase 6: a refusal that carries a fix the app runs (open_members, setup_councils, …) gets its button
+      if (appSharedFix(err) != null) {
+        showAppError(null, err, text: orgErrorText(err));
+      } else {
+        toast(orgErrorText(err), error: true);
+      }
+    }
     return OrgCall(null, err);
   }
 }

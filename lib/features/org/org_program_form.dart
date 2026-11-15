@@ -17,6 +17,7 @@ import 'org_courses_page.dart' show showOrgCourseForm;
 import 'org_levels.dart' show PrereqRule;
 import 'org_levels_pages.dart' show PrereqRulesEditor;
 import 'org_unit_rules.dart' show UnitHeadPicker, currentPerson, headProblem;
+import 'package:flutter_education_app/design/app_errors.dart' show FieldErrors;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
@@ -96,6 +97,14 @@ class _ProgramFormState extends State<_ProgramForm> {
   String? _banner;
   bool _busy = false, _tried = false;
 
+  /// UX v3: the server's head refusals (head_required · head_invalid · pick_head, or `fields`) land on the
+  /// manager picker, which is scrolled to and focused.
+  final _fe = FieldErrors(
+    aliases: const {'manager_user_id': 'manager', 'head_user_id': 'manager', 'head_self': 'manager'},
+    codes: const {'head_required': 'manager', 'head_invalid': 'manager'},
+    actions: const {'pick_head': 'manager'},
+  );
+
   Set<int> _ids(String k) => {...((p?[k] as List?) ?? const []).map((e) => asInt(e))};
 
   @override
@@ -109,6 +118,7 @@ class _ProgramFormState extends State<_ProgramForm> {
     for (final c in [_code, _ar, _en, _desc, _cap]) {
       c.dispose();
     }
+    _fe.dispose();
     super.dispose();
   }
 
@@ -174,6 +184,11 @@ class _ProgramFormState extends State<_ProgramForm> {
       return Navigator.pop(context, true);
     }
     final msg = orgErrorText(r.error!);
+    if (_fe.take(r.error!, text: msg) && _fe.has('manager')) {
+      setState(() => _errors = {'manager': _fe.errorFor('manager') ?? msg});
+      WidgetsBinding.instance.addPostFrameCallback((_) => _fe.revealFirst());
+      return;
+    }
     setState(() {
       switch (r.code) {
         case 'head_required':
@@ -215,6 +230,7 @@ class _ProgramFormState extends State<_ProgramForm> {
             ]),
             _Section(icon: Icons.manage_accounts_rounded, title: t('القيادة', 'Leadership'), children: [
               UnitHeadPicker(
+                key: _fe.keyFor('manager'),
                 label: t('مدير القسم', 'Department manager'),
                 value: _manager,
                 self: _managerSelf,
@@ -222,6 +238,7 @@ class _ProgramFormState extends State<_ProgramForm> {
                 initialName: asMap(p?['manager'])['name']?.toString(),
                 roles: const ['teacher', 'admin_assistant', 'org_admin'],   // _save_program accepts these
                 onChanged: (v, me) {
+                  _fe.clear('manager');
                   setState(() {
                     _manager = v;
                     _managerSelf = me;

@@ -111,10 +111,12 @@ class ActionBanner extends StatelessWidget {
     final tone = rejected ? c.danger : (action == NotifAction.edit || action == NotifAction.vote ? c.warning : c.primary);
     final label = notifActionLabel(action, rejected: rejected);
     final note = (this.note ?? '').trim();
+    final button = actionLabel ?? notifActionButton(action);
     return Semantics(
       container: true,
       liveRegion: true,
-      label: label,
+      // announced as one: what is asked and why, then the button's label (the node carries its tap)
+      label: actionBannerSemantics(label, reason),
       child: Container(
         key: const ValueKey('action_banner'),
         width: double.infinity,
@@ -125,7 +127,8 @@ class ActionBanner extends StatelessWidget {
           border: Border.all(color: tone.withValues(alpha: 0.35), width: AppBorder.hairline),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          ExcludeSemantics(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(notifActionIcon(action, rejected: rejected), color: tone, size: AppIconSize.md),
             AppSpace.gapXs,
             Expanded(
@@ -138,6 +141,7 @@ class ActionBanner extends StatelessWidget {
               ]),
             ),
           ]),
+          ),
           if (note.isNotEmpty) ...[
             AppSpace.gapXs,
             Container(
@@ -165,7 +169,7 @@ class ActionBanner extends StatelessWidget {
               key: const ValueKey('action_banner_go'),
               size: AppButtonSize.sm,
               icon: notifActionIcon(action),
-              label: actionLabel ?? notifActionButton(action),
+              label: button,
               busy: busy,
               onPressed: busy ? null : onAction,
             ),
@@ -175,6 +179,9 @@ class ActionBanner extends StatelessWidget {
     );
   }
 }
+
+/// What a screen reader says for the banner: the headline, then the reason.
+String actionBannerSemantics(String label, String reason) => reason.trim().isEmpty ? label : '$label. ${reason.trim()}';
 
 /// The target is gone ([gone]) or already handled: the server's [reason], then one button to where it is now.
 class StaleLinkView extends StatelessWidget {

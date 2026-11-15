@@ -18,7 +18,7 @@ import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show SheetHeader, asInt, asMap, asMapList, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
-import '../org_unit_rules.dart' show ActingChip, CoreUnitBadge, UnitHeadPicker, headProblem, headRequiredText, unitHeadOf, unitIsCore;
+import '../org_unit_rules.dart' show ActingChip, CoreUnitBadge, UnitHeadPicker, headProblem, headRequiredText, unitHeadFieldErrors, unitHeadOf, unitIsCore;
 import '../org_page_header.dart' show OrgPushedPage;
 import '../org_providers.dart' show OrgApi, OrgSession, orgBase;
 import '../org_ui.dart' show orgNameOf;
@@ -134,6 +134,8 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
   // Institutions v2 (D-980): a head is required; "Assign me as head" sends head_self
   var headSelf = false;
   String? headErr;
+  // UX v3: the server's head refusals (head_required · head_invalid · pick_head, or `fields`) land on the picker
+  final fe = unitHeadFieldErrors();
   var acceptsComplaints = true, busy = false;
   final r = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
@@ -171,6 +173,7 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
               const SizedBox(height: AppSpace.sm),
             ],
             UnitHeadPicker(
+              key: fe.keyFor('head'),
               label: t('رئيس الجهة', 'Entity head'),
               value: head,
               self: headSelf,
@@ -180,6 +183,7 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
                 head = v;
                 headSelf = me;
                 headErr = null;
+                fe.clear('head');
               }),
             ),
             AppSwitchTile(
@@ -219,7 +223,9 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
                 set(() {
                   busy = false;
                   if (res.code == 'head_required') headErr = headRequiredText();
+                  if (!res.ok && fe.take(res.error!, text: orgErrorText(res.error!))) headErr = fe.errorFor('head') ?? headErr;
                 });
+                if (!res.ok && fe.has('head')) WidgetsBinding.instance.addPostFrameCallback((_) => fe.revealFirst());
                 if (res.ok) {
                   appToast(t('أُنشئت الجهة 🎉', 'Entity created 🎉'));
                   Navigator.pop(ctx, true);
@@ -229,6 +235,7 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
           ]),
         );
       }));
+  fe.dispose();
   return r == true;
 }
 

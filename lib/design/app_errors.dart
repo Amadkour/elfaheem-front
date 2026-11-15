@@ -7,6 +7,8 @@
 //   final fe = FieldErrors(aliases: {'head_user_id': 'head'});                 a form's server field errors:
 //     fe.take(e)  →  fe.errorFor('head')  →  errorText: of the field; fe.keyFor('head') on the field's wrapper;
 //     fe.summary (several bad fields) above the form; fe.revealFirst() scrolls to and focuses the first one.
+//   AppFixActions.register('open_members', handler)                           an app-wide fix for a server fix_action
+//   AppFixScope(fixes: {'pick_reassign': (focusPicker, 'Choose the unit')})    a screen's own fix (wins over the app's)
 //
 // The server half sends `detail: {code, message, message_en, kind, field?, fields?, fix?, fix_en?, fix_action?,
 // ref?}`; older servers send less, and every value falls back (ApiException derives kind from the status).
@@ -81,7 +83,7 @@ class AppErrorBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final shared = onFix == null ? appSharedFix(error, onRetry: onRetry) : null;
+    final shared = onFix == null ? appSharedFix(error, onRetry: onRetry, context: context) : null;
     final fixTap = onFix ?? shared?.$1;
     final k = error.kind;
     final tone = switch (k) {
@@ -92,9 +94,12 @@ class AppErrorBox extends StatelessWidget {
     final fix = error.fix;
     final ref = error.ref;
     final retry = onRetry != null && (k == ApiErrorKind.network || k == ApiErrorKind.server || k == ApiErrorKind.unknown);
+    final title = appErrorTitle(k);
     return Semantics(
       container: true,
       liveRegion: true,
+      // one announcement: the title, the body and the fix; the buttons below stay their own focus stops
+      label: [title, if (body.trim().isNotEmpty && body != title) body, if (fix != null && !body.contains(fix)) fix].join('. '),
       child: Container(
         key: const ValueKey('app_error_box'),
         width: double.infinity,
@@ -105,7 +110,8 @@ class AppErrorBox extends StatelessWidget {
           border: Border.all(color: tone.withValues(alpha: 0.35), width: AppBorder.hairline),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          ExcludeSemantics(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(appErrorIcon(k), color: tone, size: AppIconSize.md),
             AppSpace.gapXs,
             Expanded(
@@ -122,6 +128,7 @@ class AppErrorBox extends StatelessWidget {
               ]),
             ),
           ]),
+          ),
           if (ref != null) ...[
             AppSpace.gapXs,
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -137,7 +144,10 @@ class AppErrorBox extends StatelessWidget {
           ],
           if (fixTap != null || retry) ...[
             AppSpace.gapXs,
-            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+            // focus order: the fix first, then Retry (reading order in both directions)
+            FocusTraversalGroup(
+              policy: ReadingOrderTraversalPolicy(),
+              child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
               if (fixTap != null)
                 AppButton.primary(
                     key: const ValueKey('app_error_fix'),
@@ -154,6 +164,7 @@ class AppErrorBox extends StatelessWidget {
                     label: _tx('إعادة المحاولة', 'Retry'),
                     onPressed: busy ? null : onRetry),
             ]),
+            ),
           ],
         ]),
       ),
@@ -161,13 +172,49 @@ class AppErrorBox extends StatelessWidget {
   }
 }
 
-/// The fixes the app runs itself, whatever screen got the error (fix_action → handler + label): today
-/// `enable_personal` (403 personal_off) turns the personal profile on, then retries [onRetry]. Null = none.
-(VoidCallback, String)? appSharedFix(ApiException e, {VoidCallback? onRetry}) {
+/// The fixes the app runs itself, whatever screen got the error (fix_action → handler + label), in this order:
+/// `enable_personal` (403 personal_off: turns the personal profile on, then retries [onRetry]); the screen's own
+/// [AppFixScope] around [context]; the app-wide [AppFixActions] (the org module's open_members · open_agenda ·
+/// setup_councils · pick_reassign). Null = none.
+(VoidCallback, String)? appSharedFix(ApiException e, {VoidCallback? onRetry, BuildContext? context}) {
   if (e.fixAction == PersonalAccess.fixAction || e.code == PersonalAccess.offCode) {
     return (() => enablePersonalFix(onRetry: onRetry), enablePersonalLabel());
   }
-  return null;
+  final act = e.fixAction;
+  if (act == null) return null;
+  final local = context == null ? null : AppFixScope.maybeOf(context)?[act];
+  if (local != null) return local;
+  return AppFixActions.of(act)?.call(e, context, onRetry);
+}
+
+/// An app-wide fix for one server `fix_action`: the handler and its button label, or null when this error offers
+/// none (e.g. the target is unknown). [context] is the screen's when there is one (it may be gone by the tap).
+typedef AppFixHandler = (VoidCallback, String)? Function(ApiException e, BuildContext? context, VoidCallback? onRetry);
+
+/// The app-wide fix actions: a feature registers its own once (the org module in OrgSession's constructor), so any
+/// [AppErrorBox] / [showAppError] carrying that fix_action gets a working button.
+class AppFixActions {
+  AppFixActions._();
+  static final Map<String, AppFixHandler> _handlers = {};
+
+  static void register(String action, AppFixHandler handler) => _handlers[action] = handler;
+  static void unregister(String action) => _handlers.remove(action);
+  static bool has(String action) => _handlers.containsKey(action);
+  static AppFixHandler? of(String? action) => action == null ? null : _handlers[action];
+}
+
+/// A screen's own fixes (fix_action → handler + label), e.g. the archive sheet's `pick_reassign` that focuses its
+/// own picker. Wins over [AppFixActions].
+class AppFixScope extends InheritedWidget {
+  const AppFixScope({super.key, required this.fixes, required super.child});
+
+  final Map<String, (VoidCallback, String)> fixes;
+
+  static Map<String, (VoidCallback, String)>? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<AppFixScope>()?.fixes;
+
+  @override
+  bool updateShouldNotify(AppFixScope oldWidget) => oldWidget.fixes != fixes;
 }
 
 /// Copies a support reference and says so.
@@ -182,7 +229,7 @@ Future<void> copyErrorRef(String ref) async {
 void showAppError(BuildContext? context, Object error, {String? text, VoidCallback? onRetry, VoidCallback? onFix, String? fixLabel}) {
   final e = ApiException.from(error);
   final k = e.kind;
-  final shared = onFix == null ? appSharedFix(e, onRetry: onRetry) : null;
+  final shared = onFix == null ? appSharedFix(e, onRetry: onRetry, context: context) : null;
   if (shared != null) (onFix, fixLabel) = shared;
   var msg = text ?? (k == ApiErrorKind.network || k == ApiErrorKind.server ? appErrorTitle(k) : e.message);
   final fix = e.fix;
@@ -294,23 +341,32 @@ class FieldErrors extends ChangeNotifier {
   /// Scrolls the first bad registered field into view and focuses it (its first focusable descendant).
   Future<void> revealFirst() async {
     for (final f in bad) {
-      final ctx = _keys[f]?.currentContext;
-      if (ctx == null) continue;
-      await Scrollable.ensureVisible(ctx, alignment: 0.2, duration: AppMotion.of(ctx).base);
-      if (!ctx.mounted) return;
-      FocusNode? node;
-      void visit(Element el) {
-        if (node != null) return;
-        if (el.widget is Focus) {
-          el.visitChildElements((child) => node ??= Focus.maybeOf(child, createDependency: false));
-          return;
-        }
-        el.visitChildElements(visit);
-      }
-
-      (ctx as Element).visitChildElements(visit);
-      node?.requestFocus();
+      final key = _keys[f];
+      if (key?.currentContext == null) continue;
+      await revealAndFocus(key!);
       return;
     }
   }
+}
+
+/// Scrolls the widget under [key] into view and focuses its first focusable descendant (a fix's "take me there").
+/// False when it is not built (off-screen in a lazy list: scroll near it first).
+Future<bool> revealAndFocus(GlobalKey key) async {
+  final ctx = key.currentContext;
+  if (ctx == null) return false;
+  await Scrollable.ensureVisible(ctx, alignment: 0.2, duration: AppMotion.of(ctx).base);
+  if (!ctx.mounted) return true;
+  FocusNode? node;
+  void visit(Element el) {
+    if (node != null) return;
+    if (el.widget is Focus) {
+      el.visitChildElements((child) => node ??= Focus.maybeOf(child, createDependency: false));
+      return;
+    }
+    el.visitChildElements(visit);
+  }
+
+  (ctx as Element).visitChildElements(visit);
+  node?.requestFocus();
+  return true;
 }
