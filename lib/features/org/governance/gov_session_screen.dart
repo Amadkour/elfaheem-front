@@ -20,8 +20,9 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show SheetHeader, asDouble, asInt, asMap, asMapList, askText, t;
 import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
-import '../org_v3.dart' show orgCall, orgParseUtc, orgUtc;
+import '../org_v3.dart' show orgCall, orgErrorText, orgParseUtc, orgUtc;
 import 'gov_api.dart';
+import 'gov_council_s2.dart';
 import 'gov_council_ui.dart';
 import 'gov_models.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
@@ -318,6 +319,9 @@ class SessionHeader extends StatelessWidget {
             GovInfoLine(Icons.timer_off_rounded, t('يُغلق التصويت', 'Voting closes'), govWhen(s.votingClosesAt), color: s.isVoting ? c.warning : null),
             GovInfoLine(Icons.lock_clock_rounded, t('أُغلقت', 'Closed'), govWhen(s.closedAt)),
             GovInfoLine(Icons.groups_rounded, t('الأعضاء المؤهّلون', 'Eligible members'), s.eligibleCount == null ? '' : '${s.eligibleCount}'),
+            GovInfoLine(Icons.event_note_rounded, t('موعد انتهاء المراجعة', 'Review deadline'), govWhen(s.reviewDeadline)),
+            GovInfoLine(Icons.meeting_room_rounded, t('الانعقاد', 'Meeting'), s.meeting?.text ?? ''),
+            GovInfoLine(Icons.notifications_active_outlined, t('آخر تذكير', 'Last reminder'), govWhen(s.manualRemindedAt)),
             if ((s.notes ?? '').trim().isNotEmpty) ...[
               const SizedBox(height: AppSpace.xs),
               Text(s.notes!, style: AppType.label(context).copyWith(color: c.textMedium)),
@@ -353,6 +357,8 @@ class AgendaRow extends StatelessWidget {
     this.onPostpone,
     this.onEscalate,
     this.dragHandle,
+    this.onResults,
+    this.onConflict,
   });
 
   final AgendaItem agenda;
@@ -362,6 +368,10 @@ class AgendaRow extends StatelessWidget {
   final Future<void> Function(String vote, String? note)? onVote;
   final VoidCallback? onOpenItem, onRemove, onPostpone, onEscalate;
   final Widget? dragHandle;
+
+  /// D-969: opens the named results (the chip and the "Who voted?" button); [onConflict] = "I have a conflict of
+  /// interest" (given only while I may declare one).
+  final VoidCallback? onResults, onConflict;
 
   @override
   Widget build(BuildContext context) {
@@ -394,7 +404,9 @@ class AgendaRow extends StatelessWidget {
                   GovPillRow([
                     if (it.ref.isNotEmpty) AppBadgePill(it.ref, color: c.textMedium),
                     AppBadgePill(itemTypeLabel(it.type), color: c.primary),
-                    AppBadgePill(agendaStatusLabel(a.status), color: statusCol),
+                    AgendaResultChip(agenda: a, onTap: onResults),
+                    if (a.decisionNo != null) AppBadgePill(t('قرار رقم ${a.decisionNo}', 'Decision no. ${a.decisionNo}'), icon: Icons.tag_rounded, color: c.charcoal),
+                    if (a.councilWritten) AppBadgePill(t('كتبه المجلس', 'Written by the council'), icon: Icons.edit_note_rounded, color: c.textMedium),
                   ]),
                   const SizedBox(height: AppSpace.xs),
                   Text(it.title, style: AppType.bodyStrong(context)),
@@ -421,7 +433,14 @@ class AgendaRow extends StatelessWidget {
               live: sessionStatus == 'voting' && !a.decided,
             ),
           ],
-          if (a.excluded && open) ...[
+          if (a.myCoi) ...[
+            const SizedBox(height: AppSpace.sm),
+            AppBanner(
+              icon: Icons.front_hand_rounded,
+              color: c.purple,
+              text: t('أعلنت تعارض مصالح — أنت معتذر عن هذا البند، فلا تصوّت عليه ولا يُحسب النصاب بك.', 'You declared a conflict of interest — you are excused from this item: no vote, and the quorum is counted without you.'),
+            ),
+          ] else if (a.excluded && open) ...[
             const SizedBox(height: AppSpace.sm),
             AppBanner(
               icon: Icons.how_to_vote_outlined,
@@ -432,7 +451,31 @@ class AgendaRow extends StatelessWidget {
             const SizedBox(height: AppSpace.sm),
             MyVoteRow(value: myVote, enabled: canVote, busy: voteBusy, onVote: onVote),
           ],
-          if (showVoters && a.votes.isNotEmpty) ...[
+          if (onConflict != null && open && !a.myCoi && !a.excluded) ...[
+            const SizedBox(height: AppSpace.xxs),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: c.purple),
+                onPressed: onConflict,
+                icon: const Icon(Icons.front_hand_outlined, size: AppIconSize.md),
+                label: Text(t('لديّ تعارض مصالح', 'I have a conflict of interest'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.purple)),
+              ),
+            ),
+          ],
+          if (onResults != null && a.resultsVisible) ...[
+            const SizedBox(height: AppSpace.xxs),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: c.primary),
+                onPressed: onResults,
+                icon: const Icon(Icons.groups_2_outlined, size: AppIconSize.md),
+                label: Text(t('من صوّت؟', 'Who voted?'), style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.primary)),
+              ),
+            ),
+          ],
+          if (showVoters && a.votes.isNotEmpty && a.voters == null) ...[
             const SizedBox(height: AppSpace.sm),
             VotersList(votes: a.votes),
           ],
@@ -878,6 +921,94 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
     if (r.ok) _load();
   }
 
+  Future<void> _results(AgendaItem a) async {
+    final api = _api;
+    await showAgendaResultsSheet(context, a, fetch: api == null || widget.member ? null : () async {
+      final r = await orgCall(() => api.agendaResults(a.id), quiet: true);
+      return r.ok ? r.data as AgendaItem : null;
+    });
+  }
+
+  Future<void> _conflict(AgendaItem a) async {
+    final api = _api;
+    if (api == null) return;
+    final yes = await appConfirm(context,
+        message: t('هل لديك تعارض مصالح في «${a.item.title}»؟ تُعفى من التصويت عليه ولا يُحسب النصاب بك، ويُسحب صوتك إن كنت صوّتّ. لا يمكن التراجع.',
+            'Do you have a conflict of interest in "${a.item.title}"? You are excused from its vote and its quorum, and a vote you cast is withdrawn. This cannot be undone.'),
+        confirmLabel: t('نعم، أعلن التعارض', 'Yes, declare it'));
+    if (!yes || !mounted) return;
+    await _act(() => widget.member ? GovApi.memberDeclareConflict(a.id) : api.declareConflict(a.id), ok: t('سُجّل تعارض المصالح — أنت معتذر عن هذا البند', 'Conflict declared — you are excused from this item'));
+  }
+
+  Future<void> _writeItem() async {
+    final api = _api, s = _s;
+    if (api == null || s == null) return;
+    var busy = false;
+    await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
+            child: SingleChildScrollView(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                SheetHeader(t('كتابة بند', 'Write an item')),
+                WriteAgendaItemBody(
+                  busy: busy,
+                  onSave: (title, body) async {
+                    set(() => busy = true);
+                    final r = await orgCall(() => api.writeAgendaItem(s.id, title: title, body: body), ok: t('أُضيف البند إلى جدول الأعمال', 'The item joined the agenda'));
+                    if (!ctx.mounted) return;
+                    set(() => busy = false);
+                    if (r.ok) Navigator.pop(ctx);
+                  },
+                ),
+              ]),
+            ),
+          );
+        }));
+    _load();
+  }
+
+  Future<void> _remind() async {
+    final api = _api, s = _s;
+    if (api == null || s == null) return;
+    final wait = remindWait(s.manualRemindedAt);
+    if (wait != null) {
+      showAppNotice(remindWaitText(wait), error: true);
+      return;
+    }
+    setState(() => _busy = true);
+    final r = await orgCall(() => api.remindNonVoters(s.id), quiet: true);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (r.ok) {
+      showAppNotice(remindDoneText(asInt(r.map['reminded'])));
+      _load();
+    } else if (r.code == 'remind_too_soon') {
+      final secs = asInt(r.detail['retry_after']);
+      showAppNotice(secs > 0 ? remindWaitText(Duration(seconds: secs)) : orgErrorText(r.error!), error: true);
+    } else {
+      showAppNotice(orgErrorText(r.error!), error: true);
+      if (r.code == 'session_state') _load();
+    }
+  }
+
+  Future<void> _reviewDeadline() async {
+    final api = _api, s = _s;
+    if (api == null || s == null) return;
+    final now = DateTime.now();
+    final base = s.reviewDeadline ?? now.add(const Duration(days: 3));
+    final d = await showDatePicker(context: context, firstDate: now, lastDate: DateTime(2100), initialDate: base.isBefore(now) ? now : base,
+        helpText: t('موعد انتهاء المراجعة', 'Review deadline'));
+    if (d == null || !mounted) return;
+    final tm = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(base));
+    if (tm == null || !mounted) return;
+    final at = DateTime(d.year, d.month, d.day, tm.hour, tm.minute);
+    if (!at.isAfter(DateTime.now())) {
+      showAppNotice(t('اختر موعداً في المستقبل', 'Choose a time in the future'), error: true);
+      return;
+    }
+    await _act(() => api.patchSession(s.id, {'review_deadline': orgUtc(at), 'version': s.version}), ok: t('حُدّد موعد انتهاء المراجعة', 'Review deadline set'));
+  }
+
   Future<void> _addItems() async {
     final api = _api, s = _s;
     if (api == null || s == null || s.council == null) return;
@@ -1051,6 +1182,15 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
       pills.add(AppPill(icon: Icons.description_rounded, label: t('المحضر', 'Minutes'), onTap: _showMinutes));
       if (widget.onExport != null && s.can['export_votes']) pills.add(AppPill(icon: Icons.ios_share_rounded, label: t('تصدير', 'Export'), onTap: () => widget.onExport!(s)));
     }
+    // Institutions S2: what the server's flags allow (chair, secretary, admin…), never a guess from role names
+    if (s.can['write_item']) pills.add(AppPill(icon: Icons.edit_note_rounded, label: t('كتابة بند', 'Write an item'), onTap: _busy ? null : _writeItem));
+    if (manager && (s.status == 'draft' || s.status == 'published' || s.status == 'voting')) {
+      pills.add(AppPill(
+          icon: Icons.event_note_rounded,
+          label: s.reviewDeadline == null ? t('موعد انتهاء المراجعة', 'Review deadline') : t('تعديل موعد المراجعة', 'Change the review deadline'),
+          onTap: _busy ? null : _reviewDeadline));
+    }
+    if (s.can['remind']) pills.add(AppPill(icon: Icons.notifications_active_rounded, label: t('تذكير من لم يصوّت', 'Remind non-voters'), color: c.warning, onTap: _busy ? null : _remind));
     if (pills.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
@@ -1062,7 +1202,7 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
     final api = _api!;
     final manager = s.can['manage'];
     final myVote = _optimistic[a.id] ?? a.myVote ?? s.myVotes[a.id];
-    final canVote = s.isVoting && s.can['vote'] && !a.decided && a.status != 'withdrawn' && !a.excluded;
+    final canVote = s.isVoting && s.can['vote'] && !a.decided && a.status != 'withdrawn' && !a.excluded && !a.myCoi;
     final showResult = manager || s.resultsVisible || s.isClosed;
     return AgendaRow(
       key: ValueKey('agenda.${a.id}'),
@@ -1078,6 +1218,8 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
       dragHandle: handle,
       onVote: canVote ? (v, note) => _vote(a, v, note) : null,
       onOpenItem: widget.onOpenItem == null ? null : () => widget.onOpenItem!(a.item),
+      onResults: a.resultsVisible ? () => _results(a) : null,
+      onConflict: s.can['declare_conflict'] && !a.decided && !a.myCoi && !a.excluded ? () => _conflict(a) : null,
       onRemove: manager && s.status == 'draft'
           ? () async {
               if (await appConfirm(context, message: t('إزالة البند من جدول الأعمال؟', 'Remove this item from the agenda?'), danger: true)) {
