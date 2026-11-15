@@ -9,6 +9,8 @@
 library;
 
 import 'dart:async';
+import 'package:flutter_education_app/core/notif_link.dart' show NotifLink;
+import 'package:flutter_education_app/design/action_banner.dart' show ActionBanner;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
@@ -806,8 +808,12 @@ class _SessionEditBodyState extends State<SessionEditBody> {
 /// Export Hub for a closed session (the coordinator wires it; hidden when null). [member] sends votes through the
 /// member route (`/public/governance/agenda/{aid}/vote`). [orgId] is only needed without an `OrgSession` above.
 class GovSessionScreen extends StatefulWidget {
-  const GovSessionScreen(this.sessionId, {super.key, this.onOpenItem, this.onExport, this.orgId, this.member = false});
+  const GovSessionScreen(this.sessionId, {super.key, this.onOpenItem, this.onExport, this.orgId, this.member = false, this.link});
   final int sessionId;
+
+  /// The notification / action inbox link that opened it (UX v3 phase 2): its ActionBanner on top and a scroll to
+  /// the agenda row it names (`focus: agenda:<id>` / `item:<id>`), else to the first one waiting for my vote.
+  final NotifLink? link;
   final void Function(WorkItem item)? onOpenItem;
   final void Function(CouncilSession session)? onExport;
   final int? orgId;
@@ -825,6 +831,8 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
   Timer? _tick;
   DateTime _now = DateTime.now();
   List<AgendaItem>? _reordered;
+  final _focusRow = GlobalKey(debugLabel: 'gov.session.focus');
+  bool _focused = false;
 
   int? get _orgId => govOrgId(context, widget.orgId);
   GovApi? get _api => _orgId == null ? null : GovApi(_orgId!);
@@ -889,6 +897,28 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
     if (!r.ok && _s != null) appToast(r.error!.message, error: true);
     if (r.ok) _refresh.markUpdated();
     _syncTimer();
+    if (r.ok && !_focused && widget.link != null) {
+      _focused = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToFocus());
+    }
+  }
+
+  /// The agenda row a link points at: `agenda:<id>` / `item:<id>` in its focus, else the first one waiting for my vote.
+  int? _focusAgendaId(CouncilSession s) {
+    final f = widget.link?.focus ?? '';
+    final m = RegExp(r'^(agenda|item):(\d+)$').firstMatch(f);
+    if (m != null) {
+      final n = int.parse(m.group(2)!);
+      return (m.group(1) == 'agenda' ? s.agenda.where((a) => a.id == n) : s.agenda.where((a) => a.item.id == n)).firstOrNull?.id;
+    }
+    final mine = s.agenda.where((a) => s.isVoting && s.can['vote'] && !a.decided && !a.excluded && !a.myCoi && (_optimistic[a.id] ?? a.myVote ?? s.myVotes[a.id]) == null);
+    return mine.firstOrNull?.id;
+  }
+
+  Future<void> _scrollToFocus() async {
+    final ctx = _focusRow.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    await Scrollable.ensureVisible(ctx, alignment: 0.1, duration: AppMotion.of(ctx).base);
   }
 
   Future<void> _act(Future<dynamic> Function() fn, {String? ok}) async {
@@ -1268,6 +1298,11 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
       body = AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.xl), children: [
+          if (widget.link != null && widget.link!.hasAction)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
+              child: ActionBanner.of(widget.link!, onAction: _focusAgendaId(s) == null ? null : _scrollToFocus),
+            ),
           SessionHeader(session: s, now: _now),
           _actions(s),
           if (s.status == 'cancelled')
@@ -1307,7 +1342,8 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
               ),
             )
           else
-            for (final a in agenda) _row(s, a),
+            for (final a in agenda)
+              if (widget.link != null && a.id == _focusAgendaId(s)) KeyedSubtree(key: _focusRow, child: _row(s, a)) else _row(s, a),
         ]),
       );
     }

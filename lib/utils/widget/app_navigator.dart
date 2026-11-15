@@ -15,6 +15,9 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../core/app_mode.dart';
+import '../../core/notif_link.dart';
+import '../../design/action_banner.dart' show StaleLinkPage;
+import '../../features/org/needs_my_action_page.dart' show NeedsMyActionPage;
 import '../../core/offline/downloads_availability.dart' show linkAvailableHere;
 import '../../core/attention/attention_service.dart' show AttentionService, OrgTabRequest;
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart' show CoursePageLoader;
@@ -131,7 +134,10 @@ class AppNavigator {
   ///
   /// exam_notice (D-247; also exam_appeal · exam_result): [data] is the push / notification target (`exam_id`, `attempt_id`,
   /// `kind` …), else [targetId] is the exam.
-  static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind, Map<String, dynamic> data = const {}}) async {
+  ///
+  /// [link] (UX v3 phase 2) rides along to the screen it opens (org_work · org_council · org_delegation ·
+  /// org_form_assignment: the ActionBanner, the focused part); action_inbox → Needs my action.
+  static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind, Map<String, dynamic> data = const {}, NotifLink? link}) async {
     final root = navigatorKey.currentState;
     final ctx = navigatorKey.currentContext;
     final nav = _nav;
@@ -305,8 +311,11 @@ class AppNavigator {
         }
         return;
       // governance (D-057): an item · a council session · a delegation · a form I must answer
+      case 'action_inbox': // UX v3 phase 2: a grouped summary / a badge with several items → Needs my action
+        await nav.push(MaterialPageRoute(settings: const RouteSettings(name: '/needs-my-action'), builder: (_) => const NeedsMyActionPage()));
+        return;
       case 'org_work':
-        if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenItemLink(nav, ctx, targetId, orgId: orgId));
+        if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenItemLink(nav, ctx, targetId, orgId: orgId, link: link));
         return;
       case 'org_department': // Institutions v2 phase 2: e.g. "you are now the acting head" → that department's dashboard (staff)
         final link = await _deferred('org_inst_notify', org_notify.loadLibrary, () async => org_notify.orgDeptLinkTarget(
@@ -331,7 +340,7 @@ class AppNavigator {
         if (!opened && ctx.mounted) await nav.pushNamed('/notifications');
         return;
       case 'org_council':
-        if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenSessionLink(nav, ctx, targetId, orgId: orgId));
+        if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenSessionLink(nav, ctx, targetId, orgId: orgId, link: link));
         return;
       case 'org_message': // an organization's message to me (D-975) → my organization messages, on that message
         if (AppConfig.disableList.contains(orgMessagesFeatureKey)) {
@@ -343,6 +352,20 @@ class AppNavigator {
           builder: (_) => OrgMyMessagesPage(orgId: orgId, openId: targetId,
               onOpenItem: (_, r) => r.workItemId != null ? openModule('org_work', targetId: r.workItemId, orgId: r.orgId ?? orgId) : null),
         ));
+        return;
+      case 'org_delegation': // UX v3 phase 2: id = the delegation → that one
+        if (targetId != null) {
+          await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenDelegationById(nav, targetId, orgId: orgId, link: link));
+          return;
+        }
+        await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenDelegationLink(nav, ctx, null, orgId: orgId));
+        return;
+      case 'org_form_assignment': // id = the assignment → its fill screen while pending
+        if (targetId != null) {
+          await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenAssignmentById(nav, targetId, link: link));
+          return;
+        }
+        await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenAssignmentsLink(nav));
         return;
       case 'org_delegations':
         await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenDelegationLink(nav, ctx, null, orgId: orgId));
@@ -400,22 +423,58 @@ class AppNavigator {
     }
   }
 
-  /// Notification list tap / push tap. Asks the server where the notification points.
-  static Future<void> openNotification(String notificationId) async {
+  /// Opens what a link points at (UX v3 phase 2: notification target, push, action inbox row, attention badge):
+  /// stale → [StaleLinkPage]; else its organization first, then [openModule] with the link riding along.
+  static Future<void> openLink(NotifLink l) async {
+    if (ViewAsState.active) return;
+    if (l.stale) return _openStale(l);
+    if (l.orgId != null) await _openOrgFirst(l.orgId!, false);
+    await openModule(l.module, targetId: l.id, orgId: l.orgId, link: l);
+  }
+
+  /// "This item was already handled" with a button to where it lives now (the server's `fallback.module`).
+  static Future<void> _openStale(NotifLink l) async {
+    final nav = _nav;
+    if (nav == null) return;
+    final fb = l.fallbackModule;
+    await nav.push(MaterialPageRoute(
+        settings: const RouteSettings(name: '/notification-stale'),
+        builder: (ctx) => StaleLinkPage(
+              reason: l.staleReason,
+              fallbackLabel: fb == null || fb == 'notifications' ? (AppConfig.lang == 'ar' ? 'إلى الإشعارات' : 'Go to notifications') : null,
+              onFallback: () {
+                Navigator.of(ctx).pop();
+                openModule(fb ?? 'notifications', orgId: l.orgId);
+              },
+            )));
+  }
+
+  /// Notification list tap / push tap. Asks the server where the notification points (the answer also marks it
+  /// read). Returns false when the server could not be asked (a push then routes by its own data).
+  static Future<bool> openNotification(String notificationId) async {
     try {
       final r = await ApiClient().get('/api/v1/notifications/$notificationId/target');
-      if (r is! Map) return;
+      if (r is! Map) return false;
+      final link = NotifLink.fromTarget(r);
+      if (link != null && link.stale) {
+        await _openStale(link);
+        return true;
+      }
       // the wallet / plan notifications (points_topup, live_plan*) when the server names no module
-      final module = r['module']?.toString() ?? pointsModuleFor((r['type'] ?? r['related_type'])?.toString());
+      final module = r['module']?.toString() ?? link?.module ?? pointsModuleFor((r['type'] ?? r['related_type'])?.toString());
       final courseId = int.tryParse('${r['course_id'] ?? ''}');
-      final orgId = int.tryParse('${r['org_id'] ?? ''}');
-      if (orgId != null && await _openOrgFirst(orgId, module == null && courseId == null)) return;
+      final orgId = int.tryParse('${r['org_id'] ?? ''}') ?? link?.orgId;
+      if (orgId != null && await _openOrgFirst(orgId, module == null && courseId == null)) return true;
       await openModule(module,
-          targetId: courseId ?? int.tryParse('${r['target_id'] ?? ''}'),
+          targetId: courseId ?? int.tryParse('${r['target_id'] ?? ''}') ?? link?.id,
           orgId: orgId,
           kind: (r['kind'] ?? r['related_type'])?.toString(),
-          data: Map<String, dynamic>.from(r));
-    } catch (_) {/* tapping must never crash */}
+          data: Map<String, dynamic>.from(r),
+          link: link);
+      return true;
+    } catch (_) {
+      return false; // tapping must never crash
+    }
   }
 
   /// The `live_lobby` deep link: a meeting opens the calendar on that meeting, a course session stays where the
@@ -465,6 +524,14 @@ class AppNavigator {
   /// FCM payload (tap or foreground). Uses explicit fields when present, else course_id.
   static Future<void> openFromPush(Map<String, dynamic> data) async {
     if (ViewAsState.active) return;
+    // UX v3 phase 2: the push names its notification → it is marked read (PUT …/read) and the target answer routes
+    // it; the push's own data is the fallback when the server cannot be asked
+    final link = NotifLink.fromPush(data);
+    final nid = link?.notificationId;
+    if (nid != null) {
+      unawaited(ApiClient().put('/api/v1/notifications/$nid/read').then((_) {}, onError: (_) {}));
+      if (await openNotification(nid)) return;
+    }
     // a join request for a room I host: {type: live_lobby, kind, id} (live-rooms-spec §4)
     if (data['type'] == 'live_lobby') {
       return openModule('live_lobby', targetId: int.tryParse('${data['id'] ?? data['target_id'] ?? ''}'), kind: '${data['kind'] ?? ''}');
@@ -481,7 +548,7 @@ class AppNavigator {
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) {
       return openModule(module,
-          targetId: target, orgId: orgId, kind: module == 'inbox' ? '${data['tab'] ?? data['segment'] ?? data['kind'] ?? ''}' : null, data: data);
+          targetId: target, orgId: orgId, kind: module == 'inbox' ? '${data['tab'] ?? data['segment'] ?? data['kind'] ?? ''}' : null, data: data, link: link);
     }
     if (target != null) return openCourse(target);
     await _nav?.pushNamed('/notifications');

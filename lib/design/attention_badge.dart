@@ -17,6 +17,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../core/app_mode.dart';
 import '../core/attention/attention_service.dart';
+import '../core/notif_link.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_screen.dart' show TeacherTransfersScreen;
 import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart' show InboxItem, openInboxItem;
 import '../main.dart' show navigatorKey;
@@ -151,10 +152,25 @@ Future<void> openOrgSection(int orgId, String section, {String? sub}) async {
   await navigatorKey.currentState?.pushNamed('/org_dashboard');
 }
 
+/// UX v3 phase 2: a governance row's `target` (on the row or inside its action): `{module, id, org_id}` when one
+/// item waits (that item), `{module: action_inbox}` when several do (Needs my action). Null = the old routing.
+NotifLink? attentionTargetLink(AttentionItem x) {
+  final t = x.raw['target'] ?? x.action['target'];
+  final l = NotifLink.fromAttentionTarget(t);
+  if (l == null || l.orgId != null || x.orgId == null) return l;
+  return NotifLink.fromAttentionTarget({...(t as Map), 'org_id': x.orgId});
+}
+
 /// Opens what an attention item points to, then refreshes the counts.
 Future<void> openAttentionItem(BuildContext context, AttentionItem x, {VoidCallback? onOpen}) async {
   final a = x.action;
   final orgId = x.orgId ?? int.tryParse('${a['org_id'] ?? ''}');
+  final target = attentionTargetLink(x);
+  if (target != null) {
+    await AppNavigator.openLink(target);
+    AttentionService.instance.refresh();
+    return;
+  }
   switch (x.actionType) {
     case 'org_tab':
       final section = '${a['tab']}';

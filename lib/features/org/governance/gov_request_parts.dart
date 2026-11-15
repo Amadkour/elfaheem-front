@@ -796,12 +796,14 @@ class GovAttachmentChips extends StatelessWidget {
 
 /// The requester edits a rejected item (title · details · files · a note to the decider) and sends it again.
 /// Returns the reopened item, or null.
-Future<WorkItem?> showGovResubmitSheet(BuildContext context, WorkItem item) =>
-    showAppSheet<WorkItem>(context, (_) => _ResubmitSheet(item: item));
+/// [highlight] (UX v3 phase 2): the field keys a reviewer asked to change (`title` · `body`) are marked on open.
+Future<WorkItem?> showGovResubmitSheet(BuildContext context, WorkItem item, {Set<String> highlight = const {}}) =>
+    showAppSheet<WorkItem>(context, (_) => _ResubmitSheet(item: item, highlight: highlight));
 
 class _ResubmitSheet extends StatefulWidget {
-  const _ResubmitSheet({required this.item});
+  const _ResubmitSheet({required this.item, this.highlight = const {}});
   final WorkItem item;
+  final Set<String> highlight;
   @override
   State<_ResubmitSheet> createState() => _ResubmitSheetState();
 }
@@ -812,6 +814,9 @@ class _ResubmitSheetState extends State<_ResubmitSheet> {
   final _note = TextEditingController();
   late final _files = [...widget.item.attachments];
   bool _busy = false, _uploading = false;
+
+  /// The reviewer's "change this" mark on a highlighted field.
+  String? _asked(String key) => widget.highlight.contains(key) ? t('طلب المراجِع تعديل هذا الحقل', 'The reviewer asked you to change this') : null;
 
   @override
   void dispose() {
@@ -867,8 +872,8 @@ class _ResubmitSheetState extends State<_ResubmitSheet> {
           AppBanner(icon: Icons.feedback_outlined, color: c.danger, text: '${t('سبب الرفض', 'Reason for rejecting')}: ${d!.note}'),
           const SizedBox(height: AppSpace.sm),
         ],
-        AppField(controller: _title, label: t('العنوان', 'Title')),
-        AppField(controller: _body, label: t('التفاصيل', 'Details'), maxLines: 5),
+        AppField(controller: _title, label: t('العنوان', 'Title'), errorText: _asked('title')),
+        AppField(controller: _body, label: t('التفاصيل', 'Details'), maxLines: 5, errorText: _asked('body')),
         Text(t('مرفقات', 'Attachments'), style: AppType.meta(context).copyWith(color: c.textLight)),
         const SizedBox(height: AppSpace.xs - 2),
         GovAttachmentChips(attachments: _files, onRemove: (a) => setState(() => _files.remove(a))),

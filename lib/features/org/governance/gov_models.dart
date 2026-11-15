@@ -1703,11 +1703,14 @@ class SavedFilter {
 }
 
 class FormAssignment {
-  const FormAssignment({required this.user, this.status = 'pending', this.dueAt, this.responseId, this.remindedAt, this.remindCount = 0, this.formId, this.formTitle, this.orgId});
+  const FormAssignment({required this.user, this.status = 'pending', this.dueAt, this.responseId, this.remindedAt, this.remindCount = 0, this.formId, this.formTitle, this.orgId, this.id});
   final GovUser user;
   final String status;
   final DateTime? dueAt, remindedAt;
   final int? responseId, formId, orgId;
+
+  /// The assignment row (a `org_form_assignment` link names it, UX v3 phase 2).
+  final int? id;
   final int remindCount;
   final String? formTitle;
   bool get overdue => status == 'pending' && dueAt != null && dueAt!.isBefore(DateTime.now());
@@ -1721,6 +1724,7 @@ class FormAssignment {
         formId: j['form_id'] == null ? null : asInt(j['form_id']),
         formTitle: j['form_title'] as String?,
         orgId: j['org_id'] == null ? null : asInt(j['org_id']),
+        id: j['id'] == null ? null : asInt(j['id']),
       );
 }
 

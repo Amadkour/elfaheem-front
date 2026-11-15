@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/notif_link.dart' show NotifLink;
 import 'package:provider/provider.dart';
 
 import '../../../design/app_kit.dart' show showAppSheet;
@@ -19,6 +20,7 @@ import 'gov_delegations_page.dart';
 import 'gov_entities_page.dart';
 import 'gov_filter.dart';
 import 'gov_item_screen.dart';
+import 'gov_link_pages.dart';
 import 'gov_items_page.dart';
 import 'gov_member_pages.dart';
 import 'gov_models.dart';
@@ -137,12 +139,13 @@ bool _manages(BuildContext ctx, int? orgId) {
 }
 
 /// `org_work` → the item (notification `related_type` org_work_item carries the item id).
-Future<void> govOpenItemLink(NavigatorState nav, BuildContext ctx, int id, {int? orgId}) =>
-    nav.push(MaterialPageRoute(builder: (_) => GovItemScreen(id, orgId: orgId, member: !_manages(ctx, orgId))));
+/// [link] (UX v3 phase 2): the action banner, the part to scroll to and the fields to change.
+Future<void> govOpenItemLink(NavigatorState nav, BuildContext ctx, int id, {int? orgId, NotifLink? link}) =>
+    nav.push(MaterialPageRoute(builder: (_) => GovItemScreen(id, orgId: orgId, member: !_manages(ctx, orgId), link: link)));
 
 /// `org_council` → the session (agenda published · voting opened · closing · results).
-Future<void> govOpenSessionLink(NavigatorState nav, BuildContext ctx, int sessionId, {int? orgId}) => nav.push(MaterialPageRoute(
-    builder: (_) => GovSessionScreen(sessionId, orgId: orgId, member: !_manages(ctx, orgId), onOpenItem: (it) => govOpenItem(ctx, it, orgId: orgId))));
+Future<void> govOpenSessionLink(NavigatorState nav, BuildContext ctx, int sessionId, {int? orgId, NotifLink? link}) => nav.push(MaterialPageRoute(
+    builder: (_) => GovSessionScreen(sessionId, orgId: orgId, member: !_manages(ctx, orgId), link: link, onOpenItem: (it) => govOpenItem(ctx, it, orgId: orgId))));
 
 /// `org_delegations` → the delegations of the entity when known, else what is delegated to me.
 Future<void> govOpenDelegationLink(NavigatorState nav, BuildContext ctx, int? deptId, {int? orgId}) => nav.push(MaterialPageRoute(
@@ -150,6 +153,14 @@ Future<void> govOpenDelegationLink(NavigatorState nav, BuildContext ctx, int? de
 
 /// `org_assignments` → the forms I must answer.
 Future<void> govOpenAssignmentsLink(NavigatorState nav) => nav.push(MaterialPageRoute(builder: (_) => const GovMyAssignmentsPage()));
+
+/// `org_delegation` (UX v3 phase 2, id = the delegation) → that delegation, or "no longer exists".
+Future<void> govOpenDelegationById(NavigatorState nav, int id, {int? orgId, NotifLink? link}) =>
+    nav.push(MaterialPageRoute(builder: (_) => GovLinkedDelegationPage(id, orgId: orgId, link: link)));
+
+/// `org_form_assignment` (id = the assignment) → its fill screen while pending, else "already handled".
+Future<void> govOpenAssignmentById(NavigatorState nav, int id, {NotifLink? link}) =>
+    nav.push(MaterialPageRoute(builder: (_) => GovLinkedAssignmentPage(id, link: link)));
 
 /// Department dashboard: the Items tab body of an entity.
 Widget govDeptItemsTab(BuildContext context, int orgId, int deptId) =>
