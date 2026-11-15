@@ -23,6 +23,10 @@ const knownMissing = <String, String>{
   // fallback for an older backend: tried only after GET /api/v1/my-enrolled-courses answers 404
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
   // the paper exam flow (D-697 over the back's OFFLINE_FLOW_CONTRACT.md §2 / §3, branch of/b)
+  // org_inst_notify.dart: the phone-push setting and "Message this department"
+  'GET /api/v1/org/public/governance/{}/me/notify-prefs': 'Institutions v2 phase 2, server in progress',
+  'PUT /api/v1/org/public/governance/{}/me/notify-prefs': 'Institutions v2 phase 2, server in progress',
+  'POST /api/v1/org/public/governance/{}/units/{}/message': 'Institutions v2 phase 2, server in progress',
 };
 
 void main() {

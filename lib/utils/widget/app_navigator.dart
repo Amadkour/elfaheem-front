@@ -36,6 +36,7 @@ import '../../features/org/org_messages_models.dart' show orgMessagesFeatureKey;
 import '../../features/org/org_must_ack.dart' show OrgMyMessagesPage;
 import '../../features/org/governance/gov_wiring.dart' deferred as gov_wiring;
 import '../../features/org/advising/adv_wiring.dart' deferred as adv_wiring;
+import '../../features/org/org_inst_notify.dart' deferred as org_notify;
 import 'package:flutter_education_app/features/live/companion/companion_incoming.dart' show CompanionIncoming;
 import 'package:flutter_education_app/features/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
 import 'package:flutter_education_app/features/live/live_lobby_sheets.dart' show showLobbySheet;
@@ -293,6 +294,24 @@ class AppNavigator {
       // governance (D-057): an item · a council session · a delegation · a form I must answer
       case 'org_work':
         if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenItemLink(nav, ctx, targetId, orgId: orgId));
+        return;
+      case 'org_department': // Institutions v2 phase 2: e.g. "you are now the acting head" → that department's dashboard (staff)
+        final link = await _deferred('org_inst_notify', org_notify.loadLibrary, () async => org_notify.orgDeptLinkTarget(
+            deptId: targetId, orgId: orgId, orgsEnabled: AppConfig.orgsEnabled, disabled: AppConfig.disableList, manages: org_notify.orgManages(ctx, orgId)).name);
+        if (!ctx.mounted) return;
+        switch (link) {
+          case 'dashboard':
+            await org_notify.openOrgDepartmentLink(nav, ctx, targetId!);
+          case 'departments': // no department id: the dashboard's Departments list
+            AttentionService.instance.orgTabRequest.value = OrgTabRequest(orgId!, 'people', 'departments');
+            if (_onOrgDashboard) {
+              WidgetsBinding.instance.addPostFrameCallback((_) => AppShellNav.popVisibleToRoot());
+            } else {
+              await root.pushNamed('/org_dashboard');
+            }
+          default:
+            await nav.pushNamed('/notifications');
+        }
         return;
       case 'org_council':
         if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenSessionLink(nav, ctx, targetId, orgId: orgId));

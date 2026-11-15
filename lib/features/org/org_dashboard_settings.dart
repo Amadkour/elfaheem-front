@@ -38,6 +38,7 @@ import 'org_access_page.dart' show OrgAccessPage, OrgActivityPage;
 import 'org_common.dart';
 import 'org_creation_fee.dart' show OrgCreationFeePanel;
 import 'org_danger_zone.dart';
+import 'org_inst_notify.dart' show OrgNotifyPrefsPage;
 import 'org_v3.dart' show orgCall, orgCodeText;
 import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgSub;
@@ -215,6 +216,14 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
         if (s.current != null) _dangerGroup(context, s),
         AppSettingsGroup(title: t('التفضيلات', 'Preferences'), icon: Icons.settings_rounded, children: [
           AppLanguageTile(color: AdminPalette.violet.last),
+          // Institutions v2 phase 2: phone alerts for this organization's requests (all · important · off)
+          if (s.currentId != null)
+            AppSettingsTile(
+                icon: Icons.notifications_active_rounded,
+                color: c.primary,
+                label: OrgNotifyPrefsPage.title(),
+                subtitle: t('تنبيهات الهاتف لطلبات المؤسسة', 'Phone alerts for organization requests'),
+                onTap: () => orgPush(context, OrgNotifyPrefsPage.title(), OrgNotifyPrefsPage(orgId: s.currentId!, embedded: true), maxWidth: AppWidth.form.max)),
           const DisplaySettingsTile(),
           const CertVerifyEntryTile(),
           if (GetAppTile.available) const GetAppTile(), // web: the store / installer for this device

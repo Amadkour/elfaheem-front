@@ -72,6 +72,7 @@ import 'advising/adv_wiring.dart' show AdvMemberHubEntry;
 import 'governance/gov_wiring.dart' show govMemberPills;
 import 'org_messages_models.dart' show orgMessagesEnabled;
 import 'org_must_ack.dart' show OrgMyMessagesPage;
+import 'org_inst_notify.dart' show OrgNotifyPrefsPage;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppNavigator;
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
 
@@ -308,6 +309,9 @@ List<OrgQuickGroup> orgQuickGroups(BuildContext context, Map<String, dynamic> en
         OrgQuickAction(icon: Icons.apartment_rounded, label: t('دليل الإدارات', 'Departments'), onTap: () => space(1)),
         OrgQuickAction(icon: Icons.gavel_rounded, label: t('اللوائح', 'Regulations'), onTap: () => space(4)),
         OrgQuickAction(icon: Icons.group_add_rounded, label: t('انضمام لقسم', 'Join a department'), onTap: () => space(6)),
+        // Institutions v2 phase 2: phone alerts for organization requests (all · important · off)
+        OrgQuickAction(icon: Icons.notifications_active_rounded, label: OrgNotifyPrefsPage.title(),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgNotifyPrefsPage(orgId: orgId)))),
       ],
     ]),
   ].where((g) => !g.isEmpty).toList();
