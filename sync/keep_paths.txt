@@ -105,3 +105,13 @@ web/splash/img/light-2x.png
 web/splash/img/light-3x.png
 web/splash/img/light-4x.png
 windows/runner/resources/app_icon.ico
+
+# Alfaheem's own code (A-007): the page canvas and the landing's live theme. Shared files only carry the hooks of
+# sync/hooks.py, re-applied by apply_identity.py and checked by check_identity.py.
+lib/design/alfaheem_canvas.dart
+test/ui/alfaheem_canvas_test.dart
+test/visual/alfaheem_canvas_golden_test.dart
+test/visual/fixtures/theme_alfaheem.json
+landing/src/alfaheem/AlfaheemTheme.astro
+landing/src/alfaheem/theme-runtime.js
+landing/src/alfaheem/theme-default.json

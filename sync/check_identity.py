@@ -6,7 +6,9 @@
   2. NextBrain's certificate pin and App Links fingerprint (they must never ship), and any Firebase id of NextBrain's
      nextbrain-2y or the old elfaheem project (A-006); the kept Firebase files must name FIREBASE_PROJECT_ID;
   3. images: every tracked image outside test/ and docs/ must be in sync/keep_paths.txt or sync/brand_assets.txt,
-     and none of those may still be byte-identical to NextBrain's file at the same path (remote `nextbrain`).
+     and none of those may still be byte-identical to NextBrain's file at the same path (remote `nextbrain`);
+  4. Alfaheem's hooks in shared files (sync/hooks.py, A-007) are all in place, and the landing has no fixed upstream
+     colour left (every one is a variable the live theme sets).
 
 Usage: py -3.12 sync/check_identity.py [--ref nextbrain/production] [--verbose]
 """
@@ -16,6 +18,9 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from hooks import landing_leftovers, missing_hooks  # noqa: E402  (A-007)
 
 ROOT = Path(__file__).resolve().parent.parent
 VERBOSE = '--verbose' in sys.argv
@@ -107,6 +112,11 @@ def firebase_files(bad: list[str]) -> None:
         bad.append('notification_service.dart: no guard for an empty VAPID key (run sync/apply_identity.py)')
 
 
+def _read_lf(rel: str) -> str | None:
+    p = ROOT / rel
+    return p.read_bytes().decode('utf-8').replace(chr(13) + chr(10), chr(10)) if p.exists() else None
+
+
 def main() -> int:
     rules = allow_rules()
     used = [0] * len(rules)
@@ -137,6 +147,8 @@ def main() -> int:
                 allowed += 1
 
     firebase_files(bad)
+    bad.extend(missing_hooks(_read_lf))
+    bad.extend(landing_leftovers(_read_lf, all_files))
     keep, brand = listed('keep_paths.txt'), listed('brand_assets.txt')
     images = [f for f in all_files if IMAGE.search(f) and not re.match(r'^(test|docs)/', f)]
     try:

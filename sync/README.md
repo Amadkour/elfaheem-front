@@ -7,6 +7,7 @@ This folder exists only in Alfaheem (never in NextBrain), so it never conflicts.
 | `identity.env` | Every Alfaheem value: names, application id, domain, certificate pins, App Links fingerprints, splash colours, server folder. |
 | `keep_paths.txt` | Files where Alfaheem's copy always wins (Firebase files, the original images, the generated icons and splash images). |
 | `brand_assets.txt` | NextBrain brand images Alfaheem never drew; each is generated from the Alfaheem logo. |
+| `hooks.py` | Alfaheem's one-line hooks in shared files and the landing colour rules (A-007); used by the two scripts below. |
 | `apply_identity.py` | Writes `identity.env` over a freshly merged tree. Idempotent (`--check` shows what it would change). |
 | `gen_brand_assets.py` | Generates the brand images (splash art, `assets/icon/*`, `logo_mark.png`, web PWA splash, landing icons, og image, the offline page's inline logo). |
 | `post_merge.sh` | `apply_identity` → `gen_brand_assets` → `flutter pub get` → `flutter_launcher_icons` → `flutter_native_splash` → `apply_identity` → `check_identity`. |

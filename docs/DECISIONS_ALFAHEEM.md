@@ -85,3 +85,39 @@ project, so an app installed from the old project is not carried over.
   VAPID key, and on a Firebase file that does not name `FIREBASE_PROJECT_ID`.
 - Still owed: the backend's FCM service account for `alfaheem-d3c8f` (server `.env.production`), the
   iOS OAuth client for Google sign-in, Android SHA fingerprints in the Firebase console once the release key exists.
+
+## A-007 Page canvas from the sidebar colour; the landing wears the live theme (2026-11-15, owner request)
+
+**App.** The upstream canvas is one solid colour (D-948). Alfaheem's is a light tint of the sidebar's colour under a
+faint static diamond lattice in that colour (the sidebar's own `AppPatternStyle.lattice` geometry: one 2.2 px diamond
+every 26 px, staggered). `lib/design/alfaheem_canvas.dart`:
+- the sidebar colour is BrandLayer's (the primary darkened until the on-hero inks read on it), repeated in
+  `AlfaheemCanvas.sidebarColour` because BrandLayer reads `accent2`, which reads `background` (a loop);
+  `test/ui/alfaheem_canvas_test.dart` keeps the copy equal to `BrandLayer.of(c).sidebar.first` for three palettes,
+  both modes, so an upstream change to the derivation fails a test after a sync;
+- light: the sidebar's hue at 42 % lightness, 9 % over the paper (`card_bg`; mixing the deep sidebar colour itself
+  only greys the paper) → `#ECF7F7` for the live theme; dark: the dark sidebar colour 16 % over `dark_background`;
+- the lattice: the hue at 20 % (light) / the sidebar lifted toward `primary_light` at 22 % (dark); one cached image
+  tile per colour and pixel ratio drawn as a single repeated `ImageShader` behind a `RepaintBoundary`, anchored to the
+  window so nested pages line up; no animation; none under high contrast;
+- `ThemeConfigProvider.background` and the theme's `scaffoldBackgroundColor` return the tint, so every reader of the
+  canvas colour follows; `BasePage` (and the shells, which are BasePages) draws the lattice behind a transparent
+  Scaffold; a page given its own `background` keeps it. `AlfaheemCanvas.enabled = false` restores the plain canvas
+  (the "before" renders of `test/visual/alfaheem_canvas_golden_test.dart`).
+
+**Landing.** `landing/src/alfaheem/theme-runtime.js` maps the colours of `GET /api/v1/theme/web` (production
+`https://alfheemacademy.com/api/api/v1/theme/web`, same origin, so the CSP's `connect-src 'self'` covers it) onto the
+landing's CSS variables, light and dark, with the app's derivations (sidebar colour for the hero, the canvas tint for
+the page, every text colour contrast-checked). `AlfaheemTheme.astro` runs it at build time on `theme-default.json`
+(the live theme of 2026-11-15) into `<style id="alf-theme">` (`:root:root`, so it outranks `global.css`), and inlines
+the same file so the page applies the theme cached in `localStorage` (`alf_theme_v1`) before the first paint, then
+fetches the live one; any failure keeps what is on screen. The theme-color metas come from it too.
+
+**Sync survival.** `sync/hooks.py` lists every hook in a shared file (theme_config_provider.dart: import, getter,
+scaffold colour; base_page.dart: import, Scaffold colour, canvas wrapper; landing Base.astro: import, the component in
+place of the theme-color metas) and the text rules that route the landing's fixed upstream colours (`#0a3b2d`,
+`#fbf1d9`, `#c9d3cd`, the green shadows, the cream glass, the SVG fills) through variables. `apply_identity.py`
+re-applies them (idempotent); `check_identity.py` fails on a missing hook, on a fixed upstream colour left in
+`landing/src`, and on a `global.css` `:root` variable the runtime does not set. The Alfaheem files are in
+`sync/keep_paths.txt`. When an upstream edit moves a hook's anchor, apply_identity prints `! ... update sync/hooks.py`
+and the gate fails: update the anchor there.

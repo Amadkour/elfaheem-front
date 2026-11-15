@@ -141,10 +141,10 @@ p {
 }
 .btn--gold {
   background: var(--gold-soft);
-  color: #0a3b2d;
+  color: var(--on-gold);
 }
 .btn--gold:hover {
-  background: #fbf1d9;
+  background: var(--gold-hover);
 }
 
 /* header */
@@ -264,9 +264,9 @@ p {
   min-height: 48px;
   font: inherit;
   font-weight: 700;
-  color: #0a3b2d;
+  color: var(--on-gold);
   background-color: var(--gold-soft);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%230a3b2d' stroke-width='2'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%231a1a1a' stroke-width='2'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   border: 2px solid transparent;
@@ -280,7 +280,7 @@ p {
   padding: 0 16px 0 40px;
 }
 .sentence select option {
-  color: #0a3b2d;
+  color: var(--on-gold);
   background: #fff;
 }
 .sentence select:focus-visible {
@@ -311,10 +311,10 @@ p {
 }
 .hero .btn:not(.btn--ghost) {
   background: var(--gold-soft);
-  color: #0a3b2d;
+  color: var(--on-gold);
 }
 .hero .btn:not(.btn--ghost):hover {
-  background: #fbf1d9;
+  background: var(--gold-hover);
 }
 
 /* sections */
@@ -416,7 +416,7 @@ p {
   height: 44px;
   border-radius: 12px;
   background: var(--gold-soft);
-  color: #0a3b2d;
+  color: var(--on-gold);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -564,7 +564,7 @@ p {
   }
   .card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(10, 86, 66, 0.14);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--hero-from) 14%, transparent);
   }
 }
 @media (prefers-reduced-motion: reduce) {

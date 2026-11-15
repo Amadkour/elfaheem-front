@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/alfaheem_canvas.dart'; // Alfaheem A-007 (sync/hooks.py)
 import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
@@ -63,12 +64,12 @@ class BasePage extends StatelessWidget {
     // Rebuild whenever the disable list changes (silent FCM push / theme fetch).
     return ValueListenableBuilder<int>(
       valueListenable: AppConfig.disableListVersion,
-      builder: (context, _, _) => _buildPage(context),
+      builder: (context, _, _) => AlfaheemCanvas.page(context, explicit: background, child: _buildPage(context)), // Alfaheem A-007
     );
   }
 
   Widget _buildPage(BuildContext context) {
-    Color bg=background ??(context.colors.background);
+    Color bg=background ??AlfaheemCanvas.pageFill(context); // Alfaheem A-007
     if (key case ValueKey(
     value: final v,
     ) when AppConfig.disableList.contains(v)) {
