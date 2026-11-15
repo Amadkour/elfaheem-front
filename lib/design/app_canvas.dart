@@ -1,20 +1,24 @@
-// lib/design/alfaheem_canvas.dart
+// lib/design/app_canvas.dart
 //
-// ALFAHEEM ONLY (A-007, docs/DECISIONS_ALFAHEEM.md). The page canvas: a light tint of the sidebar's colour (a dark
-// tint of its hue in dark mode) under a faint static diamond lattice in that colour, the same lattice the sidebar
-// draws ([AppPatternStyle.lattice]: a staggered grid, one 2.2 px diamond every 26 px).
+// The page canvas (D-949): a light tint of the sidebar's colour (a dark tint of its hue in dark mode) under a very
+// faint static diamond lattice in that colour, the same lattice geometry the sidebar draws
+// ([AppPatternStyle.lattice]: a staggered grid, one 2.2 px diamond every 26 px).
 //
-// The upstream canvas is one solid colour (D-948). This file is kept by the sync (sync/keep_paths.txt); the shared
-// files only carry one-line hooks that sync/apply_identity.py re-applies and sync/check_identity.py checks:
-//   · ThemeConfigProvider.background and materialTheme's scaffold colour → [AlfaheemCanvas.tint];
-//   · BasePage → [AlfaheemCanvas.pageFill] (its Scaffolds turn transparent) and [AlfaheemCanvas.page] (paints the
-//     canvas behind the page).
+//   · [AppCanvas.sidebarColour] is THE sidebar colour: [BrandLayer] paints its sidebar, rail and auth panel from it,
+//     so the canvas and the sidebar can never drift apart. It reads only roles that do not read the canvas
+//     (primary, on-hero, accent1, the hero glass), which is what lets [ThemeConfigProvider.background] use it.
+//   · [ThemeConfigProvider.background] and the theme's scaffold colour are [AppCanvas.tint], so every reader of the
+//     canvas colour follows the live server theme.
+//   · [BasePage] draws [AppCanvas.page] (the tint and the lattice) behind a transparent Scaffold; a page given its
+//     own `background` keeps it.
 //
-// The colours follow the live server theme: the sidebar colour is derived exactly as the sidebar derives it
-// (BrandLayer: the primary, darkened until the on-hero inks read on it; test/ui/alfaheem_canvas_test.dart keeps the
-// two equal). The lattice is one cached image tile per colour and pixel ratio, drawn as a single repeated shader
-// behind a RepaintBoundary, anchored to the window so nested pages line up. No animation: Reduce motion has
-// nothing to park; high contrast drops the lattice.
+// The lattice is a whisper (about 10 % of the hue over the canvas): one cached image tile per colour and pixel ratio,
+// drawn as a single repeated shader behind a RepaintBoundary, anchored to the window so nested pages line up. No
+// animation, so Reduce motion has nothing to park; high contrast drops the lattice.
+//
+// A header block that sat on the old plain canvas in a pastel near the new canvas colour steps off it: the identity
+// block (Account page, profiles) starts on [AppCanvas.raised], the course page's washed header ends on the paper, and
+// every tinted AppBlock keeps a hairline of its own tone in light mode too.
 
 import 'dart:ui' as ui;
 
@@ -23,24 +27,29 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'app_contrast.dart';
 
-/// The Alfaheem page canvas (A-007).
-abstract final class AlfaheemCanvas {
-  /// False draws the upstream plain canvas (the "before" renders of test/visual/alfaheem_canvas_golden_test.dart).
-  static bool enabled = true;
-
-  /// How much of the sidebar colour lies over the paper (light) or the dark background (dark).
+/// The page canvas (D-949).
+abstract final class AppCanvas {
+  /// How much of the sidebar's hue lies over the paper (light), of the sidebar colour over the dark background (dark).
   static const double lightTint = 0.09, darkTint = 0.16;
 
-  /// The lattice's ink: the sidebar colour at this alpha over the canvas.
-  static const double lightDots = 0.2, darkDots = 0.22;
+  /// A raised panel on the canvas ([raised]): a deeper share of the same hue over the paper (light), the sidebar
+  /// colour over the dark card (dark).
+  static const double lightRaised = 0.2, darkRaised = 0.2;
+
+  /// The lattice's ink: the sidebar's hue at this alpha over the canvas (a whisper, not a pattern).
+  static const double lightDots = 0.10, darkDots = 0.11;
 
   /// The lattice geometry: the sidebar's own ([AppPatternStyle.lattice]).
   static const double step = 26, diamond = 2.2;
 
+  /// The contrast every sidebar ink keeps on the sidebar colour: AA plus a small margin.
+  static const double sideMin = 4.6;
+
   static final Map<int, Color> _sideCache = {};
 
-  /// The sidebar's colour (its top 60 %) for [c]'s palette in [dark] mode: BrandLayer's derivation, repeated here
-  /// because BrandLayer reads colours that read [ThemeConfigProvider.background] (a loop).
+  /// The sidebar's colour (its solid top 60 %) for [c]'s palette in [dark] mode: the primary (darkened a step in dark
+  /// mode), darkened further until every on-hero ink reads on it: the ink on the colour, on the hover wash and on the
+  /// open tab's glass; the cream (accent1) on that glass; the muted role line on the person box's glass.
   static Color sidebarColour(ThemeConfigProvider c, {required bool dark}) {
     final ink = c.onHero, cream = c.accent.withValues(alpha: 1), glass = c.heroGlass, muted = c.onHeroMuted;
     final key = Object.hash(c.primary, ink, cream, glass, muted, dark);
@@ -50,21 +59,21 @@ abstract final class AlfaheemCanvas {
     final hover = ink.withValues(alpha: 0.08), user = ink.withValues(alpha: 0.10);
     bool reads(Color x) {
       final g = Color.alphaBlend(glass, x), u = Color.alphaBlend(user, x);
-      return minContrast(ink, [x, g, u, Color.alphaBlend(hover, x)]) >= 4.6 &&
-          contrastRatio(cream, g) >= 4.6 &&
-          contrastRatio(Color.alphaBlend(muted, u), u) >= 4.6;
+      return minContrast(ink, [x, g, u, Color.alphaBlend(hover, x)]) >= sideMin &&
+          contrastRatio(cream, g) >= sideMin &&
+          contrastRatio(Color.alphaBlend(muted, u), u) >= sideMin;
     }
 
-    Color darken(Color x, double f) {
-      final h = HSLColor.fromColor(x.withValues(alpha: 1));
-      return h.withLightness((h.lightness * f).clamp(0.0, 1.0)).toColor();
-    }
-
-    var s = dark ? darken(c.primary, 0.8) : c.primary;
+    var s = dark ? _darken(c.primary, 0.8) : c.primary;
     for (var round = 0; round < 200 && !reads(s); round++) {
-      s = darken(s, 0.97);
+      s = _darken(s, 0.97);
     }
     return _sideCache[key] = s;
+  }
+
+  static Color _darken(Color x, double f) {
+    final h = HSLColor.fromColor(x.withValues(alpha: 1));
+    return h.withLightness((h.lightness * f).clamp(0.0, 1.0)).toColor();
   }
 
   /// The sidebar's hue at a mid lightness (its saturation kept): what a light tint is mixed from. Mixing the deep
@@ -75,14 +84,27 @@ abstract final class AlfaheemCanvas {
   }
 
   /// The canvas colour: [paper] with the sidebar's hue laid over it (light), [base] with the sidebar colour laid over
-  /// it (dark: a deep tint of the same hue). [base] (the upstream canvas) when switched off.
-  static Color tint(ThemeConfigProvider c, {required bool dark, required Color base, required Color paper}) {
-    if (!enabled) return base;
+  /// it (dark: a deep tint of the same hue).
+  static Color tint(ThemeConfigProvider c, {required bool dark, required Color base, required Color paper}) =>
+      _mix(c, dark: dark, base: base, paper: paper, share: dark ? darkTint : lightTint);
+
+  /// A panel raised off the canvas (a profile hero, a course header): the same hue, a deeper share. Opaque.
+  static Color raised(ThemeConfigProvider c) {
+    final dark = c.isDark;
+    // dark mode: over the dark card (a step lighter than the canvas: depth reads as a lift there), light: the paper
+    return _mix(c, dark: dark, base: c.cardBg.withValues(alpha: 1), paper: c.cardBg, share: dark ? darkRaised : lightRaised);
+  }
+
+  /// The hairline round a [raised] panel: the hue a step stronger than the panel.
+  static Color raisedBorder(ThemeConfigProvider c) =>
+      Color.alphaBlend(hue(c, dark: c.isDark).withValues(alpha: c.isDark ? 0.30 : 0.16), raised(c));
+
+  static Color _mix(ThemeConfigProvider c, {required bool dark, required Color base, required Color paper, required double share}) {
     final mix = dark
-        ? Color.alphaBlend(sidebarColour(c, dark: true).withValues(alpha: darkTint), base)
-        : Color.alphaBlend(hue(c, dark: false).withValues(alpha: lightTint), paper.withValues(alpha: 1));
+        ? Color.alphaBlend(sidebarColour(c, dark: true).withValues(alpha: share), base)
+        : Color.alphaBlend(hue(c, dark: false).withValues(alpha: share), paper.withValues(alpha: 1));
     // whole 8-bit channels (a colour blended from it and made opaque again, pinnedBackground, compares equal), and
-    // the server background's own alpha: a translucent one stays translucent, as the upstream code expects
+    // the server background's own alpha: a translucent one stays translucent, as the readers expect
     return Color(mix.withAlpha((base.a * 255).round()).toARGB32());
   }
 
@@ -94,12 +116,9 @@ abstract final class AlfaheemCanvas {
     return ink.withValues(alpha: dark ? darkDots : lightDots);
   }
 
-  /// BasePage's Scaffold colour: transparent (the canvas behind it shows), or the plain canvas when switched off.
-  static Color pageFill(BuildContext context) => enabled ? Colors.transparent : context.colors.background;
-
   /// BasePage's body on the canvas. A page given its own background keeps it (its Scaffold is opaque).
   static Widget page(BuildContext context, {Color? explicit, required Widget child}) {
-    if (!enabled || explicit != null) return child;
+    if (explicit != null) return child;
     final c = context.colors;
     final lattice = !MediaQuery.highContrastOf(context);
     return ColoredBox(
@@ -152,7 +171,7 @@ class _RenderLattice extends RenderBox {
     markNeedsPaint();
   }
 
-  /// One tile (a column of the staggered lattice: [AlfaheemCanvas.step] wide, two rows tall) per colour and ratio.
+  /// One tile (a column of the staggered lattice: [AppCanvas.step] wide, two rows tall) per colour and ratio.
   static final Map<int, ui.Image> _tiles = {};
 
   static ui.Image? _tile(Color color, double ratio) {
@@ -160,7 +179,7 @@ class _RenderLattice extends RenderBox {
     final hit = _tiles[key];
     if (hit != null) return hit;
     try {
-      const s = AlfaheemCanvas.step, d = AlfaheemCanvas.diamond;
+      const s = AppCanvas.step, d = AppCanvas.diamond;
       final w = (s * ratio).round(), h = (2 * s * ratio).round();
       if (w <= 0 || h <= 0) return null;
       final rec = ui.PictureRecorder();
@@ -208,7 +227,7 @@ class _RenderLattice extends RenderBox {
     if (img == null) return;
     // anchored to the window: two pages drawn side by side (or one inside another) share one lattice
     final origin = localToGlobal(Offset.zero);
-    const s = AlfaheemCanvas.step;
+    const s = AppCanvas.step;
     final m = Matrix4.identity()
       ..translateByDouble(offset.dx - origin.dx, offset.dy - origin.dy, 0, 1)
       ..scaleByDouble(s / img.width, 2 * s / img.height, 1, 1);

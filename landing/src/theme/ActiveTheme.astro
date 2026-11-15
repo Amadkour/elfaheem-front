@@ -1,8 +1,8 @@
 ---
-// ALFAHEEM ONLY (A-007, docs/DECISIONS_ALFAHEEM.md): the landing wears the app's active theme. Base.astro carries a
-// one-line hook to this component (re-applied by sync/apply_identity.py from sync/hooks.py).
-//   1. build time: theme-runtime.js maps theme-default.json (the live Alfaheem theme when it was baked) into the
-//      <style id="alf-theme"> below, so the first paint already has Alfaheem's colours;
+// The landing wears the app's active theme (D-949, docs/DECISIONS.md); Base.astro puts this in the <head>.
+//   1. build time: theme-runtime.js maps theme-default.json (the live theme when it was baked; refresh it with the
+//      `colors` of GET /api/api/v1/theme/web) into the <style id="active-theme"> below, so the first paint already
+//      has the theme's colours;
 //   2. before the first paint: the theme cached by an earlier visit (localStorage) replaces it;
 //   3. then the live theme (GET /api/v1/theme/web, same origin; PUBLIC_LANDING_API_BASE on another host) replaces it
 //      again and is cached. Any failure keeps what is on screen.
@@ -18,10 +18,10 @@ const baked = themeCss(colors as Record<string, unknown>);
 const url = `${import.meta.env.PUBLIC_LANDING_API_BASE ?? ''}/api/api/v1/theme/web`;
 // the comment lines are dropped from the inlined copy (whole-line comments only: no code is touched)
 const lines = runtime.split(String.fromCharCode(10)).filter((l: string) => !l.trim().startsWith('//'));
-const boot = `${lines.join(String.fromCharCode(10))}\nthemeBoot(${JSON.stringify(url)}, 'alf_theme_v1');`;
+const boot = `${lines.join(String.fromCharCode(10))}\nthemeBoot(${JSON.stringify(url)}, 'landing_theme_v1');`;
 ---
 
 <meta name="theme-color" content={baked.light} media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content={baked.dark} media="(prefers-color-scheme: dark)" />
-<style id="alf-theme" is:inline set:html={baked.css} />
+<style id="active-theme" is:inline set:html={baked.css} />
 <script is:inline set:html={boot} />

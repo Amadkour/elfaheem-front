@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_education_app/features/upload/upload_progress_footer.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/features/profile/about/about_and_terms_screen.dart' show TermsScreen;
 import 'package:flutter_education_app/core/offline/downloads_availability.dart';
@@ -782,9 +783,10 @@ class _AlfaheemAppState extends State<AlfaheemApp> with WidgetsBindingObserver {
                     ],
                     useShortestSide: true,
                     // the live room above the Navigator: full-screen, or a box while moving around the app
+                    // the ONE background-upload footer, under the Navigator (D-949): every page gets the room above it
                     // web: "Get the app" strip above the role homes; above it the website downloads strip on every page,
                     // sign-in included (D-144); on top "A new version is live — Reload" (D-143), which keeps the top spot
-                    child: LiveRoomLayer(child: WebReleaseBanner(child: AppDownloadBanner(child: GetAppBanner(child: OrgInvitationPromptHost(navigatorKey: navigatorKey, child: child!))))),
+                    child: LiveRoomLayer(child: WebReleaseBanner(child: AppDownloadBanner(child: GetAppBanner(child: OrgInvitationPromptHost(navigatorKey: navigatorKey, child: UploadQueueHost(child: child!)))))),
                   ),
                 ),
               ),
