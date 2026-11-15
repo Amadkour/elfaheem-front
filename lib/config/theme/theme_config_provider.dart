@@ -35,6 +35,7 @@ import '../app_config.dart';
 import 'app_theme.dart';
 import 'theme_config_model.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_canvas.dart';
 import 'package:flutter_education_app/design/app_contrast.dart';
 
 // v2: drops palettes cached before the new default theme, so offline users
@@ -197,9 +198,14 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   // SURFACES
   // ══════════════════════════════════════════════════════════════════════
 
-  /// The canvas. Dark mode uses `dark_background` (D-610): it used to be the card tone at 90 %, so a card on the page
-  /// had no tone step under it, and depth is tone first (canvas → paper card → tinted block).
-  Color get background => isDark
+  /// The canvas (D-949): a light tint of the sidebar's hue over the paper, a deep tint of the sidebar colour over
+  /// `dark_background` in dark mode ([AppCanvas.tint]); BasePage draws the faint lattice on it. Depth stays tone first
+  /// (canvas → paper card → tinted block, D-610).
+  Color get background => AppCanvas.tint(this, dark: isDark, base: backgroundBase, paper: _model?.cardBg ?? AppTheme.cardBg);
+
+  /// The theme's own `background` role (`dark_background` in dark mode) before the canvas tint: what [background] is
+  /// mixed over in dark mode, and its alpha.
+  Color get backgroundBase => isDark
       ? (_model?.darkBackground ?? AppTheme.darkBackground)
       : (_model?.background ?? AppTheme.background);
 
@@ -453,12 +459,13 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Identity (D-713): the header of a person or an organization (the Account page, a public /@name page, a
   /// teacher's profile, the member home's organization block) wears a soft degree of the PRIMARY instead of the
-  /// peach band. Two stops for a gentle diagonal gradient: light mode goes from a primary tint (about #D3EADF for the
-  /// default preset; #E6F2EC since D-728) to an almost-canvas tint; dark mode from a deep primary tone (about #26503F) to a deeper one.
+  /// peach band. Two stops for a gentle diagonal gradient: light mode goes from a raised tint of the sidebar's hue (D-949,
+  /// [AppCanvas.raised]) to the paper with a breath of it; dark mode from a deep primary tone (about #26503F) to a deeper one.
   /// Every ink of the block ([blockInk], [blockIdentityMuted], [blockIdentityFaint]) reads at AA on both stops.
-  (Color, Color) get blockIdentityStops => _identityCache[(primary, _lightInk, textDark, isDark)] ??= _deriveIdentity();
+  (Color, Color) get blockIdentityStops =>
+      _identityCache[(primary, _lightInk, textDark, isDark, accent, onHero, _model?.cardBg)] ??= _deriveIdentity();
 
-  final Map<(Color, Color, Color, bool), (Color, Color)> _identityCache = {};
+  final Map<(Color, Color, Color, bool, Color, Color, Color?), (Color, Color)> _identityCache = {};
 
   (Color, Color) _deriveIdentity() {
     final p = HSLColor.fromColor(primary.withValues(alpha: 1));
@@ -471,9 +478,14 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       }
       return (a.toColor(), b.toColor());
     }
-    // D-728: a quieter degree (0.86 → 0.92 at the strong stop) — the old one read as a heavy mint band
-    final a = blockSurface(p.withSaturation(math.min(p.saturation, 0.42)).withLightness(0.92).toColor(), _lightInk);
-    final b = blockSurface(p.withSaturation(math.min(p.saturation, 0.3)).withLightness(0.965).toColor(), _lightInk);
+    // D-949: the canvas is a light tint of the sidebar's hue now, so the block steps OFF it: the strong stop is a
+    // raised tint of that hue (AppCanvas.raised), the soft one the paper with a breath of it, a hue hairline round it
+    // (AppBlockColors). D-728's quiet degree (L 0.92 → 0.965) sat right on the new canvas.
+    final paper = _model?.cardBg ?? AppTheme.cardBg;
+    // (not through blockSurface, which lifts a tint until textLight reads and so back onto the canvas: the block's
+    // muted and faint inks are fitted to these stops instead, blockIdentityMuted / blockIdentityFaint)
+    final a = AppCanvas.raised(this);
+    final b = Color.alphaBlend(AppCanvas.hue(this, dark: false).withValues(alpha: 0.03), paper.withValues(alpha: 1));
     return (a, b);
   }
 
@@ -929,7 +941,10 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     final pLight = m?.primaryLight ?? AppTheme.primaryLight;
     final danger = m?.danger ?? AppTheme.danger;
     final accent2 = m?.accent2 ?? AppTheme.accent2;
-    final bg = dark ? (m?.darkBackground ?? AppTheme.darkBackground) : (m?.background ?? AppTheme.background);
+    final bg = AppCanvas.tint(this,
+        dark: dark,
+        base: dark ? (m?.darkBackground ?? AppTheme.darkBackground) : (m?.background ?? AppTheme.background),
+        paper: m?.cardBg ?? AppTheme.cardBg);
     final card = dark ? (m?.darkCard ?? AppTheme.darkCard) : (m?.cardBg ?? AppTheme.cardBg);
     final surface = dark ? (m?.darkSurface ?? AppTheme.darkSurface) : (m?.surfaceCard ?? AppTheme.surfaceCard);
     final divider = dark ? (m?.darkDivider ?? AppTheme.darkDivider) : (m?.divider ?? AppTheme.divider);

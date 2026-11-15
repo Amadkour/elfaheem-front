@@ -28,7 +28,7 @@
 // 3:1 on their circle); a plain inline icon stays flat. The page canvas wears [AppPatternStyle.study], small
 // education line icons, instead of the dots.
 // D-650 round 2: the gradient's end is accent1 (cream), placed past the label so white stays at 4.5:1 where the
-// glyphs sit; the page canvas itself is one solid colour (D-948).
+// glyphs sit; the page canvas is a light tint of the sidebar colour under a faint lattice (D-949, app_canvas.dart).
 // D-650 round 3 (the 60/40 rule): EVERY brand gradient is 60 % primary and 40 % accent1 — solid primary from 0 to
 // 0.6, then a blend to accent1 at 1.0, mirrored in Arabic. A labelled fill holds the green to just past its label
 // (max(0.6, label end)); the sidebar, the rail and the auth panel run it top → bottom ([AppBrandPanel]) and every
@@ -46,6 +46,7 @@ import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart' show SchedulerBinding;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import 'app_canvas.dart';
 import 'app_contrast.dart';
 import 'app_mesh.dart';
 import 'app_tokens.dart';
@@ -185,7 +186,8 @@ class AppGradientText extends StatelessWidget {
 //     last 45 % on a short label, a sliver of the end padding on a long one) — [AppBrandFill], [AppBrandLabel];
 //   · the glyph family ([AppGradientIcon]): primary_light → accent1 on a dark surface (the sidebar, the hero, a dark
 //     card), primary → a half accent1 / half accent2 blend on a light tint, every point at 3:1;
-//   · (the page canvas's doodle field of study glyphs was removed by D-948: the canvas is one solid colour)
+//   · (the page canvas's doodle field of study glyphs was removed by D-948; since D-949 the canvas is a tint of the
+//     sidebar colour with a whisper of the lattice, AppCanvas)
 // D-650 round 3: the sidebar / rail / auth panel are the 60 / 40 gradient top → bottom ([AppBrandPanel],
 // [BrandLayer.sideAt]).
 // D-863: no fill fades into accent1 any more (the production cream #F3E6C4 read as an old caramel at the end of every
@@ -304,9 +306,6 @@ class BrandLayer {
   /// accent1 (opaque): the open tab's ink on the green and the plate behind dark ink where a panel turns light.
   final Color cream;
 
-  /// The contrast every sidebar ink keeps: AA plus a small margin.
-  static const double _sideMin = 4.6;
-
   static final Map<int, BrandLayer> _cache = {};
 
   /// The layer for [c]'s palette and mode (cached per palette).
@@ -337,25 +336,13 @@ class BrandLayer {
     final cream = c.accent.withValues(alpha: 1);
     Color under(Color bg, double min) => ensureContrast(bg, [ink], min: min);
 
-    // ── sidebar (D-650 r3): the green held solid to 60 %, then the blend to the cream end. The green is darkened
-    // until every on-hero ink reads on it: white on the card, on the hover wash and on the open tab's glass; the
-    // cream on that glass; the role line muted on the person box's glass. Content further down picks its own ink
-    // from the colour under it (AppBrandLayer.inkOver) ──
+    // ── sidebar (D-650 r3): the green held solid to 60 %, then the blend to a deeper shade. The green is
+    // AppCanvas.sidebarColour (D-949: the page canvas is tinted from the same colour): darkened until every on-hero
+    // ink reads on it. Content further down picks its own ink from the colour under it (AppBrandLayer.inkOver) ──
     final glass = c.heroGlass;
     final hover = ink.withValues(alpha: 0.08);
     final userGlass = ink.withValues(alpha: 0.10);
-    final muted = c.onHeroMuted;
-    bool greenReads(Color x) {
-      final g = Color.alphaBlend(glass, x), u = Color.alphaBlend(userGlass, x);
-      return minContrast(ink, [x, g, u, Color.alphaBlend(hover, x)]) >= _sideMin &&
-          contrastRatio(cream, g) >= _sideMin &&
-          contrastRatio(Color.alphaBlend(muted, u), u) >= _sideMin;
-    }
-
-    var s0 = dark ? _l(c.primary, 0.8) : c.primary;
-    for (var round = 0; round < 200 && !greenReads(s0); round++) {
-      s0 = _l(s0, 0.97);
-    }
+    final s0 = AppCanvas.sidebarColour(c, dark: dark);
     // D-863: the green deepens toward the foot instead of fading into accent1 (darker only helps the light inks)
     final sideEnd = _l(s0, dark ? 0.8 : 0.74);
     final sidebar = [s0, s0, sideEnd];
@@ -1100,7 +1087,7 @@ class AppBrandInkState extends State<AppBrandInk> {
 }
 
 /// The shapes of [AppPattern]: [dots] (kept for callers), [lattice] (staggered small diamonds) for the dark brand
-/// surfaces. Never behind a page (D-948): the canvas is one solid colour.
+/// surfaces. Not behind a page: the page canvas draws its own, much fainter lattice ([AppCanvas], D-949).
 enum AppPatternStyle { dots, lattice }
 
 /// A very faint static pattern painted behind [child] (or alone, filling its box): no image asset, no animation, so
