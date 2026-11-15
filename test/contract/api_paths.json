@@ -580,6 +580,7 @@
   "GET /api/v1/org/orgs/{org_id:int}/grades/visibility",
   "GET /api/v1/org/orgs/{org_id:int}/insights",
   "GET /api/v1/org/orgs/{org_id:int}/institution/heads",
+  "GET /api/v1/org/orgs/{org_id:int}/institution/health",
   "GET /api/v1/org/orgs/{org_id:int}/institution/readiness",
   "GET /api/v1/org/orgs/{org_id:int}/institution/wizard",
   "GET /api/v1/org/orgs/{org_id:int}/invitations",
