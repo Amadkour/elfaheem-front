@@ -395,6 +395,7 @@
   "GET /api/v1/live/{kind:session|meeting}/{id:int}/policy",
   "GET /api/v1/live/{kind:session|meeting}/{id:int}/recordings",
   "GET /api/v1/materials/{material_id:int}/ratings",
+  "GET /api/v1/me/action-inbox",
   "GET /api/v1/me/attention",
   "GET /api/v1/me/calendar",
   "GET /api/v1/me/calendar/depts/{dept_id:int}",
