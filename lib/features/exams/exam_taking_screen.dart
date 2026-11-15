@@ -16,6 +16,7 @@ import 'package:flutter_education_app/core/display/app_fonts.dart' show AppFonts
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/core/screen_security.dart';
+import 'package:flutter_education_app/core/live_focus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, t, asMapList;
@@ -116,6 +117,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> with WidgetsBinding
     _saver = Timer.periodic(const Duration(seconds: 4), (_) => _flush());
     _restorePending();
     _protectScreen(true);
+    LiveFocus.enterExam(this); // no must-acknowledge card over a live exam (D-977)
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -132,6 +134,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> with WidgetsBinding
     _saver?.cancel();
     _integrity.stop();
     _protectScreen(false);
+    LiveFocus.leaveExam(this);
     _persistPending();                                  // finished → the stored copy is removed
     AppAssistant.release();
     super.dispose();

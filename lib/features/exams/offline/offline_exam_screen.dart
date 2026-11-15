@@ -12,6 +12,7 @@ import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/core/screen_security.dart';
+import 'package:flutter_education_app/core/live_focus.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asMap, t;
@@ -346,6 +347,7 @@ class _OfflineExamTakingScreenState extends State<OfflineExamTakingScreen> {
     _integrity = ExamIntegrity((kind, meta) => _s.event(kind, meta: meta))..start();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
     _protect(true);
+    LiveFocus.enterExam(this); // no must-acknowledge card over a live exam (D-977)
     WidgetsBinding.instance.addPostFrameCallback((_) => mounted ? _host?.holdForCheckIn() : null);
     _save();
   }
@@ -355,6 +357,7 @@ class _OfflineExamTakingScreenState extends State<OfflineExamTakingScreen> {
     _ticker?.cancel();
     _integrity.stop();
     _protect(false);
+    LiveFocus.leaveExam(this);
     _host?.releaseCheckIn();
     _save();
     super.dispose();

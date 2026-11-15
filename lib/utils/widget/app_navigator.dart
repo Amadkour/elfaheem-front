@@ -32,6 +32,8 @@ import '../../design/context_switcher.dart' show closeOrgPages;
 import '../../features/org/org_providers.dart' show OrgSession;
 import '../../features/org/org_invitation_prompt.dart' show OrgInvitationPrompt;
 import '../../features/org/org_invitations.dart' show invitationsFeatureKey;
+import '../../features/org/org_messages_models.dart' show orgMessagesFeatureKey;
+import '../../features/org/org_must_ack.dart' show OrgMyMessagesPage;
 import '../../features/org/governance/gov_wiring.dart' deferred as gov_wiring;
 import '../../features/org/advising/adv_wiring.dart' deferred as adv_wiring;
 import 'package:flutter_education_app/features/live/companion/companion_incoming.dart' show CompanionIncoming;
@@ -294,6 +296,17 @@ class AppNavigator {
         return;
       case 'org_council':
         if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenSessionLink(nav, ctx, targetId, orgId: orgId));
+        return;
+      case 'org_message': // an organization's message to me (D-975) → my organization messages, on that message
+        if (AppConfig.disableList.contains(orgMessagesFeatureKey)) {
+          await nav.pushNamed('/notifications');
+          return;
+        }
+        await nav.push(MaterialPageRoute(
+          settings: const RouteSettings(name: '/org_messages'),
+          builder: (_) => OrgMyMessagesPage(orgId: orgId, openId: targetId,
+              onOpenItem: (_, r) => r.workItemId != null ? openModule('org_work', targetId: r.workItemId, orgId: r.orgId ?? orgId) : null),
+        ));
         return;
       case 'org_delegations':
         await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenDelegationLink(nav, ctx, null, orgId: orgId));
