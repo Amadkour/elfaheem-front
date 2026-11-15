@@ -277,6 +277,7 @@ Map<String, String> govCodeTexts() => {
       'weight_cap': t('لا يجوز أن يتجاوز وزن عضو واحد 40٪ من مجموع أوزان المجلس — خفّض وزنه أو ارفع أوزان غيره',
           "No member may hold more than 40% of the council's total weight — lower that weight or raise the others"),
       'weight_invalid': t('وزن العضو من 1 إلى 3', "A member's weight is 1 to 3"),
+      'secretary_not_member': t('أمين المجلس يجب أن يكون من أعضائه — أضفه إلى الأعضاء أولاً أو اختر شخصاً آخر', 'The secretary must be a member of this council: add them to the members first, or choose another person'),
       'not_staff_member': t('عضو المجلس يكون من هيئة المؤسسة أو إدارييها', 'A council member must be staff of the organization'),
       'council_settings_invalid': t('أحد إعدادات المجلس غير صالح — راجع الحقول', 'One of the council settings is not valid — check the fields'),
       'remind_too_soon': t('أُرسل تذكير منذ أقل من ساعة — حاول لاحقاً', 'A reminder went out less than an hour ago — try again later'),

@@ -124,7 +124,7 @@ void main() {
       expect(self.toBody()['dept_ids'], isEmpty);
       final picked = d.copyWith(
           chair: const GovUser(id: 30, name: 'Dean'), secretary: const GovUser(id: 32, name: 'Sec'), members: const [GovUser(id: 31, name: 'Prof')]);
-      expect(picked.toBody()['faculty'], {'chair_user_id': 30, 'secretary_user_id': 32, 'member_ids': [31]});
+      expect(picked.toBody()['faculty'], {'chair_user_id': 30, 'secretary_user_id': 32, 'member_ids': [31, 32]}); // the secretary is a member (UX v3 bug fix)
       expect(picked.toBody()['mode'], 'faculty');
     });
 

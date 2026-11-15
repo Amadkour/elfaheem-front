@@ -253,7 +253,8 @@ class CouncilsDraft {
         'faculty': {
           if (chairSelf) 'head_self': true else 'chair_user_id': ?chair?.id,
           'secretary_user_id': ?secretary?.id,
-          'member_ids': [for (final u in members) u.id],
+          // the secretary is a council member: picked apart, sent inside the list (UX v3 secretary bug)
+          'member_ids': [for (final u in members) u.id, if (secretary != null && !members.any((u) => u.id == secretary!.id)) secretary!.id],
         },
     };
   }
