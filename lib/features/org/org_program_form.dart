@@ -16,7 +16,7 @@ import '../admin/admin_common.dart';
 import 'org_courses_page.dart' show showOrgCourseForm;
 import 'org_levels.dart' show PrereqRule;
 import 'org_levels_pages.dart' show PrereqRulesEditor;
-import 'org_member_form.dart' show OrgMemberPickField;
+import 'org_unit_rules.dart' show UnitHeadPicker, currentPerson, headProblem;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
@@ -82,6 +82,8 @@ class _ProgramFormState extends State<_ProgramForm> {
   late final _desc = TextEditingController(text: '${p?['description'] ?? ''}');
   late final _cap = TextEditingController(text: '${p?['capacity'] ?? ''}');
   late int? _manager = asMap(p?['manager'])['id'] == null ? null : asInt(asMap(p?['manager'])['id']);
+  // Institutions v2 (D-980): a department always has a manager; "Assign me as head" sends head_self
+  bool _managerSelf = false;
   late final Set<int> _entry = _ids('entry_course_ids'), _req = _ids('required_course_ids'), _elec = _ids('elective_course_ids');
   late int _minE = asInt(p?['min_electives'] ?? 0);
   late bool _active = p?['is_active'] != false;
@@ -115,7 +117,12 @@ class _ProgramFormState extends State<_ProgramForm> {
     if (mounted) setState(() => _courses = all);
   }
 
-  Map<String, String> _check() =>
+  Map<String, String> _check() => {
+        ..._checkProgram(),
+        'manager': ?headProblem(head: _manager, self: _managerSelf),
+      };
+
+  Map<String, String> _checkProgram() =>
       programProblem(code: _code.text, nameAr: _ar.text, nameEn: _en.text, required: _req, electives: _elec, minElectives: _minE);
 
   void _revalidate() {
@@ -148,7 +155,9 @@ class _ProgramFormState extends State<_ProgramForm> {
     }
     // PUT replaces the whole program — every field is sent
     final body = {
-      'code': _code.text.trim(), 'name_ar': _ar.text.trim(), 'name_en': _en.text.trim(), 'manager_user_id': _manager,
+      'code': _code.text.trim(), 'name_ar': _ar.text.trim(), 'name_en': _en.text.trim(),
+      'manager_user_id': _managerSelf ? (currentPerson(context).$1 ?? _manager) : _manager,
+      if (_managerSelf) 'head_self': true,
       'description': _desc.text.trim().isEmpty ? null : _desc.text.trim(),
       'capacity': cap, 'min_electives': _minE, 'is_active': _active,
       'entry_course_ids': _entry.toList(), 'required_course_ids': _req.toList(), 'elective_course_ids': _elec.toList(),
@@ -167,6 +176,8 @@ class _ProgramFormState extends State<_ProgramForm> {
     final msg = orgErrorText(r.error!);
     setState(() {
       switch (r.code) {
+        case 'head_required':
+          _errors = {'manager': msg};
         case 'code_taken':
           _errors = {'code': msg};
         case 'electives':
@@ -203,12 +214,20 @@ class _ProgramFormState extends State<_ProgramForm> {
               Field(controller: _desc, label: t('نبذة (اختياري)', 'About (optional)'), maxLines: 2),
             ]),
             _Section(icon: Icons.manage_accounts_rounded, title: t('القيادة', 'Leadership'), children: [
-              OrgMemberPickField(
+              UnitHeadPicker(
                 label: t('مدير القسم', 'Department manager'),
                 value: _manager,
+                self: _managerSelf,
+                error: _errors['manager'],
                 initialName: asMap(p?['manager'])['name']?.toString(),
                 roles: const ['teacher', 'admin_assistant', 'org_admin'],   // _save_program accepts these
-                onChanged: (v) => setState(() => _manager = v),
+                onChanged: (v, me) {
+                  setState(() {
+                    _manager = v;
+                    _managerSelf = me;
+                  });
+                  _revalidate();
+                },
               ),
             ]),
             _Section(icon: DirIcons.login, title: t('الالتحاق', 'Admission'), children: [

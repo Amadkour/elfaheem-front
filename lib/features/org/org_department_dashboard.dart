@@ -43,6 +43,7 @@ import 'org_join_pages.dart' show OrgUnitJoinHub;
 import 'org_providers.dart';
 import 'org_services_pages.dart' show OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
 import 'org_ui.dart' show deptIcon, memberRoleLabels, orgNameOf;
+import 'org_unit_rules.dart' show ActingChip, CoreUnitBadge, canArchiveDept, showArchiveDepartmentSheet, unitHeadOf, unitIsCore;
 import 'org_v3.dart' show orgCall, orgParseUtc;
 import 'governance/gov_dashboard.dart' show GovDashboardCard;
 import 'governance/gov_delegations_page.dart' show GovDelegationsPage;
@@ -162,6 +163,13 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
     await Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider.value(value: s, child: OrgDepartmentHub(dept: _unit))));
     if (mounted) _load();
+  }
+
+  /// Institutions v2 (D-983): a service department with the delete right, never a core one.
+  bool get _canArchive => _isDept && canArchiveDept(context.read<OrgSession>(), _unit);
+
+  Future<void> _archive() async {
+    if (await showArchiveDepartmentSheet(context, {..._unit, 'id': widget.unitId}) && mounted) Navigator.of(context).maybePop();
   }
 
   @override
@@ -338,6 +346,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
             () => _push(t('التفويضات', 'Delegations'), GovDelegationsPage(id, embedded: true, orgId: context.read<OrgSession>().currentId))),
       if (team != null && team.insert) (Icons.person_add_alt_1_rounded, t('إضافة للفريق', 'Add staff'), c.primary, _openHub),
       if (_isDept && _levels('data_lab') != null) (Icons.science_rounded, t('مختبر البيانات', 'Data Lab'), null, _openHub),
+      if (_canArchive) (Icons.archive_rounded, t('أرشفة الإدارة', 'Archive department'), c.danger, _archive),
     ];
   }
 
@@ -368,6 +377,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
       if (_cap('manage_team')) (Icons.person_add_alt_1_rounded, t('إضافة للفريق', 'Add staff'), c.success, _openHub),
       if (_isDept && (_cap('edit_unit') || _cap('view_team') || _cap('view_forms')))
         (Icons.apps_rounded, t('كل أدوات الإدارة', 'All department tools'), null, _openHub),
+      if (_canArchive) (Icons.archive_rounded, t('أرشفة الإدارة', 'Archive department'), c.danger, _archive),
     ];
   }
 
@@ -543,9 +553,18 @@ class _UnitHero extends StatelessWidget {
                   ),
                 ),
               ]),
+              // Institutions v2: a head who only covers, and the lock of a core department
+              if (mgr['acting'] == true || (unitHeadOf(u)?.acting ?? false)) ...[
+                const SizedBox(height: AppSpace.xs),
+                const ActingChip(),
+              ],
             ]),
           ),
         ]),
+        if (unitIsCore(u)) ...[
+          const SizedBox(height: AppSpace.xs),
+          const CoreUnitBadge(long: true),
+        ],
         if (figures.isNotEmpty) ...[
           const SizedBox(height: AppSpace.md),
           LayoutBuilder(builder: (context, box) {

@@ -15,6 +15,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import '../../admin/admin_common.dart' show Field, SheetHeader, asInt, asMap, askText, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
 import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage;
+import '../org_unit_rules.dart' show AssignMeChip, HeadErrorText, currentPerson, headProblem, headRequiredText;
 import '../org_v3.dart' show orgCall;
 import 'gov_api.dart';
 import 'gov_council_settings.dart';
@@ -315,6 +316,10 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
     if (oid == null) return;
     final nameAr = TextEditingController(text: 'مجلس الكلية'), nameEn = TextEditingController(text: 'Faculty Council');
     GovUser? head;
+    // Institutions v2 (D-980): the Faculty Council needs a chair; "Assign me as chair" sends head_self
+    var headSelf = false;
+    String? headErr;
+    final me = currentPerson(context);
     await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           final c = ctx.colors;
           return Padding(
@@ -324,18 +329,35 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
                 SheetHeader(t('إنشاء مجلس الكلية', 'Create the Faculty Council')),
                 Field(controller: nameAr, label: t('الاسم بالعربية', 'Arabic name')),
                 Field(controller: nameEn, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
-                InkWell(
-                  borderRadius: BorderRadius.circular(AppRadius.control),
-                  onTap: () async {
-                    final u = await pickOrgMember(ctx, oid, title: t('رئيس المجلس', 'Council head'));
-                    if (u != null) set(() => head = u);
-                  },
-                  child: InputDecorator(
-                    isEmpty: head == null,
-                    decoration: InputDecoration(labelText: t('رئيس المجلس (العميد)', 'Council head (the dean)'), prefixIcon: Icon(Icons.person_search_rounded, color: c.textLight)),
-                    child: Text(head?.name ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(ctx)),
+                if (!headSelf)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                    onTap: () async {
+                      final u = await pickOrgMember(ctx, oid, title: t('رئيس المجلس', 'Council head'));
+                      if (u != null) {
+                        set(() {
+                          head = u;
+                          headErr = null;
+                        });
+                      }
+                    },
+                    child: InputDecorator(
+                      isEmpty: head == null,
+                      decoration: InputDecoration(labelText: t('رئيس المجلس (العميد) *', 'Council head (the dean) *'), prefixIcon: Icon(Icons.person_search_rounded, color: c.textLight)),
+                      child: Text(head?.name ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(ctx)),
+                    ),
                   ),
+                const SizedBox(height: AppSpace.xs),
+                AssignMeChip(
+                  selected: headSelf,
+                  meName: me.$2,
+                  label: t('عيّنّي رئيساً للمجلس', 'Assign me as chair'),
+                  onTap: () => set(() {
+                    headSelf = !headSelf;
+                    headErr = null;
+                  }),
                 ),
+                HeadErrorText(headErr),
                 const SizedBox(height: AppSpace.md),
                 AppPrimaryButton(
                   label: t('إنشاء', 'Create'),
@@ -344,12 +366,22 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
                   onPressed: _busy
                       ? null
                       : () async {
+                          final noHead = headProblem(head: head?.id, self: headSelf);
+                          if (noHead != null) {
+                            set(() => headErr = noHead);
+                            showAppNotice(noHead, error: true);
+                            return;
+                          }
                           set(() => _busy = true);
                           final r = await orgCall(
-                              () => GovApi(oid).createFacultyCouncil(nameAr: nameAr.text.trim(), nameEn: nameEn.text.trim(), headUserId: head?.id),
+                              () => GovApi(oid).createFacultyCouncil(
+                                  nameAr: nameAr.text.trim(), nameEn: nameEn.text.trim(), headUserId: head?.id, headSelf: headSelf),
                               ok: t('أُنشئ مجلس الكلية', 'Faculty Council created'));
                           if (!ctx.mounted) return;
-                          set(() => _busy = false);
+                          set(() {
+                            _busy = false;
+                            if (r.code == 'head_required') headErr = headRequiredText();
+                          });
                           if (r.ok) Navigator.pop(ctx);
                         },
                 ),

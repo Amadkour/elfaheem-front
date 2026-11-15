@@ -18,7 +18,7 @@ import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show SheetHeader, asInt, asMap, asMapList, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
-import '../org_member_form.dart' show OrgMemberPickField;
+import '../org_unit_rules.dart' show ActingChip, CoreUnitBadge, UnitHeadPicker, headProblem, headRequiredText, unitHeadOf, unitIsCore;
 import '../org_page_header.dart' show OrgPushedPage;
 import '../org_providers.dart' show OrgApi, OrgSession, orgBase;
 import '../org_ui.dart' show orgNameOf;
@@ -81,6 +81,7 @@ class GovEntityCard extends StatelessWidget {
                   AdminAvatar(name: e.head!.name, url: e.head!.avatar, size: 22),
                   const SizedBox(width: AppSpace.xs),
                   Expanded(child: Text('${t('الرئيس', 'Head')}: ${e.head!.name}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
+                  if (unitHeadOf(e.raw)?.acting ?? false) ...[const SizedBox(width: AppSpace.xs), const ActingChip()],
                 ] else
                   Expanded(child: Text(t('بلا رئيس بعد', 'No head yet'), style: AppType.meta(context).copyWith(color: c.warning))),
               ]),
@@ -96,6 +97,7 @@ class GovEntityCard extends StatelessWidget {
           if (e.counts.overdue > 0) AppBadgePill('${t('متأخرة', 'Overdue')} ${e.counts.overdue}', color: c.danger, icon: Icons.timer_off_rounded),
           if (!e.acceptsComplaints && !e.isCouncil) AppBadgePill(t('لا تستقبل شكاوى', 'No complaints'), color: c.textLight, icon: Icons.block_rounded),
           if (e.can['decide']) AppBadgePill(t('أقرّر هنا', 'I decide here'), color: c.success, icon: Icons.verified_rounded),
+          if (unitIsCore(e.raw)) const CoreUnitBadge(),
         ]),
         if (council != null) ...[
           const SizedBox(height: AppSpace.xs),
@@ -129,6 +131,9 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
   final ar = TextEditingController(), en = TextEditingController(), desc = TextEditingController();
   var kind = 'service';
   int? head, program;
+  // Institutions v2 (D-980): a head is required; "Assign me as head" sends head_self
+  var headSelf = false;
+  String? headErr;
   var acceptsComplaints = true, busy = false;
   final r = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
@@ -165,11 +170,17 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
               ),
               const SizedBox(height: AppSpace.sm),
             ],
-            OrgMemberPickField(
+            UnitHeadPicker(
               label: t('رئيس الجهة', 'Entity head'),
               value: head,
+              self: headSelf,
+              error: headErr,
               roles: const ['teacher', 'teacher_assistant', 'admin_assistant', 'org_admin'],
-              onChanged: (v) => set(() => head = v),
+              onChanged: (v, me) => set(() {
+                head = v;
+                headSelf = me;
+                headErr = null;
+              }),
             ),
             AppSwitchTile(
               icon: Icons.support_agent_rounded,
@@ -187,6 +198,12 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
                   appToast(t('اكتب اسم الجهة', 'Enter a name'), error: true);
                   return;
                 }
+                final noHead = headProblem(head: head, self: headSelf);
+                if (noHead != null) {
+                  set(() => headErr = noHead);
+                  showAppNotice(noHead, error: true);
+                  return;
+                }
                 set(() => busy = true);
                 final res = await orgCall(() => api.createEntity({
                       'kind': kind,
@@ -195,11 +212,14 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
                       'description': desc.text.trim(),
                       'features': const ['complaints', 'forms', 'announcements', 'materials'],
                       'accepts_complaints': acceptsComplaints,
-                      'head_user_id': ?head,
+                      if (headSelf) 'head_self': true else 'head_user_id': ?head,
                       'program_id': ?program,
                     }));
                 if (!ctx.mounted) return;
-                set(() => busy = false);
+                set(() {
+                  busy = false;
+                  if (res.code == 'head_required') headErr = headRequiredText();
+                });
                 if (res.ok) {
                   appToast(t('أُنشئت الجهة 🎉', 'Entity created 🎉'));
                   Navigator.pop(ctx, true);

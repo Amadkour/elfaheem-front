@@ -183,8 +183,9 @@ class GovApi {
     return [for (final c in asMapList(asMap(r)['items'])) Council.fromJson(c)];
   }
 
-  Future<dynamic> createFacultyCouncil({String? nameAr, String? nameEn, int? headUserId}) =>
-      _api.post('$base/councils', body: {'level': 'faculty', 'name_ar': ?nameAr, 'name_en': ?nameEn, 'head_user_id': ?headUserId});
+  /// Institutions v2: a chair is required (422 `head_required`); [headSelf] makes the caller the chair.
+  Future<dynamic> createFacultyCouncil({String? nameAr, String? nameEn, int? headUserId, bool headSelf = false}) =>
+      _api.post('$base/councils', body: {'level': 'faculty', 'name_ar': ?nameAr, 'name_en': ?nameEn, if (headSelf) 'head_self': true else 'head_user_id': ?headUserId});
 
   Future<Council> council(int cid) async => Council.fromJson(asMap(await _api.get('$base/councils/$cid')));
 

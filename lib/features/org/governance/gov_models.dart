@@ -1624,11 +1624,14 @@ class RosterMember {
 }
 
 class CouncilRoster {
-  const CouncilRoster({required this.councilId, this.members = const [], this.totalWeight = 0, this.capPct = 40, this.secretaryUserId, this.chairUserId, this.canEdit = false});
+  const CouncilRoster({required this.councilId, this.members = const [], this.totalWeight = 0, this.capPct = 40, this.secretaryUserId, this.chairUserId, this.canEdit = false, this.secretaryActing = false});
   final int councilId;
   final List<RosterMember> members;
   final int totalWeight, capPct;
   final int? secretaryUserId, chairUserId;
+
+  /// Institutions v2 (D-982): no secretary is set, so the chair acts as secretary (`secretary_acting`).
+  final bool secretaryActing;
 
   /// `can.roster`: the org admin (faculty council) or the department's head; never the secretary.
   final bool canEdit;
@@ -1641,6 +1644,7 @@ class CouncilRoster {
         secretaryUserId: j['secretary_user_id'] == null ? null : asInt(j['secretary_user_id']),
         chairUserId: j['chair_user_id'] == null ? null : asInt(j['chair_user_id']),
         canEdit: asBool(asMap(j['can'])['roster']),
+        secretaryActing: asBool(j['secretary_acting']),
       );
 }
 

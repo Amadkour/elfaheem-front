@@ -12,6 +12,7 @@ import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show SheetHeader, t;
+import '../org_unit_rules.dart' show CouncilSecretaryActingHint;
 import 'gov_council_ui.dart';
 import 'gov_institutions_s3.dart' show DecisionTemplate, DecisionTemplatePicker, WriteItemDraft;
 import 'gov_models.dart';
@@ -382,6 +383,11 @@ class _CouncilRosterCardState extends State<CouncilRosterCard> {
         ],
         onChanged: edit ? (v) => setState(() => _secretary = (v ?? 0) == 0 ? null : v) : null,
       ),
+      // Institutions v2 (D-982): no secretary yet, so the chair covers
+      if (r.secretaryActing && _secretary == null) ...[
+        const SizedBox(height: AppSpace.xs),
+        const CouncilSecretaryActingHint(),
+      ],
       const SizedBox(height: AppSpace.xxs),
       Text(t('للأمين صلاحيات الرئيس على هذا المجلس: الجلسات وجدول الأعمال والتذكير.', "The secretary has the chair's powers on this council: sessions, the agenda and reminders."),
           style: AppType.meta(context).copyWith(color: c.textMedium)),

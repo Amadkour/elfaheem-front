@@ -348,6 +348,14 @@ Map<String, String> _codeTexts() => {
       'request_type_unknown': t('نوع طلب غير معروف لهذا القالب — حدّث الصفحة', 'An unknown request type for this template — refresh the page'),
       'template_name_required': t('اكتب اسم القسم العلمي', 'Name the academic department'),
       'org_course_ad': t('لا يمكن الإعلان عن كورس تابع لمؤسسة', 'An ad can\'t open an organization course'),
+      // Institutions v2 phase 1 (D-980 – D-984, org_unit_rules.dart): every unit has a head; core units stay
+      'head_required': t('الرئيس مطلوب. عيّن شخصاً، أو اجعل نفسك الرئيس.', 'A head is required. Assign someone, or make yourself the head.'),
+      'dept_core': t('إدارة أساسية: يمكن تغيير اسمها ولا يمكن حذفها', 'Core department: can be renamed, not removed'),
+      'council_has_open_agenda': t('لمجلس هذه الإدارة بنود مفتوحة في جدول الأعمال — أنهِها أو انقلها أولاً',
+          'Its council still has open agenda items: close or move them first'),
+      'dept_has_open_items': t('لهذه الإدارة طلبات مفتوحة — اختر الإدارة التي تنتقل إليها',
+          'It still has open requests: choose the department that takes them'),
+      // `dept_has_content` (hard delete of a unit with content) is mapped above with the department codes
     };
 
 /// The text of one server code (local checks reuse the server's wording).
