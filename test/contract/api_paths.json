@@ -677,6 +677,8 @@
   "GET /api/v1/org/public/governance/me/items",
   "GET /api/v1/org/public/governance/me/votes",
   "GET /api/v1/org/public/governance/{org_id:int}/entities",
+  "GET /api/v1/org/public/governance/{org_id:int}/me/attention-flow",
+  "GET /api/v1/org/public/governance/{org_id:int}/me/journey",
   "GET /api/v1/org/public/governance/{org_id:int}/me/notify-prefs",
   "GET /api/v1/org/public/governance/{org_id:int}/people",
   "GET /api/v1/org/public/invitations/{token}",
