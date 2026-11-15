@@ -8,7 +8,10 @@
 //    survives page changes).
 //  * Failed uploads stay in the list with a retry icon (when the file is
 //    still available) and a dismiss icon.
-//  * [visible] lets a page opt out entirely (see BasePage.showUploadQueue).
+//  * [visible] lets a caller opt out entirely.
+//  * Drawn ONCE for the whole app (D-949): [UploadQueueHost] in the MaterialApp.builder stack, under the Navigator,
+//    so it stays put across pushes and pops. BasePage used to draw one per page, and nested pages / shells stacked
+//    several copies.
 //
 // The look (editorial kit): a paper card on a warm hairline that floats over the page (the one shadow), the overall
 // percentage in tabular figures beside an emerald line, the list rows parted by hairlines with 48 px actions. The
@@ -53,6 +56,49 @@ class UploadProgressFooter extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// The ONE upload footer of the app (D-949), around the Navigator in the MaterialApp.builder stack: the pages get
+/// the room above it (their bottom inset moves to the footer), so it never covers a page's own bottom bar or button
+/// and every pushed page keeps it. It steps aside while the keyboard is up (the pages need that room). The footer
+/// gets an [Overlay] of its own: its buttons' tooltips need one, and the Navigator's is below it.
+class UploadQueueHost extends StatelessWidget {
+  const UploadQueueHost({super.key, required this.child, this.manager});
+
+  final Widget child;
+
+  /// Defaults to [UploadQueueManager.instance] (tests pass their own).
+  final UploadQueueManager? manager;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = manager ?? UploadQueueManager.instance;
+    return Overlay.wrap(
+      child: AnimatedBuilder(
+        animation: m,
+        builder: (context, navigator) {
+          final mq = MediaQuery.of(context);
+          final show = m.tasks.isNotEmpty && mq.viewInsets.bottom == 0 && !AppConfig.disableList.contains('upload_queue');
+          // the Navigator keeps slot 0 in the same widgets whether the footer shows or not: it is never rebuilt
+          return Column(children: [
+            Expanded(child: MediaQuery(data: show ? mq.removePadding(removeBottom: true) : mq, child: navigator!)),
+            if (show)
+              UploadProgressFooterView(
+                tasks: m.tasks,
+                expanded: m.expanded,
+                overallProgress: m.overallProgress,
+                activeCount: m.activeCount,
+                onToggle: m.toggleExpanded,
+                onCancel: m.cancel,
+                onRetry: m.retry,
+                onDismiss: m.dismiss,
+              ),
+          ]);
+        },
+        child: child,
+      ),
     );
   }
 }
