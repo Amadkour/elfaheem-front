@@ -49,12 +49,12 @@ OrgPushPref orgPushPrefOf(Object? v) => OrgPushPref.values.firstWhere((p) => p.n
 String? unitMessageProblem(String body) =>
     body.trim().isEmpty ? t('اكتب رسالتك', 'Write your message') : null;
 
-/// The text of a refused message: the unit's audience excludes me (403), the unit is inactive (404), else the usual.
+/// The text of a refused message: the unit's audience excludes me (403), the unit is inactive or a council (422 entity_kind_invalid, or 404), else the usual.
 String unitMessageErrorText(ApiException e) {
-  if (e.statusCode == 403 && (e.code == 'audience' || e.code == 'forbidden' || e.code == null)) {
+  if (e.statusCode == 403 && (e.code == 'unit_audience' || e.code == 'audience' || e.code == 'forbidden' || e.code == null)) {
     return t('هذه الإدارة لا تستقبل رسائل منك', 'This department does not take messages from you');
   }
-  if (e.statusCode == 404 && !orgEndpointMissing(e)) return t('هذه الإدارة لم تعد متاحة', 'This department is no longer available');
+  if (e.code == 'entity_kind_invalid' || (e.statusCode == 404 && !orgEndpointMissing(e))) return t('هذه الإدارة لم تعد متاحة', 'This department is no longer available');
   return orgErrorText(e);
 }
 
