@@ -361,13 +361,35 @@ Map<String, String> _codeTexts() => {
       'wizard_step_invalid': t('خطوة غير معروفة — حدّث الصفحة', 'An unknown step: refresh the page'),
       'head_invalid': t('تعذّر تعيين بعض الرؤساء — اختر عضواً في المؤسسة', 'Some heads could not be assigned: pick a member of the organization'),
       // `dept_has_content` (hard delete of a unit with content) is mapped above with the department codes
+      // UX v3 phase 1: the institution module's codes that had no text yet
+      'dept_parent_cycle': t('لا يمكن جعل الإدارة تابعة لنفسها أو لإحدى إداراتها الفرعية', "A department can't sit under itself or one of its own sub-departments"),
+      'dept_parent_invalid': t('الإدارة الرئيسية غير موجودة في هذه المؤسسة — حدّث الصفحة', 'The parent department is not in this organization: refresh the page'),
+      'dept_name_required': t('اسم الإدارة مطلوب', "The unit's name is required"),
+      'team_member_not_found': t('هذا الشخص لم يعد في الفريق — حدّث الصفحة', 'This person is no longer on the team: refresh the page'),
+      'bad_study_system': t('اختر نظام الدراسة: تقليدي أو ساعات معتمدة', 'Pick the study system: traditional or credit hours'),
+      'form_unavailable': t('هذا النموذج غير متاح الآن', 'This form is not available right now'),
+      'complaint_not_found': t('الشكوى غير موجودة — ربما حُذفت', 'The complaint is gone: it may have been removed'),
+      'complaint_open': t('الشكوى مفتوحة بالفعل', 'The complaint is already open'),
+      'role_name_required': t('اكتب اسم الدور', "Write the role's name"),
+      'expiry_before_start': t('تاريخ الانتهاء قبل تاريخ البداية', 'The end date is before the start date'),
+      'assignment_not_found': t('هذا التكليف لم يعد موجوداً — حدّث الصفحة', 'This assignment no longer exists: refresh the page'),
+      'grant_not_found': t('هذا الوصول لم يعد موجوداً — حدّث الصفحة', 'This access no longer exists: refresh the page'),
+      'permissions_required': t('اختر صلاحية واحدة على الأقل', 'Choose at least one permission'),
+      'agenda_not_found': t('بند جدول الأعمال غير موجود — ربما حُذف', 'The agenda item is gone: it may have been removed'),
     };
 
 /// The text of one server code (local checks reuse the server's wording).
 String orgCodeText(String code) => _codeTexts()[code] ?? code;
 
-/// A short, translated sentence for any [ApiException] the org API can raise.
+/// A short, translated sentence for any [ApiException] the org API can raise; the server's "how to fix it" sentence
+/// (UX v3 `fix` / `fix_en`) follows the mapped text when it sends one.
 String orgErrorText(ApiException e) {
+  final base = _orgErrorBase(e);
+  final fix = e.fix;
+  return (fix == null || fix.trim().isEmpty || base.contains(fix)) ? base : '$base — $fix';
+}
+
+String _orgErrorBase(ApiException e) {
   final c = e.code;
   if (c == 'generation_blocked') {        // schedule_auto.preconditions: the exact reasons, in the user's language
     final rs = asMapList(asMap(ApiException.asMap(e.body)?['detail'])['reasons']);

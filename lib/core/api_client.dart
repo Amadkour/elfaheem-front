@@ -69,6 +69,10 @@ enum ApiErrorType {
   unknown,
 }
 
+/// What kind of failure an [ApiException] is, for the person reading it (UX v3): the server's `kind` when it sends
+/// one, otherwise derived from the status. [network] = no HTTP response at all.
+enum ApiErrorKind { validation, permission, conflict, notFound, rateLimit, network, server, unknown }
+
 /// The ONLY exception type that ApiClient throws.
 ///
 /// [message] is always safe to show to the user.
@@ -92,13 +96,120 @@ class ApiException implements Exception {
   /// VIEW_LIMIT_REACHED, SWITCH_LIMIT, ... (null for everything else).
   final String? code;
 
+  /// The response's `X-Request-Id` header (null when there was no response or the server sent none).
+  final String? requestId;
+
   const ApiException({
     required this.statusCode,
     required this.message,
     this.type = ApiErrorType.unknown,
     this.body,
     this.code,
+    this.requestId,
   });
+
+  // ── UX v3: actionable errors (every value below is derived from [body], so a hand-built exception works too) ──
+
+  static bool get _en => AppConfig.lang != 'ar';
+
+  /// Arabic `x` / English `x_en` from [m], in the current language (falls back to whichever exists).
+  static String? _pick(Map m, String key) {
+    final ar = m[key]?.toString();
+    final en = m['${key}_en']?.toString();
+    final a = (ar == null || ar.trim().isEmpty) ? null : ar;
+    final e = (en == null || en.trim().isEmpty) ? null : en;
+    return _en ? (e ?? a) : (a ?? e);
+  }
+
+  /// The coded `detail` object (`{}` when detail is a string, a pydantic list or absent).
+  Map get detail => asMap(asMap(body)?['detail']) ?? const {};
+
+  /// The top-level `error` object a 422 carries next to pydantic's `detail` list (`{}` when absent).
+  Map get _error => asMap(asMap(body)?['error']) ?? const {};
+
+  /// The object that carries kind / fields / fix: the coded detail first, then the 422 `error`.
+  Map get _rich => detail.isNotEmpty ? detail : _error;
+
+  ApiErrorKind get kind {
+    final k = (_rich['kind'] ?? '').toString();
+    switch (k) {
+      case 'validation': return ApiErrorKind.validation;
+      case 'permission': return ApiErrorKind.permission;
+      case 'conflict': return ApiErrorKind.conflict;
+      case 'not_found': return ApiErrorKind.notFound;
+      case 'rate_limit': return ApiErrorKind.rateLimit;
+      case 'server': return ApiErrorKind.server;
+      case 'network': return ApiErrorKind.network;
+    }
+    return switch (type) {
+      ApiErrorType.network || ApiErrorType.timeout => ApiErrorKind.network,
+      ApiErrorType.badRequest || ApiErrorType.validation => ApiErrorKind.validation,
+      ApiErrorType.forbidden => ApiErrorKind.permission,
+      ApiErrorType.conflict => ApiErrorKind.conflict,
+      ApiErrorType.notFound => ApiErrorKind.notFound,
+      ApiErrorType.rateLimited => ApiErrorKind.rateLimit,
+      ApiErrorType.server => ApiErrorKind.server,
+      _ => statusCode >= 500 ? ApiErrorKind.server : ApiErrorKind.unknown,
+    };
+  }
+
+  /// Every bad field with its text in the current language: the server's `fields`, else (older server) the
+  /// pydantic `detail` list's `loc` / `msg`, else the single `field` with the message.
+  List<(String, String)> get fields {
+    final out = <(String, String)>[];
+    final raw = _rich['fields'];
+    if (raw is List) {
+      for (final f in raw) {
+        if (f is! Map) continue;
+        final name = f['field']?.toString() ?? '';
+        if (name.isEmpty) continue;
+        out.add((name, _pick(f, 'message') ?? message));
+      }
+    }
+    if (out.isEmpty) {
+      final d = asMap(body)?['detail'];
+      if (d is List) {
+        for (final item in d) {
+          if (item is! Map) continue;
+          final loc = item['loc'];
+          final name = (loc is List && loc.isNotEmpty) ? loc.last.toString() : '';
+          final msg = item['msg']?.toString() ?? '';
+          if (name.isNotEmpty && name != 'body') out.add((name, msg.isEmpty ? message : msg));
+        }
+      }
+    }
+    final one = field;
+    if (out.isEmpty && one != null) out.add((one, message));
+    return out;
+  }
+
+  /// The one field the error is about (`detail.field`), or the first of [fields]' server list.
+  String? get field {
+    final f = _rich['field']?.toString();
+    if (f != null && f.isNotEmpty) return f;
+    final raw = _rich['fields'];
+    if (raw is List && raw.isNotEmpty && raw.first is Map) {
+      final n = (raw.first as Map)['field']?.toString();
+      if (n != null && n.isNotEmpty) return n;
+    }
+    return null;
+  }
+
+  /// The server's "how to fix it" sentence in the current language.
+  String? get fix => _pick(_rich, 'fix');
+
+  /// A one-tap fix the server offers (`add_member`, …); the caller decides whether it can run it.
+  String? get fixAction {
+    final a = _rich['fix_action']?.toString();
+    return (a == null || a.isEmpty) ? null : a;
+  }
+
+  /// The reference id to quote to support: the body's `ref`, else the `X-Request-Id` header on a 5xx.
+  String? get ref {
+    final r = _rich['ref']?.toString();
+    if (r != null && r.isNotEmpty) return r;
+    return (statusCode >= 500 && requestId != null && requestId!.isNotEmpty) ? requestId : null;
+  }
 
   bool get isDeviceBlocked => code == 'DEVICE_MISMATCH' || code == 'DEVICE_ID_MISSING';
   bool get isViewLimit => code == 'VIEW_LIMIT_REACHED';
@@ -243,8 +354,16 @@ class ApiException implements Exception {
     final status = res?.statusCode ?? 0;
     final body = res?.data;
     final type = _typeFor(status);
-    final (code, codedMsg) = codedDetail(body);
-    final serverMsg = codedMsg ?? _messageFromBody(body);   // coded messages are already user-ready
+    final (code, codedAr) = codedDetail(body);
+    final m = asMap(body);
+    final d = asMap(m?['detail']);
+    final err = asMap(m?['error']);
+    // coded messages are already user-ready: Arabic `message` / English `message_en` by the app's language;
+    // a 422 with the top-level `error` object says it better than pydantic's list
+    final codedMsg = code != null && d != null ? (_pick(d, 'message') ?? codedAr) : null;
+    final errMsg = err != null ? _pick(err, 'message') : null;
+    final serverMsg = codedMsg ?? errMsg ?? _messageFromBody(body);
+    final rid = res?.headers.value('x-request-id');   // coded messages are already user-ready
 
     // Never leak raw 5xx internals to users; the body is still available.
     // A plain 403 with NO readable server message gets the friendly generic
@@ -267,6 +386,7 @@ class ApiException implements Exception {
       message: message,
       body: body,
       code: code,
+      requestId: (rid == null || rid.isEmpty) ? null : rid,
     );
   }
 

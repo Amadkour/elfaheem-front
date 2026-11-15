@@ -260,6 +260,13 @@ class CouncilsDraft {
   }
 }
 
+/// The faculty council's server field errors (UX v3): the chair, the secretary and the members pickers.
+FieldErrors councilsFieldErrors() => FieldErrors(
+      aliases: const {'chair_user_id': 'chair', 'head_self': 'chair', 'secretary_user_id': 'secretary', 'member_ids': 'members', 'members': 'members'},
+      codes: const {'head_required': 'chair', 'secretary_not_member': 'secretary'},
+      actions: const {'pick_head': 'chair'},
+    );
+
 /// The faculty chair is missing (the local check of 422 `head_required`).
 String chairRequiredText() =>
     t('اختر رئيس مجلس الكلية (العميد)، أو عيّن نفسك.', 'Choose the Faculty Council\'s chair (the dean), or assign yourself.');
@@ -297,10 +304,14 @@ class CouncilsChoiceView extends StatelessWidget {
     this.pickPerson,
     this.meName = '',
     this.chairError,
+    this.errors,
     this.onSave,
     this.busy = false,
     this.dirty = false,
   });
+
+  /// The last save's field errors ([councilsFieldErrors]): `chair`, `secretary`, `members`.
+  final FieldErrors? errors;
 
   final CouncilsSetup setup;
   final CouncilsDraft draft;
@@ -398,7 +409,9 @@ class CouncilsChoiceView extends StatelessWidget {
           Text(t('مجلس الكلية', 'Faculty council'), style: AppType.section(context)),
           const SizedBox(height: AppSpace.sm),
           if (!draft.chairSelf)
-            _PersonField(
+            KeyedSubtree(
+              key: errors?.keyFor('chair'),
+              child: _PersonField(
                 key: const ValueKey('councils.chair'),
                 label: t('رئيس المجلس (العميد) *', 'Chair (the dean) *'),
                 person: draft.chair,
@@ -408,18 +421,22 @@ class CouncilsChoiceView extends StatelessWidget {
                         final u = await pick(t('رئيس مجلس الكلية', 'Faculty Council chair'), taken);
                         if (u != null) onChanged(draft.copyWith(chair: u, chairSelf: false, members: [for (final x in draft.members) if (x.id != u.id) x]));
                       }),
+            ),
           const SizedBox(height: AppSpace.xs),
           AssignMeChip(
               selected: draft.chairSelf,
               meName: meName,
               label: t('عيّنّي رئيساً للمجلس', 'Assign me as chair'),
               onTap: () => onChanged(draft.copyWith(chairSelf: !draft.chairSelf))),
-          HeadErrorText(chairError),
+          HeadErrorText(chairError ?? errors?.errorFor('chair')),
           const SizedBox(height: AppSpace.sm),
-          _PersonField(
+          KeyedSubtree(
+            key: errors?.keyFor('secretary'),
+            child: _PersonField(
               key: const ValueKey('councils.secretary'),
               label: t('أمين المجلس (اختياري)', 'Secretary (optional)'),
               person: draft.secretary,
+              errorText: errors?.errorFor('secretary'),
               onClear: draft.secretary == null ? null : () => onChanged(draft.copyWith(clearSecretary: true)),
               onTap: pick == null
                   ? null
@@ -427,10 +444,11 @@ class CouncilsChoiceView extends StatelessWidget {
                       final u = await pick(t('أمين المجلس', 'Council secretary'), taken);
                       if (u != null) onChanged(draft.copyWith(secretary: u));
                     }),
+          ),
           const SizedBox(height: AppSpace.sm),
           Text(t('الأعضاء', 'Members'), style: AppType.bodyStrong(context)),
           const SizedBox(height: AppSpace.xxs),
-          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Wrap(key: errors?.keyFor('members'), spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
             for (final u in draft.members)
               InputChip(
                   key: ValueKey('councils.member.${u.id}'),
@@ -447,6 +465,7 @@ class CouncilsChoiceView extends StatelessWidget {
                     if (u != null) onChanged(draft.copyWith(members: [...draft.members, u]));
                   }),
           ]),
+          HeadErrorText(errors?.errorFor('members')),
           const SizedBox(height: AppSpace.xxs),
           Text(t('رؤساء الأقسام أعضاء في مجلس الكلية تلقائياً.', 'Department heads sit on the Faculty Council by default.'),
               style: AppType.meta(context).copyWith(color: context.colors.textMedium)),
@@ -626,8 +645,9 @@ class CouncilDeptCard extends StatelessWidget {
 
 /// A tap-to-pick person field (the same look as the Faculty Council's chair field in the councils list).
 class _PersonField extends StatelessWidget {
-  const _PersonField({super.key, required this.label, required this.person, this.onTap, this.onClear});
+  const _PersonField({super.key, required this.label, required this.person, this.onTap, this.onClear, this.errorText});
   final String label;
+  final String? errorText;
   final GovUser? person;
   final VoidCallback? onTap, onClear;
 
@@ -641,6 +661,8 @@ class _PersonField extends StatelessWidget {
         isEmpty: person == null,
         decoration: InputDecoration(
           labelText: label,
+          errorText: errorText,
+          errorMaxLines: 3,
           prefixIcon: Icon(Icons.person_search_rounded, color: c.textLight),
           suffixIcon: onClear == null
               ? null
@@ -672,6 +694,13 @@ class _OrgCouncilsSetupPageState extends State<OrgCouncilsSetupPage> {
   String _saved = '';
   String? _chairError;
   bool _failed = false, _busy = false;
+  final _errors = councilsFieldErrors();
+
+  @override
+  void dispose() {
+    _errors.dispose();
+    super.dispose();
+  }
 
   GovApi? get _api {
     final id = govOrgId(context, widget.orgId);
@@ -720,9 +749,14 @@ class _OrgCouncilsSetupPageState extends State<OrgCouncilsSetupPage> {
     setState(() => _busy = false);
     if (!r.ok) {
       if (r.code == 'head_required') setState(() => _chairError = chairRequiredText());
+      if (_errors.take(r.error!, text: orgErrorText(r.error!))) {
+        setState(() {});
+        WidgetsBinding.instance.addPostFrameCallback((_) => _errors.revealFirst());
+      }
       showAppNotice(r.code == 'council_has_open_agenda' ? councilsOpenAgendaText(r.detail) : orgErrorText(r.error!), error: true);
       return;
     }
+    _errors.clear();
     setState(() => _take(CouncilsSetup.fromJson(r.map)));
     showAppNotice(t('تم حفظ إعداد المجالس', 'Councils setup saved'));
   }
@@ -737,10 +771,12 @@ class _OrgCouncilsSetupPageState extends State<OrgCouncilsSetupPage> {
       draft: _draft,
       meName: currentPerson(context).$2,
       chairError: _chairError,
+      errors: _errors,
       busy: _busy,
       dirty: _dirty,
       onChanged: (d) => setState(() {
         _draft = d;
+        _errors.clear();
         if (_chairError != null) _chairError = d.chairProblem;
       }),
       pickPerson: oid == null ? null : (title, exclude) => pickOrgMember(context, oid, title: title, exclude: exclude),

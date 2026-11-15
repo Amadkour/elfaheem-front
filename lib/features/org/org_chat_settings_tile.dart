@@ -4,7 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppSettingsSearchable, AppSettingsTile, AppSwitch, showAppNotice;
+import 'package:flutter_education_app/design/app_kit.dart' show AppSettingsSearchable, AppSettingsTile, AppSwitch, showAppError;
 
 import '../admin/admin_common.dart' show t;
 
@@ -42,7 +42,7 @@ class _OrgChatSettingsTileState extends State<OrgChatSettingsTile> {
       await _c.put(_path, body: {'student_dm': v});
     } catch (e) {
       if (mounted) setState(() => _on = was);
-      showAppNotice(ApiException.from(e).message, error: true);
+      showAppError(null, e, onRetry: () => _set(v));
     }
   }
 

@@ -53,6 +53,13 @@ UnitHead? unitHeadOf(Map<String, dynamic>? d) {
 /// A core department: created by the institution setup, can be renamed, never removed (409 `dept_core`).
 bool unitIsCore(Map<String, dynamic>? d) => d?['core'] == true;
 
+/// A unit form's server field errors (UX v3): every head field name and code lands on `head`.
+FieldErrors unitHeadFieldErrors() => FieldErrors(
+      aliases: const {'head_user_id': 'head', 'head_self': 'head', 'chair_user_id': 'head'},
+      codes: const {'head_required': 'head', 'head_invalid': 'head'},
+      actions: const {'pick_head': 'head'},
+    );
+
 /// The text of a missing head (the same words as the server's `head_required`).
 String headRequiredText() => orgCodeText('head_required');
 

@@ -338,10 +338,16 @@ class _GovMeetingStepState extends State<GovMeetingStep> {
 /// The council's members with their vote weights (1 – 3) and the secretary. Read-only without `can.roster`.
 /// [onSave] gets the weights when they changed (null otherwise) and the secretary (null = none).
 class CouncilRosterCard extends StatefulWidget {
-  const CouncilRosterCard({super.key, required this.roster, required this.onSave, this.busy = false});
+  const CouncilRosterCard({super.key, required this.roster, required this.onSave, this.busy = false, this.errors, this.errorBox});
   final CouncilRoster roster;
   final void Function(Map<int, int>? weights, int? secretaryUserId) onSave;
   final bool busy;
+
+  /// The last save's field errors (UX v3): `secretary` marks the secretary field.
+  final FieldErrors? errors;
+
+  /// The last save's error card (with its one-tap fix), drawn above the Save button.
+  final Widget? errorBox;
 
   @override
   State<CouncilRosterCard> createState() => _CouncilRosterCardState();
@@ -375,13 +381,19 @@ class _CouncilRosterCardState extends State<CouncilRosterCard> {
     final capName = capUser == null ? null : r.members.firstWhere((m) => m.userId == capUser).name;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       AppDropdown<int>(
+        key: widget.errors?.keyFor('secretary'),
         value: _secretary ?? 0,
-        decoration: InputDecoration(labelText: t('أمين المجلس', 'Council secretary')),
+        decoration: InputDecoration(labelText: t('أمين المجلس', 'Council secretary'), errorText: widget.errors?.errorFor('secretary'), errorMaxLines: 3),
         items: [
           DropdownMenuItem(value: 0, child: Text(t('بدون أمين', 'No secretary'))),
           for (final m in r.members) DropdownMenuItem(value: m.userId, child: Text(m.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
         ],
-        onChanged: edit ? (v) => setState(() => _secretary = (v ?? 0) == 0 ? null : v) : null,
+        onChanged: edit
+            ? (v) {
+                widget.errors?.clear('secretary');
+                setState(() => _secretary = (v ?? 0) == 0 ? null : v);
+              }
+            : null,
       ),
       // Institutions v2 (D-982): no secretary yet, so the chair covers
       if (r.secretaryActing && _secretary == null) ...[
@@ -418,6 +430,10 @@ class _CouncilRosterCardState extends State<CouncilRosterCard> {
             ]),
           ]),
         ),
+      if (widget.errors?.errorFor('members') case final err?) ...[
+        const SizedBox(height: AppSpace.xs),
+        Text(err, key: widget.errors?.keyFor('members'), style: AppType.label(context).copyWith(color: c.danger)),
+      ],
       if (capName != null) ...[
         const SizedBox(height: AppSpace.sm),
         AppBanner(
@@ -432,6 +448,10 @@ class _CouncilRosterCardState extends State<CouncilRosterCard> {
             style: AppType.meta(context).copyWith(color: c.textMedium)),
       ],
       if (edit) ...[
+        if (widget.errorBox != null) ...[
+          const SizedBox(height: AppSpace.sm),
+          widget.errorBox!,
+        ],
         const SizedBox(height: AppSpace.sm),
         AppPrimaryButton(
           label: t('حفظ الأعضاء والأمين', 'Save members and secretary'),

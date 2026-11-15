@@ -392,6 +392,8 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
     if (!context.mounted) return false;
   }
   bool busy = false, saved = false;
+  // UX v3: the server's field errors land on the head picker (head_required / head_invalid, or `fields`)
+  final fe = unitHeadFieldErrors();
   const palette = ['#0F7B5F', '#2563EB', '#7C3AED', '#DB2777', '#EA580C', '#0891B2', '#CA8A04', '#475569'];
 
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
@@ -459,6 +461,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
               ),
             if (canHead)
               UnitHeadPicker(
+                key: fe.keyFor('head'),
                 label: t('رئيس / مدير الإدارة', 'Department head / manager'),
                 value: head,
                 self: headSelf,
@@ -604,7 +607,9 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                 set(() {
                   busy = false;
                   if (r.code == 'head_required') headErr = headRequiredText();
+                  if (!r.ok && fe.take(r.error!, text: orgErrorText(r.error!))) headErr = fe.errorFor('head') ?? headErr;
                 });
+                if (!r.ok && fe.has('head')) WidgetsBinding.instance.addPostFrameCallback((_) => fe.revealFirst());
                 if (r.ok) {
                   saved = true;
                   Navigator.pop(ctx);
@@ -614,6 +619,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
           ]),
         );
       }));
+  fe.dispose();
   return saved;
 }
 

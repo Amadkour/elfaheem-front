@@ -285,6 +285,14 @@ class HeadsDraft {
 Set<int> headInvalidIds(Map<String, dynamic> detail) =>
     {for (final v in (detail['dept_ids'] is List ? detail['dept_ids'] as List : const [])) asInt(v)};
 
+/// Every unit a heads save refused: [headInvalidIds] of the detail, plus (UX v3) the ids of `fields` named
+/// `heads.<id>`.
+Set<int> headErrorIdsOf(ApiException e) => {
+      ...headInvalidIds(asMap(e.detail)),
+      for (final (f, _) in e.fields)
+        if (f.startsWith('heads.') && int.tryParse(f.substring(6).split('.').first) != null) int.parse(f.substring(6).split('.').first),
+    };
+
 /// The Home may draw the wizard card: organizations on and the institution kill switch off.
 bool institutionWizardAllowed() => AppConfig.orgsEnabled && !AppConfig.disableList.contains(orgInstitutionFeatureKey);
 
@@ -506,7 +514,11 @@ class HeadsStepView extends StatelessWidget {
     this.onPick,
     this.meName = '',
     this.errors = const {},
+    this.firstErrorKey,
   });
+
+  /// Put on the first refused unit's row (on-screen order) so the wizard can scroll to it.
+  final GlobalKey? firstErrorKey;
 
   final List<HeadUnit> rows;
   final HeadsDraft draft;
@@ -587,6 +599,7 @@ class HeadsStepView extends StatelessWidget {
   }
 
   Widget _row(HeadUnit r) => Padding(
+        key: errors.isNotEmpty && r.id == _firstError ? firstErrorKey : null,
         padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
         child: HeadUnitCard(
           key: ValueKey('heads.row.${r.id}'),
@@ -604,6 +617,15 @@ class HeadsStepView extends StatelessWidget {
           onUndo: draft.of(r.id) == null ? null : () => onChanged(draft.set(r.id, null)),
         ),
       );
+}
+
+extension on HeadsStepView {
+  int? get _firstError {
+    for (final r in [for (final r in rows) if (r.academic) r, for (final r in rows) if (!r.academic) r]) {
+      if (errors.contains(r.id)) return r.id;
+    }
+    return null;
+  }
 }
 
 /// One unit: its name (core lock), its head now (Acting = replace), the new choice, Choose / Assign me / Undo.
@@ -1011,6 +1033,8 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
   List<HeadUnit>? _heads;
   HeadsDraft _headsDraft = const HeadsDraft();
   Set<int> _headErrors = {};
+  final _headErrorKey = GlobalKey(debugLabel: 'heads.first_error');
+  final _councilErrors = councilsFieldErrors();
   CouncilsSetup? _councils;
   CouncilsDraft _councilsDraft = const CouncilsDraft();
   String _councilsSaved = '';
@@ -1030,6 +1054,7 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
   void dispose() {
     _nameAr.dispose();
     _nameEn.dispose();
+    _councilErrors.dispose();
     super.dispose();
   }
 
@@ -1185,7 +1210,14 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
         if (_headsDraft.isEmpty) return true;
         final r = await _api.saveHeads(_headsDraft);
         if (!r.ok) {
-          if (r.code == 'head_invalid' || r.code == 'dept_invalid') setState(() => _headErrors = headInvalidIds(r.detail));
+          final bad = headErrorIdsOf(r.error!);
+          if (bad.isNotEmpty) {
+            setState(() => _headErrors = bad);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              final ctx = _headErrorKey.currentContext;
+              if (ctx != null) Scrollable.ensureVisible(ctx, alignment: 0.2, duration: AppMotion.of(ctx).base);
+            });
+          }
           return _fail(r);
         }
         _heads = headUnitsOf(r.data);
@@ -1206,9 +1238,14 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
         final r = await orgCall(() => GovApi(id).saveCouncilsSetup(_councilsDraft.toBody()), quiet: true);
         if (!r.ok) {
           if (r.code == 'head_required') setState(() => _chairError = chairRequiredText());
+          if (_councilErrors.take(r.error!, text: orgErrorText(r.error!))) {
+            setState(() {});
+            WidgetsBinding.instance.addPostFrameCallback((_) => _councilErrors.revealFirst());
+          }
           showAppNotice(r.code == 'council_has_open_agenda' ? councilsOpenAgendaText(r.detail) : orgErrorText(r.error!), error: true);
           return false;
         }
+        _councilErrors.clear();
         _takeCouncils(CouncilsSetup.fromJson(r.map));
         return true;
       default:
@@ -1398,6 +1435,7 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
           draft: _headsDraft,
           meName: currentPerson(context).$2,
           errors: _headErrors,
+          firstErrorKey: _headErrorKey,
           onChanged: (d) => setState(() => _headsDraft = d),
           onPick: oid == null ? null : (u) => pickOrgMember(context, oid, title: t('رئيس ${u.name}', 'Head of ${u.name}')),
         );
@@ -1410,8 +1448,10 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
           draft: _councilsDraft,
           meName: currentPerson(context).$2,
           chairError: _chairError,
+          errors: _councilErrors,
           onChanged: (d) => setState(() {
             _councilsDraft = d;
+            _councilErrors.clear();
             if (_chairError != null) _chairError = d.chairProblem;
           }),
           pickPerson: oid == null ? null : (title, exclude) => pickOrgMember(context, oid, title: title, exclude: exclude),

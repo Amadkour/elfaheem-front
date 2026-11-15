@@ -1666,6 +1666,23 @@ Map<String, dynamic> rosterBody({Map<int, int>? weights, required int? secretary
       'secretary_user_id': secretaryUserId,
     };
 
+/// The body of the one-tap fix of 422 `secretary_not_member` (fix_action `add_member`, UX v3): every member at
+/// their weight ([weights] = the edited ones, else the roster's) plus [userId] at weight 1, the secretary as picked.
+Map<String, dynamic> rosterAddMemberBody(CouncilRoster r, {Map<int, int>? weights, required int userId, required int? secretaryUserId}) {
+  final w = {...(weights ?? {for (final m in r.members) m.userId: m.weight})};
+  w.putIfAbsent(userId, () => 1);
+  return rosterBody(weights: w, secretaryUserId: secretaryUserId);
+}
+
+/// The user the `add_member` fix adds: the server's `user_id`, else the secretary that was sent.
+int? rosterFixUserId(Map<String, dynamic> detail, int? sentSecretary) {
+  final v = int.tryParse('${detail['user_id'] ?? ''}');
+  return v ?? sentSecretary;
+}
+
+/// The server offers (or, an older server, implies) the "add as member" fix.
+bool rosterCanAddMemberFix(String? code, String? fixAction) => fixAction == 'add_member' || code == 'secretary_not_member';
+
 /// How long until the manual reminder may be sent again (once an hour, D-968); null = now.
 Duration? remindWait(DateTime? lastAt, {DateTime? now}) {
   if (lastAt == null) return null;

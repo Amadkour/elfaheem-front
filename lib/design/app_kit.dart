@@ -99,6 +99,7 @@ export 'app_depth.dart';
 export 'app_focus_mode.dart';
 export 'app_number_field.dart';
 export 'app_notice.dart' show showAppNotice;
+export 'app_errors.dart';
 export 'app_switch.dart';
 export 'app_refresh.dart';
 export 'app_shell.dart';
