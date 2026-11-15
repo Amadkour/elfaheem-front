@@ -1,11 +1,12 @@
-// ALFAHEEM ONLY (A-007, docs/DECISIONS_ALFAHEEM.md). The landing wears the app's active theme.
+// The landing wears the app's active theme (D-949, docs/DECISIONS.md).
 //
 // themeCss(colors) maps the colours of GET /api/v1/theme/web (the payload's `colors`) onto the landing's CSS custom
 // properties, light and dark, the way the app derives its own surfaces: the sidebar colour (the primary, darkened until
-// the on-hero inks read on it, as lib/design/app_gradients.dart BrandLayer does), the page canvas (a light tint of the
-// sidebar's hue, lib/design/alfaheem_canvas.dart), and every text colour checked for contrast on the surfaces it sits on.
+// the on-hero inks read on it, lib/design/app_canvas.dart AppCanvas.sidebarColour, which BrandLayer paints), the page
+// canvas (a light tint of the sidebar's hue, AppCanvas.tint), and every text colour checked for contrast on the surfaces
+// it sits on.
 //
-// This file is plain JavaScript on purpose: AlfaheemTheme.astro runs it at build time (the baked defaults, from
+// This file is plain JavaScript on purpose: ActiveTheme.astro runs it at build time (the baked defaults, from
 // theme-default.json) AND inlines its text into the page (the runtime update), so the two can never differ. Keep it
 // self-contained: no imports, nothing outside the two functions.
 
@@ -92,7 +93,7 @@ function themeCss(c) {
     const side = sidebar(dark);
     const paper = dark ? hex(c.dark_card, '#2e2e2e') : hex(c.card_bg, hex(c.surface_card, '#ffffff'));
     const base = dark ? hex(c.dark_background, '#1a1a1a') : paper;
-    // the app's canvas (alfaheem_canvas.dart): the sidebar's hue at mid lightness over the paper; a deep tint in dark
+    // the app's canvas (AppCanvas.tint): the sidebar's hue at mid lightness over the paper; a deep tint in dark
     const bg = dark ? blend(side, 0.16, base) : blend(withL(side, 0.42), 0.09, base);
     const bgAlt = dark ? blend(side, 0.26, base) : blend(withL(side, 0.42), 0.16, base);
     const text = dark ? hex(c.dark_text_primary, '#f5f5f5') : hex(c.text_dark, '#1a1a1a');
@@ -136,7 +137,7 @@ function themeCss(c) {
 
 /** Applies the cached theme before the first paint, then fetches the live one (a failure keeps what is on screen). */
 function themeBoot(url, key) {
-  var style = document.getElementById('alf-theme');
+  var style = document.getElementById('active-theme');
   var put = function (t) {
     if (!t || !t.css || !style) return;
     style.textContent = t.css;

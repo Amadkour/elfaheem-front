@@ -129,7 +129,12 @@ start, `AppBreadcrumb` at the end from 640 px. The phone's open tab is a tinted 
 are Amiri (Arabic) and Playfair Display (Latin), figures stay in the sans. The text below describes the shell before
 D-631 where it differs.
 
-**The role shell** (`app_shell.dart`, D-062) wears the editorial theme like this: the page is the warm canvas; the
+**The canvas** (`app_canvas.dart`, D-949): `BasePage` paints a light tint of the sidebar colour (`AppCanvas.sidebarColour`, the
+colour `BrandLayer` paints the sidebar with) under a whisper of the sidebar's diamond lattice; dark mode is a deep tint of
+the same hue. `context.colors.background` IS that tint. A header block must step off it, not match it: the identity block
+starts on `AppCanvas.raised`, a washed header ends on the paper, and tinted blocks keep a hairline of their tone.
+
+**The role shell** (`app_shell.dart`, D-062) wears the editorial theme like this: the page is the canvas; the
 sidebar (wide) and the rail (tablet) are a PAPER column (`cardBg`) set off by one warm hairline — never a gradient
 and never a dark slab that would compete with the page's hero block; the open tab is an emerald pill (`primary`,
 on-hero ink) at 48 px; the top bar is the canvas itself with the tab's title in `AppType.pageTitle` and the chrome

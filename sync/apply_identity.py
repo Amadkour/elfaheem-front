@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from hooks import apply_hooks, hook_files  # noqa: E402  (A-007: Alfaheem's hooks in shared files)
+from hooks import apply_hooks, hook_files  # noqa: E402  (Alfaheem's hooks in shared files, sync/hooks.py)
 
 ROOT = Path(__file__).resolve().parent.parent
 CHECK = '--check' in sys.argv

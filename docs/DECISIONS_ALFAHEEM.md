@@ -86,7 +86,14 @@ project, so an app installed from the old project is not carried over.
 - Still owed: the backend's FCM service account for `alfaheem-d3c8f` (server `.env.production`), the
   iOS OAuth client for Google sign-in, Android SHA fingerprints in the Firebase console once the release key exists.
 
-## A-007 Page canvas from the sidebar colour; the landing wears the live theme (2026-11-15, owner request)
+## A-007 Page canvas from the sidebar colour; the landing wears the live theme (2026-11-15, owner request) — SUPERSEDED
+
+**Superseded by NextBrain D-949 (2026-11-15).** NextBrain now ships this as shared code (`lib/design/app_canvas.dart`,
+`landing/src/theme/`, with a fainter lattice, raised header blocks and one upload footer), so Alfaheem dropped its copy:
+`lib/design/alfaheem_canvas.dart`, `landing/src/alfaheem/`, its tests and renders, and the hooks in `sync/hooks.py` (the
+mechanism stays, empty). Alfaheem keeps one file: `landing/src/theme/theme-default.json`, the landing's baked theme =
+Alfaheem's live theme (`sync/keep_paths.txt`). The text below is the history.
+
 
 **App.** The upstream canvas is one solid colour (D-948). Alfaheem's is a light tint of the sidebar's colour under a
 faint static diamond lattice in that colour (the sidebar's own `AppPatternStyle.lattice` geometry: one 2.2 px diamond

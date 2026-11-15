@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 
 import '../config/theme/theme_config_provider.dart';
 import 'app_gradients.dart' show AppBrandLayer, AppPattern, AppPatternStyle;
+import 'app_canvas.dart';
 import 'app_tokens.dart';
 
 /// A block's tint.
@@ -145,16 +146,15 @@ class AppBlockColors {
         ink: c.blockInk,
         muted: c.blockIdentityMuted,
         faint: c.blockIdentityFaint,
-        // a primary hairline: the tint's own edge in light mode, a lifted one on the dark canvas
-        border: c.primary.withValues(alpha: c.isDark ? 0.28 : 0.16),
+        // a hairline: the hue a step stronger than the block in light mode (D-949: it stands off the tinted canvas),
+        // a lifted primary one on the dark canvas
+        border: c.isDark ? c.primary.withValues(alpha: 0.28) : AppCanvas.raisedBorder(c),
         palette: c,
       );
     }
-    final Color? border = tone == AppBlockTone.paper
-        ? c.cardEdge
-        : c.isDark
-            ? Color.lerp(surface, c.textDark, 0.08)
-            : null;
+    // D-949: a tinted block keeps a hairline of its own tone in light mode too: the canvas is a tint now, and a
+    // pastel block sat on it with no edge
+    final Color? border = tone == AppBlockTone.paper ? c.cardEdge : Color.lerp(surface, c.textDark, 0.08);
     return AppBlockColors(
       surface: surface,
       ink: c.blockInk,
@@ -276,7 +276,9 @@ class AppBlock extends StatelessWidget {
     if (washed) {
       final c = context.colors;
       final dir = Directionality.maybeOf(context) ?? TextDirection.ltr;
-      final end = Color.lerp(colors.surface, c.cardBg, c.isDark ? 0.3 : 0.4)!;
+      // D-949: in light mode the wash ends on the paper, so a header block (the course page's) stands off the tinted
+      // canvas instead of melting into it
+      final end = c.isDark ? Color.lerp(colors.surface, c.cardBg, 0.3)! : c.cardBg;
       final glow = c.accent2.withValues(alpha: c.isDark ? 0.10 : 0.08);
       body = Ink(
         decoration: BoxDecoration(

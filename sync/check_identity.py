@@ -7,8 +7,8 @@
      nextbrain-2y or the old elfaheem project (A-006); the kept Firebase files must name FIREBASE_PROJECT_ID;
   3. images: every tracked image outside test/ and docs/ must be in sync/keep_paths.txt or sync/brand_assets.txt,
      and none of those may still be byte-identical to NextBrain's file at the same path (remote `nextbrain`);
-  4. Alfaheem's hooks in shared files (sync/hooks.py, A-007) are all in place, and the landing has no fixed upstream
-     colour left (every one is a variable the live theme sets).
+  4. Alfaheem's hooks in shared files (sync/hooks.py; none in use since A-007 became NextBrain's D-949) are all in
+     place, and the landing has no fixed upstream colour left (every one is a variable the live theme sets).
 
 Usage: py -3.12 sync/check_identity.py [--ref nextbrain/production] [--verbose]
 """
@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from hooks import landing_leftovers, missing_hooks  # noqa: E402  (A-007)
+from hooks import landing_leftovers, missing_hooks  # noqa: E402  (sync/hooks.py)
 
 ROOT = Path(__file__).resolve().parent.parent
 VERBOSE = '--verbose' in sys.argv
