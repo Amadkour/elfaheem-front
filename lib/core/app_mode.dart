@@ -26,6 +26,7 @@ import '../design/app_notice.dart' show showAppNotice;
 import '../features/org/org_platform_context.dart';
 import '../features/org/org_ui.dart' show orgNameOf;
 import 'api_client.dart';
+import 'personal_access.dart';
 
 enum AppMode { individual, organization }
 
@@ -40,6 +41,8 @@ class AppModeController extends ChangeNotifier {
   AppModeController._() {
     // the org master switch flips at runtime (theme / platform settings) → show / hide the switch at once
     AppConfig.orgsEnabledNotifier.addListener(notifyListeners);
+    // the personal profile switched on / off (UX v3 phase 3): the switcher and a forced Organization mode follow
+    PersonalAccess.instance.addListener(notifyListeners);
   }
   static final AppModeController instance = AppModeController._();
 
@@ -71,12 +74,19 @@ class AppModeController extends ChangeNotifier {
   /// Is there anything to switch to? (app-wide org master switch + at least one live organization)
   bool get available => AppConfig.orgsEnabled && liveEntries.isNotEmpty;
 
-  AppMode get mode => available ? _mode : AppMode.individual;
+  AppMode get mode => !available ? AppMode.individual : (personalLocked ? AppMode.organization : _mode);
+
+  /// The personal profile is off (UX v3 phase 3) and an organization where I study is live: Organization mode is
+  /// forced (a remembered Personal choice is ignored) and its member home shows one of those organizations.
+  bool get personalLocked => available && !PersonalAccess.enabled && _memberEntries.isNotEmpty;
+
+  /// The live organizations whose member home I open (I study there).
+  List<Map<String, dynamic>> get _memberEntries => [for (final e in liveEntries) if (!opensDashboard(e)) e];
   bool get isOrg => mode == AppMode.organization;
 
   /// The organization shown in Organization mode (the remembered one, else the server's default, else the first).
   Map<String, dynamic>? get current {
-    final live = liveEntries;
+    final live = personalLocked ? _memberEntries : liveEntries;
     if (live.isEmpty) return null;
     final id = resolveOrgId(
       remembered: _orgId,

@@ -28,6 +28,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/core/personal_access.dart';
+import 'package:flutter_education_app/features/profile/profile_provider.dart' show ProfileProvider;
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionService, OrgTabRequest;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -66,8 +68,15 @@ int pendingElsewhere(AppModeController ctl) {
 /// user), the organization's context (timezone, feature offs) cleared and every org page above the root closed.
 /// Org admins / staff, whose root screen IS an org page, land on the personal dashboard instead — before, "Personal"
 /// only flipped the mode while the org pages stayed on screen, so there was no way out.
+///
+/// With the personal profile off (UX v3 phase 3, [PersonalAccess.enabled]) there is no personal space: the org pages
+/// above the root close instead (back to the organization's home), and the mode stays Organization.
 Future<void> leaveToPersonal(BuildContext context) async {
   final nav = Navigator.of(context, rootNavigator: true);
+  if (!PersonalAccess.enabled) {
+    closeOrgPages(nav);
+    return;
+  }
   // an org page opened inside a tab of the personal shell (D-081): that tab goes back to its own first page too
   final near = Navigator.maybeOf(context);
   final ctl = AppModeController.instance;
@@ -143,15 +152,27 @@ Future<void> openOrgDashboard(BuildContext context, int orgId, {String? section,
 }
 
 /// App-bar action of organization / department pages: always visible, one tap back to the personal space.
+/// Personal profile off (UX v3 phase 3): there is no personal space, so it opens the switcher instead (another
+/// organization, join one, or sign out).
 class ContextExitButton extends StatelessWidget {
   const ContextExitButton({super.key});
 
   @override
-  Widget build(BuildContext context) => IconButton(
-        key: const ValueKey('ctx.leave'),
-        tooltip: 'ctx_exit'.tr,
-        onPressed: () => leaveToPersonal(context),
-        icon: Icon(DirIcons.logout, color: context.colors.primary, textDirection: TextDirection.ltr),
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: PersonalAccess.instance,
+        builder: (context, _) => PersonalAccess.enabled
+            ? IconButton(
+                key: const ValueKey('ctx.leave'),
+                tooltip: 'ctx_exit'.tr,
+                onPressed: () => leaveToPersonal(context),
+                icon: Icon(DirIcons.logout, color: context.colors.primary, textDirection: TextDirection.ltr),
+              )
+            : IconButton(
+                key: const ValueKey('ctx.switch'),
+                tooltip: t('تبديل المؤسسة أو الخروج', 'Switch organization or sign out'),
+                onPressed: () => showContextSwitcherSheet(context, allowPersonal: false),
+                icon: Icon(Icons.swap_horiz_rounded, color: context.colors.primary),
+              ),
       );
 }
 
@@ -317,6 +338,7 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
         if (!contextSwitchVisible(ctl)) return const SizedBox.shrink();
         final c = context.colors;
         final inOrg = ctl.isOrg;
+        final allowPersonal = widget.allowPersonal && PersonalAccess.enabled; // off: no "Personal" anywhere
         final org = asMap(ctl.current?['organization']);
         final tone = inOrg ? orgColor(context, org) : c.primary;
         final label = inOrg ? orgNameOf(org) : 'ctx_personal'.tr;
@@ -329,10 +351,10 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
           caption: widget.compact ? null : (inOrg ? 'ctx_in_org'.tr : 'ctx_personal_space'.tr),
           badge: pendingElsewhere(ctl),
           logoUrl: inOrg ? '${org['logo_url'] ?? ''}' : null,
-          onTap: () => showContextSwitcherSheet(context, allowPersonal: widget.allowPersonal), // always: join is offered
+          onTap: () => showContextSwitcherSheet(context, allowPersonal: allowPersonal), // always: join is offered
         );
 
-        if (!inOrg || !widget.allowPersonal || widget.compact) return pill;
+        if (!inOrg || !allowPersonal || widget.compact) return pill;
         // Inside an organization: the way back is always one visible tap — an emerald-tinted pill (the block's
         // tint with its text-safe ink), the one action beside the paper pill.
         final emerald = AppBlockColors.of(context, AppBlockTone.emerald);
@@ -402,6 +424,8 @@ Future<void> showContextSwitcherSheet(
   VoidCallback? onCreateOrg,
 }) async {
   final ctl = AppModeController.instance;
+  final personalOff = !PersonalAccess.enabled; // UX v3 phase 3: no Personal entry; sign out is offered instead
+  if (personalOff) allowPersonal = false;
   if (!ctl.loaded) {
     // the dashboard / admin home do not load the membership overview on open: only when the switcher is used
     int? uid;
@@ -548,6 +572,24 @@ Future<void> showContextSwitcherSheet(
                     onTap: () {
                       Navigator.pop(ctx);
                       onCreateOrg();
+                    },
+                  ),
+                ),
+              // no personal space to go back to: the way out is signing out (the personal account is turned on
+              // again in Settings)
+              if (personalOff)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpace.xs),
+                  child: AppActionCard(
+                    key: const ValueKey('ctx.sheet.signout'),
+                    icon: DirIcons.logout,
+                    color: c.danger,
+                    title: 'logout'.tr,
+                    subtitle: t('حسابك الشخصي مغلق — يمكنك تفعيله من الإعدادات', 'Your personal account is off: turn it on in Settings'),
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      final ok = await appConfirm(context, message: t('تسجيل الخروج من هذا الجهاز؟', 'Sign out on this device?'), confirmLabel: 'logout'.tr);
+                      if (ok && context.mounted) await context.read<ProfileProvider>().logout(context);
                     },
                   ),
                 ),

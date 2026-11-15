@@ -38,6 +38,10 @@ enum ProviderState { idle, loading, success, error }
   ProviderState get state        => _state;
   String?       get errorMessage => _errorMessage;
 
+  /// The server's error of the last [run] that failed with one (null otherwise): its `fix_action` lets the screen
+  /// offer a one-tap fix (showAppError, e.g. `enable_personal`).
+  ApiException? lastApiError;
+
   bool get isLoading => _state == ProviderState.loading;
   bool get hasError  => _state == ProviderState.error;
   bool get isSuccess => _state == ProviderState.success;
@@ -65,6 +69,7 @@ enum ProviderState { idle, loading, success, error }
     }
 
     int attempt = 0;
+    lastApiError = null;
 
     while (attempt < _maxAttempts) {
       attempt++;
@@ -75,6 +80,7 @@ enum ProviderState { idle, loading, success, error }
 
       } on ApiException catch (e) {
         // Server responded with a proper HTTP error — do NOT retry.
+        lastApiError = e;
         _errorMessage = apiErrorText(e);           // bilingual text for coded errors, the server's text otherwise
         debugPrint('⛔ ApiException (attempt $attempt): ${e.code ?? ''} ${e.message}');
         _setProviderState(ProviderState.error);

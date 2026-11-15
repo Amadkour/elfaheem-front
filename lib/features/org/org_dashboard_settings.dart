@@ -24,6 +24,9 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart' show ChatEntryTile;
 import 'package:flutter_education_app/design/context_switcher.dart' show showContextSwitcherSheet;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/core/personal_access.dart' show PersonalAccess;
+import 'package:flutter_education_app/core/app_mode.dart' show AppModeController;
+import 'package:flutter_education_app/features/profile/personal_account_tile.dart' show PersonalAccountTile;
 import 'package:flutter_education_app/features/auth/mfa_entry.dart' show MfaSettingsEntry;
 import 'package:flutter_education_app/design/app_language_switch.dart' show AppLanguageTile;
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
@@ -230,8 +233,12 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
           AppSettingsTile(
               icon: Icons.swap_horiz_rounded,
               label: t('تبديل المؤسسة', 'Switch organization'),
-              subtitle: t('أو العودة إلى حسابك الشخصي', 'Or go back to your personal account'),
+              subtitle: PersonalAccess.enabled
+                  ? t('أو العودة إلى حسابك الشخصي', 'Or go back to your personal account')
+                  : t('أو الانضمام إلى مؤسسة أخرى', 'Or join another organization'),
               onTap: () => showOrgSwitcher(context)),
+          // UX v3 phase 3: the optional personal profile (public profile + courses outside the institution)
+          const PersonalAccountTile(inOrg: true),
           if (s.canCreateRoot)
             AppSettingsTile(icon: Icons.add_business_rounded, label: t('مؤسسة جديدة', 'New organization'), onTap: () => showOrgForm(context)),
         ]),
@@ -348,7 +355,19 @@ Future<void> _leaveOrg(BuildContext context, OrgSession s) async {
       confirmLabel: t('مغادرة', 'Leave'));
   if (!ok) return;
   final r = await orgCall(() => ApiClient().delete('$orgBase/public/$id/leave'), ok: t('تمت المغادرة', 'You left the organization'));
-  if (r.ok) await s.load(keepSelection: false);
+  if (!r.ok || !context.mounted) return;
+  // the last membership gone: the server may restore the role (org-staff -> teacher / student) and turns the
+  // personal account back on, so the user is re-read and a role without the organization dashboard goes home
+  final auth = context.read<MyAuthProvider>();
+  final before = auth.currentUser?.role;
+  await auth.getMe();
+  final after = auth.currentUser?.role;
+  if (context.mounted && after != null && after != before && !PersonalAccess.isOrgRole(after)) {
+    await AppModeController.instance.refresh();
+    if (context.mounted) Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(auth.homeRoute, (_) => false);
+    return;
+  }
+  await s.load(keepSelection: false);
 }
 
 /// The signed-in person in one slim card row: avatar · name · role and e-mail (D-102 language: card + hairline).

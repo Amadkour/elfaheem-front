@@ -62,6 +62,8 @@ import 'package:flutter_education_app/features/payments/points/points_api.dart' 
 import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart' show PointsWalletPage;
 import 'package:flutter_education_app/features/records/records_page.dart' show RecordsPage, RecordsSettingsTile;
 import 'package:flutter_education_app/features/profile/public_profile/public_profile_page.dart' show MyProfileTile, ShareMyProfileTile, myShareableUsername, shareProfileLink;
+import 'package:flutter_education_app/core/personal_access.dart' show PersonalAccess;
+import 'package:flutter_education_app/features/profile/personal_account_tile.dart' show PersonalAccountTile;
 import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
@@ -132,7 +134,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
       imageUrl: p.imageUrl,
       heroTag: 'profile-user-${p.id}',
       onEdit: editAccount,
-      onShare: shareName == null ? null : () => shareProfileLink(context, username: shareName, name: p.name),
+      onShare: shareName == null || !PersonalAccess.enabled ? null : () => shareProfileLink(context, username: shareName, name: p.name),
       stats: teacher ? profileTeacherFigures(context.select<TeacherHomeProvider, TeacherStats>((h) => h.stats)) : const [],
     );
 
@@ -140,7 +142,9 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
     final work = <Widget>[
       // the ONE profile page, owner view (D-850): teachers keep the old `profile.teacher_profile` switch on it too;
       // the teacher's documents moved into its owner panel
-      ParentComponent(featureKey: teacher ? 'profile.teacher_profile' : 'profile.my_profile', child: const MyProfileTile()),
+      // personal account off (UX v3 phase 3): no public profile to open or share
+      if (PersonalAccess.enabled)
+        ParentComponent(featureKey: teacher ? 'profile.teacher_profile' : 'profile.my_profile', child: const MyProfileTile()),
       // The Exam Hub (D-350): teachers, and whoever teaches inside an organization; never students or parents
       if (teacher || examHubTeachesInAnyOrg(AppModeController.instance.liveEntries))
         AppSettingsTile(
@@ -235,7 +239,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           onTap: () => _push(const TeacherAdsPage()),
         ),
         // https://nextbrain.site/@name — confirmed usernames only (D-074)
-        const ShareMyProfileTile(),
+        if (PersonalAccess.enabled) const ShareMyProfileTile(),
       ],
     ];
 
@@ -257,6 +261,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
       ),
       // two-step verification and fingerprint sign-in, for the roles the server allows (nothing otherwise)
       const MfaSettingsEntry(rowsOnly: true),
+      // an organization member's optional personal profile (UX v3 phase 3); nothing without an organization
+      const PersonalAccountTile(),
       if (teacher)
         AppSettingsTile(
           featureKey: 'profile.device_requests',

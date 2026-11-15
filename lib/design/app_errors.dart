@@ -17,6 +17,7 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/personal_access.dart' show PersonalAccess, enablePersonalFix, enablePersonalLabel;
 import 'app_buttons.dart';
 import 'app_notice.dart';
 import 'app_tokens.dart';
@@ -80,6 +81,8 @@ class AppErrorBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final shared = onFix == null ? appSharedFix(error, onRetry: onRetry) : null;
+    final fixTap = onFix ?? shared?.$1;
     final k = error.kind;
     final tone = switch (k) {
       ApiErrorKind.network || ApiErrorKind.rateLimit || ApiErrorKind.notFound => c.warning,
@@ -132,17 +135,17 @@ class AppErrorBox extends StatelessWidget {
               ),
             ]),
           ],
-          if (onFix != null || retry) ...[
+          if (fixTap != null || retry) ...[
             AppSpace.gapXs,
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-              if (onFix != null)
+              if (fixTap != null)
                 AppButton.primary(
                     key: const ValueKey('app_error_fix'),
                     size: AppButtonSize.sm,
                     icon: Icons.auto_fix_high_rounded,
-                    label: fixLabel ?? _tx('أصلحه', 'Fix it'),
+                    label: fixLabel ?? shared?.$2 ?? _tx('أصلحه', 'Fix it'),
                     busy: busy,
-                    onPressed: busy ? null : onFix),
+                    onPressed: busy ? null : fixTap),
               if (retry)
                 AppButton.tonal(
                     key: const ValueKey('app_error_retry'),
@@ -158,6 +161,15 @@ class AppErrorBox extends StatelessWidget {
   }
 }
 
+/// The fixes the app runs itself, whatever screen got the error (fix_action → handler + label): today
+/// `enable_personal` (403 personal_off) turns the personal profile on, then retries [onRetry]. Null = none.
+(VoidCallback, String)? appSharedFix(ApiException e, {VoidCallback? onRetry}) {
+  if (e.fixAction == PersonalAccess.fixAction || e.code == PersonalAccess.offCode) {
+    return (() => enablePersonalFix(onRetry: onRetry), enablePersonalLabel());
+  }
+  return null;
+}
+
 /// Copies a support reference and says so.
 Future<void> copyErrorRef(String ref) async {
   await Clipboard.setData(ClipboardData(text: ref));
@@ -170,6 +182,8 @@ Future<void> copyErrorRef(String ref) async {
 void showAppError(BuildContext? context, Object error, {String? text, VoidCallback? onRetry, VoidCallback? onFix, String? fixLabel}) {
   final e = ApiException.from(error);
   final k = e.kind;
+  final shared = onFix == null ? appSharedFix(e, onRetry: onRetry) : null;
+  if (shared != null) (onFix, fixLabel) = shared;
   var msg = text ?? (k == ApiErrorKind.network || k == ApiErrorKind.server ? appErrorTitle(k) : e.message);
   final fix = e.fix;
   if (fix != null && !msg.contains(fix)) msg = '$msg — $fix';

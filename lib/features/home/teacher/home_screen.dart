@@ -31,12 +31,14 @@
 import 'dart:math' as math;
 
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
+import 'package:flutter_education_app/core/personal_access.dart' show PersonalAccess, enablePersonalFix, enablePersonalLabel;
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart' show MeHomeService, MeLiveRoom;
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppDrawIn;
 import 'package:flutter_education_app/design/calendar_entry.dart';
@@ -160,7 +162,16 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
     c == null ? _tab(1) : _openCourse(c);
   }
 
-  void _newCourse() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCourseForm()));
+  void _newCourse() {
+    void open() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCourseForm()));
+    // a personal course needs the personal account (UX v3 phase 3): one tap turns it on, then the form opens
+    if (!PersonalAccess.enabled) {
+      showAppNotice(t('فعّل حسابك الشخصي لتدرّس دورات خارج مؤسستك', 'Turn on your personal account to teach courses outside your institution'),
+          actionLabel: enablePersonalLabel(), onAction: () => enablePersonalFix(onRetry: () => mounted ? open() : null));
+      return;
+    }
+    open();
+  }
 
   void _openEarnings() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TeacherPayoutsScreen()));
 
@@ -277,7 +288,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                       schedule: provider.schedule,
                       loading: loading,
                       onDone: provider.refreshSilently,
-                      onNewCourse: _newCourse,
+                      onNewCourse: PersonalAccess.enabled ? _newCourse : null,
                       onHero: true,
                     )
                   : null,

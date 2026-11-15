@@ -1,6 +1,7 @@
 library;
 
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
+import 'package:flutter_education_app/core/personal_access.dart' show PersonalAccess;
 import 'dart:math' as math;
 
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -115,7 +116,7 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
       // the panel's sheet sits where the button floats: no button while it is open
       floatingActionButton: ListenableBuilder(
         listenable: _panel,
-        builder: (context, _) => context.showSidebar || p.scope.isOrg || !onCourses || _panel.isOpen
+        builder: (context, _) => context.showSidebar || p.scope.isOrg || !onCourses || _panel.isOpen || !PersonalAccess.enabled
             ? const SizedBox.shrink()
             : ParentComponent(
                 featureKey: 'teacher_courses.add',
@@ -197,7 +198,7 @@ class TeacherCoursesBody extends StatelessWidget {
                           ],
                         )
                       : null,
-                  action: addInToolbar ? const _NewCourseButton() : null,
+                  action: addInToolbar && PersonalAccess.enabled ? const _NewCourseButton() : null,
                 ),
               // Pinned above the list: "Showing 24 of 134" + progress bar.
               if (p.totalCount > 12)
@@ -482,7 +483,8 @@ class _CourseListState extends State<_CourseList> {
     return CourseListEmpty(
       icon: Icons.school_outlined,
       message: 'add_first_course_hint'.tr,
-      actionLabel: courseFeatureOff('teacher_courses.add') ? null : 'add_new_course'.tr,
+      // a personal course needs the personal account (UX v3 phase 3)
+      actionLabel: courseFeatureOff('teacher_courses.add') || !PersonalAccess.enabled ? null : 'add_new_course'.tr,
       onAction: () => _openNewCourse(context),
     );
   }

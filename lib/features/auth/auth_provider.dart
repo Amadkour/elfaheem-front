@@ -24,6 +24,7 @@ import 'biometric.dart';
 import 'mfa.dart';
 import 'teacher_onboarding_token.dart';
 import 'username.dart';
+import 'package:flutter_education_app/core/personal_access.dart';
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -50,6 +51,10 @@ class UserModel {
   /// When the username may be changed again (UTC); null = now. Removing it is always allowed (D-071 v2).
   final DateTime? usernameChangeAvailableAt;
 
+  /// The personal profile is on (UX v3 phase 3). Off = an organization member who hid their public profile and
+  /// personal courses ([PersonalAccess]). An older server (or an older cache) sends no key → true.
+  final bool personalEnabled;
+
   const UserModel({
     required this.id,
     required this.name,
@@ -65,7 +70,11 @@ class UserModel {
     this.username,
     this.usernameConfirmed = true,
     this.usernameChangeAvailableAt,
+    this.personalEnabled = true,
   });
+
+  /// The same user with [personalEnabled] changed (PUT /me/personal answered).
+  UserModel withPersonal(bool on) => UserModel.fromJson({...toJson(), 'personal_enabled': on});
 
   /// The end of the change cooldown when it is still running at [now] (default: the clock), else null.
   DateTime? usernameLockedUntil([DateTime? now]) {
@@ -96,6 +105,7 @@ class UserModel {
     // missing (older server, older cache) = confirmed: never prompt for a name the server did not flag
     usernameConfirmed: j['username_confirmed'] is bool ? j['username_confirmed'] as bool : true,
     usernameChangeAvailableAt: usernameParseUtc(j['username_change_available_at']),
+    personalEnabled: j['personal_enabled'] is bool ? j['personal_enabled'] as bool : true,
   );
 
   /// Convert back to JSON for caching in SharedPreferences.
@@ -114,6 +124,7 @@ class UserModel {
     'username': username,
     'username_confirmed': usernameConfirmed,
     'username_change_available_at': usernameChangeAvailableAt?.toUtc().toIso8601String(),
+    'personal_enabled': personalEnabled,
   };
 }
 
@@ -328,6 +339,12 @@ class MyAuthProvider extends BaseProvider {
     // Restore the user from disk immediately so role/isTeacher are ready
     // before the first frame is drawn — no async gap, no null user.
     loadCachedUser();
+    // the personal-account switch (settings, the enable_personal fix) keeps the cached user in step
+    PersonalAccess.onChanged = (on) async {
+      final u = _currentUser;
+      if (u == null || u.personalEnabled == on) return;
+      await saveUserLocally(u.withPersonal(on));
+    };
   }
 
   Future<void> loadSpecialization(BuildContext context) async {
@@ -362,7 +379,14 @@ class MyAuthProvider extends BaseProvider {
   Map<String, dynamic>? selectedRole;
 
   // ── State ─────────────────────────────────────────────────────────────────────
-  UserModel? _currentUser;
+  UserModel? _user;
+  UserModel? get _currentUser => _user;
+
+  /// Every change of the signed-in user also tells [PersonalAccess] (the personal-profile flag + the role).
+  set _currentUser(UserModel? u) {
+    _user = u;
+    PersonalAccess.instance.bind(personalEnabled: u?.personalEnabled ?? true, role: u?.role);
+  }
   bool isLoadingAdditionalRegistration = false;
   bool isLoadingRegistration = false;
   bool isLoadingLogin = false;
@@ -470,19 +494,11 @@ class MyAuthProvider extends BaseProvider {
   /// A cached user AND a stored session: logout, a rejected refresh or a wipe of secure storage all end it.
   bool get isAuthenticated => _currentUser != null && _api.hasSession;
 
-  String get homeRoute => switch (currentUser?.role ?? 'student') {
-    'admin' => '/admin_dashboard',
-    'super-admin' => '/admin_dashboard',
-    'developer' => '/admin_dashboard',
-    'teacher' => '/teacher_dashboard',
-    'parent' => '/parent_dashboard',
-    // organizations: org admins and their staff (admin assistants, department staff, members without any right)
-    // open the ONE organization dashboard (D-103 — staff who manage nothing no longer hop to '/org_member', which
-    // stays the student's organization page); the personal dashboard instead when they left their organization
-    // last time (remembered per user)
-    'org-admin' || 'org-staff' => AppModeController.orgRoleHome('/org_dashboard', personal: _personalHome),
-    _ => '/dashboard',
-  };
+  /// The role's home (D-103: every non-student org role opens the ONE organization dashboard; an org-admin /
+  /// org-staff who left their organization last time opens the personal dashboard, remembered per user). With the
+  /// personal profile off (UX v3 phase 3) an organization member always opens the organization: [PersonalAccess.homeFor].
+  String get homeRoute => PersonalAccess.homeFor(currentUser?.role ?? 'student',
+      personalEnabled: currentUser?.personalEnabled ?? true, rememberedPersonal: _personalHome);
 
   bool? get _personalHome =>
       currentUser == null ? null : _storage.getFlag(AppModeController.personalHomeKey(currentUser!.id));
