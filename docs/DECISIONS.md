@@ -4872,3 +4872,15 @@ The move is scripted, never by hand: `tool/apply_moves.dart` over `tool/moves/M1
 
 **Consequences.** `ItemFilter` gains `escalated` (query `escalated=true`, a chip). Tests: `test/org/institutions_s5_test.dart`, back `tests/org_v2/e2e_institutions_s5.py`.
 
+
+## D-994 – D-997 — Institutions v2 phase 5: the roadmap UX · 2026-11-15 · accepted
+
+**Context.** Plan item 5 (docs/institutions/V2_PLAN.md): one "where am I, what is next" drawing for the admin, the student and the heads; server routes `GET …/governance/{org}/me/journey`, `…/me/attention-flow`, wizard `stages` (back FLUTTER_API_CHANGES phase 5).
+
+**Decision.**
+- D-994 `lib/design/app_roadmap.dart`: `AppRoadmap` (connected nodes, vertical on phones, a row ≥ 720 with ≤ 6 nodes; done / current / todo / warn = icon + colour + word; the next node is the one emerald block with its button; the walked line fills once through `AppFill`, no loop) and `AppStatusPath` (submitted → reviewed → decided). In the design kit rather than reusing `RoadmapPathView` directly: that one is course-shaped (thumbs, prices), so the shared widget copies its visual language instead.
+- D-996 Admin: the wizard card keeps its place before the launch (+ "See the roadmap"); after the launch the same `GET …/institution/wizard` draws an "Institution health" card only while a stage warns (else the old checklist slot, which the server dismisses). The page starts from the Home's answer (no second request) and opens the wizard AT a stage (`openInstitutionWizard(step:)`).
+- D-995 Student: "My journey" leads the member home (hero "What should I do now?", Important, "Can wait" folded, shortcuts, contacts sheet, requests as `AppStatusPath`); every other section folds under "More" (`HomeSection` folded by default, nothing removed). A step's module maps to the app's own pages (`journeyTargetOf`); an unknown module opens My requests, an API `route` is never pushed. Budget: the news feed waits for the journey and folds unasked, so open stays 4; refresh 2 → 3.
+- D-997 Heads: one `OrgAttentionFlowPage`; its entry is one row (with a count) in the Home's existing "Needs your attention" area, not a second card; org-admin home open 7 → 8 (parallel, not on refresh).
+
+**Consequences.** Tests: `test/org/institutions_v2_p5_test.dart` (states, semantics, parsers, layout harness, a11y).

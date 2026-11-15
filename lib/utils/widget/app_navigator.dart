@@ -97,6 +97,18 @@ class AppNavigator {
     ));
   }
 
+  /// A server "action" `{module, target_id?, route?}` (the organization journey's steps and help entries, D-994): a
+  /// named [route] when it names one, else [openModule] like a notification tap.
+  static Future<void> openAction({String? module, int? targetId, String? route, int? orgId}) async {
+    if ((route ?? '').isNotEmpty) {
+      final ctx = navigatorKey.currentContext;
+      if (ctx == null || !ctx.mounted || !ctx.read<MyAuthProvider>().isAuthenticated || ViewAsState.active) return;
+      await _nav?.pushNamed(route!);
+      return;
+    }
+    await openModule(module, targetId: targetId, orgId: orgId);
+  }
+
   /// module: profile | course | course_profile | notifications (the inbox page on its Notifications tab) | inbox ([kind]
   /// names the tab: todo · notifications · announcements / news / offers · done; To do by default) | support (the help
   /// center) | my_courses | subscription | org_exams | calendar |

@@ -71,6 +71,7 @@ import 'org_ui.dart' show memberRoleLabels, orgNameOf;
 import 'advising/adv_wiring.dart' show AdvMemberHubEntry;
 import 'governance/gov_wiring.dart' show govMemberPills;
 import 'org_messages_models.dart' show orgMessagesEnabled;
+import 'org_my_journey.dart' show OrgJourneyStore, OrgMyJourney;
 import 'org_must_ack.dart' show OrgMyMessagesPage;
 import 'org_inst_notify.dart' show OrgNotifyPrefsPage;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppNavigator;
@@ -400,7 +401,7 @@ class OrgMemberHome extends StatelessWidget {
     final ctl = AppModeController.instance;
     final svc = MeHomeService.instance;
     return ListenableBuilder(
-      listenable: Listenable.merge([ctl, svc]),
+      listenable: Listenable.merge([ctl, svc, OrgJourneyStore.instance]),
       builder: (context, _) {
         final entry = ctl.current;
         if (entry == null) {
@@ -418,6 +419,10 @@ class OrgMemberHome extends StatelessWidget {
         // today's events of this organization and its slice of the inbox preview
         final me = svc.home;
         final data = me?.orgEntry(orgId) ?? entry;
+        // Institutions v2 phase 5 (D-995): a student's journey (one call per organization; nothing until it arrives)
+        final student = [for (final r in (data['roles'] as List? ?? const [])) '$r'].contains('student');
+        if (student) OrgJourneyStore.instance.ensure(orgId);
+        final journey = student ? OrgJourneyStore.instance.of(orgId) : null;
         return AnimatedSwitcher(
           duration: AppMotion.of(context).base,
           switchInCurve: Curves.easeOutCubic,
@@ -427,6 +432,7 @@ class OrgMemberHome extends StatelessWidget {
             key: ValueKey('org-$orgId'),
             entry: data,
             showHero: showHero,
+            journey: journey == null ? null : OrgMyJourney(orgId: orgId, journey: journey),
             showPicker: showPickerInHero && ctl.liveEntries.length > 1,
             today: me?.todayOf(orgId),
             inbox: me?.inboxPreviewOf(orgId),
@@ -443,7 +449,8 @@ class OrgMemberHome extends StatelessWidget {
                 ? InboxEntryCard(
                     key: ValueKey('inbox-$orgId'), orgId: orgId, title: orgNameOf(_orgOf(entry)), padding: const EdgeInsets.symmetric(horizontal: AppSpace.md))
                 : null,
-            news: Padding(
+            // a student's news waits for the journey's answer: with a journey it folds under "More" unasked
+            news: student && !OrgJourneyStore.instance.settled(orgId) ? null : Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
               child: OrgAnnouncementFeed(orgId: orgId, limit: 3, compact: true),
             ),
@@ -535,6 +542,7 @@ class OrgMemberHomeBody extends StatelessWidget {
     this.news,
     this.liveNow = const [],
     this.showHero = true,
+    this.journey,
   });
 
   /// The organization banner (name + my role + the switch). The standalone page's header says it already: false there.
@@ -563,6 +571,10 @@ class OrgMemberHomeBody extends StatelessWidget {
 
   /// Network widgets (null in layout tests): the older today agenda, the self-loading inbox entry, the news feed.
   final Widget? todayFallback, inboxFallback, news;
+
+  /// Institutions v2 phase 5 (D-995): the student's "My journey" (OrgMyJourney); set → it leads the home and the
+  /// other sections fold under "More". Null = the home as before.
+  final Widget? journey;
 
   @override
   Widget build(BuildContext context) {
@@ -626,7 +638,8 @@ class OrgMemberHomeBody extends StatelessWidget {
 
     void openTimetable() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgTimetableScreen(orgId: orgId)));
 
-    final top = <Widget>[
+    // the hero, Live now and the review banner stay above "My journey"; the rest of [top] folds under "More" with it
+    final head = <Widget>[
       if (showHero)
         OrgMemberHero(
           org: org,
@@ -648,6 +661,10 @@ class OrgMemberHomeBody extends StatelessWidget {
                 : AppPill(label: t('فتح لوحة الإدارة', 'Open the dashboard'), icon: Icons.dashboard_customize_rounded, onTap: () => openOrgManagement(context, orgId)),
           ),
         ),
+    ];
+    final headCount = head.length;
+    final top = <Widget>[
+      ...head,
 
       // academic advising (D-289 Phase 5): a student with an active advisor gets the hub row (draws nothing otherwise);
       // Phase 9: the overview's `advising` block feeds it without a request
@@ -802,7 +819,7 @@ class OrgMemberHomeBody extends StatelessWidget {
           );
 
     // phone / narrow window: one column, in reading order (unchanged since Track B.4)
-    final narrow = <Widget>[
+    List<Widget> narrowOf(List<Widget> top) => <Widget>[
       ...top,
       if (todayBlock != null) ...[todayBlock, AppSpace.gapLg],
       if (needsBlock != null) ...[needsBlock, AppSpace.gapLg],
@@ -818,7 +835,8 @@ class OrgMemberHomeBody extends StatelessWidget {
     // action groups · news) keeps its reading order and is split between the two so neither column stands empty
     // beside a tall one — the main column takes the first part, the side column the rest, at the cut whose taller
     // column is the shortest (estimated heights, orgHomeColumnSplit). Too little for two columns → one centred column.
-    return LayoutBuilder(builder: (context, box) {
+    Widget layoutOf(List<Widget> top) => LayoutBuilder(builder: (context, box) {
+      final narrow = narrowOf(top);
       final w = math.min(box.maxWidth, kHomeWideMax);
       if (!homeIsWide(w)) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: narrow);
       final sideW = HomeDashboard.sideWidthFor(w);
@@ -863,6 +881,37 @@ class OrgMemberHomeBody extends StatelessWidget {
         ),
       );
     });
+
+    // Institutions v2 phase 5 (D-995): a student's home leads with "My journey"; everything else stays, folded under
+    // "More" (progressive disclosure: no feature removed; a folded section builds nothing, so the news feed waits)
+    final j = journey;
+    if (j == null) return layoutOf(top);
+    final rest = top.skip(headCount).toList();
+    final restLayout = layoutOf(rest);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      ...head,
+      Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: _singleColumnMax),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            HomeSectionTitle(t('رحلتي', 'My journey'), padding: _titlePad),
+            j,
+          ]),
+        ),
+      ),
+      AppSpace.gapLg,
+      HomeSection(
+        key: const ValueKey('member.more'),
+        id: 'member.more',
+        title: t('المزيد', 'More'),
+        titlePadding: _titlePad,
+        // folded at first (the "empty" state's default), remembered once opened
+        empty: true,
+        emptySummary: t('اليوم، الوارد، الاختصارات والأخبار', 'Today, inbox, shortcuts and news'),
+        child: restLayout,
+      ),
+      AppSpace.gapLg,
+    ]);
   }
 
   /// One centred column on a desktop window when there is too little for two.
@@ -1030,7 +1079,13 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
           child: AppRefresh(
             onRefresh: () {
               orgTodayEpoch.value++; // the older today agenda reloads too
-              return Future.wait<void>([MeHomeService.instance.refresh(), ctl.refresh()]);
+              final id = ctl.currentOrgId;
+              return Future.wait<void>([
+                MeHomeService.instance.refresh(),
+                ctl.refresh(),
+                // the journey only where it was shown (a student's)
+                if (id != null && OrgJourneyStore.instance.of(id) != null) OrgJourneyStore.instance.refresh(id),
+              ]);
             },
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),

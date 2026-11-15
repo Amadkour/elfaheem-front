@@ -28,6 +28,9 @@
 //   nothing yet      → AppEmpty (a drawn plate, an editorial headline, one action; app_states.dart)
 //   loading          → AppListSkeleton / AppSkeletonBox in an AppShimmer (warm bones, never a spinner)
 //   tip / warning    → AppBanner                       quick actions → AppPill
+//   steps / journey  → AppRoadmap(nodes: [AppRoadmapNode(title:, state: done|current|todo|warn, actionLabel:, onAction:)])
+//                      (connected nodes; vertical on phones, a row on wide boxes ≤ 6 nodes; the next one is the
+//                      block with its button) · one request's path → AppStatusPath.request(reached: 0..2) (app_roadmap.dart)
 //   form             → AppField / AppPicker / AppSwitchRow / AppPrimaryButton
 //   on/off toggle    → AppSwitch / AppSwitchTile (the ONLY switch look in the app — never Switch/SwitchListTile)
 //   any time / date  → AppTime.time / date / dateTime (UTC instant) · AppTime.clock("HH:MM") (12h/24h + timezone)
@@ -106,6 +109,7 @@ export 'app_keyboard.dart' show EnterSubmits;
 export 'attention_badge.dart';
 export '../core/attention/attention_service.dart' show AttentionService, AttentionTabs, AttentionItem;
 export 'app_hscroll.dart';
+export 'app_roadmap.dart';
 export 'app_responsive.dart' show AppWidthBox;
 export 'app_table_export.dart' show showAppExportSheet, exportAppTable, AppTableExport, AppExportColumn, AppColType, AppColAlign, AppTotal, AppExportFormat, AppStatusTone, bilingualExport;
 export '../core/app_time.dart';

@@ -332,25 +332,32 @@ class _OrgSetupChecklistState extends State<OrgSetupChecklist> {
   Widget build(BuildContext context) {
     final d = _data;
     final wizard = widget.onOpenWizard;
-    if (d != null && d.wizardCard && wizard != null && widget.orgId != null && institutionWizardAllowed()) {
+    // the card's own admin check is the caller's (the home passes it only to org admins)
+    Widget checklist() {
+      if (!orgSetupShow(d, isAdmin: true)) return const SizedBox.shrink();
+      return ParentComponent(
+        featureKey: orgSetupFeatureKey,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.lg),
+          child: OrgSetupCard(data: d!, onOpen: (x) {
+            _stepOpened = true;
+            widget.onOpen(x);
+          }, onDismiss: _dismiss, dismissing: _dismissing),
+        ),
+      );
+    }
+
+    // a university / faculty: the wizard card until the launch; after it (phase 5) the institution's health card
+    // while a roadmap stage warns, else the old checklist (the server dismisses it at the launch)
+    if (d != null && d.wizardApplicable && wizard != null && widget.orgId != null && institutionWizardAllowed()) {
       return OrgInstitutionSetupCard(
           orgId: widget.orgId!,
+          fallback: d.wizardLaunched ? checklist() : null,
           onOpen: () async {
             await wizard();
             if (mounted) _load(fresh: true);
           });
     }
-    // the card's own admin check is the caller's (the home passes it only to org admins)
-    if (!orgSetupShow(d, isAdmin: true)) return const SizedBox.shrink();
-    return ParentComponent(
-      featureKey: orgSetupFeatureKey,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: AppSpace.lg),
-        child: OrgSetupCard(data: d!, onOpen: (x) {
-          _stepOpened = true;
-          widget.onOpen(x);
-        }, onDismiss: _dismiss, dismissing: _dismissing),
-      ),
-    );
+    return checklist();
   }
 }

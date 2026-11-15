@@ -20,7 +20,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_bidi.dart' show AutoDirText;
 import 'package:flutter_education_app/design/app_blocks.dart' show AppBlock, AppBlockTone;
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, appInk;
+import 'package:flutter_education_app/design/app_kit.dart' show AppCountBadge, AppListSkeleton, AppRefresh, AppTone, appInk;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp;
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -505,6 +505,10 @@ class OrgAlertRow extends StatelessWidget {
                   child: Text(spec.action, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end,
                       style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, c.primary))),
                 ),
+              if (spec.count > 0) ...[
+                AppCountBadge(count: spec.count, tone: spec.severity == 'danger' ? AppTone.danger : AppTone.brand),
+                const SizedBox(width: AppSpace.xxs),
+              ],
               Icon(Icons.chevron_right_rounded, color: c.textLight, size: AppIconSize.lg),
             ]),
           ),

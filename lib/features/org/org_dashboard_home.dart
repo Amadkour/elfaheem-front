@@ -54,6 +54,7 @@ import 'governance/gov_wiring.dart' show govEnabled;
 import 'home/org_insights_section.dart';
 import 'insights/org_insights_api.dart' show OrgInsightsPrefetch, orgInsightsAllowedBy, orgInsightsToday;
 import 'org_academic_pages.dart' show OrgAcademicPage;
+import 'org_attention_flow.dart' show AttentionFlowStore, OrgAttentionFlowPage, attentionFlowSummary, attentionFlowTitle;
 import 'org_dashboard_model.dart';
 import 'org_dashboard_screen.dart' show OrgSub, OrgTabs;
 import 'org_dashboard_settings.dart' show showJoinCode, showOrgForm, showOrgSwitcher;
@@ -79,9 +80,13 @@ class OrgAttentionSpec {
     required this.subtitle,
     required this.action,
     required this.onTap,
+    this.count = 0,
   });
 
   final IconData icon;
+
+  /// A count badge at the row's end (phase 5: "Needs my attention"); 0 = none.
+  final int count;
 
   /// danger · warning · info → the row's tone and its place by urgency.
   final String severity;
@@ -450,6 +455,8 @@ class _OrgHomePageState extends State<OrgHomePage> {
   /// dashboard's `can_insights` still decides whether the section is drawn (an unused answer just expires).
   void _prefetchInsights(OrgSession s) {
     final id = s.currentId;
+    // phase 5: the attention flow's entry row, in parallel (no waterfall; at most once per 5 min)
+    if (id != null) AttentionFlowStore.instance.ensure(id);
     if (id == null || id == _insightsAskedFor || !orgInsightsEnabled) return;
     _insightsAskedFor = id;
     if (s.isOrgAdmin) OrgSetupPrefetch.start(id);
@@ -672,10 +679,27 @@ class _LiveAttention extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-        listenable: AttentionService.instance,
+        listenable: Listenable.merge([AttentionService.instance, AttentionFlowStore.instance]),
         builder: (context, _) {
           final s = context.read<OrgSession>();
           final cards = <OrgAttentionSpec>[];
+          // Institutions v2 phase 5 (D-997): the heads' and secretaries' one "Needs my attention" page, as one row of
+          // this area (GET …/me/attention-flow, asked in parallel with the dashboard) while something waits
+          final flow = AttentionFlowStore.instance.of(s.currentId);
+          if (flow != null && flow.total > 0 && s.currentId != null) {
+            final orgId = s.currentId!;
+            cards.add(OrgAttentionSpec(
+                icon: Icons.inbox_rounded,
+                severity: flow.overdueCount > 0 ? 'warning' : 'info',
+                title: attentionFlowTitle(),
+                subtitle: attentionFlowSummary(flow),
+                action: t('فتح', 'Open'),
+                count: flow.total,
+                onTap: () async {
+                  await orgPush(context, attentionFlowTitle(), OrgAttentionFlowPage(orgId: orgId, initial: flow), width: AppWidth.reading);
+                  AttentionFlowStore.instance.load(orgId);
+                }));
+          }
           if (!hasTermCard) {
             final live = AttentionService.instance.items(AttentionTabs.orgTimetable, orgId: s.currentId).where((x) => x.kind == 'term_without_timetable').toList();
             if (live.isNotEmpty) {

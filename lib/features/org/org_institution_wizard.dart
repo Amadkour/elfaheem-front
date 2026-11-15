@@ -35,6 +35,7 @@ import 'governance/gov_models.dart' show GovUser;
 import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgTabs;
 import 'org_departments_page.dart' show showDepartmentWizard;
+import 'org_institution_roadmap.dart' show InstitutionRoadmapCard, institutionHealthy, institutionStagesOf, openInstitutionRoadmap;
 import 'org_institutions.dart';
 import 'org_page_kit.dart';
 import 'org_providers.dart';
@@ -126,6 +127,33 @@ class InstitutionReadiness {
   bool get canLaunch => blocking == 0 && blockItems.isEmpty;
 }
 
+/// The institution roadmap's stages (phase 5, D-994), in order; `launch` is the wizard's review step.
+const institutionStageKeys = ['basics', 'departments', 'heads', 'councils', 'launch'];
+
+/// One stage of `stages: [{key, state: done|current|todo|warn, count_warn}]`.
+class InstitutionStage {
+  const InstitutionStage({required this.key, this.state = 'todo', this.countWarn = 0, this.blocking = 0});
+  final String key, state;
+  final int countWarn;
+
+  /// How many of its readiness items block the launch.
+  final int blocking;
+
+  /// The wizard step it opens.
+  String get wizardStep => key == 'launch' ? 'review' : key;
+
+  static InstitutionStage? fromJson(Map<String, dynamic> j) {
+    final key = asStr(j['key']);
+    if (!institutionStageKeys.contains(key)) return null;
+    final st = asStr(j['state'], 'todo');
+    return InstitutionStage(
+        key: key,
+        state: const ['done', 'current', 'todo', 'warn'].contains(st) ? st : 'todo',
+        countWarn: asInt(j['count_warn']),
+        blocking: asInt(j['blocking']));
+  }
+}
+
 /// GET …/institution/wizard.
 class InstitutionWizardState {
   const InstitutionWizardState({
@@ -134,6 +162,7 @@ class InstitutionWizardState {
     this.launchedAt,
     this.applicable = false,
     this.readiness = const InstitutionReadiness(),
+    this.stages = const [],
   });
 
   final String step;
@@ -142,12 +171,17 @@ class InstitutionWizardState {
   final bool applicable;
   final InstitutionReadiness readiness;
 
+  /// Phase 5 (D-994): the roadmap's five stages as the server sees them; empty on an older server (the roadmap
+  /// derives them, institutionStagesOf).
+  final List<InstitutionStage> stages;
+
   factory InstitutionWizardState.fromJson(Map<String, dynamic> j) => InstitutionWizardState(
         step: asStr(j['step'], 'basics'),
         done: {for (final v in (j['done'] is List ? j['done'] as List : const [])) if (institutionWizardSteps.contains('$v')) '$v'},
         launchedAt: (j['launched_at'] == null || '${j['launched_at']}'.isEmpty) ? null : '${j['launched_at']}',
         applicable: j['applicable'] == true,
         readiness: InstitutionReadiness.fromJson(asMap(j['readiness'])),
+        stages: [for (final s in asMapList(j['stages'])) ?InstitutionStage.fromJson(s)],
       );
 
   /// The step to open: the stored one; an unknown key → the first.
@@ -875,9 +909,12 @@ class LaunchedView extends StatelessWidget {
 
 /// The Home's "Set up your institution" card: progress n / 6, the next step, Continue.
 class InstitutionSetupCard extends StatelessWidget {
-  const InstitutionSetupCard({super.key, required this.state, required this.onContinue});
+  const InstitutionSetupCard({super.key, required this.state, required this.onContinue, this.onRoadmap});
   final InstitutionWizardState state;
   final VoidCallback onContinue;
+
+  /// Opens the institution roadmap (phase 5); null = no button.
+  final VoidCallback? onRoadmap;
 
   @override
   Widget build(BuildContext context) {
@@ -914,14 +951,16 @@ class InstitutionSetupCard extends StatelessWidget {
                   'Departments, heads and councils in a few minutes, step by step. Stop and come back any time.'),
               style: AppType.body(context).copyWith(color: b.ink)),
           AppSpace.gapMd,
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: AppButton.primary(
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            AppButton.primary(
                 key: const ValueKey('inst.wizard.continue'),
                 label: started ? t('متابعة', 'Continue') : t('ابدأ', 'Start'),
                 trailingIcon: Icons.arrow_forward_rounded,
                 onPressed: onContinue),
-          ),
+            // Phase 5 (D-994): the five stages with their warnings and the next-best action
+            if (onRoadmap != null)
+              AppButton.ghost(key: const ValueKey('inst.roadmap.open'), label: t('عرض الخريطة', 'See the roadmap'), icon: Icons.route_rounded, onPressed: onRoadmap),
+          ]),
         ]);
       }),
     );
@@ -934,12 +973,16 @@ class InstitutionSetupCard extends StatelessWidget {
 
 String institutionWizardTitle() => t('معالج إعداد المؤسسة', 'Setup wizard');
 
-/// Pushes the wizard with the dashboard's header (the Home card and the Settings entry).
-Future<void> openInstitutionWizard(BuildContext context) =>
-    orgPush(context, institutionWizardTitle(), const OrgInstitutionWizard(), width: AppWidth.content, helpPageId: 'org.settings');
+/// Pushes the wizard with the dashboard's header (the Home card, the roadmap and the Settings entry); [step] opens it
+/// on that step (the roadmap's next-best action) instead of the stored one.
+Future<void> openInstitutionWizard(BuildContext context, {String? step}) =>
+    orgPush(context, institutionWizardTitle(), OrgInstitutionWizard(initialStep: step), width: AppWidth.content, helpPageId: 'org.settings');
 
 class OrgInstitutionWizard extends StatefulWidget {
-  const OrgInstitutionWizard({super.key, this.onLaunched});
+  const OrgInstitutionWizard({super.key, this.onLaunched, this.initialStep});
+
+  /// Opens on this step (`basics` … `review`) instead of the stored one; unknown → the stored one.
+  final String? initialStep;
 
   /// After a launch, "Back to Home" (default: pop).
   final VoidCallback? onLaunched;
@@ -1007,7 +1050,8 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
     final w = InstitutionWizardState.fromJson(r.map);
     setState(() {
       _loading = false;
-      _index = w.stepIndex;
+      final asked = institutionWizardSteps.indexOf(widget.initialStep ?? '');
+      _index = asked >= 0 ? asked : w.stepIndex;
       _done = {...w.done};
       _launchedAt = w.launchedAt;
       _readiness = w.readiness;
@@ -1391,7 +1435,13 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
 /// launched: false}` (so no other organization pays a request); this asks GET …/institution/wizard for the progress.
 /// A failed call or a launched wizard draws nothing.
 class OrgInstitutionSetupCard extends StatefulWidget {
-  const OrgInstitutionSetupCard({super.key, required this.orgId, required this.onOpen});
+  const OrgInstitutionSetupCard({super.key, required this.orgId, required this.onOpen, this.fallback, this.roadmap = true});
+
+  /// Drawn when the card draws nothing (a failed call, a healthy launched institution): the old checklist.
+  final Widget? fallback;
+
+  /// The "See the roadmap" button (phase 5).
+  final bool roadmap;
   final int orgId;
 
   /// Opens the wizard; the card asks again when it returns.
@@ -1403,6 +1453,7 @@ class OrgInstitutionSetupCard extends StatefulWidget {
 
 class _OrgInstitutionSetupCardState extends State<OrgInstitutionSetupCard> {
   InstitutionWizardState? _state;
+  bool _loaded = false;
 
   @override
   void initState() {
@@ -1415,6 +1466,7 @@ class _OrgInstitutionSetupCardState extends State<OrgInstitutionSetupCard> {
     super.didUpdateWidget(old);
     if (old.orgId != widget.orgId) {
       _state = null;
+      _loaded = false;
       _load();
     }
   }
@@ -1423,7 +1475,10 @@ class _OrgInstitutionSetupCardState extends State<OrgInstitutionSetupCard> {
     final id = widget.orgId;
     final r = await orgCall(() => ApiClient().get('/api/v1/org/orgs/$id/institution/wizard'), quiet: true);
     if (!mounted || id != widget.orgId) return;
-    setState(() => _state = r.ok ? InstitutionWizardState.fromJson(r.map) : null);
+    setState(() {
+      _loaded = true;
+      _state = r.ok ? InstitutionWizardState.fromJson(r.map) : null;
+    });
   }
 
   Future<void> _open() async {
@@ -1431,13 +1486,40 @@ class _OrgInstitutionSetupCardState extends State<OrgInstitutionSetupCard> {
     if (mounted) _load();
   }
 
+  Future<void> _openStage(InstitutionStage s) async {
+    await openInstitutionWizard(context, step: s.wizardStep);
+    if (mounted) _load();
+  }
+
+  Future<void> _openRoadmap(InstitutionWizardState st) async {
+    // the page starts from THIS answer: no second request on open
+    await openInstitutionRoadmap(context, widget.orgId, initial: st);
+    if (mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final st = _state;
-    if (st == null || !st.showCard) return const SizedBox.shrink();
+    if (!_loaded) return const SizedBox.shrink();
+    if (st == null) return widget.fallback ?? const SizedBox.shrink();
+    // after the launch (phase 5): the institution's health while a stage warns, else the caller's fallback
+    if (st.applicable && st.launched) {
+      final stages = institutionStagesOf(st);
+      if (institutionHealthy(stages) || !institutionWizardAllowed()) return widget.fallback ?? const SizedBox.shrink();
+      return ParentComponent(
+        featureKey: orgInstitutionFeatureKey,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.lg),
+          child: InstitutionRoadmapCard(state: st, onOpenStage: _openStage, onOpenPage: () => _openRoadmap(st)),
+        ),
+      );
+    }
+    if (!st.showCard) return widget.fallback ?? const SizedBox.shrink();
     return ParentComponent(
       featureKey: orgInstitutionFeatureKey,
-      child: Padding(padding: const EdgeInsets.only(bottom: AppSpace.lg), child: InstitutionSetupCard(state: st, onContinue: _open)),
+      child: Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.lg),
+          child: InstitutionSetupCard(state: st, onContinue: _open, onRoadmap: widget.roadmap ? () => _openRoadmap(st) : null)),
     );
   }
 }
