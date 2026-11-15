@@ -158,7 +158,7 @@ class _ChoiceCard extends StatelessWidget {
       button: true,
       selected: selected,
       child: Material(
-        color: selected ? c.primary.withValues(alpha: 0.08) : c.cardBg,
+        color: selected ? c.primaryWash : c.cardBg,
         shape: RoundedRectangleBorder(
           borderRadius: radius,
           side: BorderSide(color: selected ? c.primary : c.divider, width: selected ? AppBorder.focus : AppBorder.hairline),

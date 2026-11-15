@@ -191,7 +191,7 @@ class _Line extends StatelessWidget {
                 widthFactor: v ? 1 : f,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                      color: c.success.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(AppBorder.hairline)),
+                      color: c.success, borderRadius: BorderRadius.circular(AppBorder.hairline)),
                 ),
               ),
             )
@@ -280,7 +280,7 @@ class _NextBlock extends StatelessWidget {
       color: b.surface,
       shape: RoundedRectangleBorder(
         borderRadius: AppRadius.cardAll,
-        side: BorderSide(color: b.border ?? Color.lerp(b.surface, c.textDark, 0.14)!, width: AppBorder.hairline),
+        side: BorderSide(color: b.border ?? c.divider, width: AppBorder.hairline),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -290,7 +290,7 @@ class _NextBlock extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppBorder.focus),
                 decoration: BoxDecoration(color: c.textDark, borderRadius: BorderRadius.circular(AppRadius.pill)),
                 child: Text(_t('التالي', 'Next'),
                     maxLines: 1, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.background)),
@@ -399,7 +399,7 @@ class _VRow extends StatelessWidget {
               borderRadius: AppRadius.cardAll,
               onTap: node.onTap,
               child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: dense ? AppTouch.min - AppSpace.xxs : AppTouch.min),
+                constraints: const BoxConstraints(minHeight: AppTouch.min),
                 child: Padding(
                   padding: EdgeInsetsDirectional.fromSTEB(AppSpace.xs, dense ? AppSpace.xxs : AppSpace.xs, AppSpace.xs, dense ? AppSpace.xxs : AppSpace.xs),
                   child: Row(children: [

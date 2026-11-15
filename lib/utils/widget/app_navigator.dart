@@ -37,6 +37,7 @@ import '../../features/org/org_must_ack.dart' show OrgMyMessagesPage;
 import '../../features/org/governance/gov_wiring.dart' deferred as gov_wiring;
 import '../../features/org/advising/adv_wiring.dart' deferred as adv_wiring;
 import '../../features/org/org_inst_notify.dart' deferred as org_notify;
+import '../../features/org/org_institution_health.dart' deferred as org_health;
 import 'package:flutter_education_app/features/live/companion/companion_incoming.dart' show CompanionIncoming;
 import 'package:flutter_education_app/features/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
 import 'package:flutter_education_app/features/live/live_lobby_sheets.dart' show showLobbySheet;
@@ -324,6 +325,10 @@ class AppNavigator {
           default:
             await nav.pushNamed('/notifications');
         }
+        return;
+      case 'org_institution_health': // Institutions v2 phase 6: the hourly health job found something → Institution health (managers)
+        final opened = await _deferred('org_institution_health', org_health.loadLibrary, () => org_health.openInstitutionHealthLink(nav, ctx, orgId));
+        if (!opened && ctx.mounted) await nav.pushNamed('/notifications');
         return;
       case 'org_council':
         if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenSessionLink(nav, ctx, targetId, orgId: orgId));

@@ -35,6 +35,7 @@ import 'governance/gov_models.dart' show GovUser;
 import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgTabs;
 import 'org_departments_page.dart' show showDepartmentWizard;
+import 'org_institution_health.dart' show InstitutionHealth, InstitutionHealthCard, openInstitutionHealth;
 import 'org_institution_roadmap.dart' show InstitutionRoadmapCard, institutionHealthy, institutionStagesOf, openInstitutionRoadmap;
 import 'org_institutions.dart';
 import 'org_page_kit.dart';
@@ -301,7 +302,7 @@ class InstitutionWizardApi {
   Future<OrgCall> saveState(String step, Set<String> done) => orgCall(() => s.api.put('$_b/wizard', body: wizardPutBody(step, done)), quiet: true);
   Future<OrgCall> heads() => orgCall(() => s.api.get('$_b/heads'), quiet: true);
   Future<OrgCall> saveHeads(HeadsDraft d) => orgCall(() => s.api.put('$_b/heads', body: d.toBody()), quiet: true);
-  Future<OrgCall> launch() => orgCall(() => s.api.post('$_b/launch'), quiet: true);
+  Future<OrgCall> launchInstitution() => orgCall(() => s.api.post('$_b/launch'), quiet: true);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -370,7 +371,7 @@ class _StripStep extends StatelessWidget {
     final mark = now ? c.primary : (done ? c.success : c.cardBg);
     final ink = now || done ? Theme.of(context).colorScheme.onPrimary : c.textMedium;
     Widget line(bool show, bool lit) => Expanded(
-          child: show ? Container(height: AppBorder.strong, color: lit ? c.primary.withValues(alpha: .45) : c.divider) : const SizedBox.shrink(),
+          child: show ? Container(height: AppBorder.strong, color: lit ? c.primaryLight : c.divider) : const SizedBox.shrink(),
         );
     return Semantics(
       button: true,
@@ -626,7 +627,7 @@ class HeadUnitCard extends StatelessWidget {
       color: c.cardBg,
       shape: RoundedRectangleBorder(
         borderRadius: AppRadius.cardAll,
-        side: BorderSide(color: error ? c.danger : (needs ? c.warning.withValues(alpha: .5) : c.divider), width: error ? AppBorder.strong : AppBorder.hairline),
+        side: BorderSide(color: error ? c.danger : (needs ? c.warning : c.divider), width: error ? AppBorder.strong : AppBorder.hairline),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpace.md),
@@ -1260,7 +1261,7 @@ class _OrgInstitutionWizardState extends State<OrgInstitutionWizard> {
         message: t('إطلاق المؤسسة الآن؟ يمكنك تعديل كل شيء لاحقاً من الإعدادات.', 'Launch the institution now? You can change everything later from Settings.'));
     if (!sure || !mounted) return;
     setState(() => _busy = true);
-    final r = await _api.launch();
+    final r = await _api.launchInstitution();
     if (!mounted) return;
     setState(() {
       _busy = false;
@@ -1453,6 +1454,7 @@ class OrgInstitutionSetupCard extends StatefulWidget {
 
 class _OrgInstitutionSetupCardState extends State<OrgInstitutionSetupCard> {
   InstitutionWizardState? _state;
+  InstitutionHealth? _health;
   bool _loaded = false;
 
   @override
@@ -1466,6 +1468,7 @@ class _OrgInstitutionSetupCardState extends State<OrgInstitutionSetupCard> {
     super.didUpdateWidget(old);
     if (old.orgId != widget.orgId) {
       _state = null;
+      _health = null;
       _loaded = false;
       _load();
     }
@@ -1475,10 +1478,24 @@ class _OrgInstitutionSetupCardState extends State<OrgInstitutionSetupCard> {
     final id = widget.orgId;
     final r = await orgCall(() => ApiClient().get('/api/v1/org/orgs/$id/institution/wizard'), quiet: true);
     if (!mounted || id != widget.orgId) return;
+    final st = r.ok ? InstitutionWizardState.fromJson(r.map) : null;
+    // phase 6: a launched institution asks for its health (score + top issue); an older server → the roadmap card
+    InstitutionHealth? health;
+    if (st != null && st.applicable && st.launched && institutionWizardAllowed()) {
+      final h = await orgCall(() => ApiClient().get('/api/v1/org/orgs/$id/institution/health'), quiet: true);
+      if (!mounted || id != widget.orgId) return;
+      health = h.ok ? InstitutionHealth.fromJson(h.map) : null;
+    }
     setState(() {
       _loaded = true;
-      _state = r.ok ? InstitutionWizardState.fromJson(r.map) : null;
+      _state = st;
+      _health = health;
     });
+  }
+
+  Future<void> _openHealth(InstitutionHealth h) async {
+    await openInstitutionHealth(context, widget.orgId, initial: h);
+    if (mounted) _load();
   }
 
   Future<void> _open() async {
@@ -1504,6 +1521,18 @@ class _OrgInstitutionSetupCardState extends State<OrgInstitutionSetupCard> {
     if (st == null) return widget.fallback ?? const SizedBox.shrink();
     // after the launch (phase 5): the institution's health while a stage warns, else the caller's fallback
     if (st.applicable && st.launched) {
+      final h = _health;
+      if (h != null) {
+        // the health answer leads (phase 6): calm → the caller's fallback, else the score and the top issue
+        if (h.calm) return widget.fallback ?? const SizedBox.shrink();
+        return ParentComponent(
+          featureKey: orgInstitutionFeatureKey,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.lg),
+            child: InstitutionHealthCard(health: h, onOpen: () => _openHealth(h)),
+          ),
+        );
+      }
       final stages = institutionStagesOf(st);
       if (institutionHealthy(stages) || !institutionWizardAllowed()) return widget.fallback ?? const SizedBox.shrink();
       return ParentComponent(
