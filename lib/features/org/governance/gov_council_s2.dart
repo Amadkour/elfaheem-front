@@ -13,6 +13,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show SheetHeader, t;
 import 'gov_council_ui.dart';
+import 'gov_institutions_s3.dart' show DecisionTemplate, DecisionTemplatePicker, WriteItemDraft;
 import 'gov_models.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -186,11 +187,13 @@ Future<void> showAgendaResultsSheet(BuildContext context, AgendaItem agenda, {Fu
 //  Write an item
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// Title + text of an item the chair or secretary writes straight onto the agenda.
+/// Title + text of an item the chair or secretary writes straight onto the agenda; with [templates] (S3, D-973) a
+/// decision template pre-fills both and shows its suggested decision ([WriteItemDraft.pick] keeps typed text).
 class WriteAgendaItemBody extends StatefulWidget {
-  const WriteAgendaItemBody({super.key, required this.onSave, this.busy = false});
-  final void Function(String title, String? body) onSave;
+  const WriteAgendaItemBody({super.key, required this.onSave, this.busy = false, this.templates = const []});
+  final void Function(WriteItemDraft draft) onSave;
   final bool busy;
+  final List<DecisionTemplate> templates;
 
   @override
   State<WriteAgendaItemBody> createState() => _WriteAgendaItemBodyState();
@@ -199,6 +202,9 @@ class WriteAgendaItemBody extends StatefulWidget {
 class _WriteAgendaItemBodyState extends State<WriteAgendaItemBody> {
   final _title = TextEditingController();
   final _body = TextEditingController();
+  DecisionTemplate? _template;
+
+  WriteItemDraft get _draft => WriteItemDraft(title: _title.text, body: _body.text, template: _template);
 
   @override
   void initState() {
@@ -213,11 +219,24 @@ class _WriteAgendaItemBodyState extends State<WriteAgendaItemBody> {
     super.dispose();
   }
 
+  void _pick(DecisionTemplate? tpl) {
+    final d = _draft.pick(tpl);
+    setState(() {
+      _template = d.template;
+      if (_title.text != d.title) _title.text = d.title;
+      if (_body.text != d.body) _body.text = d.body;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final title = _title.text.trim();
+    final draft = _draft;
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (widget.templates.isNotEmpty) ...[
+        DecisionTemplatePicker(templates: widget.templates, selected: _template, enabled: !widget.busy, onChanged: _pick),
+        const SizedBox(height: AppSpace.sm),
+      ],
       AppField(controller: _title, label: t('عنوان البند', 'Item title'), required: true, maxLength: 255),
       AppField(controller: _body, label: t('نص البند', 'Item text'), hint: t('ما المطلوب من المجلس؟', 'What is the council asked to decide?'), maxLines: 5),
       Text(t('يُضاف البند إلى جدول الأعمال ويصوّت عليه الأعضاء ومنهم كاتبه.', 'The item joins the agenda; every member votes on it, its writer too.'),
@@ -227,7 +246,7 @@ class _WriteAgendaItemBodyState extends State<WriteAgendaItemBody> {
         label: t('إضافة إلى جدول الأعمال', 'Add to the agenda'),
         icon: Icons.edit_note_rounded,
         busy: widget.busy,
-        onPressed: widget.busy || title.isEmpty ? null : () => widget.onSave(title, _body.text.trim().isEmpty ? null : _body.text.trim()),
+        onPressed: widget.busy || !draft.canSave ? null : () => widget.onSave(draft),
       ),
     ]);
   }

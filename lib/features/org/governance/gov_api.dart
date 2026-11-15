@@ -232,8 +232,23 @@ class GovApi {
       CouncilRoster.fromJson(asMap(await _api.put('$base/councils/$cid/members', body: body)));
 
   /// The chair / secretary writes an item on the agenda (201 → the whole session).
-  Future<CouncilSession> writeAgendaItem(int sid, {required String title, String? body, String? templateKey}) async =>
-      CouncilSession.fromJson(asMap(await _api.post('$base/sessions/$sid/agenda/write', body: {'title': title, 'body': ?body, 'template_key': ?templateKey})));
+  /// S3 (D-973): with a known [templateKey] a missing title / body comes from the template in [lang] and the item
+  /// keeps its `suggested_decision`; no title and no known key → 422 `title_required`.
+  Future<CouncilSession> writeAgendaItem(int sid, {String? title, String? body, String? templateKey, String? lang}) async =>
+      CouncilSession.fromJson(asMap(await _api.post('$base/sessions/$sid/agenda/write',
+          body: {'title': ?title, 'body': ?body, 'template_key': ?templateKey, 'lang': ?lang})));
+
+  // ── Institutions S3 (D-971, D-973) ─────────────────────────────────────
+
+  /// The department's ordered automatic routing rules and what the editor may offer (`AutoRouting.fromJson`).
+  Future<Map<String, dynamic>> autoRouting(int deptId) async => asMap(await _api.get('$base/entities/$deptId/auto-routing'));
+
+  /// The WHOLE ordered list (`[]` clears); 422 `auto_rule_invalid` `{index, field}`. Answer: the GET shape.
+  Future<Map<String, dynamic>> saveAutoRouting(int deptId, List<Map<String, dynamic>> rules) async =>
+      asMap(await _api.put('$base/entities/$deptId/auto-routing', body: {'rules': rules}));
+
+  /// The nine decision templates (`{items: [...]}`).
+  Future<List<Map<String, dynamic>>> decisionTemplates() async => asMapList(asMap(await _api.get('$base/decision-templates'))['items']);
 
   /// `{reminded, manual_reminded_at, next_allowed_at}`; 429 `remind_too_soon` `{retry_after}`.
   Future<Map<String, dynamic>> remindNonVoters(int sid) async => asMap(await _api.post('$base/sessions/$sid/remind', body: const {}));

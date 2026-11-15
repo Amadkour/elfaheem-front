@@ -28,7 +28,7 @@ class RoutingRule {
 
 /// The editable settings document (`GET …/settings`).
 class GovSettings {
-  GovSettings({this.mode = 'open', List<RoutingRule>? rules, Map<String, int>? sla, this.email = 'fallback', this.externalRouting = 'department_council'})
+  GovSettings({this.mode = 'open', List<RoutingRule>? rules, Map<String, int>? sla, this.email = 'fallback', this.externalRouting = 'department_council', this.slaEscalation})
       : rules = rules ?? [],
         sla = sla ?? Map.of(slaHours);
   String mode; // open | rules
@@ -39,6 +39,9 @@ class GovSettings {
   /// D-891: where an outside request received by a department goes on its own.
   String externalRouting;
 
+  /// D-972: an overdue request goes up head → vice dean → dean, once per step (null = an older server).
+  bool? slaEscalation;
+
   factory GovSettings.fromJson(Map<String, dynamic> j) {
     final routing = asMap(j['routing']);
     final hours = asMap(j['sla_hours']);
@@ -48,6 +51,7 @@ class GovSettings {
       sla: {for (final p in priorities) p: asInt(hours[p], slaHours[p]!)},
       email: j['email'] == 'always' ? 'always' : 'fallback',
       externalRouting: j['external_routing'] == 'faculty_council' ? 'faculty_council' : 'department_council',
+      slaEscalation: j['sla_escalation'] is bool ? j['sla_escalation'] as bool : null,
     );
   }
 
@@ -56,6 +60,7 @@ class GovSettings {
         'sla_hours': sla,
         'email': email,
         'external_routing': externalRouting,
+        'sla_escalation': ?slaEscalation,
       };
 }
 
@@ -182,6 +187,22 @@ class _GovSettingsFormState extends State<GovSettingsForm> {
             ),
         ]),
       ),
+      if (s.slaEscalation != null) ...[
+        const SizedBox(height: AppSpace.sm),
+        AppCard(
+          child: AppSwitchTile(
+            icon: Icons.trending_up_rounded,
+            title: t('تصعيد الطلبات المتأخرة', 'Escalate overdue requests'),
+            subtitle: t('عند انتهاء المهلة يُنبَّه رئيس الجهة، وبعد مهلة أخرى يُحال الطلب للمراجعة إلى الوكيل المختص ثم العميد — مرة واحدة لكل خطوة.',
+                'When the deadline passes the head is told; one more period later the request goes for review to the fitting vice dean, else the dean — once per step.'),
+            value: s.slaEscalation!,
+            onChanged: (v) {
+              s.slaEscalation = v;
+              onChanged();
+            },
+          ),
+        ),
+      ],
       const SizedBox(height: AppSpace.md),
       AppSectionTitle(t('الطلبات الخارجية', 'Outside requests'),
           subtitle: t('طلب يرد من خارج المؤسسة إلى قسم علمي أو إدارة خدمية يُحال تلقائياً إلى:', 'A request from outside the institution received by a department goes automatically to:')),

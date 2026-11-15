@@ -5,7 +5,8 @@
 //                            (DeptIn + kind + program → POST …/entities), change kind (PATCH …/entities/{id})
 //   GovEntityCard            presentational card (layout-tested)
 //   GovEntityDetailPage      tabs Items (GovItemsPage) · Categories (CRUD) · Delegations (GovDelegationsPage) ·
-//                            Approval chain (GovChainEditorPage, D-141; the org admin edits it)
+//                            Approval chain (GovChainEditorPage, D-141; the org admin edits it) ·
+//                            Automatic routing (GovAutoRoutingPage, D-971)
 //   showGovCategorySheet     create / edit a category (kind · names · description · form link · order)
 library;
 
@@ -26,6 +27,7 @@ import 'gov_api.dart';
 import 'gov_delegations_page.dart';
 import 'gov_items_page.dart';
 import 'gov_models.dart';
+import 'gov_institutions_s3.dart' show GovAutoRoutingPage;
 import 'gov_request_parts.dart' show GovChainEditorPage;
 import 'gov_ui.dart';
 
@@ -409,7 +411,7 @@ class GovEntityDetailPage extends StatelessWidget {
     final chainTab = !entity.isCouncil && oid != null;   // D-141: the approval chain (the org admin edits it)
     // pushed from the staff Entities list only: the dashboard's header (Back · name · kind line), the tabs head the body
     return DefaultTabController(
-      length: chainTab ? 4 : 3,
+      length: chainTab ? 5 : 3,
       child: OrgPushedPage(helpPageId: 'org.governance', 
         title: entity.name,
         subtitle: [entityKindLabel(entity.kind), if (entity.code.isNotEmpty) entity.code].join(' · '),
@@ -426,6 +428,7 @@ class GovEntityDetailPage extends StatelessWidget {
                 Tab(text: t('التصنيفات', 'Categories')),
                 Tab(text: t('التفويض', 'Delegation')),
                 if (chainTab) Tab(text: t('سلسلة الاعتماد', 'Approval chain')),
+                if (chainTab) Tab(text: t('الإحالة التلقائية', 'Automatic routing')),
               ],
               isScrollable: chainTab,
               tabAlignment: chainTab ? TabAlignment.start : null,
@@ -437,6 +440,7 @@ class GovEntityDetailPage extends StatelessWidget {
               _CategoriesTab(entity: entity, orgId: orgId),
               GovDelegationsPage(entity.id, entity: entity, orgId: orgId, embedded: true),
               if (chainTab) GovChainEditorPage(orgId: oid, entity: entity, embedded: true),
+              if (chainTab) GovAutoRoutingPage(orgId: oid, entity: entity),
             ]),
           ),
         ]),
@@ -487,6 +491,7 @@ class GovCategoryTile extends StatelessWidget {
 Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, {Category? edit, List<GovFormRef> forms = const []}) async {
   final ar = TextEditingController(text: edit?.nameAr ?? ''), en = TextEditingController(text: edit?.nameEn ?? '');
   final desc = TextEditingController(text: edit?.description ?? ''), key = TextEditingController(text: edit?.key ?? ''), order = TextEditingController(text: '${edit?.order ?? 0}');
+  final sla = TextEditingController(text: edit?.slaHours == null ? '' : '${edit!.slaHours}');   // D-972
   var kind = edit?.kind ?? 'request';
   int? form = edit?.formId;
   var active = edit?.isActive ?? true, busy = false;
@@ -523,6 +528,13 @@ Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, 
               const SizedBox(width: AppSpace.sm),
               SizedBox(width: 110, child: OrgNumberField(controller: order, label: t('الترتيب', 'Order'), gap: false)),
             ]),
+            if (kind != 'complaint') ...[
+              const SizedBox(height: AppSpace.sm),
+              OrgNumberField(controller: sla, label: t('مهلة الرد بالساعات (اختياري)', 'SLA hours (optional)'), gap: false),
+              Text(t('فارغ = مهلة الأولوية. بعد انتهائها يُنبَّه رئيس الجهة، ثم يُصعَّد للوكيل إن كان التصعيد مفعّلاً.',
+                      'Empty = the hours of its priority. When it passes the head is told, then the vice dean if escalation is on.'),
+                  style: AppType.meta(ctx).copyWith(color: c.textLight)),
+            ],
             if (edit != null) ...[
               const SizedBox(height: AppSpace.xs),
               AppSwitchTile(title: t('مفعّل', 'Active'), value: active, onChanged: (v) => set(() => active = v)),
@@ -539,6 +551,12 @@ Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, 
                   appToast(t('اكتب اسم التصنيف', 'Enter a name'), error: true);
                   return;
                 }
+                final slaText = sla.text.trim();
+                final slaHours = slaText.isEmpty ? null : int.tryParse(slaText);
+                if (slaText.isNotEmpty && (slaHours == null || slaHours < 1 || slaHours > 2160)) {
+                  appToast(t('مهلة الرد من 1 إلى 2160 ساعة', 'SLA hours go from 1 to 2160'), error: true);
+                  return;
+                }
                 set(() => busy = true);
                 final body = {
                   if (key.text.trim().isNotEmpty) 'key': key.text.trim(),
@@ -549,6 +567,7 @@ Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, 
                   'form_id': form,
                   'order': int.tryParse(order.text.trim()) ?? 0,
                   if (edit != null) 'is_active': active,
+                  'sla_hours': kind == 'complaint' ? edit?.slaHours : slaHours,
                 };
                 final res = await orgCall(() => edit == null ? api.createCategory(deptId, body) : api.updateCategory(edit.id, body), ok: t('تم الحفظ', 'Saved'));
                 if (!ctx.mounted) return;

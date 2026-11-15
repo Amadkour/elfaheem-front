@@ -256,6 +256,8 @@
  "org.insights",
  "org.institution",
  "org.invitations",
+ "org.messages",
+ "org.messages.must_ack",
  "org.search",
  "org.setup_checklist",
  "parent.insights",

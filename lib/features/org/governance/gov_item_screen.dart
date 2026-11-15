@@ -30,6 +30,7 @@ import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgCall, orgErrorText, orgUtc;
 import 'gov_api.dart';
 import 'gov_forward_sheet.dart';
+import 'gov_institutions_s3.dart' show govS3EventText;
 import 'gov_models.dart';
 import 'gov_request_parts.dart';
 import 'gov_route_sheet.dart';
@@ -134,7 +135,7 @@ class GovItemBody extends StatelessWidget {
       ],
       const SizedBox(height: AppSpace.md),
       AppSectionTitle(t('السجل', 'Timeline'), subtitle: member ? null : t('التعليقات الداخلية لا يراها مقدّم المعاملة', 'Internal comments are hidden from the submitter')),
-      GovTimeline(events: it.events, onOpenAttachment: onOpenAttachment),
+      GovTimeline(events: it.events, routes: it.routes, onOpenAttachment: onOpenAttachment),
     ]);
   }
 }
@@ -420,8 +421,11 @@ class GovAgendaHistory extends StatelessWidget {
 
 /// The events with icons; internal comments carry a lock badge.
 class GovTimeline extends StatelessWidget {
-  const GovTimeline({super.key, required this.events, this.onOpenAttachment});
+  const GovTimeline({super.key, required this.events, this.routes = const [], this.onOpenAttachment});
   final List<WorkEvent> events;
+
+  /// The item's routes: an automatic route's / an escalation's target name (S3, `govS3EventText`).
+  final List<WorkRoute> routes;
   final ValueChanged<GovAttachment>? onOpenAttachment;
 
   @override
@@ -488,6 +492,8 @@ class GovTimeline extends StatelessWidget {
 
   /// A short line from `data` (outcome, status, target, assignee) for non-comment events.
   String _summary(WorkEvent e) {
+    final s3 = govS3EventText(e, routes: routes);   // auto-route · skipped rule · SLA escalation (D-971, D-972)
+    if (s3 != null) return s3;
     final d = e.data;
     final parts = <String>[];
     if (d['outcome'] != null) parts.add(itemStatusLabel('${d['outcome']}'));

@@ -283,6 +283,9 @@ Map<String, String> govCodeTexts() => {
       'conflict_declared': t('أعلنت تعارض مصالح على هذا البند فلا تصوّت عليه', 'You declared a conflict of interest on this item, so you do not vote on it'),
       'title_required': t('عنوان البند مطلوب', 'The item needs a title'),
       'template_key_invalid': t('قالب القرار غير صالح', 'The decision template is not valid'),
+      // Institutions S3 (D-971)
+      'auto_rule_invalid': t('إحدى قواعد الإحالة التلقائية غير مكتملة أو غير صالحة — راجع القاعدة المظللة',
+          'One automatic routing rule is incomplete or not valid — check the highlighted rule'),
     };
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -372,8 +375,11 @@ class GovCan {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class Category {
-  const Category({required this.id, required this.deptId, required this.key, this.nameAr = '', this.nameEn = '', this.kind = 'request', this.description, this.formId, this.isActive = true, this.order = 0});
+  const Category({required this.id, required this.deptId, required this.key, this.nameAr = '', this.nameEn = '', this.kind = 'request', this.description, this.formId, this.isActive = true, this.order = 0, this.slaHours});
   final int id, deptId;
+
+  /// D-972: this request type's own SLA (null = the priority's hours).
+  final int? slaHours;
   final String key, nameAr, nameEn, kind;
   final String? description;
   final int? formId;
@@ -393,6 +399,7 @@ class Category {
         formId: j['form_id'] == null ? null : asInt(j['form_id']),
         isActive: asBool(j['is_active'], true),
         order: asInt(j['order']),
+        slaHours: j['sla_hours'] == null ? null : asInt(j['sla_hours']),
       );
 }
 

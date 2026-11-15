@@ -287,7 +287,7 @@ void main() {
         () => SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(children: [
-            WriteAgendaItemBody(onSave: (title, body) {}),
+            WriteAgendaItemBody(onSave: (_) {}),
             GovMeetingStep(onChanged: (m, l, k) {}),
             GovMeetingStep(mode: 'in_person', location: 'قاعة مجلس الكلية — the long hall name', onChanged: (m, l, k) {}),
             GovMeetingStep(mode: 'online', link: 'http://insecure.example.com', onChanged: (m, l, k) {}),

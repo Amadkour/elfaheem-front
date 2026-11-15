@@ -18,7 +18,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_education_app/core/app_time.dart';
 
-import '../../features/admin/admin_common.dart' show asMap, asMapList, t;
+import '../../features/admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import '../export/export_fonts.dart' show ExportFonts;
 import '../export/export_watermark.dart';
 
@@ -577,8 +577,10 @@ class ExportDesign {
           ExportBlock(id: 'b7', kind: 'text', x: 0, y: .22, w: .33, h: .03, text: 'التاريخ: {{date}}', font: f(10), align: 'end'),
         ],
         ExportBlock(id: 'b8', kind: council ? 'items' : 'table', x: 0, y: .27, w: 1, h: .45),
-        ExportBlock(id: 'b9', kind: 'signature', x: 0, y: .8, w: .34, h: .12, name: '{{signer}}', title: council ? 'رئيس المجلس' : 'المسؤول', align: 'center', font: f(11)),
-        if (council) ExportBlock(id: 'b10', kind: 'signature', x: .66, y: .8, w: .34, h: .12, name: '', title: 'أمين المجلس', align: 'center', font: f(11)),
+        // D-974: the official minutes print the attendance groups and the named chair + secretary
+        if (minutes) ExportBlock(id: 'b11', kind: 'text', x: 0, y: .73, w: 1, h: .06, text: '{{attendance}}', font: f(9), align: 'start'),
+        ExportBlock(id: 'b9', kind: 'signature', x: 0, y: .8, w: .34, h: .12, name: minutes ? '{{chair}}' : '{{signer}}', title: council ? 'رئيس المجلس' : 'المسؤول', align: 'center', font: f(11)),
+        if (council) ExportBlock(id: 'b10', kind: 'signature', x: .66, y: .8, w: .34, h: .12, name: minutes ? '{{secretary}}' : '', title: 'أمين المجلس', align: 'center', font: f(11)),
       ]);
     } else {
       blocks.addAll([
@@ -599,8 +601,9 @@ class ExportDesign {
             font: f(10),
             align: 'start'),
         ExportBlock(id: 'b8', kind: council ? 'items' : 'table', x: 0, y: .19, w: 1, h: .5),
-        if (council) ExportBlock(id: 'b9', kind: 'signature', x: 0, y: .82, w: .34, h: .12, name: '', title: 'Council secretary', align: 'start', font: f(11)),
-        ExportBlock(id: 'b10', kind: 'signature', x: .66, y: .82, w: .34, h: .12, name: '{{signer}}', title: council ? 'Chair' : 'Authorized signature', align: 'end', font: f(11)),
+        if (minutes) ExportBlock(id: 'b11', kind: 'text', x: 0, y: .71, w: 1, h: .08, text: '{{attendance}}', font: f(9), align: 'start'),
+        if (council) ExportBlock(id: 'b9', kind: 'signature', x: 0, y: .82, w: .34, h: .12, name: minutes ? '{{secretary}}' : '', title: 'Council secretary', align: 'start', font: f(11)),
+        ExportBlock(id: 'b10', kind: 'signature', x: .66, y: .82, w: .34, h: .12, name: minutes ? '{{chair}}' : '{{signer}}', title: council ? 'Chair' : 'Authorized signature', align: 'end', font: f(11)),
       ]);
     }
     return ExportDesign(
@@ -847,6 +850,12 @@ class ExportDataset {
       'org_name': s(meta['org']),
       'rows': '${meta['rows'] ?? rows.length}',
       'exporter': s(meta['exporter']),
+      // D-974 official minutes (empty until the results are visible)
+      'chair': s(meta['chair']),
+      'secretary': s(meta['secretary']),
+      'attendance': s(meta['attendance']),
+      'session_no': s(meta['session_no']),
+      'year': s(meta['year']),
     };
     if (out['session_date']!.isEmpty && meta['session_date'] != null) out['session_date'] = s(meta['session_date']);
     return out;
@@ -854,16 +863,21 @@ class ExportDataset {
 
   static String _dateText(DateTime? d, [String lang = 'en']) => exportDateText(d, lang);
 
-  factory ExportDataset.fromJson(Map<String, dynamic> j) => ExportDataset(
-        module: '${j['module'] ?? 'items'}',
-        title: '${j['title'] ?? ''}',
-        lang: '${j['lang'] ?? 'ar'}',
-        meta: asMap(j['meta']),
-        columns: [for (final c in asMapList(j['columns'])) ExportColumn.fromJson(c)],
-        rows: [for (final r in asMapList(j['rows'])) r.cast<String, Object?>()],
-        items: [for (final i in asMapList(j['items'])) ExportItem.fromJson(i)],
-        generatedAt: DateTime.tryParse('${j['generated_at'] ?? ''}')?.toUtc(),
-      );
+  factory ExportDataset.fromJson(Map<String, dynamic> j) {
+    final lang = '${j['lang'] ?? 'ar'}';
+    final official = j['official'] is Map ? asMap(j['official']) : null;   // D-974, minutes only
+    final items = [for (final i in asMapList(j['items'])) ExportItem.fromJson(i)];
+    return ExportDataset(
+      module: '${j['module'] ?? 'items'}',
+      title: '${j['title'] ?? ''}',
+      lang: lang,
+      meta: {...asMap(j['meta']), if (official != null) ...exportOfficialMeta(official, lang)},
+      columns: [for (final c in asMapList(j['columns'])) ExportColumn.fromJson(c)],
+      rows: [for (final r in asMapList(j['rows'])) r.cast<String, Object?>()],
+      items: official == null ? items : exportOfficialItems(items, official),
+      generatedAt: DateTime.tryParse('${j['generated_at'] ?? ''}')?.toUtc(),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'module': module,
@@ -902,6 +916,67 @@ class ExportDataset {
         ],
         generatedAt: e.generatedAt,
       );
+}
+
+/// The official minutes block (D-974, `official` of `GET …/export/data?module=minutes`) as placeholders: `chair`,
+/// `secretary`, `session_no`, `year` and `attendance` (one line per group: voted · excused for a conflict of
+/// interest · did not respond; the chair and the secretary are marked, a weight other than 1 is shown).
+Map<String, dynamic> exportOfficialMeta(Map<String, dynamic> o, String lang) {
+  final ar = lang != 'en';
+  String name(dynamic p) => p is Map ? '${p['name'] ?? ''}' : '';
+  String who(Map<String, dynamic> a) {
+    final w = asInt(a['weight'], 1);
+    final tags = [
+      if (a['is_chair'] == true) ar ? 'رئيس المجلس' : 'chair',
+      if (a['is_secretary'] == true) ar ? 'أمين المجلس' : 'secretary',
+      if (w != 1) ar ? 'الوزن $w' : 'weight $w',
+    ];
+    return tags.isEmpty ? name(a) : '${name(a)} (${tags.join(ar ? '، ' : ', ')})';
+  }
+
+  final groups = <String, List<String>>{'voted': [], 'excused_coi': [], 'not_responded': []};
+  for (final a in asMapList(o['attendance'])) {
+    groups.putIfAbsent('${a['status']}', () => []).add(who(a));
+  }
+  const labels = {
+    'voted': ('الحاضرون المصوّتون', 'Present and voting'),
+    'excused_coi': ('المعتذرون لتعارض المصالح', 'Excused (conflict of interest)'),
+    'not_responded': ('لم يردّوا', 'Did not respond'),
+  };
+  final lines = [
+    for (final e in groups.entries)
+      if (e.value.isNotEmpty) '${ar ? (labels[e.key]?.$1 ?? e.key) : (labels[e.key]?.$2 ?? e.key)}: ${e.value.join(ar ? '، ' : ', ')}',
+  ];
+  return {
+    'chair': name(o['chair']),
+    'secretary': name(o['secretary']),
+    'session_no': o['session_no'] == null ? '' : '${o['session_no']}',
+    'year': o['year'] == null ? '' : '${o['year']}',
+    'attendance': lines.join('\n'),
+  };
+}
+
+/// Each minutes row gets its official decision text ("قرار رقم 1/1/2026: موافقة") and `decision_no`, matched by
+/// item id (else by position).
+List<ExportItem> exportOfficialItems(List<ExportItem> items, Map<String, dynamic> o) {
+  final rows = asMapList(o['items']);
+  ExportItem one(int i) {
+    final it = items[i];
+    final id = it.item['id'];
+    final row = rows.where((r) => id != null && '${r['item_id']}' == '$id').firstOrNull ?? (i < rows.length ? rows[i] : null);
+    if (row == null) return it;
+    final text = '${row['decision_text'] ?? ''}';
+    final note = '${row['decision_note'] ?? ''}';
+    return ExportItem(
+      item: {...it.item, 'decision_no': row['decision_no']},
+      votes: it.votes,
+      decision: text.isEmpty ? it.decision : (note.isEmpty ? text : '$text — $note'),
+      notes: it.notes,
+      audit: it.audit,
+    );
+  }
+
+  return [for (var i = 0; i < items.length; i++) one(i)];
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

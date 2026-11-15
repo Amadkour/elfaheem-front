@@ -24,6 +24,7 @@ import '../org_v3.dart' show orgCall, orgErrorText, orgParseUtc, orgUtc;
 import 'gov_api.dart';
 import 'gov_council_s2.dart';
 import 'gov_council_ui.dart';
+import 'gov_institutions_s3.dart' show DecisionTemplate, decisionTemplatesOf;
 import 'gov_models.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 
@@ -944,6 +945,10 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
     final api = _api, s = _s;
     if (api == null || s == null) return;
     var busy = false;
+    // S3 (D-973): the nine decision templates; an older server (or a failure) just offers none
+    final tr = await orgCall(() => api.decisionTemplates(), quiet: true);
+    if (!mounted) return;
+    final templates = tr.ok ? decisionTemplatesOf(tr.data as List<Map<String, dynamic>>) : const <DecisionTemplate>[];
     await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           return Padding(
             padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
@@ -952,9 +957,11 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
                 SheetHeader(t('كتابة بند', 'Write an item')),
                 WriteAgendaItemBody(
                   busy: busy,
-                  onSave: (title, body) async {
+                  templates: templates,
+                  onSave: (draft) async {
                     set(() => busy = true);
-                    final r = await orgCall(() => api.writeAgendaItem(s.id, title: title, body: body), ok: t('أُضيف البند إلى جدول الأعمال', 'The item joined the agenda'));
+                    final q = draft.toRequest();
+                    final r = await orgCall(() => api.writeAgendaItem(s.id, title: q.title, body: q.body, templateKey: q.templateKey, lang: q.lang), ok: t('أُضيف البند إلى جدول الأعمال', 'The item joined the agenda'));
                     if (!ctx.mounted) return;
                     set(() => busy = false);
                     if (r.ok) Navigator.pop(ctx);
