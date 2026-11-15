@@ -47,6 +47,7 @@ import 'package:flutter_education_app/features/exams/hub/hub_entry.dart' show ex
 import 'org_chat_settings_tile.dart';
 import 'org_providers.dart';
 import 'org_terms_pages.dart' show OrgTermsAdminPage;
+import 'governance/gov_councils_setup.dart' show OrgCouncilsSetupPage, councilsSetupTitle;
 import 'org_institutions.dart' show OrgDeptCatalogPage, OrgStudySystemPage, orgInstitutionFeatureKey;
 import 'org_ui.dart' show orgPickAndUpload;
 import 'package:flutter_education_app/design/app_icons.dart';
@@ -198,6 +199,16 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
                 subtitle: t('أنشئ الإدارات العلمية والخدمية وأنواع طلباتها بنقرة', 'Create academic and service departments and their request types in one go'),
                 keywords: 'departments catalog template student affairs exam control إدارات أقسام شئون الطلاب كنترول',
                 onTap: () => orgPush(context, t('دليل الإدارات', 'Department catalog'), const OrgDeptCatalogPage(), helpPageId: 'org.departments')),
+          // Institutions v2 phase 3 (D-989 – D-990): faculty council, department councils, both or none
+          if (s.isOrgAdmin)
+            AppSettingsTile(
+                key: const ValueKey('settings.councils_setup'),
+                icon: Icons.account_balance_rounded,
+                featureKey: orgInstitutionFeatureKey,
+                label: councilsSetupTitle(),
+                subtitle: t('مجلس الكلية، مجالس الأقسام، كلاهما أو بدون', 'Faculty council, department councils, both or none'),
+                keywords: 'councils faculty council department council dean مجالس مجلس الكلية مجلس القسم',
+                onTap: () => orgPush(context, councilsSetupTitle(), const OrgCouncilsSetupPage(), helpPageId: 'org.governance')),
           if (s.can('sub_orgs', 'insert') || s.isOrgAdmin)
             AppSettingsTile(
                 icon: Icons.account_tree_rounded,

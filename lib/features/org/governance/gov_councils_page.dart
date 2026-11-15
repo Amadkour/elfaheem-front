@@ -20,6 +20,7 @@ import '../org_v3.dart' show orgCall;
 import 'gov_api.dart';
 import 'gov_council_settings.dart';
 import 'gov_council_ui.dart';
+import 'gov_councils_setup.dart' show councilsSetupTitle, openCouncilsSetup;
 import 'gov_models.dart';
 import 'gov_session_screen.dart';
 
@@ -425,6 +426,22 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
               AppHeroStat(icon: Icons.how_to_vote_rounded, value: '$waiting', label: t('بانتظار صوتي', 'waiting for me')),
             ],
           ),
+          // Institutions v2 phase 3: which councils exist (faculty · departments · both · none)
+          if (admin)
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                    key: const ValueKey('councils.setup.open'),
+                    icon: const Icon(Icons.tune_rounded),
+                    label: Text(councilsSetupTitle()),
+                    onPressed: () async {
+                      await openCouncilsSetup(context, orgId: _orgId);
+                      if (mounted) _load();
+                    }),
+              ),
+            ),
           if (admin && !hasFaculty)
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),

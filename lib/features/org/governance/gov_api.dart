@@ -187,6 +187,12 @@ class GovApi {
   Future<dynamic> createFacultyCouncil({String? nameAr, String? nameEn, int? headUserId, bool headSelf = false}) =>
       _api.post('$base/councils', body: {'level': 'faculty', 'name_ar': ?nameAr, 'name_en': ?nameEn, if (headSelf) 'head_self': true else 'head_user_id': ?headUserId});
 
+  // Institutions v2 phase 3 (D-989 – D-990, gov_councils_setup.dart): which councils the institution has
+  Future<Map<String, dynamic>> councilsSetup() async => asMap(await _api.get('$base/councils-setup'));
+
+  /// 409 `council_has_open_agenda` {councils: [{id, name, open_agenda_items}]} = nothing applied.
+  Future<Map<String, dynamic>> saveCouncilsSetup(Map<String, dynamic> body) async => asMap(await _api.put('$base/councils-setup', body: body));
+
   Future<Council> council(int cid) async => Council.fromJson(asMap(await _api.get('$base/councils/$cid')));
 
   Future<dynamic> saveCouncilSettings(int cid, CouncilSettings s) => _api.put('$base/councils/$cid/settings', body: s.toJson());
