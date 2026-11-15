@@ -138,6 +138,14 @@ class LiveEvents {
   /// AppNavigator (module `exam_notice`). The name matches the backend's `exam_notice`.
   static const examNotice = 'exam_notice';
 
+  /// Organization messages (Institutions S4, D-975 – D-978, docs/institutions/CONTRACT_S4.md): `org_message`
+  /// {org_id, message_id, delivery} → a recipient's messages list reloads; `org_must_ack` (same fields, stream +
+  /// silent push) → the app reads GET /me/must-ack (OrgMustAckHost); `org_message_ack` {org_id, message_id,
+  /// acknowledged, pending} → the sender's list / names sheet re-read.
+  static const orgMessage = 'org_message';
+  static const orgMustAck = 'org_must_ack';
+  static const orgMessageAck = 'org_message_ack';
+
   /// Local (not from the server): fired by TopRouteObserver when the app goes online/offline.
   // NextBrain Messages (D-330, server: services/chat/realtime.py)
   static const chatMessage = 'chat_message';
@@ -178,6 +186,9 @@ class LiveEvents {
     appReleaseUpdated,
     appReleaseLive,
     examNotice,
+    orgMessage,
+    orgMustAck,
+    orgMessageAck,
   };
 
   /// The VISIBLE notifications of the same features (data["type"]) also nudge

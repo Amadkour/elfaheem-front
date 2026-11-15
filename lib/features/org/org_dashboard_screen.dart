@@ -68,6 +68,7 @@ import 'org_academic_pages.dart' show OrgAcademicPage;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
 import 'advising/adv_wiring.dart' show advServiceSubs;
 import 'governance/gov_wiring.dart' show govServiceSubs;
+import 'org_messages.dart' show msgServiceSubs;
 
 export 'org_dashboard_settings.dart' show showJoinCode, showOrgForm, showOrgSwitcher;
 
@@ -475,6 +476,8 @@ List<OrgSub> _serviceSubs(OrgSession s) => [
       ...govServiceSubs(s),
       // academic advising (Phase 2): eligibility · switch on / off · directors · counts (kill switch org.advising)
       ...advServiceSubs(s),
+      // Institutions S4 (D-975): messages to students, normal / push / must acknowledge (kill switch org.messages)
+      ...msgServiceSubs(s),
     ];
 
 /// Page frame: THE page header (OrgPageHeader) + the page's own refresh scope + live reload when the organization

@@ -70,6 +70,9 @@ import 'org_services_pages.dart' show OrgAnnouncementsPage, OrgComplaintsPage, O
 import 'org_ui.dart' show memberRoleLabels, orgNameOf;
 import 'advising/adv_wiring.dart' show AdvMemberHubEntry;
 import 'governance/gov_wiring.dart' show govMemberPills;
+import 'org_messages_models.dart' show orgMessagesEnabled;
+import 'org_must_ack.dart' show OrgMyMessagesPage;
+import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppNavigator;
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -270,6 +273,10 @@ List<OrgQuickGroup> orgQuickGroups(BuildContext context, Map<String, dynamic> en
             ({required icon, required label, required onTap}) => _ActionCarrier(OrgQuickAction(icon: icon, label: label, onTap: onTap))))
           if (w is _ActionCarrier) w.action,
         OrgQuickAction(icon: Icons.support_agent_rounded, label: t('شكوى أو استفسار', 'Complaint / question'), onTap: () => space(3)),
+        // Institutions S4 (D-975): what the organization sent me; a complaint's reply opens its thread
+        if (orgMessagesEnabled())
+          OrgQuickAction(icon: Icons.mark_email_unread_rounded, label: t('رسائل المؤسسة', 'Organization messages'),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMyMessagesPage(orgId: orgId, onOpenItem: (ctx, r) => r.workItemId != null ? AppNavigator.openModule('org_work', targetId: r.workItemId, orgId: orgId) : space(3))))),
         OrgQuickAction(icon: Icons.inbox_rounded, label: t('تقارير وصلتني', 'Received reports'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredOrgReceivedReports()))),
       ],

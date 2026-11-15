@@ -26,6 +26,7 @@ import 'package:provider/provider.dart';
 import '../../admin/admin_common.dart' show dirArrow, SheetHeader, asMap, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
 import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
+import '../org_messages.dart' show msgSubmitterAction;
 import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgCall, orgErrorText, orgUtc;
 import 'gov_api.dart';
@@ -972,6 +973,8 @@ class _GovItemScreenState extends State<GovItemScreen> {
         subtitle: it == null ? null : [itemTypeLabel(it.type), itemStatusLabel(it.status), if (it.ownerDept != null) it.ownerDept!.name].join(' · '),
         refresh: _refresh,
         maxWidth: AppWidth.reading.max,
+        // Institutions S4 (D-976): the holding department's team writes to the submitter (org_messages.dart)
+        primaryAction: it == null || widget.member || _orgId == null ? null : msgSubmitterAction(context, orgId: _orgId!, workItemId: it.id),
         child: child,
       );
     }

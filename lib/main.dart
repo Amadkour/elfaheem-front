@@ -81,6 +81,7 @@ import 'features/admin/models/model_download_bar.dart' show ModelDownloadsHost;
 import 'core/release/web_release_watch.dart' show WebReleaseBanner;
 import 'package:flutter_education_app/features/get_app/app_download_banner.dart' show AppDownloadBanner;
 import 'package:flutter_education_app/features/live/live_room_host.dart' show LiveRoomHost, LiveRoomLayer;
+import 'package:flutter_education_app/features/org/org_must_ack.dart' show OrgMustAckHost;
 import 'package:flutter_education_app/features/get_app/get_app_banner.dart' show GetAppBanner;
 import 'package:flutter_education_app/features/sessions/video/vod_listen_layer.dart' show VodListenLayer;
 import 'design/app_keyboard.dart' show AppKeyboardSupport;
@@ -786,7 +787,8 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
                     // the ONE background-upload footer, under the Navigator (D-949): every page gets the room above it
                     // web: "Get the app" strip above the role homes; above it the website downloads strip on every page,
                     // sign-in included (D-144); on top "A new version is live — Reload" (D-143), which keeps the top spot
-                    child: LiveRoomLayer(child: WebReleaseBanner(child: AppDownloadBanner(child: GetAppBanner(child: OrgInvitationPromptHost(navigatorKey: navigatorKey, child: UploadQueueHost(child: child!)))))),
+                    // an organization's must-acknowledge message (D-977): just inside the live room, never over it
+                    child: LiveRoomLayer(child: OrgMustAckHost(child: WebReleaseBanner(child: AppDownloadBanner(child: GetAppBanner(child: OrgInvitationPromptHost(navigatorKey: navigatorKey, child: UploadQueueHost(child: child!))))))),
                   ),
                 ),
               ),
