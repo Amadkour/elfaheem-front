@@ -16,8 +16,9 @@ import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../core/app_mode.dart';
 import '../../core/notif_link.dart';
-import '../../design/action_banner.dart' show StaleLinkPage;
-import '../../features/org/needs_my_action_page.dart' show NeedsMyActionPage;
+// UX v3 phase 5: both pages are opened only from a link: deferred parts, not the first download
+import '../../design/action_banner.dart' deferred as action_banner;
+import '../../features/org/needs_my_action_page.dart' deferred as needs_action;
 import '../../core/offline/downloads_availability.dart' show linkAvailableHere;
 import '../../core/attention/attention_service.dart' show AttentionService, OrgTabRequest;
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart' show CoursePageLoader;
@@ -312,7 +313,8 @@ class AppNavigator {
         return;
       // governance (D-057): an item · a council session · a delegation · a form I must answer
       case 'action_inbox': // UX v3 phase 2: a grouped summary / a badge with several items → Needs my action
-        await nav.push(MaterialPageRoute(settings: const RouteSettings(name: '/needs-my-action'), builder: (_) => const NeedsMyActionPage()));
+        await _deferred('needs_my_action', needs_action.loadLibrary,
+            () => nav.push(MaterialPageRoute(settings: const RouteSettings(name: '/needs-my-action'), builder: (_) => needs_action.NeedsMyActionPage())));
         return;
       case 'org_work':
         if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenItemLink(nav, ctx, targetId, orgId: orgId, link: link));
@@ -437,16 +439,16 @@ class AppNavigator {
     final nav = _nav;
     if (nav == null) return;
     final fb = l.fallbackModule;
-    await nav.push(MaterialPageRoute(
+    await _deferred('action_banner', action_banner.loadLibrary, () => nav.push(MaterialPageRoute(
         settings: const RouteSettings(name: '/notification-stale'),
-        builder: (ctx) => StaleLinkPage(
+        builder: (ctx) => action_banner.StaleLinkPage(
               reason: l.staleReason,
               fallbackLabel: fb == null || fb == 'notifications' ? (AppConfig.lang == 'ar' ? 'إلى الإشعارات' : 'Go to notifications') : null,
               onFallback: () {
                 Navigator.of(ctx).pop();
                 openModule(fb ?? 'notifications', orgId: l.orgId);
               },
-            )));
+            ))));
   }
 
   /// Notification list tap / push tap. Asks the server where the notification points (the answer also marks it

@@ -11,7 +11,8 @@
 //   OrgPersonaStore       the chosen persona per user + organization on this device (SharedPreferences)
 //   OrgPersonaSwitcher    the chips under the home's header, only for a person with more than one persona
 //   OrgHomeLinksSection   a calm section of link rows (councils · my courses · More), plain values
-//   showOrgQuickReply     3–5 canned bilingual replies on an assigned request (POST …/items/{id}/comments)
+//   showOrgQuickReply     3–5 canned bilingual replies on an assigned request (POST …/items/{id}/comments); says
+//                         "sent" at once and takes it back on a failure
 // Tests: test/org/ux_v3_p4_test.dart.
 library;
 
@@ -371,12 +372,13 @@ Future<bool> showOrgQuickReply(BuildContext context, {required int orgId, requir
     );
   });
   if (text == null) return false;
+  // optimistic (UX v3 phase 5): "sent" as the sheet closes; a failure takes it back with the reason
+  showAppNotice(t('أُرسل الرد', 'Reply sent'));
   try {
     await (api ?? GovApi(orgId)).comment(itemId, text);
-    showAppNotice(t('أُرسل الرد', 'Reply sent'));
     return true;
   } catch (e) {
-    showAppNotice(ApiException.from(e).message, error: true);
+    showAppNotice('${t('لم يُرسل الرد', 'The reply was not sent')}: ${ApiException.from(e).message}', error: true);
     return false;
   }
 }

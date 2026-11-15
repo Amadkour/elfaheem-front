@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/in_flight.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppNavigator;
@@ -185,14 +186,16 @@ class AttentionFlowStore extends ChangeNotifier {
     load(orgId);
   }
 
-  Future<AttentionFlow?> load(int orgId) async {
-    final r = await orgCall(() => ApiClient().get(orgAttentionFlowPath(orgId)), quiet: true);
-    if (r.ok) {
-      _data[orgId] = AttentionFlow.fromJson(r.map);
-      notifyListeners();
-    }
-    return r.ok ? _data[orgId] : null;
-  }
+  /// Two callers at once (the Home's open and a page that just closed) share one request (UX v3 phase 5).
+  Future<AttentionFlow?> load(int orgId) => _flights.run(orgId, () async {
+        final r = await orgCall(() => ApiClient().get(orgAttentionFlowPath(orgId)), quiet: true);
+        if (r.ok) {
+          _data[orgId] = AttentionFlow.fromJson(r.map);
+          notifyListeners();
+        }
+        return r.ok ? _data[orgId] : null;
+      });
+  final _flights = InFlight<int, AttentionFlow?>();
 
   @visibleForTesting
   void reset() {

@@ -6,10 +6,13 @@
 //      urgency 0-3, created_at}], total}   sorted by urgency, then due
 //
 //   ActionInboxItem          a defensive parser (tested)
-//   NeedsMyActionList        plain values (expectNoLayoutErrors): the rows, each with its action, reason, place, due
+//   NeedsMyActionList        plain values (expectNoLayoutErrors): the rows, each with its action, reason, place, due;
+//                            `.sliver` builds only the rows on screen (the page's list, UX v3 phase 5)
 //   NeedsMyActionPage        the page: a debounced search (server `q`), All · Urgent · Overdue chips, skeleton while
 //                            loading, AppErrorBox with Retry, the calm empty state; a row opens through
-//                            AppNavigator.openLink with its link (the ActionBanner rides along)
+//                            AppNavigator.openLink with its link (the ActionBanner rides along). Load more: the
+//                            server has `limit` (≤ 200) and `total` but no offset, so near the end the page asks again
+//                            with a larger limit (actionInboxNextLimit) while rows are missing
 // Opened by module `action_inbox` (a grouped push / notification, a badge with several items).
 library;
 
@@ -118,18 +121,48 @@ String actionUrgencyLabel(int u) => switch (u) {
       _ => t('منخفض', 'Low'),
     };
 
-/// The rows, plain values.
+/// The page size of the action inbox and the server's ceiling (`limit` ≤ 200).
+const kActionInboxPage = 50;
+const kActionInboxMax = 200;
+
+/// The limit of the next "load more" (the server has no offset: the same list, longer), null when every row is in
+/// or the server's ceiling is reached.
+int? actionInboxNextLimit({required int limit, required int loaded, required int total}) {
+  if (loaded >= total || loaded < limit || limit >= kActionInboxMax) return null;
+  return (limit + kActionInboxPage).clamp(kActionInboxPage, kActionInboxMax);
+}
+
+/// The rows, plain values. The default is a Column (a short list inside another scroll view);
+/// [NeedsMyActionList.sliver] is a lazy SliverList that builds only the rows on screen.
 class NeedsMyActionList extends StatelessWidget {
-  const NeedsMyActionList({super.key, required this.items, this.onOpen});
+  const NeedsMyActionList({super.key, required this.items, this.onOpen}) : asSliver = false;
+  const NeedsMyActionList.sliver({super.key, required this.items, this.onOpen}) : asSliver = true;
   final List<ActionInboxItem> items;
+  final ValueChanged<ActionInboxItem>? onOpen;
+  final bool asSliver;
+
+  @override
+  Widget build(BuildContext context) {
+    if (asSliver) {
+      return SliverList.builder(itemCount: items.length, itemBuilder: (context, i) => NeedsMyActionRow(item: items[i], onOpen: onOpen));
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      for (final x in items) NeedsMyActionRow(item: x, onOpen: onOpen),
+    ]);
+  }
+}
+
+/// One row of the action inbox.
+class NeedsMyActionRow extends StatelessWidget {
+  const NeedsMyActionRow({super.key, required this.item, this.onOpen});
+  final ActionInboxItem item;
   final ValueChanged<ActionInboxItem>? onOpen;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      for (final x in items)
-        AppCard(
+    final x = item;
+    return AppCard(
           key: ValueKey('action_inbox.${x.key}'),
           margin: const EdgeInsets.only(bottom: AppSpace.xs),
           onTap: onOpen == null ? null : () => onOpen!(x),
@@ -154,8 +187,7 @@ class NeedsMyActionList extends StatelessWidget {
             const SizedBox(width: AppSpace.xxs),
             Icon(Icons.chevron_right_rounded, size: AppIconSize.lg, color: c.textLight),
           ]),
-        ),
-    ]);
+        );
   }
 }
 
@@ -176,6 +208,8 @@ class _NeedsMyActionPageState extends State<NeedsMyActionPage> {
   String _q = '';
   ActionInboxFilter _filter = ActionInboxFilter.all;
   int _seq = 0;
+  int _limit = kActionInboxPage;
+  bool _more = false;
 
   @override
   void initState() {
@@ -183,21 +217,49 @@ class _NeedsMyActionPageState extends State<NeedsMyActionPage> {
     _load();
   }
 
-  Future<void> _load() async {
+  /// [limit]: a longer list (load more); otherwise the first page again (open, search, pull to refresh, back from
+  /// a row).
+  Future<void> _load({int? limit}) async {
     final seq = ++_seq;
-    if (_error != null) setState(() => _error = null);
+    _limit = limit ?? kActionInboxPage;
+    if (_error != null || _more != (limit != null)) {
+      setState(() {
+        _error = null;
+        _more = limit != null;
+      });
+    }
     try {
-      final r = await ApiClient().get('/api/v1/me/action-inbox', queryParams: {if (_q.isNotEmpty) 'q': _q, 'limit': 50});
+      final r = await ApiClient().get(kActionInboxPath, queryParams: {if (_q.isNotEmpty) 'q': _q, 'limit': _limit});
       if (!mounted || seq != _seq) return;
       final (items, total) = ActionInboxItem.parse(r);
       setState(() {
         _items = items;
         _total = total;
+        _more = false;
       });
     } catch (e) {
       if (!mounted || seq != _seq) return;
-      setState(() => _error = ApiException.from(e));
+      setState(() {
+        _error = ApiException.from(e);
+        _more = false;
+      });
     }
+  }
+
+  /// Near the end of the list: the next rows, when the server holds more.
+  void _maybeMore() {
+    final items = _items;
+    if (items == null || _more || _error != null) return;
+    final next = actionInboxNextLimit(limit: _limit, loaded: items.length, total: _total);
+    if (next != null) _load(limit: next);
+  }
+
+  /// AppSearchField calls this once per pause in typing (its own debounce); the same words again ask nothing.
+  void _search(String v) {
+    final q = v.trim();
+    if (q == _q) return;
+    _q = q;
+    _load();
   }
 
   Future<void> _open(ActionInboxItem x) async {
@@ -209,7 +271,7 @@ class _NeedsMyActionPageState extends State<NeedsMyActionPage> {
   Widget build(BuildContext context) {
     final items = _items;
     final shown = items == null ? const <ActionInboxItem>[] : filterActionInbox(items, _filter);
-    Widget list;
+    Widget? list;
     if (items == null && _error == null) {
       list = const AppListSkeleton(items: 5);
     } else if (_error != null && items == null) {
@@ -220,16 +282,9 @@ class _NeedsMyActionPageState extends State<NeedsMyActionPage> {
         title: _q.isNotEmpty || _filter != ActionInboxFilter.all ? t('لا شيء يطابق', 'Nothing matches') : t('لا شيء ينتظرك', 'Nothing is waiting for you'),
         message: _q.isNotEmpty || _filter != ActionInboxFilter.all ? t('جرّب كلمة أخرى أو أزل التصفية.', 'Try another word or clear the filter.') : t('كل ما يحتاج إجراءك أُنجز.', 'Everything that needed your action is done.'),
       );
-    } else {
-      list = NeedsMyActionList(items: shown, onOpen: _open);
     }
-    final body = AppRefresh(
-      onRefresh: _load,
-      child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xl), children: [
-        AppSearchField(hint: t('ابحث في ما ينتظرك', 'Search what is waiting for you'), onChanged: (v) {
-          _q = v.trim();
-          _load();
-        }),
+    final top = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppSearchField(hint: t('ابحث في ما ينتظرك', 'Search what is waiting for you'), onChanged: _search),
         AppSpace.gapXs,
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final f in ActionInboxFilter.values)
@@ -250,8 +305,24 @@ class _NeedsMyActionPageState extends State<NeedsMyActionPage> {
               style: AppType.meta(context).copyWith(color: context.colors.textMedium)),
         ],
         AppSpace.gapSm,
-        list,
-      ]),
+        ?list,
+      ]);
+    const pad = EdgeInsets.symmetric(horizontal: AppSpace.md);
+    final body = AppRefresh(
+      onRefresh: _load,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (n) {
+          if (n.metrics.extentAfter < 400) _maybeMore();
+          return false;
+        },
+        child: CustomScrollView(slivers: [
+          SliverPadding(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0), sliver: SliverToBoxAdapter(child: top)),
+          // the rows: built as they scroll into view (a long inbox never lays out every card)
+          if (list == null) SliverPadding(padding: pad, sliver: NeedsMyActionList.sliver(items: shown, onOpen: _open)),
+          if (_more) const SliverPadding(padding: pad, sliver: SliverToBoxAdapter(child: AppListSkeleton(items: 2, padding: EdgeInsets.zero))),
+          const SliverToBoxAdapter(child: SizedBox(height: AppSpace.xl)),
+        ]),
+      ),
     );
     if (widget.embedded) return body;
     return BasePage(useWebCard: true, width: AppWidth.reading, appBar: ScreenAppBar(title: t('ينتظر إجرائي', 'Needs my action')), child: body);

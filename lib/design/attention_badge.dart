@@ -25,6 +25,7 @@ import '../utils/top_route_observer.dart' show topRouteObserver;
 import 'app_shell_nav.dart' show AppShellNav;
 import '../utils/widget/app_navigator.dart';
 import 'app_kit.dart';
+import 'listenable_selector.dart';
 
 String _tx(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -47,10 +48,11 @@ class AttentionBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final svc = AttentionService.instance;
-    return ListenableBuilder(
+    // rebuilds when THIS tab's count moves, not on every answer of the feed (UX v3 phase 5)
+    return ListenableSelector<int>(
       listenable: svc,
-      builder: (context, _) {
-        final n = svc.count(tabKey, orgId: orgId);
+      select: () => svc.count(tabKey, orgId: orgId),
+      builder: (context, n) {
         if (n <= 0) return child;
         return Stack(clipBehavior: Clip.none, children: [
           child,

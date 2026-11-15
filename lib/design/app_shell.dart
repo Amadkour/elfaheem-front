@@ -60,6 +60,7 @@ import 'app_focus_mode.dart' show AppFocusMode, AppFocusToggle;
 import 'app_gradients.dart' show AppBrandInk, AppBrandLayer, AppBrandPanel, AppGradientIcon, BrandInk;
 import 'app_keyboard.dart' show AppCommandPaletteScope;
 import 'app_motion_kit.dart';
+import 'listenable_selector.dart';
 import 'app_tokens.dart';
 import 'app_responsive.dart';
 import 'app_shell_nav.dart';
@@ -133,12 +134,11 @@ class ShellBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     // a count that changes pops once (D-581)
     if (item.attentionKeys.isEmpty) return AppBump(trigger: item.badge, child: builder(context, item.badge));
-    return ListenableBuilder(
+    // rebuilds when this item's count moves, not on every answer of the feed (UX v3 phase 5)
+    return ListenableSelector<int>(
       listenable: source(),
-      builder: (context, _) {
-        final n = item.badge + _live();
-        return AppBump(trigger: n, child: builder(context, n));
-      },
+      select: () => item.badge + _live(),
+      builder: (context, n) => AppBump(trigger: n, child: builder(context, n)),
     );
   }
 }

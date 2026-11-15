@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/in_flight.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -350,12 +351,14 @@ class OrgJourneyStore extends ChangeNotifier {
     await _load(orgId);
   }
 
-  Future<void> _load(int orgId) async {
-    final OrgCall r = await orgCall(() => ApiClient().get(orgJourneyPath(orgId)), quiet: true);
-    _data[orgId] = r.ok ? MyJourney.fromJson(r.map) : _data[orgId];
-    _settled.add(orgId);
-    notifyListeners();
-  }
+  /// The first ask and a pull-to-refresh that lands while it runs share one request (UX v3 phase 5).
+  Future<void> _load(int orgId) => _flights.run(orgId, () async {
+        final OrgCall r = await orgCall(() => ApiClient().get(orgJourneyPath(orgId)), quiet: true);
+        _data[orgId] = r.ok ? MyJourney.fromJson(r.map) : _data[orgId];
+        _settled.add(orgId);
+        notifyListeners();
+      });
+  final _flights = InFlight<int, void>();
 
   @visibleForTesting
   void reset() {

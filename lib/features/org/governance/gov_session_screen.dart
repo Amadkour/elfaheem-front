@@ -120,6 +120,25 @@ class VoteResultView extends StatelessWidget {
 //  My vote
 // ═════════════════════════════════════════════════════════════════════════════
 
+/// The session with one agenda row replaced by a vote's reply (the server answers with that row exactly as the
+/// session shows it), so a vote costs no second GET of the whole session (UX v3 phase 5). [myVote] is written into
+/// `my_votes` too. Null when the reply is not a whole row (an older server) or names no row of this session: the
+/// caller reloads then.
+CouncilSession? sessionWithAgendaReply(CouncilSession s, Object? reply, {String? myVote}) {
+  if (reply is! Map || reply['item'] is! Map || reply['id'] == null) return null;
+  final row = Map<String, dynamic>.from(reply);
+  final id = asInt(row['id']);
+  final agenda = asMapList(s.raw['agenda']);
+  final i = agenda.indexWhere((a) => asInt(a['id']) == id);
+  if (i < 0) return null;
+  final list = [...agenda]..[i] = row;
+  return CouncilSession.fromJson({
+    ...s.raw,
+    'agenda': list,
+    if (myVote != null) 'my_votes': {...asMap(s.raw['my_votes']), '$id': myVote},
+  });
+}
+
 /// Approve / Reject / Abstain with an optional note. [value] is my current vote; [enabled] only while the session
 /// is voting and I may vote. Tapping a choice sends it at once ([onVote]); the note goes with the next tap.
 class MyVoteRow extends StatefulWidget {
@@ -949,7 +968,18 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
         }
       }
     });
-    if (r.ok) _load();
+    if (!r.ok) return;
+    // the reply IS the agenda row as the session shows it (live result, my vote): no second GET of the session
+    final s = _s;
+    final next = s == null ? null : sessionWithAgendaReply(s, r.data, myVote: vote);
+    if (next == null) {
+      _load();
+      return;
+    }
+    setState(() {
+      _s = next;
+      _optimistic.remove(a.id);
+    });
   }
 
   Future<void> _results(AgendaItem a) async {
