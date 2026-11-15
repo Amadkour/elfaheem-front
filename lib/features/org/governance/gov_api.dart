@@ -222,6 +222,28 @@ class GovApi {
 
   Future<Map<String, dynamic>> minutes(int sid) async => asMap(await _api.get('$base/sessions/$sid/minutes'));
 
+  // ── Institutions S2 (D-965 – D-970) ───────────────────────────────────
+
+  /// The roster: members with weights, the secretary, `can.roster`.
+  Future<CouncilRoster> councilMembers(int cid) async => CouncilRoster.fromJson(asMap(await _api.get('$base/councils/$cid/members')));
+
+  /// `rosterBody(...)`; 422 `weight_cap` `{user_id, cap_pct}`, `not_staff_member`, `council_settings_invalid`.
+  Future<CouncilRoster> saveCouncilMembers(int cid, Map<String, dynamic> body) async =>
+      CouncilRoster.fromJson(asMap(await _api.put('$base/councils/$cid/members', body: body)));
+
+  /// The chair / secretary writes an item on the agenda (201 → the whole session).
+  Future<CouncilSession> writeAgendaItem(int sid, {required String title, String? body, String? templateKey}) async =>
+      CouncilSession.fromJson(asMap(await _api.post('$base/sessions/$sid/agenda/write', body: {'title': title, 'body': ?body, 'template_key': ?templateKey})));
+
+  /// `{reminded, manual_reminded_at, next_allowed_at}`; 429 `remind_too_soon` `{retry_after}`.
+  Future<Map<String, dynamic>> remindNonVoters(int sid) async => asMap(await _api.post('$base/sessions/$sid/remind', body: const {}));
+
+  /// I have a conflict of interest on this row (→ the row JSON).
+  Future<AgendaItem> declareConflict(int aid, {String? note}) async =>
+      AgendaItem.fromJson(asMap(await _api.post('$base/agenda/$aid/conflict', body: {'note': ?note})));
+
+  Future<AgendaItem> agendaResults(int aid) async => AgendaItem.fromJson(asMap(await _api.get('$base/agenda/$aid/results')));
+
   Future<List<AgendaItem>> myVotes() async {
     final r = await _api.get('$base/me/votes');
     return [for (final a in asMapList(asMap(r)['items'])) AgendaItem.fromJson(a)];
@@ -283,6 +305,9 @@ class GovApi {
 
   static Future<dynamic> memberVote(int aid, String vote, {String? note, ApiClient? client}) =>
       (client ?? ApiClient()).post('$memberBase/agenda/$aid/vote', body: {'vote': vote, 'note': ?note});
+
+  static Future<AgendaItem> memberDeclareConflict(int aid, {String? note, ApiClient? client}) async =>
+      AgendaItem.fromJson(asMap(await (client ?? ApiClient()).post('$memberBase/agenda/$aid/conflict', body: {'note': ?note})));
 
   static Future<List<Delegation>> memberDelegations({ApiClient? client}) async {
     final r = await (client ?? ApiClient()).get('$memberBase/me/delegations');
