@@ -146,6 +146,7 @@ class OrgHomeData {
     this.memberRole,
     this.layout = '',
     this.canInsights = false,
+    this.canFacultyOverview = false,
     this.tasks,
     this.tasksTotal = 0,
   });
@@ -159,6 +160,9 @@ class OrgHomeData {
   /// insights_first · actions_first (empty = the app decides from the role, orgHomeOrder).
   final String layout;
   final bool canInsights;
+
+  /// D-979: the home's Faculty overview card (the dean, vice deans and org admin of an institution; absent = false).
+  final bool canFacultyOverview;
 
   /// "Needs your attention" (the first 8, urgency first); null on an older server → the attention cards.
   final List<OrgTask>? tasks;
@@ -206,6 +210,7 @@ class OrgHomeData {
       memberRole: m['member_role'] == null ? null : '${m['member_role']}',
       layout: '${m['layout'] ?? ''}',
       canInsights: m['can_insights'] == true,
+      canFacultyOverview: m['can_faculty_overview'] == true,
       tasks: OrgTask.listFrom(m['tasks']),
       tasksTotal: m['tasks_total'] != null ? _int(m['tasks_total']) : (m['tasks'] is List ? (m['tasks'] as List).length : 0),
     );

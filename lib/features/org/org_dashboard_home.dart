@@ -49,6 +49,8 @@ import 'home/org_home_logic.dart';
 import 'home/org_home_premium.dart';
 import 'home/org_home_tasks.dart';
 import 'home/org_setup_checklist.dart';
+import 'governance/gov_faculty_overview.dart' show FacultyOverviewPage, OrgFacultyOverviewCard;
+import 'governance/gov_wiring.dart' show govEnabled;
 import 'home/org_insights_section.dart';
 import 'insights/org_insights_api.dart' show OrgInsightsPrefetch, orgInsightsAllowedBy, orgInsightsToday;
 import 'org_academic_pages.dart' show OrgAcademicPage;
@@ -117,6 +119,7 @@ class OrgHomeBody extends StatelessWidget {
     this.insights = const SizedBox.shrink(),
     this.insightsWeight = 0,
     this.setup,
+    this.faculty,
     this.onRefresh,
     this.greetingName = '',
     this.shortcuts = const [],
@@ -158,6 +161,9 @@ class OrgHomeBody extends StatelessWidget {
   /// C5: the org admin's first-run checklist (OrgSetupChecklist), above the sections; null for everyone else.
   final Widget? setup;
 
+  /// D-979: the dean / vice deans / admin's Faculty overview card (static, no request), under [setup]; null = none.
+  final Widget? faculty;
+
   @override
   Widget build(BuildContext context) {
     final rows = tasks ?? data.tasks ?? const <OrgTask>[];
@@ -197,7 +203,11 @@ class OrgHomeBody extends StatelessWidget {
         children: orgHomeStats(data, waiting: waiting, wide: wide, onWaiting: onWaiting, onUnits: onSeeAllUnits));
     const inset = EdgeInsets.symmetric(horizontal: AppSpace.md);
     return LayoutBuilder(builder: (context, box) {
-      final top = <Widget>[const SizedBox(height: AppSpace.xs), if (setup != null) Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs), child: setup!)];
+      final top = <Widget>[
+        const SizedBox(height: AppSpace.xs),
+        if (setup != null) Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs), child: setup!),
+        if (faculty != null) Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0), child: faculty!),
+      ];
       if (!homeIsWide(box.maxWidth)) {
         // phone: the hero, the shortcut tiles, what needs me and the departments, then the figures
         return _pinnedHeader(header, _pullable(onRefresh, ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
@@ -630,6 +640,10 @@ class _OrgHomePageState extends State<OrgHomePage> {
           onSeeAllUnits: tabs.has('people', 'departments') ? () => orgJump(context, 'people', sub: 'departments') : null,
           // its own call after the first frame (never part of the dashboard's); an older server → the 30-day trends
           setup: s.isOrgAdmin ? OrgSetupChecklist(orgId: s.currentId, reloadToken: dash.loadedAt, onOpen: (x) => _openSetupStep(context, x)) : null,
+          faculty: d.canFacultyOverview && govEnabled()
+              ? OrgFacultyOverviewCard(
+                  onOpen: () => orgPush(context, t('نظرة على الكلية', 'Faculty overview'), const FacultyOverviewPage()))
+              : null,
           insights: OrgInsightsSection(orgId: s.currentId, fallback: d.trends.isEmpty ? null : OrgTrendRow(trends: d.trends)),
           insightsWeight: kOrgInsightsWeight,
           greetingName: _firstName(context),

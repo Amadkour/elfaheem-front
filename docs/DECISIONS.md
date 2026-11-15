@@ -4860,3 +4860,15 @@ The move is scripted, never by hand: `tool/apply_moves.dart` over `tool/moves/M1
 - **Landing**: `landing/src/theme/` — `theme-runtime.js` maps `GET /api/v1/theme/web` onto the landing's CSS variables with the app's derivations (sidebar colour for the hero, the canvas tint for the page, every text colour contrast-checked); `ActiveTheme.astro` bakes `theme-default.json` (NextBrain's live theme of 2026-11-15) into `<style id="active-theme">` and the theme-color metas, applies the theme cached in `localStorage` before the first paint, then fetches the live one (same origin, so the CSP's `connect-src 'self'` covers it); any failure keeps what is on screen. The landing's fixed brand colours outside `:root` became variables (`--on-gold`, `--gold-hover`, `--track`, the hero shadow).
 
 **Consequences.** `context.colors.background` is a tint now: a header block in a pastel close to it needs its own step (raised tint or paper, plus a hairline). Refresh `landing/src/theme/theme-default.json` when the production theme changes. Alfaheem drops its A-007 copy and syncs this.
+
+## D-979 — Institutions S5: the Faculty overview · 2026-11-15 · accepted
+
+**Context.** Plan item 14: the dean needs one view across departments (open requests, overdue, escalated, council items pending, sessions closing soon); a head keeps the existing governance dashboard.
+
+**Decision.**
+- Server (back D-979): `GET …/governance/dashboard?scope=faculty` adds a `faculty` block (rows per department, totals) for the org admin, the dean and the vice deans of a university / faculty; anyone else gets the usual answer. A vice dean sees the departments of their portfolio (by department template) plus the faculty council.
+- Home: ONE static card, "Faculty overview", under the setup checklist, shown from the dashboard's `can_faculty_overview` (no request of its own, so `homeBudgets` are unchanged); kill switch `org.governance`.
+- Page (`governance/gov_faculty_overview.dart`, pushed with `orgPush`): the five totals, then a card per department on phones (figures as chips) and a table inside `AppHScroll` from `orgPageWideFrom`; a row opens `GovItemsPage` on that department's open items, a figure on its state (overdue, the new `escalated` axis of `ItemFilter`, in council).
+
+**Consequences.** `ItemFilter` gains `escalated` (query `escalated=true`, a chip). Tests: `test/org/institutions_s5_test.dart`, back `tests/org_v2/e2e_institutions_s5.py`.
+

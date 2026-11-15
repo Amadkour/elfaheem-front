@@ -105,6 +105,8 @@ class GovApi {
       _api.post('$base/items/bulk', body: {'ids': ids, 'op': op, 'route': ?route, 'user_id': ?userId, 'session_id': ?sessionId});
 
   Future<Map<String, dynamic>> dashboard({int? deptId}) async => asMap(await _api.get('$base/dashboard', queryParams: {'dept_id': ?deptId}));
+  /// The faculty overview (D-979): the usual numbers + `faculty` for the dean / vice deans / org admin (else absent).
+  Future<Map<String, dynamic>> facultyDashboard() async => asMap(await _api.get('$base/dashboard', queryParams: {'scope': 'faculty'}));
 
   Future<List<SavedFilter>> savedFilters(String scope) async {
     final r = await _api.get('$base/saved-filters', queryParams: {'scope': scope});
