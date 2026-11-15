@@ -17,6 +17,7 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_department_dashboard.dart' show openDepartmentDashboard;
+import 'org_institutions.dart' show orgAudienceBody, orgAudienceKeys, orgAudienceLabel, orgAudienceOf;
 import 'org_providers.dart';
 import 'org_page_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -339,6 +340,8 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
   final features = <String>{
     ...(edit == null ? featureLabels().keys : ((edit['features'] as List?) ?? const []).map((e) => '$e')),
   };
+  // who may send it requests (D-963): students · staff · other departments; all three = everyone
+  final audience = orgAudienceOf(edit?['audience']);
   final origHead = asMap(edit?['head'])['id'] == null ? null : asInt(asMap(edit?['head'])['id']);
   int? head = origHead;
   final canHead = s.can('departments', edit == null ? 'insert' : 'update');
@@ -490,6 +493,19 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                 ),
             ]),
             const SizedBox(height: AppSpace.md),
+            Text(t('من يرسل لها الطلبات؟', 'Who can send it requests?'), style: AppType.label(ctx).copyWith(color: c.textLight)),
+            const SizedBox(height: AppSpace.xs),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+              for (final k in orgAudienceKeys)
+                FilterChip(
+                  key: ValueKey('dept.audience.$k'),
+                  label: Text(orgAudienceLabel(k), style: TextStyle(fontFamily: AppFonts.family)),
+                  selected: audience.contains(k),
+                  // at least one stays picked: an empty audience means nobody (the server refuses it)
+                  onSelected: (on) => set(() => on ? audience.add(k) : (audience.length > 1 ? audience.remove(k) : null)),
+                ),
+            ]),
+            const SizedBox(height: AppSpace.md),
             Text(t('الخدمات المفعّلة', 'Services switched on'), style: AppType.label(ctx).copyWith(color: c.textLight)),
             const SizedBox(height: AppSpace.xs),
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
@@ -528,6 +544,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                   'logo_url': logo,
                   'color': color,
                   'features': features.toList(),
+                  'audience': orgAudienceBody(audience),
                   'location': location.text.trim(),
                   'office_hours': hours.text.trim(),
                   'email': email.text.trim(),

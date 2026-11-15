@@ -10,6 +10,7 @@ library;
 
 import 'org_page_kit.dart';
 import 'package:flutter/material.dart';
+import 'org_institutions.dart' show orgRoleTitle;
 import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
@@ -284,7 +285,7 @@ Future<Map<String, dynamic>?> showOrgMemberForm(
                         Tooltip(
                           message: '${r['description'] ?? ''}',
                           child: FilterChip(
-                            label: Text(orgNameOf(r)),
+                            label: Text(orgRoleTitle(r)),
                             selected: extraRoles.contains(asInt(r['id'])),
                             onSelected: (on) => set(() => on ? extraRoles.add(asInt(r['id'])) : extraRoles.remove(asInt(r['id']))),
                           ),

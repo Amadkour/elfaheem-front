@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'org_institutions.dart' show orgCourseDeptOptions;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
@@ -294,12 +295,18 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
     orgCall(() => s.api.get('${s.base}/academic/programs'), quiet: true),
     orgCall(() => s.api.get('${s.base}/academic/terms'), quiet: true),
     orgCall(() => s.api.get('${s.base}/courses', queryParams: {'size': 100, 'scope': 'tree'}), quiet: true),
+    orgCall(() => s.api.get('${s.base}/departments'), quiet: true),
   ]);
   if (!context.mounted) return null;
   final teachers = asMapList(rs[0].map['items']).map((m) => asMap(m['user'])).toList();
   final programs = asMapList(rs[1].map['items']).where((p) => p['is_active'] != false || p['id'] == edit?['program_id']).toList();
   final terms = asMapList(rs[2].map['items']);
   final options = asMapList(rs[3].map['items']).where((x) => x['id'] != edit?['id']).toList();
+  // the department it sits in (D-963): academic departments first; councils, offices and catalog service
+  // departments are left out (the server answers 422 course_dept_not_academic), the current one stays listed
+  final origDept = edit?['dept_id'] == null ? null : asInt(edit!['dept_id']);
+  final depts = orgCourseDeptOptions(asMapList(rs[4].map['items']), keep: origDept);
+  int? dept = origDept;
 
   final ar = TextEditingController(text: '${edit?['name_ar'] ?? ''}');
   final en = TextEditingController(text: '${edit?['name_en'] ?? ''}');
@@ -342,6 +349,21 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
               onChanged: (v) => set(() => program = v),
             ),
             const SizedBox(height: AppSpace.sm),
+            if (depts.isNotEmpty) ...[
+              OrgPickField<int>(
+                label: t('القسم (اختياري)', 'Department (optional)'),
+                icon: Icons.apartment_rounded,
+                value: dept,
+                allowNone: true,
+                noneLabel: t('بدون قسم', 'No department'),
+                options: {
+                  for (final d in depts)
+                    asInt(d['id']): d['kind'] == 'scientific' ? orgNameOf(d) : '${orgNameOf(d)} · ${t('غير علمي', 'not academic')}',
+                },
+                onChanged: (v) => set(() => dept = v),
+              ),
+              const SizedBox(height: AppSpace.sm),
+            ],
             OrgPickField<int>(
               label: t('الفصل الدراسي (اختياري)', 'Academic term (optional)'),
               icon: Icons.event_note_rounded,
@@ -433,6 +455,8 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
                   'members_only': membersOnly,
                   'prerequisite_ids': prereqs.toList(),
                 };
+                // dept_id only when it changes: the server re-checks any dept_id it is sent
+                if (edit == null ? dept != null : dept != origDept) body['dept_id'] = dept;
                 if (edit == null) body.removeWhere((k, v) => v == null);
                 if (orgCourseUnassigns(isEdit: edit != null, original: origTeacher, chosen: teacherId) &&
                     !await confirm(ctx,

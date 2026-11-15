@@ -340,6 +340,13 @@ Map<String, String> _codeTexts() => {
       'name_required': t('الاسم مطلوب', 'A name is required'),
       'parent_not_approved': t('لم تتم الموافقة على ربطك بهذا الابن بعد', 'Your link to this child has not been approved yet'),
       // ads (ads_pages.dart saves through OrgApi): the home slider is personal, never an organization course
+      // institutions (D-963): a course sits in an academic department or none
+      'course_dept_not_academic': t('المقررات تتبع الأقسام العلمية فقط — اختر قسماً علمياً أو بدون قسم',
+          'Courses belong to academic departments only: pick an academic department or none'),
+      'bad_audience': t('اختر جهة واحدة على الأقل ترسل الطلبات', 'Pick at least one group who can send requests'),
+      'template_unknown': t('هذا القالب غير موجود — حدّث الصفحة', 'This template does not exist — refresh the page'),
+      'request_type_unknown': t('نوع طلب غير معروف لهذا القالب — حدّث الصفحة', 'An unknown request type for this template — refresh the page'),
+      'template_name_required': t('اكتب اسم القسم العلمي', 'Name the academic department'),
       'org_course_ad': t('لا يمكن الإعلان عن كورس تابع لمؤسسة', 'An ad can\'t open an organization course'),
     };
 

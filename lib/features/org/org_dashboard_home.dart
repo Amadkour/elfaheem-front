@@ -367,7 +367,8 @@ Future<void> orgPushPage(BuildContext context,
     OrgTabs? tabs,
     required String title,
     required Widget page,
-    double? maxWidth}) async {
+    double? maxWidth,
+    String? helpPageId}) async {
   final epoch = dash.attentionEpoch;
   await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => MultiProvider(
@@ -377,17 +378,17 @@ Future<void> orgPushPage(BuildContext context,
             if (tabs != null) ChangeNotifierProvider<OrgTabs>.value(value: tabs),
           ],
           // the dashboard's own header (Back · title · Refresh · calendar · bell · switcher), never an older app bar
-          child: OrgPushedPage(title: title, maxWidth: maxWidth, child: page))));
+          child: OrgPushedPage(title: title, maxWidth: maxWidth, helpPageId: helpPageId, child: page))));
   dash.afterReturn(epoch);
 }
 
-Future<void> orgPush(BuildContext context, String title, Widget page, {double? maxWidth}) {
+Future<void> orgPush(BuildContext context, String title, Widget page, {double? maxWidth, String? helpPageId}) {
   OrgTabs? tabs;
   try {
     tabs = context.read<OrgTabs>();
   } catch (_) {}
   return orgPushPage(context,
-      session: context.read<OrgSession>(), dash: context.read<OrgDashController>(), tabs: tabs, title: title, page: page, maxWidth: maxWidth);
+      session: context.read<OrgSession>(), dash: context.read<OrgDashController>(), tabs: tabs, title: title, page: page, maxWidth: maxWidth, helpPageId: helpPageId);
 }
 
 /// The section AND its chip when the section is a tab; else the sub-page pushed on top (phones: Services lives in

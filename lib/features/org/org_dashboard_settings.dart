@@ -46,6 +46,7 @@ import 'package:flutter_education_app/features/exams/hub/hub_entry.dart' show ex
 import 'org_chat_settings_tile.dart';
 import 'org_providers.dart';
 import 'org_terms_pages.dart' show OrgTermsAdminPage;
+import 'org_institutions.dart' show OrgDeptCatalogPage, OrgStudySystemPage, orgInstitutionFeatureKey;
 import 'org_ui.dart' show orgPickAndUpload;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -177,6 +178,25 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
                 keywords: 'billing fees plans payments receipt رسوم اشتراك مدفوعات',
                 onTap: () => open(t('الفوترة والرسوم', 'Billing'), deferredOrgBillingPage(orgId: s.currentId))),
           ],
+          // Institutions S1 (D-960 – D-962): the study system and the department catalog
+          if (s.can('organization', 'update'))
+            AppSettingsTile(
+                key: const ValueKey('settings.study_system'),
+                icon: Icons.timer_outlined,
+                featureKey: orgInstitutionFeatureKey,
+                label: t('نظام الدراسة', 'Study system'),
+                subtitle: t('تقليدي أو ساعات معتمدة', 'Traditional or credit hours'),
+                keywords: 'study system credit hours traditional gpa نظام الدراسة ساعات معتمدة تقليدي',
+                onTap: () => orgPush(context, t('نظام الدراسة', 'Study system'), const OrgStudySystemPage(), helpPageId: 'org.settings')),
+          if (s.can('departments'))
+            AppSettingsTile(
+                key: const ValueKey('settings.dept_catalog'),
+                icon: Icons.apartment_rounded,
+                featureKey: orgInstitutionFeatureKey,
+                label: t('دليل الإدارات', 'Department catalog'),
+                subtitle: t('أنشئ الإدارات العلمية والخدمية وأنواع طلباتها بنقرة', 'Create academic and service departments and their request types in one go'),
+                keywords: 'departments catalog template student affairs exam control إدارات أقسام شئون الطلاب كنترول',
+                onTap: () => orgPush(context, t('دليل الإدارات', 'Department catalog'), const OrgDeptCatalogPage(), helpPageId: 'org.departments')),
           if (s.can('sub_orgs', 'insert') || s.isOrgAdmin)
             AppSettingsTile(
                 icon: Icons.account_tree_rounded,

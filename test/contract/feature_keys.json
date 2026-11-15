@@ -254,6 +254,7 @@
  "org.governance",
  "org.governance.export_hub",
  "org.insights",
+ "org.institution",
  "org.invitations",
  "org.search",
  "org.setup_checklist",
