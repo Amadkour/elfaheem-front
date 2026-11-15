@@ -48,6 +48,8 @@ import 'org_chat_settings_tile.dart';
 import 'org_providers.dart';
 import 'org_terms_pages.dart' show OrgTermsAdminPage;
 import 'governance/gov_councils_setup.dart' show OrgCouncilsSetupPage, councilsSetupTitle;
+import 'advising/adv_models.dart' show advOrgTypes;
+import 'org_institution_wizard.dart' show institutionWizardTitle, openInstitutionWizard;
 import 'org_institutions.dart' show OrgDeptCatalogPage, OrgStudySystemPage, orgInstitutionFeatureKey;
 import 'org_ui.dart' show orgPickAndUpload;
 import 'package:flutter_education_app/design/app_icons.dart';
@@ -209,6 +211,16 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
                 subtitle: t('مجلس الكلية، مجالس الأقسام، كلاهما أو بدون', 'Faculty council, department councils, both or none'),
                 keywords: 'councils faculty council department council dean مجالس مجلس الكلية مجلس القسم',
                 onTap: () => orgPush(context, councilsSetupTitle(), const OrgCouncilsSetupPage(), helpPageId: 'org.governance')),
+          // Institutions v2 phase 4 (D-991 – D-993): the guided setup, resumable, for a university or a faculty
+          if (s.isOrgAdmin && advOrgTypes.contains('${s.current?['type']}'))
+            AppSettingsTile(
+                key: const ValueKey('settings.institution_wizard'),
+                icon: Icons.auto_fix_high_rounded,
+                featureKey: orgInstitutionFeatureKey,
+                label: institutionWizardTitle(),
+                subtitle: t('الأساسيات، الإدارات، الرؤساء والمجالس خطوة بخطوة', 'Basics, departments, heads and councils, step by step'),
+                keywords: 'setup wizard launch institution معالج إعداد إطلاق المؤسسة',
+                onTap: () => openInstitutionWizard(context)),
           if (s.can('sub_orgs', 'insert') || s.isOrgAdmin)
             AppSettingsTile(
                 icon: Icons.account_tree_rounded,

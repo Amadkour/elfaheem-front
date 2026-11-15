@@ -146,12 +146,16 @@ class CatalogTemplate {
     this.needsName = false,
     this.deptId,
     this.requestTypes = const [],
+    this.core = false,
   });
 
   final String key, group, kind, nameAr, nameEn, descAr, descEn;
   final String? preset, icon, color, condition;
   final List<String>? audience;
   final bool minSet, recommended, needsName;
+
+  /// A core department (Institutions v2 phase 4): always created, so it is pre-ticked and cannot be unticked.
+  final bool core;
   final int? deptId;
   final List<CatalogRequestType> requestTypes;
 
@@ -173,7 +177,11 @@ class CatalogTemplate {
         needsName: j['needs_name'] == true,
         deptId: j['dept_id'] == null ? null : asInt(j['dept_id']),
         requestTypes: [for (final r in asMapList(j['request_types'])) CatalogRequestType.fromJson(r)],
+        core: j['core'] == true,
       );
+
+  /// Core and not created yet: ticked and locked.
+  bool get coreLocked => core && deptId == null;
 
   bool get isAcademic => group == 'academic';
   String get name => t(nameAr.isEmpty ? nameEn : nameAr, nameEn.isEmpty ? nameAr : nameEn);
@@ -234,7 +242,7 @@ class CatalogSelection {
   /// The minimum set the server recommends for this organization, pre-ticked when it is not created yet.
   factory CatalogSelection.initial(DeptCatalog c) => CatalogSelection({
         for (final x in c.items)
-          if (x.recommended && !x.needsName && x.tickable) x.key: {for (final r in x.missingTypes) r.key},
+          if ((x.recommended || x.coreLocked) && !x.needsName && x.tickable) x.key: {for (final r in x.missingTypes) r.key},
       });
 
   bool isPicked(String key) => picked.containsKey(key);
@@ -243,7 +251,7 @@ class CatalogSelection {
 
   /// Ticking a template ticks every request type it still lacks.
   void toggle(CatalogTemplate x) {
-    if (!x.tickable) return;
+    if (!x.tickable || (x.coreLocked && picked.containsKey(x.key))) return;
     if (picked.remove(x.key) == null) picked[x.key] = {for (final r in x.missingTypes) r.key};
   }
 
@@ -677,7 +685,15 @@ class DeptCatalogView extends StatelessWidget {
     required this.onCreate,
     required this.onCustom,
     this.busy = false,
+    this.embedded = false,
+    this.intro,
   });
+
+  /// A wizard step: no "Create selected" (the step's Next creates them).
+  final bool embedded;
+
+  /// Drawn first in the list (the wizard's academic / service explanation).
+  final Widget? intro;
 
   final DeptCatalog catalog;
   final CatalogSelection selection;
@@ -700,7 +716,7 @@ class DeptCatalogView extends StatelessWidget {
         options: [(false, t('خدمية', 'Service')), (true, t('علمية', 'Academic'))],
         onChanged: onGroup,
       ),
-      primary: canApply && n > 0
+      primary: canApply && n > 0 && !embedded
           ? OrgPrimaryAction(
               id: 'create_selected',
               icon: Icons.add_task_rounded,
@@ -720,6 +736,7 @@ class DeptCatalogView extends StatelessWidget {
           : ListView(
               padding: const EdgeInsets.only(bottom: AppSpace.xxl + AppTouch.primary),
               children: [
+                ?intro,
                 if (catalog.untouched && !academic)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
@@ -790,7 +807,7 @@ class CatalogTemplateCard extends StatelessWidget {
     final c = context.colors;
     final x = template;
     final tint = hexColor(x.color, c.primary);
-    final canTick = enabled && x.tickable;
+    final canTick = enabled && x.tickable && !(x.coreLocked && picked);
     final created = x.deptId != null;
     final head = Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Container(
@@ -807,9 +824,16 @@ class CatalogTemplateCard extends StatelessWidget {
             const SizedBox(height: AppSpace.xxs),
             Text(x.description, style: AppType.meta(context), maxLines: 3, overflow: TextOverflow.ellipsis),
           ],
-          if (x.minSet || created) ...[
+          if (x.minSet || created || x.coreLocked) ...[
             AppSpace.gapXs,
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+              if (x.coreLocked)
+                AppStatusBadge(
+                    key: ValueKey('catalog.core.${x.key}'),
+                    icon: Icons.lock_rounded,
+                    label: t('إدارة أساسية — تُنشأ دائماً', 'Core department — always created'),
+                    tone: AppTone.brand,
+                    dense: true),
               if (x.minSet) AppStatusBadge(label: t('الحد الأدنى', 'Minimum set'), tone: AppTone.brand, dense: true),
               if (x.minSet && x.conditionText != null) AppStatusBadge(label: x.conditionText!, dense: true),
               if (created)
@@ -824,7 +848,9 @@ class CatalogTemplateCard extends StatelessWidget {
       ),
       AppSpace.gapXs,
       Icon(
-        x.done ? Icons.check_circle_rounded : (picked ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded),
+        x.done
+            ? Icons.check_circle_rounded
+            : (x.coreLocked && picked ? Icons.lock_rounded : (picked ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded)),
         color: x.done ? c.success : (picked ? c.primary : c.textLight),
         size: AppIconSize.lg,
       ),

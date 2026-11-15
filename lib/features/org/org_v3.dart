@@ -355,6 +355,11 @@ Map<String, String> _codeTexts() => {
           'Its council still has open agenda items: close or move them first'),
       'dept_has_open_items': t('لهذه الإدارة طلبات مفتوحة — اختر الإدارة التي تنتقل إليها',
           'It still has open requests: choose the department that takes them'),
+      // Institutions v2 phase 4 (D-991 – D-993, org_institution_wizard.dart): the setup wizard
+      'not_ready': t('بقيت أمور يجب إكمالها قبل الإطلاق — راجع القائمة', 'A few things still need doing before launch: see the list'),
+      'dept_invalid': t('بعض الوحدات لم تعد موجودة — حدّث الصفحة', 'Some units no longer exist: refresh the page'),
+      'wizard_step_invalid': t('خطوة غير معروفة — حدّث الصفحة', 'An unknown step: refresh the page'),
+      'head_invalid': t('تعذّر تعيين بعض الرؤساء — اختر عضواً في المؤسسة', 'Some heads could not be assigned: pick a member of the organization'),
       // `dept_has_content` (hard delete of a unit with content) is mapped above with the department codes
     };
 

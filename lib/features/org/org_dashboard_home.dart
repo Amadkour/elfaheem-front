@@ -58,6 +58,7 @@ import 'org_dashboard_model.dart';
 import 'org_dashboard_screen.dart' show OrgSub, OrgTabs;
 import 'org_dashboard_settings.dart' show showJoinCode, showOrgForm, showOrgSwitcher;
 import 'org_department_dashboard.dart' show openDepartmentDashboard;
+import 'org_institution_wizard.dart' show openInstitutionWizard;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
 import 'org_page_header.dart' show OrgPageFrame, OrgPageHeader, OrgPageRefresh, OrgPushedPage;
 import 'org_providers.dart';
@@ -378,6 +379,7 @@ Future<void> orgPushPage(BuildContext context,
     required String title,
     required Widget page,
     double? maxWidth,
+    AppWidth? width,
     String? helpPageId}) async {
   final epoch = dash.attentionEpoch;
   await Navigator.of(context).push(MaterialPageRoute(
@@ -388,17 +390,17 @@ Future<void> orgPushPage(BuildContext context,
             if (tabs != null) ChangeNotifierProvider<OrgTabs>.value(value: tabs),
           ],
           // the dashboard's own header (Back · title · Refresh · calendar · bell · switcher), never an older app bar
-          child: OrgPushedPage(title: title, maxWidth: maxWidth, helpPageId: helpPageId, child: page))));
+          child: OrgPushedPage(title: title, maxWidth: maxWidth, width: width, helpPageId: helpPageId, child: page))));
   dash.afterReturn(epoch);
 }
 
-Future<void> orgPush(BuildContext context, String title, Widget page, {double? maxWidth, String? helpPageId}) {
+Future<void> orgPush(BuildContext context, String title, Widget page, {double? maxWidth, AppWidth? width, String? helpPageId}) {
   OrgTabs? tabs;
   try {
     tabs = context.read<OrgTabs>();
   } catch (_) {}
   return orgPushPage(context,
-      session: context.read<OrgSession>(), dash: context.read<OrgDashController>(), tabs: tabs, title: title, page: page, maxWidth: maxWidth, helpPageId: helpPageId);
+      session: context.read<OrgSession>(), dash: context.read<OrgDashController>(), tabs: tabs, title: title, page: page, maxWidth: maxWidth, width: width, helpPageId: helpPageId);
 }
 
 /// The section AND its chip when the section is a tab; else the sub-page pushed on top (phones: Services lives in
@@ -639,7 +641,14 @@ class _OrgHomePageState extends State<OrgHomePage> {
           onOpenUnit: (u) => _openUnit(context, u),
           onSeeAllUnits: tabs.has('people', 'departments') ? () => orgJump(context, 'people', sub: 'departments') : null,
           // its own call after the first frame (never part of the dashboard's); an older server → the 30-day trends
-          setup: s.isOrgAdmin ? OrgSetupChecklist(orgId: s.currentId, reloadToken: dash.loadedAt, onOpen: (x) => _openSetupStep(context, x)) : null,
+          setup: s.isOrgAdmin
+              ? OrgSetupChecklist(
+                  orgId: s.currentId,
+                  reloadToken: dash.loadedAt,
+                  onOpen: (x) => _openSetupStep(context, x),
+                  // a university / faculty not launched yet: the setup wizard card instead (Institutions v2 phase 4)
+                  onOpenWizard: () => openInstitutionWizard(context))
+              : null,
           faculty: d.canFacultyOverview && govEnabled()
               ? OrgFacultyOverviewCard(
                   onOpen: () => orgPush(context, t('نظرة على الكلية', 'Faculty overview'), const FacultyOverviewPage()))
