@@ -171,13 +171,13 @@ class EssayRunSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       AppGrid(minTile: 150, children: [
-        AppStatTile(icon: Icons.people_alt_rounded, label: t('طلاب', 'Students'), value: '${run.students.length}'),
-        AppStatTile(icon: Icons.rate_review_rounded, label: t('للمراجعة', 'To check'), value: '${run.open}', color: run.open > 0 ? c.warning : null),
-        AppStatTile(icon: Icons.hourglass_top_rounded, label: t('تُقرأ الآن', 'Being read'), value: '${run.waiting}'),
-        AppStatTile(icon: Icons.task_alt_rounded, label: t('اكتمل', 'Done'), value: '${run.done}', color: c.success),
+        // D-1081: the soft-wash counts; "to check" turns gold while there is some
+        AppStatCard(icon: Icons.people_alt_rounded, label: t('طلاب', 'Students'), value: '${run.students.length}', tone: AppBlockTone.sky),
+        AppStatCard(icon: Icons.rate_review_rounded, label: t('للمراجعة', 'To check'), value: '${run.open}', tone: run.open > 0 ? AppBlockTone.gold : AppBlockTone.peach),
+        AppStatCard(icon: Icons.hourglass_top_rounded, label: t('تُقرأ الآن', 'Being read'), value: '${run.waiting}', tone: AppBlockTone.peach),
+        AppStatCard(icon: Icons.task_alt_rounded, label: t('اكتمل', 'Done'), value: '${run.done}', tone: AppBlockTone.emerald),
       ]),
       const SizedBox(height: AppSpace.md),
       AppPrimaryButton(label: t('إضافة ورقة طالب', 'Add a student\'s paper'), icon: Icons.add_a_photo_rounded, onPressed: busy ? null : onAddPaper),

@@ -1236,53 +1236,17 @@ class _EmptyState extends StatelessWidget {
   final bool filtered;
   final VoidCallback? onClear;
 
+  // D-1081: the kit's tinted empty state; a filtered list offers to clear the filters
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: c.primaryGradient,
-              shape: BoxShape.circle,
-              boxShadow: c.primaryShadow,
-            ),
-            child: Icon(
-              filtered ? Icons.search_off_rounded : Icons.support_agent_rounded,
-              size: 40,
-              color: context.colors.onHero,
-            ),
-          ),
-          const SizedBox(height: AppSpace.md),
-          Text(
-            filtered ? 'admin_nothing_here_yet'.tr : 'no_complaints_yet'.tr,
-            style: c.h2.copyWith(fontSize: 16),
-          ),
-          const SizedBox(height: AppSpace.xs),
-          if (!filtered)
-            Text(
-              'complaints_empty_hint'.tr,
-              style: c.caption.copyWith(color: c.textLight),
-            ),
-          if (filtered && onClear != null)
-            TextButton.icon(
-              onPressed: onClear,
-              icon: const Icon(Icons.filter_alt_off_rounded, size: 18),
-              label: Text('clear_btn'.tr),
-            ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppEmpty(
+        icon: filtered ? Icons.search_off_rounded : Icons.support_agent_rounded,
+        title: filtered ? 'admin_nothing_here_yet'.tr : 'no_complaints_yet'.tr,
+        message: filtered ? null : 'complaints_empty_hint'.tr,
+        actionLabel: filtered && onClear != null ? 'clear_btn'.tr : null,
+        onAction: filtered ? onClear : null,
+        tone: AppBlockTone.sky,
+      );
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  Complaint Detail Screen
-// ══════════════════════════════════════════════════════════════════════════════
 
 class ComplaintDetailScreen extends StatefulWidget {
   const ComplaintDetailScreen({super.key, required this.complaintId});

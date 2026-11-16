@@ -230,10 +230,11 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
                 ]);
               }
               return AppGrid(key: const ValueKey('exam.results.stats'), padding: EdgeInsets.zero, children: [
-                AppStatTile(label: t('سلّموا', 'Submitted'), value: '$done', icon: Icons.assignment_turned_in_rounded),
-                AppStatTile(label: t('المتوسط', 'Average'), value: avgText, icon: Icons.insights_rounded),
-                AppStatTile(label: t('ينتظر التصحيح', 'Waiting for you'), value: '$waiting', icon: Icons.rate_review_rounded,
-                    color: waiting > 0 ? c.warning : null),
+                // D-1081: the soft-wash counts; what waits for me turns gold while there is some
+                AppStatCard(label: t('سلّموا', 'Submitted'), value: '$done', icon: Icons.assignment_turned_in_rounded, tone: AppBlockTone.emerald),
+                AppStatCard(label: t('المتوسط', 'Average'), value: avgText, icon: Icons.insights_rounded, tone: AppBlockTone.sky),
+                AppStatCard(label: t('ينتظر التصحيح', 'Waiting for you'), value: '$waiting', icon: Icons.rate_review_rounded,
+                    tone: waiting > 0 ? AppBlockTone.gold : AppBlockTone.peach),
               ]);
             }),
             const SizedBox(height: 12),

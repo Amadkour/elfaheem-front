@@ -9,6 +9,7 @@ import 'package:flutter_education_app/design/app_tokens.dart' show AppRadius, Ap
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppEmpty, AppBlockTone;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
@@ -759,34 +760,14 @@ class ExamTabsDelegate extends SliverPersistentHeaderDelegate {
 // Empty / error
 // ══════════════════════════════════════════════════════════════════════════════
 
+/// D-1081: the kit's tinted empty state (the plate in the emerald tint, the text as its title).
 class ExamEmpty extends StatelessWidget {
   final IconData icon;
   final String text;
   const ExamEmpty({super.key, required this.icon, required this.text});
 
   @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.xl),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: context.colors.primaryWash,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon,
-                  size: 42,
-                  color: context.colors.primary.withValues(alpha: 0.5)),
-            ),
-            const SizedBox(height: 14),
-            Text(text,
-                textAlign: TextAlign.center,
-                style: examT(14, c: context.colors.textMedium, h: 1.6)),
-          ]),
-        ),
-      );
+  Widget build(BuildContext context) => AppEmpty(icon: icon, title: text, tone: AppBlockTone.emerald);
 }
 
 class ExamError extends StatelessWidget {
