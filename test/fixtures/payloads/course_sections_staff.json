@@ -1,0 +1,71 @@
+{
+ "_source": {
+  "route": "GET /api/v1/course-profile/1/sections",
+  "uid": 1
+ },
+ "payload": {
+  "mode": "teacher_assigns",
+  "mode_source": "course",
+  "source": "course",
+  "groups": [
+   {
+    "group_no": 1,
+    "label": "سكشن 1 · م2",
+    "label_en": "Section 1",
+    "ta": {
+     "id": 2,
+     "name": "ta",
+     "image_url": null
+    },
+    "students": 0,
+    "source": "course"
+   },
+   {
+    "group_no": 2,
+    "label": "سكشن 2",
+    "label_en": "Section 2",
+    "ta": null,
+    "students": 0,
+    "source": "course"
+   },
+   {
+    "group_no": 3,
+    "label": "سكشن 3",
+    "label_en": "Section 3",
+    "ta": null,
+    "students": 0,
+    "source": "course"
+   }
+  ],
+  "students": [
+   {
+    "user": {
+     "id": 3,
+     "name": "s1",
+     "image_url": null
+    },
+    "group_no": null,
+    "set_by": null
+   },
+   {
+    "user": {
+     "id": 4,
+     "name": "s2",
+     "image_url": null
+    },
+    "group_no": null,
+    "set_by": null
+   },
+   {
+    "user": {
+     "id": 5,
+     "name": "s3",
+     "image_url": null
+    },
+    "group_no": null,
+    "set_by": null
+   }
+  ],
+  "can_edit": true
+ }
+}

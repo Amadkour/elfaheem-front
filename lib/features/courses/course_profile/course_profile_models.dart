@@ -4,7 +4,10 @@
 // everything here is unit-tested (test/ui/course_profile_test.dart).
 library;
 
+import 'package:flutter_education_app/features/courses/course_profile/course_page_models.dart';
 import 'package:flutter_education_app/features/org/org_v3.dart' show orgParseUtc;
+
+export 'package:flutter_education_app/features/courses/course_profile/course_page_models.dart';
 
 Map<String, dynamic> _m(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
 List<Map<String, dynamic>> _l(dynamic v) => v is List ? v.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList() : [];
@@ -123,6 +126,9 @@ class CourseProfile {
 
   /// The session the single "Open attendance" button opens (live now / nearest today); null → the picker.
   final CpSession? attendanceTarget;
+
+  /// The Overview's data (D-1090); null from an older server.
+  late final CoursePage? page = CoursePage.of(raw);
 
   int get id => _i(course['id']);
   bool get isOrg => course['kind'] == 'org';
@@ -278,6 +284,15 @@ class CpAttendance {
 /// Server error codes of the course profile → (ar, en).
 (String, String)? cpErrorText(String? code) => switch (code) {
       'course_archived' => ('المقرر مؤرشف — المحتوى للقراءة فقط', 'The course is archived — read only'),
+      // D-1090: sections and course rules
+      'section_group_in_use' => ('لا يمكن حذف سكشن به طلاب أو جلسات', 'A section with students or sessions cannot be removed'),
+      'sections_from_registrar' => ('السكاشن تأتي من تسجيل المؤسسة ولا تُعدَّل هنا', "Sections come from the organization's registration and are not edited here"),
+      'section_mode_from_org' => ('طريقة توزيع السكاشن تحددها إدارة المؤسسة', "The organization's admin decides how sections are given"),
+      'section_pick_not_allowed' => ('اختيار السكشن غير متاح في هذا الكورس', 'Picking a section is not open in this course'),
+      'section_already_set' => ('اخترت سكشنك من قبل؛ اطلب من المحاضر تغييره', 'You already have a section; ask the teacher to change it'),
+      'section_group_not_found' => ('هذا السكشن غير موجود', 'This section does not exist'),
+      'not_your_section' => ('هذه الجلسة لسكشن آخر', 'This session belongs to another section'),
+      'grade_breakdown_total' => ('مجموع توزيع الدرجات يجب أن يكون 100', 'The grade breakdown must add up to 100'),
       'not_assistant' => ('هذا العضو ليس معيداً في المقرر', 'This member is not an assistant of the course'),
       'no_students' => ('اختر طلاباً أو «المكملين فقط»', 'Pick students or “completers only”'),
       'not_enrolled' => ('بعض الطلاب غير مسجلين في المقرر', 'Some students are not enrolled'),

@@ -1,0 +1,295 @@
+{
+ "_source": {
+  "route": "GET /api/v1/course-profile/1",
+  "uid": 3
+ },
+ "payload": {
+  "course": {
+   "id": 1,
+   "name_ar": "بايثون",
+   "name_en": "Python",
+   "description_ar": null,
+   "description_en": null,
+   "image_url": null,
+   "teacher": {
+    "id": 1,
+    "name": "prof",
+    "image_url": null
+   },
+   "kind": "individual",
+   "org": null,
+   "code": null,
+   "credit_hours": null,
+   "run": null,
+   "term": null
+  },
+  "role": "student",
+  "caps": {
+   "view_material": true,
+   "manage_lecture": false,
+   "manage_section": false,
+   "attend_lecture": false,
+   "attend_section": false,
+   "view_attendance": true,
+   "view_all_attendance": false,
+   "manage_staff": false,
+   "manage_certificates": false,
+   "manage_archive": false,
+   "approve_archive": false,
+   "live": true,
+   "announce": false,
+   "view_versions": false,
+   "archive_course": false,
+   "course_settings": false
+  },
+  "closed": false,
+  "read_only": false,
+  "grant": null,
+  "archive": null,
+  "tracks": {
+   "lecture": [
+    {
+     "id": 1,
+     "name": "محاضرة 1",
+     "description": null,
+     "type": "live",
+     "track": "lecture",
+     "scheduled_at": "2026-11-17T04:51:16.989017",
+     "duration_minutes": 90,
+     "order": 0,
+     "group_no": null,
+     "from_timetable": false,
+     "live_now": false,
+     "materials_count": 0,
+     "materials": [],
+     "done": false,
+     "attended": false,
+     "watched": false,
+     "upcoming": true
+    }
+   ],
+   "section": [
+    {
+     "id": 2,
+     "name": "سكشن 1",
+     "description": null,
+     "type": "live",
+     "track": "section",
+     "scheduled_at": "2026-11-18T04:51:16.989017",
+     "duration_minutes": 90,
+     "order": 0,
+     "group_no": 1,
+     "from_timetable": false,
+     "live_now": false,
+     "materials_count": 0,
+     "materials": [],
+     "done": false,
+     "attended": false,
+     "watched": false,
+     "upcoming": true
+    },
+    {
+     "id": 4,
+     "name": "سكشن مشترك",
+     "description": null,
+     "type": "live",
+     "track": "section",
+     "scheduled_at": "2026-11-20T04:51:16.989017",
+     "duration_minutes": 90,
+     "order": 0,
+     "group_no": null,
+     "from_timetable": false,
+     "live_now": false,
+     "materials_count": 0,
+     "materials": [],
+     "done": false,
+     "attended": false,
+     "watched": false,
+     "upcoming": true
+    }
+   ]
+  },
+  "staff": {
+   "instructor": {
+    "id": 1,
+    "name": "prof",
+    "image_url": null
+   },
+   "assistants": []
+  },
+  "certificates": [],
+  "analytics": {
+   "lectures": 1,
+   "sections": 2,
+   "next_session": {
+    "id": 1,
+    "name": "محاضرة 1",
+    "track": "lecture",
+    "scheduled_at": "2026-11-17T04:51:16.989017"
+   },
+   "progress": {
+    "overall": 0.0,
+    "lecture": null,
+    "section": null,
+    "materials_done": 0,
+    "materials_total": 0
+   },
+   "attended": 0,
+   "expected": 0,
+   "absence_pct": 0.0,
+   "grade": null
+  },
+  "announcements": [],
+  "version": {
+   "run_id": null,
+   "past": false
+  },
+  "attendance_target": null,
+  "page": {
+   "counts": {
+    "students": 3,
+    "sessions_total": 3,
+    "sessions_done": 0,
+    "lectures": 1,
+    "sections": 2,
+    "minutes": 270,
+    "hours": 4.5,
+    "price": {
+     "amount": 450.0,
+     "currency": "EGP",
+     "free": false
+    }
+   },
+   "next": {
+    "id": 1,
+    "name": "محاضرة 1",
+    "track": "lecture",
+    "group_no": null,
+    "scheduled_at": "2026-11-17T04:51:16.989017",
+    "duration_minutes": 90,
+    "live_now": false
+   },
+   "week": {
+    "source": "course",
+    "slots": [
+     {
+      "day": "saturday",
+      "start": "10:00",
+      "end": "12:00",
+      "track": "lecture",
+      "group_no": null
+     },
+     {
+      "day": "sunday",
+      "start": "09:00",
+      "end": "10:30",
+      "track": "section",
+      "group_no": 1
+     }
+    ]
+   },
+   "exams": {
+    "total": 0,
+    "upcoming": [],
+    "upcoming_count": 0,
+    "last_result": null
+   },
+   "rules": {
+    "absence_limit": 6,
+    "grade_breakdown": [
+     {
+      "label": "أعمال السنة",
+      "weight": 20
+     },
+     {
+      "label": "السكاشن",
+      "weight": 20
+     },
+     {
+      "label": "النهائي",
+      "weight": 60
+     }
+    ],
+    "late_policy": "يخصم 10% كل يوم",
+    "items": [
+     {
+      "id": 3,
+      "text": "تسليم فردي",
+      "order": 0
+     },
+     {
+      "id": 2,
+      "text": "التواصل عبر رسائل الكورس فقط",
+      "order": 2
+     }
+    ],
+    "count": 5,
+    "me": {
+     "absences": 0,
+     "limit": 6,
+     "left": 6,
+     "over": false
+    }
+   },
+   "sections": {
+    "mode": "student_picks_once",
+    "mode_source": "course",
+    "source": "course",
+    "my_group": 1,
+    "can_pick": false,
+    "groups": [
+     {
+      "group_no": 1,
+      "label": "سكشن 1",
+      "label_en": "Section 1",
+      "ta": {
+       "id": 2,
+       "name": "ta",
+       "image_url": null
+      },
+      "students": null,
+      "source": "course"
+     }
+    ]
+   },
+   "team": {
+    "instructor": {
+     "id": 1,
+     "name": "prof",
+     "image_url": null
+    },
+    "my_ta": {
+     "id": 2,
+     "name": "ta",
+     "image_url": null
+    }
+   },
+   "attendance": {
+    "attended": 0,
+    "expected": 0,
+    "absences": 0,
+    "absence_pct": 0.0,
+    "limit": 6
+   },
+   "personal": {
+    "rating": 4.5,
+    "reviews": 2,
+    "distribution": [
+     1,
+     1,
+     0,
+     0,
+     0
+    ],
+    "path": [
+     {
+      "id": 2,
+      "name_ar": "بايثون للبيانات",
+      "name_en": "Python for data",
+      "image_url": null
+     }
+    ]
+   }
+  }
+ }
+}

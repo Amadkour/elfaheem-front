@@ -319,6 +319,9 @@ class _SettingsTabState extends State<_SettingsTab> {
   late final List<Map<String, dynamic>> levels = [for (final l in asMapList(widget.settings['levels'])) Map<String, dynamic>.from(l)];
   late bool allowGeneral = widget.settings['allow_general_teachers'] == true;
   late bool teacherLab = widget.settings['teacher_may_teach_lab'] != false;
+
+  /// D-1090: how students of a course without registration lab groups get a section group.
+  late bool studentsPick = widget.settings['section_mode'] == 'student_picks_once';
   String? error;
 
   Future<void> _editLevel([int? i]) async {
@@ -427,6 +430,12 @@ class _SettingsTabState extends State<_SettingsTab> {
               subtitle: t('وإلا يحتاج كل سكشن معيداً', 'Otherwise every lab needs a teaching assistant'),
               value: teacherLab,
               onChanged: (v) => setState(() => teacherLab = v)),
+          OrgSwitchRow(
+              title: t('الطالب يختار سكشنه مرة واحدة', 'Students pick their section once'),
+              subtitle: t('في المقررات بلا سكاشن من التسجيل — وإلا يوزّع المحاضر الطلاب على السكاشن',
+                  'In courses without registration sections — otherwise the teacher assigns students to sections'),
+              value: studentsPick,
+              onChanged: (v) => setState(() => studentsPick = v)),
         ]),
       ),
       if (error != null)
@@ -442,6 +451,7 @@ class _SettingsTabState extends State<_SettingsTab> {
                   'has_departments': hasDepts, 'graduation_course_ids': grad.toList(),
                   'selection': {'open': open, 'message': msg.text.trim(), 'deadline': orgUtc(deadline), 'auto_approve': auto},
                   'levels': levels, 'allow_general_teachers': allowGeneral, 'teacher_may_teach_lab': teacherLab,
+                  'section_mode': studentsPick ? 'student_picks_once' : 'teacher_assigns',
                 }),
             ok: t('تم الحفظ', 'Saved'),
             quiet: true);

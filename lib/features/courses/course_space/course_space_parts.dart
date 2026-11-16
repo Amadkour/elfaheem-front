@@ -858,6 +858,10 @@ Widget _statCard(CourseSpaceStat st, int index) => AppStatCard(
       label: st.label,
       tone: st.tone != null ? AppBlockTone.gold : _kStatTones[index % _kStatTones.length],
       onTap: st.onTap,
+      footer: st.footer,
+      bars: st.bars,
+      barsCaption: st.barsCaption,
+      warn: st.warn,
     );
 
 class _StatsGrid extends StatelessWidget {

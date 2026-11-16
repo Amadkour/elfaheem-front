@@ -40,16 +40,18 @@ import 'package:flutter_education_app/features/attendance/teacher_attendance_con
 import 'package:flutter_education_app/features/attendance/teacher_attendance_launcher.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
 import 'package:flutter_education_app/features/courses/course_price_tag.dart' show coursePriceLabel;
-import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart' show RmCourse;
+import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart' show RmCourse, kRoadmapTab;
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_tab.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/session_form_sheet.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/certificate_manager_sheet.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
+import 'package:flutter_education_app/features/home/student/models.dart' show AppCurrencyX;
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/home/teacher/schedules/schedules_screen.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/share_link.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_page_sheets.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/course_reel_player.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/sessions_section.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/teacher_course_parts.dart';
@@ -127,7 +129,7 @@ class TeacherSessionsScreen extends StatefulWidget {
 }
 
 class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
-  late String _tab = widget.initialTab ?? (widget.expandDetails == true ? _tabDetails : _tabSessions);
+  late String _tab = widget.initialTab ?? (widget.expandDetails == true ? _tabDetails : kCpTabOverview);
 
   /// The opening tab was decided (CourseProfileHub.openingTab), or the person / a link chose one.
   late bool _openingDone = widget.initialTab != null || widget.expandDetails == true;
@@ -182,6 +184,8 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
         if (!mounted) return;
         setState(() => _loaded = true);
         _seedHub();
+        // the Overview (the opening tab, D-1090) and its spotlight cards read the profile's page block
+        _hub.ensure();
       });
       DataLabApi()
           .config(courseId: provider.course.id)
@@ -218,6 +222,32 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
       MaterialPageRoute(builder: (_) => TeacherSchedulesScreen(course: provider.course)),
     );
     if (mounted) await provider.refreshCourse();
+  }
+
+  void _openRules() => showCourseRulesSheet(context, courseId: _provider.course.id, onChanged: _hub.load);
+
+  void _openExams(String title) {
+    final course = _provider.course;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => deferredTeacherExamHub(courseId: course.id, courseTitle: title, orgId: course.org?.id)),
+    );
+  }
+
+  /// The setup bar's next step (D-1090).
+  void _onSetupStep(String key) {
+    final ar = AppConfig.lang == 'ar';
+    final course = _provider.course;
+    switch (key) {
+      case 'schedule':
+        _openSchedules();
+      case 'rules':
+        _openRules();
+      case 'first_exam':
+        _openExams((ar ? course.titleAr : course.titleEn) ?? course.titleEn ?? course.titleAr ?? '');
+      default:
+        _openEditCourse();
+    }
   }
 
   void _openStudents() => Navigator.push(
@@ -266,6 +296,9 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
     final hub = _hub;
     // Edit: the server's course_settings once the profile is known; the course's own teacher before that
     final canEdit = hub.profile?.caps.courseSettings ?? true;
+    // the Overview's data (D-1090), once the profile is in
+    final page = hub.profile?.page;
+    final earnings = page?.personal?.earningsWeeks;
 
     // D-941: the header carries the page's ONE New session, its ONE Edit course and Share; the price and the rating are
     // figures of its stats (the side card that repeated them is gone, D-943)
@@ -296,16 +329,30 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           label: courseStatNoun(course.studentsCount, 'course_hero_students'),
           onTap: _openStudents,
         ),
+        if (earnings != null)
+          CourseSpaceStat(
+            icon: Icons.payments_rounded,
+            value: coursePriceLabel(
+              page!.personal!.earningsCurrency == null ? course.currency : AppCurrencyX.fromCode(page.personal!.earningsCurrency),
+              page.personal!.earningsTotal ?? 0,
+            ),
+            label: _t('الأرباح', 'Earnings'),
+            bars: earnings,
+            barsCaption: _t('آخر 8 أسابيع', 'Last 8 weeks'),
+          ),
         CourseSpaceStat(
           featureKey: 'course_stats.sessions',
           icon: Icons.play_lesson_rounded,
-          value: '${d.sessionCount}',
+          value: page == null ? '${d.sessionCount}' : '${page.counts.sessionsDone}/${page.counts.sessionsTotal}',
           label: _t('الجلسات', 'Sessions'),
+          footer: page == null || page.counts.sections == 0
+              ? null
+              : _t('${page.counts.lectures} محاضرة · ${page.counts.sections} سكشن', '${page.counts.lectures} lectures · ${page.counts.sections} sections'),
         ),
         CourseSpaceStat(
           featureKey: 'course_stats.duration',
           icon: Icons.schedule_rounded,
-          value: courseHoursLabel(course.totalHours),
+          value: courseHoursLabel(page == null ? course.totalHours : page.counts.hours),
           label: 'duration'.tr,
         ),
         CourseSpaceStat(
@@ -364,6 +411,16 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           ),
         // rarer: the ⋮ menu (refresh is pull-to-refresh on phones)
         courseAskDocsAction(context, course.id, title),
+        if (_dataLab && !AppConfig.disableList.contains('data_lab.entry'))
+          CourseSpaceTopAction(
+            icon: Icons.science_rounded,
+            tooltip: 'dl_title'.tr,
+            overflow: true,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => deferredDataLab(courseId: course.id, courseTitle: title)),
+            ),
+          ),
         if (showRefresh)
           CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, overflow: true, onTap: _refresh),
       ],
@@ -384,7 +441,19 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             onTap: () => _setTab(_tabSessions),
           ),
         const _AttendanceSpot(),
-        if (_loaded)
+        if (page != null && page.next != null && !page.next!.liveNow && d.liveId == -1)
+          CourseNextCard(
+            title: page.next!.name,
+            when: coursePageWhen(page.next!.at),
+            caption: coursePageGroupLabel(page, page.next!.track, page.next!.groupNo),
+            section: page.next!.isSection,
+            actionLabel: _t('الجلسات', 'Sessions'),
+            actionIcon: Icons.play_lesson_rounded,
+            onAction: () => _setTab(_tabSessions),
+          ),
+        if (page?.setup != null)
+          CourseSetupBar(steps: page!.setup!, onStep: _onSetupStep)
+        else if (_loaded && page == null)
           CourseReadinessCard(
             items: [
               CourseReadinessItem(
@@ -421,59 +490,26 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             ],
           ),
       ],
-      // the shortcuts: where the header's actions do not go (New session and Edit course are the header's, D-943)
-      actions: [
-        CourseSpaceAction(
-          icon: Icons.groups_rounded,
-          label: _t('الطلاب', 'Students'),
-          caption: _t('المسجّلون وتقدّمهم', 'Enrolled students and progress'),
-          color: c.textMedium,
-          onTap: _openStudents,
-        ),
-        CourseSpaceAction(                                   // the course's exams hub (online + paper / OMR)
-          icon: Icons.quiz_rounded,
-          label: _t('الاختبارات', 'Exams'),
-          caption: _t('أنشئ واطبع وصحّح', 'Create, print and grade'),
-          color: c.textMedium,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => deferredTeacherExamHub(courseId: course.id, courseTitle: title, orgId: course.org?.id)),
-          ),
-        ),
-        if (_dataLab)
-          CourseSpaceAction(
-            featureKey: 'data_lab.entry',
-            icon: Icons.science_rounded,
-            label: 'dl_title'.tr,
-            caption: 'dl_entry_sub'.tr,
-            color: c.textMedium,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => deferredDataLab(courseId: course.id, courseTitle: title)),
-            ),
-          ),
-        if (course.type != 'recorded')
-          CourseSpaceAction(
-            icon: Icons.calendar_month_rounded,
-            label: 'weekly_schedule'.tr,
-            caption: course.schedules.isEmpty
-                ? _t('لم تُضف مواعيد بعد', 'No times yet')
-                : _t('${course.schedules.length} مواعيد', '${course.schedules.length} times a week'),
-            color: c.textMedium,
-            onTap: _openSchedules,
-          ),
-        if (course.certificates.isNotEmpty)
-          CourseSpaceAction(
-            icon: Icons.workspace_premium_rounded,
-            label: 'certificates'.tr,
-            caption: 'manage_certificate_btn'.tr,
-            color: c.accent2,
-            onTap: () => course.certificates.length == 1
-                ? _openCertificate(course.certificates.first)
-                : _setTab(_tabDetails),
-          ),
-      ],
+      // D-1090: no shortcut strip — students are the first figure, exams / schedule / rules are Overview cards,
+      // Data Lab sits in the ⋮ menu
       tabs: [
+        courseOverviewTab(
+          hub: hub,
+          staff: true,
+          actions: (p) => CourseOverviewActions(
+            onOpenSession: (_) => _setTab(_tabSessions),
+            onAllSessions: () => _setTab(_tabSessions),
+            onNewSession: _openAddSheet,
+            onEditSchedule: course.type == 'recorded' ? null : _openSchedules,
+            onOpenExams: () => _openExams(title),
+            onEditRules: p.caps.courseSettings && !p.closed ? () => _openRules() : null,
+            onManageSections: p.caps.manageSection && !p.closed ? () => showCourseSectionsSheet(context, courseId: course.id, onChanged: hub.load) : null,
+            onAttendance: p.isStaff ? () => _setTab(kCpTabClass) : null,
+            onTeam: () => _setTab(course.org != null ? kCpTabTeam : _tabDetails),
+            onReviews: () => _setTab(_tabDetails),
+            onEditPath: course.org == null && roadmapAllowedHere(context) ? () => _setTab(kRoadmapTab) : null,
+          ),
+        ),
         CourseSpaceTab(
           id: _tabSessions,
           label: _t('الجلسات', 'Sessions'),
