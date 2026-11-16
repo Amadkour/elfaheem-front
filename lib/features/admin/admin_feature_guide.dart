@@ -221,9 +221,9 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
           padding: EdgeInsets.fromLTRB(AppSpace.gutter(MediaQuery.sizeOf(context).width), AppSpace.md, AppSpace.gutter(MediaQuery.sizeOf(context).width), 0),
           sliver: SliverList.list(children: [
             AppKpiGrid(maxColumns: 3, children: [
-              AppKpiCard(icon: Icons.widgets_rounded, value: '${counts['total'] ?? 0}', label: t('ميزة', 'Features')),
-              AppKpiCard(icon: Icons.smart_toy_rounded, value: '${counts['in_assistant'] ?? 0}', label: t('يشرحها المساعد', 'In the assistant')),
-              AppKpiCard(icon: Icons.visibility_off_rounded, value: '${counts['hidden_in_app'] ?? 0}', label: t('مخفية في التطبيق', 'Hidden in the app')),
+              AppStatCard(icon: Icons.widgets_rounded, value: '${counts['total'] ?? 0}', label: t('ميزة', 'Features')),
+              AppStatCard(icon: Icons.smart_toy_rounded, value: '${counts['in_assistant'] ?? 0}', label: t('يشرحها المساعد', 'In the assistant')),
+              AppStatCard(icon: Icons.visibility_off_rounded, value: '${counts['hidden_in_app'] ?? 0}', label: t('مخفية في التطبيق', 'Hidden in the app')),
             ]),
             AppSpace.gapSm,
             if (_super)

@@ -167,10 +167,10 @@ class _ViewState extends State<_View> {
 
       body = ListView(padding: AdminPage.bodyPadding(context), children: [
         AppKpiGrid(maxColumns: 3, children: [
-          AppKpiCard(
+          AppStatCard(
               label: 'apm_enabled'.tr, value: '$enabledCount/${pm.items.length}', icon: Icons.check_circle_rounded),
-          AppKpiCard(label: _t('البوابة', 'Gateway'), value: _gatewayName(gateway), icon: Icons.payments_rounded),
-          AppKpiCard(
+          AppStatCard(label: _t('البوابة', 'Gateway'), value: _gatewayName(gateway), icon: Icons.payments_rounded),
+          AppStatCard(
               label: _t('رسوم المنصة', 'Platform fee'),
               value: platformPct == null ? 'admin_server_default'.tr : '${_pct(platformPct)}%',
               icon: Icons.percent_rounded),

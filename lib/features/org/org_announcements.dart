@@ -1581,14 +1581,14 @@ class _AnalyticsState extends State<OrgAnnouncementAnalyticsScreen> {
         AppCard(child: _Funnel(steps: asMapList(d['funnel']))),
         const SizedBox(height: AppSpace.md),
         AppGrid(minTile: 150, children: [
-          AppStatTile(icon: Icons.mark_email_read_rounded, label: t('نسبة الوصول', 'Reach'), value: '${rates['reach'] ?? 0}%', color: c.accent),
-          AppStatTile(icon: Icons.visibility_rounded, label: t('نسبة المشاهدة', 'View rate'), value: '${rates['view'] ?? 0}%', color: c.primary),
-          AppStatTile(icon: Icons.ads_click_rounded, label: t('نسبة الضغط', 'Click rate'), value: '${rates['click'] ?? 0}%', color: c.warning),
+          AppStatCard(icon: Icons.mark_email_read_rounded, label: t('نسبة الوصول', 'Reach'), value: '${rates['reach'] ?? 0}%', tone: appStatToneFor(context, c.accent), warn: appStatWarn(context, c.accent)),
+          AppStatCard(icon: Icons.visibility_rounded, label: t('نسبة المشاهدة', 'View rate'), value: '${rates['view'] ?? 0}%', tone: appStatToneFor(context, c.primary), warn: appStatWarn(context, c.primary)),
+          AppStatCard(icon: Icons.ads_click_rounded, label: t('نسبة الضغط', 'Click rate'), value: '${rates['click'] ?? 0}%', tone: appStatToneFor(context, c.warning), warn: appStatWarn(context, c.warning)),
           if (hasForm)
-            AppStatTile(
-                icon: Icons.task_alt_rounded, label: t('نسبة الإكمال', 'Completion'), value: '${rates['completion'] ?? 0}%', color: c.success),
-          AppStatTile(
-              icon: Icons.touch_app_rounded, label: t('إجمالي الضغطات', 'Total clicks'), value: '${tot['clicks_total'] ?? 0}', color: c.textMedium),
+            AppStatCard(
+                icon: Icons.task_alt_rounded, label: t('نسبة الإكمال', 'Completion'), value: '${rates['completion'] ?? 0}%', tone: appStatToneFor(context, c.success), warn: appStatWarn(context, c.success)),
+          AppStatCard(
+              icon: Icons.touch_app_rounded, label: t('إجمالي الضغطات', 'Total clicks'), value: '${tot['clicks_total'] ?? 0}', tone: appStatToneFor(context, c.textMedium), warn: appStatWarn(context, c.textMedium)),
         ]),
         const SizedBox(height: AppSpace.md),
         AppSectionTitle(t('آراء الجمهور', 'How people felt')),

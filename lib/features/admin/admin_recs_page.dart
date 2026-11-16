@@ -218,17 +218,17 @@ class RecsAdminView extends StatelessWidget {
         Opacity(
           opacity: loadingStats ? 0.5 : 1,
           child: AppKpiGrid(children: [
-            AppKpiCard(label: t('طلاب وصلتهم', 'Students reached'), value: '${s.students}', icon: Icons.groups_rounded),
-            AppKpiCard(label: t('مرات العرض', 'Shown'), value: '${tot.shown}', icon: Icons.visibility_rounded),
-            AppKpiCard(
+            AppStatCard(label: t('طلاب وصلتهم', 'Students reached'), value: '${s.students}', icon: Icons.groups_rounded),
+            AppStatCard(label: t('مرات العرض', 'Shown'), value: '${tot.shown}', icon: Icons.visibility_rounded),
+            AppStatCard(
                 label: t('فُتحت', 'Opened'),
                 value: '${tot.opened}',
-                footnote: _pct(rate(tot.opened)),
+                footer: _pct(rate(tot.opened)),
                 icon: Icons.touch_app_rounded),
-            AppKpiCard(
+            AppStatCard(
                 label: t('اشتراكات بعدها', 'Enrolled after'),
                 value: '${tot.enrolled}',
-                footnote: _pct(rate(tot.enrolled)),
+                footer: _pct(rate(tot.enrolled)),
                 icon: Icons.how_to_reg_rounded),
           ]),
         ),

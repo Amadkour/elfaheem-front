@@ -32,7 +32,8 @@ void main() {
     expect(find.textContaining('Ahmed'), findsWidgets);
     expect(find.byType(AdminSearchLauncher), findsOneWidget);
     final cards = tester.widgetList<AppStatCard>(find.byType(AppStatCard)).toList();
-    expect(cards.length, 5); // revenue · students · teachers · courses + subscribers
+    // revenue · students · teachers · courses + subscribers, then the four health counts (soft-wash cards since D-1081)
+    expect(cards.length, 9);
     expect(find.byType(AppGreetingHero), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
