@@ -54,6 +54,7 @@ import 'package:flutter_education_app/features/home/teacher/schedules/schedules_
 import 'package:flutter_education_app/features/courses/student/details/components/share_link.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_page_sheets.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_attendance_flag.dart' show courseAttendanceFlagAvailable, showCourseAttendanceFlagSheet;
 import 'package:flutter_education_app/features/sessions/teacher/components/course_reel_player.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/sessions_section.dart';
 import 'package:flutter_education_app/features/sessions/teacher/components/teacher_course_parts.dart';
@@ -423,6 +424,14 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
               MaterialPageRoute(builder: (_) => deferredDataLab(courseId: course.id, courseTitle: title)),
             ),
           ),
+        // D-1110: the course's attendance switch (every session on, or off except the ones already taken)
+        if (canEdit && courseAttendanceFlagAvailable && course.type != 'recorded')
+          CourseSpaceTopAction(
+            icon: Icons.how_to_reg_rounded,
+            tooltip: _t('الحضور في الكورس', 'Course attendance'),
+            overflow: true,
+            onTap: () => showCourseAttendanceFlagSheet(context, courseId: course.id, onChanged: () => unawaited(_refresh())),
+          ),
         if (showRefresh)
           CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, overflow: true, onTap: _refresh),
       ],
@@ -451,7 +460,8 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             builder: (context, _) {
               final next = page.next!;
               final running = TeacherAttendanceController.instance.isOpen;
-              final canAttend = course.type != 'recorded';
+              // D-1110: a session with attendance off offers Sessions instead of Start attendance
+              final canAttend = course.type != 'recorded' && next.attendanceEnabled;
               return CourseNextCard(
                 title: next.name,
                 when: coursePageWhen(next.at),

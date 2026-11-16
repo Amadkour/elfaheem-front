@@ -1398,6 +1398,22 @@ class ProgressBar extends StatelessWidget {
 
 // ── 10. Role picker cards ─────────────────────────────────────────────────────
 
+/// "Account fee: 200 EGP" under a role on the sign-up picker while the super admin has that role's fee on
+/// (D-1120); null otherwise (or without a ThemeConfigProvider, e.g. a bare widget test).
+String? accountFeeLabel(BuildContext context, String role) {
+  final ThemeConfigProvider theme;
+  try {
+    theme = context.watch<ThemeConfigProvider>();
+  } on ProviderNotFoundException {
+    return null;
+  }
+  final f = theme.accountFee(role);
+  if (f == null) return null;
+  final v = f['amount'] as num;
+  final amount = v == v.roundToDouble() ? '${v.toInt()}' : v.toStringAsFixed(2);
+  return AppConfig.lang == 'ar' ? 'رسوم الحساب: $amount ${f['currency']}' : 'Account fee: $amount ${f['currency']}';
+}
+
 /// Who is signing up: one paper card per role; the chosen one takes the primary tint, a 2 px primary edge, the icon
 /// on the solid primary and a check that settles in (from 60 %, never from nothing).
 class RolePicker extends StatelessWidget {
@@ -1481,6 +1497,19 @@ class RolePicker extends StatelessWidget {
                                     color: isSelected ? c.textDark : c.textMedium,
                                   ),
                                 ),
+                                // D-1120: the account fee of this role, while the super admin has it on
+                                if (accountFeeLabel(context, role['text'].toString()) case final fee?)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: AppSpace.xxs),
+                                    child: Text(
+                                      fee,
+                                      key: ValueKey('role_fee.${role['text']}'),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppType.meta(context).copyWith(color: appInk(context, c.primary)),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),

@@ -351,10 +351,20 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
   }
 }
 
+/// The transfer-receipt sheet of a signed-in fee payer at [path] (the account fee, D-1120, uses it with
+/// `/api/v1/account-fee`). True once the receipt is sent.
+Future<bool?> showFeeTransferSheet(BuildContext context,
+        {required String path, required String method, required Map<String, dynamic> details, required String amount}) =>
+    showAppSheet<bool>(
+        context,
+        (ctx) => _TransferSheet(
+            path: path, method: method, details: details, amount: amount, email: '', loggedIn: true,
+            onToken: (_) async {}));
+
 class _TransferSheet extends StatefulWidget {
   const _TransferSheet({required this.method, required this.details, required this.amount, required this.email,
-      required this.loggedIn, required this.onToken, this.haveToken = false});
-  final String method, amount, email;
+      required this.loggedIn, required this.onToken, this.haveToken = false, this.path = _feePath});
+  final String method, amount, email, path;
   final Map<String, dynamic> details;
   final bool loggedIn;
 
@@ -385,7 +395,7 @@ class _TransferSheetState extends State<_TransferSheet> {
     setState(() => _busy = true);
     final bytes = await _image!.readAsBytes();
     final r = await orgCall(
-        () => ApiClient().postMultipart('$_feePath/transfer',
+        () => ApiClient().postMultipart('${widget.path}/transfer',
             auth: widget.loggedIn,
             fields: {
               'method': widget.method,

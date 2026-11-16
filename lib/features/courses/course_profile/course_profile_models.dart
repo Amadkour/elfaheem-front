@@ -91,6 +91,9 @@ class CpSession {
   final List<Map<String, dynamic>> materials;
   int get materialsCount => _i(raw['materials_count']);
   int? get groupNo => raw['group_no'] is num ? _i(raw['group_no']) : null;
+
+  /// D-1110: this session takes attendance (off = no attendance buttons).
+  bool get attendanceEnabled => raw['attendance_enabled'] != false;
   int? get durationMinutes => raw['duration_minutes'] is num ? _i(raw['duration_minutes']) : null;
   bool get liveNow => raw['live_now'] == true;
   bool get upcoming => raw['upcoming'] == true;
@@ -292,6 +295,8 @@ class CpAttendance {
       'section_already_set' => ('اخترت سكشنك من قبل؛ اطلب من المحاضر تغييره', 'You already have a section; ask the teacher to change it'),
       'section_group_not_found' => ('هذا السكشن غير موجود', 'This section does not exist'),
       'not_your_section' => ('هذه الجلسة لسكشن آخر', 'This session belongs to another section'),
+      'attendance_off' => ('الحضور مُغلق لهذه الجلسة', 'Attendance is turned off for this session'),
+      'attendance_already_taken' => ('سُجّل حضور في هذه الجلسة بالفعل، فلا يمكن إيقافه', 'This session already has attendance, so it can\'t be turned off'),
       'grade_breakdown_total' => ('مجموع توزيع الدرجات يجب أن يكون 100', 'The grade breakdown must add up to 100'),
       'not_assistant' => ('هذا العضو ليس معيداً في المقرر', 'This member is not an assistant of the course'),
       'no_students' => ('اختر طلاباً أو «المكملين فقط»', 'Pick students or “completers only”'),

@@ -555,7 +555,7 @@ class _SessionCard extends StatelessWidget {
                 Text(t('لا مواد في هذه الجلسة بعد', 'No material in this session yet'), style: appText(13, c: c.textLight))
               else
                 for (final m in s.materials) _MaterialTile(material: m, siblings: s.materials, profile: p),
-              if (canAttend && !p.closed && !p.readOnly) ...[
+              if (canAttend && s.attendanceEnabled && !p.closed && !p.readOnly) ...[
                 const SizedBox(height: AppSpace.xs),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   AppPill(

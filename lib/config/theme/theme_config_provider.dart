@@ -1503,6 +1503,18 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   Map<String, dynamic> get orgCreationFee =>
       _platform['org_creation_fee'] is Map ? Map<String, dynamic>.from(_platform['org_creation_fee'] as Map) : const {};
 
+  /// The account fee of [role] (`teacher` / `parent`) while the super admin has it on: {amount, currency}; null
+  /// when it is off or the server is older (D-1120).
+  Map<String, dynamic>? accountFee(String role) {
+    final all = _platform['account_fee'];
+    if (all is! Map) return null;
+    final f = all[role];
+    if (f is! Map || f['required'] != true) return null;
+    final amount = f['amount'];
+    if (amount is! num || amount <= 0) return null;
+    return {'amount': amount, 'currency': '${f['currency'] ?? ''}'};
+  }
+
   /// Applies the organizations master switch and the platform timezone / time format. An old server that
   /// sends no `platform` block keeps organizations ON and the Cairo / 12h defaults.
   void _applyPlatformSettings(Map<String, dynamic> p) {

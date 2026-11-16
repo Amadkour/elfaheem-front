@@ -1,13 +1,15 @@
 // lib/features/admin/admin_platform_settings_page.dart
 //
-// Super admin → "Platform settings", three groups:
+// Super admin → "Platform settings", four groups:
 //   1. Organizations — master switch for the whole Organizations feature set + the creation fee
 //      (amount · currency · which payment methods) + manual-transfer receipts waiting for review
-//   2. Time & region — default timezone (Egypt → KSA → UAE → Arab world → others) and 12h / 24h
-//   3. Features — opens the feature catalog (search, groups, org-manageable features)
+//   2. Account fees (D-1120) — per role (teachers, parents): on/off, amount, currency, + the payment methods and
+//      the receipts of account fees
+//   3. Time & region — default timezone (Egypt → KSA → UAE → Arab world → others) and 12h / 24h
+//   4. Features — opens the feature catalog (search, groups, org-manageable features)
 //
 // GET/PUT /api/v1/admin/platform-settings (PUT = full object, super admin only; admins read)
-// GET /org-fee/payments?status= · POST /org-fee/payments/{id}/approve|reject
+// GET /org-fee/payments?status=&purpose= · POST /org-fee/payments/{id}/approve|reject?purpose=
 library;
 
 import 'package:flutter/material.dart';
@@ -24,6 +26,7 @@ import 'admin_page.dart';
 import 'cfg_common.dart';
 import 'admin_features_page.dart';
 import 'admin_feedback_settings.dart' show AdminFeedbackSettingsPage;
+import 'admin_account_fee_widgets.dart';
 import 'admin_platform_widgets.dart';
 
 const _path = '/api/v1/admin/platform-settings';
@@ -48,6 +51,9 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
   Set<String> _methods = {};
   String _zone = AppTime.fallbackZone;
   String _fmt = '12h';
+  // account fee (D-1120), per role
+  final _acc = {for (final r in accountFeeRoles) r: AccountFeeDraft()};
+  Set<String> _accMethods = {};
 
   bool get _canEdit => _s?['can_edit'] == true;
 
@@ -60,6 +66,9 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
   @override
   void dispose() {
     _amount.dispose();
+    for (final d in _acc.values) {
+      d.amount.dispose();
+    }
     super.dispose();
   }
 
@@ -90,7 +99,39 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
       _methods = {for (final m in (fee['methods'] as List? ?? const [])) '$m'};
       _zone = '${s['timezone'] ?? AppTime.fallbackZone}';
       _fmt = '${s['time_format'] ?? '12h'}';
+      final acc = asMap(s['account_fee']);
+      for (final r in accountFeeRoles) {
+        _acc[r]!.take(asMap(acc[r]));
+      }
+      _accMethods = {for (final m in (acc['methods'] as List? ?? const [])) '$m'};
     });
+  }
+
+  Map<String, dynamic> get _accBody => {
+        for (final r in accountFeeRoles) r: _acc[r]!.body,
+        'methods': _accMethods.toList(),
+      };
+
+  bool get _accOn => _acc.values.any((d) => d.on);
+
+  String? get _accError {
+    for (final d in _acc.values) {
+      if (d.on && (d.value == null || d.value! <= 0)) {
+        return t('اكتب مبلغ رسوم الحساب (أكبر من صفر) أو أوقفها.', 'Enter the account fee (above 0) or switch it off.');
+      }
+    }
+    if (_accOn && _accMethods.isEmpty) {
+      return t('اختر طريقة دفع واحدة على الأقل لرسوم الحسابات.', 'Pick at least one payment method for account fees.');
+    }
+    return null;
+  }
+
+  bool get _accDirty {
+    final acc = asMap(_s?['account_fee']);
+    final saved = {for (final m in (acc['methods'] as List? ?? const [])) '$m'};
+    return _acc.entries.any((e) => e.value.differs(asMap(acc[e.key]))) ||
+        saved.length != _accMethods.length ||
+        !saved.containsAll(_accMethods);
   }
 
   /// An empty field is 0 (free); text that is not a non-negative number is an error, never a silent 0.
@@ -110,6 +151,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
         'orgs_enabled': _orgs,
         'sharing_enabled': _sharing,
         'org_creation_fee': {'amount': _amountValue, 'currency': _currency, 'methods': _methods.toList()},
+        'account_fee': _accBody,
         'timezone': _zone,
         'time_format': _fmt,
       };
@@ -124,13 +166,18 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
         _methods.length != (fee['methods'] as List? ?? const []).length ||
         !_methods.containsAll([for (final m in (fee['methods'] as List? ?? const [])) '$m']) ||
         _zone != s['timezone'] ||
-        _fmt != s['time_format'];
+        _fmt != s['time_format'] ||
+        _accDirty;
   }
 
   Future<void> _save() async {
     if (_saving) return;
     if (_amountError != null) {
       showAppNotice(_amountError!, error: true);
+      return;
+    }
+    if (_accError != null) {
+      showAppNotice(_accError!, error: true);
       return;
     }
     final wasOn = _s?['orgs_enabled'] != false;
@@ -179,6 +226,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
     final methods = asMapList(_s!['available_methods']);
     final currencies = [for (final x in (_s!['currencies'] as List? ?? const ['EGP'])) '$x'];
     final awaiting = (_s!['awaiting_fee_review'] as num?)?.toInt() ?? 0;
+    final accAwaiting = (_s!['awaiting_account_fee_review'] as num?)?.toInt() ?? 0;
     final free = _amountValue <= 0;
 
     final amountError = _amountError;
@@ -272,7 +320,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
                           AppSpace.gapSm,
                           Text(t('طرق الدفع المقبولة', 'Accepted payment methods'), style: AppType.label(context)),
                           const SizedBox(height: AppSpace.xxs),
-                          for (final m in methods) _methodTile(context, m),
+                          for (final m in methods) _methodTile(context, m, selected: _methods, currencies: {_currency}),
                           if (_methods.isEmpty)
                             AppBanner(icon: Icons.warning_amber_rounded, color: c.warning, text: t('اختر طريقة دفع واحدة على الأقل.', 'Pick at least one payment method.')),
                         ],
@@ -296,7 +344,52 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
         ),
         AppSpace.gapLg,
 
-        // ── 2. Time & region ─────────────────────────────────────────
+        // ── 2. Account fees (D-1120) ─────────────────────────────────
+        AppSection(
+          title: t('رسوم فتح الحسابات', 'Account fees'),
+          subtitle: t('رسوم لمرة واحدة يدفعها المعلم أو ولي الأمر ليبدأ. الحسابات الموجودة لا تدفع، وإيقافها يفتح كل من ينتظر.',
+              'A one-time fee a teacher or parent pays to start. Existing accounts never pay; switching it off lets everyone waiting in.'),
+          child: AppCard(
+            key: const ValueKey('platform.account_fee'),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (final r in accountFeeRoles)
+                AccountFeeRoleRow(
+                  role: r,
+                  draft: _acc[r]!,
+                  currencies: currencies,
+                  enabled: _canEdit && !_saving,
+                  onChanged: () => setState(() {}),
+                ),
+              if (_accOn) ...[
+                const Divider(height: AppSpace.lg),
+                Text(t('طرق الدفع المقبولة', 'Accepted payment methods'), style: AppType.label(context)),
+                const SizedBox(height: AppSpace.xxs),
+                for (final m in methods)
+                  _methodTile(context, m,
+                      selected: _accMethods,
+                      currencies: {for (final d in _acc.values) if (d.on) d.currency}),
+              ],
+              if (_accError != null && _accDirty) CfgFieldError(_accError!),
+              AppSpace.gapSm,
+              AppActionCard(
+                icon: Icons.receipt_long_rounded,
+                title: t('إيصالات رسوم الحسابات', 'Account fee receipts'),
+                subtitle: accAwaiting > 0
+                    ? t('$accAwaiting بانتظار المراجعة', '$accAwaiting waiting for review')
+                    : t('كل المدفوعات والتحويلات', 'Every payment and transfer'),
+                color: accAwaiting > 0 ? c.warning : c.primary,
+                onTap: () async {
+                  await Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (_) => const AdminOrgFeePaymentsPage(purpose: 'account')));
+                  _load();
+                },
+              ),
+            ]),
+          ),
+        ),
+        AppSpace.gapLg,
+
+        // ── 3. Time & region ─────────────────────────────────────────
         AppSection(
           title: t('الوقت والمنطقة', 'Time & region'),
           subtitle: t('الافتراضي لكل المستخدمين — يمكن لكل مؤسسة تغييره لنفسها.', 'Default for everyone — each organization may override it for itself.'),
@@ -312,7 +405,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
         ),
         AppSpace.gapLg,
 
-        // ── 3. Features ──────────────────────────────────────────────
+        // ── 4. Features ──────────────────────────────────────────────
         AppSection(
           title: t('الميزات', 'Features'),
           subtitle: t('إظهار وإخفاء أجزاء التطبيق، وما يمكن لمديري المؤسسات التحكم فيه.',
@@ -344,11 +437,13 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
     );
   }
 
-  Widget _methodTile(BuildContext context, Map<String, dynamic> m) {
+  /// One payment method of a fee: [selected] is that fee's set, [currencies] the currencies it charges in.
+  Widget _methodTile(BuildContext context, Map<String, dynamic> m,
+      {required Set<String> selected, required Set<String> currencies}) {
     final c = context.colors;
     final id = '${m['id']}';
     final needs = m['currency'] as String?;
-    final wrongCurrency = needs != null && needs != _currency;
+    final wrongCurrency = needs != null && currencies.any((x) => x != needs);
     final ready = m['ready'] == true;
     final note = wrongCurrency
         ? t('تتعامل بعملة $needs فقط', 'Charges in $needs only')
@@ -366,9 +461,9 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: AppType.meta(context).copyWith(color: (wrongCurrency || !ready) ? c.warning : c.textLight)),
-      value: _methods.contains(id) && !wrongCurrency,
+      value: selected.contains(id) && !wrongCurrency,
       onChanged: selectable
-          ? (v) => setState(() => v ? _methods.add(id) : _methods.remove(id))
+          ? (v) => setState(() => v ? selected.add(id) : selected.remove(id))
           : null,
     );
   }
@@ -379,7 +474,10 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class AdminOrgFeePaymentsPage extends StatefulWidget {
-  const AdminOrgFeePaymentsPage({super.key});
+  /// `org` (organization-creation fees) or `account` (teacher / parent account fees, D-1120).
+  final String purpose;
+
+  const AdminOrgFeePaymentsPage({super.key, this.purpose = 'org'});
 
   @override
   State<AdminOrgFeePaymentsPage> createState() => _AdminOrgFeePaymentsPageState();
@@ -407,7 +505,7 @@ class _AdminOrgFeePaymentsPageState extends State<AdminOrgFeePaymentsPage> {
       });
     }
     final r = await orgCall(() => ApiClient().get('$_path/org-fee/payments',
-        queryParams: {if (_status.isNotEmpty) 'status': _status, 'size': 100}), quiet: true);
+        queryParams: {if (_status.isNotEmpty) 'status': _status, 'size': 100, 'purpose': widget.purpose}), quiet: true);
     if (!mounted) return;
     if (!r.ok && _items != null && keep) {
       showAppNotice(orgErrorText(r.error!), error: true);
@@ -439,7 +537,9 @@ class _AdminOrgFeePaymentsPageState extends State<AdminOrgFeePaymentsPage> {
     if (ok != true || !mounted) return;
     setState(() => _deciding = true);
     final r = await orgCall(
-        () => ApiClient().post('$_path/org-fee/payments/${p['id']}/${approve ? 'approve' : 'reject'}', body: {'note': text}),
+        () => ApiClient().post(
+            '$_path/org-fee/payments/${p['id']}/${approve ? 'approve' : 'reject'}',
+            body: {'note': text}, queryParams: {'purpose': widget.purpose}),
         ok: approve ? t('تم الاعتماد', 'Approved') : t('تم الرفض', 'Rejected'));
     if (!mounted) return;
     setState(() => _deciding = false);
@@ -457,7 +557,9 @@ class _AdminOrgFeePaymentsPageState extends State<AdminOrgFeePaymentsPage> {
       '': t('الكل', 'All'),
     };
     return AdminPage(
-      title: t('إيصالات رسوم المؤسسات', 'Organization fee receipts'),
+      title: widget.purpose == 'account'
+          ? t('إيصالات رسوم الحسابات', 'Account fee receipts')
+          : t('إيصالات رسوم المؤسسات', 'Organization fee receipts'),
       icon: Icons.receipt_long_rounded,
       onRefresh: () => _load(keep: _items != null),
       body: Column(children: [

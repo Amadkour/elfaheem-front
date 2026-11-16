@@ -49,6 +49,20 @@ class CoursePageApi {
   /// A student picks their group once.
   Future<void> pick(int groupNo) => ApiClient().post('$_base/sections/pick', body: {'group_no': groupNo});
 
+  // ── attendance on/off (D-1110) ──
+
+  /// The course switch, its sessions' counts and what turning it off / on would do.
+  Future<CourseAttendanceFlag> attendanceFlag() async =>
+      CourseAttendanceFlag.fromJson(_map(await ApiClient().get('$_base/attendance-flag')));
+
+  /// On: every session on. Off: every session off except the ones that already have attendance.
+  Future<CourseAttendanceFlagResult> setAttendanceFlag(bool enabled) async =>
+      CourseAttendanceFlagResult.fromJson(_map(await ApiClient().put('$_base/attendance-flag', body: {'enabled': enabled})));
+
+  /// One session (409 attendance_already_taken to turn off a session that has attendance).
+  Future<void> setSessionAttendance(int sessionId, bool enabled) =>
+      ApiClient().put('$_base/sessions/$sessionId/attendance-flag', body: {'enabled': enabled});
+
   // ── rules ──
 
   Future<CourseRules> rules() async => CourseRules.fromJson(_map(await ApiClient().get('$_base/rules')));

@@ -45,6 +45,7 @@ import 'package:flutter_education_app/features/sessions/material/components/add_
 import 'package:flutter_education_app/features/sessions/material/components/material_title.dart' show RatingShow, ratingShow, sessionRateable;
 import 'package:flutter_education_app/features/sessions/material/components/session_material_grid.dart';
 import 'package:flutter_education_app/features/sessions/material/components/session_shared_widgets.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_attendance_flag.dart' show courseAttendanceFlagAvailable, setSessionAttendanceFlag;
 
 class SessionMaterialCard extends StatefulWidget {
   final TeacherSessionItem session;
@@ -492,6 +493,20 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     );
   }
 
+  /// The quiet line under a teacher's row: no materials yet · no attendance (D-1110).
+  String? _teacherHint(bool hasExam) {
+    final parts = [
+      if (_session.totalMaterial == 0 && !hasExam) _tt('لا مواد بعد', 'No materials yet'),
+      if (!_session.attendanceEnabled) _tt('بلا حضور', 'No attendance'),
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
+  Future<void> _setAttendance(TeacherCourseScreenProvider prov, bool enabled) async {
+    final ok = await setSessionAttendanceFlag(context, courseId: _session.courseId, sessionId: _session.id, enabled: enabled);
+    if (ok) prov.setSessionAttendanceLocal(_session.id, enabled);
+  }
+
   /// The teacher's ⋮: live · guest link · attendance · exams · material · edit · delete.
   Widget _teacherMenu(TeacherCourseScreenProvider prov) {
     final c = context.colors;
@@ -520,6 +535,10 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
             shareAppLink(context, AppLink.session(_session.id), title: _session.name);
           case 'attendance':
             _openAttendance();
+          case 'attendance_on':
+            _setAttendance(prov, true);
+          case 'attendance_off':
+            _setAttendance(prov, false);
           case 'exams':
             _openExams();
           case 'new_exam':
@@ -541,7 +560,12 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
         ),
         if (guest) item('guest', Icons.link_rounded, 'guest_link_title'.tr),
         if (!AppConfig.disableList.contains(kShareLinksKey)) item('share', Icons.ios_share_rounded, _tt('مشاركة رابط الحصة', 'Share session link')),
-        item('attendance', Icons.how_to_reg_rounded, 'attendance'.tr),
+        if (_session.attendanceEnabled) item('attendance', Icons.how_to_reg_rounded, 'attendance'.tr),
+        // D-1110: this session's own attendance switch
+        if (courseAttendanceFlagAvailable)
+          _session.attendanceEnabled
+              ? item('attendance_off', Icons.person_off_outlined, _tt('إيقاف الحضور في الجلسة', 'Turn attendance off'))
+              : item('attendance_on', Icons.how_to_reg_outlined, _tt('تشغيل الحضور في الجلسة', 'Turn attendance on')),
         item('exams', Icons.quiz_outlined, 'exams'.tr),
         item('new_exam', Icons.add_task_rounded, 'new_exam'.tr),
         item('material', Icons.attach_file_rounded, 'add_material'.tr),
@@ -588,7 +612,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       materials: _session.totalMaterial,
       materialsDone: _session.completeMaterial,
       showProgress: !widget.isTeacher,
-      hint: widget.isTeacher && _session.totalMaterial == 0 && !hasExam ? _tt('لا مواد بعد', 'No materials yet') : null,
+      hint: widget.isTeacher ? _teacherHint(hasExam) : null,
     );
 
     final drag = widget.isTeacher && widget.dragIndex != null;

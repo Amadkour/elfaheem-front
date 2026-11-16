@@ -54,11 +54,12 @@
      "description": null,
      "type": "live",
      "track": "lecture",
-     "scheduled_at": "2026-11-17T04:51:16.989017",
+     "scheduled_at": "2026-11-17T08:54:30.677036",
      "duration_minutes": 90,
      "order": 0,
      "group_no": null,
      "from_timetable": false,
+     "attendance_enabled": true,
      "live_now": false,
      "materials_count": 0,
      "materials": [],
@@ -75,11 +76,12 @@
      "description": null,
      "type": "live",
      "track": "section",
-     "scheduled_at": "2026-11-18T04:51:16.989017",
+     "scheduled_at": "2026-11-18T08:54:30.677036",
      "duration_minutes": 90,
      "order": 0,
      "group_no": 1,
      "from_timetable": false,
+     "attendance_enabled": true,
      "live_now": false,
      "materials_count": 0,
      "materials": [],
@@ -94,11 +96,12 @@
      "description": null,
      "type": "live",
      "track": "section",
-     "scheduled_at": "2026-11-19T04:51:16.989017",
+     "scheduled_at": "2026-11-19T08:54:30.677036",
      "duration_minutes": 90,
      "order": 0,
      "group_no": 2,
      "from_timetable": false,
+     "attendance_enabled": true,
      "live_now": true,
      "materials_count": 0,
      "materials": [],
@@ -113,11 +116,12 @@
      "description": null,
      "type": "live",
      "track": "section",
-     "scheduled_at": "2026-11-20T04:51:16.989017",
+     "scheduled_at": "2026-11-20T08:54:30.677036",
      "duration_minutes": 90,
      "order": 0,
      "group_no": null,
      "from_timetable": false,
+     "attendance_enabled": true,
      "live_now": false,
      "materials_count": 0,
      "materials": [],
@@ -144,7 +148,7 @@
     "id": 1,
     "name": "محاضرة 1",
     "track": "lecture",
-    "scheduled_at": "2026-11-17T04:51:16.989017"
+    "scheduled_at": "2026-11-17T08:54:30.677036"
    },
    "students": 3,
    "avg_progress": 0.0,
@@ -163,7 +167,7 @@
    "id": 3,
    "name": "سكشن 2",
    "track": "section",
-   "scheduled_at": "2026-11-19T04:51:16.989017",
+   "scheduled_at": "2026-11-19T08:54:30.677036",
    "live_now": true
   },
   "page": {
@@ -186,9 +190,10 @@
     "name": "محاضرة 1",
     "track": "lecture",
     "group_no": null,
-    "scheduled_at": "2026-11-17T04:51:16.989017",
+    "scheduled_at": "2026-11-17T08:54:30.677036",
     "duration_minutes": 90,
-    "live_now": false
+    "live_now": false,
+    "attendance_enabled": true
    },
    "week": {
     "source": "course",
@@ -295,6 +300,7 @@
     "rate": 0.0,
     "at_risk": 1
    },
+   "attendance_enabled": true,
    "setup": {
     "steps": [
      {
