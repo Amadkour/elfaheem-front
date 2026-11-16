@@ -15,6 +15,11 @@
 //   Snapping     to the playhead, cuts, marks, overlay edges, 0 and the end within 8 px (a line shows where); Alt off
 //   Zoom         Ctrl / ⌘ + wheel around the pointer, pinch with two fingers (which also pans), or the page's slider;
 //                the wheel pans; the view follows the playhead while it plays.
+//   Speed        (D-1080) a clip-edge drag works on the edit as it was at the finger's DOWN: the page feeds the live
+//                trim back as [edit], and reading it again added the distance dragged once per move (the end ran
+//                away from the finger) and snapped the edge to its own last place (it stuck). The playhead is its own
+//                layer: a scrub or a playing frame repaints that line, not the filmstrip and the waveform. A drag
+//                that is cut short (the timeline closing, editing switched off, a call) always ends the scrub.
 library;
 
 import 'dart:math' as math;
@@ -202,6 +207,8 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
 
   // the drag in progress
   StudioGrip? _grip;
+  StudioEdit? _base; // a clip drag: the edit at the finger's down (the page feeds the live trim back as [edit])
+  bool _touch = false;
   int? _gripClip;
   String? _gripOverlay;
   Offset? _down;
@@ -218,18 +225,38 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
   double _pinchZoom = 1;
   double _pinchTime = 0;
 
-  double get _dur => math.max(0.001, widget.edit.duration);
+  double get _dur => math.max(0.001, _e.duration); // a clip drag keeps the scale it began with
   double get _fit => math.max(1e-6, (_viewport - 2 * StudioLanes.pad) / _dur);
   double get _pps => _fit * widget.zoom;
   double get _content => _dur * _pps + 2 * StudioLanes.pad;
   double get _maxOffset => math.max(0, _content - _viewport);
 
   double _x(double t) => StudioLanes.pad + t * _pps - _offset;
-  double _t(double x) => ((x + _offset - StudioLanes.pad) / _pps).clamp(0.0, _dur);
+  double _t(double x) => _tRaw(x).clamp(0.0, _dur);
+
+  /// Unclamped: a grip held in the pad before 0:00 still moves by every pixel dragged.
+  double _tRaw(double x) => (x + _offset - StudioLanes.pad) / _pps;
+  double _downRaw = 0;
+
+  @override
+  void dispose() {
+    // the page must never be left scrubbing (it would ignore the player for good): a drag cut short ends here
+    if (_scrubbing) {
+      _scrubbing = false;
+      widget.onScrubEnd?.call();
+    }
+    super.dispose();
+  }
 
   @override
   void didUpdateWidget(covariant StudioTimelineView old) {
     super.didUpdateWidget(old);
+    if (!widget.enabled && old.enabled && (_grip != null || _pinchDist != null)) {
+      // editing switched off mid-drag (a job started): drop the drag, nothing is committed
+      _pointers.clear();
+      _pinchDist = null;
+      _endGrip(rebuild: false); // this build draws the result
+    }
     if (old.zoom != widget.zoom && _pinchDist == null) {
       // keep the playhead where it was on screen (or bring it to the middle when it was off)
       final oldPps = _fit * old.zoom;
@@ -255,8 +282,28 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
 
   // ── hit testing ──
 
-  List<List<(StudioOverlay, double, double)>> get _textRows => studioOverlayRows(widget.edit, kind: StudioOverlayKind.text);
-  List<List<(StudioOverlay, double, double)>> get _imageRows => studioOverlayRows(widget.edit, kind: StudioOverlayKind.image);
+  // the overlays packed in rows, once per edit (a hover or a pointer move used to pack them three times)
+  StudioEdit? _rowsOf;
+  List<List<(StudioOverlay, double, double)>> _textRowsC = const [], _imageRowsC = const [];
+  void _packRows() {
+    if (identical(_rowsOf, widget.edit)) return;
+    _rowsOf = widget.edit;
+    _textRowsC = studioOverlayRows(widget.edit, kind: StudioOverlayKind.text);
+    _imageRowsC = studioOverlayRows(widget.edit, kind: StudioOverlayKind.image);
+  }
+
+  List<List<(StudioOverlay, double, double)>> get _textRows {
+    _packRows();
+    return _textRowsC;
+  }
+
+  List<List<(StudioOverlay, double, double)>> get _imageRows {
+    _packRows();
+    return _imageRowsC;
+  }
+
+  /// The edit the drag works on: the one at the finger's down for a clip, else the page's.
+  StudioEdit get _e => _base ?? widget.edit;
   StudioTracks get _tracks => StudioTracks(textRows: _textRows.length, imageRows: _imageRows.length, overlays: widget.overlays);
 
   // a reorder in progress: the pointer's x and where the part would go
@@ -265,7 +312,7 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
 
   /// Where a part dragged to [x] would be played (0-based among the others).
   int _insertAt(double x, int from) {
-    final e = widget.edit;
+    final e = _e;
     var to = 0;
     for (var i = 0; i < e.clips.length; i++) {
       if (i == from) continue;
@@ -335,7 +382,7 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
     yield 0;
     yield _dur;
     if (head) yield w.position;
-    yield* w.edit.cuts;
+    yield* _e.cuts;
     if (w.markIn != null) yield w.markIn!;
     if (w.markOut != null) yield w.markOut!;
     for (final o in w.edit.overlays) {
@@ -356,6 +403,8 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
       return v;
     }
     final s = studioSnap(v, _snapPoints(except: except, head: head), 8 / _pps);
+    // a light tick when a finger lands on a snap point (not on every move while it stays there)
+    if (s != null && s != _snapAt && _touch) HapticFeedback.selectionClick();
     _snapAt = s;
     return s ?? v;
   }
@@ -367,7 +416,7 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
     if (e.kind == PointerDeviceKind.mouse && e.buttons != kPrimaryMouseButton) return;
     _pointers[e.pointer] = e.localPosition;
     if (_pointers.length == 2) {
-      _cancelGrip();
+      _endGrip();
       final ps = _pointers.values.toList();
       _pinchDist = (ps[0] - ps[1]).distance;
       _pinchZoom = widget.zoom;
@@ -379,9 +428,12 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
     final hit = _hit(e.localPosition);
     _down = e.localPosition;
     _downTime = _t(e.localPosition.dx);
+    _downRaw = _tRaw(e.localPosition.dx);
     _moved = false;
     _snapAt = null;
+    _touch = e.kind == PointerDeviceKind.touch;
     final w = widget;
+    _base = hit != null && (hit.grip == StudioGrip.clipStart || hit.grip == StudioGrip.clipEnd || hit.grip == StudioGrip.clipMove) ? w.edit : null;
     if (hit == null) {
       _grip = null;
       return;
@@ -417,7 +469,7 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
   }
 
   void _onMove(PointerMoveEvent e) {
-    if (!_pointers.containsKey(e.pointer)) return;
+    if (!mounted || !_pointers.containsKey(e.pointer)) return;
     _pointers[e.pointer] = e.localPosition;
     if (_pinchDist != null && _pointers.length >= 2) {
       final ps = _pointers.values.toList();
@@ -438,25 +490,27 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
     _autoScroll(e.localPosition.dx);
     final w = widget;
     final now = _t(e.localPosition.dx);
-    final dt = now - _downTime; // output seconds dragged (scroll included)
+    final dt = _tRaw(e.localPosition.dx) - _downRaw; // output seconds dragged (scroll included)
     switch (_grip!) {
       case StudioGrip.head:
         w.onScrub?.call(_snapped(now, head: false));
       case StudioGrip.clipStart:
         final i = _gripClip!;
-        final c = w.edit.clips[i];
-        final (lo, hi) = w.edit.startBounds(i);
+        final b = _e;
+        final c = b.clips[i];
+        final (lo, hi) = b.startBounds(i);
         // the left edge follows the finger: the clip's end stays where it is while dragging
-        final outEdge = _snapped(w.edit.clipStart(i) + dt, head: true);
-        final src = (_gripA + (outEdge - w.edit.clipStart(i)) * c.speed).clamp(lo, hi);
+        final outEdge = _snapped(b.clipStart(i) + dt, head: true);
+        final src = (_gripA + (outEdge - b.clipStart(i)) * c.speed).clamp(lo, hi);
         _liveA = src;
         w.onTrim?.call(i, true, src);
       case StudioGrip.clipEnd:
         final i = _gripClip!;
-        final c = w.edit.clips[i];
-        final (lo, hi) = w.edit.endBounds(i, w.sourceDuration);
-        final outEdge = _snapped(w.edit.clipStart(i) + c.length + dt, head: true);
-        final src = (c.start + (outEdge - w.edit.clipStart(i)) * c.speed).clamp(lo, hi);
+        final b = _e;
+        final c = b.clips[i];
+        final (lo, hi) = b.endBounds(i, w.sourceDuration);
+        final outEdge = _snapped(b.clipStart(i) + c.length + dt, head: true);
+        final src = (c.start + (outEdge - b.clipStart(i)) * c.speed).clamp(lo, hi);
         _liveA = src;
         w.onTrim?.call(i, false, src);
       case StudioGrip.clipMove:
@@ -506,7 +560,25 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
     if (by != 0) _offset = (_offset + by).clamp(0.0, _maxOffset);
   }
 
-  void _onUp(PointerEvent e) {
+  /// A pointer the system took away (a call, the app sent to the back, a scroll that won): the drag ends where it
+  /// is, never as a tap.
+  void _onCancel(PointerCancelEvent e) {
+    if (!mounted) return; // the pointer outlived the timeline: its dispose already ended the drag
+    if (!_moved && _grip != null && _grip != StudioGrip.head) {
+      _pointers.remove(e.pointer);
+      if (_pinchDist != null) {
+        if (_pointers.length < 2) _pinchDist = null;
+        return;
+      }
+      if (_grip == StudioGrip.clipStart || _grip == StudioGrip.clipEnd) widget.onTrimEnd?.call(_gripClip!, _grip == StudioGrip.clipStart, null);
+      _endGrip();
+      return;
+    }
+    _onUp(e, cancelled: true);
+  }
+
+  void _onUp(PointerEvent e, {bool cancelled = false}) {
+    if (!mounted) return;
     _pointers.remove(e.pointer);
     if (_pinchDist != null) {
       if (_pointers.length < 2) _pinchDist = null;
@@ -515,7 +587,7 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
     final w = widget;
     final g = _grip;
     if (g == null) return;
-    if (!_moved) {
+    if (!_moved && !cancelled) {
       // a tap
       switch (g) {
         case StudioGrip.head:
@@ -552,13 +624,18 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
           break;
       }
     }
-    if (_scrubbing) w.onScrubEnd?.call();
-    _cancelGrip();
+    _endGrip();
   }
 
-  void _cancelGrip() {
-    if (_scrubbing) widget.onScrubEnd?.call();
-    setState(() {
+  /// Every drag ends here (a lift, a cancel, a second finger, editing switched off): the page's scrub is released.
+  void _endGrip({bool rebuild = true}) {
+    if (_scrubbing) {
+      _scrubbing = false;
+      widget.onScrubEnd?.call();
+    }
+    if (!mounted) return;
+    (rebuild ? setState : (VoidCallback f) => f())(() {
+      _base = null;
       _grip = null;
       _gripClip = null;
       _gripOverlay = null;
@@ -608,8 +685,8 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
     final w = widget;
     if (_liveA == null || _gripClip == null) return w.edit;
     final i = _gripClip!;
-    if (_grip == StudioGrip.clipStart) return w.edit.trimStart(i, _liveA!);
-    if (_grip == StudioGrip.clipEnd) return w.edit.trimEnd(i, _liveA!, w.sourceDuration);
+    if (_grip == StudioGrip.clipStart) return _e.trimStart(i, _liveA!);
+    if (_grip == StudioGrip.clipEnd) return _e.trimEnd(i, _liveA!, w.sourceDuration);
     return w.edit;
   }
 
@@ -643,7 +720,7 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
         // a clip-start drag keeps the clip's END where it was on screen: the drawn edit shifts by what the start moved
         var shift = 0.0;
         if (_grip == StudioGrip.clipStart && _liveA != null && _gripClip != null) {
-          final c = w.edit.clips[_gripClip!];
+          final c = _e.clips[_gripClip!];
           shift = (_liveA! - c.start) / c.speed * _pps;
         }
         return Semantics(
@@ -663,12 +740,14 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
               onPointerDown: _onDown,
               onPointerMove: _onMove,
               onPointerUp: _onUp,
-              onPointerCancel: _onUp,
+              onPointerCancel: _onCancel,
               onPointerSignal: _onSignal,
               child: SizedBox(
                 height: h,
                 width: double.infinity,
                 child: ClipRect(
+                  child: Stack(fit: StackFit.expand, children: [
+                  RepaintBoundary(
                   child: CustomPaint(
                     painter: _TimelinePainter(
                       edit: _shown,
@@ -693,11 +772,25 @@ class _StudioTimelineViewState extends State<StudioTimelineView> {
                       pps: _pps,
                       offset: _offset,
                       snapAt: _snapAt,
-                      bubble: _bubble(),
+                      bubble: _grip == StudioGrip.head ? null : _bubble(),
                       bay: bay,
                       enabled: w.enabled,
                     ),
                   ),
+                  ),
+                  RepaintBoundary(
+                    child: CustomPaint(
+                      painter: _PlayheadPainter(
+                        position: w.position,
+                        pps: _pps,
+                        offset: _offset,
+                        bay: bay,
+                        scrubbing: _grip == StudioGrip.head,
+                        label: _grip == null || _grip == StudioGrip.head || _bubble() == null,
+                      ),
+                    ),
+                  ),
+                  ]),
                 ),
               ),
             ),
@@ -950,34 +1043,8 @@ class _TimelinePainter extends CustomPainter {
         ..color = bay.c.warning
         ..strokeWidth = 1);
     }
-    // ── playhead ──
-    final hx = _x(position);
-    if (hx >= -8 && hx <= size.width + 8) {
-      canvas.drawLine(Offset(hx, 4), Offset(hx, size.height), Paint()
-        ..color = bay.floor.withValues(alpha: 0.6)
-        ..strokeWidth = 4);
-      canvas.drawLine(Offset(hx, 4), Offset(hx, size.height), Paint()
-        ..color = bay.ink
-        ..strokeWidth = 2);
-      final cap = Path()
-        ..addRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hx, 8), width: 14, height: 11), const Radius.circular(3)))
-        ..moveTo(hx - 6, 12)
-        ..lineTo(hx + 6, 12)
-        ..lineTo(hx, 19)
-        ..close();
-      canvas.drawPath(cap, Paint()..color = bay.ink);
-    }
-    // ── the playhead's own time, always beside its cap (D-903): no need to look away to the transport ──
+    // ── the exact time of what is dragged (the playhead and its own time: [_PlayheadPainter]) ──
     final bb = bubble;
-    if (bb == null && hx >= 0 && hx <= size.width) {
-      final tp = _text(studioTimecode(position), _font(10, bay.deck, w: FontWeight.w700));
-      final w = tp.width + 10, h = tp.height + 3;
-      final left = hx + 9 + w <= size.width ? hx + 9 : hx - 9 - w;
-      final r = RRect.fromRectAndRadius(Rect.fromLTWH(left, 1, w, h), Radius.circular(h / 2));
-      canvas.drawRRect(r, Paint()..color = bay.ink.withValues(alpha: 0.9));
-      tp.paint(canvas, Offset(left + 5, 2.5));
-    }
-    // ── the exact time of what is dragged ──
     if (bb != null) {
       final tp = _text(bb.$2, _font(11, bay.deck, w: FontWeight.w700));
       final w = tp.width + 14, h = tp.height + 5;
@@ -1113,8 +1180,91 @@ class _TimelinePainter extends CustomPainter {
     }
   }
 
+  /// Only a change of what is drawn: a playing frame or a scrub (the playhead's layer) repaints nothing here.
   @override
-  bool shouldRepaint(covariant _TimelinePainter o) => true;
+  bool shouldRepaint(covariant _TimelinePainter o) =>
+      !identical(o.edit, edit) ||
+      o.shift != shift ||
+      o.shiftClip != shiftClip ||
+      o.tracks.textRows != tracks.textRows ||
+      o.tracks.imageRows != tracks.imageRows ||
+      o.tracks.overlays != tracks.overlays ||
+      !identical(o.textRows, textRows) ||
+      !identical(o.imageRows, imageRows) ||
+      o.moving != moving ||
+      o.moveX != moveX ||
+      o.moveTo != moveTo ||
+      o.markIn != markIn ||
+      o.markOut != markOut ||
+      o.selectedClip != selectedClip ||
+      o.selectedOverlay != selectedOverlay ||
+      !identical(o.sprite, sprite) ||
+      o.spriteCount != spriteCount ||
+      o.sourceDuration != sourceDuration ||
+      !identical(o.waveform, waveform) ||
+      o.pending != pending ||
+      o.pps != pps ||
+      o.offset != offset ||
+      o.snapAt != snapAt ||
+      o.bubble != bubble ||
+      o.enabled != enabled ||
+      o.bay.deck != bay.deck ||
+      o.bay.ink != bay.ink ||
+      o.bay.accent != bay.accent ||
+      o.bay.faint != bay.faint ||
+      o.bay.c.warning != bay.c.warning;
+}
+
+/// The playhead on its own layer (D-1080): a line across every lane, its cap on the ruler and its time beside it
+/// (D-903). Scrubbing, the time sits over the cap, larger.
+class _PlayheadPainter extends CustomPainter {
+  _PlayheadPainter({required this.position, required this.pps, required this.offset, required this.bay, required this.scrubbing, required this.label});
+
+  final double position, pps, offset;
+  final StudioBay bay;
+  final bool scrubbing;
+
+  /// Its time is shown (off while another drag shows its own time).
+  final bool label;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final hx = StudioLanes.pad + position * pps - offset;
+    if (hx < -8 || hx > size.width + 8) return;
+    canvas.drawLine(Offset(hx, 4), Offset(hx, size.height), Paint()
+      ..color = bay.floor.withValues(alpha: 0.6)
+      ..strokeWidth = 4);
+    canvas.drawLine(Offset(hx, 4), Offset(hx, size.height), Paint()
+      ..color = bay.ink
+      ..strokeWidth = 2);
+    final cap = Path()
+      ..addRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(hx, 8), width: 14, height: 11), const Radius.circular(3)))
+      ..moveTo(hx - 6, 12)
+      ..lineTo(hx + 6, 12)
+      ..lineTo(hx, 19)
+      ..close();
+    canvas.drawPath(cap, Paint()..color = bay.ink);
+    if (!label) return;
+    final style = appText(scrubbing ? 11 : 10, w: FontWeight.w700, c: bay.deck).copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    final tp = TextPainter(text: TextSpan(text: studioTimecode(position), style: style), textDirection: TextDirection.ltr, maxLines: 1)..layout();
+    if (scrubbing) {
+      // over the finger's line, centred: the exact time of the frame shown
+      final w = tp.width + 14, h = tp.height + 5;
+      final cx = hx.clamp(w / 2 + 1, math.max(w / 2 + 1, size.width - w / 2 - 1)).toDouble();
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(cx - w / 2, 0, w, h), Radius.circular(h / 2)), Paint()..color = bay.ink);
+      tp.paint(canvas, Offset(cx - tp.width / 2, 2.5));
+      return;
+    }
+    if (hx < 0 || hx > size.width) return;
+    final w = tp.width + 10, h = tp.height + 3;
+    final left = hx + 9 + w <= size.width ? hx + 9 : hx - 9 - w;
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(left, 1, w, h), Radius.circular(h / 2)), Paint()..color = bay.ink.withValues(alpha: 0.9));
+    tp.paint(canvas, Offset(left + 5, 2.5));
+  }
+
+  @override
+  bool shouldRepaint(covariant _PlayheadPainter o) =>
+      o.position != position || o.pps != pps || o.offset != offset || o.scrubbing != scrubbing || o.label != label || o.bay.ink != bay.ink || o.bay.deck != bay.deck;
 }
 
 /// The track names on the left of the timeline (D-821): an icon on phones, icon + word on wide windows. Left to right

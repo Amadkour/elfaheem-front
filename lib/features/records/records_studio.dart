@@ -49,6 +49,7 @@ import 'package:flutter_education_app/features/records/studio_download_io.dart' 
 import 'package:flutter_education_app/features/records/studio_export.dart';
 import 'package:flutter_education_app/features/records/studio_panels.dart';
 import 'package:flutter_education_app/features/records/studio_project.dart';
+import 'package:flutter_education_app/features/records/studio_seeker.dart';
 import 'package:flutter_education_app/features/records/studio_source.dart';
 import 'package:flutter_education_app/features/records/studio_stage.dart';
 import 'package:flutter_education_app/features/records/studio_timeline.dart';
@@ -108,8 +109,11 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   Size _videoSize = const Size(1280, 720);
   double _previewSpeed = 1;
 
-  /// The playhead, OUTPUT seconds.
-  double _pos = 0;
+  /// The playhead, OUTPUT seconds. A notifier, not page state (D-1080): a scrub or a playing frame redraws only what
+  /// shows the time (the timeline, the transport, the overlays, the panel), never the whole page.
+  final _posN = ValueNotifier<double>(0);
+  double get _pos => _posN.value;
+  set _pos(double v) => _posN.value = v;
   bool _playing = false;
 
   /// Where the player last said it was (source s) and when: the ticker runs the playhead smoothly in between.
@@ -119,9 +123,14 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   late final Ticker _ticker = createTicker(_onTick);
   Duration _elapsed = Duration.zero;
 
-  // seeking: one at a time, the newest wins (a scrub sends many)
-  bool _seeking = false;
-  double? _seekNext;
+  // seeking: one at a time, the newest wins, throttled while scrubbing, never stuck (studio_seeker.dart, D-1080)
+  late final StudioSeeker _seeker = StudioSeeker(
+    seek: (src) => _player?.seekTo(Duration(milliseconds: (src * 1000).round())) ?? Future<void>.value(),
+    onLanded: (src) {
+      _lastSrc = src;
+      _lastAt = _elapsed;
+    },
+  );
   bool _scrubbing = false;
   bool _wasPlaying = false;
 
@@ -215,7 +224,9 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   @override
   void dispose() {
     _flushSave();
+    _seeker.dispose();
     _ticker.dispose();
+    _posN.dispose();
     _jobWatch?.dispose();
     _player?.removeListener(_onPlayer);
     _player?.dispose();
@@ -241,6 +252,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       _player = null;
     });
     old?.removeListener(_onPlayer);
+    _seeker.reset(); // a seek on the old player must not hold the new one
     await old?.dispose();
     _open();
   }
@@ -355,7 +367,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     final p = _player;
     if (p == null || !mounted) return;
     final v = p.value;
-    if (_seeking || _scrubbing) return;
+    if (_seeker.busy || _scrubbing) return;
     _lastSrc = v.position.inMilliseconds / 1000;
     _lastAt = _elapsed;
     if (v.isPlaying != _playing) {
@@ -380,13 +392,13 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     } else {
       out = e.outputOf(src);
     }
-    if (out != null && (out - _pos).abs() > 0.01) setState(() => _pos = out!.clamp(0.0, e.duration));
+    if (out != null && (out - _pos).abs() > 0.01) _pos = out.clamp(0.0, e.duration);
   }
 
   void _onTick(Duration elapsed) {
     _elapsed = elapsed;
     final p = _player;
-    if (p == null || !_playing || _seeking || _scrubbing) return;
+    if (p == null || !_playing || _seeker.busy || _scrubbing) return;
     final e = _edit;
     if (e.clips.isEmpty) return;
     if (_playClip >= e.clips.length) _playClip = e.clips.length - 1;
@@ -400,7 +412,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         _seekSource(n.start, then: () => _applySpeed());
       } else {
         p.pause();
-        setState(() => _pos = e.duration);
+        _pos = e.duration;
       }
       return;
     }
@@ -410,7 +422,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       if (o != null) _playClip = e.hit(o)?.clip ?? _playClip;
     }
     final out = e.clipStart(_playClip) + (est.clamp(c.start, c.end) - c.start) / c.speed;
-    if ((out - _pos).abs() > 1 / 120) setState(() => _pos = out.clamp(0.0, e.duration));
+    if ((out - _pos).abs() > 1 / 120) _pos = out.clamp(0.0, e.duration);
   }
 
   void _applySpeed() {
@@ -419,27 +431,10 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     _player?.setPlaybackSpeed((c?.speed ?? 1) * _previewSpeed);
   }
 
-  /// Seeks the player to the source second [src]; a seek already running takes the newest target when it lands.
-  void _seekSource(double src, {VoidCallback? then}) {
-    final p = _player;
-    if (p == null || !_ready) return;
-    if (_seeking) {
-      _seekNext = src;
-      return;
-    }
-    _seeking = true;
-    p.seekTo(Duration(milliseconds: (src * 1000).round())).whenComplete(() {
-      _lastSrc = src;
-      _lastAt = _elapsed;
-      _seeking = false;
-      final next = _seekNext;
-      _seekNext = null;
-      if (next != null && mounted) {
-        _seekSource(next, then: then);
-      } else {
-        then?.call();
-      }
-    });
+  /// Seeks the player to the source second [src] in the background ([scrub]: part of a drag, throttled).
+  void _seekSource(double src, {VoidCallback? then, bool scrub = false}) {
+    if (_player == null || !_ready) return;
+    _seeker.request(src, scrub: scrub, then: then == null ? null : () => mounted ? then() : null);
   }
 
   /// The playhead to OUTPUT second [out] (and the player to that frame).
@@ -447,10 +442,8 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     final e = _edit;
     final to = out.clamp(0.0, math.max(0.0, e.duration)).toDouble();
     final h = e.hit(to);
-    setState(() {
-      _pos = to;
-      _stageNote = null;
-    });
+    _pos = to;
+    if (_stageNote != null) setState(() => _stageNote = null);
     if (h == null) return;
     _playClip = h.clip;
     _seekSource(h.source, then: _applySpeed);
@@ -479,6 +472,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
 
   // scrubbing: pause, show every frame the finger passes, stay paused
   void _scrubStart() {
+    if (_scrubbing) return;
     _wasPlaying = _player?.value.isPlaying ?? false;
     _player?.pause();
     _scrubbing = true;
@@ -487,15 +481,26 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
   void _scrub(double out) {
     final e = _edit;
     final to = out.clamp(0.0, e.duration);
-    setState(() => _pos = to);
+    _pos = to; // the playhead at once; the frame follows (throttled, the newest wins)
     final h = e.hit(to);
     if (h == null) return;
     _playClip = h.clip;
-    _seekSource(h.source); // the player's own updates are ignored while scrubbing: the playhead never jumps back
+    _seekSource(h.source, scrub: true); // the player's own updates are ignored while scrubbing: the playhead never jumps back
   }
 
+  /// The finger lifted (or the drag was cut short): the exact frame now, and the page catches up once.
   void _scrubEnd() {
+    if (!_scrubbing) return;
     _scrubbing = false;
+    _seeker.flush();
+    // the timeline may end a scrub while it is being rebuilt or closed: the page catches up after that frame
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    } else if (mounted) {
+      setState(() {});
+    }
     if (_wasPlaying) _playPause();
     _wasPlaying = false;
   }
@@ -886,7 +891,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       _stageNote = '${start ? t('البداية', 'Start') : t('النهاية', 'End')} · ${studioTimecode(source)}';
     });
     _player?.pause();
-    _seekSource(source);
+    _seekSource(source, scrub: true);
   }
 
   void _onTrimEnd(int i, bool start, double? source) {
@@ -1826,10 +1831,12 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
     }
     final editing = !_busy && _projectReady;
     return Stack(fit: StackFit.expand, children: [
-      VideoPlayer(p),
-      StudioOverlayLayer(
+      RepaintBoundary(child: VideoPlayer(p)),
+      ValueListenableBuilder<double>(
+        valueListenable: _posN,
+        builder: (context, now, _) => StudioOverlayLayer(
         edit: _edit,
-        now: _pos,
+        now: now,
         selected: _selOverlay,
         images: _images,
         editing: editing,
@@ -1845,6 +1852,7 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
             _playPause();
           }
         },
+      ),
       ),
       StudioPlayMark(playing: _playing || _selOverlay != null),
     ]);
@@ -1979,8 +1987,10 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
       panelOpen: _panelOpen,
       onClosePanel: () => setState(() => _panelOpen = false),
       preview: _preview(context),
-      transport: StudioTransport(
-        position: _pos,
+      transport: ValueListenableBuilder<double>(
+        valueListenable: _posN,
+        builder: (context, pos, _) => StudioTransport(
+        position: pos,
         duration: e.duration,
         playing: _playing,
         previewSpeed: _previewSpeed,
@@ -1995,9 +2005,12 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         onPreviewSpeed: _nextPreviewSpeed,
         onZoom: (z) => setState(() => _zoom = z),
       ),
-      timeline: StudioTimelineView(
+      ),
+      timeline: ValueListenableBuilder<double>(
+        valueListenable: _posN,
+        builder: (context, pos, _) => StudioTimelineView(
         edit: e,
-        position: _pos,
+        position: pos,
         sourceDuration: _srcDur,
         zoom: _zoom,
         markIn: _markIn,
@@ -2030,13 +2043,19 @@ class _RecordStudioPageState extends State<RecordStudioPage> with SingleTickerPr
         onOverlaySpanEnd: _overlaySpanEnd,
         onMoveClip: _moveClip,
         onMarks: (a, b) => setState(() {
+          final at = a != _markIn ? a : b; // the flag that moved (read before the marks change)
           _markIn = a;
           _markOut = b;
-          final at = a != _markIn ? a : b;
           if (at != null) _seek(at);
         }),
       ),
-      panel: _panel(context, editing),
+      ),
+      // the panels that show the playhead's time follow it; the others never rebuild on it
+      panel: switch (_tool) {
+        StudioTool.edit || StudioTool.text || StudioTool.image =>
+          ValueListenableBuilder<double>(valueListenable: _posN, builder: (context, _, _) => _panel(context, editing)),
+        _ => _panel(context, editing),
+      },
       footer: wide ? const StudioKeysHint() : null, // keys: a desktop's, not a phone browser's
       stageNote: _stageNote ?? (_projectReady ? null : t('يجهّز عملك المحفوظ…', 'Getting your saved work…')),
     );
