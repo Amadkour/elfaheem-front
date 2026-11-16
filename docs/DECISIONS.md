@@ -4922,8 +4922,16 @@ cards use the four block tints (emerald · peach · sky · gold), and the edge r
   is overdue · members of my departments · my next council session); "Needs me" is the highlighted card. The
   head's and dean's Councils block moved into More (votes · councils · requests), every page still a tap away. An
   older server without `home_stats` keeps the D-631 hero and figures.
+- Profile E (the organization settings page, `OrgSettingsPage`): the profile card carries the organization chip
+  with Switch; four shortcut tiles under it (certificate designs · exports · organization notifications · display,
+  each behind its own kill switch) replace their rows; then Organization · Governance · App (language, assistant,
+  floating assistant, dark mode) · Help & legal (verify a certificate, get the app, privacy, terms); the footer
+  holds two-step verification, the admin's danger zone, then the exits (leave · sign out) as quiet red rows
+  (`AppSettingsTile(danger: true)`: red icon and label, no chevron, still confirmed) and the version line. One
+  primary tint for the icons; `AppSettingsPage(columns: true)` splits the groups into two columns on a wide body.
 
 **Consequences.** Server: `GET …/orgs/{id}/dashboard` reads the task list once and adds `home_stats` (back
 FLUTTER_API_CHANGES 2026-11-16). Tests: `test/ui/org_home_soft_layout_test.dart` (parse, the four cards, the one
 edge, no hero; empty / full / worst case through the layout harness), `test/org/ux_v3_p4_test.dart` (the persona
-blocks), back `tests/org_v2/e2e_org_dashboard_v3.py` (home_stats sums match the tasks).
+blocks), `test/ui/org_settings_profile_e_test.dart` (the card, the tiles, the exit rows, two columns), back
+`tests/org_v2/e2e_org_dashboard_v3.py` (home_stats sums match the tasks).

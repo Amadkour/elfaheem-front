@@ -137,11 +137,16 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
     this.badge,
     this.featureKey,
     this.keywords,
+    this.danger = false,
   });
 
   final IconData icon;
   final String label;
   final String? subtitle;
+
+  /// D-1081: an exit row (leave, sign out) on a plain card — the icon and the label in the danger ink, no chevron.
+  /// The action still asks before it runs.
+  final bool danger;
 
   /// Icon colour; the well is this colour at a faint tint. Default: the section's accent ([AppSettingsAccent]), else
   /// primary. A row that passes the plain primary also takes the section's accent.
@@ -171,7 +176,7 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
   Widget build(BuildContext context) {
     final c = context.colors;
     final section = AppSettingsAccent.of(context);
-    final own = color == null || color == c.primary ? null : color;
+    final own = danger ? c.danger : (color == null || color == c.primary ? null : color);
     final col = own ?? section ?? c.primary;
     final n = badge ?? 0;
     final sub = subtitle;
@@ -201,7 +206,10 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
             const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                Text(label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: danger ? AppType.row(context).copyWith(color: c.blockAccentInk(c.danger, c.cardBg)) : AppType.row(context)),
                 if (sub != null && sub.isNotEmpty) ...[
                   const SizedBox(height: AppSpace.xxs / 2),
                   Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
@@ -222,7 +230,7 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
             if (trailing != null) ...[
               const SizedBox(width: AppSpace.sm),
               trailing!,
-            ] else if (onTap != null) ...[
+            ] else if (onTap != null && !danger) ...[
               const SizedBox(width: AppSpace.xs),
               AnimatedSlide(
                 offset: Offset(hovered ? 0.12 : 0, 0), // Flutter mirrors the icon, the slide follows the direction
@@ -568,11 +576,19 @@ class AppSettingsPage extends StatefulWidget {
     this.footer,
     this.searchThreshold = 8,
     this.gutter,
+    this.columns = false,
   });
 
   final Widget? header;
   final List<AppSettingsGroup> groups;
   final Widget? footer;
+
+  /// D-1081: on a wide body (≥ [twoColumnMin]) the groups sit in two balanced columns on the content width, the
+  /// header and the footer across both; a phone keeps one column.
+  final bool columns;
+
+  /// The body width from which [columns] splits the groups.
+  static const double twoColumnMin = Breakpoints.contentMax + AppSpace.xl * 2;
 
   /// A search field appears once the groups hold more tiles than this.
   final int searchThreshold;
@@ -621,9 +637,12 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
         builder: (context, q, _) {
           final groups = _filtered(searchable ? q.text : '');
           final searching = searchable && q.text.trim().isNotEmpty;
+          return LayoutBuilder(builder: (context, box) {
+          final two = widget.columns && box.maxWidth >= AppSettingsPage.twoColumnMin && groups.length > 1;
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             child: ContentBox(
+              width: two ? AppWidth.content : null,
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 const SizedBox(height: AppSpace.lg),
                 if (widget.header != null && !searching) Padding(padding: side, child: widget.header),
@@ -659,7 +678,18 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
                     ]),
                   ),
                 // every group brings its own 32 above its heading (the editorial rhythm): nothing between them
-                for (final g in groups) Padding(padding: side, child: g),
+                if (two)
+                  Padding(
+                    padding: side,
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      for (final (i, part) in appSettingsColumns(groups).indexed) ...[
+                        if (i > 0) const SizedBox(width: AppSpace.lg),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: part)),
+                      ],
+                    ]),
+                  )
+                else
+                  for (final g in groups) Padding(padding: side, child: g),
                 if (widget.footer != null && !searching) ...[
                   const SizedBox(height: AppSpace.lg),
                   Padding(padding: side, child: widget.footer),
@@ -668,8 +698,24 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
               ]),
             ),
           );
+          });
         },
       ),
     );
   }
+}
+
+/// The groups in two columns of about the same height (counted in rows, a heading worth two), in order: the first
+/// column takes groups until it holds half the rows.
+List<List<AppSettingsGroup>> appSettingsColumns(List<AppSettingsGroup> groups) {
+  int weight(AppSettingsGroup g) => g.children.length + 2;
+  final total = groups.fold<int>(0, (n, g) => n + weight(g));
+  final first = <AppSettingsGroup>[];
+  var sum = 0;
+  for (final g in groups) {
+    if (first.isNotEmpty && sum + weight(g) / 2 > total / 2) break;
+    first.add(g);
+    sum += weight(g);
+  }
+  return [first, groups.sublist(first.length)];
 }
