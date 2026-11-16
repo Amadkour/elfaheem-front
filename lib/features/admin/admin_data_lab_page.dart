@@ -184,9 +184,9 @@ class _AdminDataLabPageState extends State<AdminDataLabPage> {
         padding: AdminPage.bodyPadding(context),
         children: [
           AppKpiGrid(maxColumns: 3, children: [
-            AppKpiCard(icon: Icons.menu_book_rounded, value: '${stats['courses_with_data'] ?? 0}', label: 'dl_admin_stat_courses'.tr),
-            AppKpiCard(icon: Icons.add_chart_rounded, value: '${stats['custom_columns'] ?? 0}', label: 'dl_admin_stat_columns'.tr),
-            AppKpiCard(icon: Icons.mark_chat_unread_rounded, value: '${stats['open_requests'] ?? 0}', label: 'dl_admin_stat_requests'.tr),
+            AppStatCard(icon: Icons.menu_book_rounded, value: '${stats['courses_with_data'] ?? 0}', label: 'dl_admin_stat_courses'.tr),
+            AppStatCard(icon: Icons.add_chart_rounded, value: '${stats['custom_columns'] ?? 0}', label: 'dl_admin_stat_columns'.tr),
+            AppStatCard(icon: Icons.mark_chat_unread_rounded, value: '${stats['open_requests'] ?? 0}', label: 'dl_admin_stat_requests'.tr),
           ]),
           AppSpace.gapMd,
           AppCard(

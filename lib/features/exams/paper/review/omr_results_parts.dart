@@ -95,19 +95,19 @@ class OmrResultsSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final r = results;
     final tiles = [
-      AppStatTile(icon: Icons.groups_rounded, label: t('الأوراق', 'Papers'), value: '${r.studentsTotal}'),
-      AppStatTile(icon: Icons.fact_check_rounded, label: t('مصحّحة', 'Graded'), value: '${r.graded}', color: c.success),
-      AppStatTile(icon: Icons.insights_rounded, label: t('المتوسط', 'Mean'), value: _pct(r.mean)),
-      AppStatTile(icon: Icons.emoji_events_outlined, label: t('ناجحون', 'Passed'), value: '${r.passed}'),
-      AppStatTile(
+      // D-1081: the soft-wash counts; what waits for review turns gold while there is some
+      AppStatCard(icon: Icons.groups_rounded, label: t('الأوراق', 'Papers'), value: '${r.studentsTotal}', tone: AppBlockTone.sky),
+      AppStatCard(icon: Icons.fact_check_rounded, label: t('مصحّحة', 'Graded'), value: '${r.graded}', tone: AppBlockTone.emerald),
+      AppStatCard(icon: Icons.insights_rounded, label: t('المتوسط', 'Mean'), value: _pct(r.mean), tone: AppBlockTone.peach),
+      AppStatCard(icon: Icons.emoji_events_outlined, label: t('ناجحون', 'Passed'), value: '${r.passed}', tone: AppBlockTone.gold),
+      AppStatCard(
         key: const ValueKey('omr.results.open'),
         icon: Icons.rate_review_rounded,
         label: t('تنتظر المراجعة', 'Waiting for review'),
         value: '${r.openReviewItems}',
-        color: r.openReviewItems > 0 ? c.warning : c.success,
+        tone: r.openReviewItems > 0 ? AppBlockTone.gold : AppBlockTone.emerald,
         onTap: r.openReviewItems > 0 ? onReview : null,
       ),
     ];

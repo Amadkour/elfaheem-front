@@ -323,6 +323,7 @@ class TeacherTodoCard extends StatelessWidget {
       padding: padding,
       child: AppCard(
         padding: EdgeInsets.zero,
+        highlight: true, // the home's ONE main card: what needs me (D-1081)
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (var i = 0; i < top.length; i++) ...[
             if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, indent: _kRowIndentCompact, color: c.divider),

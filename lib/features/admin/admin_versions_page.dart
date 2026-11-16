@@ -99,8 +99,8 @@ class AdminVersionsContent extends StatelessWidget {
         padding: AdminPage.bodyPadding(context),
         children: [
           AppKpiGrid(maxColumns: 2, children: [
-            AppKpiCard(icon: Icons.layers_rounded, value: '${p.items.length}', label: t('رسائل التحديث', 'Update prompts')),
-            AppKpiCard(
+            AppStatCard(icon: Icons.layers_rounded, value: '${p.items.length}', label: t('رسائل التحديث', 'Update prompts')),
+            AppStatCard(
                 icon: Icons.check_circle_rounded,
                 value: '${p.items.where((v) => asBool(v['is_active'])).length}',
                 label: t('مفعّلة', 'Active')),

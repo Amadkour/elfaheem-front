@@ -525,7 +525,7 @@ class _Stat extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
         label: '$label: $value',
         excludeSemantics: true,
-        child: AppStatTile(icon: icon, label: label, value: value, color: color),
+        child: AppStatCard(icon: icon, label: label, value: '${value}', tone: appStatToneFor(context, color), warn: appStatWarn(context, color)),
       );
 }
 

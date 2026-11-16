@@ -261,20 +261,20 @@ class UsernameStatsContent extends StatelessWidget {
     ]);
 
     final tiles = AppGrid(padding: EdgeInsets.zero, minTile: 160, children: [
-      AppStatTile(
-          icon: Icons.people_alt_rounded, label: t('كل الحسابات', 'All accounts'), value: appCompactNumber(s.usersTotal)),
-      AppStatTile(
+      AppStatCard(
+          icon: Icons.people_alt_rounded, label: t('كل الحسابات', 'All accounts'), value: '${appCompactNumber(s.usersTotal)}'),
+      AppStatCard(
           icon: Icons.alternate_email_rounded,
           label: t('لديهم اسم مستخدم', 'Have a username'),
           value: '${appCompactNumber(s.withUsername)} · ${_pct(s.usernameShare)}'),
-      AppStatTile(
-          icon: Icons.verified_rounded, label: t('أسماء مؤكدة', 'Confirmed'), value: appCompactNumber(s.confirmed)),
-      AppStatTile(
+      AppStatCard(
+          icon: Icons.verified_rounded, label: t('أسماء مؤكدة', 'Confirmed'), value: '${appCompactNumber(s.confirmed)}'),
+      AppStatCard(
           icon: Icons.hourglass_top_rounded,
           label: t('بانتظار رد صاحبه', 'Waiting for an answer'),
-          value: appCompactNumber(s.pending)),
-      AppStatTile(
-          icon: Icons.person_off_rounded, label: t('بلا اسم مستخدم', 'No username'), value: appCompactNumber(s.without)),
+          value: '${appCompactNumber(s.pending)}'),
+      AppStatCard(
+          icon: Icons.person_off_rounded, label: t('بلا اسم مستخدم', 'No username'), value: '${appCompactNumber(s.without)}'),
     ]);
 
     final trendTiles = AppGrid(padding: EdgeInsets.zero, minTile: 220, children: [

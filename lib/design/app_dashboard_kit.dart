@@ -563,6 +563,20 @@ class AppStatCard extends StatelessWidget {
   }
 }
 
+/// The [AppStatCard] tone for a colour an older stat tile was given (the D-1081 sweep): the primary or success →
+/// emerald, warning → gold, danger → peach (pair it with `warn: appStatWarn(...)` so the figure turns red), any other
+/// colour → sky.
+AppBlockTone appStatToneFor(BuildContext context, Color? color) {
+  final c = context.colors;
+  if (color == null || color == c.primary || color == c.success) return AppBlockTone.emerald;
+  if (color == c.warning) return AppBlockTone.gold;
+  if (color == c.danger) return AppBlockTone.peach;
+  return AppBlockTone.sky;
+}
+
+/// Whether an older stat tile's colour meant "something is wrong" (the danger ink): the stat card's `warn`.
+bool appStatWarn(BuildContext context, Color? color) => color != null && color == context.colors.danger;
+
 /// A small bar chart of recent values (oldest first): the latest bar full, the others faint; a caption under it.
 /// Decorative inside a card that reads its values aloud (AppStatCard), so it excludes its own semantics.
 class AppMiniBars extends StatelessWidget {

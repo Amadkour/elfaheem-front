@@ -278,27 +278,29 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
       ),
     );
 
-    // the four counts; the ONE key figure is who needs you: a block whose number rolls (emerald when nobody does)
+    // the four counts as soft-wash cards (D-1081); who needs you leads (peach, emerald when nobody does)
     final tiles = AppKpiGrid(children: [
-      AppKpiCard(
+      AppStatCard(
         icon: Icons.volunteer_activism_rounded,
         label: anTr('an2_tile_need_attention', 'Need attention'),
         value: '$risk',
-        highlight: true,
         tone: risk > 0 ? AppBlockTone.peach : AppBlockTone.emerald,
       ),
-      AppKpiCard(
+      AppStatCard(
+        tone: AppBlockTone.gold,
         icon: Icons.menu_book_rounded,
         label: anTr('an_courses', 'Courses'),
         value: '${all.length}',
         onTap: _openAll,
       ),
-      AppKpiCard(
+      AppStatCard(
+        tone: AppBlockTone.sky,
         icon: Icons.people_rounded,
         label: anTr('an2_tile_students', 'Students'),
         value: appCompactNumber(all.fold<int>(0, (s, x) => s + x.studentsCount)),
       ),
-      AppKpiCard(
+      AppStatCard(
+        tone: AppBlockTone.peach,
         icon: Icons.verified_rounded,
         label: anTr('an2_tile_pass_rate', 'Exam pass rate'),
         value: anPct(passRate),

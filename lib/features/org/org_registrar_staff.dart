@@ -344,11 +344,10 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
           ),
           if (_report != null)
             AppGrid(padding: const EdgeInsets.all(AppSpace.md), children: [
-              AppStatTile(icon: Icons.how_to_reg_rounded, label: t('مسجلون', 'Registered'), value: asInt(asMap(rep['registrations'])['registered'])),
-              AppStatTile(icon: Icons.hourglass_top_rounded, label: t('قوائم انتظار', 'Waitlisted'), value: asInt(asMap(rep['registrations'])['waitlisted']), color: c.warning),
-              AppStatTile(icon: Icons.event_seat_rounded, label: t('إشغال المقاعد %', 'Seat use %'), value: seats['utilisation'] ?? '—'),
-              AppStatTile(icon: Icons.gavel_rounded, label: t('قرارات مفتوحة', 'Open decisions'), value: asInt(rep['open_decisions']),
-                  color: asInt(rep['open_decisions']) > 0 ? c.danger : c.success),
+              AppStatCard(icon: Icons.how_to_reg_rounded, label: t('مسجلون', 'Registered'), value: '${asInt(asMap(rep['registrations'])['registered'])}'),
+              AppStatCard(icon: Icons.hourglass_top_rounded, label: t('قوائم انتظار', 'Waitlisted'), value: '${asInt(asMap(rep['registrations'])['waitlisted'])}', tone: appStatToneFor(context, c.warning), warn: appStatWarn(context, c.warning)),
+              AppStatCard(icon: Icons.event_seat_rounded, label: t('إشغال المقاعد %', 'Seat use %'), value: '${seats['utilisation'] ?? '—'}'),
+              AppStatCard(icon: Icons.gavel_rounded, label: t('قرارات مفتوحة', 'Open decisions'), value: '${asInt(rep['open_decisions'])}', tone: appStatToneFor(context, asInt(rep['open_decisions']) > 0 ? c.danger : c.success), warn: appStatWarn(context, asInt(rep['open_decisions']) > 0 ? c.danger : c.success)),
             ]),
           AppSectionTitle(t('التقويم الأكاديمي', 'Academic calendar'),
               subtitle: cal.isEmpty ? t('لم يُولَّد بعد — هذه معاينة', 'Not generated yet — preview') : windowText('${_cal?['window']}'),

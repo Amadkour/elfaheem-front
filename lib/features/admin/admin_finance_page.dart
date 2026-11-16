@@ -291,40 +291,36 @@ class _SummaryStrip extends StatelessWidget {
                   p.load(1);
                 },
               ),
-              AppKpiCard(
+              AppStatCard(
                 icon: Icons.hourglass_top_rounded,
                 label: t('بانتظار المراجعة', 'Awaiting review'),
                 value: _value(_moneyLines(pay['pending_transfers'])),
-                footnote: count(pay['pending_transfers'], 'تحويل واحد', 'تحويلان', '{n} تحويلات', '{n} تحويلًا', '1 transfer', '{n} transfers'),
-                onTap: () => p.setTab(0),
-              ),
-              AppKpiCard(
+                footer: count(pay['pending_transfers'], 'تحويل واحد', 'تحويلان', '{n} تحويلات', '{n} تحويلًا', '1 transfer', '{n} transfers'),
+                onTap: () => p.setTab(0),),
+              AppStatCard(
                 icon: Icons.account_balance_wallet_rounded,
                 label: t('طلبات السحب', 'Payout requests'),
                 value: _value(_moneyLines(out['pending'])),
-                footnote: count(out['pending'], 'طلب واحد', 'طلبان', '{n} طلبات', '{n} طلبًا', '1 request', '{n} requests'),
-                onTap: () => p.openPayoutsWithStatus('pending'),
-              ),
-              AppKpiCard(
+                footer: count(out['pending'], 'طلب واحد', 'طلبان', '{n} طلبات', '{n} طلبًا', '1 request', '{n} requests'),
+                onTap: () => p.openPayoutsWithStatus('pending'),),
+              AppStatCard(
                 icon: Icons.payments_rounded,
                 label: t('المدفوع للمعلمين', 'Paid to teachers'),
                 value: _value(_moneyLines(out['paid'])),
-                footnote: payments(out['paid']),
-                onTap: () => p.openPayoutsWithStatus('paid'),
-              ),
-              AppKpiCard(
+                footer: payments(out['paid']),
+                onTap: () => p.openPayoutsWithStatus('paid'),),
+              AppStatCard(
                 icon: Icons.undo_rounded,
                 label: t('المبالغ المستردة', 'Refunded'),
                 value: _value(_moneyLines(pay['refunded'])),
-                footnote: payments(pay['refunded']),
+                footer: payments(pay['refunded']),
                 onTap: () {
                   p.historyFilters
                     ..reset()
                     ..statuses = {'refunded'};
                   p.setTab(1);
                   p.load(1);
-                },
-              ),
+                },),
             ],
           ),
         ],

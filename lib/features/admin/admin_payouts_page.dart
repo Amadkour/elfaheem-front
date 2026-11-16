@@ -315,11 +315,10 @@ class _PendingSummary extends StatelessWidget {
     return AppKpiGrid(
       maxColumns: 3,
       children: [
-        AppKpiCard(
+        AppStatCard(
           label: t('طلبات بانتظار القرار', 'Requests waiting'),
           value: '${p.pendingCount}',
-          icon: Icons.pending_actions_rounded,
-        ),
+          icon: Icons.pending_actions_rounded,),
         for (var i = 0; i < entries.length; i++)
           AppKpiCard(
             label: entries[i].key.isEmpty
