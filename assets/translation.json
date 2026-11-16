@@ -24702,5 +24702,15 @@
   "link_open_failed": {
     "en": "Couldn't open the link. Try again.",
     "ar": "تعذّر فتح الرابط. حاول مرة أخرى."
-  }
+  },
+  "home_caught_up": {"en": "You're all caught up", "ar": "لا شيء ينتظرك"},
+  "home_caught_up_hint": {"en": "New work will show up here.", "ar": "سيظهر هنا كل ما يحتاجك."},
+  "home_nothing_waiting": {"en": "Nothing waiting", "ar": "لا شيء بانتظارك"},
+  "stat_no_activity": {"en": "No activity yet", "ar": "لا نشاط بعد"},
+  "home_week_sessions": {"en": "Sessions this week", "ar": "جلسات هذا الأسبوع"},
+  "home_week_sessions_hint": {"en": "Monday to Sunday", "ar": "من السبت إلى الجمعة"},
+  "home_published_chip": {"en": "{n} published", "ar": "منشور: {n}"},
+  "home_up_next": {"en": "Up next", "ar": "التالي لك"},
+  "home_tasks": {"en": "Your tasks", "ar": "مهامك"},
+  "home_schedule_link": {"en": "Schedule", "ar": "الجدول"}
 }

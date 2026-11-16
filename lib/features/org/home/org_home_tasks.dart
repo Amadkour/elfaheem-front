@@ -24,6 +24,7 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppCountBadge, A
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp;
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/home_a2.dart' show HomeCaughtUp, HomeQueueCard;
 import 'package:flutter_education_app/design/home_kit.dart' show HomeSection;
 import 'package:provider/provider.dart';
 
@@ -76,10 +77,14 @@ class OrgNeedsYouSection extends StatelessWidget {
     this.onRetry,
     this.onSeeAll,
     this.highlight = false,
+    this.card = false,
   });
 
   /// D-1081: the home's ONE main card — the block wears the primary → gold edge.
   final bool highlight;
+
+  /// D-1100: draw it as the home's queue card (HomeQueueCard: always a card, never folded away).
+  final bool card;
 
   /// The rows (urgency first), hidden ones already left out.
   final List<OrgTask> tasks;
@@ -126,6 +131,30 @@ class OrgNeedsYouSection extends StatelessWidget {
     final urgent = shown.where((x) => x.urgent).length;
     // the block's figure carries the count, so the title does not repeat it (folded, the summary says it)
     final lead = ranked.isNotEmpty && count > 0;
+    if (card) {
+      final c = context.colors;
+      final rowsList = [for (final r in ranked) r.$3];
+      return HomeQueueCard(
+        title: t('يحتاج انتباهك', 'Needs your attention'),
+        icon: Icons.inbox_rounded,
+        count: count,
+        subtitle: urgent > 0 ? t('$urgent عاجل', '$urgent urgent') : null,
+        actionLabel: onSeeAll != null && total > shown.length ? t('عرض الكل ($total)', 'See all ($total)') : null,
+        onAction: onSeeAll,
+        empty: empty,
+        emptyState: HomeCaughtUp(
+          title: t('لا شيء ينتظرك', "You're all caught up"),
+          message: t('ستظهر هنا الطلبات والتصويتات التي تحتاج قرارك.', 'Requests and votes that need your decision show up here.'),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var i = 0; i < rowsList.length; i++) ...[
+            if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+            rowsList[i],
+          ],
+          ?live,
+        ]),
+      );
+    }
     return HomeSection(
       id: 'org.attention',
       title: t('يحتاج انتباهك', 'Needs your attention'),

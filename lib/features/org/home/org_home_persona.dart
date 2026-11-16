@@ -263,8 +263,11 @@ class OrgPersonaStore extends ChangeNotifier {
 
 /// "View as" chips under the home's header; nothing for a person with one persona.
 class OrgPersonaSwitcher extends StatelessWidget {
-  const OrgPersonaSwitcher({super.key, required this.held, required this.current, required this.onChanged});
+  const OrgPersonaSwitcher({super.key, required this.held, required this.current, required this.onChanged, this.compact = false});
   final List<OrgPersona> held;
+
+  /// D-1100: the greeting row's pill — the choices only, no "View as" label, no page inset.
+  final bool compact;
   final OrgPersona current;
   final ValueChanged<OrgPersona> onChanged;
 
@@ -272,6 +275,29 @@ class OrgPersonaSwitcher extends StatelessWidget {
   Widget build(BuildContext context) {
     if (held.length < 2) return const SizedBox.shrink();
     final c = context.colors;
+    if (compact) {
+      return Semantics(
+        label: t('أعرض بصفتي', 'View as'),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpace.xxs),
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(color: c.divider, width: AppBorder.hairline),
+          ),
+          child: Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
+            for (final p in held)
+              AppChoiceChip(
+                key: ValueKey('org.persona.${p.name}'),
+                icon: orgPersonaIcon(p),
+                label: orgPersonaLabel(p),
+                selected: p == current,
+                onTap: () => onChanged(p),
+              ),
+          ]),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
       child: Wrap(

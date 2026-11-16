@@ -47,6 +47,8 @@ import 'package:flutter_education_app/design/boot_splash.dart' show SplashState;
 import 'package:flutter_education_app/design/calendar_entry.dart' show ChatEntryIcon;
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
+import 'package:flutter_education_app/design/home_a2.dart';
+import 'package:flutter_education_app/features/help/help_info_button.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
@@ -54,7 +56,6 @@ import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/courses/home_course_list.dart';
-import 'package:flutter_education_app/features/messaging/inbox/inbox_page.dart' show kInboxFeatureKey;
 import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart' show InboxEntry, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
 import 'package:flutter_education_app/features/courses/roadmap/journey_page.dart';
 import 'package:flutter_education_app/features/courses/roadmap/recommendations.dart' show showInterestsSheet;
@@ -186,37 +187,46 @@ class _HomeScreenState extends State<HomeScreen> {
           selector: (_, p) => p.currentUser,
           builder: (context, user, _) => ListenableBuilder(
             listenable: Listenable.merge([MeHomeService.instance, AppModeController.instance]),
-            builder: (context, _) => HomeHeader(
-              helpPageId: 'home.student',
-              // the premium forest hero (D-631): the ring is the courses' average progress, the ONE call to action
-              // opens the day's timetable (the line under the greeting is the day)
-              greetingHero: true,
-              ring: guest || AppModeController.instance.isOrg ? null : studentAverageProgress(MeHomeService.instance.home),
-              cta: guest || AppModeController.instance.isOrg
+            builder: (context, _) {
+              final home = MeHomeService.instance.home;
+              final isOrg = AppModeController.instance.isOrg;
+              // D-1100: the shared greeting row — the day in one line, the workspace pill, ONE primary action
+              // (Continue the course to pick up, else the timetable)
+              final featured = guest || isOrg || home == null
                   ? null
-                  : AppGreetingHeroButton(label: 'home_full_timetable'.tr, icon: Icons.calendar_month_rounded, onTap: () => _tab('my_schedule')),
-              // the first name: "Good morning, Sara" fits a phone's hero, the full name was cut (D-750)
-              name: guest ? 'guest_name'.tr : _firstOr(user?.name, 'sir'.tr),
-              // the day in one line ("2 sessions today · 1 live now · 3 to do") instead of another card — in
-              // Organization mode from what that organization's home draws (M6)
-              subtitle: guest
-                  ? null
-                  : AppModeController.instance.isOrg
-                      ? orgModeDaySummary(MeHomeService.instance.home, AppModeController.instance, MeHomeService.instance.liveNow.length)
-                      : studentDaySummary(MeHomeService.instance.home, MeHomeService.instance.liveNow.length, null,
-                          contextSwitchVisible(AppModeController.instance) ? AppModeController.instance.pendingTotal : 0),
-              wideTrailing: search(padding: EdgeInsets.zero),
-              // the four figures beside the hero on a desktop (the same /me/home payload, no request of their own)
-              wideSide: AppModeController.instance.isOrg || MeHomeService.instance.home == null
-                  ? null
-                  : StudentHomeStats(home: MeHomeService.instance.home!, onTab: _tab),
-              leading: user == null ? null : UserChipButton(user: user, showLabel: false),
-              // the counts are drawn once, by the inbox entry / the "Needs you" strip — the bell stays plain here
-              actions: [if (!guest) const QuickMeetingIcon()],
-              // the top bar carries these on desktop / tablet: drawn here on phones only (M7)
-              shellActions: [if (!guest) const CalendarIcon(), if (!guest) const ChatEntryIcon(), if (!guest) const NotificationIcon(unreadCount: 0, withTodos: false)],
-              contextSwitcher: guest ? null : const ContextSwitcher(),
-            ),
+                  : homeContinueCourse(home.coursesProgress, events: [...home.today, ...home.upcoming]);
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset),
+                child: StudentGreeting(
+                  name: guest ? 'guest_name'.tr : _firstOr(user?.name, 'sir'.tr),
+                  subline: guest
+                      ? null
+                      : isOrg
+                          ? orgModeDaySummary(home, AppModeController.instance, MeHomeService.instance.liveNow.length)
+                          : studentDaySummary(home, MeHomeService.instance.liveNow.length, null,
+                              contextSwitchVisible(AppModeController.instance) ? AppModeController.instance.pendingTotal : 0),
+                  switcher: guest ? null : const ContextSwitcher(),
+                  actions: [if (!guest) const QuickMeetingIcon()],
+                  shellActions: [if (!guest) const CalendarIcon(), if (!guest) const ChatEntryIcon(), if (!guest) const NotificationIcon(unreadCount: 0, withTodos: false)],
+                  leading: user == null ? null : UserChipButton(user: user, showLabel: false),
+                  primary: guest || isOrg
+                      ? null
+                      : featured != null
+                          ? AppButton.primary(
+                              label: 'continue'.tr,
+                              icon: Icons.play_arrow_rounded,
+                              size: AppButtonSize.sm,
+                              onPressed: () => AppNavigator.openCourse(featured.courseId),
+                            )
+                          : AppButton.secondary(
+                              label: 'home_full_timetable'.tr,
+                              icon: Icons.calendar_month_rounded,
+                              size: AppButtonSize.sm,
+                              onPressed: () => _tab('my_schedule'),
+                            ),
+                ),
+              );
+            },
           ),
         ),
       ),
@@ -306,6 +316,47 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+/// The student's greeting row (D-1100): the greeting, the day in one line, then the workspace pill and ONE primary
+/// action (Continue, else the timetable) — the shared HomeGreetingRow. On a phone (no shell top bar) the calendar /
+/// chat / bell, help and the account chip join the row. Plain values.
+class StudentGreeting extends StatelessWidget {
+  const StudentGreeting({
+    super.key,
+    required this.name,
+    this.subline,
+    this.switcher,
+    this.actions = const [],
+    this.shellActions = const [],
+    this.leading,
+    this.primary,
+    this.helpPageId = 'home.student',
+  });
+
+  final String name;
+  final String? subline;
+  final Widget? switcher, leading, primary;
+  final List<Widget> actions, shellActions;
+  final String? helpPageId;
+
+  @override
+  Widget build(BuildContext context) {
+    final phone = !HomeHeader.shellTopBar(context);
+    return ValueListenableBuilder<int>(
+      valueListenable: AppTime.version,
+      builder: (context, _, _) => HomeGreetingRow(
+        name: name,
+        subline: subline,
+        trailing: [
+          ?switcher,
+          ...actions,
+          if (phone) ...[...shellActions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!), ?leading],
+          ?primary,
+        ],
+      ),
+    );
+  }
+}
+
 /// Organization mode's greeting line, from exactly what that organization's home draws (OrgMemberHomeBody): its
 /// today, the strip's counts (to do · approvals for a manager · due soon · news) and its "What needs you" rows —
 /// those rows also carry governance work the overview's counts leave out, so "all caught up" never sits beside
@@ -350,8 +401,9 @@ String? studentDaySummary(MeHome? home, int liveRooms, [DateTime? nowUtc, int or
   return homeDaySummary(
     sessions: today.length,
     live: liveRooms > running ? liveRooms : running,
-    todo: home.attentionCount(AttentionTabs.home) + home.inboxTodo,
-    othersWaiting: home.notificationsUnread > 0 || orgWaiting > 0,
+    // D-1100: the same count as the home's queue card (to do + what the organizations wait for)
+    todo: home.attentionCount(AttentionTabs.home) + orgWaiting,
+    othersWaiting: home.notificationsUnread > 0 || home.inboxTodo > 0,
     nextAt: next == null ? null : AppTime.time(next.start),
   );
 }
@@ -487,185 +539,135 @@ class _Sections extends StatelessWidget {
     // unread notifications to it (every count once)
     final entryShown = inboxEntryShown(inboxCounts, unread: home.notificationsUnread);
     final unread = entryShown ? 0 : home.notificationsUnread;
-    // ONE orchestrated entrance: the greeting (index 0, the header) leads and the first two blocks under it follow;
+    // the greeting (index 0, the header) leads, the queue and Today follow (HomeEntrance 1 · 2);
     // the rest of the page is simply there
-    var i = 1;
-    Widget enter(Widget w) => i > 2 ? w : HomeEntrance(index: i++, child: w);
     final live = data.liveNow;
     final events = [...home.today, ...home.upcoming];
     final anyCount = todo > 0 || unread > 0 || data.orgWaiting > 0;
 
-    // ── the lead: the course to pick up now, on the emerald block (its line is the course list's own)
+    // ── D-1100: the shared A2 skeleton — the four counts · [what waits (queue) | today, the inbox] · the course to
+    //    pick up, my courses, the journey (full width). Every count once.
     final featured = homeContinueCourse(home.coursesProgress, events: events);
     final cont = featured == null
         ? null
-        : enter(Padding(
-            padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset),
-            child: StudentContinueBlock(
-              course: featured,
-              line: homeNextLectureLine(featured,
-                  event: homeCourseNextEvents(events)[featured.courseId], last: homeCourseLastEvents(events)[featured.courseId]),
-              onOpen: body.onOpenCourse == null ? null : () => body.onOpenCourse!(featured.courseId),
-            ),
-          ));
+        : StudentContinueBlock(
+            course: featured,
+            line: homeNextLectureLine(featured,
+                event: homeCourseNextEvents(events)[featured.courseId], last: homeCourseLastEvents(events)[featured.courseId]),
+            onOpen: body.onOpenCourse == null ? null : () => body.onOpenCourse!(featured.courseId),
+          );
 
-    // ── what waits for me: one slim row of the counts above zero (the greeting says "all caught up" otherwise);
-    //    the inbox is not one of them: its own entry below carries its count
-    final needs = !anyCount
-        ? null
-        : enter(HomeSection(
-            id: 'student.needs_you',
-            title: 'home_needs_you'.tr,
-            // folded, the title still says how much waits (L8)
-            foldedSummary: 'home_needs_folded'.tr.replaceAll('{n}', '${todo + unread + data.orgWaiting}'),
-            child: HelpTourTarget(pageId: 'home.student', id: 'needs_you', child: HomeStatStrip(items: [
-              HomeStat(icon: Icons.task_alt_rounded, label: 'home_todo'.tr, count: todo, tone: c.warning, onTap: body.onOpenTodo), // waiting work is amber (D-630)
-              HomeStat(
-                icon: Icons.notifications_none_rounded,
-                label: 'notifications'.tr,
-                count: unread,
-                tone: c.primary,
-                onTap: body.onOpenNotifications,
-              ),
-              HomeStat(
-                icon: Icons.account_balance_outlined,
-                label: 'home_org_waiting'.tr,
-                count: data.orgWaiting,
-                tone: c.warning,
-                onTap: body.onOpenOrgs,
-              ),
-            ])),
-          ));
-
-    // ── today: one line per item, live first, 3 + "Show all"; a free day folds by itself and names what comes next
-    //    ("This week" left the home: the schedule page has the week, the folded line names the next class)
-    final today = home.today.isEmpty
-        ? enter(Padding(
-            padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset),
-            child: StudentFreeDayBlock(
-              next: home.firstUpcoming,
-              onOpenNext: home.firstUpcoming == null ? null : () => _open(home.firstUpcoming),
-              onTimetable: () => body.onTab('my_schedule'),
-            ),
-          ))
-        : enter(HomeSection(
-      id: 'student.today',
-      title: 'home_today'.tr,
-      count: home.today.length,
-      foldedSummary: home.today.isEmpty ? null : homeDaySummaryOf(home.today, now),
-      empty: home.today.isEmpty,
-      emptySummary: homeFreeDaySummary('home_no_classes_today'.tr, home.firstUpcoming),
-      actionLabel: 'home_full_timetable'.tr,
-      onAction: () => body.onTab('my_schedule'),
-      child: HomeAgenda(
-        nowMin: nowMin,
-        items: [for (final e in home.today) homeAgendaItemOf(context, e, now, onTap: () => _open(e))],
-        emptyTitle: 'home_no_classes_today'.tr,
-        emptyMessage: 'home_s_free_hint'.tr,
-        emptyActionLabel: 'home_full_timetable'.tr,
-        onEmptyAction: () => body.onTab('my_schedule'),
+    // ── the queue: what waits for me (to do · unread · the organizations), or "You're all caught up" + the next class
+    final waiting = todo + data.orgWaiting;
+    final queue = HelpTourTarget(
+      pageId: 'home.student',
+      id: 'needs_you',
+      child: HomeQueueCard(
+        title: 'home_needs_you'.tr,
+        icon: Icons.task_alt_rounded,
+        count: waiting,
+        empty: !anyCount,
+        emptyState: HomeCaughtUp(
+          message: home.firstUpcoming == null ? null : homeFreeDaySummary('home_nothing_waiting'.tr, home.firstUpcoming),
+        ),
+        child: HomeStatStrip(padding: EdgeInsets.zero, items: [
+          HomeStat(icon: Icons.task_alt_rounded, label: 'home_todo'.tr, count: todo, tone: c.warning, onTap: body.onOpenTodo), // waiting work is amber (D-630)
+          HomeStat(icon: Icons.notifications_none_rounded, label: 'notifications'.tr, count: unread, tone: c.primary, onTap: body.onOpenNotifications),
+          HomeStat(icon: Icons.account_balance_outlined, label: 'home_org_waiting'.tr, count: data.orgWaiting, tone: c.warning, onTap: body.onOpenOrgs),
+        ]),
       ),
-    ));
+    );
 
-    // ── my courses, summarized (the full cards live on the courses tab)
+    // ── today: compact — the day's lines (live first), a free day is ONE line + the timetable
+    final today = HomeSideCard(
+      title: 'home_today'.tr,
+      icon: Icons.today_rounded,
+      count: home.today.length,
+      bare: home.today.isNotEmpty, // the agenda is a card of its own
+      actionLabel: 'home_schedule_link'.tr,
+      onAction: () => body.onTab('my_schedule'),
+      child: home.today.isEmpty
+          ? HomeSideLine(homeFreeDaySummary('home_no_classes_today'.tr, home.firstUpcoming))
+          : HomeAgenda(
+              nowMin: nowMin,
+              padding: EdgeInsets.zero,
+              items: [for (final e in home.today) homeAgendaItemOf(context, e, now, onTap: () => _open(e))],
+              emptyTitle: 'home_no_classes_today'.tr,
+            ),
+    );
+
+    // ── inbox: ONE slim entry, only while it holds something (its count is the actionable one)
+    final inbox = !entryShown ? null : InboxEntry(counts: inboxCounts, unread: home.notificationsUnread, onTap: body.onOpenInbox, padding: EdgeInsets.zero);
+
+    // ── my courses (the full cards live on the courses tab) with the journey and the study card under them
     final others = featured == null ? home.coursesProgress.length : home.coursesProgress.length - 1;
-    final courses = home.coursesProgress.isNotEmpty && others == 0 ? null : enter(HomeSection(
-      id: 'student.courses',
-      title: 'my_courses'.tr,
-      count: home.coursesProgress.length,
-      empty: home.coursesProgress.isEmpty,
-      emptySummary: 'home_s_no_courses'.tr,
-      actionLabel: home.coursesProgress.isEmpty ? 'home_s_browse'.tr : (wide ? null : 'show_all'.tr),
-      onAction: home.coursesProgress.isEmpty || !wide ? () => body.onTab('my_courses') : null,
-      child: home.coursesProgress.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset),
-              child: AppEmpty(
-                icon: Icons.auto_stories_rounded,
-                title: 'home_s_no_courses'.tr,
-                message: 'home_s_no_courses_hint'.tr,
-                actionLabel: 'home_s_browse'.tr,
-                onAction: () => body.onTab('my_courses'),
-              ),
-            )
-          : wide
-              ? StudentCourseSummary(
-                  courses: home.coursesProgress,
-                  events: events,
-                  featuredId: featured?.courseId,
-                  onOpen: body.onOpenCourse,
-                  onShowAll: () => body.onTab('my_courses'),
-                )
-              // a phone: the same courses as cover tiles in one horizontal row; "Show all" sits on the title
-              : StudentCourseTiles(
-                  courses: home.coursesProgress,
-                  events: events,
-                  featuredId: featured?.courseId,
-                  onOpen: body.onOpenCourse,
-                ),
-    ));
-
-    // ── the ONE journey card (D-120), under the courses and with them on every layout; no clear field → nothing
-    //    (D-309: with a "Continue" button into the next course); no journey yet → the "pick your interests" invite
+    final courses = home.coursesProgress.isNotEmpty && others == 0
+        ? null
+        : HomeSideCard(
+            title: 'my_courses'.tr,
+            icon: Icons.auto_stories_rounded,
+            count: home.coursesProgress.length,
+            actionLabel: home.coursesProgress.isEmpty ? 'home_s_browse'.tr : 'show_all'.tr,
+            onAction: () => body.onTab('my_courses'),
+            child: home.coursesProgress.isEmpty
+                ? AppEmpty(
+                    icon: Icons.auto_stories_rounded,
+                    title: 'home_s_no_courses'.tr,
+                    message: 'home_s_no_courses_hint'.tr,
+                    actionLabel: 'home_s_browse'.tr,
+                    onAction: () => body.onTab('my_courses'),
+                  )
+                : wide
+                    ? StudentCourseSummary(
+                        courses: home.coursesProgress,
+                        events: events,
+                        featuredId: featured?.courseId,
+                        onOpen: body.onOpenCourse,
+                        onShowAll: () => body.onTab('my_courses'),
+                      )
+                    : StudentCourseTiles(
+                        courses: home.coursesProgress,
+                        events: events,
+                        featuredId: featured?.courseId,
+                        onOpen: body.onOpenCourse,
+                      ),
+          );
     final j = homeJourney(home.journey);
     final invite = j == null && body.onPickInterests != null && homeJourneyInvite(home.journeyHint);
-    // ── the dismissible "Complete your study profile" card (D-793), last in the same column: a hint, never a wall
     final study = home.studyPrompt && body.onCompleteStudy != null && body.onDismissStudy != null;
-    final coursesBlock = j == null && !invite && !study
-        ? courses
-        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            ?courses,
-            if (j != null || invite)
-              enter(Padding(
-                padding: EdgeInsets.fromLTRB(kStudentHomeInset, courses == null ? 0 : AppSpace.md, kStudentHomeInset, 0),
-                child: j != null
-                    ? HomeJourneyCard(
-                        journey: j,
-                        onTap: body.onOpenJourney,
-                        onContinue: body.onOpenCourse == null ? null : () => body.onOpenCourse!(j.next.id),
-                      )
-                    : HomeJourneyInvite(onPick: body.onPickInterests!),
-              )),
-            if (study)
-              ParentComponent(
-                featureKey: kStudyProfileFeatureKey,
-                child: enter(Padding(
-                  padding: EdgeInsets.fromLTRB(
-                      kStudentHomeInset, courses == null && j == null && !invite ? 0 : AppSpace.md, kStudentHomeInset, 0),
-                  child: StudyPromptCard(onOpen: body.onCompleteStudy!, onDismiss: body.onDismissStudy!),
-                )),
-              ),
-          ]);
-
-    // ── inbox: ONE slim entry into the inbox page (its rows and the notifications live there), only while it holds
-    //    something; its count is the actionable one (to-dos + unread notifications)
-    final inbox = !entryShown
-        ? null
-        : enter(InboxEntry(counts: inboxCounts, unread: home.notificationsUnread, onTap: body.onOpenInbox));
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      // ── live now: a room I'm invited to is on air → one tap into it (appears / leaves by itself); the only strong
-      //    accent of the page
-      if (live.isNotEmpty)
-        HelpTourTarget(pageId: 'home.student', id: 'live_card', child: HomeLiveNow(rooms: live, now: data.now, padding: _bannerPad)),
-
-      // phone: needs you · today · courses · inbox. The desktop dashboard: what happens (today, my courses) beside
-      // what waits (needs you as a list, the inbox); with nothing waiting the courses card takes the side column
-      // the desktop's four figures (D-631, StudentHomeStats) sit in the header's side column beside the hero; a phone
-      // gets the shortcut grid under the hero instead
-      HomeDashboard(
-        narrow: [
-          Padding(padding: EdgeInsets.fromLTRB(kStudentHomeInset, live.isEmpty ? AppSpace.sm : 0, kStudentHomeInset, 0), child: _StudentShortcuts(onTab: body.onTab, onOpenInbox: body.onOpenInbox)),
-          ?cont, ?needs, today, ?coursesBlock, ?inbox,
+      HomeA2Layout(
+        greeting: null,
+        stats: studentHomeStatCards(home, body.onTab),
+        banners: [
+          // live now: a room I'm invited to is on air → one tap into it (the only strong accent of the page)
+          if (live.isNotEmpty)
+            HelpTourTarget(pageId: 'home.student', id: 'live_card', child: HomeLiveNow(rooms: live, now: data.now, padding: EdgeInsets.zero)),
         ],
-        main: [?cont, today, if (needs != null || inbox != null) ?coursesBlock],
-        side: needs == null && inbox == null ? [?coursesBlock] : [?needs, ?inbox],
+        queue: HomeEntrance(index: 1, child: queue),
+        side: [HomeEntrance(index: 2, child: today), ?inbox],
+        below: [
+          ?cont,
+          ?courses,
+          if (j != null)
+            HomeJourneyCard(
+              journey: j,
+              onTap: body.onOpenJourney,
+              onContinue: body.onOpenCourse == null ? null : () => body.onOpenCourse!(j.next.id),
+            )
+          else if (invite)
+            HomeJourneyInvite(onPick: body.onPickInterests!),
+          if (study)
+            ParentComponent(
+              featureKey: kStudyProfileFeatureKey,
+              child: StudyPromptCard(onOpen: body.onCompleteStudy!, onDismiss: body.onDismissStudy!),
+            ),
+        ],
       ),
       ?body.feeds,
     ]);
   }
-
-  static const _bannerPad = EdgeInsets.fromLTRB(kStudentHomeInset, AppSpace.sm, kStudentHomeInset, AppSpace.lg);
 
   void _open(CalEvent? e) {
     if (e == null) {
@@ -687,13 +689,17 @@ class StudentHomeStats extends StatelessWidget {
   final ValueChanged<String> onTab;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => HomeStatRow(children: studentHomeStatCards(home, onTab));
+}
+
+/// The student's four counts (D-1100): my courses · today · average progress · courses finished.
+List<Widget> studentHomeStatCards(MeHome home, ValueChanged<String> onTab) {
     final cp = home.coursesProgress;
     final avg = ((studentAverageProgress(home) ?? 0) * 100).round();
     final done = cp.where((x) => x.progress >= 100).length;
     // a figure that opens a tab the super admin switched off stays out (the shell drops the same tabs)
     final courses = _studentTabOn('my_courses');
-    return AppShortcutGrid(maxColumns: 2, children: [
+    return [
       if (courses)
         AppStatCard(
           icon: Icons.auto_stories_rounded,
@@ -726,32 +732,12 @@ class StudentHomeStats extends StatelessWidget {
           tone: AppBlockTone.gold,
           onTap: () => onTab('my_courses'),
         ),
-    ]);
-  }
+    ];
 }
 
 /// Whether the student dashboard shows the tab [label]: the shell removes `student_tab_<label>` (dashboard_screen).
 bool _studentTabOn(String label) => !AppConfig.disableList.contains('student_tab_$label');
 
-/// The phone's shortcut grid under the hero (D-631, the reference's 2×2 tiles): the dashboard's own tabs and the
-/// inbox, each a large soft glyph in its tone. No counts here: "Needs you" and the inbox entry carry them.
-class _StudentShortcuts extends StatelessWidget {
-  const _StudentShortcuts({required this.onTab, this.onOpenInbox});
-  final ValueChanged<String> onTab;
-  final VoidCallback? onOpenInbox;
-
-  @override
-  Widget build(BuildContext context) => AppShortcutGrid(maxColumns: 2, children: [
-        if (_studentTabOn('my_courses'))
-          AppShortcutTile(icon: Icons.auto_stories_rounded, label: 'my_courses'.tr, tone: AppBlockTone.emerald, onTap: () => onTab('my_courses')),
-        if (_studentTabOn('my_schedule'))
-          AppShortcutTile(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, tone: AppBlockTone.sage, onTap: () => onTab('my_schedule')),
-        if (_studentTabOn('analysis'))
-          AppShortcutTile(icon: Icons.insights_rounded, label: 'analysis'.tr, tone: AppBlockTone.peach, onTap: () => onTab('analysis')),
-        if (onOpenInbox != null && !AppConfig.disableList.contains(kInboxFeatureKey))
-          AppShortcutTile(icon: Icons.inbox_rounded, label: 'inbox_title'.tr, tone: AppBlockTone.sage, onTap: onOpenInbox),
-      ]);
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Feeds (below the fold; each leaf fetches and listens on its own)

@@ -22,6 +22,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp;
+import 'package:flutter_education_app/design/home_a2.dart' show HomeGreetingRow;
 import 'package:flutter_education_app/design/home_kit.dart' show HomeHeader;
 
 import '../../admin/admin_common.dart' show t;
@@ -96,7 +97,13 @@ class OrgHomeHero extends StatelessWidget {
 /// D-1081: the home's greeting as a line, not a hero — the greeting in the page-title face, the organization and what
 /// waits under it, a quiet "Review" while something waits.
 class OrgHomeGreeting extends StatelessWidget {
-  const OrgHomeGreeting({super.key, required this.data, required this.waiting, this.name = '', this.onReview});
+  const OrgHomeGreeting({super.key, required this.data, required this.waiting, this.name = '', this.onReview, this.trailing = const [], this.next});
+
+  /// D-1100: with nothing waiting, the line names what comes next ("next session Sun 2 Nov"); null = nothing.
+  final String? next;
+
+  /// D-1100: the role switcher ("View as") and the like, at the row's end before Review.
+  final List<Widget> trailing;
 
   final OrgHomeData data;
   final int waiting;
@@ -107,7 +114,17 @@ class OrgHomeGreeting extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final org = orgNameOf(data.organization);
-    final summary = [if (org.isNotEmpty && org != '—') org, orgHomeWaitingText(waiting)].join(' · ');
+    final summary = [if (org.isNotEmpty && org != '—') org, orgHomeWaitingText(waiting), if (waiting <= 0) ?next].join(' · ');
+    if (trailing.isNotEmpty) {
+      return KeyedSubtree(
+        key: const ValueKey('org.home.greeting'),
+        child: HomeGreetingRow(name: name, subline: summary, trailing: [
+          ...trailing,
+          if (waiting > 0 && onReview != null)
+            AppButton.primary(label: t('راجع', 'Review'), icon: Icons.checklist_rounded, size: AppButtonSize.sm, onPressed: onReview),
+        ]),
+      );
+    }
     return Row(key: const ValueKey('org.home.greeting'), crossAxisAlignment: CrossAxisAlignment.center, children: [
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
@@ -187,7 +204,7 @@ List<Widget> orgHomeSoftStats(
       tone: AppBlockTone.peach,
       footer: at == null
           ? t('لا جلسات مجدولة', 'No sessions scheduled')
-          : [AppTime.time(at), ?(s.nextSessionTitle ?? council)].join(' · '),
+          : [AppTime.time(at), ?(council ?? s.nextSessionTitle)].join(' · '),
       onTap: at == null ? null : onSession,
     ),
   ];

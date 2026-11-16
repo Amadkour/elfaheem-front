@@ -34,6 +34,8 @@ import 'package:flutter_education_app/features/admin/admin_home_data.dart';
 import 'package:flutter_education_app/features/org/org_dashboard_home.dart';
 import 'package:flutter_education_app/features/org/org_dashboard_model.dart';
 import 'package:flutter_education_app/features/org/org_member_dashboard.dart';
+import 'package:flutter_education_app/features/org/home/org_home_persona.dart' show OrgPersona, OrgPersonaSwitcher;
+import 'package:flutter_education_app/features/home/student/home_continue.dart' show kStudentHomeInset;
 import 'package:flutter_education_app/features/parent/parent_overview.dart';
 import 'package:flutter_education_app/features/parent/parent_overview_page.dart';
 import 'package:flutter_education_app/features/rag/rag_admin_console.dart';
@@ -293,6 +295,37 @@ Map<String, dynamic> _orgPayload() => {
       ],
     };
 
+Widget _orgHeadHome({bool empty = false}) {
+  final payload = {
+    ..._orgPayload(),
+    if (empty) 'attention': const [],
+    if (empty) 'departments': const [],
+    if (empty) 'programs': const [],
+    'home_stats': empty
+        ? {'votes_waiting': 0, 'requests_open': 0, 'requests_overdue': 0, 'members': 3, 'votes_weeks': [0, 0, 0, 0, 0, 0, 0, 0], 'requests_weeks': [0, 0, 0, 0, 0, 0, 0, 0], 'members_weeks': [0, 0, 0, 0, 0, 1, 2, 3]}
+        : {
+            'votes_waiting': 2,
+            'requests_open': 7,
+            'requests_overdue': 1,
+            'members': 46,
+            'votes_weeks': [1, 0, 2, 3, 1, 2, 4, 2],
+            'requests_weeks': [3, 5, 4, 6, 8, 5, 7, 7],
+            'members_weeks': [30, 32, 35, 36, 40, 42, 44, 46],
+            'next_session': {'id': 3, 'title': 'Department council', 'at': _iso(_now.add(const Duration(days: 3))), 'council_ar': 'مجلس القسم', 'council_en': 'Department council'},
+          },
+  };
+  final d = OrgHomeData.fromJson(payload)!;
+  return OrgHomeBody(
+    data: d,
+    persona: OrgPersona.head,
+    greetingName: tr('أحمد', 'Ahmed'),
+    switcher: OrgPersonaSwitcher(held: const [OrgPersona.head, OrgPersona.teacher], current: OrgPersona.head, onChanged: (_) {}, compact: true),
+    alerts: [for (final a in d.alerts) ?OrgAttentionSpec.of(a, () {})],
+    onOpenUnit: (_) {},
+    onSeeAllUnits: () {},
+  );
+}
+
 Widget _orgHome() {
   final d = OrgHomeData.fromJson(_orgPayload())!;
   return OrgHomeBody(
@@ -460,18 +493,17 @@ List<MeLiveRoom> _liveMeeting() => [
       ),
     ];
 
-/// The student home's header as the screen draws it (D-631): the forest hero, its ring and its one call to action;
-/// the search beside it on a desktop.
-Widget _studentHeader(String name, String? summary, MeHome home) => HomeHeader(
-      name: name,
-      subtitle: summary,
-      greetingHero: true,
-      ring: studentAverageProgress(home),
-      cta: AppGreetingHeroButton(label: 'home_full_timetable'.tr, icon: Icons.calendar_month_rounded, onTap: () {}),
-      wideTrailing: AppSearchField(hint: 'search'.tr, onChanged: (_) {}),
-      wideSide: StudentHomeStats(home: home, onTab: (_) {}),
-      actions: const [QuickMeetingIcon()],
-      shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 0)],
+/// The student home's greeting row as the screen draws it (D-1100): the day line, the switcher's place and Continue.
+Widget _studentHeader(String name, String? summary, MeHome home) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset),
+      child: StudentGreeting(
+        name: name,
+        subline: summary,
+        actions: const [QuickMeetingIcon()],
+        shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 0)],
+        helpPageId: null,
+        primary: AppButton.primary(label: 'continue'.tr, icon: Icons.play_arrow_rounded, size: AppButtonSize.sm, onPressed: () {}),
+      ),
     );
 
 // teacher
@@ -510,19 +542,17 @@ TeacherHomeExtra _teacherExtra() => TeacherHomeExtra.fromJson({
 /// [free]: a day without sessions (the next ones are tomorrow) and no live room — "Today's sessions" folds itself.
 Widget _teacherHome({bool free = false}) => SingleChildScrollView(
       child: _width(kHomeWideMax, Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // the live hero: actions, the day's ring, Go live (the context switcher needs the app's providers)
-        TeacherHomeHero(
+        TeacherHomeBody(
+        greeting: TeacherGreeting(
           name: tr('أحمد حمدي', 'Ahmed Hamdy'),
           subtitle: free
               ? homeDaySummary(sessions: 0, live: 0, todo: 28)
-              : homeDaySummary(sessions: 3, live: 2, todo: 28, nextAt: AppTime.time(_now.add(const Duration(hours: 3)))),
+              : homeDaySummary(sessions: 3, live: 2, todo: 3, nextAt: AppTime.time(_now.add(const Duration(hours: 3)))),
           actions: const [QuickMeetingIcon()],
           shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 3)],
-          ring: free ? null : 1 / 3,
-          goLive: GoLiveButton(onTap: () {}, onHero: true),
+          goLive: GoLiveButton(onTap: () {}),
           helpPageId: null,
         ),
-        TeacherHomeBody(
         todo: free
             ? null
             : TodoList(items: [
@@ -824,6 +854,39 @@ void main() {
 
   testWidgets('org admin home', (tester) async {
     await _renderAll(tester, 'org_home', (_) => _orgHome());
+  });
+
+  testWidgets('org head home', (tester) async {
+    await _renderAll(tester, 'org_head_home', (_) => _orgHeadHome());
+  });
+
+  testWidgets('org head home empty', (tester) async {
+    await _renderAll(tester, 'org_head_home_empty', (_) => _orgHeadHome(empty: true));
+  });
+
+  testWidgets('teacher home empty', (tester) async {
+    await _renderAll(
+        tester,
+        'teacher_home_empty',
+        (_) => SingleChildScrollView(
+              child: _width(
+                kHomeWideMax,
+                TeacherHomeBody(
+                  greeting: TeacherGreeting(name: tr('أحمد حمدي', 'Ahmed Hamdy'), subtitle: homeDaySummary(sessions: 0, live: 0, todo: 0), goLive: GoLiveButton(onTap: () {}), helpPageId: null),
+                  now: _now,
+                  loading: false,
+                  stats: const TeacherStats(totalStudents: 0, totalCourses: 0, overallRating: 0),
+                  schedule: const [],
+                  pending: const {},
+                  courses: const [],
+                  showFeeds: false,
+                  onTab: (_) {},
+                  onOpenCourse: (_) {},
+                  onOpenCourseId: (_) {},
+                  onNewCourse: () {},
+                ),
+              ),
+            ));
   });
 
   testWidgets('org member home', (tester) async {
