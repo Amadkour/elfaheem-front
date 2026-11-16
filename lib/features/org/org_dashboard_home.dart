@@ -36,6 +36,11 @@
 // and the header's switcher; the member figures → Insights), the shortcuts (the navigation and the command palette
 // carry them), the 30-day trends (→ Insights), the governance card (its items arrive as tasks) and the recent
 // activity (Settings → Activity log).
+// D-1081 (the soft-wash home, owner pick A2): when the payload carries `home_stats`, every persona's page opens with
+// a greeting LINE (OrgHomeGreeting, no forest hero, no members card) and the four soft-wash counts with their 8-week
+// bars (orgHomeSoftStats); "Needs me" is the screen's ONE highlighted card (the primary → gold edge). Councils left
+// the head's and dean's main blocks: their links (votes · councils · requests) sit under More, every page still a
+// tap away. An older server (no `home_stats`) keeps the D-631 hero and figures.
 // Colours: context.colors only. Spacing / radii / motion: app_tokens.dart. Texts: t(ar, en).
 library;
 
@@ -152,7 +157,12 @@ class OrgHomeBody extends StatelessWidget {
     this.persona,
     this.switcher,
     this.blocks = const {},
+    this.onOpenVotes,
+    this.onOpenSessions,
   });
+
+  /// D-1081: the soft-wash counts' taps (my votes · the councils' sessions); null = the card is not tappable.
+  final VoidCallback? onOpenVotes, onOpenSessions;
 
   /// UX v3 phase 4: the persona whose home this is (orgPersonaSections orders the blocks); null = the D-103 home
   /// for everyone (the hero, shortcuts, sections by `layout`, the figures).
@@ -219,6 +229,7 @@ class OrgHomeBody extends StatelessWidget {
               onOpen: onOpenTask,
               onRetry: onRetryTask,
               onSeeAll: data.tasks == null ? null : onSeeAllTasks,
+              highlight: data.homeStats != null,
             ),
           OrgHomeSection.departments =>
             OrgDepartmentsSection(units: data.units, isAdmin: data.isAdmin, onOpen: onOpenUnit, onSeeAll: onSeeAllUnits),
@@ -239,6 +250,15 @@ class OrgHomeBody extends StatelessWidget {
         OrgHomeHero(data: data, waiting: waiting, name: greetingName, centered: centered, onReview: onWaiting);
     Widget stats(bool wide) => AppKpiGrid(
         children: orgHomeStats(data, waiting: waiting, wide: wide, onWaiting: onWaiting, onUnits: onSeeAllUnits));
+    // D-1081: the soft-wash top — a greeting line, then the four counts (every persona)
+    final soft = data.homeStats;
+    Widget softTop() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          OrgHomeGreeting(data: data, waiting: waiting, name: greetingName, onReview: onWaiting),
+          const SizedBox(height: AppSpace.md),
+          AppKpiGrid(
+              children: orgHomeSoftStats(soft!,
+                  onVotes: onOpenVotes, onRequests: onWaiting, onMembers: onSeeAllUnits, onSession: onOpenSessions)),
+        ]);
     const inset = EdgeInsets.symmetric(horizontal: AppSpace.md);
     final p = persona;
     if (p != null) {
@@ -268,7 +288,9 @@ class OrgHomeBody extends StatelessWidget {
             index: 0,
             child: Padding(
               padding: inset,
-              child: wide && figures
+              child: soft != null
+                  ? softTop()
+                  : wide && figures
                   ? IntrinsicHeight(
                       child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                         Expanded(flex: 5, child: hero(true)),
@@ -279,7 +301,7 @@ class OrgHomeBody extends StatelessWidget {
                   : hero(false),
             ),
           ),
-          if (figures && wide) ...[
+          if (soft == null && figures && wide) ...[
             const SizedBox(height: AppSpace.lg),
             HomeEntrance(index: 1, child: Padding(padding: inset, child: stats(wide))),
           ],
@@ -290,7 +312,7 @@ class OrgHomeBody extends StatelessWidget {
             ...lead,
             ...stack(list, 2),
             // a phone: what needs me comes first, the figures close the page
-            if (figures && !wide) ...[
+            if (soft == null && figures && !wide) ...[
               const SizedBox(height: AppSpace.lg),
               HomeEntrance(index: 2 + list.length, child: Padding(padding: inset, child: stats(false))),
             ],
@@ -322,7 +344,7 @@ class OrgHomeBody extends StatelessWidget {
         // phone: the hero, the shortcut tiles, what needs me and the departments, then the figures
         return _pinnedHeader(header, _pullable(onRefresh, ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
           const SizedBox(height: AppSpace.xs),
-          HomeEntrance(index: 0, child: Padding(padding: inset, child: hero(false))),
+          HomeEntrance(index: 0, child: Padding(padding: inset, child: soft != null ? softTop() : hero(false))),
           if (shortcuts.isNotEmpty) ...[
             const SizedBox(height: AppSpace.md),
             HomeEntrance(index: 1, child: Padding(padding: inset, child: OrgHomeShortcuts(items: shortcuts))),
@@ -330,8 +352,10 @@ class OrgHomeBody extends StatelessWidget {
           ...top,
           const SizedBox(height: AppSpace.sm),
           ...spaced(order, 2),
-          const SizedBox(height: AppSpace.lg),
-          HomeEntrance(index: 2 + order.length, child: Padding(padding: inset, child: stats(false))),
+          if (soft == null) ...[
+            const SizedBox(height: AppSpace.lg),
+            HomeEntrance(index: 2 + order.length, child: Padding(padding: inset, child: stats(false))),
+          ],
         ])));
       }
       final weights = {
@@ -342,7 +366,10 @@ class OrgHomeBody extends StatelessWidget {
       final (start, end) = orgHomeColumns(order, weights);
       return _pinnedHeader(header, _pullable(onRefresh, ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
         const SizedBox(height: AppSpace.sm),
-        // the hero beside the members card (equal height), then the stat row
+        // the hero beside the members card (equal height), then the stat row; D-1081: the greeting line and the counts
+        if (soft != null)
+          HomeEntrance(index: 0, child: Padding(padding: inset, child: softTop()))
+        else ...[
         HomeEntrance(
           index: 0,
           child: Padding(
@@ -358,6 +385,7 @@ class OrgHomeBody extends StatelessWidget {
         ),
         const SizedBox(height: AppSpace.lg),
         HomeEntrance(index: 1, child: Padding(padding: inset, child: stats(true))),
+        ],
         const SizedBox(height: AppSpace.sm),
         ...top,
         Padding(
@@ -781,6 +809,8 @@ class _OrgHomePageState extends State<OrgHomePage> {
           greetingName: _firstName(context),
           shortcuts: _shortcuts(context, tabs),
           onOpenMembers: tabs.has('people', 'members') ? () => orgJump(context, 'people', sub: 'members') : null,
+          onOpenVotes: tabs.has('services', 'votes') ? () => orgJump(context, 'services', sub: 'votes') : null,
+          onOpenSessions: tabs.has('services', 'councils') ? () => orgJump(context, 'services', sub: 'councils') : null,
         );
       },
     );

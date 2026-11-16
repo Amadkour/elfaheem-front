@@ -179,8 +179,12 @@ void main() {
         expect(x.last, OrgHomeBlock.more, reason: '$p');
       }
       expect(orgPersonaSections(OrgPersona.admin), [OrgHomeBlock.needsMe, OrgHomeBlock.setup, OrgHomeBlock.insights, OrgHomeBlock.more]);
-      expect(orgPersonaSections(OrgPersona.dean), [OrgHomeBlock.needsMe, OrgHomeBlock.faculty, OrgHomeBlock.councils, OrgHomeBlock.more]);
-      expect(orgPersonaSections(OrgPersona.head), [OrgHomeBlock.needsMe, OrgHomeBlock.team, OrgHomeBlock.councils, OrgHomeBlock.more]);
+      // D-1081: the councils' links moved into More (the home's counts carry votes and the next session)
+      expect(orgPersonaSections(OrgPersona.dean), [OrgHomeBlock.needsMe, OrgHomeBlock.faculty, OrgHomeBlock.more]);
+      expect(orgPersonaSections(OrgPersona.head), [OrgHomeBlock.needsMe, OrgHomeBlock.team, OrgHomeBlock.more]);
+      for (final p in [OrgPersona.dean, OrgPersona.head]) {
+        expect(orgPersonaMore(p).take(4), ['needs_action', 'votes', 'councils', 'requests'], reason: '$p');
+      }
       expect(orgPersonaSections(OrgPersona.staff), [OrgHomeBlock.needsMe, OrgHomeBlock.queue, OrgHomeBlock.more]);
       expect(orgPersonaSections(OrgPersona.teacher), [OrgHomeBlock.needsMe, OrgHomeBlock.myCourses, OrgHomeBlock.more]);
       expect(orgPersonaSections(OrgPersona.student).first, OrgHomeBlock.journey);

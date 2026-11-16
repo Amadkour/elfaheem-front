@@ -64,7 +64,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
 import 'app_buttons.dart';
 import 'app_contrast.dart' show ensureContrast;
-import 'app_gradients.dart' show AppGradientIcon;
+import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon;
 import 'app_inputs.dart';
 import 'app_motion_kit.dart';
 import 'app_search_field.dart';
@@ -281,10 +281,27 @@ class AppConfirmDialog extends StatelessWidget {
   }
 }
 
+/// D-1081: the primary → gold edge of a screen's ONE main card around any [child] (AppCard(highlight: true) uses
+/// it; a block such as the home's attention block wraps itself in it). [radius] is the child's outer radius.
+class AppHighlightEdge extends StatelessWidget {
+  const AppHighlightEdge({super.key, required this.child, this.radius = AppRadius.card});
+
+  final Widget child;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+            gradient: AppBrandLayer.highlightEdge(context), borderRadius: BorderRadius.circular(radius + AppBorder.strong)),
+        child: Padding(padding: const EdgeInsets.all(AppBorder.strong), child: child),
+      );
+}
+
 // ── Cards (Warm Editorial, system.md §4: paper on a warm hairline, radius 16, no resting shadow) ───────────────
 
 /// The paper card: the card surface on a warm hairline (depth is tone first, D-612 — a resting card casts no
-/// shadow), corner radius `card`. A tappable card presses in (D-582) and ripples.
+/// shadow), corner radius `card`. A tappable card presses in (D-582) and ripples. [highlight] (D-1081) gives the ONE
+/// main card of a screen (Needs attention, the lesson in progress) a thin primary → gold edge — never two per screen.
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
@@ -293,6 +310,7 @@ class AppCard extends StatelessWidget {
     this.margin,
     this.onTap,
     this.onLongPress,
+    this.highlight = false,
   });
 
   final Widget child;
@@ -300,8 +318,13 @@ class AppCard extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
   final VoidCallback? onTap;
 
+  /// D-1081: the screen's ONE main card: a primary → gold edge instead of the hairline.
+  final bool highlight;
+
   /// A long press (e.g. starts a selection); null: none.
   final VoidCallback? onLongPress;
+
+  Widget _highlightEdge(BuildContext context, Widget card) => highlight ? AppHighlightEdge(child: card) : card;
 
   @override
   Widget build(BuildContext context) {
@@ -316,11 +339,16 @@ class AppCard extends StatelessWidget {
         // D-948: a tappable card rises one level under the mouse
         child: AppLift(
           hover: tappable,
-          child: Material(
-            color: c.cardBg,
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: AppShadow.cardEdge(context)),
-            clipBehavior: Clip.antiAlias,
-            child: tappable ? InkWell(onTap: onTap, onLongPress: onLongPress, child: body) : body,
+          child: _highlightEdge(
+            context,
+            Material(
+              color: c.cardBg,
+              shape: RoundedRectangleBorder(
+                  borderRadius: AppRadius.cardAll,
+                  side: highlight ? BorderSide.none : AppShadow.cardEdge(context)),
+              clipBehavior: Clip.antiAlias,
+              child: tappable ? InkWell(onTap: onTap, onLongPress: onLongPress, child: body) : body,
+            ),
           ),
         ),
       ),

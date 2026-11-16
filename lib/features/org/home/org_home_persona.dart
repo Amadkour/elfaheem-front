@@ -127,12 +127,13 @@ bool orgIsInstitutionItem(Map<String, dynamic>? o) =>
 /// The home's blocks. [team] and [queue] are both the department cards (a head's team, a staff member's queue).
 enum OrgHomeBlock { needsMe, setup, insights, faculty, councils, team, queue, myCourses, journey, myRequests, more }
 
-/// Top to bottom: what needs me now, the persona's main work, then More. The student's order is the member
+/// Top to bottom: what needs me now, the persona's main work, then More. D-1081: the councils' links (votes ·
+/// councils · requests) moved from their own block into More (the home's counts carry the votes and the next session). The student's order is the member
 /// dashboard's (org_member_dashboard.dart: My journey first).
 List<OrgHomeBlock> orgPersonaSections(OrgPersona p) => switch (p) {
       OrgPersona.admin => const [OrgHomeBlock.needsMe, OrgHomeBlock.setup, OrgHomeBlock.insights, OrgHomeBlock.more],
-      OrgPersona.dean => const [OrgHomeBlock.needsMe, OrgHomeBlock.faculty, OrgHomeBlock.councils, OrgHomeBlock.more],
-      OrgPersona.head => const [OrgHomeBlock.needsMe, OrgHomeBlock.team, OrgHomeBlock.councils, OrgHomeBlock.more],
+      OrgPersona.dean => const [OrgHomeBlock.needsMe, OrgHomeBlock.faculty, OrgHomeBlock.more],
+      OrgPersona.head => const [OrgHomeBlock.needsMe, OrgHomeBlock.team, OrgHomeBlock.more],
       OrgPersona.staff => const [OrgHomeBlock.needsMe, OrgHomeBlock.queue, OrgHomeBlock.more],
       OrgPersona.teacher => const [OrgHomeBlock.needsMe, OrgHomeBlock.myCourses, OrgHomeBlock.more],
       OrgPersona.student => const [OrgHomeBlock.journey, OrgHomeBlock.myCourses, OrgHomeBlock.myRequests, OrgHomeBlock.more],
@@ -143,8 +144,8 @@ List<OrgHomeBlock> orgPersonaSections(OrgPersona p) => switch (p) {
 /// complaints · councils · votes · courses · timetable · settings.
 List<String> orgPersonaMore(OrgPersona p) => switch (p) {
       OrgPersona.admin => const ['needs_action', 'departments', 'members', 'health', 'wizard', 'faculty', 'requests', 'settings'],
-      OrgPersona.dean => const ['needs_action', 'attention_flow', 'insights', 'health', 'departments', 'members', 'requests', 'settings'],
-      OrgPersona.head => const ['needs_action', 'attention_flow', 'insights', 'faculty', 'members', 'requests', 'timetable', 'settings'],
+      OrgPersona.dean => const ['needs_action', 'votes', 'councils', 'requests', 'attention_flow', 'insights', 'health', 'departments', 'members', 'settings'],
+      OrgPersona.head => const ['needs_action', 'votes', 'councils', 'requests', 'attention_flow', 'insights', 'faculty', 'members', 'timetable', 'settings'],
       OrgPersona.staff => const ['needs_action', 'requests', 'forms', 'complaints', 'members', 'insights', 'settings'],
       OrgPersona.teacher => const ['needs_action', 'councils', 'votes', 'timetable', 'requests', 'insights', 'settings'],
       OrgPersona.student => const ['requests', 'complaints', 'settings'],

@@ -9,6 +9,10 @@
 //   orgHomeStats         the stat row (AppStatCard): what needs me, the departments, then the courses / sub-orgs on a
 //                        desktop (the members card carries the people there) or the students / teachers on a phone
 //   OrgHomeShortcut      a shortcut tile spec (AppShortcutTile, phones): a sub-page one tap away
+//   OrgHomeGreeting      D-1081: the soft-wash home's greeting LINE (no hero): the greeting, the organization and what
+//                        waits in one line, "Review" while something waits
+//   orgHomeSoftStats     D-1081: the four soft-wash counts from `home_stats` (votes waiting · open requests, red when
+//                        overdue · members of my departments · my next council session), each with its 8-week bars
 // Colours from context.colors only; spacing / type from app_tokens.dart; texts t(ar, en).
 // Layout test: test/ui/org_home_premium_layout_test.dart.
 library;
@@ -87,6 +91,106 @@ class OrgHomeHero extends StatelessWidget {
           : null,
     );
   }
+}
+
+/// D-1081: the home's greeting as a line, not a hero — the greeting in the page-title face, the organization and what
+/// waits under it, a quiet "Review" while something waits.
+class OrgHomeGreeting extends StatelessWidget {
+  const OrgHomeGreeting({super.key, required this.data, required this.waiting, this.name = '', this.onReview});
+
+  final OrgHomeData data;
+  final int waiting;
+  final String name;
+  final VoidCallback? onReview;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final org = orgNameOf(data.organization);
+    final summary = [if (org.isNotEmpty && org != '—') org, orgHomeWaitingText(waiting)].join(' · ');
+    return Row(key: const ValueKey('org.home.greeting'), crossAxisAlignment: CrossAxisAlignment.center, children: [
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text(HomeHeader.greetingLine(name), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
+          const SizedBox(height: AppSpace.xxs),
+          Text(summary, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
+        ]),
+      ),
+      if (waiting > 0 && onReview != null) ...[
+        const SizedBox(width: AppSpace.sm),
+        AppButton.secondary(
+          label: t('راجع', 'Review'),
+          icon: Icons.checklist_rounded,
+          size: AppButtonSize.sm,
+          onPressed: onReview,
+        ),
+      ],
+    ]);
+  }
+}
+
+/// D-1081: the four soft-wash counts (AppStatCard with 8-week bars) from `home_stats`. A count with nothing in it
+/// reads muted; open requests turn red while one is overdue.
+List<Widget> orgHomeSoftStats(
+  OrgHomeStats s, {
+  VoidCallback? onVotes,
+  VoidCallback? onRequests,
+  VoidCallback? onMembers,
+  VoidCallback? onSession,
+}) {
+  final weeks = t('آخر 8 أسابيع', 'Last 8 weeks');
+  final at = s.nextSessionAt;
+  final council = s.nextSessionCouncil;
+  return [
+    AppStatCard(
+      key: const ValueKey('org.home.stat.votes'),
+      icon: Icons.how_to_vote_rounded,
+      value: _figure(s.votesWaiting),
+      label: t('تصويتات بانتظارك', 'Votes waiting'),
+      tone: AppBlockTone.emerald,
+      footer: s.votesWaiting > 0 ? t('صوتك مطلوب', 'Your vote is needed') : t('لا تصويتات الآن', 'No votes right now'),
+      bars: s.votesWeeks,
+      barsCaption: weeks,
+      onTap: onVotes,
+    ),
+    AppStatCard(
+      key: const ValueKey('org.home.stat.requests'),
+      icon: Icons.assignment_rounded,
+      value: _figure(s.requestsOpen),
+      label: t('طلبات مفتوحة', 'Open requests'),
+      tone: AppBlockTone.gold,
+      warn: s.requestsOverdue > 0,
+      footer: s.requestsOverdue > 0
+          ? countText(s.requestsOverdue,
+              ar1: 'طلب متأخر', ar2: 'طلبان متأخران', arFew: '{n} طلبات متأخرة', arMany: '{n} طلبًا متأخرًا', en1: '1 overdue', en: '{n} overdue')
+          : (s.requestsOpen > 0 ? t('كلها في موعدها', 'All on time') : t('لا طلبات', 'No requests')),
+      bars: s.requestsWeeks,
+      barsCaption: weeks,
+      onTap: onRequests,
+    ),
+    AppStatCard(
+      key: const ValueKey('org.home.stat.members'),
+      icon: Icons.groups_rounded,
+      value: _figure(s.members),
+      label: t('أعضاء أقسامك', 'Members of your departments'),
+      tone: AppBlockTone.sky,
+      footer: s.members > 0 ? t('في الأقسام التي تتابعها', 'In the departments you see') : t('لا أعضاء بعد', 'No members yet'),
+      bars: s.membersWeeks,
+      barsCaption: weeks,
+      onTap: onMembers,
+    ),
+    AppStatCard(
+      key: const ValueKey('org.home.stat.session'),
+      icon: Icons.event_rounded,
+      value: at == null ? '—' : AppTime.date(at, pattern: 'EEE d MMM'),
+      label: t('الجلسة القادمة', 'Next session'),
+      tone: AppBlockTone.peach,
+      footer: at == null
+          ? t('لا جلسات مجدولة', 'No sessions scheduled')
+          : [AppTime.time(at), ?(s.nextSessionTitle ?? council)].join(' · '),
+      onTap: at == null ? null : onSession,
+    ),
+  ];
 }
 
 /// The desktop side card: the members as three big figures (the Cuba overview), the people waiting to join and the

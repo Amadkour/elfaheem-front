@@ -9,8 +9,9 @@
 //                      the forest hero of a home: time chip, avatar in a progress ring, the greeting in the display
 //                      face, one summary line, ONE call to action (AppGreetingHeroButton), soft drawn shapes
 //   AppGreetingHeroButton(label:, onTap:, icon:)   the hero's one paper pill
-//   AppStatCard(icon:, value:, label:, tone:, footer:, delta:)   icon chip + big tone figure + label; an optional
-//                      tinted footer band ("+12% this week") in the tone's block colour
+//   AppStatCard(icon:, value:, label:, tone:, footer:, delta:, bars:, barsCaption:, warn:)   the "soft wash" count
+//                      card (D-1081): the tone's tint fading into the card, the icon chip and label on top, the big
+//                      figure with its hint line under it, an optional mini bar chart of up to 8 values at the end
 //   AppKpiSpark(label:, value:, values:, icon:, delta:, tone:)   a figure beside a small sparkline
 //   AppRingStat(label:, value:, progress:, caption:, delta:, tone:)   text at the start, a progress ring at the end
 //   AppShortcutTile(icon:, label:, onTap:, tone:, badge:)   a square-ish tile, label on top, a large soft icon in a
@@ -87,17 +88,21 @@ class _ToneChip extends StatelessWidget {
 /// The paper surface of every card here: the white card, one soft shadow, a near-invisible edge (D-632), radius
 /// `card`; a press depth when tappable.
 class _Paper extends StatelessWidget {
-  const _Paper({required this.child, this.onTap, this.semanticLabel, this.padding = AppSpace.card});
+  const _Paper({required this.child, this.onTap, this.semanticLabel, this.padding = AppSpace.card, this.gradient});
 
   final Widget child;
   final VoidCallback? onTap;
   final String? semanticLabel;
   final EdgeInsetsGeometry padding;
 
+  /// D-1081: a wash over the paper (AppBrandLayer.statWash); null = the plain card.
+  final Gradient? gradient;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final body = Padding(padding: padding, child: child);
+    final padded = Padding(padding: padding, child: child);
+    final body = gradient == null ? padded : Ink(decoration: BoxDecoration(gradient: gradient), child: padded);
     final card = AppLift(
       hover: onTap != null,
       child: Material(
@@ -116,18 +121,17 @@ class _Paper extends StatelessWidget {
 
 /// "▲ +12%" in the success / danger ink (or the reverse when lower is better).
 class _Delta extends StatelessWidget {
-  const _Delta(this.delta, {this.goodWhenUp = true, this.onSurface});
+  const _Delta(this.delta, {this.goodWhenUp = true});
 
   final double delta;
   final bool goodWhenUp;
-  final Color? onSurface;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final up = delta >= 0;
     final good = up == goodWhenUp;
-    final ink = c.blockAccentInk(delta == 0 ? c.textMedium : (good ? c.success : c.danger), onSurface ?? c.cardBg);
+    final ink = c.blockAccentInk(delta == 0 ? c.textMedium : (good ? c.success : c.danger), c.cardBg);
     return Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(up ? Icons.trending_up_rounded : Icons.trending_down_rounded, size: AppIconSize.sm, color: ink),
       const SizedBox(width: AppSpace.xxs),
@@ -465,8 +469,11 @@ class _RingPainter extends CustomPainter {
 //  Stat card (figure + label + footer band)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// A stat: the figure large in the tone's strong ink, its label under it, the icon chip at the end, and an optional
-/// footer band in the tone's block colour carrying the change ("+12% this week").
+/// A count read at a glance (D-1081, the "soft wash" card): the tone's tint fades into the card from its top start;
+/// the icon chip and the label on top; the figure (tabular) with its hint line ([delta] then [footer]) under it; an
+/// optional mini bar chart of the last [bars] (up to 8, the latest full, a [barsCaption] under it) at the end.
+/// [warn] turns the figure to the danger ink (something is overdue); a "0" reads muted. Its semantics read as one
+/// line: label, figure, change, hint, the chart's caption.
 class AppStatCard extends StatelessWidget {
   const AppStatCard({
     super.key,
@@ -478,6 +485,9 @@ class AppStatCard extends StatelessWidget {
     this.delta,
     this.deltaGoodWhenUp = true,
     this.onTap,
+    this.bars,
+    this.barsCaption,
+    this.warn = false,
   });
 
   final IconData icon;
@@ -485,61 +495,120 @@ class AppStatCard extends StatelessWidget {
   final String label;
   final AppBlockTone tone;
 
-  /// The band's text ("this week", "of 40 seats"); with [delta] the change leads it.
+  /// The hint under the figure ("this week", "1 overdue"); with [delta] the change leads it.
   final String? footer;
   final double? delta;
   final bool deltaGoodWhenUp;
   final VoidCallback? onTap;
 
+  /// The recent values for the mini bar chart (oldest first, at most the last 8 are drawn); null / fewer than 2 = none.
+  final List<num>? bars;
+
+  /// What the bars cover ("Last 8 weeks"), drawn under them and read with the card.
+  final String? barsCaption;
+
+  /// Something here is late: the figure in the danger ink.
+  final bool warn;
+
+  static const int maxBars = 8;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final strong = appToneStrong(context, tone);
-    final band = AppBlockColors.of(context, tone == AppBlockTone.paper ? AppBlockTone.emerald : tone);
-    final hasBand = footer != null || delta != null;
+    final surface = AppBlockColors.of(context, tone == AppBlockTone.paper ? AppBlockTone.emerald : tone).surface;
+    final zero = value.trim() == '0';
+    final ink = warn ? c.danger : (zero ? c.textLight : c.textDark);
+    final series = bars == null || bars!.length < 2 ? null : bars!.sublist(bars!.length > maxBars ? bars!.length - maxBars : 0);
     final read = [
       '$label: $value',
       if (delta != null) appDeltaText(delta!),
       if (footer != null) footer!,
+      if (series != null && barsCaption != null) '$barsCaption: ${series.join(', ')}',
     ].join(', ');
     return _Paper(
       onTap: onTap,
       semanticLabel: read,
-      padding: EdgeInsets.zero,
+      gradient: AppBrandLayer.statWash(context, surface, strong),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Padding(
-          padding: AppSpace.card,
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                AppCountUp(value, memoryKey: 'stat:$label', style: _tabular(AppType.figureLarge(context).copyWith(color: strong))),
+        Row(children: [
+          _ToneChip(icon: icon, tone: tone, size: AppTouch.min - AppSpace.md),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textMedium)),
+          ),
+        ]),
+        const SizedBox(height: AppSpace.sm),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              AppCountUp(value, memoryKey: 'stat:$label', style: _tabular(AppType.figureLarge(context).copyWith(color: ink))),
+              if (delta != null || footer != null) ...[
                 const SizedBox(height: AppSpace.xxs),
-                Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textMedium)),
-              ]),
-            ),
-            const SizedBox(width: AppSpace.sm),
-            _ToneChip(icon: icon, tone: tone),
-          ]),
-        ),
-        if (hasBand)
-          Container(
-            color: band.surface,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
-            child: Row(children: [
-              if (delta != null) ...[
-                _Delta(delta!, goodWhenUp: deltaGoodWhenUp, onSurface: band.surface),
-                const SizedBox(width: AppSpace.xs),
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  if (delta != null) _Delta(delta!, goodWhenUp: deltaGoodWhenUp),
+                  if (footer != null)
+                    Text(footer!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight, height: 1.3)),
+                ]),
               ],
-              if (footer != null)
-                Expanded(
-                  // D-743: two lines before an ellipsis ("3 of 5 in the last 7 days" in a half-width phone tile)
-                  child: Text(footer!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: band.muted, height: 1.3)),
-                )
-              else
-                const Spacer(),
             ]),
           ),
+          if (series != null) ...[
+            const SizedBox(width: AppSpace.sm),
+            AppMiniBars(values: series, color: strong, caption: barsCaption),
+          ],
+        ]),
       ]),
+    );
+  }
+}
+
+/// A small bar chart of recent values (oldest first): the latest bar full, the others faint; a caption under it.
+/// Decorative inside a card that reads its values aloud (AppStatCard), so it excludes its own semantics.
+class AppMiniBars extends StatelessWidget {
+  const AppMiniBars({super.key, required this.values, required this.color, this.caption});
+
+  final List<num> values;
+  final Color color;
+  final String? caption;
+
+  static const double width = AppTouch.min * 2 - AppSpace.md;
+  static const double height = AppTouch.min - AppSpace.sm;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final peak = values.fold<num>(0, (m, v) => v > m ? v : m);
+    return ExcludeSemantics(
+      child: SizedBox(
+        width: width,
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          SizedBox(
+            height: height,
+            // time runs with the reading direction: the latest bar sits at the end (left in Arabic)
+            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              for (var i = 0; i < values.length; i++) ...[
+                if (i > 0) const SizedBox(width: AppSpace.xxs),
+                Expanded(
+                  child: FractionallySizedBox(
+                    heightFactor: peak <= 0 ? 0.08 : (values[i] / peak).clamp(0.08, 1.0).toDouble(),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: i == values.length - 1 ? color : color.withValues(alpha: 0.32),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppSpace.xxs)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ]),
+          ),
+          if (caption != null) ...[
+            const SizedBox(height: AppSpace.xxs),
+            Text(caption!, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: AppType.overline(context).copyWith(color: c.textLight)),
+          ],
+        ]),
+      ),
     );
   }
 }
