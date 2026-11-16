@@ -63,7 +63,6 @@ import 'org_ui.dart' show orgPickAndUpload;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/profile/display/display_settings_page.dart' show DisplaySettingsPage;
-import 'package:flutter_education_app/core/app_identity.dart' show AppIdentity;
 import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/features/get_app/get_app_banner.dart' show GetAppTile;
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
