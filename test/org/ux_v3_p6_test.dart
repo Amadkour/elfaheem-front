@@ -150,8 +150,12 @@ void main() {
     test('the entry row opens the action inbox; the flow page stays under More', () {
       expect([for (final p in OrgPersona.values) if (orgPersonaEntryOpensActionInbox(p)) p],
           [OrgPersona.dean, OrgPersona.head, OrgPersona.staff, OrgPersona.teacher]);
-      expect(orgPersonaMore(OrgPersona.head).take(2), ['needs_action', 'attention_flow']);
-      expect(orgPersonaMore(OrgPersona.dean).take(2), ['needs_action', 'attention_flow']);
+      // D-1081 moved the councils / votes links from the home into More, ahead of the flow page
+      expect(orgPersonaMore(OrgPersona.head).first, 'needs_action');
+      expect(orgPersonaMore(OrgPersona.head), contains('attention_flow'));
+      // D-1081 moved the councils / votes links from the home into More, ahead of the flow page
+      expect(orgPersonaMore(OrgPersona.dean).first, 'needs_action');
+      expect(orgPersonaMore(OrgPersona.dean), contains('attention_flow'));
       expect(orgPersonaMore(OrgPersona.staff), isNot(contains('attention_flow')));
     });
 
