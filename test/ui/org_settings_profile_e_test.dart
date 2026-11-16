@@ -4,21 +4,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_settings.dart';
-import 'package:flutter_education_app/features/org/org_dashboard_settings.dart' show OrgProfileCard, OrgShortcut, OrgShortcutRow;
+import 'package:flutter_education_app/features/org/org_dashboard_settings.dart' show OrgProfileCard;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
 
 const _longAr = 'كلية الحاسبات والمعلومات وتكنولوجيا الاتصالات بجامعة العلمين الجديدة للدراسات العليا';
 
-List<OrgShortcut> _tiles() => [
+List<AppShortcut> _tiles() => [
       for (final (k, icon, label) in [
         ('a', Icons.workspace_premium_rounded, 'تصميمات الشهادات المعتمدة'),
         ('b', Icons.ios_share_rounded, 'Exports and shared links'),
         ('c', Icons.notifications_active_rounded, 'الإشعارات'),
         ('d', Icons.text_fields_rounded, 'Display'),
       ])
-        OrgShortcut(key: k, icon: icon, label: label, hint: label, onTap: () {}),
+        AppShortcut(key: k, icon: icon, label: label, hint: label, onTap: () {}),
     ];
 
 List<AppSettingsGroup> _groups() => [
@@ -37,7 +37,7 @@ Widget _page() => AppSettingsPage(
       header: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         OrgProfileCard(name: _longAr, role: 'org-admin', email: 'someone.with.a.long.address@example-university.edu.eg', imageUrl: '', org: _longAr, onSwitch: () {}),
         const SizedBox(height: 16),
-        OrgShortcutRow(items: _tiles()),
+        AppShortcutRow(items: _tiles()),
       ]),
       groups: _groups(),
     );
@@ -68,9 +68,9 @@ void main() {
   testWidgets('a switched-off shortcut leaves no hole', (tester) async {
     AppConfig.setDisableList(['export.studio']);
     addTearDown(() => AppConfig.setDisableList(const []));
-    await tester.pumpWidget(layoutHost(OrgShortcutRow(items: [
-      OrgShortcut(key: 'x', icon: Icons.ios_share_rounded, label: 'Exports', hint: 'Exports', featureKey: 'export.studio', onTap: () {}),
-      OrgShortcut(key: 'y', icon: Icons.text_fields_rounded, label: 'Display', hint: 'Display', onTap: () {}),
+    await tester.pumpWidget(layoutHost(AppShortcutRow(items: [
+      AppShortcut(key: 'x', icon: Icons.ios_share_rounded, label: 'Exports', hint: 'Exports', featureKey: 'export.studio', onTap: () {}),
+      AppShortcut(key: 'y', icon: Icons.text_fields_rounded, label: 'Display', hint: 'Display', onTap: () {}),
     ]), scale: 1));
     expect(find.byKey(const ValueKey('x')), findsNothing);
     expect(find.byKey(const ValueKey('y')), findsOneWidget);

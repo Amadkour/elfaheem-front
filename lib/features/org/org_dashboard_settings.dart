@@ -24,7 +24,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppSettingsGroup, AppSettingsPage, AppSettingsTile, AppSwitch, appRoleLabel, showAppNotice;
+    show AppSettingsGroup, AppSettingsPage, AppSettingsTile, AppShortcut, AppShortcutRow, AppVersionLine, AppSwitch, appRoleLabel, showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart' show ChatEntryTile;
 import 'package:flutter_education_app/design/context_switcher.dart' show showContextSwitcherSheet;
@@ -64,7 +64,6 @@ import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/profile/display/display_settings_page.dart' show DisplaySettingsPage;
 import 'package:flutter_education_app/core/app_identity.dart' show AppIdentity;
-import 'package:package_info_plus/package_info_plus.dart' show PackageInfo;
 import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/features/get_app/get_app_banner.dart' show GetAppTile;
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
@@ -133,16 +132,16 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
             onTap: () => openParentGradeVisibility(context, orgId: s.currentId)),
     ];
     // profile E (D-1081): the four most used entries as tiles under the profile card (each keeps its kill switch)
-    final shortcuts = <OrgShortcut>[
+    final shortcuts = <AppShortcut>[
       if (s.canAny('certificates') || s.isOrgAdmin)
-        OrgShortcut(
+        AppShortcut(
             key: 'settings.tile.certificates',
             icon: Icons.workspace_premium_rounded,
             label: t('الشهادات', 'Certificates'),
             hint: t('تصميمات الشهادات', 'Certificate designs'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCertificateDesigns(orgId: s.currentId)))),
       // Export Studio (D-130): scheduled exports and shared links; org admins also get the export log
-      OrgShortcut(
+      AppShortcut(
           key: 'settings.tile.exports',
           icon: Icons.ios_share_rounded,
           featureKey: 'export.studio',
@@ -151,13 +150,13 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
           onTap: () => Navigator.pushNamed(context, '/exports', arguments: s.isOrgAdmin)),
       // Institutions v2 phase 2: phone alerts for this organization's requests (all · important · off)
       if (s.currentId != null)
-        OrgShortcut(
+        AppShortcut(
             key: 'settings.tile.notifications',
             icon: Icons.notifications_active_rounded,
             label: t('الإشعارات', 'Notifications'),
             hint: t('تنبيهات الهاتف لطلبات المؤسسة', 'Phone alerts for organization requests'),
             onTap: () => orgPush(context, OrgNotifyPrefsPage.title(), OrgNotifyPrefsPage(orgId: s.currentId!, embedded: true), maxWidth: AppWidth.form.max)),
-      OrgShortcut(
+      AppShortcut(
           key: 'settings.tile.display',
           icon: Icons.text_fields_rounded,
           featureKey: 'profile.display',
@@ -185,7 +184,7 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
             onSwitch: () => showOrgSwitcher(context)),
         if (shortcuts.isNotEmpty) ...[
           const SizedBox(height: AppSpace.md),
-          OrgShortcutRow(items: shortcuts),
+          AppShortcutRow(items: shortcuts),
         ],
       ]),
       groups: [
@@ -317,7 +316,7 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
               }),
         ]),
         const SizedBox(height: AppSpace.md),
-        const _VersionLine(),
+        const AppVersionLine(),
       ]),
     );
   }
@@ -480,88 +479,6 @@ class OrgProfileCard extends StatelessWidget {
   }
 }
 
-/// A shortcut tile of profile E: an entry one tap away under the profile card (kept behind its kill switch).
-class OrgShortcut {
-  const OrgShortcut({required this.key, required this.icon, required this.label, required this.hint, required this.onTap, this.featureKey});
-  final String key;
-  final IconData icon;
-  final String label, hint;
-  final VoidCallback onTap;
-  final String? featureKey;
-}
-
-/// The shortcut tiles in one row: equal tiles, the icon on a primary tint, a two-line label; a switched-off entry
-/// leaves no hole.
-class OrgShortcutRow extends StatelessWidget {
-  const OrgShortcutRow({required this.items});
-  final List<OrgShortcut> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final shown = [for (final x in items) if (x.featureKey == null || !AppConfig.disableList.contains(x.featureKey)) x];
-    if (shown.isEmpty) return const SizedBox.shrink();
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      for (final (i, x) in shown.indexed) ...[
-        if (i > 0) const SizedBox(width: AppSpace.xs),
-        Expanded(
-          child: Semantics(
-            button: true,
-            label: x.hint,
-            excludeSemantics: true,
-            child: Material(
-              color: c.cardBg,
-              shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider)),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                key: ValueKey(x.key),
-                onTap: x.onTap,
-                child: Tooltip(
-                  message: x.hint,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: AppSpace.sm),
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Container(
-                        width: AppSettingsTile.well,
-                        height: AppSettingsTile.well,
-                        decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.chipAll),
-                        child: Icon(x.icon, size: AppIconSize.md, color: c.blockAccentInk(c.primary, c.cardBg)),
-                      ),
-                      const SizedBox(height: AppSpace.xs),
-                      Text(x.label,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: AppType.meta(context).copyWith(color: c.textDark, fontWeight: FontWeight.w500)),
-                    ]),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ]);
-  }
-}
-
-/// The app's version at the very end of the page (support reads it without another page).
-class _VersionLine extends StatelessWidget {
-  const _VersionLine();
-
-  static Future<String>? _version;
-
-  @override
-  Widget build(BuildContext context) => FutureBuilder<String>(
-        future: _version ??= PackageInfo.fromPlatform().then((i) => i.version).catchError((_) => ''),
-        builder: (context, snap) {
-          final v = snap.data ?? '';
-          if (v.isEmpty) return const SizedBox.shrink();
-          return Text('${AppIdentity.instance.name} $v',
-              textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: context.colors.textLight));
-        },
-      );
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  First organization (org admin who has none yet)
