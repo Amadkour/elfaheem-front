@@ -81,6 +81,7 @@
  "complaints.attachments",
  "complaints.filters",
  "complaints.stats",
+ "course.attendance_flag",
  "course.discount_badge",
  "course.discount_countdown",
  "course.discount_ribbon",

@@ -248,10 +248,14 @@ class TeacherSessionItem {
   /// Live sessions: record this session? (`record_enabled`, default on).
   final bool recordEnabled;
 
+  /// D-1110: this session takes attendance (`attendance_enabled`, default on).
+  final bool attendanceEnabled;
+
   const TeacherSessionItem({
     required this.id,
     this.track = 'lecture',
     this.recordEnabled = true,
+    this.attendanceEnabled = true,
     required this.courseId,
     required this.name,
     required this.durationMinutes,
@@ -301,6 +305,7 @@ class TeacherSessionItem {
       order: j['order'] as int? ?? 0,
       isLiveActive: j['is_live_active'] as bool? ?? false,
       recordEnabled: j['record_enabled'] as bool? ?? true,
+      attendanceEnabled: j['attendance_enabled'] != false,
       roomUrl: j['room_url'] as String?,
       recordingUrl: j['recording_url'] as String?,
       recordingStatus: j['recording_status'] as String?,
@@ -329,9 +334,11 @@ class TeacherSessionItem {
     int? totalMaterial,
     int? completeMaterial,
     bool? recordEnabled,
+    bool? attendanceEnabled,
   }) => TeacherSessionItem(
       track: track,
     recordEnabled: recordEnabled ?? this.recordEnabled,
+    attendanceEnabled: attendanceEnabled ?? this.attendanceEnabled,
     id: id,
     courseId: courseId,
     name: name ?? this.name,

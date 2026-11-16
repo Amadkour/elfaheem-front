@@ -72,7 +72,16 @@ class CoursePageCounts {
 
 /// The next session for the caller (a student: a lecture or their own section).
 class CoursePageNext {
-  const CoursePageNext({required this.id, required this.name, this.track = 'lecture', this.groupNo, this.at, this.minutes, this.liveNow = false});
+  const CoursePageNext({
+    required this.id,
+    required this.name,
+    this.track = 'lecture',
+    this.groupNo,
+    this.at,
+    this.minutes,
+    this.liveNow = false,
+    this.attendanceEnabled = true,
+  });
 
   factory CoursePageNext.fromJson(Map<String, dynamic> j) => CoursePageNext(
     id: _i(j['id']),
@@ -82,6 +91,7 @@ class CoursePageNext {
     at: orgParseUtc(j['scheduled_at']),
     minutes: _io(j['duration_minutes']),
     liveNow: j['live_now'] == true,
+    attendanceEnabled: j['attendance_enabled'] != false,
   );
 
   final int id;
@@ -89,6 +99,9 @@ class CoursePageNext {
   final int? groupNo, minutes;
   final DateTime? at;
   final bool liveNow;
+
+  /// D-1110: this session takes attendance (off = no Start attendance).
+  final bool attendanceEnabled;
   bool get isSection => track == 'section';
 }
 
@@ -416,6 +429,7 @@ class CoursePage {
     this.team = const CoursePageTeam(),
     this.attendance,
     this.personal,
+    this.attendanceEnabled = true,
   });
 
   factory CoursePage.fromJson(Map<String, dynamic> j) {
@@ -433,6 +447,7 @@ class CoursePage {
       team: CoursePageTeam.fromJson(_m(j['team'])),
       attendance: j['attendance'] is Map ? CoursePageAttendance.fromJson(_m(j['attendance'])) : null,
       personal: j['personal'] is Map ? CoursePagePersonal.fromJson(_m(j['personal'])) : null,
+      attendanceEnabled: j['attendance_enabled'] != false,
     );
   }
 
@@ -454,7 +469,53 @@ class CoursePage {
   final CoursePageAttendance? attendance;
   final CoursePagePersonal? personal;
 
+  /// D-1110: the course's attendance switch (an older server: on).
+  final bool attendanceEnabled;
+
   int get setupDone => setup?.where((s) => s.done).length ?? 0;
   bool get setupComplete => setup == null || setup!.every((s) => s.done);
   bool get isPersonal => personal != null;
+}
+
+/// D-1110: the course's attendance switch and what changing it would do (`GET …/attendance-flag`).
+class CourseAttendanceFlag {
+  const CourseAttendanceFlag({
+    this.enabled = true,
+    this.sessions = 0,
+    this.on = 0,
+    this.off = 0,
+    this.taken = 0,
+    this.wouldTurnOff = 0,
+    this.wouldKeepTaken = 0,
+    this.wouldTurnOn = 0,
+  });
+
+  factory CourseAttendanceFlag.fromJson(Map<String, dynamic> j) => CourseAttendanceFlag(
+    enabled: j['enabled'] != false,
+    sessions: _i(j['sessions']),
+    on: _i(j['on']),
+    off: _i(j['off']),
+    taken: _i(j['taken']),
+    wouldTurnOff: _i(j['would_turn_off']),
+    wouldKeepTaken: _i(j['would_keep_taken']),
+    wouldTurnOn: _i(j['would_turn_on']),
+  );
+
+  final bool enabled;
+  final int sessions, on, off, taken, wouldTurnOff, wouldKeepTaken, wouldTurnOn;
+}
+
+/// D-1110: what `PUT …/attendance-flag` did.
+class CourseAttendanceFlagResult {
+  const CourseAttendanceFlagResult({this.enabled = true, this.turnedOn = 0, this.turnedOff = 0, this.keptTaken = 0});
+
+  factory CourseAttendanceFlagResult.fromJson(Map<String, dynamic> j) => CourseAttendanceFlagResult(
+    enabled: j['enabled'] != false,
+    turnedOn: _i(j['turned_on']),
+    turnedOff: _i(j['turned_off']),
+    keptTaken: _i(j['kept_taken']),
+  );
+
+  final bool enabled;
+  final int turnedOn, turnedOff, keptTaken;
 }

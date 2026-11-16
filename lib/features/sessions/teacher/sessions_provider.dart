@@ -302,6 +302,12 @@ class TeacherCourseScreenProvider extends BaseProvider {
     return null;
   }
 
+  /// D-1110: a session's attendance switch changed on the server — mirror it here (no reload).
+  void setSessionAttendanceLocal(int sessionId, bool enabled) {
+    _sessions = [for (final s in _sessions) s.id == sessionId ? s.copyWith(attendanceEnabled: enabled) : s];
+    notifyListeners();
+  }
+
   Future<bool> deleteSession(int sessionId) async {
     await run(() => _api.delete('/api/v1/sessions/$sessionId'));
     if (state == ProviderState.success) {
