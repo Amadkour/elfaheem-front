@@ -26,11 +26,8 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart' show MeLiveRoom;
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarEntryIcon;
-import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
-import 'package:flutter_education_app/features/home/teacher/go_live_sheet.dart';
 import 'package:flutter_education_app/features/home/teacher/home_screen.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_home_extra.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
@@ -245,16 +242,6 @@ Widget _home({bool free = false}) {
         constraints: const BoxConstraints(maxWidth: kHomeWideMax),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           TeacherHomeBody(
-            hero: (wide) => TeacherHomeHero(
-              name: tr('أحمد حمدي', 'Ahmed Hamdy'),
-              subtitle: teacherDaySummary(schedule, const {'attendance_missing': 2, 'grading': 18}, free ? 0 : 1),
-              ring: teacherDayProgress(schedule, now: _now),
-              centered: wide,
-              padding: wide ? EdgeInsets.zero : const EdgeInsets.fromLTRB(20, AppSpace.sm, 20, 0),
-              shellActions: const [CalendarEntryIcon(), NotificationIcon(unreadCount: 0)],
-              switcher: const ContextSwitcher(),
-              goLive: GoLiveButton(onHero: true, onTap: () {}),
-            ),
             liveNow: free ? const [] : _live(),
             now: _now,
             loading: false,
