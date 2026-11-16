@@ -259,6 +259,7 @@ class CourseMeter extends StatelessWidget {
             FractionallySizedBox(
               alignment: AlignmentDirectional.centerStart,
               widthFactor: value.clamp(0, 1).toDouble(),
+              heightFactor: 1,
               child: ColoredBox(color: color ?? c.primary),
             ),
           ],
@@ -962,7 +963,7 @@ class CourseRulesCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 child: SizedBox(
                   height: AppSpace.xs,
-                  child: Row(children: [
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     for (final (i, g) in r.grades.indexed)
                       if (g.weight > 0) Expanded(flex: g.weight, child: ColoredBox(color: appToneStrong(context, _tones[i % _tones.length]))),
                   ]),
@@ -1214,7 +1215,13 @@ class CourseReviewsCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppBorder.focus),
                   child: Row(children: [
-                    SizedBox(width: AppSpace.lg, child: Text('${5 - i}★', style: AppType.meta(context).copyWith(color: c.textLight))),
+                    SizedBox(
+                      width: AppSpace.xl,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text('${5 - i}', style: AppType.meta(context).copyWith(color: c.textLight)),
+                        Icon(Icons.star_rounded, size: AppIconSize.xs, color: c.accent2),
+                      ]),
+                    ),
                     Expanded(child: CourseMeter(value: peak == 0 ? 0 : n / peak, color: c.accent2)),
                     SizedBox(
                       width: AppSpace.xl,
