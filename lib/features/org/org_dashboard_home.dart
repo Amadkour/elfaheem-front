@@ -56,6 +56,7 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_blocks.dart' show AppBlockTone;
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/design/home_kit.dart' show HomeEntrance, HomeSection, homeIsWide;
+import 'package:flutter_education_app/design/home_a2.dart' show HomeA2Layout;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppNavigator;
 import 'package:provider/provider.dart';
 
@@ -230,6 +231,7 @@ class OrgHomeBody extends StatelessWidget {
               onRetry: onRetryTask,
               onSeeAll: data.tasks == null ? null : onSeeAllTasks,
               highlight: data.homeStats != null,
+              card: data.homeStats != null,
             ),
           OrgHomeSection.departments =>
             OrgDepartmentsSection(units: data.units, isAdmin: data.isAdmin, onOpen: onOpenUnit, onSeeAll: onSeeAllUnits),
@@ -261,6 +263,53 @@ class OrgHomeBody extends StatelessWidget {
         ]);
     const inset = EdgeInsets.symmetric(horizontal: AppSpace.md);
     final p = persona;
+    if (p != null && soft != null) {
+      // D-1100: the shared A2 skeleton — the greeting row (the "View as" pill and Review at its end) · the four
+      // counts · [what needs me, ALWAYS a card | the persona's main work] · setup / faculty / insights below. The
+      // link lists (More, Councils) left the home: the sidebar and Ctrl+K carry them.
+      final side = <Widget>[];
+      final below = <Widget>[];
+      for (final b in orgPersonaSections(p)) {
+        switch (b) {
+          case OrgHomeBlock.needsMe || OrgHomeBlock.more || OrgHomeBlock.councils:
+            break;
+          case OrgHomeBlock.team || OrgHomeBlock.queue:
+            side.add(section(OrgHomeSection.departments));
+          case OrgHomeBlock.setup:
+            if (setup != null) below.add(setup!);
+          case OrgHomeBlock.faculty:
+            if (faculty != null) below.add(Padding(padding: inset, child: faculty!));
+          case OrgHomeBlock.insights:
+            below.add(insights);
+          default:
+            if (blocks[b] case final Widget w) side.add(w);
+        }
+      }
+      // the greeting counts exactly what the queue card lists (its rows + alerts, or the queue's total)
+      final queued = data.tasks == null ? rows.take(5).length + alerts.length : total;
+      final nextAt = soft.nextSessionAt;
+      return _pinnedHeader(header, _pullable(onRefresh, ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
+        HomeA2Layout(
+          inset: EdgeInsets.zero,
+          headInset: inset,
+          greeting: HomeEntrance(
+            index: 0,
+            child: OrgHomeGreeting(
+              data: data,
+              waiting: queued,
+              name: greetingName,
+              onReview: onWaiting,
+              trailing: [?switcher],
+              next: nextAt == null ? null : '${t('الجلسة القادمة', 'next session')} ${AppTime.date(nextAt, pattern: 'EEE d MMM')}',
+            ),
+          ),
+          stats: orgHomeSoftStats(soft, onVotes: onOpenVotes, onRequests: onWaiting, onMembers: onSeeAllUnits, onSession: onOpenSessions),
+          queue: HomeEntrance(index: 1, child: Padding(padding: inset, child: section(OrgHomeSection.attention))),
+          side: side,
+          below: below,
+        ),
+      ])));
+    }
     if (p != null) {
       Widget? block(OrgHomeBlock b) => switch (b) {
             OrgHomeBlock.needsMe => section(OrgHomeSection.attention),
@@ -767,7 +816,10 @@ class _OrgHomePageState extends State<OrgHomePage> {
           switcher: who.held.length < 2
               ? null
               : OrgPersonaSwitcher(
-                  held: who.held, current: persona, onChanged: (p) => OrgPersonaStore.instance.choose(uid, s.currentId, p)),
+                  held: who.held,
+                  current: persona,
+                  compact: d.homeStats != null, // D-1100: a pill in the greeting row
+                  onChanged: (p) => OrgPersonaStore.instance.choose(uid, s.currentId, p)),
           blocks: _blocks(context, s, d, tabs, persona),
           onRefresh: refresh,
           tasks: d.tasks == null ? null : q.items,

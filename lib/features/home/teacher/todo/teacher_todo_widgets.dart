@@ -305,7 +305,11 @@ class TeacherTodoCard extends StatelessWidget {
     required this.onSeeAll,
     this.padding = const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs), // the home kit's 20 px edge
     this.max = 3,
+    this.bare = false,
   });
+
+  /// D-1100: rows only (the home's queue card already draws the card and the highlight).
+  final bool bare;
 
   final TodoList list;
   final void Function(TodoItem item) onOpenItem;
@@ -319,12 +323,7 @@ class TeacherTodoCard extends StatelessWidget {
     final c = context.colors;
     final top = list.items.take(max).toList();
     final link = appInk(context, c.primary);
-    return Padding(
-      padding: padding,
-      child: AppCard(
-        padding: EdgeInsets.zero,
-        highlight: true, // the home's ONE main card: what needs me (D-1081)
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    final rows = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (var i = 0; i < top.length; i++) ...[
             if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, indent: _kRowIndentCompact, color: c.divider),
             TodoRow(item: top[i], compact: true, onOpen: () => onOpenItem(top[i]), onMenu: (m) => onMenu(top[i], m)),
@@ -352,8 +351,12 @@ class TeacherTodoCard extends StatelessWidget {
               ),
             ),
           ),
-        ]),
-      ),
+        ]);
+    if (bare) return rows;
+    return Padding(
+      padding: padding,
+      // the home's ONE main card: what needs me (D-1081)
+      child: AppCard(padding: EdgeInsets.zero, highlight: true, child: rows),
     );
   }
 }

@@ -4935,3 +4935,24 @@ FLUTTER_API_CHANGES 2026-11-16). Tests: `test/ui/org_home_soft_layout_test.dart`
 edge, no hero; empty / full / worst case through the layout harness), `test/org/ux_v3_p4_test.dart` (the persona
 blocks), `test/ui/org_settings_profile_e_test.dart` (the card, the tiles, the exit rows, two columns), back
 `tests/org_v2/e2e_org_dashboard_v3.py` (home_stats sums match the tasks).
+
+## D-1100 — One home skeleton for every role (A2, 2026-11-16)
+
+**Context.** The owner's screenshots of the live homes after D-1081: the personal teacher home still opened on the
+forest greeting banner beside a tall empty "Today" card, the counts duplicated cards below it ("Today's sessions"),
+and the page left a strip of the screen empty; the org head's home showed "Needs attention" as a folded title over
+nothing, beside link lists ("More", "Councils") that repeat the sidebar.
+
+**Decision.** `lib/design/home_a2.dart` is THE home skeleton: `HomeGreetingRow` (the greeting at page-title size,
+ONE real line under it, the workspace / role switcher pill and the role's ONE primary action at its end — no
+banner, no avatar ring, no clock chip) · `HomeStatRow` (four AppStatCards, 2 × 2 below 720 px) · `HomeQueueCard`
+(the work queue, ALWAYS a card and the screen's ONE highlighted card; empty = `HomeCaughtUp` with the next thing)
+beside the side cards (`HomeSideCard`: Today compact, the inbox, my departments) at 2fr | 1fr · the full-width
+content below (my courses with a "n published" chip). The student, the personal teacher and every org persona with
+`home_stats` use it; the org link lists left the home. The greeting's count is the queue's count. AppStatCard: a
+series of zeros draws no bars ("No activity yet"), a long figure shrinks to the card, the bars go under the figure
+on a phone-size screen.
+
+**Consequences.** Older servers (no `home_stats`) keep the D-631 org hero. Tests: `test/ui/teacher_home_layout_test.dart`
+(the skeleton, the queue card even when empty, four counts), the home a11y / layout suites; renders in
+`test/visual/home_screens_golden_test.dart` (org head full / empty, teacher empty).

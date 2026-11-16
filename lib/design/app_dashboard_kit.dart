@@ -519,7 +519,10 @@ class AppStatCard extends StatelessWidget {
     final surface = AppBlockColors.of(context, tone == AppBlockTone.paper ? AppBlockTone.emerald : tone).surface;
     final zero = value.trim() == '0';
     final ink = warn ? c.danger : (zero ? c.textLight : c.textDark);
-    final series = bars == null || bars!.length < 2 ? null : bars!.sublist(bars!.length > maxBars ? bars!.length - maxBars : 0);
+    final raw = bars == null || bars!.length < 2 ? null : bars!.sublist(bars!.length > maxBars ? bars!.length - maxBars : 0);
+    // D-1100: a series that is all zeros draws no bars, it says so (eight flat dashes read as a broken chart)
+    final idle = raw != null && raw.every((v) => v == 0);
+    final series = idle ? null : raw;
     final read = [
       '$label: $value',
       if (delta != null) appDeltaText(delta!),
@@ -539,10 +542,17 @@ class AppStatCard extends StatelessWidget {
           ),
         ]),
         const SizedBox(height: AppSpace.sm),
-        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              AppCountUp(value, memoryKey: 'stat:$label', style: _tabular(AppType.figureLarge(context).copyWith(color: ink))),
+        Builder(builder: (context) {
+          // D-1100: on a phone-size screen the bars sit under the figure, so a 2 × 2 row never squeezes "1.8K"
+          // (no LayoutBuilder here: the stat rows measure their cards' intrinsic height)
+          final stack = MediaQuery.sizeOf(context).width < AppWidth.phoneMax;
+          final figure = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              // a long figure ("Sat 31 October") shrinks to the card instead of being cut at its start edge
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: AppCountUp(value, memoryKey: 'stat:$label', style: _tabular(AppType.figureLarge(context).copyWith(color: ink))),
+              ),
               if (delta != null || footer != null) ...[
                 const SizedBox(height: AppSpace.xxs),
                 Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -551,13 +561,23 @@ class AppStatCard extends StatelessWidget {
                     Text(footer!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight, height: 1.3)),
                 ]),
               ],
-            ]),
-          ),
-          if (series != null) ...[
-            const SizedBox(width: AppSpace.sm),
-            AppMiniBars(values: series, color: strong, caption: barsCaption),
-          ],
-        ]),
+            ]);
+          final aside = series != null
+              ? AppMiniBars(values: series, color: strong, caption: barsCaption)
+              : idle
+                  ? Text('stat_no_activity'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight))
+                  : null;
+          if (stack) {
+            return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              figure,
+              if (aside != null) ...[const SizedBox(height: AppSpace.xs), aside],
+            ]);
+          }
+          return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(child: figure),
+            if (aside != null) ...[const SizedBox(width: AppSpace.sm), Flexible(child: aside)],
+          ]);
+        }),
       ]),
     );
   }
