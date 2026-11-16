@@ -36,6 +36,7 @@ import 'package:flutter_education_app/design/master_detail/entity_navigator.dart
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
 import 'admin_send_message_page.dart' show AdminSendMessagePage;
+import 'admin_account_fee_widgets.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
@@ -44,7 +45,7 @@ import 'package:flutter_education_app/design/app_badges.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_data_table.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown, AppEmpty, AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppChoiceChip, AppDropdown, AppEmpty, AppListSkeleton, showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_username.dart' show usernameFrom;
 import '../auth/username.dart' show UsernameError;
@@ -836,6 +837,15 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                           ),
                       ],
                     ),
+                    if (_feeStatus(context, d!.j) case final fee?) ...[
+                      const SizedBox(height: AppSpace.sm),
+                      _AccountFeeControls(
+                        status: fee,
+                        onAction: (action) async {
+                          if (await _setAccountFee(u.id, action) && mounted) await _load();
+                        },
+                      ),
+                    ],
                     // danger zone: only Deactivate and Delete are red
                     const SizedBox(height: AppSpace.md),
                     Divider(color: context.colors.divider, height: 1),
@@ -909,6 +919,83 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+//  Account fee (D-1120)
+// ═════════════════════════════════════════════════════════════════════════════
+
+Map<String, dynamic>? _roleFee(BuildContext context, String role) {
+  try {
+    return context.read<ThemeConfigProvider>().accountFee(role);
+  } on ProviderNotFoundException {
+    return null;
+  }
+}
+
+bool _feeOn(BuildContext context, String role) => _roleFee(context, role) != null;
+
+String _feeLabel(BuildContext context, String role) {
+  final f = _roleFee(context, role);
+  if (f == null) return '';
+  final v = f['amount'] as num;
+  return '${v == v.roundToDouble() ? v.toInt() : v.toStringAsFixed(2)} ${f['currency']}';
+}
+
+/// The fee status of a teacher / parent row, or null (another role, or never asked).
+String? _feeStatus(BuildContext context, Map<String, dynamic> j) {
+  final role = '${j['role'] ?? ''}';
+  if (role != 'teacher' && role != 'parent') return null;
+  return accountFeeStatus(j, feeOn: _feeOn(context, role));
+}
+
+Future<bool> _setAccountFee(int userId, String action) async {
+  try {
+    await ApiClient().post('/api/v1/admin/users/$userId/account-fee', body: {'action': action});
+    showAppNotice(action == 'waived' ? t('تم الإعفاء من الرسوم', 'Fee waived') : t('سُجّلت الرسوم مدفوعة', 'Fee marked as paid'));
+    return true;
+  } catch (e) {
+    showAppNotice(ApiException.from(e).message, error: true);
+    return false;
+  }
+}
+
+class _AccountFeeControls extends StatelessWidget {
+  final String status;
+  final ValueChanged<String> onAction;
+
+  const _AccountFeeControls({required this.status, required this.onAction});
+
+  @override
+  Widget build(BuildContext context) {
+    final due = status == 'due';
+    return Wrap(
+      spacing: AppSpace.sm,
+      runSpacing: AppSpace.xs,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        AppStatusBadge(
+          key: const ValueKey('admin.user_fee_status'),
+          label: accountFeeStatusLabel(status),
+          tone: due ? AppTone.warning : AppTone.success,
+        ),
+        if (due) ...[
+          AppButton.tonal(
+            key: const ValueKey('admin.user_fee_paid'),
+            label: t('سجّل الرسوم مدفوعة', 'Mark fee paid'),
+            icon: Icons.payments_rounded,
+            onPressed: () => onAction('paid'),
+          ),
+          AppButton.ghost(
+            key: const ValueKey('admin.user_fee_waive'),
+            label: t('إعفاء من الرسوم', 'Waive the fee'),
+            icon: Icons.money_off_rounded,
+            onPressed: () => onAction('waived'),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 //  Create / edit form
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -944,6 +1031,10 @@ class _UserFormState extends State<_UserForm> {
   late final _phone = TextEditingController(text: widget.existing?.phone);
   final _password = TextEditingController();
   final _years = TextEditingController(text: '0');
+  // a new account's role (the students list also creates parents) and, while that role's account fee is on,
+  // what the admin decided about it (D-1120)
+  late String _role = widget.provider.role;
+  String _fee = 'paid';
   // the row's @username: an admin may set, change or remove it (D-071, admin edit)
   late final String? _currentUsername = usernameFrom(widget.existing?.j);
   late final _username = TextEditingController(text: _currentUsername ?? '');
@@ -994,11 +1085,12 @@ class _UserFormState extends State<_UserForm> {
         'name': _name.text.trim(),
         'gmail': _email.text.trim(),
         'password': _password.text,
-        'role': role,
+        'role': _role,
+        if (_feeOn(context, _role)) 'account_fee': _fee,
         'phone': _phone.text.trim().isEmpty ? null : _phone.text.trim(),
         // no known dial code (or no phone): leave the stored country alone instead of throwing
         if (kPhoneCountries.where((e) => _phone.text.contains(e.dial)).firstOrNull case final pc?) 'country': pc.flag,
-        if (role == 'teacher')
+        if (_role == 'teacher')
           'experience_years': int.tryParse(_years.text.trim()) ?? 0,
       });
     }
@@ -1017,7 +1109,9 @@ class _UserFormState extends State<_UserForm> {
               ? 'admin_edit_user'.tr
               : (role == 'teacher'
                     ? 'admin_add_teacher'.tr
-                    : 'admin_add_student'.tr),
+                    : _role == 'parent'
+                        ? t('إضافة ولي أمر', 'Add parent')
+                        : 'admin_add_student'.tr),
         ),
         Flexible(
           child: SingleChildScrollView(
@@ -1026,6 +1120,21 @@ class _UserFormState extends State<_UserForm> {
               key: _form,
               child: Column(
                 children: [
+                  // the students list also creates parent accounts
+                  if (!editing && role == 'student')
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                        for (final r in const ['student', 'parent'])
+                          AppChoiceChip(
+                            key: ValueKey('admin.user_role.$r'),
+                            label: r == 'parent' ? t('ولي أمر', 'Parent') : t('طالب', 'Student'),
+                            icon: r == 'parent' ? Icons.family_restroom_rounded : Icons.school_rounded,
+                            selected: _role == r,
+                            onTap: () => setState(() => _role = r),
+                          ),
+                      ]),
+                    ),
                   Field(
                     controller: _name,
                     label: 'name_label'.tr,
@@ -1042,10 +1151,19 @@ class _UserFormState extends State<_UserForm> {
                       error: _usernameError,
                       onStatusChanged: (s) => setState(() => _usernameStatus = s),
                     ),
-                  if (!editing && role == 'teacher')
+                  if (!editing && _role == 'teacher')
                     Padding(
                       padding: const EdgeInsets.only(bottom: AppSpace.sm),
                       child: AppNumberField(controller: _years, label: 'admin_experience_years'.tr, min: 0),
+                    ),
+                  if (!editing && _feeOn(context, _role))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                      child: AccountFeeChoice(
+                        value: _fee,
+                        feeLabel: _feeLabel(context, _role),
+                        onChanged: (v) => setState(() => _fee = v),
+                      ),
                     ),
                   AppPasswordField(controller: _password, label: editing
                         ? 'admin_new_password_optional'.tr

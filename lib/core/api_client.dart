@@ -19,8 +19,9 @@ import 'package:flutter_education_app/core/token_storage.dart';
 import 'package:flutter_education_app/core/cert_pin.dart';
 import 'package:flutter_education_app/core/attention/decision_refresh.dart';
 import 'package:flutter_education_app/main.dart';
-import 'package:flutter/material.dart' show MaterialPageRoute;
+import 'package:flutter/material.dart' show MaterialPageRoute, RouteSettings;
 import '../features/admin/admin_mfa_page.dart' show AdminMfaPage;
+import '../features/auth/account_fee_page.dart' show AccountFeePage;
 import '../features/auth/teacher_onboarding_token.dart';
 import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'guest_link_visit.dart';
@@ -1236,6 +1237,8 @@ class ApiClient {
       if (status == 402 && needsAuth) {
         final (code, _) = ApiException.codedDetail(error.response?.data);
         if (code == 'SUBSCRIPTION_REQUIRED') _showPaywall();
+        // D-1120: a teacher / parent account that owes the account fee → the pay page (never while viewing as)
+        if (code == 'account_fee_required' && ViewAsState.targetId == null) _showAccountFee();
         return handler.next(error);
       }
 
@@ -1455,6 +1458,22 @@ class ApiClient {
   /// to fill the dialog (pending request, monthly limit, can-request); if it
   /// fails the dialog still opens with the plain message.
   bool _paywallOpen = false;
+
+  bool _accountFeeOpen = false;
+
+  /// The account-fee page in place of everything (no way back into the app until it is paid; it signs out).
+  void _showAccountFee() {
+    if (_accountFeeOpen || AccountFeePage.isOpen) return;
+    final nav = navigatorKey.currentState;
+    if (nav == null) return;
+    _accountFeeOpen = true;
+    nav
+        .pushAndRemoveUntil(
+            MaterialPageRoute<void>(
+                builder: (_) => const AccountFeePage(), settings: const RouteSettings(name: AccountFeePage.route)),
+            (_) => false)
+        .whenComplete(() => _accountFeeOpen = false);
+  }
 
   void _showPaywall() {
     if (_paywallOpen) return;

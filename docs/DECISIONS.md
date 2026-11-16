@@ -4956,3 +4956,23 @@ on a phone-size screen.
 **Consequences.** Older servers (no `home_stats`) keep the D-631 org hero. Tests: `test/ui/teacher_home_layout_test.dart`
 (the skeleton, the queue card even when empty, four counts), the home a11y / layout suites; renders in
 `test/visual/home_screens_golden_test.dart` (org head full / empty, teacher empty).
+
+## D-1120 — Account fee for teachers and parents (2026-11-16)
+
+**Context.** The owner wants the super admin to decide whether a teacher or a parent pays to open an account, how
+much, and an admin creating such an account from the dashboard to mark it paid or not (backend D-1120,
+`../back/docs/DECISIONS.md`).
+
+**Decision.** Platform settings gains an "Account fees" section: one switch per role with amount and currency, the
+accepted payment methods, and the account-fee receipts (the organization fee's review page with `purpose: account`).
+A signed-in account that owes the fee gets 402 `account_fee_required` from the server; `ApiClient` answers it by
+replacing the whole stack with `AccountFeePage` (`lib/features/auth/account_fee_page.dart`: card checkout in the
+browser, or a transfer receipt through the organization fee's sheet; no way back, only Sign out; a paid / waived
+account or a fee switched off goes home). One hook covers every way in (password, Google, fingerprint, second factor,
+a cold start). The sign-up role picker shows "Account fee: 200 EGP" under a role while its fee is on (from the
+theme response's `platform_settings.account_fee`). The admin's create form: the students list can create a parent,
+and while the role's fee is on the admin picks paid (default) / waived / pays at first sign-in; a teacher's detail
+shows the fee status with Mark paid / Waive.
+
+**Consequences.** Parents created from the students list do not appear in it (there is no parents list yet). Tests:
+`test/ui/account_fee_test.dart` (pay page states, the role row, the admin choice, status rules).
