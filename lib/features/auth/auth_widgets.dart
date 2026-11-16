@@ -1398,8 +1398,9 @@ class ProgressBar extends StatelessWidget {
 
 // ── 10. Role picker cards ─────────────────────────────────────────────────────
 
-/// "Account fee: 200 EGP" under a role on the sign-up picker while the super admin has that role's fee on
-/// (D-1120); null otherwise (or without a ThemeConfigProvider, e.g. a bare widget test).
+/// "Account fee: 200 EGP" and / or "Needs admin approval" under a role on the sign-up picker, from the super admin's
+/// registration mode of that role (D-1120, D-1121); null when the role opens free (or without a
+/// ThemeConfigProvider, e.g. a bare widget test).
 String? accountFeeLabel(BuildContext context, String role) {
   final ThemeConfigProvider theme;
   try {
@@ -1408,10 +1409,15 @@ String? accountFeeLabel(BuildContext context, String role) {
     return null;
   }
   final f = theme.accountFee(role);
-  if (f == null) return null;
+  // D-1121: and / or "Needs admin approval"
+  final approval = theme.needsApproval(role)
+      ? (AppConfig.lang == 'ar' ? 'يحتاج موافقة الإدارة' : 'Needs admin approval')
+      : null;
+  if (f == null) return approval;
   final v = f['amount'] as num;
   final amount = v == v.roundToDouble() ? '${v.toInt()}' : v.toStringAsFixed(2);
-  return AppConfig.lang == 'ar' ? 'رسوم الحساب: $amount ${f['currency']}' : 'Account fee: $amount ${f['currency']}';
+  final fee = AppConfig.lang == 'ar' ? 'رسوم الحساب: $amount ${f['currency']}' : 'Account fee: $amount ${f['currency']}';
+  return approval == null ? fee : '$fee · $approval';
 }
 
 /// Who is signing up: one paper card per role; the chosen one takes the primary tint, a 2 px primary edge, the icon

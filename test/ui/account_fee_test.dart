@@ -65,7 +65,7 @@ void main() {
   testWidgets('super admin row: off, on with amount; admin choice', (tester) async {
     final off = AccountFeeDraft();
     final on = AccountFeeDraft()
-      ..on = true
+      ..mode = 'paid'
       ..amount.text = '200';
     addTearDown(() {
       off.amount.dispose();
@@ -87,8 +87,9 @@ void main() {
 
   test('draft body / differs and the status of a row', () {
     final d = AccountFeeDraft()..take({'required': true, 'amount': 200, 'currency': 'SAR'});
-    expect(d.body, {'required': true, 'amount': 200.0, 'currency': 'SAR'});
+    expect(d.body, {'mode': 'paid', 'required': true, 'amount': 200.0, 'currency': 'SAR'}); // a D-1120 answer reads as paid
     expect(d.differs({'required': true, 'amount': 200, 'currency': 'SAR'}), isFalse);
+    expect(d.differs({'mode': 'paid_approval', 'required': true, 'amount': 200, 'currency': 'SAR'}), isTrue);
     d.amount.text = '250';
     expect(d.differs({'required': true, 'amount': 200, 'currency': 'SAR'}), isTrue);
     d.amount.dispose();

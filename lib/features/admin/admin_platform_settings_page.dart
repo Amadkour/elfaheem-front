@@ -3,8 +3,8 @@
 // Super admin → "Platform settings", four groups:
 //   1. Organizations — master switch for the whole Organizations feature set + the creation fee
 //      (amount · currency · which payment methods) + manual-transfer receipts waiting for review
-//   2. Account fees (D-1120) — per role (teachers, parents): on/off, amount, currency, + the payment methods and
-//      the receipts of account fees
+//   2. New accounts (D-1120, D-1121) — per role (teachers, parents, students): free / paid / approval / paid +
+//      approval, the fee's amount and currency, + the payment methods and the receipts of account fees
 //   3. Time & region — default timezone (Egypt → KSA → UAE → Arab world → others) and 12h / 24h
 //   4. Features — opens the feature catalog (search, groups, org-manageable features)
 //
@@ -344,15 +344,16 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
         ),
         AppSpace.gapLg,
 
-        // ── 2. Account fees (D-1120) ─────────────────────────────────
+        // ── 2. New accounts: registration modes + fees (D-1120, D-1121) ─
         AppSection(
-          title: t('رسوم فتح الحسابات', 'Account fees'),
-          subtitle: t('رسوم لمرة واحدة يدفعها المعلم أو ولي الأمر ليبدأ. الحسابات الموجودة لا تدفع، وإيقافها يفتح كل من ينتظر.',
-              'A one-time fee a teacher or parent pays to start. Existing accounts never pay; switching it off lets everyone waiting in.'),
+          title: t('فتح الحسابات الجديدة', 'New accounts'),
+          subtitle: t('اختر لكل دور كيف يبدأ الحساب الجديد. الحسابات الموجودة والتي ينشئها المدير لا تتأثر، والتحويل إلى «مجاني» يفتح كل من ينتظر.',
+              'Pick how a new account of each role starts. Existing accounts and those an admin creates are not affected; switching to Free lets everyone waiting in.'),
           child: AppCard(
             key: const ValueKey('platform.account_fee'),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              for (final r in accountFeeRoles)
+              for (final r in accountFeeRoles) ...[
+                if (r != accountFeeRoles.first) const Divider(height: AppSpace.md),
                 AccountFeeRoleRow(
                   role: r,
                   draft: _acc[r]!,
@@ -360,6 +361,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
                   enabled: _canEdit && !_saving,
                   onChanged: () => setState(() {}),
                 ),
+              ],
               if (_accOn) ...[
                 const Divider(height: AppSpace.lg),
                 Text(t('طرق الدفع المقبولة', 'Accepted payment methods'), style: AppType.label(context)),

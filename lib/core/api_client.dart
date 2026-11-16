@@ -22,6 +22,7 @@ import 'package:flutter_education_app/main.dart';
 import 'package:flutter/material.dart' show MaterialPageRoute, RouteSettings;
 import '../features/admin/admin_mfa_page.dart' show AdminMfaPage;
 import '../features/auth/account_fee_page.dart' show AccountFeePage;
+import '../features/auth/account_approval_page.dart' show AccountApprovalPage;
 import '../features/auth/teacher_onboarding_token.dart';
 import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'guest_link_visit.dart';
@@ -1225,6 +1226,10 @@ class ApiClient {
             _showDeviceBlocked(courseId: int.parse(courseId));
           }
         }
+        // D-1121: a new account waiting for (or refused) an admin's approval → the waiting page (never while viewing as)
+        if ((code == 'account_pending_approval' || code == 'account_rejected') && ViewAsState.targetId == null) {
+          _showAccountApproval();
+        }
         // Any other 403 (VIEW_LIMIT_REACHED, SWITCH_LIMIT, plain forbidden,
         // ...): NO navigation. The error is passed to the caller, which shows
         // ApiException.message (the server's message if readable, otherwise a
@@ -1460,6 +1465,22 @@ class ApiClient {
   bool _paywallOpen = false;
 
   bool _accountFeeOpen = false;
+  bool _approvalOpen = false;
+
+  /// The approval waiting page in place of everything (D-1121; it can only sign out or wait).
+  void _showAccountApproval() {
+    if (_approvalOpen || AccountApprovalPage.isOpen || AccountFeePage.isOpen) return;
+    final nav = navigatorKey.currentState;
+    if (nav == null) return;
+    _approvalOpen = true;
+    nav
+        .pushAndRemoveUntil(
+            MaterialPageRoute<void>(
+                builder: (_) => const AccountApprovalPage(),
+                settings: const RouteSettings(name: AccountApprovalPage.route)),
+            (_) => false)
+        .whenComplete(() => _approvalOpen = false);
+  }
 
   /// The account-fee page in place of everything (no way back into the app until it is paid; it signs out).
   void _showAccountFee() {

@@ -154,6 +154,9 @@ class LiveEvents {
   static const chatPresence = 'chat_presence';
   static const chatConversation = 'chat_conversation';
 
+  /// D-1121: a platform admin approved / rejected MY waiting account ({state}); the waiting page reloads.
+  static const accountApproval = 'account_approval';
+
   static const connectivity = 'connectivity_changed';
 
   /// D-520: a phone is asked to join the person's live room · the request was answered, ended or changed.
@@ -189,6 +192,7 @@ class LiveEvents {
     orgMessage,
     orgMustAck,
     orgMessageAck,
+    accountApproval,
   };
 
   /// The VISIBLE notifications of the same features (data["type"]) also nudge

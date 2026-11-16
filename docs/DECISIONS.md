@@ -4976,3 +4976,20 @@ shows the fee status with Mark paid / Waive.
 
 **Consequences.** Parents created from the students list do not appear in it (there is no parents list yet). Tests:
 `test/ui/account_fee_test.dart` (pay page states, the role row, the admin choice, status rules).
+
+## D-1121 — Registration modes: free, paid, admin approval, or both · 2026-11-16 · accepted
+
+The super admin picks, per role (teachers, parents and now students), how a new account opens: free without approval,
+pay a fee (D-1120), an admin's approval, or pay then approval (backend D-1121, `platform.account_fee[role].mode`).
+Platform settings shows the four modes as chips per role with a one-line explanation of the chosen one, and the fee
+fields only for the paid modes (`AccountFeeRoleRow`, `lib/features/admin/admin_account_fee_widgets.dart`); the body
+sends `mode` and keeps `required` for older servers. A waiting account gets 403 `account_pending_approval` /
+`account_rejected`; `ApiClient` opens `AccountApprovalPage` (`lib/features/auth/account_approval_page.dart`) in place
+of everything, the same way the 402 opens the pay page (the fee comes first for "pay then approval"). The page is calm:
+what happened, what's next, contact the platform team (the public About page), check now, sign out; it reloads on the
+`account_approval` live event (SSE + silent push), on resume and on "Check now", never on a timer. Admins decide from
+`AdminPendingAccountsPage` (`lib/features/admin/admin_account_approval.dart`: waiting / rejected, role filter, approve,
+reject with a reason the account sees), reached from the users page's `PendingAccountsBanner` (hidden at 0), the
+People group of the services hub, and the user detail sheet (approve / reject); the count is the new attention tab
+`AttentionTabs.adminUsers` (`admin.users`), drawn on the People hub and the phone's More tab. The sign-up role picker
+shows the fee and / or "Needs admin approval" under each role.
