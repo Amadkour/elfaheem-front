@@ -129,7 +129,7 @@ void main() {
     expect(find.text('Engine exam 7'), findsOneWidget);
     expect(find.text('2 attempts'), findsWidgets);
     // the third tile: the engine exams' attempts (7 × 2), not "0 Questions"
-    expect(find.text('14'), findsOneWidget);
+    expect(find.text('14'), findsWidgets); // D-1081: an AppStatCard figure (its count-up keeps a sizing copy)
     expect(find.text('exam_hub_attempts'), findsOneWidget); // translation keys: the test loads no translation.json
     expect(find.text('btn_questions'), findsNothing);
   });
