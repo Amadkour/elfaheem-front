@@ -40,6 +40,7 @@ import 'package:flutter_education_app/features/courses/course_space/course_space
 
 export 'package:flutter_education_app/features/courses/course_space/course_space_parts.dart';
 export 'package:flutter_education_app/features/courses/course_space/course_sessions.dart';
+export 'package:flutter_education_app/features/courses/course_space/course_overview.dart';
 
 /// The horizontal gutter every block of the page lines up on.
 const double kCourseGutter = AppSpace.md;
@@ -61,12 +62,23 @@ class CourseSpaceStat {
     this.onTap,
     this.featureKey,
     this.tone,
+    this.footer,
+    this.bars,
+    this.barsCaption,
+    this.warn = false,
   });
 
   final IconData icon;
   final String value, label;
   final VoidCallback? onTap;
   final String? featureKey;
+
+  /// The hint under the figure ("12 lectures · 40 sections"), the mini bars of its recent values (oldest first) with
+  /// their caption, and [warn] (something here is late) — the A2 count card's extras (D-1081, D-1090).
+  final String? footer;
+  final List<num>? bars;
+  final String? barsCaption;
+  final bool warn;
 
   /// The icon's colour when it means something (the rating's star in accent2); null → the block's muted ink.
   final Color? tone;

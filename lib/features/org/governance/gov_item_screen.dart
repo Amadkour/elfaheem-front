@@ -17,6 +17,9 @@ import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiErrorKind, ApiException;
+import 'package:flutter_education_app/core/notif_link.dart';
+import 'package:flutter_education_app/design/action_banner.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -26,10 +29,12 @@ import 'package:provider/provider.dart';
 import '../../admin/admin_common.dart' show dirArrow, SheetHeader, asMap, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
 import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage, orgUsesDashboardHeader;
+import '../org_messages.dart' show msgSubmitterAction;
 import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgCall, orgErrorText, orgUtc;
 import 'gov_api.dart';
 import 'gov_forward_sheet.dart';
+import 'gov_institutions_s3.dart' show govS3EventText;
 import 'gov_models.dart';
 import 'gov_request_parts.dart';
 import 'gov_route_sheet.dart';
@@ -61,9 +66,18 @@ class GovItemBody extends StatelessWidget {
     this.onResubmit,
     this.onExport,
     this.onForward,
+    this.banner,
+    this.focusKeys = const {},
   });
 
   final WorkItem item;
+
+  /// UX v3 phase 2: the opened notification's ActionBanner, drawn first.
+  final Widget? banner;
+
+  /// The parts a link can scroll to: `decision` (the decision bar) · `route` (my pending route / forward) ·
+  /// `vote` (the council sessions) · `comments` (the timeline).
+  final Map<String, GlobalKey> focusKeys;
   final bool member, busy;
   final int? currentUserId;
   final ValueChanged<String>? onDecide;
@@ -108,18 +122,20 @@ class GovItemBody extends StatelessWidget {
       if (!member && can['export'] && onExport != null) AppPill(icon: Icons.file_download_rounded, label: t('تصدير', 'Export'), color: c.textMedium, onTap: busy ? null : onExport),
       if (can['delete'] && onDelete != null) AppPill(icon: Icons.delete_outline_rounded, label: t('حذف', 'Delete'), color: c.danger, onTap: busy ? null : onDelete),
     ];
+    Widget part(String k, Widget w) => focusKeys[k] == null ? w : KeyedSubtree(key: focusKeys[k], child: w);
     return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg), children: [
+      if (banner != null) ...[banner!, const SizedBox(height: AppSpace.sm)],
       _Header(item: it, member: member, onOpenAttachment: onOpenAttachment),
       if (it.decision != null) ...[const SizedBox(height: AppSpace.sm), _DecisionBanner(decision: it.decision!, status: it.status)],
-      if (!member && can['decide'] && it.isDecidable && onDecide != null) ...[const SizedBox(height: AppSpace.sm), _DecisionBar(busy: busy, onDecide: onDecide!)],
+      if (!member && can['decide'] && it.isDecidable && onDecide != null) ...[const SizedBox(height: AppSpace.sm), part('decision', _DecisionBar(busy: busy, onDecide: onDecide!))],
       if (it.chain != null && it.chain!.steps.isNotEmpty) ...[const SizedBox(height: AppSpace.sm), GovChainCard(chain: it.chain!, itemStatus: it.status)],
       if (myForward != null) ...[
         const SizedBox(height: AppSpace.sm),
-        GovForwardTaskCard(route: myForward, busy: busy, onRespond: onAnswerRoute == null ? null : () => onAnswerRoute!(myForward)),
+        part('route', GovForwardTaskCard(route: myForward, busy: busy, onRespond: onAnswerRoute == null ? null : () => onAnswerRoute!(myForward))),
       ],
       if (pr != null && pr.id != myForward?.id) ...[
         const SizedBox(height: AppSpace.sm),
-        _PendingRouteCard(route: pr, canAnswer: !member && _routedToMe && onAnswerRoute != null && pr.action != 'vote', busy: busy, onAnswer: () => onAnswerRoute?.call(pr)),
+        part('route2', _PendingRouteCard(route: pr, canAnswer: !member && _routedToMe && onAnswerRoute != null && pr.action != 'vote', busy: busy, onAnswer: () => onAnswerRoute?.call(pr))),
       ],
       if (actions.isNotEmpty) ...[const SizedBox(height: AppSpace.sm), Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: actions)],
       if (it.routes.isNotEmpty) ...[
@@ -129,12 +145,16 @@ class GovItemBody extends StatelessWidget {
       ],
       if (it.agenda.isNotEmpty) ...[
         const SizedBox(height: AppSpace.md),
-        AppSectionTitle(t('جلسات المجالس', 'Council sessions')),
-        GovAgendaHistory(agenda: it.agenda),
+        part('vote', Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppSectionTitle(t('جلسات المجالس', 'Council sessions')),
+          GovAgendaHistory(agenda: it.agenda),
+        ])),
       ],
       const SizedBox(height: AppSpace.md),
-      AppSectionTitle(t('السجل', 'Timeline'), subtitle: member ? null : t('التعليقات الداخلية لا يراها مقدّم المعاملة', 'Internal comments are hidden from the submitter')),
-      GovTimeline(events: it.events, onOpenAttachment: onOpenAttachment),
+      part('comments', Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppSectionTitle(t('السجل', 'Timeline'), subtitle: member ? null : t('التعليقات الداخلية لا يراها مقدّم المعاملة', 'Internal comments are hidden from the submitter')),
+        GovTimeline(events: it.events, routes: it.routes, onOpenAttachment: onOpenAttachment),
+      ])),
     ]);
   }
 }
@@ -420,8 +440,11 @@ class GovAgendaHistory extends StatelessWidget {
 
 /// The events with icons; internal comments carry a lock badge.
 class GovTimeline extends StatelessWidget {
-  const GovTimeline({super.key, required this.events, this.onOpenAttachment});
+  const GovTimeline({super.key, required this.events, this.routes = const [], this.onOpenAttachment});
   final List<WorkEvent> events;
+
+  /// The item's routes: an automatic route's / an escalation's target name (S3, `govS3EventText`).
+  final List<WorkRoute> routes;
   final ValueChanged<GovAttachment>? onOpenAttachment;
 
   @override
@@ -488,6 +511,8 @@ class GovTimeline extends StatelessWidget {
 
   /// A short line from `data` (outcome, status, target, assignee) for non-comment events.
   String _summary(WorkEvent e) {
+    final s3 = govS3EventText(e, routes: routes);   // auto-route · skipped rule · SLA escalation (D-971, D-972)
+    if (s3 != null) return s3;
     final d = e.data;
     final parts = <String>[];
     if (d['outcome'] != null) parts.add(itemStatusLabel('${d['outcome']}'));
@@ -583,9 +608,13 @@ class _GovCommentComposerState extends State<GovCommentComposer> {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class GovItemScreen extends StatefulWidget {
-  const GovItemScreen(this.id, {super.key, this.orgId, this.member = false});
+  const GovItemScreen(this.id, {super.key, this.orgId, this.member = false, this.link});
   final int id;
   final int? orgId;
+
+  /// The notification / action inbox link that opened it (UX v3 phase 2): its ActionBanner on top, a scroll to the
+  /// part it names, the fields to change marked in the edit sheet. A missing item shows StaleLinkView.
+  final NotifLink? link;
 
   /// The submitter's / recipient's view through the public routes (no organization in the path).
   final bool member;
@@ -598,6 +627,12 @@ class _GovItemScreenState extends State<GovItemScreen> {
   WorkItem? _item;
   bool _failed = false, _missing = false, _busy = false;
   GovApi? _api;
+
+  /// The item is gone (404 with a code): "no longer exists", not "could not load".
+  bool _gone = false;
+  ApiException? _error;
+  bool _focused = false;
+  final _focusKeys = {for (final k in const ['decision', 'route', 'route2', 'vote', 'comments']) k: GlobalKey(debugLabel: 'gov.item.$k')};
 
   int? get _orgId {
     if (widget.orgId != null) return widget.orgId;
@@ -642,13 +677,55 @@ class _GovItemScreenState extends State<GovItemScreen> {
       if (r.ok) {
         _item = r.data as WorkItem;
         _failed = false;
+        _gone = false;
       } else {
         _failed = _item == null;
         _missing = r.endpointMissing;
+        _error = r.error;
+        _gone = _item == null && !_missing && r.error!.kind == ApiErrorKind.notFound;
         if (_item != null) appToast(orgErrorText(r.error!), error: true);
       }
     });
     if (r.ok) _refresh.markUpdated();
+    if (r.ok && !_focused && widget.link != null) {
+      _focused = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToFocus());
+    }
+  }
+
+  /// The part the link points at: its `focus`, else the action's own place.
+  String? get _focusPart {
+    final l = widget.link;
+    if (l == null) return null;
+    final f = switch (l.focus) {
+      'decision' || 'vote' || 'comments' || 'route' => l.focus,
+      _ => switch (l.action) {
+          NotifAction.approve || NotifAction.review => 'decision',
+          NotifAction.vote => 'vote',
+          NotifAction.confirm => 'route',
+          NotifAction.reply => 'comments',
+          _ => null,
+        },
+    };
+    if (f == 'route' && _focusKeys['route']!.currentContext == null) return 'route2';
+    return f;
+  }
+
+  Future<void> _scrollToFocus() async {
+    final k = _focusPart;
+    final ctx = k == null ? null : _focusKeys[k]!.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    await Scrollable.ensureVisible(ctx, alignment: 0.1, duration: AppMotion.of(ctx).base);
+  }
+
+  /// The banner's one button: the edit sheet (fields marked) for an edit, else a scroll to its part.
+  VoidCallback? _bannerAction(WorkItem it) {
+    final l = widget.link!;
+    if (l.action == NotifAction.edit || l.rejected) {
+      if (widget.member && it.can['resubmit']) return _resubmit;
+      if (!widget.member && it.can['edit']) return _edit;
+    }
+    return _focusPart == null ? null : _scrollToFocus;
   }
 
   /// Runs a mutation, shows the error unless handled, reloads on success.
@@ -769,7 +846,7 @@ class _GovItemScreenState extends State<GovItemScreen> {
   }
 
   Future<void> _resubmit() async {
-    final r = await showGovResubmitSheet(context, _item!);
+    final r = await showGovResubmitSheet(context, _item!, highlight: {for (final f in widget.link?.fields ?? const <NotifField>[]) f.key});
     if (r != null && mounted) setState(() => _item = r);
   }
 
@@ -932,8 +1009,16 @@ class _GovItemScreenState extends State<GovItemScreen> {
       child = const AppListSkeleton(items: 5);
     } else if (_missing) {
       child = const GovNeedsServer();
+    } else if (it == null && _gone) {
+      child = StaleLinkView(
+          gone: true,
+          reason: widget.link?.staleReason ?? '',
+          fallbackLabel: t('رجوع', 'Back'),
+          onFallback: () => Navigator.of(context).maybePop());
     } else if (it == null) {
-      child = AppEmpty(icon: Icons.cloud_off_rounded, title: t('تعذّر التحميل', 'Could not load'), actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load);
+      child = _error == null
+          ? AppEmpty(icon: Icons.cloud_off_rounded, title: t('تعذّر التحميل', 'Could not load'), actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
+          : Padding(padding: const EdgeInsets.all(AppSpace.md), child: AppErrorBox(error: _error!, text: orgErrorText(_error!), onRetry: _load));
     } else {
       child = Column(children: [
         Expanded(
@@ -958,6 +1043,8 @@ class _GovItemScreenState extends State<GovItemScreen> {
               onOpenAttachment: (a) => openGovAttachment(context, a),
               onResubmit: widget.member ? _resubmit : null,
               onExport: !widget.member && govExportHubEnabled() ? _export : null,
+              banner: widget.link != null && (widget.link!.hasAction || widget.link!.rejected) ? ActionBanner.of(widget.link!, onAction: _bannerAction(it)) : null,
+              focusKeys: widget.link == null ? const {} : _focusKeys,
             ),
           ),
         ),
@@ -972,6 +1059,8 @@ class _GovItemScreenState extends State<GovItemScreen> {
         subtitle: it == null ? null : [itemTypeLabel(it.type), itemStatusLabel(it.status), if (it.ownerDept != null) it.ownerDept!.name].join(' · '),
         refresh: _refresh,
         maxWidth: AppWidth.reading.max,
+        // Institutions S4 (D-976): the holding department's team writes to the submitter (org_messages.dart)
+        primaryAction: it == null || widget.member || _orgId == null ? null : msgSubmitterAction(context, orgId: _orgId!, workItemId: it.id),
         child: child,
       );
     }

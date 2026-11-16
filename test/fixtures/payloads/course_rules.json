@@ -1,0 +1,44 @@
+{
+ "_source": {
+  "route": "GET /api/v1/course-profile/1/rules",
+  "uid": 3
+ },
+ "payload": {
+  "absence_limit": 6,
+  "grade_breakdown": [
+   {
+    "label": "أعمال السنة",
+    "weight": 20
+   },
+   {
+    "label": "السكاشن",
+    "weight": 20
+   },
+   {
+    "label": "النهائي",
+    "weight": 60
+   }
+  ],
+  "late_policy": "يخصم 10% كل يوم",
+  "items": [
+   {
+    "id": 3,
+    "text": "تسليم فردي",
+    "order": 0
+   },
+   {
+    "id": 2,
+    "text": "التواصل عبر رسائل الكورس فقط",
+    "order": 2
+   }
+  ],
+  "count": 5,
+  "me": {
+   "absences": 0,
+   "limit": 6,
+   "left": 6,
+   "over": false
+  },
+  "can_edit": false
+ }
+}

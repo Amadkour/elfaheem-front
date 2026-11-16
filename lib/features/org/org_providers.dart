@@ -30,6 +30,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_providers.dart';
 import 'home/org_home_logic.dart' show OrgTask, OrgTaskAction, OrgTaskOutcome, OrgTaskQueue, orgTaskOutcome;
 import 'org_dashboard_model.dart';
+import 'org_fix_actions.dart' show registerOrgFixActions;
 import 'org_platform_context.dart';
 import 'org_schedule_ladder.dart';
 import 'org_v3.dart';
@@ -109,6 +110,12 @@ OrgGate orgDashboardGate({
 }
 
 class OrgSession extends AdminBase {
+  /// UX v3 phase 6: the organization's one-tap error fixes (open_members · open_agenda · setup_councils) are
+  /// registered app-wide with the session, which every org screen reads.
+  OrgSession() {
+    registerOrgFixActions();
+  }
+
   List<Map<String, dynamic>> items = [];   // flat, path-sorted, each has depth / parent_id / my_role / permissions
   int? currentId;
   bool loaded = false;

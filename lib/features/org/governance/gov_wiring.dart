@@ -1,24 +1,32 @@
 // lib/features/org/governance/gov_wiring.dart — where the governance screens plug into the rest of the app:
 // the org dashboard's section entries, the member dashboard's pills, the deep links a notification tap opens
 // (`AppNavigator`: org_work · org_council · org_delegations · org_assignments) and the Export Hub callbacks
-// (items list · entity items · council session). Everything else of the module stays in its own files.
+// (items list · entity items · council session) and the pages the org fix actions open (org_fix_actions.dart:
+// a council on its Sessions / Members tab, a unit's council, the councils list, Members, the councils setup).
+// Everything else of the module stays in its own files.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/notif_link.dart' show NotifLink;
 import 'package:provider/provider.dart';
 
 import '../../../design/app_kit.dart' show showAppSheet;
 import '../../../design/export_hub/export_hub.dart';
 import '../../admin/admin_common.dart' show asInt, t;
+import '../org_page_header.dart' show OrgPushedPage;
+import '../org_people_page.dart' show OrgPeoplePage;
 import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgCall;
 import 'gov_api.dart';
 import 'gov_councils_page.dart';
+import 'gov_council_ui.dart' show govOrgId;
+import 'gov_councils_setup.dart' show openCouncilsSetup;
 import 'gov_delegations_page.dart';
 import 'gov_entities_page.dart';
 import 'gov_filter.dart';
 import 'gov_item_screen.dart';
+import 'gov_link_pages.dart';
 import 'gov_items_page.dart';
 import 'gov_member_pages.dart';
 import 'gov_models.dart';
@@ -137,12 +145,13 @@ bool _manages(BuildContext ctx, int? orgId) {
 }
 
 /// `org_work` → the item (notification `related_type` org_work_item carries the item id).
-Future<void> govOpenItemLink(NavigatorState nav, BuildContext ctx, int id, {int? orgId}) =>
-    nav.push(MaterialPageRoute(builder: (_) => GovItemScreen(id, orgId: orgId, member: !_manages(ctx, orgId))));
+/// [link] (UX v3 phase 2): the action banner, the part to scroll to and the fields to change.
+Future<void> govOpenItemLink(NavigatorState nav, BuildContext ctx, int id, {int? orgId, NotifLink? link}) =>
+    nav.push(MaterialPageRoute(builder: (_) => GovItemScreen(id, orgId: orgId, member: !_manages(ctx, orgId), link: link)));
 
 /// `org_council` → the session (agenda published · voting opened · closing · results).
-Future<void> govOpenSessionLink(NavigatorState nav, BuildContext ctx, int sessionId, {int? orgId}) => nav.push(MaterialPageRoute(
-    builder: (_) => GovSessionScreen(sessionId, orgId: orgId, member: !_manages(ctx, orgId), onOpenItem: (it) => govOpenItem(ctx, it, orgId: orgId))));
+Future<void> govOpenSessionLink(NavigatorState nav, BuildContext ctx, int sessionId, {int? orgId, NotifLink? link}) => nav.push(MaterialPageRoute(
+    builder: (_) => GovSessionScreen(sessionId, orgId: orgId, member: !_manages(ctx, orgId), link: link, onOpenItem: (it) => govOpenItem(ctx, it, orgId: orgId))));
 
 /// `org_delegations` → the delegations of the entity when known, else what is delegated to me.
 Future<void> govOpenDelegationLink(NavigatorState nav, BuildContext ctx, int? deptId, {int? orgId}) => nav.push(MaterialPageRoute(
@@ -150,6 +159,14 @@ Future<void> govOpenDelegationLink(NavigatorState nav, BuildContext ctx, int? de
 
 /// `org_assignments` → the forms I must answer.
 Future<void> govOpenAssignmentsLink(NavigatorState nav) => nav.push(MaterialPageRoute(builder: (_) => const GovMyAssignmentsPage()));
+
+/// `org_delegation` (UX v3 phase 2, id = the delegation) → that delegation, or "no longer exists".
+Future<void> govOpenDelegationById(NavigatorState nav, int id, {int? orgId, NotifLink? link}) =>
+    nav.push(MaterialPageRoute(builder: (_) => GovLinkedDelegationPage(id, orgId: orgId, link: link)));
+
+/// `org_form_assignment` (id = the assignment) → its fill screen while pending, else "already handled".
+Future<void> govOpenAssignmentById(NavigatorState nav, int id, {NotifLink? link}) =>
+    nav.push(MaterialPageRoute(builder: (_) => GovLinkedAssignmentPage(id, link: link)));
 
 /// Department dashboard: the Items tab body of an entity.
 Widget govDeptItemsTab(BuildContext context, int orgId, int deptId) =>
@@ -165,3 +182,38 @@ Future<void> govOpenCouncilOfDept(BuildContext context, int orgId, int councilDe
   Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => GovCouncilPage(c.id, orgId: orgId, onOpenItem: (it) => govOpenItem(context, it, orgId: orgId), onExport: govExportHubEnabled() ? (ses) => govExportSession(context, orgId, ses) : null)));
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Fix actions (UX v3 phase 6, org_fix_actions.dart)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// The organization a fix works in (the OrgSession above [context], else the app mode's).
+int? govOrgIdOf(BuildContext context) => govOrgId(context);
+
+/// A council by id on [tab] (0 Sessions = the agendas · 1 Members = the roster).
+Future<void> govOpenCouncilTab(NavigatorState nav, int councilId, {int? orgId, int tab = 0}) => nav.push(MaterialPageRoute(
+    builder: (ctx) => GovCouncilPage(councilId, orgId: orgId, initialTab: tab, onOpenItem: (it) => govOpenItem(ctx, it, orgId: orgId))));
+
+/// The councils list of the organization.
+Future<void> govOpenCouncilsList(NavigatorState nav, {int? orgId}) => nav.push(MaterialPageRoute(
+    builder: (ctx) => OrgPushedPage(
+        title: t('المجالس', 'Councils'),
+        helpPageId: 'org.governance',
+        child: GovCouncilsPage(orgId: orgId, onOpenItem: (it) => govOpenItem(ctx, it, orgId: orgId)))));
+
+/// The council of a unit (the unit is the council's entity or its parent) on [tab]; none found → the councils list.
+Future<void> govOpenUnitCouncil(NavigatorState nav, int orgId, int unitId, {int tab = 0}) async {
+  final r = await orgCall(() => GovApi(orgId).councils(), quiet: true);
+  final all = r.data is List<Council> ? r.data as List<Council> : const <Council>[];
+  final c = all.where((c) => c.dept.id == unitId || c.parentDept?.id == unitId).firstOrNull;
+  if (!nav.mounted) return;
+  if (c == null) return govOpenCouncilsList(nav, orgId: orgId);
+  return govOpenCouncilTab(nav, c.id, orgId: orgId, tab: tab);
+}
+
+/// The organization's Members (where staff are added).
+Future<void> govOpenMembers(NavigatorState nav) => nav.push(MaterialPageRoute(
+    builder: (_) => OrgPushedPage(title: t('الأعضاء', 'Members'), helpPageId: 'org.members', child: const OrgPeoplePage())));
+
+/// Settings → Councils setup.
+Future<void> govOpenCouncilsSetup(BuildContext context, {int? orgId}) => openCouncilsSetup(context, orgId: orgId);

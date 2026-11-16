@@ -847,6 +847,23 @@ class _TeacherChip extends StatelessWidget {
 /// The hero's stats (D-940, D-945): equal tiles in balanced rows — one row across a wide block, 2 (or 3 when they
 /// divide evenly) per row on a phone, the last row's tiles sharing its width. A tile: the icon in a paper well, the
 /// value in the page-title type, the label as a caption; a tile with an action wears a hairline and a chevron.
+/// D-1081: a hero figure as the soft-wash count card; the tones take turns (emerald · gold · sky · peach), a figure
+/// with a meaning of its own (the rating's star) keeps gold. A tappable one (students → the list) presses.
+const _kStatTones = [AppBlockTone.emerald, AppBlockTone.gold, AppBlockTone.sky, AppBlockTone.peach];
+
+Widget _statCard(CourseSpaceStat st, int index) => AppStatCard(
+      key: ValueKey('course_hero.stat.$index'),
+      icon: st.icon,
+      value: st.value,
+      label: st.label,
+      tone: st.tone != null ? AppBlockTone.gold : _kStatTones[index % _kStatTones.length],
+      onTap: st.onTap,
+      footer: st.footer,
+      bars: st.bars,
+      barsCaption: st.barsCaption,
+      warn: st.warn,
+    );
+
 class _StatsGrid extends StatelessWidget {
   const _StatsGrid({required this.stats, required this.wide});
 
@@ -887,7 +904,7 @@ class _StatsGrid extends StatelessWidget {
               children: [
                 for (final (j, st) in part.indexed) ...[
                   if (j > 0) const SizedBox(width: gap),
-                  Expanded(child: _StatCell(stat: st)),
+                  Expanded(child: _statCard(st, i + j)),
                 ],
               ],
             ),
@@ -895,81 +912,6 @@ class _StatsGrid extends StatelessWidget {
         }
         return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
       },
-    );
-  }
-}
-
-class _StatCell extends StatelessWidget {
-  const _StatCell({required this.stat});
-
-  final CourseSpaceStat stat;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final b = AppBlock.colorsOf(context);
-    final tappable = stat.onTap != null;
-    final iconInk = stat.tone == null ? b.ink : ensureContrast(stat.tone!, [c.cardBg], min: 3);
-    final radius = BorderRadius.circular(AppRadius.control);
-    final cell = Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.xs, AppSpace.sm),
-      child: Row(
-        children: [
-          Container(
-            width: AppSpace.xl + AppSpace.xxs,
-            height: AppSpace.xl + AppSpace.xxs,
-            decoration: BoxDecoration(color: b.surface, borderRadius: BorderRadius.circular(AppRadius.chip)),
-            child: Icon(stat.icon, size: AppIconSize.md, color: iconInk),
-          ),
-          const SizedBox(width: AppSpace.sm),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
-                  child: AppCountUp(
-                    stat.value,
-                    memoryKey: 'course_hero.${stat.label}',
-                    // the figure role (sans, tabular): editorial serif digits and currency read poorly in Arabic
-                    style: AppType.figureLarge(context).copyWith(color: b.ink),
-                  ),
-                ),
-                const SizedBox(height: AppSpace.xxs / 2),
-                Text(
-                  stat.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppType.meta(context).copyWith(color: tappable ? b.ink : b.muted),
-                ),
-              ],
-            ),
-          ),
-          if (tappable) Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: b.muted),
-        ],
-      ),
-    );
-    final tile = Material(
-      color: c.cardBg.withValues(alpha: c.isDark ? 0.55 : 0.78),
-      shape: RoundedRectangleBorder(
-        borderRadius: radius,
-        side: BorderSide(color: tappable ? c.primary.withValues(alpha: 0.35) : c.cardEdge, width: AppBorder.hairline),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: tappable
-          ? InkWell(
-              onTap: stat.onTap,
-              child: ConstrainedBox(constraints: const BoxConstraints(minHeight: AppTouch.min), child: cell),
-            )
-          : cell,
-    );
-    return Semantics(
-      button: tappable,
-      label: '${stat.value} ${stat.label}',
-      excludeSemantics: true,
-      child: tile,
     );
   }
 }

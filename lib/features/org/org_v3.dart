@@ -12,6 +12,7 @@ library;
 
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/api_error_text.dart' show featureDisabledText;
+import 'package:flutter_education_app/design/app_errors.dart' show appSharedFix, showAppError;
 
 import '../admin/admin_common.dart';
 import 'advising/adv_texts.dart' show advCodeTexts;
@@ -49,7 +50,14 @@ Future<OrgCall> orgCall(Future<dynamic> Function() fn, {String? ok, bool quiet =
     return OrgCall(r ?? true);
   } catch (e) {
     final err = ApiException.from(e);
-    if (!quiet) toast(orgErrorText(err), error: true);
+    if (!quiet) {
+      // UX v3 phase 6: a refusal that carries a fix the app runs (open_members, setup_councils, …) gets its button
+      if (appSharedFix(err) != null) {
+        showAppError(null, err, text: orgErrorText(err));
+      } else {
+        toast(orgErrorText(err), error: true);
+      }
+    }
     return OrgCall(null, err);
   }
 }
@@ -340,14 +348,56 @@ Map<String, String> _codeTexts() => {
       'name_required': t('الاسم مطلوب', 'A name is required'),
       'parent_not_approved': t('لم تتم الموافقة على ربطك بهذا الابن بعد', 'Your link to this child has not been approved yet'),
       // ads (ads_pages.dart saves through OrgApi): the home slider is personal, never an organization course
+      // institutions (D-963): a course sits in an academic department or none
+      'course_dept_not_academic': t('المقررات تتبع الأقسام العلمية فقط — اختر قسماً علمياً أو بدون قسم',
+          'Courses belong to academic departments only: pick an academic department or none'),
+      'bad_audience': t('اختر جهة واحدة على الأقل ترسل الطلبات', 'Pick at least one group who can send requests'),
+      'template_unknown': t('هذا القالب غير موجود — حدّث الصفحة', 'This template does not exist — refresh the page'),
+      'request_type_unknown': t('نوع طلب غير معروف لهذا القالب — حدّث الصفحة', 'An unknown request type for this template — refresh the page'),
+      'template_name_required': t('اكتب اسم القسم العلمي', 'Name the academic department'),
       'org_course_ad': t('لا يمكن الإعلان عن كورس تابع لمؤسسة', 'An ad can\'t open an organization course'),
+      // Institutions v2 phase 1 (D-980 – D-984, org_unit_rules.dart): every unit has a head; core units stay
+      'head_required': t('الرئيس مطلوب. عيّن شخصاً، أو اجعل نفسك الرئيس.', 'A head is required. Assign someone, or make yourself the head.'),
+      'dept_core': t('إدارة أساسية: يمكن تغيير اسمها ولا يمكن حذفها', 'Core department: can be renamed, not removed'),
+      'council_has_open_agenda': t('لمجلس هذه الإدارة بنود مفتوحة في جدول الأعمال — أنهِها أو انقلها أولاً',
+          'Its council still has open agenda items: close or move them first'),
+      'dept_has_open_items': t('لهذه الإدارة طلبات مفتوحة — اختر الإدارة التي تنتقل إليها',
+          'It still has open requests: choose the department that takes them'),
+      // Institutions v2 phase 4 (D-991 – D-993, org_institution_wizard.dart): the setup wizard
+      'not_ready': t('بقيت أمور يجب إكمالها قبل الإطلاق — راجع القائمة', 'A few things still need doing before launch: see the list'),
+      'dept_invalid': t('بعض الوحدات لم تعد موجودة — حدّث الصفحة', 'Some units no longer exist: refresh the page'),
+      'wizard_step_invalid': t('خطوة غير معروفة — حدّث الصفحة', 'An unknown step: refresh the page'),
+      'head_invalid': t('تعذّر تعيين بعض الرؤساء — اختر عضواً في المؤسسة', 'Some heads could not be assigned: pick a member of the organization'),
+      // `dept_has_content` (hard delete of a unit with content) is mapped above with the department codes
+      // UX v3 phase 1: the institution module's codes that had no text yet
+      'dept_parent_cycle': t('لا يمكن جعل الإدارة تابعة لنفسها أو لإحدى إداراتها الفرعية', "A department can't sit under itself or one of its own sub-departments"),
+      'dept_parent_invalid': t('الإدارة الرئيسية غير موجودة في هذه المؤسسة — حدّث الصفحة', 'The parent department is not in this organization: refresh the page'),
+      'dept_name_required': t('اسم الإدارة مطلوب', "The unit's name is required"),
+      'team_member_not_found': t('هذا الشخص لم يعد في الفريق — حدّث الصفحة', 'This person is no longer on the team: refresh the page'),
+      'bad_study_system': t('اختر نظام الدراسة: تقليدي أو ساعات معتمدة', 'Pick the study system: traditional or credit hours'),
+      'form_unavailable': t('هذا النموذج غير متاح الآن', 'This form is not available right now'),
+      'complaint_not_found': t('الشكوى غير موجودة — ربما حُذفت', 'The complaint is gone: it may have been removed'),
+      'complaint_open': t('الشكوى مفتوحة بالفعل', 'The complaint is already open'),
+      'role_name_required': t('اكتب اسم الدور', "Write the role's name"),
+      'expiry_before_start': t('تاريخ الانتهاء قبل تاريخ البداية', 'The end date is before the start date'),
+      'assignment_not_found': t('هذا التكليف لم يعد موجوداً — حدّث الصفحة', 'This assignment no longer exists: refresh the page'),
+      'grant_not_found': t('هذا الوصول لم يعد موجوداً — حدّث الصفحة', 'This access no longer exists: refresh the page'),
+      'permissions_required': t('اختر صلاحية واحدة على الأقل', 'Choose at least one permission'),
+      'agenda_not_found': t('بند جدول الأعمال غير موجود — ربما حُذف', 'The agenda item is gone: it may have been removed'),
     };
 
 /// The text of one server code (local checks reuse the server's wording).
 String orgCodeText(String code) => _codeTexts()[code] ?? code;
 
-/// A short, translated sentence for any [ApiException] the org API can raise.
+/// A short, translated sentence for any [ApiException] the org API can raise; the server's "how to fix it" sentence
+/// (UX v3 `fix` / `fix_en`) follows the mapped text when it sends one.
 String orgErrorText(ApiException e) {
+  final base = _orgErrorBase(e);
+  final fix = e.fix;
+  return (fix == null || fix.trim().isEmpty || base.contains(fix)) ? base : '$base — $fix';
+}
+
+String _orgErrorBase(ApiException e) {
   final c = e.code;
   if (c == 'generation_blocked') {        // schedule_auto.preconditions: the exact reasons, in the user's language
     final rs = asMapList(asMap(ApiException.asMap(e.body)?['detail'])['reasons']);

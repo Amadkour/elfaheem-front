@@ -17,6 +17,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../core/app_mode.dart';
 import '../core/attention/attention_service.dart';
+import '../core/notif_link.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_screen.dart' show TeacherTransfersScreen;
 import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart' show InboxItem, openInboxItem;
 import '../main.dart' show navigatorKey;
@@ -24,6 +25,7 @@ import '../utils/top_route_observer.dart' show topRouteObserver;
 import 'app_shell_nav.dart' show AppShellNav;
 import '../utils/widget/app_navigator.dart';
 import 'app_kit.dart';
+import 'listenable_selector.dart';
 
 String _tx(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -46,10 +48,11 @@ class AttentionBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final svc = AttentionService.instance;
-    return ListenableBuilder(
+    // rebuilds when THIS tab's count moves, not on every answer of the feed (UX v3 phase 5)
+    return ListenableSelector<int>(
       listenable: svc,
-      builder: (context, _) {
-        final n = svc.count(tabKey, orgId: orgId);
+      select: () => svc.count(tabKey, orgId: orgId),
+      builder: (context, n) {
         if (n <= 0) return child;
         return Stack(clipBehavior: Clip.none, children: [
           child,
@@ -151,10 +154,25 @@ Future<void> openOrgSection(int orgId, String section, {String? sub}) async {
   await navigatorKey.currentState?.pushNamed('/org_dashboard');
 }
 
+/// UX v3 phase 2: a governance row's `target` (on the row or inside its action): `{module, id, org_id}` when one
+/// item waits (that item), `{module: action_inbox}` when several do (Needs my action). Null = the old routing.
+NotifLink? attentionTargetLink(AttentionItem x) {
+  final t = x.raw['target'] ?? x.action['target'];
+  final l = NotifLink.fromAttentionTarget(t);
+  if (l == null || l.orgId != null || x.orgId == null) return l;
+  return NotifLink.fromAttentionTarget({...(t as Map), 'org_id': x.orgId});
+}
+
 /// Opens what an attention item points to, then refreshes the counts.
 Future<void> openAttentionItem(BuildContext context, AttentionItem x, {VoidCallback? onOpen}) async {
   final a = x.action;
   final orgId = x.orgId ?? int.tryParse('${a['org_id'] ?? ''}');
+  final target = attentionTargetLink(x);
+  if (target != null) {
+    await AppNavigator.openLink(target);
+    AttentionService.instance.refresh();
+    return;
+  }
   switch (x.actionType) {
     case 'org_tab':
       final section = '${a['tab']}';

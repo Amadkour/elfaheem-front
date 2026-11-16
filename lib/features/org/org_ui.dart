@@ -24,7 +24,7 @@ import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/design/app_badges.dart' show appColorGlyph;
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'dart:typed_data';
-import 'package:flutter_education_app/design/app_kit.dart' show AppButton, AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppButton, AppListSkeleton, AppStatCard, appStatToneFor, appStatWarn;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -170,7 +170,8 @@ class OrgSectionTitle extends StatelessWidget {
   }
 }
 
-/// Small counter tile (two per row on phones, a strip on wide screens).
+/// Small counter tile (two per row on phones, a strip on wide screens): since D-1081 it draws the soft-wash
+/// [AppStatCard] ([color] picks its tone; the danger colour turns the figure red).
 class OrgStatTile extends StatelessWidget {
   const OrgStatTile({super.key, required this.icon, required this.label, required this.value, this.color, this.onTap});
   final IconData icon;
@@ -180,43 +181,14 @@ class OrgStatTile extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final col = color ?? c.primary;
-    // paper + a warm hairline (tone first, no shadow at rest); the icon carries the colour
-    return AppPressScale(
-      enabled: onTap != null,
-      child: Material(
-        color: c.cardBg,
-        shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpace.sm),
-            child: Row(children: [
-              IconBadge(icon, col, size: AppIconSize.hero),
-              AppSpace.gapSm,
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: AppCountUp('${value ?? 0}',
-                        memoryKey: 'orgstat:$label', style: AppType.figureLarge(context).copyWith(color: c.textDark, height: 1.15)),
-                  ),
-                  // two lines: one cut "Live even…" / "مهام فش…" on every 3-up strip (docs/polish/visual-review.md)
-                  Text(label, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: AppType.meta(context).copyWith(color: c.textMedium, height: 1.2)),
-                ]),
-              ),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppStatCard(
+        icon: icon,
+        label: label,
+        value: '${value ?? 0}',
+        tone: appStatToneFor(context, color),
+        warn: appStatWarn(context, color),
+        onTap: onTap,
+      );
 }
 
 /// Responsive grid: 2 columns on phones, more on wide screens.

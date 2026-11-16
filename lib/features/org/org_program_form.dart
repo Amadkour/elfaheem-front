@@ -16,7 +16,8 @@ import '../admin/admin_common.dart';
 import 'org_courses_page.dart' show showOrgCourseForm;
 import 'org_levels.dart' show PrereqRule;
 import 'org_levels_pages.dart' show PrereqRulesEditor;
-import 'org_member_form.dart' show OrgMemberPickField;
+import 'org_unit_rules.dart' show UnitHeadPicker, currentPerson, headProblem;
+import 'package:flutter_education_app/design/app_errors.dart' show FieldErrors;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
@@ -82,6 +83,8 @@ class _ProgramFormState extends State<_ProgramForm> {
   late final _desc = TextEditingController(text: '${p?['description'] ?? ''}');
   late final _cap = TextEditingController(text: '${p?['capacity'] ?? ''}');
   late int? _manager = asMap(p?['manager'])['id'] == null ? null : asInt(asMap(p?['manager'])['id']);
+  // Institutions v2 (D-980): a department always has a manager; "Assign me as head" sends head_self
+  bool _managerSelf = false;
   late final Set<int> _entry = _ids('entry_course_ids'), _req = _ids('required_course_ids'), _elec = _ids('elective_course_ids');
   late int _minE = asInt(p?['min_electives'] ?? 0);
   late bool _active = p?['is_active'] != false;
@@ -93,6 +96,14 @@ class _ProgramFormState extends State<_ProgramForm> {
   Map<String, String> _errors = {};
   String? _banner;
   bool _busy = false, _tried = false;
+
+  /// UX v3: the server's head refusals (head_required · head_invalid · pick_head, or `fields`) land on the
+  /// manager picker, which is scrolled to and focused.
+  final _fe = FieldErrors(
+    aliases: const {'manager_user_id': 'manager', 'head_user_id': 'manager', 'head_self': 'manager'},
+    codes: const {'head_required': 'manager', 'head_invalid': 'manager'},
+    actions: const {'pick_head': 'manager'},
+  );
 
   Set<int> _ids(String k) => {...((p?[k] as List?) ?? const []).map((e) => asInt(e))};
 
@@ -107,6 +118,7 @@ class _ProgramFormState extends State<_ProgramForm> {
     for (final c in [_code, _ar, _en, _desc, _cap]) {
       c.dispose();
     }
+    _fe.dispose();
     super.dispose();
   }
 
@@ -115,7 +127,12 @@ class _ProgramFormState extends State<_ProgramForm> {
     if (mounted) setState(() => _courses = all);
   }
 
-  Map<String, String> _check() =>
+  Map<String, String> _check() => {
+        ..._checkProgram(),
+        'manager': ?headProblem(head: _manager, self: _managerSelf),
+      };
+
+  Map<String, String> _checkProgram() =>
       programProblem(code: _code.text, nameAr: _ar.text, nameEn: _en.text, required: _req, electives: _elec, minElectives: _minE);
 
   void _revalidate() {
@@ -148,7 +165,9 @@ class _ProgramFormState extends State<_ProgramForm> {
     }
     // PUT replaces the whole program — every field is sent
     final body = {
-      'code': _code.text.trim(), 'name_ar': _ar.text.trim(), 'name_en': _en.text.trim(), 'manager_user_id': _manager,
+      'code': _code.text.trim(), 'name_ar': _ar.text.trim(), 'name_en': _en.text.trim(),
+      'manager_user_id': _managerSelf ? (currentPerson(context).$1 ?? _manager) : _manager,
+      if (_managerSelf) 'head_self': true,
       'description': _desc.text.trim().isEmpty ? null : _desc.text.trim(),
       'capacity': cap, 'min_electives': _minE, 'is_active': _active,
       'entry_course_ids': _entry.toList(), 'required_course_ids': _req.toList(), 'elective_course_ids': _elec.toList(),
@@ -165,8 +184,15 @@ class _ProgramFormState extends State<_ProgramForm> {
       return Navigator.pop(context, true);
     }
     final msg = orgErrorText(r.error!);
+    if (_fe.take(r.error!, text: msg) && _fe.has('manager')) {
+      setState(() => _errors = {'manager': _fe.errorFor('manager') ?? msg});
+      WidgetsBinding.instance.addPostFrameCallback((_) => _fe.revealFirst());
+      return;
+    }
     setState(() {
       switch (r.code) {
+        case 'head_required':
+          _errors = {'manager': msg};
         case 'code_taken':
           _errors = {'code': msg};
         case 'electives':
@@ -203,12 +229,22 @@ class _ProgramFormState extends State<_ProgramForm> {
               Field(controller: _desc, label: t('نبذة (اختياري)', 'About (optional)'), maxLines: 2),
             ]),
             _Section(icon: Icons.manage_accounts_rounded, title: t('القيادة', 'Leadership'), children: [
-              OrgMemberPickField(
+              UnitHeadPicker(
+                key: _fe.keyFor('manager'),
                 label: t('مدير القسم', 'Department manager'),
                 value: _manager,
+                self: _managerSelf,
+                error: _errors['manager'],
                 initialName: asMap(p?['manager'])['name']?.toString(),
                 roles: const ['teacher', 'admin_assistant', 'org_admin'],   // _save_program accepts these
-                onChanged: (v) => setState(() => _manager = v),
+                onChanged: (v, me) {
+                  _fe.clear('manager');
+                  setState(() {
+                    _manager = v;
+                    _managerSelf = me;
+                  });
+                  _revalidate();
+                },
               ),
             ]),
             _Section(icon: DirIcons.login, title: t('الالتحاق', 'Admission'), children: [

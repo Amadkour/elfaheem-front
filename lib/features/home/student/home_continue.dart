@@ -52,6 +52,9 @@ class StudentContinueBlock extends StatelessWidget {
       child: AppTilt.subtle(
         radius: AppRadius.block,
         enabled: onOpen != null,
+        // the home's ONE main card: where to continue, in the primary → gold edge (D-1081)
+        child: AppHighlightEdge(
+        radius: AppRadius.block,
         child: AppBlock(
           key: const ValueKey('student_home.continue'),
           tone: AppBlockTone.emerald,
@@ -92,6 +95,7 @@ class StudentContinueBlock extends StatelessWidget {
               ),
             ]);
           }),
+        ),
         ),
       ),
     );

@@ -5,7 +5,8 @@
 //                            (DeptIn + kind + program → POST …/entities), change kind (PATCH …/entities/{id})
 //   GovEntityCard            presentational card (layout-tested)
 //   GovEntityDetailPage      tabs Items (GovItemsPage) · Categories (CRUD) · Delegations (GovDelegationsPage) ·
-//                            Approval chain (GovChainEditorPage, D-141; the org admin edits it)
+//                            Approval chain (GovChainEditorPage, D-141; the org admin edits it) ·
+//                            Automatic routing (GovAutoRoutingPage, D-971)
 //   showGovCategorySheet     create / edit a category (kind · names · description · form link · order)
 library;
 
@@ -17,7 +18,7 @@ import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show SheetHeader, asInt, asMap, asMapList, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
-import '../org_member_form.dart' show OrgMemberPickField;
+import '../org_unit_rules.dart' show ActingChip, CoreUnitBadge, UnitHeadPicker, headProblem, headRequiredText, unitHeadFieldErrors, unitHeadOf, unitIsCore;
 import '../org_page_header.dart' show OrgPushedPage;
 import '../org_providers.dart' show OrgApi, OrgSession, orgBase;
 import '../org_ui.dart' show orgNameOf;
@@ -26,6 +27,7 @@ import 'gov_api.dart';
 import 'gov_delegations_page.dart';
 import 'gov_items_page.dart';
 import 'gov_models.dart';
+import 'gov_institutions_s3.dart' show GovAutoRoutingPage;
 import 'gov_request_parts.dart' show GovChainEditorPage;
 import 'gov_ui.dart';
 
@@ -79,6 +81,7 @@ class GovEntityCard extends StatelessWidget {
                   AdminAvatar(name: e.head!.name, url: e.head!.avatar, size: 22),
                   const SizedBox(width: AppSpace.xs),
                   Expanded(child: Text('${t('الرئيس', 'Head')}: ${e.head!.name}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark))),
+                  if (unitHeadOf(e.raw)?.acting ?? false) ...[const SizedBox(width: AppSpace.xs), const ActingChip()],
                 ] else
                   Expanded(child: Text(t('بلا رئيس بعد', 'No head yet'), style: AppType.meta(context).copyWith(color: c.warning))),
               ]),
@@ -94,6 +97,7 @@ class GovEntityCard extends StatelessWidget {
           if (e.counts.overdue > 0) AppBadgePill('${t('متأخرة', 'Overdue')} ${e.counts.overdue}', color: c.danger, icon: Icons.timer_off_rounded),
           if (!e.acceptsComplaints && !e.isCouncil) AppBadgePill(t('لا تستقبل شكاوى', 'No complaints'), color: c.textLight, icon: Icons.block_rounded),
           if (e.can['decide']) AppBadgePill(t('أقرّر هنا', 'I decide here'), color: c.success, icon: Icons.verified_rounded),
+          if (unitIsCore(e.raw)) const CoreUnitBadge(),
         ]),
         if (council != null) ...[
           const SizedBox(height: AppSpace.xs),
@@ -127,6 +131,11 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
   final ar = TextEditingController(), en = TextEditingController(), desc = TextEditingController();
   var kind = 'service';
   int? head, program;
+  // Institutions v2 (D-980): a head is required; "Assign me as head" sends head_self
+  var headSelf = false;
+  String? headErr;
+  // UX v3: the server's head refusals (head_required · head_invalid · pick_head, or `fields`) land on the picker
+  final fe = unitHeadFieldErrors();
   var acceptsComplaints = true, busy = false;
   final r = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
@@ -163,11 +172,19 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
               ),
               const SizedBox(height: AppSpace.sm),
             ],
-            OrgMemberPickField(
+            UnitHeadPicker(
+              key: fe.keyFor('head'),
               label: t('رئيس الجهة', 'Entity head'),
               value: head,
+              self: headSelf,
+              error: headErr,
               roles: const ['teacher', 'teacher_assistant', 'admin_assistant', 'org_admin'],
-              onChanged: (v) => set(() => head = v),
+              onChanged: (v, me) => set(() {
+                head = v;
+                headSelf = me;
+                headErr = null;
+                fe.clear('head');
+              }),
             ),
             AppSwitchTile(
               icon: Icons.support_agent_rounded,
@@ -185,6 +202,12 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
                   appToast(t('اكتب اسم الجهة', 'Enter a name'), error: true);
                   return;
                 }
+                final noHead = headProblem(head: head, self: headSelf);
+                if (noHead != null) {
+                  set(() => headErr = noHead);
+                  showAppNotice(noHead, error: true);
+                  return;
+                }
                 set(() => busy = true);
                 final res = await orgCall(() => api.createEntity({
                       'kind': kind,
@@ -193,11 +216,16 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
                       'description': desc.text.trim(),
                       'features': const ['complaints', 'forms', 'announcements', 'materials'],
                       'accepts_complaints': acceptsComplaints,
-                      'head_user_id': ?head,
+                      if (headSelf) 'head_self': true else 'head_user_id': ?head,
                       'program_id': ?program,
                     }));
                 if (!ctx.mounted) return;
-                set(() => busy = false);
+                set(() {
+                  busy = false;
+                  if (res.code == 'head_required') headErr = headRequiredText();
+                  if (!res.ok && fe.take(res.error!, text: orgErrorText(res.error!))) headErr = fe.errorFor('head') ?? headErr;
+                });
+                if (!res.ok && fe.has('head')) WidgetsBinding.instance.addPostFrameCallback((_) => fe.revealFirst());
                 if (res.ok) {
                   appToast(t('أُنشئت الجهة 🎉', 'Entity created 🎉'));
                   Navigator.pop(ctx, true);
@@ -207,6 +235,7 @@ Future<bool> showGovEntitySheet(BuildContext context, GovApi api, {List<Map<Stri
           ]),
         );
       }));
+  fe.dispose();
   return r == true;
 }
 
@@ -409,7 +438,7 @@ class GovEntityDetailPage extends StatelessWidget {
     final chainTab = !entity.isCouncil && oid != null;   // D-141: the approval chain (the org admin edits it)
     // pushed from the staff Entities list only: the dashboard's header (Back · name · kind line), the tabs head the body
     return DefaultTabController(
-      length: chainTab ? 4 : 3,
+      length: chainTab ? 5 : 3,
       child: OrgPushedPage(helpPageId: 'org.governance', 
         title: entity.name,
         subtitle: [entityKindLabel(entity.kind), if (entity.code.isNotEmpty) entity.code].join(' · '),
@@ -426,6 +455,7 @@ class GovEntityDetailPage extends StatelessWidget {
                 Tab(text: t('التصنيفات', 'Categories')),
                 Tab(text: t('التفويض', 'Delegation')),
                 if (chainTab) Tab(text: t('سلسلة الاعتماد', 'Approval chain')),
+                if (chainTab) Tab(text: t('الإحالة التلقائية', 'Automatic routing')),
               ],
               isScrollable: chainTab,
               tabAlignment: chainTab ? TabAlignment.start : null,
@@ -437,6 +467,7 @@ class GovEntityDetailPage extends StatelessWidget {
               _CategoriesTab(entity: entity, orgId: orgId),
               GovDelegationsPage(entity.id, entity: entity, orgId: orgId, embedded: true),
               if (chainTab) GovChainEditorPage(orgId: oid, entity: entity, embedded: true),
+              if (chainTab) GovAutoRoutingPage(orgId: oid, entity: entity),
             ]),
           ),
         ]),
@@ -487,6 +518,7 @@ class GovCategoryTile extends StatelessWidget {
 Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, {Category? edit, List<GovFormRef> forms = const []}) async {
   final ar = TextEditingController(text: edit?.nameAr ?? ''), en = TextEditingController(text: edit?.nameEn ?? '');
   final desc = TextEditingController(text: edit?.description ?? ''), key = TextEditingController(text: edit?.key ?? ''), order = TextEditingController(text: '${edit?.order ?? 0}');
+  final sla = TextEditingController(text: edit?.slaHours == null ? '' : '${edit!.slaHours}');   // D-972
   var kind = edit?.kind ?? 'request';
   int? form = edit?.formId;
   var active = edit?.isActive ?? true, busy = false;
@@ -523,6 +555,13 @@ Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, 
               const SizedBox(width: AppSpace.sm),
               SizedBox(width: 110, child: OrgNumberField(controller: order, label: t('الترتيب', 'Order'), gap: false)),
             ]),
+            if (kind != 'complaint') ...[
+              const SizedBox(height: AppSpace.sm),
+              OrgNumberField(controller: sla, label: t('مهلة الرد بالساعات (اختياري)', 'SLA hours (optional)'), gap: false),
+              Text(t('فارغ = مهلة الأولوية. بعد انتهائها يُنبَّه رئيس الجهة، ثم يُصعَّد للوكيل إن كان التصعيد مفعّلاً.',
+                      'Empty = the hours of its priority. When it passes the head is told, then the vice dean if escalation is on.'),
+                  style: AppType.meta(ctx).copyWith(color: c.textLight)),
+            ],
             if (edit != null) ...[
               const SizedBox(height: AppSpace.xs),
               AppSwitchTile(title: t('مفعّل', 'Active'), value: active, onChanged: (v) => set(() => active = v)),
@@ -539,6 +578,12 @@ Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, 
                   appToast(t('اكتب اسم التصنيف', 'Enter a name'), error: true);
                   return;
                 }
+                final slaText = sla.text.trim();
+                final slaHours = slaText.isEmpty ? null : int.tryParse(slaText);
+                if (slaText.isNotEmpty && (slaHours == null || slaHours < 1 || slaHours > 2160)) {
+                  appToast(t('مهلة الرد من 1 إلى 2160 ساعة', 'SLA hours go from 1 to 2160'), error: true);
+                  return;
+                }
                 set(() => busy = true);
                 final body = {
                   if (key.text.trim().isNotEmpty) 'key': key.text.trim(),
@@ -549,6 +594,7 @@ Future<bool> showGovCategorySheet(BuildContext context, GovApi api, int deptId, 
                   'form_id': form,
                   'order': int.tryParse(order.text.trim()) ?? 0,
                   if (edit != null) 'is_active': active,
+                  'sla_hours': kind == 'complaint' ? edit?.slaHours : slaHours,
                 };
                 final res = await orgCall(() => edit == null ? api.createCategory(deptId, body) : api.updateCategory(edit.id, body), ok: t('تم الحفظ', 'Saved'));
                 if (!ctx.mounted) return;

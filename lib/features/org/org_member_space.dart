@@ -28,6 +28,8 @@ import 'org_announcements.dart' show OrgAnnouncementFeed;
 import 'org_dynamic_form.dart';
 import 'org_join_pages.dart' show OrgJoinUnitsTab;
 import 'org_platform_context.dart';
+import 'org_inst_notify.dart' show showUnitMessageSheet;
+import 'governance/gov_wiring.dart' show govEnabled;
 
 const _pub = '$orgBase/public';
 
@@ -231,15 +233,26 @@ class _DirectoryState extends State<_Directory> with _Loader<_Directory> {
                     OrgInfoRow(Icons.schedule_rounded, '${d['office_hours'] ?? ''}'),
                     OrgInfoRow(Icons.alternate_email_rounded, '${d['email'] ?? ''}', ltr: true),
                     OrgInfoRow(Icons.phone_rounded, '${d['phone'] ?? ''}', ltr: true),
-                    if (d['accepts_complaints'] == true) ...[
+                    if (d['accepts_complaints'] == true || govEnabled()) ...[
                       AppSpace.gapXs,
                       Align(
                         alignment: AlignmentDirectional.centerEnd,
-                        child: AppPill(
-                          label: t('تواصل / شكوى', 'Contact / complain'),
-                          icon: Icons.chat_bubble_outline_rounded,
-                          onTap: () => showComplaintComposer(context, widget.org, dept: d),
-                        ),
+                        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: [
+                          // Institutions v2 phase 2: a message to the unit lands as an item its head is told about
+                          if (govEnabled())
+                            AppPill(
+                              key: ValueKey('unit.msg.${d['id']}'),
+                              label: t('راسل هذه الإدارة', 'Message this department'),
+                              icon: Icons.forward_to_inbox_rounded,
+                              onTap: () => showUnitMessageSheet(context, orgId: asInt(widget.org['id']), dept: d),
+                            ),
+                          if (d['accepts_complaints'] == true)
+                            AppPill(
+                              label: t('تواصل / شكوى', 'Contact / complain'),
+                              icon: Icons.chat_bubble_outline_rounded,
+                              onTap: () => showComplaintComposer(context, widget.org, dept: d),
+                            ),
+                        ]),
                       ),
                     ],
                   ]),

@@ -247,21 +247,18 @@ class NotificationsProvider extends BaseProvider {
 
   // ── markAsRead — tile tap ─────────────────────────────────────────────────────
 
-  /// Optimistically marks a single notification as read, then calls the API.
-  /// Rolls back if the API call fails.
+  /// Optimistically marks a single notification as read, then calls the API; rolls back (false) when it fails.
+  /// Not through `run`: a tap must not flip the whole list into its loading state (a skeleton under the rows, the
+  /// next page held back) nor retry behind the person's back (UX v3 phase 5).
   Future<bool> markAsRead(String id) async {
-    // Optimistic update for instant feedback
     _updateLocal(id, true);
-
-    final result = await run(
-          () => _api.put('/api/v1/notifications/$id/read'),
-    );
-
-    if (result == null && hasError) {
+    try {
+      await _api.put('/api/v1/notifications/$id/read');
+      return true;
+    } catch (_) {
       _updateLocal(id, false); // rollback
       return false;
     }
-    return true;
   }
 
   // ── markGroupAsRead — "تحديد الكل كمقروء" ────────────────────────────────────

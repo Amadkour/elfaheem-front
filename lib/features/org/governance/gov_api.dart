@@ -105,6 +105,8 @@ class GovApi {
       _api.post('$base/items/bulk', body: {'ids': ids, 'op': op, 'route': ?route, 'user_id': ?userId, 'session_id': ?sessionId});
 
   Future<Map<String, dynamic>> dashboard({int? deptId}) async => asMap(await _api.get('$base/dashboard', queryParams: {'dept_id': ?deptId}));
+  /// The faculty overview (D-979): the usual numbers + `faculty` for the dean / vice deans / org admin (else absent).
+  Future<Map<String, dynamic>> facultyDashboard() async => asMap(await _api.get('$base/dashboard', queryParams: {'scope': 'faculty'}));
 
   Future<List<SavedFilter>> savedFilters(String scope) async {
     final r = await _api.get('$base/saved-filters', queryParams: {'scope': scope});
@@ -181,8 +183,15 @@ class GovApi {
     return [for (final c in asMapList(asMap(r)['items'])) Council.fromJson(c)];
   }
 
-  Future<dynamic> createFacultyCouncil({String? nameAr, String? nameEn, int? headUserId}) =>
-      _api.post('$base/councils', body: {'level': 'faculty', 'name_ar': ?nameAr, 'name_en': ?nameEn, 'head_user_id': ?headUserId});
+  /// Institutions v2: a chair is required (422 `head_required`); [headSelf] makes the caller the chair.
+  Future<dynamic> createFacultyCouncil({String? nameAr, String? nameEn, int? headUserId, bool headSelf = false}) =>
+      _api.post('$base/councils', body: {'level': 'faculty', 'name_ar': ?nameAr, 'name_en': ?nameEn, if (headSelf) 'head_self': true else 'head_user_id': ?headUserId});
+
+  // Institutions v2 phase 3 (D-989 – D-990, gov_councils_setup.dart): which councils the institution has
+  Future<Map<String, dynamic>> councilsSetup() async => asMap(await _api.get('$base/councils-setup'));
+
+  /// 409 `council_has_open_agenda` {councils: [{id, name, open_agenda_items}]} = nothing applied.
+  Future<Map<String, dynamic>> saveCouncilsSetup(Map<String, dynamic> body) async => asMap(await _api.put('$base/councils-setup', body: body));
 
   Future<Council> council(int cid) async => Council.fromJson(asMap(await _api.get('$base/councils/$cid')));
 
@@ -221,6 +230,43 @@ class GovApi {
   Future<dynamic> escalateAgenda(int aid, {String? note}) => _api.post('$base/agenda/$aid/escalate', body: {'note': ?note});
 
   Future<Map<String, dynamic>> minutes(int sid) async => asMap(await _api.get('$base/sessions/$sid/minutes'));
+
+  // ── Institutions S2 (D-965 – D-970) ───────────────────────────────────
+
+  /// The roster: members with weights, the secretary, `can.roster`.
+  Future<CouncilRoster> councilMembers(int cid) async => CouncilRoster.fromJson(asMap(await _api.get('$base/councils/$cid/members')));
+
+  /// `rosterBody(...)`; 422 `weight_cap` `{user_id, cap_pct}`, `not_staff_member`, `council_settings_invalid`.
+  Future<CouncilRoster> saveCouncilMembers(int cid, Map<String, dynamic> body) async =>
+      CouncilRoster.fromJson(asMap(await _api.put('$base/councils/$cid/members', body: body)));
+
+  /// The chair / secretary writes an item on the agenda (201 → the whole session).
+  /// S3 (D-973): with a known [templateKey] a missing title / body comes from the template in [lang] and the item
+  /// keeps its `suggested_decision`; no title and no known key → 422 `title_required`.
+  Future<CouncilSession> writeAgendaItem(int sid, {String? title, String? body, String? templateKey, String? lang}) async =>
+      CouncilSession.fromJson(asMap(await _api.post('$base/sessions/$sid/agenda/write',
+          body: {'title': ?title, 'body': ?body, 'template_key': ?templateKey, 'lang': ?lang})));
+
+  // ── Institutions S3 (D-971, D-973) ─────────────────────────────────────
+
+  /// The department's ordered automatic routing rules and what the editor may offer (`AutoRouting.fromJson`).
+  Future<Map<String, dynamic>> autoRouting(int deptId) async => asMap(await _api.get('$base/entities/$deptId/auto-routing'));
+
+  /// The WHOLE ordered list (`[]` clears); 422 `auto_rule_invalid` `{index, field}`. Answer: the GET shape.
+  Future<Map<String, dynamic>> saveAutoRouting(int deptId, List<Map<String, dynamic>> rules) async =>
+      asMap(await _api.put('$base/entities/$deptId/auto-routing', body: {'rules': rules}));
+
+  /// The nine decision templates (`{items: [...]}`).
+  Future<List<Map<String, dynamic>>> decisionTemplates() async => asMapList(asMap(await _api.get('$base/decision-templates'))['items']);
+
+  /// `{reminded, manual_reminded_at, next_allowed_at}`; 429 `remind_too_soon` `{retry_after}`.
+  Future<Map<String, dynamic>> remindNonVoters(int sid) async => asMap(await _api.post('$base/sessions/$sid/remind', body: const {}));
+
+  /// I have a conflict of interest on this row (→ the row JSON).
+  Future<AgendaItem> declareConflict(int aid, {String? note}) async =>
+      AgendaItem.fromJson(asMap(await _api.post('$base/agenda/$aid/conflict', body: {'note': ?note})));
+
+  Future<AgendaItem> agendaResults(int aid) async => AgendaItem.fromJson(asMap(await _api.get('$base/agenda/$aid/results')));
 
   Future<List<AgendaItem>> myVotes() async {
     final r = await _api.get('$base/me/votes');
@@ -283,6 +329,9 @@ class GovApi {
 
   static Future<dynamic> memberVote(int aid, String vote, {String? note, ApiClient? client}) =>
       (client ?? ApiClient()).post('$memberBase/agenda/$aid/vote', body: {'vote': vote, 'note': ?note});
+
+  static Future<AgendaItem> memberDeclareConflict(int aid, {String? note, ApiClient? client}) async =>
+      AgendaItem.fromJson(asMap(await (client ?? ApiClient()).post('$memberBase/agenda/$aid/conflict', body: {'note': ?note})));
 
   static Future<List<Delegation>> memberDelegations({ApiClient? client}) async {
     final r = await (client ?? ApiClient()).get('$memberBase/me/delegations');

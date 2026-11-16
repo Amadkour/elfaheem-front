@@ -4,8 +4,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppListSkeleton, AppRefresh, AppTabs, AppTabItem, AppBlock, AppBlockTone, AppEmpty, AppStatusBadge, AppTone, AppButton, AppWidth;
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppPressScale, AppReveal;
+    show AppListSkeleton, AppRefresh, AppTabs, AppTabItem, AppBlockTone, AppKpiGrid, AppStatCard, AppEmpty, AppStatusBadge, AppTone, AppButton, AppWidth;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale, AppReveal;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -359,7 +359,7 @@ class _StatusCard extends StatelessWidget {
   }
 }
 
-/// What is saved on this device: the screen's one block (sky = information), the count as the key figure.
+/// What is saved on this device: two soft-wash counts (D-1081) — the videos (sky) and the storage they use (gold).
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({required this.count, required this.sizeLabel});
 
@@ -367,52 +367,20 @@ class _SummaryCard extends StatelessWidget {
   final String sizeLabel;
 
   @override
-  Widget build(BuildContext context) {
-    return AppBlock(
-      tone: AppBlockTone.sky,
-      child: Builder(builder: (context) {
-        final b = AppBlock.colorsOf(context);
-        return Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-                AppCountUp('$count', memoryKey: 'downloads.count', style: AppType.figureLarge(context).copyWith(color: b.ink)),
-                const SizedBox(width: AppSpace.xs),
-                Flexible(
-                  child: Text(offlineT('dl_videos_count'),
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: b.ink)),
-                ),
-              ]),
-              const SizedBox(height: AppSpace.xs),
-              Row(children: [
-                Icon(Icons.sd_storage_rounded, size: AppIconSize.sm, color: b.muted),
-                const SizedBox(width: AppSpace.xs - 2),
-                Flexible(
-                  child: Text.rich(
-                    TextSpan(children: [
-                      TextSpan(text: '${offlineT('dl_storage_used')}  '),
-                      TextSpan(
-                          text: '${String.fromCharCode(0x2068)}$sizeLabel${String.fromCharCode(0x2069)}',
-                          style: TextStyle(color: b.ink, fontWeight: FontWeight.w600)),
-                    ]),
-                    style: AppType.meta(context).copyWith(color: b.muted, fontFeatures: const [FontFeature.tabularFigures()]),
-                  ),
-                ),
-              ]),
-            ]),
-          ),
-          const SizedBox(width: AppSpace.md),
-          // a quiet paper disc with the mark: the block's colour does the talking
-          Container(
-            width: AppSpace.xxl + AppSpace.xs,
-            height: AppSpace.xxl + AppSpace.xs,
-            decoration: BoxDecoration(color: context.colors.cardBg, shape: BoxShape.circle),
-            child: Icon(Icons.download_done_rounded, color: b.ink, size: AppIconSize.lg),
-          ),
-        ]);
-      }),
-    );
-  }
+  Widget build(BuildContext context) => AppKpiGrid(maxColumns: 2, children: [
+        AppStatCard(
+          icon: Icons.download_done_rounded,
+          value: '$count',
+          label: offlineT('dl_videos_count'),
+          tone: AppBlockTone.sky,
+        ),
+        AppStatCard(
+          icon: Icons.sd_storage_rounded,
+          value: sizeLabel,
+          label: offlineT('dl_storage_used'),
+          tone: AppBlockTone.gold,
+        ),
+      ]);
 }
 
 /// One saved lecture: a paper row on a warm hairline — the play well, the title, its facts, a quiet delete.

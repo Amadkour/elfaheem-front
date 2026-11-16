@@ -30,6 +30,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -51,6 +52,9 @@ const kCpTabProgress = 'progress';
 const kCpTabClass = 'class';
 const kCpTabTeam = 'team';
 const kCpTabArchive = 'archive';
+
+/// The course's own dashboard, the first tab (D-1090).
+const kCpTabOverview = 'overview';
 
 /// Tells the server the Announcements tab showed everything up to [lastId].
 typedef AnnouncementsSeenPoster = Future<void> Function(int courseId, int lastId);
@@ -600,3 +604,91 @@ CourseSpaceTopAction courseAskDocsAction(BuildContext context, int courseId, Str
     MaterialPageRoute(builder: (_) => RagChatScreen(courseId: courseId, title: title)),
   ),
 );
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Overview (D-1090): the course's own dashboard and its two spotlight cards
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// The profile's sessions as the Overview's rows (a student's are already only the lectures and their own section:
+/// the server filters them).
+List<CourseApptRow> courseApptRows(CourseProfile p) => [
+  for (final s in [...p.lectures, ...p.sections])
+    CourseApptRow(
+      id: s.id,
+      name: s.name,
+      track: s.track,
+      groupNo: s.groupNo,
+      at: s.scheduledAt,
+      minutes: s.durationMinutes,
+      hasMaterial: s.materialsCount > 0 || s.materials.isNotEmpty,
+      liveNow: s.liveNow,
+    ),
+];
+
+/// The Overview tab: [actions] gets the loaded profile (its caps decide which buttons exist).
+CourseSpaceTab courseOverviewTab({
+  required CourseProfileHub hub,
+  required bool staff,
+  required CourseOverviewActions Function(CourseProfile p) actions,
+}) => CourseSpaceTab(
+  id: kCpTabOverview,
+  label: t('نظرة عامة', 'Overview'),
+  icon: Icons.space_dashboard_rounded,
+  builder: (_) => CourseProfileTabBody(
+    hub: hub,
+    builder: (p) {
+      final page = p.page;
+      if (page == null) {
+        return AppEmpty(
+          icon: Icons.space_dashboard_rounded,
+          title: t('النظرة العامة غير متاحة بعد', 'The overview is not available yet'),
+          message: t('حدّث الصفحة بعد قليل.', 'Refresh the page in a moment.'),
+          actionLabel: t('تحديث', 'Refresh'),
+          onAction: hub.load,
+        );
+      }
+      return CourseOverview(page: page, staff: staff, sessions: courseApptRows(p), actions: actions(p), padding: EdgeInsets.zero);
+    },
+  ),
+);
+
+/// A spotlight card drawn from the loaded page block (nothing until the profile is in, or from an older server).
+class CoursePageSpot extends StatelessWidget {
+  const CoursePageSpot({super.key, required this.hub, required this.builder});
+
+  final CourseProfileHub hub;
+  final Widget Function(CourseProfile p, CoursePage page) builder;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: hub,
+    builder: (context, _) {
+      final p = hub.profile;
+      final page = p?.page;
+      if (p == null || page == null) return const SizedBox.shrink();
+      return builder(p, page);
+    },
+  );
+}
+
+/// "When" of the next session: today / tomorrow / the date, then the time.
+String coursePageWhen(DateTime? at) {
+  if (at == null) return '';
+  final local = AppTime.toZone(at);
+  final now = AppTime.toZone(DateTime.now().toUtc());
+  final days = DateTime(local.year, local.month, local.day).difference(DateTime(now.year, now.month, now.day)).inDays;
+  final day = switch (days) {
+    0 => t('اليوم', 'Today'),
+    1 => t('غدًا', 'Tomorrow'),
+    _ => AppTime.date(at, pattern: 'EEEE d MMM'),
+  };
+  return '$day · ${AppTime.time(at)}';
+}
+
+/// The section group's name for a session of the page (null for a lecture).
+String? coursePageGroupLabel(CoursePage page, String track, int? groupNo) {
+  if (track != 'section') return null;
+  final g = page.sections.group(groupNo);
+  if (g != null) return g.labelFor(AppConfig.lang == 'ar');
+  return groupNo == null ? t('سكشن', 'Section') : t('سكشن $groupNo', 'Section $groupNo');
+}

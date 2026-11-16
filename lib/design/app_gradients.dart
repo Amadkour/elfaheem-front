@@ -36,6 +36,12 @@
 // green, a dark ink on the cream, a soft plate where the blend is between the two. The doodle field is twice as
 // dense and its strength is ONE token ([AppBrandLayer.doodleAlpha]); page headings get a page-colour halo when that
 // strength would drop their ink below AA ([AppHeadingHalo]).
+// D-1081 (the "soft wash" pages, owner pick A2): two deliberate exceptions to D-622's one-family rule, both read
+// from here ([AppBrandLayer.statWash], [AppBrandLayer.highlightEdge]):
+//   ✓ a stat card (AppStatCard) wears its tone's tint (emerald · peach · sky · gold) at its top start, fading into
+//     the card by 75 % — a wash, so the card's normal ink stays on it
+//   ✓ the ONE main card of a screen (AppCard(highlight: true), e.g. Needs attention) gets a thin primary → gold edge
+//   ✗ still never a wash behind a list, a form, a table or a settings row, and never two highlighted cards on a screen
 library;
 
 import 'dart:math' as math;
@@ -598,6 +604,30 @@ abstract final class AppBrandLayer {
   static Color toneDisc(BuildContext context, Color lightSurface) {
     final c = context.colors;
     return c.isDark ? Color.alphaBlend(c.primaryTint, c.inputBg) : lightSurface;
+  }
+
+  /// D-1081: a stat card's soft wash — the tone's tint ([lightSurface], or [strong] faintly over the card in dark
+  /// mode) at the top start, fading into the card by 75 %. The card's normal ink reads on every point of it.
+  static LinearGradient statWash(BuildContext context, Color lightSurface, Color strong) {
+    final c = context.colors;
+    final tint = c.isDark ? Color.alphaBlend(strong.withValues(alpha: 0.16), c.cardBg) : lightSurface;
+    return LinearGradient(
+      begin: AlignmentDirectional.topStart,
+      end: AlignmentDirectional.bottomEnd,
+      colors: [tint, c.cardBg],
+      stops: const [0, 0.75],
+    );
+  }
+
+  /// D-1081: the edge of the ONE main card of a screen — primary → gold → the hairline, mirrored in Arabic.
+  static LinearGradient highlightEdge(BuildContext context) {
+    final c = context.colors;
+    return LinearGradient(
+      begin: AlignmentDirectional.topStart,
+      end: AlignmentDirectional.bottomEnd,
+      colors: [c.primary, c.accent2, c.divider],
+      stops: const [0, 0.6, 1],
+    );
   }
 
   /// The accent / premium button (Go live on the hero, Upgrade, a featured offer): accent2 → accent2 lightened.

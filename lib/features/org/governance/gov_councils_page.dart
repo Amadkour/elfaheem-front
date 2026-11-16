@@ -15,10 +15,12 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import '../../admin/admin_common.dart' show Field, SheetHeader, asInt, asMap, askText, t;
 import '../../admin/admin_list.dart' show AdminAvatar;
 import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage;
-import '../org_v3.dart' show orgCall;
+import '../org_unit_rules.dart' show AssignMeChip, HeadErrorText, currentPerson, headProblem, headRequiredText, unitHeadFieldErrors;
+import '../org_v3.dart' show orgCall, orgErrorText;
 import 'gov_api.dart';
 import 'gov_council_settings.dart';
 import 'gov_council_ui.dart';
+import 'gov_councils_setup.dart' show councilsSetupTitle, openCouncilsSetup;
 import 'gov_models.dart';
 import 'gov_session_screen.dart';
 
@@ -315,6 +317,12 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
     if (oid == null) return;
     final nameAr = TextEditingController(text: 'مجلس الكلية'), nameEn = TextEditingController(text: 'Faculty Council');
     GovUser? head;
+    // Institutions v2 (D-980): the Faculty Council needs a chair; "Assign me as chair" sends head_self
+    var headSelf = false;
+    String? headErr;
+    // UX v3: the server's head refusals (head_required · head_invalid · pick_head, or `fields`) land on the chair
+    final fe = unitHeadFieldErrors();
+    final me = currentPerson(context);
     await showAppSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           final c = ctx.colors;
           return Padding(
@@ -324,18 +332,36 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
                 SheetHeader(t('إنشاء مجلس الكلية', 'Create the Faculty Council')),
                 Field(controller: nameAr, label: t('الاسم بالعربية', 'Arabic name')),
                 Field(controller: nameEn, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
-                InkWell(
-                  borderRadius: BorderRadius.circular(AppRadius.control),
-                  onTap: () async {
-                    final u = await pickOrgMember(ctx, oid, title: t('رئيس المجلس', 'Council head'));
-                    if (u != null) set(() => head = u);
-                  },
-                  child: InputDecorator(
-                    isEmpty: head == null,
-                    decoration: InputDecoration(labelText: t('رئيس المجلس (العميد)', 'Council head (the dean)'), prefixIcon: Icon(Icons.person_search_rounded, color: c.textLight)),
-                    child: Text(head?.name ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(ctx)),
+                if (!headSelf)
+                  InkWell(
+                    key: fe.keyFor('head'),
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                    onTap: () async {
+                      final u = await pickOrgMember(ctx, oid, title: t('رئيس المجلس', 'Council head'));
+                      if (u != null) {
+                        set(() {
+                          head = u;
+                          headErr = null;
+                        });
+                      }
+                    },
+                    child: InputDecorator(
+                      isEmpty: head == null,
+                      decoration: InputDecoration(labelText: t('رئيس المجلس (العميد) *', 'Council head (the dean) *'), prefixIcon: Icon(Icons.person_search_rounded, color: c.textLight)),
+                      child: Text(head?.name ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(ctx)),
+                    ),
                   ),
+                const SizedBox(height: AppSpace.xs),
+                AssignMeChip(
+                  selected: headSelf,
+                  meName: me.$2,
+                  label: t('عيّنّي رئيساً للمجلس', 'Assign me as chair'),
+                  onTap: () => set(() {
+                    headSelf = !headSelf;
+                    headErr = null;
+                  }),
                 ),
+                HeadErrorText(headErr),
                 const SizedBox(height: AppSpace.md),
                 AppPrimaryButton(
                   label: t('إنشاء', 'Create'),
@@ -344,12 +370,24 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
                   onPressed: _busy
                       ? null
                       : () async {
+                          final noHead = headProblem(head: head?.id, self: headSelf);
+                          if (noHead != null) {
+                            set(() => headErr = noHead);
+                            showAppNotice(noHead, error: true);
+                            return;
+                          }
                           set(() => _busy = true);
                           final r = await orgCall(
-                              () => GovApi(oid).createFacultyCouncil(nameAr: nameAr.text.trim(), nameEn: nameEn.text.trim(), headUserId: head?.id),
+                              () => GovApi(oid).createFacultyCouncil(
+                                  nameAr: nameAr.text.trim(), nameEn: nameEn.text.trim(), headUserId: head?.id, headSelf: headSelf),
                               ok: t('أُنشئ مجلس الكلية', 'Faculty Council created'));
                           if (!ctx.mounted) return;
-                          set(() => _busy = false);
+                          set(() {
+                            _busy = false;
+                            if (r.code == 'head_required') headErr = headRequiredText();
+                            if (!r.ok && fe.take(r.error!, text: orgErrorText(r.error!))) headErr = fe.errorFor('head') ?? headErr;
+                          });
+                          if (!r.ok && fe.has('head')) WidgetsBinding.instance.addPostFrameCallback((_) => fe.revealFirst());
                           if (r.ok) Navigator.pop(ctx);
                         },
                 ),
@@ -357,6 +395,7 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
             ),
           );
         }));
+    fe.dispose();
     nameAr.dispose();
     nameEn.dispose();
     _load();
@@ -393,6 +432,22 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
               AppHeroStat(icon: Icons.how_to_vote_rounded, value: '$waiting', label: t('بانتظار صوتي', 'waiting for me')),
             ],
           ),
+          // Institutions v2 phase 3: which councils exist (faculty · departments · both · none)
+          if (admin)
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                    key: const ValueKey('councils.setup.open'),
+                    icon: const Icon(Icons.tune_rounded),
+                    label: Text(councilsSetupTitle()),
+                    onPressed: () async {
+                      await openCouncilsSetup(context, orgId: _orgId);
+                      if (mounted) _load();
+                    }),
+              ),
+            ),
           if (admin && !hasFaculty)
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),

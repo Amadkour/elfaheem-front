@@ -164,6 +164,7 @@ String eventKindLabel(String v) =>
       'reminder': t('تذكير', 'Reminder'),
       'withdrawn': t('سُحب', 'Withdrawn'),
       'reopened': t('أُعيد فتحه', 'Reopened'),
+      'conflict': t('أعلن تعارض مصالح', 'Declared a conflict of interest'),
     }[v] ??
     v;
 
@@ -272,6 +273,20 @@ Map<String, String> govCodeTexts() => {
       'comment_required': t('المراجعة تحتاج تعليقاً', 'A review needs a comment'),
       'due_in_past': t('الموعد النهائي يجب أن يكون في المستقبل', 'The deadline must be in the future'),
       'council_no_members': t('لا أعضاء في المجلس — أضفهم قبل فتح التصويت', 'The council has no members — add them before opening the vote'),
+      // Institutions S2 (D-965 – D-970): roster · weights · meeting · written items · reminders · conflicts
+      'weight_cap': t('لا يجوز أن يتجاوز وزن عضو واحد 40٪ من مجموع أوزان المجلس — خفّض وزنه أو ارفع أوزان غيره',
+          "No member may hold more than 40% of the council's total weight — lower that weight or raise the others"),
+      'weight_invalid': t('وزن العضو من 1 إلى 3', "A member's weight is 1 to 3"),
+      'secretary_not_member': t('أمين المجلس يجب أن يكون من أعضائه — أضفه إلى الأعضاء أولاً أو اختر شخصاً آخر', 'The secretary must be a member of this council: add them to the members first, or choose another person'),
+      'not_staff_member': t('عضو المجلس يكون من هيئة المؤسسة أو إدارييها', 'A council member must be staff of the organization'),
+      'council_settings_invalid': t('أحد إعدادات المجلس غير صالح — راجع الحقول', 'One of the council settings is not valid — check the fields'),
+      'remind_too_soon': t('أُرسل تذكير منذ أقل من ساعة — حاول لاحقاً', 'A reminder went out less than an hour ago — try again later'),
+      'conflict_declared': t('أعلنت تعارض مصالح على هذا البند فلا تصوّت عليه', 'You declared a conflict of interest on this item, so you do not vote on it'),
+      'title_required': t('عنوان البند مطلوب', 'The item needs a title'),
+      'template_key_invalid': t('قالب القرار غير صالح', 'The decision template is not valid'),
+      // Institutions S3 (D-971)
+      'auto_rule_invalid': t('إحدى قواعد الإحالة التلقائية غير مكتملة أو غير صالحة — راجع القاعدة المظللة',
+          'One automatic routing rule is incomplete or not valid — check the highlighted rule'),
     };
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -361,8 +376,11 @@ class GovCan {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class Category {
-  const Category({required this.id, required this.deptId, required this.key, this.nameAr = '', this.nameEn = '', this.kind = 'request', this.description, this.formId, this.isActive = true, this.order = 0});
+  const Category({required this.id, required this.deptId, required this.key, this.nameAr = '', this.nameEn = '', this.kind = 'request', this.description, this.formId, this.isActive = true, this.order = 0, this.slaHours});
   final int id, deptId;
+
+  /// D-972: this request type's own SLA (null = the priority's hours).
+  final int? slaHours;
   final String key, nameAr, nameEn, kind;
   final String? description;
   final int? formId;
@@ -382,6 +400,7 @@ class Category {
         formId: j['form_id'] == null ? null : asInt(j['form_id']),
         isActive: asBool(j['is_active'], true),
         order: asInt(j['order']),
+        slaHours: j['sla_hours'] == null ? null : asInt(j['sla_hours']),
       );
 }
 
@@ -1122,9 +1141,15 @@ class CouncilSettings {
     this.autoAgendaTypes = const [],
     this.autoAgendaCategoryIds = const [],
     this.timezone,
+    this.meetingMode,
+    this.meetingLocation,
+    this.meetingLink,
   });
 
   int? chairUserId, sessionDay;
+
+  /// D-966: online | in_person | null (not set), with a place or an https link.
+  String? meetingMode, meetingLocation, meetingLink;
   String sessionTime, tieRule, noVoteRule, holidayRule;
   int cutoffDays, votingDeadlineHours, quorumPct;
 
@@ -1154,6 +1179,9 @@ class CouncilSettings {
       autoAgendaTypes: [for (final x in (rules['types'] as List? ?? const [])) '$x'],
       autoAgendaCategoryIds: [for (final x in (rules['category_ids'] as List? ?? const [])) asInt(x)],
       timezone: j['timezone'] as String?,
+      meetingMode: meetingModes.contains(j['meeting_mode']) ? '${j['meeting_mode']}' : null,
+      meetingLocation: j['meeting_location'] as String?,
+      meetingLink: j['meeting_link'] as String?,
     );
   }
 
@@ -1174,6 +1202,9 @@ class CouncilSettings {
         'auto_agenda': autoAgenda,
         'auto_agenda_rules': {'types': autoAgendaTypes, 'category_ids': autoAgendaCategoryIds},
         'timezone': timezone,
+        'meeting_mode': meetingMode,
+        'meeting_location': meetingLocation,
+        'meeting_link': meetingLink,
       };
 
   CouncilSettings copy() => CouncilSettings.fromJson(toJson());
@@ -1191,7 +1222,7 @@ class SessionBrief {
 }
 
 class Council {
-  const Council({required this.id, required this.dept, this.level = 'department', this.chair, this.members = 0, this.settings, this.nextSession, this.can = const GovCan({}), this.parentDept, this.raw = const {}});
+  const Council({required this.id, required this.dept, this.level = 'department', this.chair, this.members = 0, this.settings, this.nextSession, this.can = const GovCan({}), this.parentDept, this.raw = const {}, this.secretary, this.totalWeight});
   final int id;
   final GovDept dept;
   final String level;
@@ -1202,6 +1233,10 @@ class Council {
   final GovCan can;
   final GovDept? parentDept;
   final Map<String, dynamic> raw;
+
+  /// D-965: the council secretary (the chair's powers on this council: `can.manage`), and the sum of the weights.
+  final GovUser? secretary;
+  final int? totalWeight;
 
   String get name => dept.name;
   int? get sessionDay => settings?.sessionDay;
@@ -1217,6 +1252,8 @@ class Council {
         can: GovCan(asMap(j['can'])),
         parentDept: GovDept.from(j['parent_dept']),
         raw: j,
+        secretary: GovUser.from(j['secretary']),
+        totalWeight: j['total_weight'] == null ? null : asInt(j['total_weight']),
       );
 }
 
@@ -1248,6 +1285,15 @@ class AgendaItem {
     this.escalatedItemId,
     this.excluded = false,
     this.excludedUsers = const [],
+    this.result,
+    this.decisionNo,
+    this.templateKey,
+    this.coiCount = 0,
+    this.myCoi = false,
+    this.councilWritten = false,
+    this.voters,
+    this.nonResponders,
+    this.weights,
   });
   final int id, order;
   final WorkItem item;
@@ -1263,6 +1309,29 @@ class AgendaItem {
   /// `eligible`); [excludedUsers] names such people to managers and, after the close, to everyone.
   final bool excluded;
   final List<GovUser> excludedUsers;
+
+  /// D-969: approved_full | approved_partial | rejected | no_quorum | pending (null = an older server).
+  final String? result;
+
+  /// D-970: "session no./item no./year", set at the close on an approved or rejected row.
+  final String? decisionNo, templateKey;
+
+  /// D-969: how many members declared a conflict of interest; [myCoi] = I did (I am excused from this row).
+  final int coiCount;
+  final bool myCoi;
+
+  /// D-967: written on the agenda by the chair / secretary rather than forwarded from a request.
+  final bool councilWritten;
+
+  /// The named results (managers live, everyone after the close; null = not visible to me).
+  final List<AgendaVoter>? voters, nonResponders;
+  final AgendaWeights? weights;
+
+  /// The chip of the row: postponed / withdrawn keep their own label, everything else is the D-969 result.
+  String get chip => const ['postponed', 'withdrawn'].contains(status) ? status : (result ?? agendaResultOf(status, reject: reject, abstain: abstain));
+
+  /// The names are visible to me (managers live, everyone after the close).
+  bool get resultsVisible => voters != null;
 
   bool get decided => const ['approved', 'rejected', 'tied', 'no_quorum', 'postponed'].contains(status);
   int get voted => approve + reject + abstain;
@@ -1284,6 +1353,15 @@ class AgendaItem {
         escalatedItemId: j['escalated_item_id'] == null ? null : asInt(j['escalated_item_id']),
         excluded: asBool(j['excluded']),
         excludedUsers: [for (final u in asMapList(j['excluded_users'])) GovUser.from(u)!],
+        result: agendaResults.contains(j['result']) ? '${j['result']}' : null,
+        decisionNo: '${j['decision_no'] ?? ''}'.trim().isEmpty ? null : '${j['decision_no']}'.trim(),
+        templateKey: j['template_key'] as String?,
+        coiCount: asInt(j['coi_count']),
+        myCoi: asBool(j['my_coi']),
+        councilWritten: asBool(j['council_written']),
+        voters: j['voters'] is List ? [for (final v in asMapList(j['voters'])) AgendaVoter.fromJson(v)] : null,
+        nonResponders: j['non_responders'] is List ? [for (final v in asMapList(j['non_responders'])) AgendaVoter.fromJson(v)] : null,
+        weights: j['weights'] is Map ? AgendaWeights.fromJson(asMap(j['weights'])) : null,
       );
 }
 
@@ -1308,10 +1386,18 @@ class CouncilSession {
     this.notes,
     this.can = const GovCan({}),
     this.raw = const {},
+    this.reviewDeadline,
+    this.manualRemindedAt,
+    this.meeting,
   });
   final int id;
   final Council? council;
   final String kind, status;
+
+  /// D-966: the review deadline (it becomes `voting_closes_at` at the opening while still ahead) · D-968: the last
+  /// manual "remind non-voters" · the meeting (mode, place or link, the calendar meeting).
+  final DateTime? reviewDeadline, manualRemindedAt;
+  final SessionMeeting? meeting;
   final String? title, notes;
   final DateTime? scheduledAt, publishedAt, votingOpensAt, votingClosesAt, closedAt;
   final int? eligibleCount;
@@ -1347,6 +1433,9 @@ class CouncilSession {
         notes: j['notes'] as String?,
         can: GovCan(asMap(j['can'])),
         raw: j,
+        reviewDeadline: orgParseUtc(j['review_deadline']),
+        manualRemindedAt: orgParseUtc(j['manual_reminded_at']),
+        meeting: j['meeting'] is Map ? SessionMeeting.fromJson(asMap(j['meeting'])) : null,
       );
 }
 
@@ -1394,6 +1483,214 @@ class VoteTally {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+//  Institutions S2 (D-965 – D-970): roster · weights · meeting · named results · reminders
+// ═════════════════════════════════════════════════════════════════════════════
+
+const meetingModes = ['online', 'in_person'];
+const agendaResults = ['approved_full', 'approved_partial', 'rejected', 'no_quorum', 'pending'];
+
+/// The status chip of one agenda row (D-969).
+String agendaResultLabel(String v) =>
+    {
+      'approved_full': t('موافقة بالإجماع', 'Approved unanimously'),
+      'approved_partial': t('موافقة بالأغلبية', 'Approved by majority'),
+      'rejected': t('رفض', 'Rejected'),
+      'no_quorum': t('لم يكتمل النصاب', 'No quorum'),
+      'pending': t('قيد التصويت', 'Voting pending'),
+    }[v] ??
+    agendaStatusLabel(v);
+
+/// The D-969 result of a row from an older server that sends no `result` (the server's `result_status`).
+String agendaResultOf(String status, {int reject = 0, int abstain = 0}) => switch (status) {
+      'approved' => reject == 0 && abstain == 0 ? 'approved_full' : 'approved_partial',
+      'rejected' || 'no_quorum' => status,
+      _ => 'pending',
+    };
+
+String meetingModeLabel(String? v) => switch (v) {
+      'online' => t('عن بُعد (اجتماع إلكتروني)', 'Online'),
+      'in_person' => t('حضورياً', 'In person'),
+      _ => t('غير محدد', 'Not set'),
+    };
+
+/// One name of the results: a voter (with [vote]) or a member who did not respond ([vote] null).
+class AgendaVoter {
+  const AgendaVoter({required this.userId, required this.name, this.user, this.vote, this.weight = 1, this.note, this.at});
+  final int userId;
+  final String name;
+  final GovUser? user;
+  final String? vote, note;
+  final int weight;
+  final DateTime? at;
+
+  factory AgendaVoter.fromJson(Map<String, dynamic> j) {
+    final user = GovUser.from(j['user']);
+    final name = '${j['name'] ?? ''}'.trim();
+    return AgendaVoter(
+      userId: asInt(j['user_id'] ?? user?.id),
+      name: name.isNotEmpty ? name : (user?.name ?? ''),
+      user: user,
+      vote: j['vote'] as String?,
+      weight: math.max(1, asInt(j['weight'], 1)),
+      note: '${j['note'] ?? ''}'.trim().isEmpty ? null : '${j['note']}'.trim(),
+      at: orgParseUtc(j['at']),
+    );
+  }
+}
+
+/// The weighted sums of a row (D-969). [neededW] is null while the vote is live.
+class AgendaWeights {
+  const AgendaWeights({this.approveW = 0, this.rejectW = 0, this.abstainW = 0, this.eligibleW = 0, this.votedW = 0, this.neededW});
+  final int approveW, rejectW, abstainW, eligibleW, votedW;
+  final int? neededW;
+
+  factory AgendaWeights.fromJson(Map<String, dynamic> j) => AgendaWeights(
+        approveW: asInt(j['approve_w']),
+        rejectW: asInt(j['reject_w']),
+        abstainW: asInt(j['abstain_w']),
+        eligibleW: asInt(j['eligible_w']),
+        votedW: asInt(j['voted_w']),
+        neededW: j['needed_w'] == null ? null : asInt(j['needed_w']),
+      );
+}
+
+/// The three groups of the results sheet (+ abstentions when any).
+class AgendaResultGroups {
+  const AgendaResultGroups({this.approved = const [], this.rejected = const [], this.abstained = const [], this.notResponded = const []});
+  final List<AgendaVoter> approved, rejected, abstained, notResponded;
+
+  factory AgendaResultGroups.of(AgendaItem a) {
+    final v = a.voters ?? const <AgendaVoter>[];
+    return AgendaResultGroups(
+      approved: [for (final x in v) if (x.vote == 'approve') x],
+      rejected: [for (final x in v) if (x.vote == 'reject') x],
+      abstained: [for (final x in v) if (x.vote == 'abstain') x],
+      notResponded: a.nonResponders ?? const [],
+    );
+  }
+
+  bool get isEmpty => approved.isEmpty && rejected.isEmpty && abstained.isEmpty && notResponded.isEmpty;
+}
+
+/// The meeting of a session (D-966): the council's setup plus the calendar meeting it created.
+class SessionMeeting {
+  const SessionMeeting({this.mode, this.location, this.link, this.calMeetingId, this.room = false});
+  final String? mode, location, link;
+  final int? calMeetingId;
+
+  /// The platform's meeting room (online without a link of its own).
+  final bool room;
+
+  factory SessionMeeting.fromJson(Map<String, dynamic> j) => SessionMeeting(
+        mode: meetingModes.contains(j['mode']) ? '${j['mode']}' : null,
+        location: '${j['location'] ?? ''}'.trim().isEmpty ? null : '${j['location']}'.trim(),
+        link: '${j['link'] ?? ''}'.trim().isEmpty ? null : '${j['link']}'.trim(),
+        calMeetingId: j['cal_meeting_id'] == null ? null : asInt(j['cal_meeting_id']),
+        room: asBool(j['room']),
+      );
+
+  /// "In person · Hall 3" · "Online · https://…" · "Online · the platform's meeting room".
+  String get text {
+    if (mode == null) return '';
+    final where = mode == 'in_person'
+        ? (location ?? '')
+        : (link ?? (room ? t('غرفة اجتماعات المنصة (في التقويم)', "The platform's meeting room (in the calendar)") : ''));
+    return [meetingModeLabel(mode), if (where.isNotEmpty) where].join(' · ');
+  }
+}
+
+/// One member of the council roster (`GET …/councils/{cid}/members`).
+class RosterMember {
+  const RosterMember({required this.userId, required this.name, this.user, this.weight = 1, this.isHead = false, this.isChair = false, this.isSecretary = false, this.title});
+  final int userId;
+  final String name;
+  final GovUser? user;
+  final int weight;
+  final bool isHead, isChair, isSecretary;
+  final String? title;
+
+  factory RosterMember.fromJson(Map<String, dynamic> j) {
+    final user = GovUser.from(j['user']);
+    return RosterMember(
+      userId: asInt(j['user_id'] ?? user?.id),
+      name: user?.name ?? '',
+      user: user,
+      weight: asInt(j['weight'], 1).clamp(1, 3),
+      isHead: asBool(j['is_head']),
+      isChair: asBool(j['is_chair']),
+      isSecretary: asBool(j['is_secretary']),
+      title: '${j['title'] ?? ''}'.trim().isEmpty ? null : '${j['title']}'.trim(),
+    );
+  }
+}
+
+class CouncilRoster {
+  const CouncilRoster({required this.councilId, this.members = const [], this.totalWeight = 0, this.capPct = 40, this.secretaryUserId, this.chairUserId, this.canEdit = false, this.secretaryActing = false});
+  final int councilId;
+  final List<RosterMember> members;
+  final int totalWeight, capPct;
+  final int? secretaryUserId, chairUserId;
+
+  /// Institutions v2 (D-982): no secretary is set, so the chair acts as secretary (`secretary_acting`).
+  final bool secretaryActing;
+
+  /// `can.roster`: the org admin (faculty council) or the department's head; never the secretary.
+  final bool canEdit;
+
+  factory CouncilRoster.fromJson(Map<String, dynamic> j) => CouncilRoster(
+        councilId: asInt(j['council_id']),
+        members: [for (final m in asMapList(j['items'])) RosterMember.fromJson(m)],
+        totalWeight: asInt(j['total_weight']),
+        capPct: asInt(j['cap_pct'], 40),
+        secretaryUserId: j['secretary_user_id'] == null ? null : asInt(j['secretary_user_id']),
+        chairUserId: j['chair_user_id'] == null ? null : asInt(j['chair_user_id']),
+        canEdit: asBool(asMap(j['can'])['roster']),
+        secretaryActing: asBool(j['secretary_acting']),
+      );
+}
+
+/// The member whose weight breaks the cap (the server's `check_weights`): once any weight is not 1, nobody may hold
+/// more than [capPct] % of the total. Equal weights are never capped. null = the weights are fine.
+int? weightCapUser(Map<int, int> weights, {int capPct = 40}) {
+  if (weights.isEmpty) return null;
+  final total = weights.values.fold<int>(0, (a, b) => a + b);
+  if (total == 0 || weights.values.every((w) => w == 1)) return null;
+  final top = weights.entries.reduce((a, b) => b.value > a.value ? b : a);
+  return top.value * 100 > capPct * total ? top.key : null;
+}
+
+/// The PUT body of the roster (D-965): [weights] only when they changed (the list replaces the team), the secretary
+/// always (null clears it).
+Map<String, dynamic> rosterBody({Map<int, int>? weights, required int? secretaryUserId}) => {
+      if (weights != null) 'members': [for (final e in weights.entries) {'user_id': e.key, 'weight': e.value}],
+      'secretary_user_id': secretaryUserId,
+    };
+
+/// The body of the one-tap fix of 422 `secretary_not_member` (fix_action `add_member`, UX v3): every member at
+/// their weight ([weights] = the edited ones, else the roster's) plus [userId] at weight 1, the secretary as picked.
+Map<String, dynamic> rosterAddMemberBody(CouncilRoster r, {Map<int, int>? weights, required int userId, required int? secretaryUserId}) {
+  final w = {...(weights ?? {for (final m in r.members) m.userId: m.weight})};
+  w.putIfAbsent(userId, () => 1);
+  return rosterBody(weights: w, secretaryUserId: secretaryUserId);
+}
+
+/// The user the `add_member` fix adds: the server's `user_id`, else the secretary that was sent.
+int? rosterFixUserId(Map<String, dynamic> detail, int? sentSecretary) {
+  final v = int.tryParse('${detail['user_id'] ?? ''}');
+  return v ?? sentSecretary;
+}
+
+/// The server offers (or, an older server, implies) the "add as member" fix.
+bool rosterCanAddMemberFix(String? code, String? fixAction) => fixAction == 'add_member' || code == 'secretary_not_member';
+
+/// How long until the manual reminder may be sent again (once an hour, D-968); null = now.
+Duration? remindWait(DateTime? lastAt, {DateTime? now}) {
+  if (lastAt == null) return null;
+  final left = lastAt.add(const Duration(hours: 1)).difference(now ?? DateTime.now());
+  return left.isNegative || left == Duration.zero ? null : left;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 //  Saved filters · form assignments · export templates
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -1406,11 +1703,14 @@ class SavedFilter {
 }
 
 class FormAssignment {
-  const FormAssignment({required this.user, this.status = 'pending', this.dueAt, this.responseId, this.remindedAt, this.remindCount = 0, this.formId, this.formTitle, this.orgId});
+  const FormAssignment({required this.user, this.status = 'pending', this.dueAt, this.responseId, this.remindedAt, this.remindCount = 0, this.formId, this.formTitle, this.orgId, this.id});
   final GovUser user;
   final String status;
   final DateTime? dueAt, remindedAt;
   final int? responseId, formId, orgId;
+
+  /// The assignment row (a `org_form_assignment` link names it, UX v3 phase 2).
+  final int? id;
   final int remindCount;
   final String? formTitle;
   bool get overdue => status == 'pending' && dueAt != null && dueAt!.isBefore(DateTime.now());
@@ -1424,6 +1724,7 @@ class FormAssignment {
         formId: j['form_id'] == null ? null : asInt(j['form_id']),
         formTitle: j['form_title'] as String?,
         orgId: j['org_id'] == null ? null : asInt(j['org_id']),
+        id: j['id'] == null ? null : asInt(j['id']),
       );
 }
 

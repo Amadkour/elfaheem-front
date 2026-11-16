@@ -2,10 +2,15 @@
 //
 // The org-admin Settings section ("More" on phones, where it also carries the Services links) and the
 // organization sheets:
-//   OrgSettingsPage       AppSettingsPage: profile header → (phones) Communication & services with the live counts
-//                         → Organization (switch · edit · join code · sub-organization · new) → Governance (roles,
-//                         activity log, regulations, certificate designs) → Preferences → two-step verification →
-//                         sign out. A search field appears past 8 tiles.
+//   OrgSettingsPage       AppSettingsPage (profile E, D-1081): the profile card (avatar · name · role · e-mail, the
+//                         organization chip with Switch) and four shortcut tiles (certificate designs · exports ·
+//                         organization notifications · display & reading) → (phones) Communication & services with
+//                         the live counts → Organization (switch · edit · join code · sub-organization · new) →
+//                         Governance (roles, activity log, regulations, parents' grades) → App (language,
+//                         assistant, floating assistant, dark mode) → Help & legal (verify a certificate, get the
+//                         app, privacy, terms) → the footer: two-step verification, the admin's danger zone, then
+//                         the exits (leave · sign out) as quiet red rows. One primary tint for the icons; two
+//                         columns on a wide body. A search field appears past 40 tiles.
 //   OrgFirstOrganization  the org admin who has none yet.
 //   showOrgSwitcher · showOrgForm · showJoinCode   the sheets (also used by org_status_screen.dart).
 // Every sub-page opens through orgPush (the session carried along, the exit button in its bar).
@@ -19,11 +24,14 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppSettingsGroup, AppSettingsPage, AppSettingsTile, AppSwitch, appRoleLabel, showAppNotice;
+    show AppSettingsGroup, AppSettingsPage, AppSettingsTile, AppShortcut, AppShortcutRow, AppVersionLine, AppSwitch, appRoleLabel, showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart' show ChatEntryTile;
 import 'package:flutter_education_app/design/context_switcher.dart' show showContextSwitcherSheet;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/core/personal_access.dart' show PersonalAccess;
+import 'package:flutter_education_app/core/app_mode.dart' show AppModeController;
+import 'package:flutter_education_app/features/profile/personal_account_tile.dart' show PersonalAccountTile;
 import 'package:flutter_education_app/features/auth/mfa_entry.dart' show MfaSettingsEntry;
 import 'package:flutter_education_app/design/app_language_switch.dart' show AppLanguageTile;
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
@@ -38,6 +46,7 @@ import 'org_access_page.dart' show OrgAccessPage, OrgActivityPage;
 import 'org_common.dart';
 import 'org_creation_fee.dart' show OrgCreationFeePanel;
 import 'org_danger_zone.dart';
+import 'org_inst_notify.dart' show OrgNotifyPrefsPage;
 import 'org_v3.dart' show orgCall, orgCodeText;
 import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgSub;
@@ -46,10 +55,14 @@ import 'package:flutter_education_app/features/exams/hub/hub_entry.dart' show ex
 import 'org_chat_settings_tile.dart';
 import 'org_providers.dart';
 import 'org_terms_pages.dart' show OrgTermsAdminPage;
+import 'governance/gov_councils_setup.dart' show OrgCouncilsSetupPage, councilsSetupTitle;
+import 'advising/adv_models.dart' show advOrgTypes;
+import 'org_institution_wizard.dart' show institutionWizardTitle, openInstitutionWizard;
+import 'org_institutions.dart' show OrgDeptCatalogPage, OrgStudySystemPage, orgInstitutionFeatureKey;
 import 'org_ui.dart' show orgPickAndUpload;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
-import 'package:flutter_education_app/features/profile/display/display_settings_page.dart' show DisplaySettingsTile;
+import 'package:flutter_education_app/features/profile/display/display_settings_page.dart' show DisplaySettingsPage;
 import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/features/get_app/get_app_banner.dart' show GetAppTile;
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
@@ -81,7 +94,6 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
   @override
   Widget build(BuildContext context) {
     context.watch<LangProvider>();
-    final c = context.colors;
     final s = context.watch<OrgSession>();
     final p = context.watch<ProfileProvider>();
     final dash = context.watch<OrgDashController>();
@@ -117,20 +129,41 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
             label: t('رؤية أولياء الأمور للدرجات', 'What parents see of grades'),
             subtitle: t('اتبع إعداد المنصة أو حدّد قاعدة مؤسستك', 'Follow the platform setting or set your own rule'),
             onTap: () => openParentGradeVisibility(context, orgId: s.currentId)),
+    ];
+    // profile E (D-1081): the four most used entries as tiles under the profile card (each keeps its kill switch)
+    final shortcuts = <AppShortcut>[
       if (s.canAny('certificates') || s.isOrgAdmin)
-        AppSettingsTile(
+        AppShortcut(
+            key: 'settings.tile.certificates',
             icon: Icons.workspace_premium_rounded,
-            color: AdminPalette.orange.last,
-            label: t('تصميمات الشهادات', 'Certificate designs'),
+            label: t('الشهادات', 'Certificates'),
+            hint: t('تصميمات الشهادات', 'Certificate designs'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCertificateDesigns(orgId: s.currentId)))),
       // Export Studio (D-130): scheduled exports and shared links; org admins also get the export log
-      AppSettingsTile(
+      AppShortcut(
+          key: 'settings.tile.exports',
           icon: Icons.ios_share_rounded,
           featureKey: 'export.studio',
           label: t('التصدير', 'Exports'),
-          subtitle: t('التصدير المجدول والروابط المشتركة وسجل التصدير', 'Scheduled exports, shared links and the export log'),
+          hint: t('التصدير المجدول والروابط المشتركة وسجل التصدير', 'Scheduled exports, shared links and the export log'),
           onTap: () => Navigator.pushNamed(context, '/exports', arguments: s.isOrgAdmin)),
+      // Institutions v2 phase 2: phone alerts for this organization's requests (all · important · off)
+      if (s.currentId != null)
+        AppShortcut(
+            key: 'settings.tile.notifications',
+            icon: Icons.notifications_active_rounded,
+            label: t('الإشعارات', 'Notifications'),
+            hint: t('تنبيهات الهاتف لطلبات المؤسسة', 'Phone alerts for organization requests'),
+            onTap: () => orgPush(context, OrgNotifyPrefsPage.title(), OrgNotifyPrefsPage(orgId: s.currentId!, embedded: true), maxWidth: AppWidth.form.max)),
+      AppShortcut(
+          key: 'settings.tile.display',
+          icon: Icons.text_fields_rounded,
+          featureKey: 'profile.display',
+          label: t('العرض', 'Display'),
+          hint: t('العرض والقراءة: الخط، حجم النص، التباين، الحركة', 'Display & reading: font, text size, contrast, motion'),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DisplaySettingsPage()))),
     ];
+    final legal = legalSettingsGroup(context); // privacy policy · terms of service (D-308)
     // The Exam Hub (D-350), scoped to this organization: whoever manages its exams, and its teachers
     final showExams = s.currentId != null && (s.isOrgAdmin || s.can('exams', 'view') || examHubTeachingRole(s.memberRole));
     // D-103 page anatomy: a slim profile row (the big hero pushed the settings below the fold on phones), then the
@@ -139,7 +172,20 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
     return AppSettingsPage(
       gutter: AppSpace.md,
       searchThreshold: 40,
-      header: _ProfileRow(name: p.name, role: p.role, email: p.email, imageUrl: p.imageUrl),
+      columns: true,
+      header: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        OrgProfileCard(
+            name: p.name,
+            role: p.role,
+            email: p.email,
+            imageUrl: p.imageUrl,
+            org: s.current == null ? '' : s.name,
+            onSwitch: () => showOrgSwitcher(context)),
+        if (shortcuts.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.md),
+          AppShortcutRow(items: shortcuts),
+        ],
+      ]),
       groups: [
         if (widget.services.isNotEmpty || showExams)
           AppSettingsGroup(title: t('التواصل والخدمات', 'Communication & services'), icon: Icons.forum_rounded, children: [
@@ -177,6 +223,45 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
                 keywords: 'billing fees plans payments receipt رسوم اشتراك مدفوعات',
                 onTap: () => open(t('الفوترة والرسوم', 'Billing'), deferredOrgBillingPage(orgId: s.currentId))),
           ],
+          // Institutions S1 (D-960 – D-962): the study system and the department catalog
+          if (s.can('organization', 'update'))
+            AppSettingsTile(
+                key: const ValueKey('settings.study_system'),
+                icon: Icons.timer_outlined,
+                featureKey: orgInstitutionFeatureKey,
+                label: t('نظام الدراسة', 'Study system'),
+                subtitle: t('تقليدي أو ساعات معتمدة', 'Traditional or credit hours'),
+                keywords: 'study system credit hours traditional gpa نظام الدراسة ساعات معتمدة تقليدي',
+                onTap: () => orgPush(context, t('نظام الدراسة', 'Study system'), const OrgStudySystemPage(), helpPageId: 'org.settings')),
+          if (s.can('departments'))
+            AppSettingsTile(
+                key: const ValueKey('settings.dept_catalog'),
+                icon: Icons.apartment_rounded,
+                featureKey: orgInstitutionFeatureKey,
+                label: t('دليل الإدارات', 'Department catalog'),
+                subtitle: t('أنشئ الإدارات العلمية والخدمية وأنواع طلباتها بنقرة', 'Create academic and service departments and their request types in one go'),
+                keywords: 'departments catalog template student affairs exam control إدارات أقسام شئون الطلاب كنترول',
+                onTap: () => orgPush(context, t('دليل الإدارات', 'Department catalog'), const OrgDeptCatalogPage(), helpPageId: 'org.departments')),
+          // Institutions v2 phase 3 (D-989 – D-990): faculty council, department councils, both or none
+          if (s.isOrgAdmin)
+            AppSettingsTile(
+                key: const ValueKey('settings.councils_setup'),
+                icon: Icons.account_balance_rounded,
+                featureKey: orgInstitutionFeatureKey,
+                label: councilsSetupTitle(),
+                subtitle: t('مجلس الكلية، مجالس الأقسام، كلاهما أو بدون', 'Faculty council, department councils, both or none'),
+                keywords: 'councils faculty council department council dean مجالس مجلس الكلية مجلس القسم',
+                onTap: () => orgPush(context, councilsSetupTitle(), const OrgCouncilsSetupPage(), helpPageId: 'org.governance')),
+          // Institutions v2 phase 4 (D-991 – D-993): the guided setup, resumable, for a university or a faculty
+          if (s.isOrgAdmin && advOrgTypes.contains('${s.current?['type']}'))
+            AppSettingsTile(
+                key: const ValueKey('settings.institution_wizard'),
+                icon: Icons.auto_fix_high_rounded,
+                featureKey: orgInstitutionFeatureKey,
+                label: institutionWizardTitle(),
+                subtitle: t('الأساسيات، الإدارات، الرؤساء والمجالس خطوة بخطوة', 'Basics, departments, heads and councils, step by step'),
+                keywords: 'setup wizard launch institution معالج إعداد إطلاق المؤسسة',
+                onTap: () => openInstitutionWizard(context)),
           if (s.can('sub_orgs', 'insert') || s.isOrgAdmin)
             AppSettingsTile(
                 icon: Icons.account_tree_rounded,
@@ -186,41 +271,51 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
           AppSettingsTile(
               icon: Icons.swap_horiz_rounded,
               label: t('تبديل المؤسسة', 'Switch organization'),
-              subtitle: t('أو العودة إلى حسابك الشخصي', 'Or go back to your personal account'),
+              subtitle: PersonalAccess.enabled
+                  ? t('أو العودة إلى حسابك الشخصي', 'Or go back to your personal account')
+                  : t('أو الانضمام إلى مؤسسة أخرى', 'Or join another organization'),
               onTap: () => showOrgSwitcher(context)),
+          // UX v3 phase 3: the optional personal profile (public profile + courses outside the institution)
+          const PersonalAccountTile(inOrg: true),
           if (s.canCreateRoot)
             AppSettingsTile(icon: Icons.add_business_rounded, label: t('مؤسسة جديدة', 'New organization'), onTap: () => showOrgForm(context)),
         ]),
         if (governance.isNotEmpty) AppSettingsGroup(title: t('الحوكمة', 'Governance'), icon: Icons.shield_rounded, children: governance),
-        if (s.current != null) _dangerGroup(context, s),
-        AppSettingsGroup(title: t('التفضيلات', 'Preferences'), icon: Icons.settings_rounded, children: [
-          AppLanguageTile(color: AdminPalette.violet.last),
-          const DisplaySettingsTile(),
-          const CertVerifyEntryTile(),
-          if (GetAppTile.available) const GetAppTile(), // web: the store / installer for this device
+        AppSettingsGroup(title: t('التطبيق', 'App'), icon: Icons.settings_rounded, children: [
+          const AppLanguageTile(),
           const AppAssistantOpenTile(),
           const AppAssistantBubbleTile(),
           AppSettingsTile(
               icon: Icons.dark_mode_rounded,
-              color: c.textDark,
               label: 'dark_mode'.tr,
               trailing: AppSwitch(value: p.darkMode, onChanged: (b) async => p.changeMode(b))),
         ]),
-        legalSettingsGroup(context), // privacy policy · terms of service (D-308)
+        AppSettingsGroup(title: t('المساعدة والشروط', 'Help & legal'), icon: Icons.policy_rounded, children: [
+          const CertVerifyEntryTile(),
+          if (GetAppTile.available) const GetAppTile(), // web: the store / installer for this device
+          ...legal.children,
+        ]),
       ],
       footer: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // two-step verification of the signed-in org admin / staff member (shown when the server allows it)
         const MfaSettingsEntry(),
-        AppSettingsGroup(title: 'exit'.tr, icon: DirIcons.exitToApp, danger: true, children: [
+        // the org admin's seat and the organization itself: still a danger zone, at the end of the page
+        if (s.current != null && s.isOrgAdmin) _dangerGroup(context, s),
+        // profile E: the exits close the page, quiet red rows on a plain card (each still asks first)
+        AppSettingsGroup(title: 'exit'.tr, icon: DirIcons.exitToApp, children: [
+          if (s.current != null && !s.isOrgAdmin) _leaveTile(context, s),
           AppSettingsTile(
+              key: const ValueKey('settings.logout'),
               icon: DirIcons.logout,
-              color: c.danger,
+              danger: true,
               label: 'logout'.tr,
               onTap: () async {
                 final ok = await Helpers.confirmDialog(context);
                 if (ok == true && context.mounted) await context.read<ProfileProvider>().logout(context);
               }),
         ]),
+        const SizedBox(height: AppSpace.md),
+        const AppVersionLine(),
       ]),
     );
   }
@@ -254,24 +349,27 @@ AppSettingsGroup _dangerGroup(BuildContext context, OrgSession s) {
           label: t('إغلاق / حذف المؤسسة', 'Close / delete the organization'),
           subtitle: t('يتطلب كتابة اسم المؤسسة', "You will type the organization's name to confirm"),
           onTap: () => _closeOrg(context, s)),
-    ] else if (orgStaffCannotLeave('${s.current?['my_role']}'))
-      // the server refuses (403 staff_cannot_leave): say so up front instead of after a confirmation
-      AppSettingsTile(
-          key: const ValueKey('danger.leave_blocked'),
-          icon: DirIcons.logout,
-          label: t('مغادرة المؤسسة', 'Leave the organization'),
-          subtitle: orgCodeText('staff_cannot_leave'),
-          onTap: () => showAppNotice(orgCodeText('staff_cannot_leave')))
-    else
-      AppSettingsTile(
-          key: const ValueKey('danger.leave'),
-          icon: DirIcons.logout,
-          color: c.danger,
-          label: t('مغادرة المؤسسة', 'Leave the organization'),
-          subtitle: t('تفقد الوصول إلى لوحتها حتى تنضم مجدداً', 'You lose access to its dashboard until you join again'),
-          onTap: () => _leaveOrg(context, s)),
+    ] else
+      _leaveTile(context, s),
   ]);
 }
+
+/// Leave the organization: a quiet red exit row (profile E), or — for the staff the server keeps (403
+/// staff_cannot_leave) — a plain row that says so up front instead of after a confirmation.
+Widget _leaveTile(BuildContext context, OrgSession s) => orgStaffCannotLeave('${s.current?['my_role']}')
+    ? AppSettingsTile(
+        key: const ValueKey('danger.leave_blocked'),
+        icon: DirIcons.logout,
+        label: t('مغادرة المؤسسة', 'Leave the organization'),
+        subtitle: orgCodeText('staff_cannot_leave'),
+        onTap: () => showAppNotice(orgCodeText('staff_cannot_leave')))
+    : AppSettingsTile(
+        key: const ValueKey('danger.leave'),
+        icon: DirIcons.logout,
+        danger: true,
+        label: t('مغادرة المؤسسة', 'Leave the organization'),
+        subtitle: t('تفقد الوصول إلى لوحتها حتى تنضم مجدداً', 'You lose access to its dashboard until you join again'),
+        onTap: () => _leaveOrg(context, s));
 
 Future<void> _closeOrg(BuildContext context, OrgSession s) async {
   final org = s.current;
@@ -296,13 +394,29 @@ Future<void> _leaveOrg(BuildContext context, OrgSession s) async {
       confirmLabel: t('مغادرة', 'Leave'));
   if (!ok) return;
   final r = await orgCall(() => ApiClient().delete('$orgBase/public/$id/leave'), ok: t('تمت المغادرة', 'You left the organization'));
-  if (r.ok) await s.load(keepSelection: false);
+  if (!r.ok || !context.mounted) return;
+  // the last membership gone: the server may restore the role (org-staff -> teacher / student) and turns the
+  // personal account back on, so the user is re-read and a role without the organization dashboard goes home
+  final auth = context.read<MyAuthProvider>();
+  final before = auth.currentUser?.role;
+  await auth.getMe();
+  final after = auth.currentUser?.role;
+  if (context.mounted && after != null && after != before && !PersonalAccess.isOrgRole(after)) {
+    await AppModeController.instance.refresh();
+    if (context.mounted) Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(auth.homeRoute, (_) => false);
+    return;
+  }
+  await s.load(keepSelection: false);
 }
 
 /// The signed-in person in one slim card row: avatar · name · role and e-mail (D-102 language: card + hairline).
-class _ProfileRow extends StatelessWidget {
-  const _ProfileRow({required this.name, required this.role, required this.email, required this.imageUrl});
+class OrgProfileCard extends StatelessWidget {
+  const OrgProfileCard({required this.name, required this.role, required this.email, required this.imageUrl, this.org = '', this.onSwitch});
   final String name, role, email, imageUrl;
+
+  /// Profile E: the organization I am in, on a chip with Switch under the name; empty = no chip.
+  final String org;
+  final VoidCallback? onSwitch;
 
   @override
   Widget build(BuildContext context) {
@@ -311,7 +425,8 @@ class _ProfileRow extends StatelessWidget {
     return Container(
       padding: AppSpace.card,
       decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider)),
-      child: Row(children: [
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
         CircleAvatar(
           radius: 24,
           backgroundColor: c.primary,
@@ -330,9 +445,39 @@ class _ProfileRow extends StatelessWidget {
           ]),
         ),
       ]),
+      if (org.isNotEmpty) ...[
+        const SizedBox(height: AppSpace.sm),
+        Material(
+          color: c.primaryTint,
+          borderRadius: BorderRadius.circular(AppRadius.control),
+          child: InkWell(
+            key: const ValueKey('settings.org_chip'),
+            borderRadius: BorderRadius.circular(AppRadius.control),
+            onTap: onSwitch,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+                child: Row(children: [
+                  Icon(Icons.apartment_rounded, size: AppIconSize.md, color: c.blockAccentInk(c.primary, c.cardBg)),
+                  const SizedBox(width: AppSpace.xs),
+                  Expanded(child: Text(org, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textDark))),
+                  if (onSwitch != null) ...[
+                    const SizedBox(width: AppSpace.xs),
+                    Text(t('تبديل', 'Switch'),
+                        style: AppType.label(context).copyWith(color: c.blockAccentInk(c.primary, c.cardBg), fontWeight: FontWeight.w600)),
+                  ],
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ],
+      ]),
     );
   }
 }
+
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  First organization (org admin who has none yet)

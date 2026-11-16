@@ -49,6 +49,7 @@ import 'package:flutter_education_app/features/courses/student/details/course_ac
 import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_live_join.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_page_sheets.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_parts.dart' show CpTrackTab;
 import 'package:flutter_education_app/features/courses/student/details/growth_tr.dart';
 
@@ -222,6 +223,9 @@ class _CoursePageState extends State<_CoursePage> {
   /// The opening tab was decided (CourseProfileHub.openingTab), or the person / a link chose one.
   late bool _openingDone = widget.initialTab != null;
 
+  /// An enrolled student opens on the Overview (D-1090), once.
+  late bool _overviewDecided = widget.initialTab != null;
+
   CourseProfileHub get _hub => widget.hub;
 
   @override
@@ -252,7 +256,7 @@ class _CoursePageState extends State<_CoursePage> {
 
   void _openTab(CourseDetailProvider p, String id) {
     _openingDone = true;
-    if (const {kCpTabAnnouncements, kCpTabProgress, kCpTabArchive, kCpTabTeam, kCpTabClass, kRoadmapTab}.contains(id)) {
+    if (const {kCpTabOverview, kCpTabAnnouncements, kCpTabProgress, kCpTabArchive, kCpTabTeam, kCpTabClass, kRoadmapTab}.contains(id)) {
       setState(() => _profileTab = id);
     } else {
       setState(() => _profileTab = null);
@@ -327,6 +331,18 @@ class _CoursePageState extends State<_CoursePage> {
     }
     final profile = _hub.profile;
     final archived = profile != null && profile.closed && profile.isStudent;
+    final courseIdEarly = int.tryParse(c.id);
+    // D-1090: an enrolled student's page opens on the Overview, which reads the profile's page block
+    if (c.isEnrolled && courseIdEarly != null && !archived) {
+      if (!_overviewDecided) {
+        _overviewDecided = true;
+        _profileTab ??= kCpTabOverview;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _hub.ensure();
+      });
+    }
+    final page = c.isEnrolled ? profile?.page : null;
     final col = context.colors;
     final ar = AppConfig.lang == 'ar';
     final title = (ar ? c.titleAr : c.titleEn) ?? '';
@@ -421,6 +437,17 @@ class _CoursePageState extends State<_CoursePage> {
           onJoin: () => _joinLive(context, p, live.first),
           onOpen: () => p.setTab(CourseDetailTab.live),
         ),
+      // the next lecture or own-section session (D-1090); a running one is the Live now card above
+      if (page != null && page.next != null && !page.next!.liveNow && live.isEmpty)
+        CourseNextCard(
+          title: page.next!.name,
+          when: coursePageWhen(page.next!.at),
+          caption: coursePageGroupLabel(page, page.next!.track, page.next!.groupNo),
+          section: page.next!.isSection,
+          actionLabel: gt('التفاصيل', 'Details'),
+          actionIcon: Icons.play_lesson_rounded,
+          onAction: () => p.focusSession(page.next!.id),
+        ),
       if (c.isEnrolled && courseId != null)
         ParentComponent(
           featureKey: 'course_hero.attendance',
@@ -439,32 +466,27 @@ class _CoursePageState extends State<_CoursePage> {
         ),
     ];
 
-    // ── quick actions ──────────────────────────────────────────────────────
-    final actions = <CourseSpaceAction>[
-      if (c.isEnrolled && _studentView != false)
-        CourseSpaceAction(
-          icon: Icons.insights_rounded,
-          label: 'dl_my_profile'.tr,
-          caption: 'dl_my_profile_sub'.tr,
-          color: col.purple,
-          featureKey: 'course_tabs.analytics',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => StudentAnalyticsProfileScreen.forStudent(courseId: courseId)),
-          ),
-        ),
-      // (Exams is a tab of its own — no quick action repeating it, H7)
-      CourseSpaceAction(
-        icon: Icons.headset_mic_rounded,
-        label: gt('الدعم', 'Support'),
-        caption: gt('تواصل مع فريق الدعم', 'Talk to the support team'),
-        color: col.success,
-        onTap: () => _openSupport(context, c),
-      ),
-    ];
+    // ── quick actions: none (D-1090) — My analytics and Support moved into the ⋮ menu ──
 
     // ── tabs ───────────────────────────────────────────────────────────────
     final tabs = <CourseSpaceTab>[
+      if (c.isEnrolled && courseId != null && !archived)
+        courseOverviewTab(
+          hub: _hub,
+          staff: false,
+          actions: (pr) => CourseOverviewActions(
+            onOpenSession: p.focusSession,
+            onAllSessions: () => _openTab(p, 'lessons'),
+            onOpenExams: () => _openTab(p, 'exam'),
+            onPickSection: pr.page?.sections.canPick == true
+                ? () => showPickSectionSheet(context, courseId: courseId, groups: pr.page!.sections.groups, onChanged: _hub.load)
+                : null,
+            onAttendance: () => _openTab(p, kCpTabProgress),
+            onTeam: () => _openTab(p, 'about'),
+            onReviews: () => _openTab(p, 'about'),
+            onOpenPathCourse: (id) => AppNavigator.openCourse(id),
+          ),
+        ),
       if (showLiveTab)
         CourseSpaceTab(
           id: 'live',
@@ -569,12 +591,27 @@ class _CoursePageState extends State<_CoursePage> {
           ),
           // rarer: the ⋮ menu (refresh is pull-to-refresh on phones)
           if (c.isEnrolled && courseId != null) courseAskDocsAction(context, courseId, title),
+          if (c.isEnrolled && _studentView != false && !AppConfig.disableList.contains('course_tabs.analytics'))
+            CourseSpaceTopAction(
+              icon: Icons.insights_rounded,
+              tooltip: 'dl_my_profile'.tr,
+              overflow: true,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => StudentAnalyticsProfileScreen.forStudent(courseId: courseId)),
+              ),
+            ),
+          CourseSpaceTopAction(
+            icon: Icons.headset_mic_rounded,
+            tooltip: gt('الدعم', 'Support'),
+            overflow: true,
+            onTap: () => _openSupport(context, c),
+          ),
           if (mouse)
             CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, overflow: true, onTap: _refresh),
         ],
         onRefresh: _refresh,
         spotlight: spotlight,
-        actions: actions,
         tabs: tabs,
         activeTab: _profileTab ?? _tabId(p.activeTab),
         onTab: (id) => _openTab(p, id),

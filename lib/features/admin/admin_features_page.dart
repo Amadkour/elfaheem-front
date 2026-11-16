@@ -234,9 +234,9 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
             // D-780: the AI features first — one platform-wide switch each, enforced by the server too
             if (_super) ...[AiControlsSection(onChanged: _load, generation: _aiGeneration), AppSpace.gapMd],
             AppKpiGrid(maxColumns: 3, children: [
-              AppKpiCard(icon: Icons.widgets_rounded, value: '${counts['total'] ?? _items.length}', label: t('ميزة', 'Features')),
-              AppKpiCard(icon: Icons.visibility_off_rounded, value: '${counts['hidden'] ?? 0}', label: t('مخفية', 'Hidden')),
-              AppKpiCard(icon: Icons.account_balance_rounded, value: '${counts['org_manageable'] ?? 0}', label: t('بيد المؤسسات', 'Org-managed')),
+              AppStatCard(icon: Icons.widgets_rounded, value: '${counts['total'] ?? _items.length}', label: t('ميزة', 'Features')),
+              AppStatCard(icon: Icons.visibility_off_rounded, value: '${counts['hidden'] ?? 0}', label: t('مخفية', 'Hidden')),
+              AppStatCard(icon: Icons.account_balance_rounded, value: '${counts['org_manageable'] ?? 0}', label: t('بيد المؤسسات', 'Org-managed')),
             ]),
             AppSpace.gapMd,
             AppSearchField(

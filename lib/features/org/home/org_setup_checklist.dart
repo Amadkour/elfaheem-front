@@ -21,6 +21,7 @@ import 'package:flutter_education_app/design/app_motion_kit.dart' show AppFill;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
+import '../org_institution_wizard.dart' show OrgInstitutionSetupCard, institutionWizardAllowed;
 import '../org_v3.dart' show OrgCall, orgCall;
 
 const orgSetupFeatureKey = 'org.setup_checklist';
@@ -65,9 +66,15 @@ class OrgSetupStep {
 }
 
 class OrgSetupData {
-  const OrgSetupData({required this.dismissed, required this.steps});
+  const OrgSetupData({required this.dismissed, required this.steps, this.wizardApplicable = false, this.wizardLaunched = false});
   final bool dismissed;
   final List<OrgSetupStep> steps;
+
+  /// Institutions v2 phase 4: `wizard: {applicable, launched}`: a university / faculty gets the setup wizard card.
+  final bool wizardApplicable, wizardLaunched;
+
+  /// The wizard card replaces this checklist (even a dismissed one) until the institution is launched.
+  bool get wizardCard => wizardApplicable && !wizardLaunched;
 
   /// The payload of `GET …/setup`; unknown keys are dropped, the rest follow [orgSetupOrder].
   factory OrgSetupData.fromJson(Map<String, dynamic> j) {
@@ -75,9 +82,12 @@ class OrgSetupData {
       for (final s in asMapList(j['steps']))
         '${s['key']}': OrgSetupStep(key: '${s['key']}', done: s['done'] == true, count: s['count'] == null ? null : asInt(s['count'])),
     };
+    final w = asMap(j['wizard']);
     return OrgSetupData(
       dismissed: j['dismissed'] == true,
       steps: [for (final k in orgSetupOrder) ?byKey[k]],
+      wizardApplicable: w['applicable'] == true,
+      wizardLaunched: w['launched'] == true || (w['launched_at'] != null && '${w['launched_at']}'.isNotEmpty),
     );
   }
 
@@ -93,7 +103,8 @@ class OrgSetupData {
     return null;
   }
 
-  OrgSetupData dismissedCopy() => OrgSetupData(dismissed: true, steps: steps);
+  OrgSetupData dismissedCopy() =>
+      OrgSetupData(dismissed: true, steps: steps, wizardApplicable: wizardApplicable, wizardLaunched: wizardLaunched);
 }
 
 /// Whether the card is drawn: not dismissed, something to do, and the person is an org admin.
@@ -251,8 +262,11 @@ class _StepRow extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class OrgSetupChecklist extends StatefulWidget {
-  const OrgSetupChecklist({super.key, required this.orgId, required this.onOpen, this.reloadToken});
+  const OrgSetupChecklist({super.key, required this.orgId, required this.onOpen, this.reloadToken, this.onOpenWizard});
   final int? orgId;
+
+  /// Opens the institution setup wizard (the card that replaces this checklist for a university / faculty).
+  final Future<void> Function()? onOpenWizard;
 
   /// Opens the page of a step (the home maps [orgSetupTarget] onto its navigation).
   final void Function(OrgSetupStep step) onOpen;
@@ -317,17 +331,33 @@ class _OrgSetupChecklistState extends State<OrgSetupChecklist> {
   @override
   Widget build(BuildContext context) {
     final d = _data;
+    final wizard = widget.onOpenWizard;
     // the card's own admin check is the caller's (the home passes it only to org admins)
-    if (!orgSetupShow(d, isAdmin: true)) return const SizedBox.shrink();
-    return ParentComponent(
-      featureKey: orgSetupFeatureKey,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: AppSpace.lg),
-        child: OrgSetupCard(data: d!, onOpen: (x) {
-          _stepOpened = true;
-          widget.onOpen(x);
-        }, onDismiss: _dismiss, dismissing: _dismissing),
-      ),
-    );
+    Widget checklist() {
+      if (!orgSetupShow(d, isAdmin: true)) return const SizedBox.shrink();
+      return ParentComponent(
+        featureKey: orgSetupFeatureKey,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.lg),
+          child: OrgSetupCard(data: d!, onOpen: (x) {
+            _stepOpened = true;
+            widget.onOpen(x);
+          }, onDismiss: _dismiss, dismissing: _dismissing),
+        ),
+      );
+    }
+
+    // a university / faculty: the wizard card until the launch; after it (phase 5) the institution's health card
+    // while a roadmap stage warns, else the old checklist (the server dismisses it at the launch)
+    if (d != null && d.wizardApplicable && wizard != null && widget.orgId != null && institutionWizardAllowed()) {
+      return OrgInstitutionSetupCard(
+          orgId: widget.orgId!,
+          fallback: d.wizardLaunched ? checklist() : null,
+          onOpen: () async {
+            await wizard();
+            if (mounted) _load(fresh: true);
+          });
+    }
+    return checklist();
   }
 }

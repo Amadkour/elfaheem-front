@@ -526,28 +526,33 @@ class _OverviewTab extends StatelessWidget {
         children: [
           // the counts (the score itself is the hero's)
           AppKpiGrid(maxColumns: prov.progress != null ? 5 : 4, children: [
-            AppKpiCard(
+            AppStatCard(
+              tone: AppBlockTone.emerald,
               icon: Icons.event_available_rounded,
               value: '${prov.presentCount}/${prov.totalSessions}',
               label: 'sa_sessions_attended'.tr,
             ),
-            AppKpiCard(
+            AppStatCard(
+              tone: AppBlockTone.gold,
               icon: Icons.event_busy_rounded,
               value: '${prov.totalSessions - prov.presentCount}',
               label: 'sa_sessions_missed'.tr,
             ),
-            AppKpiCard(
+            AppStatCard(
+              tone: AppBlockTone.sky,
               icon: Icons.workspace_premium_rounded,
               value: '${prov.passedCount}',
               label: 'sa_passed_exams'.tr,
             ),
-            AppKpiCard(
+            AppStatCard(
+              tone: AppBlockTone.peach,
               icon: Icons.insights_rounded,
               value: '${prov.avgScore.toStringAsFixed(0)}%',
               label: 'sa_avg_score'.tr,
             ),
             if (prov.progress != null)
-              AppKpiCard(
+              AppStatCard(
+                tone: AppBlockTone.emerald,
                 icon: Icons.route_rounded,
                 value: anPct(prov.progress),
                 label: anTr('an_course_progress', 'Course progress'),

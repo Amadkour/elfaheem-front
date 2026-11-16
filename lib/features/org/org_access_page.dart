@@ -9,6 +9,7 @@ library;
 
 import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
+import 'org_institutions.dart' show orgPortfolioLabel, orgRoleTitle;
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_buttons.dart' show AppButton;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -436,9 +437,8 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
             for (final r in _roles)
               ListTile(
                 leading: IconBadge(Icons.badge_rounded, hexColor(r['color'], ctx.colors.primary), size: 38),
-                title: Text(t('${r['name_ar'] ?? r['name_en']}', '${r['name_en'] ?? r['name_ar']}'),
-                    style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
-                subtitle: Text('${r['description'] ?? ''}', maxLines: 2),
+                title: Text(orgRoleTitle(r), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600)),
+                subtitle: Text([?orgPortfolioLabel(r['portfolio']), '${r['description'] ?? ''}'].where((x) => x.isNotEmpty).join(' · '), maxLines: 2),
                 onTap: () => Navigator.pop(ctx, r),
               ),
           ],
@@ -534,7 +534,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
                             for (final a in asMapList(d['assignments']))
                               InputChip(
                                 avatar: CircleAvatar(backgroundColor: hexColor(a['color'], c.primary), radius: 6),
-                                label: Text('${t('${a['role_name_ar'] ?? a['role_name_en']}', '${a['role_name_en'] ?? a['role_name_ar']}')} · ${_deptName(a['dept_id'])}',
+                                label: Text('${orgRoleTitle(a)} · ${_deptName(a['dept_id'])}',
                                     style: TextStyle(fontFamily: AppFonts.family)),
                                 onDeleted: canEdit && a['inherited'] != true
                                     ? () async {
@@ -705,8 +705,7 @@ class OrgRoleCard extends StatelessWidget {
           AppSpace.gapSm,
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('${r['name_ar'] ?? r['name_en']}', '${r['name_en'] ?? r['name_ar']}'),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+              Text(orgRoleTitle(r), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
               Text(desc.isNotEmpty ? desc : summary, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
               AppSpace.gapXs,
               Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
@@ -714,6 +713,7 @@ class OrgRoleCard extends StatelessWidget {
                     icon: Icons.group_outlined,
                     label: countText(holders, ar0: 'لا أحد', ar1: 'شخص واحد', ar2: 'شخصان', arFew: 'أشخاص', arMany: 'شخصاً', en0: 'Nobody', en1: '1 person', en: '$holders people')),
                 if (system) AppStatusBadge(label: t('مدمج', 'Built in'), tone: AppTone.brand),
+                if (orgPortfolioLabel(r['portfolio']) case final p?) AppStatusBadge(icon: Icons.work_outline_rounded, label: p),
                 if (r['inherited'] == true) AppStatusBadge(label: t('من المؤسسة الأم', 'From parent')),
               ]),
             ]),

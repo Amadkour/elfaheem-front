@@ -4861,6 +4861,30 @@ The move is scripted, never by hand: `tool/apply_moves.dart` over `tool/moves/M1
 
 **Consequences.** `context.colors.background` is a tint now: a header block in a pastel close to it needs its own step (raised tint or paper, plus a hairline). Refresh `landing/src/theme/theme-default.json` when the production theme changes. Alfaheem drops its A-007 copy and syncs this.
 
+## D-979 — Institutions S5: the Faculty overview · 2026-11-15 · accepted
+
+**Context.** Plan item 14: the dean needs one view across departments (open requests, overdue, escalated, council items pending, sessions closing soon); a head keeps the existing governance dashboard.
+
+**Decision.**
+- Server (back D-979): `GET …/governance/dashboard?scope=faculty` adds a `faculty` block (rows per department, totals) for the org admin, the dean and the vice deans of a university / faculty; anyone else gets the usual answer. A vice dean sees the departments of their portfolio (by department template) plus the faculty council.
+- Home: ONE static card, "Faculty overview", under the setup checklist, shown from the dashboard's `can_faculty_overview` (no request of its own, so `homeBudgets` are unchanged); kill switch `org.governance`.
+- Page (`governance/gov_faculty_overview.dart`, pushed with `orgPush`): the five totals, then a card per department on phones (figures as chips) and a table inside `AppHScroll` from `orgPageWideFrom`; a row opens `GovItemsPage` on that department's open items, a figure on its state (overdue, the new `escalated` axis of `ItemFilter`, in council).
+
+**Consequences.** `ItemFilter` gains `escalated` (query `escalated=true`, a chip). Tests: `test/org/institutions_s5_test.dart`, back `tests/org_v2/e2e_institutions_s5.py`.
+
+
+## D-994 – D-997 — Institutions v2 phase 5: the roadmap UX · 2026-11-15 · accepted
+
+**Context.** Plan item 5 (docs/institutions/V2_PLAN.md): one "where am I, what is next" drawing for the admin, the student and the heads; server routes `GET …/governance/{org}/me/journey`, `…/me/attention-flow`, wizard `stages` (back FLUTTER_API_CHANGES phase 5).
+
+**Decision.**
+- D-994 `lib/design/app_roadmap.dart`: `AppRoadmap` (connected nodes, vertical on phones, a row ≥ 720 with ≤ 6 nodes; done / current / todo / warn = icon + colour + word; the next node is the one emerald block with its button; the walked line fills once through `AppFill`, no loop) and `AppStatusPath` (submitted → reviewed → decided). In the design kit rather than reusing `RoadmapPathView` directly: that one is course-shaped (thumbs, prices), so the shared widget copies its visual language instead.
+- D-996 Admin: the wizard card keeps its place before the launch (+ "See the roadmap"); after the launch the same `GET …/institution/wizard` draws an "Institution health" card only while a stage warns (else the old checklist slot, which the server dismisses). The page starts from the Home's answer (no second request) and opens the wizard AT a stage (`openInstitutionWizard(step:)`).
+- D-995 Student: "My journey" leads the member home (hero "What should I do now?", Important, "Can wait" folded, shortcuts, contacts sheet, requests as `AppStatusPath`); every other section folds under "More" (`HomeSection` folded by default, nothing removed). A step's module maps to the app's own pages (`journeyTargetOf`); an unknown module opens My requests, an API `route` is never pushed. Budget: the news feed waits for the journey and folds unasked, so open stays 4; refresh 2 → 3.
+- D-997 Heads: one `OrgAttentionFlowPage`; its entry is one row (with a count) in the Home's existing "Needs your attention" area, not a second card; org-admin home open 7 → 8 (parallel, not on refresh).
+
+**Consequences.** Tests: `test/org/institutions_v2_p5_test.dart` (states, semantics, parsers, layout harness, a11y).
+
 ## D-1080 — Video Studio: a playhead that never freezes, trims that follow the finger · 2026-11-16 · accepted
 
 **Context.** Scrubbing, trimming and moving the playhead in the Records Studio felt heavy, and the playhead sometimes froze until the page was reopened. Causes found in the code:
@@ -4877,3 +4901,37 @@ The move is scripted, never by hand: `tool/apply_moves.dart` over `tool/moves/M1
 - A clip drag works on the edit as it was at the finger's down (`_base`), with that scale; drag distance is unclamped. Every way a drag ends (lift, cancel, a second finger, editing switched off, the timeline disposed) releases the page's scrub exactly once; a cancel is never a tap. A light haptic tick when a touch drag lands on a snap point.
 
 **Consequences.** Tests: `test/ui/studio_scrub_test.dart` (seek queue: latest wins, watchdog, a throwing seek, throttle + flush, reset; trim start / end with the live trim fed back; timeline closed mid-scrub; cancelled pointer; a long back-and-forth scrub). Timeline-only frame times in the widget test (3 h, 60 parts, 40 overlays, zoom 6): scrub median 3.8 → 2.9 ms, p95 7.4 → 5.3 ms; playing 2.2 → 1.5 ms. The page no longer rebuilds during a scrub or playback at all. `video_player` offers no keyframe-only seek, so a scrub shows the frames the player decodes at that pace; no new package.
+
+## D-1081 — The soft-wash pages: tinted stat cards and one highlighted card (owner pick A2) · 2026-11-16 · accepted
+
+**Context.** The owner compared five organization-home layouts and four styles of the chosen one (layout A) and
+picked A2 "soft wash": light tinted count cards with a small bar chart, and one main card framed by a thin
+gradient line. It deliberately breaks two parts of D-622 (the gradient is ONE emerald family and a touch only): the
+cards use the four block tints (emerald · peach · sky · gold), and the edge runs primary → gold.
+
+**Decision.**
+- `AppStatCard` (every caller at once) is the soft-wash card: `AppBrandLayer.statWash` (the tone's block tint at
+  the top start fading into the card by 75 %; in dark mode the tone's strong colour at 16 % over the card), the
+  icon chip and label on top, the figure in the normal ink (danger with `warn`, muted at "0"), the hint line (delta,
+  footer) under it, and an optional `AppMiniBars` of the last 8 values (latest full, a caption, read aloud with the
+  card). The coloured footer band of D-631 is gone.
+- `AppCard(highlight: true)` / `AppHighlightEdge`: the ONE main card of a screen gets `AppBrandLayer.highlightEdge`
+  (primary → gold → the hairline). Never two per screen; never a wash behind a list, form, table or settings row.
+- The organization home: with the dashboard's new `home_stats` it opens with a greeting line (`OrgHomeGreeting`,
+  no forest hero, no members card) and four counts with 8-week bars (votes waiting · open requests, red while one
+  is overdue · members of my departments · my next council session); "Needs me" is the highlighted card. The
+  head's and dean's Councils block moved into More (votes · councils · requests), every page still a tap away. An
+  older server without `home_stats` keeps the D-631 hero and figures.
+- Profile E (the organization settings page, `OrgSettingsPage`): the profile card carries the organization chip
+  with Switch; four shortcut tiles under it (certificate designs · exports · organization notifications · display,
+  each behind its own kill switch) replace their rows; then Organization · Governance · App (language, assistant,
+  floating assistant, dark mode) · Help & legal (verify a certificate, get the app, privacy, terms); the footer
+  holds two-step verification, the admin's danger zone, then the exits (leave · sign out) as quiet red rows
+  (`AppSettingsTile(danger: true)`: red icon and label, no chevron, still confirmed) and the version line. One
+  primary tint for the icons; `AppSettingsPage(columns: true)` splits the groups into two columns on a wide body.
+
+**Consequences.** Server: `GET …/orgs/{id}/dashboard` reads the task list once and adds `home_stats` (back
+FLUTTER_API_CHANGES 2026-11-16). Tests: `test/ui/org_home_soft_layout_test.dart` (parse, the four cards, the one
+edge, no hero; empty / full / worst case through the layout harness), `test/org/ux_v3_p4_test.dart` (the persona
+blocks), `test/ui/org_settings_profile_e_test.dart` (the card, the tiles, the exit rows, two columns), back
+`tests/org_v2/e2e_org_dashboard_v3.py` (home_stats sums match the tasks).

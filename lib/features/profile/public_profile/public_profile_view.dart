@@ -433,6 +433,8 @@ class _StatGrid extends StatelessWidget {
       });
 }
 
+/// D-1081: a soft-wash count card; the figure's colour role picks the tint (primary → emerald, accent → peach,
+/// accent2 → gold, accent3 → sky), the note is its hint line.
 class _StatTile extends StatelessWidget {
   const _StatTile({required this.stat});
 
@@ -442,32 +444,14 @@ class _StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final s = stat;
-    final tint = Color.alphaBlend(s.color.withValues(alpha: c.isDark ? 0.22 : 0.12), c.cardBg);
-    return Semantics(
-      label: '${s.value} ${s.label}${s.note == null ? '' : ', ${s.note}'}',
-      excludeSemantics: true,
-      child: AppCard(
-        padding: const EdgeInsets.all(AppSpace.md),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-            width: AppIconSize.xl,
-            height: AppIconSize.xl,
-            decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
-            child: Icon(s.icon, size: AppIconSize.sm, color: c.blockAccentInk(s.color, tint)),
-          ),
-          const SizedBox(height: AppSpace.sm),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(s.value, maxLines: 1, style: AppType.figure(context).copyWith(color: c.textDark)),
-          ),
-          const SizedBox(height: AppSpace.xxs),
-          Text(s.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
-          if (s.note != null)
-            Text(s.note!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
-        ]),
-      ),
-    );
+    final tone = s.color == c.accent2
+        ? AppBlockTone.gold
+        : s.color == c.accent3
+            ? AppBlockTone.sky
+            : s.color == c.accent
+                ? AppBlockTone.peach
+                : AppBlockTone.emerald;
+    return AppStatCard(icon: s.icon, value: s.value, label: s.label, footer: s.note, tone: tone);
   }
 }
 

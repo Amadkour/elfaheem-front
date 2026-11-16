@@ -37,6 +37,7 @@ import 'package:flutter_education_app/features/courses/roadmap/roadmap_editor.da
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_tab.dart' show roadmapAllowedHere;
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_errors.dart' show appSharedFix, showAppError;
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
@@ -387,6 +388,11 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         );
       }
       Navigator.pop(context, result);
+    } else if (formProvider.lastApiError != null && appSharedFix(formProvider.lastApiError!) != null) {
+      // e.g. 403 personal_off (UX v3 phase 3): one tap turns the personal account on, then saves again
+      showAppError(context, formProvider.lastApiError!,
+          text: formProvider.errorMessage,
+          onRetry: () => _submit(publish: publish, listProvider: listProvider, formProvider: formProvider));
     } else {
       _showSnack(
         formProvider.errorMessage ?? 'error_please_retry'.tr,

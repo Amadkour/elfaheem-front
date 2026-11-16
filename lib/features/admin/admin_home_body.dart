@@ -473,7 +473,8 @@ class _NeedsYou extends StatelessWidget {
             ),
         ];
         final total = data.queueTotal(pendingPayouts) + todo;
-        return AppSectionCard(
+        // D-1081: "Needs you" is the admin home's one highlighted card
+        return AppHighlightEdge(child: AppSectionCard(
           title: 'home_needs_you'.tr,
           subtitle: t('ما ينتظر قرارك الآن', 'What waits for your decision'),
           actions: [if (total > 0) AppCountBadge(count: total)],
@@ -485,7 +486,7 @@ class _NeedsYou extends StatelessWidget {
                     all[i],
                   ],
                 ]),
-        );
+        ));
       },
     );
   }
@@ -673,33 +674,25 @@ class _Health extends StatelessWidget {
     final failed = data.jobsFailed24h;
     final tiles = <Widget>[
       if (data.hasRealtime)
-        AppStatTile(
+        AppStatCard(
           icon: Icons.bolt_rounded,
           label: 'admin_home_events_24h'.tr,
-          value: data.eventsLast24h == null ? '—' : appCompactNumber(data.eventsLast24h!),
-          color: c.primary,
-        ),
+          value: '${data.eventsLast24h == null ? '—' : appCompactNumber(data.eventsLast24h!)}', tone: appStatToneFor(context, c.primary), warn: appStatWarn(context, c.primary),),
       if (data.hasAlerts)
-        AppStatTile(
+        AppStatCard(
           icon: failed > 0 ? Icons.error_rounded : Icons.check_circle_rounded,
           label: 'admin_home_jobs_failed'.tr,
-          value: failed,
-          color: failed > 0 ? c.danger : c.success,
-          onTap: failed > 0 ? actions.openJobs : null,
-        ),
+          value: '${failed}',
+          onTap: failed > 0 ? actions.openJobs : null, tone: appStatToneFor(context, failed > 0 ? c.danger : c.success), warn: appStatWarn(context, failed > 0 ? c.danger : c.success),),
       if (data.hasSeries) ...[
-        AppStatTile(
+        AppStatCard(
           icon: Icons.sensors_rounded,
           label: 'admin_home_live_sessions_30d'.tr,
-          value: data.liveSessions30,
-          color: c.primary,
-        ),
-        AppStatTile(
+          value: '${data.liveSessions30}', tone: appStatToneFor(context, c.primary), warn: appStatWarn(context, c.primary),),
+        AppStatCard(
           icon: Icons.support_agent_rounded,
           label: 'admin_home_complaints_30d'.tr,
-          value: data.complaints30,
-          color: data.complaints30 > 0 ? c.warning : c.success,
-        ),
+          value: '${data.complaints30}', tone: appStatToneFor(context, data.complaints30 > 0 ? c.warning : c.success), warn: appStatWarn(context, data.complaints30 > 0 ? c.warning : c.success),),
       ],
     ];
     return AppSectionCard(
@@ -756,10 +749,10 @@ class AdminAssistantCard extends StatelessWidget {
         AppSpace.gapSm,
         // wide enough that "Questions" and "Media answer" never break mid-word
         AppGrid(minTile: AppSpace.xxxl * 2 + AppSpace.lg - 2, spacing: AppSpace.xs, padding: EdgeInsets.zero, children: [
-          AppStatTile(icon: Icons.forum_rounded, label: 'admin_home_ai_questions'.tr, value: appCompactNumber(h.questions), color: c.primary),
-          AppStatTile(icon: Icons.search_off_rounded, label: 'admin_home_ai_no_answer'.tr, value: h.noAnswerText, color: bad ? c.warning : c.success),
+          AppStatCard(icon: Icons.forum_rounded, label: 'admin_home_ai_questions'.tr, value: '${appCompactNumber(h.questions)}', tone: appStatToneFor(context, c.primary), warn: appStatWarn(context, c.primary)),
+          AppStatCard(icon: Icons.search_off_rounded, label: 'admin_home_ai_no_answer'.tr, value: '${h.noAnswerText}', tone: appStatToneFor(context, bad ? c.warning : c.success), warn: appStatWarn(context, bad ? c.warning : c.success)),
           // an LTR isolate keeps "11.4 s" in order inside Arabic
-          AppStatTile(icon: Icons.timer_outlined, label: 'admin_home_ai_p50'.tr, value: '\u2066${h.p50Text}\u2069', color: c.primary),
+          AppStatCard(icon: Icons.timer_outlined, label: 'admin_home_ai_p50'.tr, value: '\u2066${h.p50Text}\u2069', tone: appStatToneFor(context, c.primary), warn: appStatWarn(context, c.primary)),
         ]),
         if (h.questions > 0) ...[
           AppSpace.gapSm,

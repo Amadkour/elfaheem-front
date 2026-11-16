@@ -187,12 +187,12 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
       onRefresh: _load,
       child: ListView(padding: AdminPage.bodyPadding(context), children: [
         AppKpiGrid(maxColumns: 3, children: [
-          AppKpiCard(
+          AppStatCard(
               icon: Icons.account_balance_rounded,
               value: _orgs ? t('مفعّلة', 'On') : t('متوقفة', 'Off'),
               label: t('المؤسسات', 'Organizations')),
-          AppKpiCard(icon: Icons.public_rounded, value: AppTime.zoneInfo(_zone).label, label: t('المنطقة', 'Zone')),
-          AppKpiCard(
+          AppStatCard(icon: Icons.public_rounded, value: AppTime.zoneInfo(_zone).label, label: t('المنطقة', 'Zone')),
+          AppStatCard(
               icon: Icons.schedule_rounded, value: _fmt == '24h' ? '24h' : '12h', label: t('الساعة', 'Clock')),
         ]),
         if (!_canEdit) ...[

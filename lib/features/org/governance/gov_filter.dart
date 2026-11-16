@@ -60,6 +60,7 @@ class ItemFilter {
     this.mine = false,
     this.toMe = false,
     this.overdue = false,
+    this.escalated = false,
     this.sort = '-created_at',
   });
 
@@ -68,6 +69,9 @@ class ItemFilter {
   final int? deptId, sourceDeptId, sourceUserId, assigneeId, categoryId;
   final DateTime? dateFrom, dateTo;
   final bool mine, toMe, overdue;
+
+  /// Open and escalated at least once (`escalated=true`, the faculty overview's figure, D-979).
+  final bool escalated;
   final String sort;
 
   static const _unset = Object();
@@ -87,6 +91,7 @@ class ItemFilter {
     bool? mine,
     bool? toMe,
     bool? overdue,
+    bool? escalated,
     String? sort,
   }) =>
       ItemFilter(
@@ -104,6 +109,7 @@ class ItemFilter {
         mine: mine ?? this.mine,
         toMe: toMe ?? this.toMe,
         overdue: overdue ?? this.overdue,
+        escalated: escalated ?? this.escalated,
         sort: sort ?? this.sort,
       );
 
@@ -134,7 +140,8 @@ class ItemFilter {
       (dateFrom != null || dateTo != null ? 1 : 0) +
       (mine ? 1 : 0) +
       (toMe ? 1 : 0) +
-      (overdue ? 1 : 0);
+      (overdue ? 1 : 0) +
+      (escalated ? 1 : 0);
 
   /// The query string of `GET …/items` (only the set axes; csv for lists; days as YYYY-MM-DD).
   Map<String, dynamic> toQuery() => {
@@ -152,6 +159,7 @@ class ItemFilter {
         if (mine) 'mine': true,
         if (toMe) 'to_me': true,
         if (overdue) 'overdue': true,
+        if (escalated) 'escalated': true,
         if (sort != '-created_at') 'sort': sort,
       };
 
@@ -187,6 +195,7 @@ class ItemFilter {
       mine: flag(m['mine']),
       toMe: flag(m['to_me']),
       overdue: flag(m['overdue']),
+      escalated: flag(m['escalated']),
       sort: itemSorts.contains(m['sort']) ? '${m['sort']}' : '-created_at',
     );
   }
@@ -209,6 +218,7 @@ class ItemFilter {
       if (toMe) FilterChipInfo('toMe', t('بانتظاري', 'Waiting for me')),
       if (mine) FilterChipInfo('mine', t('ما قدّمته', 'Mine')),
       if (overdue) FilterChipInfo('overdue', t('متأخرة', 'Overdue')),
+      if (escalated) FilterChipInfo('escalated', t('مصعَّدة', 'Escalated')),
     ];
   }
 
@@ -226,6 +236,7 @@ class ItemFilter {
         'toMe' => copyWith(toMe: false),
         'mine' => copyWith(mine: false),
         'overdue' => copyWith(overdue: false),
+        'escalated' => copyWith(escalated: false),
         _ => this,
       };
 

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty, appInk, appText;
@@ -58,28 +61,27 @@ class _NotificationsTabState extends State<NotificationsTab> {
     return MasterDetailScaffold(
       controller: _panel,
       rootLabel: 'notifications'.tr,
-      list: NotificationsStateBody(
+      // the width decides one or two tiles a row; the rows themselves are built lazily (a long list never lays out
+      // every tile, UX v3 phase 5)
+      list: LayoutBuilder(builder: (context, box) => NotificationsStateBody(
       loading: provider.isLoading,
       empty: provider.allNotifs.isEmpty,
       error: provider.hasError ? (provider.errorMessage ?? '') : null,
       onRefresh: provider.fetchNotifications,
       onLoadMore: provider.hasMore ? () => provider.loadMore() : null,
+      gap: 0,
       children: [
         if (provider.unreadCount > 0)
           ParentComponent(featureKey: 'notifications.mark_all_read', child: NotificationsMarkAllBar(
             // ONE action for the whole page (N12), not one per day group; one PUT /read-all.
             onPressed: () => context.read<NotificationsProvider>().markAllAsRead(),
           )),
-        ParentComponent(featureKey: 'notifications.today', child: _NotifGroup(
-          group: NotifGroup.today,
-          groupTitle: 'today'.tr,
-        )),
-        ParentComponent(featureKey: 'notifications.yesterday', child: _NotifGroup(
-          group: NotifGroup.yesterday,
-          groupTitle: 'yesterday'.tr,
-        )),
+        if (!AppConfig.disableList.contains('notifications.today'))
+          ...notificationGroupRows(provider.todayNotifs, title: 'today'.tr, reveal: true, twoUp: box.maxWidth >= 900),
+        if (!AppConfig.disableList.contains('notifications.yesterday'))
+          ...notificationGroupRows(provider.yesterdayNotifs, title: 'yesterday'.tr, twoUp: box.maxWidth >= 900),
       ],
-      ),
+      )),
     );
   }
 }
@@ -95,7 +97,11 @@ class NotificationsStateBody extends StatelessWidget {
     required this.onRefresh,
     required this.children,
     this.onLoadMore,
+    this.gap = AppSpace.lg,
   });
+
+  /// The space after each of [children] (0 when they carry their own, the tab's flat rows).
+  final double gap;
 
   final bool loading;
   final bool empty;
@@ -132,15 +138,15 @@ class NotificationsStateBody extends StatelessWidget {
       },
       child: AppRefresh(
         onRefresh: onRefresh,
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+        // lazy: only the rows on screen are built
+        child: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxs),
           physics: const BouncingScrollPhysics(),
-          children: [
-            const SizedBox(height: AppSpace.sm),
-            for (final w in children) ...[w, const SizedBox(height: AppSpace.lg)],
-            if (loading) const AppListSkeleton(items: 2, padding: EdgeInsets.zero),
-            const SizedBox(height: AppSpace.xxs),
-          ],
+          itemCount: children.length + (loading ? 1 : 0),
+          itemBuilder: (context, i) {
+            if (i >= children.length) return const AppListSkeleton(items: 2, padding: EdgeInsets.zero);
+            return gap == 0 ? children[i] : Padding(padding: EdgeInsets.only(bottom: gap), child: children[i]);
+          },
         ),
       ),
     );
@@ -149,55 +155,37 @@ class NotificationsStateBody extends StatelessWidget {
 
 // ── Notification Group ────────────────────────────────────────────────────────
 
-class _NotifGroup extends StatelessWidget {
-  final NotifGroup group;
-  final String groupTitle;
-
-  const _NotifGroup({required this.group, required this.groupTitle});
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<NotificationsProvider>();
-    // FIX: "today" used allNotifs, so every notification showed in both sections.
-    List<NotificationModel> notifs = group == NotifGroup.today
-        ? provider.todayNotifs
-        : provider.yesterdayNotifs;
-    if (notifs.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Group header (the page's single "Mark all read" sits above the groups, N12)
-        Semantics(header: true, child: Text(groupTitle, style: AppType.section(context))),
-        const SizedBox(height: AppSpace.sm),
-        // Notification tiles: two to a row while the list has the room (the panel beside it takes that room back).
-        // ONE entrance: today's first rows rise in once; yesterday is simply there.
-        LayoutBuilder(builder: (context, box) {
-          Widget tile(int i) {
-            final t = NotificationTile(notif: notifs[i]);
-            return group == NotifGroup.today ? AppReveal(index: i, group: 'notifs', cap: 5, child: t) : t;
-          }
-
-          if (box.maxWidth < 900) {
-            return Column(children: [
-              for (var i = 0; i < notifs.length; i++)
-                Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: tile(i)),
-            ]);
-          }
-          return Column(children: [
-            for (var i = 0; i < notifs.length; i += 2)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(child: tile(i)),
-                  const SizedBox(width: AppSpace.sm),
-                  Expanded(child: i + 1 < notifs.length ? tile(i + 1) : const SizedBox.shrink()),
-                ]),
-              ),
-          ]);
-        }),
-      ],
-    );
+/// One day group as flat rows for the lazy list: its header, then one row per tile — two tiles a row when [twoUp]
+/// (the list has the room; the panel beside it takes that room back) — and the group's closing space. Nothing for an
+/// empty group. ONE entrance: [reveal] (today) lets the first rows rise in once; yesterday is simply there.
+List<Widget> notificationGroupRows(List<NotificationModel> notifs, {required String title, bool reveal = false, bool twoUp = false}) {
+  if (notifs.isEmpty) return const [];
+  Widget tile(int i) {
+    final t = NotificationTile(key: ValueKey('notif.${notifs[i].id}'), notif: notifs[i]);
+    return reveal ? AppReveal(index: i, group: 'notifs', cap: 5, child: t) : t;
   }
+
+  const row = EdgeInsets.only(bottom: AppSpace.sm);
+  return [
+    // Group header (the page's single "Mark all read" sits above the groups, N12)
+    Builder(builder: (context) => Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
+          child: Semantics(header: true, child: Text(title, style: AppType.section(context))),
+        )),
+    if (!twoUp)
+      for (var i = 0; i < notifs.length; i++) Padding(padding: row, child: tile(i))
+    else
+      for (var i = 0; i < notifs.length; i += 2)
+        Padding(
+          padding: row,
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: tile(i)),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: i + 1 < notifs.length ? tile(i + 1) : const SizedBox.shrink()),
+          ]),
+        ),
+    const SizedBox(height: AppSpace.lg - AppSpace.sm),
+  ];
 }
 
 /// The page's one "Mark all read", above the day groups (end-aligned, 48 px target).
@@ -303,13 +291,17 @@ class NotificationTile extends StatelessWidget {
         borderRadius: AppRadius.cardAll,
         child: InkWell(
           borderRadius: AppRadius.cardAll,
-          onTap: () async {
+          onTap: () {
             final provider = context.read<NotificationsProvider>();
             if (!notif.isRead) {
-              await provider.markAsRead(notif.id);
+              // optimistic (UX v3 phase 5): the dot goes at once and the target opens without waiting for the PUT;
+              // a failed PUT puts the dot back and says so
+              unawaited(provider.markAsRead(notif.id).then((ok) {
+                if (!ok) showAppNotice(AppConfig.lang == 'ar' ? 'تعذّر تعليم الإشعار كمقروء' : 'Could not mark the notification as read', error: true);
+              }));
             }
             // Opens the course profile (student or teacher version) / profile / etc. — resolved by the server.
-            await AppNavigator.openNotification(notif.id);
+            unawaited(AppNavigator.openNotification(notif.id));
           },
           child: Container(
             padding: const EdgeInsets.all(AppSpace.md),

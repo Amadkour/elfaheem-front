@@ -20,7 +20,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_bidi.dart' show AutoDirText;
 import 'package:flutter_education_app/design/app_blocks.dart' show AppBlock, AppBlockTone;
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, appInk;
+import 'package:flutter_education_app/design/app_kit.dart' show AppCountBadge, AppHighlightEdge, AppListSkeleton, AppRefresh, AppTone, appInk;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp;
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -75,7 +75,11 @@ class OrgNeedsYouSection extends StatelessWidget {
     this.onOpen,
     this.onRetry,
     this.onSeeAll,
+    this.highlight = false,
   });
+
+  /// D-1081: the home's ONE main card — the block wears the primary → gold edge.
+  final bool highlight;
 
   /// The rows (urgency first), hidden ones already left out.
   final List<OrgTask> tasks;
@@ -133,9 +137,9 @@ class OrgNeedsYouSection extends StatelessWidget {
       titlePadding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, 0, AppSpace.xs, AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (empty)
-          const OrgAllCaughtUp()
+          OrgAllCaughtUp(highlight: highlight)
         else if (ranked.isNotEmpty)
-          _AttentionBlock(count: count, urgent: urgent, rows: [for (final r in ranked) r.$3], live: live)
+          _AttentionBlock(count: count, urgent: urgent, rows: [for (final r in ranked) r.$3], live: live, highlight: highlight)
         else
           ?live,
       ]),
@@ -146,16 +150,17 @@ class OrgNeedsYouSection extends StatelessWidget {
 /// The attention block: the waiting count large in the editorial face, a quiet "n urgent" beside it, then the rows
 /// on a paper card set into the block (and the live feed's rows under them).
 class _AttentionBlock extends StatelessWidget {
-  const _AttentionBlock({required this.count, required this.urgent, required this.rows, this.live});
+  const _AttentionBlock({required this.count, required this.urgent, required this.rows, this.live, this.highlight = false});
   final int count, urgent;
   final List<Widget> rows;
   final Widget? live;
+  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-      child: AppBlock(
+      child: _edgeIf(highlight, AppBlock(
         tone: AppBlockTone.peach,
         padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.md, AppSpace.xs, AppSpace.xs),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -196,7 +201,7 @@ class _AttentionBlock extends StatelessWidget {
           OrgRowsCard(margin: EdgeInsets.zero, children: rows),
           ?live,
         ]),
-      ),
+      )),
     );
   }
 }
@@ -238,14 +243,20 @@ class OrgRowsCard extends StatelessWidget {
 }
 
 /// The empty queue: an emerald block (done), one check, one line.
+/// The block inside the primary → gold edge when it is the screen's main card (D-1081).
+Widget _edgeIf(bool on, Widget block) => on ? AppHighlightEdge(radius: AppRadius.block, child: block) : block;
+
 class OrgAllCaughtUp extends StatelessWidget {
-  const OrgAllCaughtUp({super.key});
+  const OrgAllCaughtUp({super.key, this.highlight = false});
+
+  /// D-1081: the home's ONE main card (the primary → gold edge).
+  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-      child: AppBlock(
+      child: _edgeIf(highlight, AppBlock(
         tone: AppBlockTone.emerald,
         padding: AppSpace.card,
         child: Builder(builder: (context) {
@@ -268,7 +279,7 @@ class OrgAllCaughtUp extends StatelessWidget {
             ),
           ]);
         }),
-      ),
+      )),
     );
   }
 }
@@ -505,6 +516,12 @@ class OrgAlertRow extends StatelessWidget {
                   child: Text(spec.action, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end,
                       style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, c.primary))),
                 ),
+              if (spec.count > 0) ...[
+                if (MediaQuery.sizeOf(context).width >= 600) const SizedBox(width: AppSpace.xs),
+                AppCountBadge(count: spec.count, tone: spec.severity == 'danger' ? AppTone.danger : AppTone.brand),
+                const SizedBox(width: AppSpace.xxs),
+              ],
+              ?spec.trailing,
               Icon(Icons.chevron_right_rounded, color: c.textLight, size: AppIconSize.lg),
             ]),
           ),

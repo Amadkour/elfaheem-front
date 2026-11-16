@@ -19,6 +19,7 @@ import 'package:flutter_education_app/features/org/advising/adv_appt_models.dart
 import 'package:flutter_education_app/features/org/org_dashboard_model.dart';
 import 'package:flutter_education_app/features/parent/parent_overview.dart';
 import 'package:flutter_education_app/features/calendar/calendar_models.dart' show CalEvent;
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_models.dart';
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult;
 import 'package:flutter_education_app/features/rag/rag_admin_console.dart';
 import 'package:flutter_education_app/features/rag/rag_chat.dart';
@@ -1129,6 +1130,49 @@ void main() {
       expect(r.enrollment.withdrawalReasonCode, isNull);
       expect(r.enrollment.exams, isNull);
       expect(r.enrollment.state, row['state']);
+    });
+  });
+
+  group('GET /course-profile/{id} → CourseProfile.page (D-1090)', () {
+    test('staff: counts, setup, week, rules, groups with counts', () {
+      final j = fixture('course_page_staff');
+      final p = CourseProfile(j).page!;
+      final raw = j['page'] as Map;
+      expect(p.counts.sessionsTotal, (raw['counts'] as Map)['sessions_total']);
+      expect(p.counts.lectures + p.counts.sections, p.counts.sessionsTotal);
+      expect(p.counts.free, isFalse);
+      expect(p.setup, isNotNull);
+      expect(p.setup!.map((s) => s.key), containsAll(['cover', 'description', 'schedule', 'rules', 'first_exam']));
+      expect(p.week, isNotEmpty);
+      expect(p.week.every((s) => s.day.isNotEmpty && s.start.contains(':')), isTrue);
+      expect(p.rules.absenceLimit, (raw['rules'] as Map)['absence_limit']);
+      expect(p.rules.grades.fold<int>(0, (a, g) => a + g.weight), 100);
+      expect(p.rules.items.map((i) => i.order).toList(), [...p.rules.items.map((i) => i.order)]..sort());
+      expect(p.sections.groups, isNotEmpty);
+      expect(p.sections.groups.every((g) => g.students != null), isTrue);
+      expect(p.next, isNotNull);
+      expect(p.next!.at, isNotNull);
+    });
+
+    test('a student: their group only, their absences, no setup', () {
+      final j = fixture('course_page_student');
+      final p = CourseProfile(j).page!;
+      expect(p.setup, isNull);
+      expect(p.sections.myGroup, isNotNull);
+      expect(p.sections.groups.map((g) => g.groupNo).toSet(), {p.sections.myGroup});
+      expect(p.week.where((s) => s.isSection).every((s) => s.groupNo == p.sections.myGroup), isTrue);
+      expect(p.rules.myAbsences, isNotNull);
+      expect(CourseProfile(j).sections.every((s) => s.groupNo == null || s.groupNo == p.sections.myGroup), isTrue);
+    });
+
+    test('GET …/sections (staff) and GET …/rules', () {
+      final s = CourseSections.fromJson(fixture('course_sections_staff'));
+      expect(s.students, isNotEmpty);
+      expect(s.groups, isNotEmpty);
+      expect(s.students.every((x) => x.person.id > 0), isTrue);
+      final r = CourseRules.fromJson(fixture('course_rules'));
+      expect(r.items, isNotEmpty);
+      expect(r.count, greaterThanOrEqualTo(r.items.length));
     });
   });
 }

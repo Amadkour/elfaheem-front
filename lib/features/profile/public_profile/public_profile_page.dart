@@ -176,7 +176,8 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       final m = await PublicProfileApi.save(isPublic: isPublic, fields: fields);
       if (mounted && m != null) setState(() => _mine = m);
     } catch (e) {
-      showAppNotice(ApiException.from(e).message, error: true);
+      // 403 personal_off (UX v3 phase 3): the fix turns the personal account on, then publishes again
+      if (mounted) showAppError(context, e, text: ApiException.from(e).message, onRetry: () => _save(isPublic: isPublic, fields: fields));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

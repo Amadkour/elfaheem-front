@@ -64,6 +64,10 @@ that one hue, never a second colour. It is a **touch**:
   highlighted KPI is a block (D-612); the shell's sidebar is paper with a solid emerald pill on the open tab
 - ✗ never behind body text, forms, lists or tables · never two gradient fills side by side · never the legacy
   accent / teal / gold gradient getters in new UI
+- ✓ D-1081 (the soft wash, owner pick A2), two deliberate exceptions read from `AppBrandLayer`: every `AppStatCard`
+  wears its tone's tint (emerald · peach · sky · gold) fading into the card (`statWash`), and the ONE main card of a
+  screen gets a thin primary → gold edge (`AppCard(highlight: true)` / `AppHighlightEdge`, `highlightEdge`) — never
+  two highlighted cards on a screen, never a wash behind a list, form, table or settings row
 
 ```dart
 HomeHeader(name: user.name, subtitle: homeDaySummary(…), actions: [...])  // the hero block; tone: from the role
@@ -110,11 +114,12 @@ charcoal ink — no blue, no mint.
 | settings page | `AppSettingsPage(header:, groups:, footer:)` + `AppSettingsGroup(title:, icon:, children:, danger:)` (an editorial group heading — `AppType.section` in ink, a quiet glyph — with 32 above it over the white card: one soft shadow, hairline dividers, D-632) / `AppSettingsTile(icon:, label:, subtitle:, color:, badge:, trailing:, onTap:)` (48 px rows, a faint icon well) · `AppSettingsHeader` (the profile hero: the page's one tinted block, peach) | `app_settings.dart` |
 | role dashboard | `AppShell(items: [DashboardItem(…, badgeTone: ShellBadgeTone.reward)])` | `app_shell.dart` |
 | greeting hero (D-631) | `AppGreetingHero(greeting:, summary:, avatar:, initials:, ring:, cta: AppGreetingHeroButton(label:, onTap:, icon:), actions:, illustration:, footer:, centered:)` — the forest card of a home (time chip, avatar in a progress ring, the greeting in the display face, one line, ONE paper pill); `HomeHeader(…, greetingHero: true, ring:, cta:, centered:)` draws a home's header as one | `app_dashboard_kit.dart`, `home_kit.dart` |
-| stat card (D-631) | `AppStatCard(icon:, value:, label:, tone:, footer:, delta:)` — the figure large in the tone's ink, the icon chip at the end, a tinted footer band with the change; four in an `AppKpiGrid` | `app_dashboard_kit.dart` |
+| stat card (D-631, soft wash D-1081) | `AppStatCard(icon:, value:, label:, tone:, footer:, delta:, bars:, barsCaption:, warn:)` — the tone's tint fading into the card, the icon chip and label on top, the figure (danger ink with `warn`, muted at 0) with its hint line, an optional `AppMiniBars` of the last 8 values at the end; four in an `AppKpiGrid` | `app_dashboard_kit.dart` |
 | KPI · ring (D-631) | `AppKpiSpark(label:, value:, values:, icon:, delta:, tone:)` (figure + sparkline) · `AppRingStat(label:, value:, progress:, caption:, delta:, tone:)` (text + a ring with its percentage) | `app_dashboard_kit.dart` |
 | shortcuts (D-631) | `AppShortcutGrid(children: [AppShortcutTile(icon:, label:, onTap:, tone:, badge:, subtitle:)])` — label on top, a large soft icon in a tinted disc at the bottom end; 2 columns on phones, 4 wide | `app_dashboard_kit.dart` |
 | section card (D-631) | `AppSectionCard(title:, subtitle:, actions:, tabs: AppTabs(…), child:)` — a paper card with a header row and a period-tabs slot · `AppBreadcrumb(parts:)` (text only) | `app_dashboard_kit.dart` |
 | where am I | `ContextSwitcher()` · `ContextPill(icon:, tone:, label:, onTap:)` · `showContextSwitcherSheet` | `context_switcher.dart` |
+| roadmap / journey (D-994) | `AppRoadmap(nodes: [AppRoadmapNode(title:, state: AppRoadmapState.done / current / todo / warn, subtitle:, caption:, actionLabel:, onAction:, onTap:)], dense:, axis:, label:)` — connected nodes on one rail (the course roadmap's language): vertical on phones, a row on a box ≥ 720 with ≤ 6 nodes; a state is icon + colour + word, never colour alone; the next node (first current → warn → to do) is the path's one emerald block with its button, the nodes after it quieter; the walked line fills in once (`AppFill`, still under Reduce motion); each node reads "Step 2 of 5, Departments, Done" · `AppStatusPath.request(reached: 0..2, times:)` (one request: submitted → reviewed → decided, three dots on a line) | `app_roadmap.dart` |
 | attention count | `AttentionBadge(tabKey: AttentionTabs.x, child: …)` (tappable, opens the items) | `attention_badge.dart` |
 | language | `AppLanguageTile()` · `AppLanguageSegmented(current:, onChanged:)` | `app_language_switch.dart` |
 | table export | `showAppExportSheet(context, AppTableExport(…))` | `app_table_export.dart` |

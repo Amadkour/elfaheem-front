@@ -140,6 +140,6 @@ void main() {
     expect(label.style?.decoration, isNot(TextDecoration.underline));
     await t.tap(find.text('طلاب مسجلون'));
     expect(opened, 1);
-    expect(find.bySemanticsLabel('95 طلاب مسجلون'), findsOneWidget);
+    expect(find.bySemanticsLabel('طلاب مسجلون: 95'), findsOneWidget); // the A2 stat card reads "label: value" (D-1081)
   });
 }

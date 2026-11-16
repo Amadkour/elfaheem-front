@@ -12,6 +12,8 @@
 // An older server without `members` / `series` → `members == null` and `trends` empty: the tiles simply hide.
 // D-103 adds access · member_role · layout · can_insights · tasks (+ tasks_total) · departments[].tabs; without them
 // `tasks == null` (Home draws the attention cards) and `layout` is empty (orgHomeOrder decides from the role).
+// D-1081 adds `home_stats` (OrgHomeStats: the soft-wash home's four counts and their 8-week bars); null on an older
+// server → the home keeps its earlier figures.
 library;
 
 import 'package:flutter/material.dart' show IconData, Icons;
@@ -127,6 +129,60 @@ class OrgAttentionItem {
   List<TermNeed> get terms => _list(raw['terms']).map(TermNeed.of).toList();
 }
 
+/// The soft-wash home's four counts (D-1081, `home_stats`): votes waiting, open requests (overdue), the members of the
+/// departments I see, my next council session; each count with its last 8 weeks, oldest first.
+class OrgHomeStats {
+  const OrgHomeStats({
+    required this.votesWaiting,
+    required this.requestsOpen,
+    required this.requestsOverdue,
+    required this.members,
+    required this.votesWeeks,
+    required this.requestsWeeks,
+    required this.membersWeeks,
+    this.nextSessionId,
+    this.nextSessionTitle,
+    this.nextSessionAt,
+    this.nextSessionCouncilAr,
+    this.nextSessionCouncilEn,
+  });
+
+  final int votesWaiting, requestsOpen, requestsOverdue, members;
+  final List<int> votesWeeks, requestsWeeks, membersWeeks;
+  final int? nextSessionId;
+  final String? nextSessionTitle, nextSessionCouncilAr, nextSessionCouncilEn;
+  final DateTime? nextSessionAt;
+
+  static List<int> _weeks(dynamic v) => v is List ? [for (final x in v) _int(x)] : const [];
+
+  static OrgHomeStats? fromJson(dynamic v) {
+    if (v is! Map) return null;
+    final m = Map<String, dynamic>.from(v);
+    final n = _map(m['next_session']);
+    String? text(dynamic x) => x == null || '$x'.trim().isEmpty ? null : '$x';
+    return OrgHomeStats(
+      votesWaiting: _int(m['votes_waiting']),
+      requestsOpen: _int(m['requests_open']),
+      requestsOverdue: _int(m['requests_overdue']),
+      members: _int(m['members']),
+      votesWeeks: _weeks(m['votes_weeks']),
+      requestsWeeks: _weeks(m['requests_weeks']),
+      membersWeeks: _weeks(m['members_weeks']),
+      nextSessionId: n.isEmpty ? null : _int(n['id']),
+      nextSessionTitle: text(n['title']),
+      nextSessionAt: _utc(n['at']),
+      nextSessionCouncilAr: text(n['council_ar']),
+      nextSessionCouncilEn: text(n['council_en']),
+    );
+  }
+
+  /// The council's name in the reader's language (the other one when it is missing).
+  String? get nextSessionCouncil {
+    final ar = nextSessionCouncilAr ?? nextSessionCouncilEn, en = nextSessionCouncilEn ?? nextSessionCouncilAr;
+    return ar == null || en == null ? null : t(ar, en);
+  }
+}
+
 /// The org-admin home: everything `GET …/dashboard` answers, typed once.
 class OrgHomeData {
   const OrgHomeData({
@@ -146,9 +202,14 @@ class OrgHomeData {
     this.memberRole,
     this.layout = '',
     this.canInsights = false,
+    this.canFacultyOverview = false,
     this.tasks,
     this.tasksTotal = 0,
+    this.homeStats,
   });
+
+  /// D-1081: the soft-wash home's counts; null on an older server.
+  final OrgHomeStats? homeStats;
 
   static const trendKeys = ['joins', 'attendance', 'complaints'];
 
@@ -159,6 +220,9 @@ class OrgHomeData {
   /// insights_first · actions_first (empty = the app decides from the role, orgHomeOrder).
   final String layout;
   final bool canInsights;
+
+  /// D-979: the home's Faculty overview card (the dean, vice deans and org admin of an institution; absent = false).
+  final bool canFacultyOverview;
 
   /// "Needs your attention" (the first 8, urgency first); null on an older server → the attention cards.
   final List<OrgTask>? tasks;
@@ -206,8 +270,10 @@ class OrgHomeData {
       memberRole: m['member_role'] == null ? null : '${m['member_role']}',
       layout: '${m['layout'] ?? ''}',
       canInsights: m['can_insights'] == true,
+      canFacultyOverview: m['can_faculty_overview'] == true,
       tasks: OrgTask.listFrom(m['tasks']),
       tasksTotal: m['tasks_total'] != null ? _int(m['tasks_total']) : (m['tasks'] is List ? (m['tasks'] as List).length : 0),
+      homeStats: OrgHomeStats.fromJson(m['home_stats']),
     );
   }
 

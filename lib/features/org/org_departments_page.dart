@@ -17,15 +17,17 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_department_dashboard.dart' show openDepartmentDashboard;
+import 'org_institutions.dart' show orgAudienceBody, orgAudienceKeys, orgAudienceLabel, orgAudienceOf;
 import 'org_providers.dart';
 import 'org_page_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'org_services_pages.dart';
 import 'org_join_pages.dart' show OrgUnitJoinHub, canConfigureUnit;
-import 'org_member_form.dart' show OrgMemberPickField;
 import 'org_ui.dart';
+import 'org_unit_rules.dart';
+import 'org_v3.dart' show orgCall, orgErrorText;
 import 'package:flutter_education_app/design/app_inputs.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown, AppRefresh;
+import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown, AppRefresh, showAppNotice;
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'org_page_header.dart' show OrgHeaderButton, OrgPushedPage;
 import 'package:flutter_education_app/design/app_icons.dart';
@@ -67,7 +69,23 @@ class OrgDepartmentsPage extends StatefulWidget {
 class _OrgDepartmentsPageState extends State<OrgDepartmentsPage> {
   List<Map<String, dynamic>>? _items;
   List<Map<String, dynamic>> _programs = const [];
-  bool _failed = false, _canCreate = false;
+  bool _failed = false, _canCreate = false, _repairing = false;
+
+  /// D-984: managers give every headless department an acting head in one tap (POST …/institution/repair).
+  Future<void> _repair() async {
+    setState(() => _repairing = true);
+    final r = await DeptRulesApi(context.read<OrgSession>()).repair();
+    if (!mounted) return;
+    setState(() => _repairing = false);
+    if (r.ok) {
+      final n = asInt(r.map['fixed']);
+      showAppNotice(n == 0 ? t('لا شيء يحتاج إلى إصلاح', 'Nothing needed fixing') : t('أُصلحت الإدارات: $n', 'Departments fixed: $n'));
+      _load();
+    } else {
+      showAppNotice(orgErrorText(r.error!), error: true);
+    }
+  }
+
   String _query = '';
 
   @override
@@ -157,6 +175,11 @@ class _OrgDepartmentsPageState extends State<OrgDepartmentsPage> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(top: AppSpace.xxs, bottom: AppSpace.xxl + AppTouch.primary),
           children: [
+            if (s.can('departments', 'update') && items.where((d) => unitHeadOf(d) == null).isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
+                child: HeadlessUnitsBanner(count: items.where((d) => unitHeadOf(d) == null).length, busy: _repairing, onFix: _repair),
+              ),
             if (shown.isNotEmpty) ...[
               OrgSectionHeading(
                 t('الإدارات الخدمية', 'Service departments'),
@@ -239,6 +262,8 @@ class _DeptCard extends StatelessWidget {
           OrgPill(t('تابعة لـ $parentName', 'Part of $parentName'), icon: DirIcons.subArrowLeft, color: c.textMedium),
         if (subCount > 0) OrgPill(t('$subCount فرعية', '$subCount sub'), icon: Icons.account_tree_rounded, color: col),
         OrgPill(t('${asInt(counts['team'])} في الفريق', '${asInt(counts['team'])} team'), icon: Icons.groups_rounded, color: col),
+        if (unitHeadOf(d)?.acting ?? false) const ActingChip(),
+        if (unitIsCore(d)) const CoreUnitBadge(),
       ],
     );
   }
@@ -261,6 +286,8 @@ class _ProgramCard extends StatelessWidget {
       meta: mgr.isEmpty ? t('لم يُعيَّن مدير بعد', 'No manager yet') : '${t('المدير', 'Manager')}: ${mgr['name']}',
       facts: [
         if ('${p['code'] ?? ''}'.isNotEmpty) OrgPill('${p['code']}', icon: Icons.tag_rounded, color: c.purple),
+        if (unitHeadOf(p)?.acting ?? false) const ActingChip(),
+        if (unitIsCore(p)) const CoreUnitBadge(),
         OrgPill(t('${asInt(p['students'])} طالب', '${asInt(p['students'])} students'), icon: Icons.people_alt_rounded, color: c.primary),
       ],
     );
@@ -339,8 +366,13 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
   final features = <String>{
     ...(edit == null ? featureLabels().keys : ((edit['features'] as List?) ?? const []).map((e) => '$e')),
   };
+  // who may send it requests (D-963): students · staff · other departments; all three = everyone
+  final audience = orgAudienceOf(edit?['audience']);
   final origHead = asMap(edit?['head'])['id'] == null ? null : asInt(asMap(edit?['head'])['id']);
   int? head = origHead;
+  // Institutions v2 (D-980): a unit always has a head; "Assign me as head" sends head_self
+  var headSelf = false;
+  String? headErr;
   final canHead = s.can('departments', edit == null ? 'insert' : 'update');
   // "part of" another department: a structure change (org-level right); never itself or its own subtree
   int parent = asInt(edit?['parent_id']);
@@ -360,6 +392,8 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
     if (!context.mounted) return false;
   }
   bool busy = false, saved = false;
+  // UX v3: the server's field errors land on the head picker (head_required / head_invalid, or `fields`)
+  final fe = unitHeadFieldErrors();
   const palette = ['#0F7B5F', '#2563EB', '#7C3AED', '#DB2777', '#EA580C', '#0891B2', '#CA8A04', '#475569'];
 
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
@@ -379,6 +413,8 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
           padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.xxs, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(edit == null ? t('إدارة خدمية جديدة', 'New service department') : t('تعديل الإدارة', 'Edit department')),
+            if (unitIsCore(edit))
+              const Padding(padding: EdgeInsets.only(bottom: AppSpace.sm), child: CoreUnitBadge(long: true)),
             if (edit == null)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpace.sm),
@@ -424,12 +460,19 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                 ),
               ),
             if (canHead)
-              OrgMemberPickField(
+              UnitHeadPicker(
+                key: fe.keyFor('head'),
                 label: t('رئيس / مدير الإدارة', 'Department head / manager'),
                 value: head,
+                self: headSelf,
+                error: headErr,
                 initialName: asMap(edit?['head'])['name']?.toString(),
                 roles: const ['teacher', 'teacher_assistant', 'admin_assistant', 'org_admin'],
-                onChanged: (v) => set(() => head = v),
+                onChanged: (v, me) => set(() {
+                  head = v;
+                  headSelf = me;
+                  headErr = null;
+                }),
               ),
             // the department's own logo (cropped, resized, public) — replaces the icon everywhere
             Row(children: [
@@ -490,6 +533,19 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                 ),
             ]),
             const SizedBox(height: AppSpace.md),
+            Text(t('من يرسل لها الطلبات؟', 'Who can send it requests?'), style: AppType.label(ctx).copyWith(color: c.textLight)),
+            const SizedBox(height: AppSpace.xs),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+              for (final k in orgAudienceKeys)
+                FilterChip(
+                  key: ValueKey('dept.audience.$k'),
+                  label: Text(orgAudienceLabel(k), style: TextStyle(fontFamily: AppFonts.family)),
+                  selected: audience.contains(k),
+                  // at least one stays picked: an empty audience means nobody (the server refuses it)
+                  onSelected: (on) => set(() => on ? audience.add(k) : (audience.length > 1 ? audience.remove(k) : null)),
+                ),
+            ]),
+            const SizedBox(height: AppSpace.md),
             Text(t('الخدمات المفعّلة', 'Services switched on'), style: AppType.label(ctx).copyWith(color: c.textLight)),
             const SizedBox(height: AppSpace.xs),
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
@@ -518,6 +574,12 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                   toast(t('اكتب اسم الإدارة', 'Enter a name'), error: true);
                   return;
                 }
+                final noHead = canHead ? headProblem(head: head, self: headSelf) : null;
+                if (noHead != null) {
+                  set(() => headErr = noHead);
+                  showAppNotice(noHead, error: true);
+                  return;
+                }
                 set(() => busy = true);
                 final body = {
                   if (preset != null) 'preset': preset,
@@ -528,19 +590,27 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                   'logo_url': logo,
                   'color': color,
                   'features': features.toList(),
+                  'audience': orgAudienceBody(audience),
                   'location': location.text.trim(),
                   'office_hours': hours.text.trim(),
                   'email': email.text.trim(),
                   'phone': phone.text.trim(),
-                  if (canHead && head != null && head != origHead) 'head_user_id': head,
+                  if (canHead && headSelf) 'head_self': true,
+                  if (canHead && !headSelf && head != null && head != origHead) 'head_user_id': head,
                   if (canHead && (edit != null || parent != 0)) 'parent_id': parent == 0 ? null : parent,
                 };
+                // orgCall: a coded refusal (head_required, …) is shown in the user's language
                 final r = edit == null
-                    ? await OrgApi.i.post('${s.base}/departments', body, t('أُنشئت الإدارة 🎉', 'Department created 🎉'))
-                    : await OrgApi.i.put('${s.base}/departments/${edit['id']}', body, t('تم الحفظ', 'Saved'));
+                    ? await orgCall(() => s.api.post('${s.base}/departments', body: body), ok: t('أُنشئت الإدارة 🎉', 'Department created 🎉'))
+                    : await orgCall(() => s.api.put('${s.base}/departments/${edit['id']}', body: body), ok: t('تم الحفظ', 'Saved'));
                 if (!ctx.mounted) return;
-                set(() => busy = false);
-                if (r != null) {
+                set(() {
+                  busy = false;
+                  if (r.code == 'head_required') headErr = headRequiredText();
+                  if (!r.ok && fe.take(r.error!, text: orgErrorText(r.error!))) headErr = fe.errorFor('head') ?? headErr;
+                });
+                if (!r.ok && fe.has('head')) WidgetsBinding.instance.addPostFrameCallback((_) => fe.revealFirst());
+                if (r.ok) {
                   saved = true;
                   Navigator.pop(ctx);
                 }
@@ -549,6 +619,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
           ]),
         );
       }));
+  fe.dispose();
   return saved;
 }
 

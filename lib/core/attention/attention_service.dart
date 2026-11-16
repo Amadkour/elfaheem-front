@@ -9,7 +9,8 @@
 //   AttentionService.instance.refresh()                                     → reload now
 //
 // Refreshes: on the live event `attention_changed` (the SSE stream / a silent push, LiveEventsClient) and the
-// `*_updated` events, every 60 s as a fallback (5 min while the stream is connected), on app resume, on
+// `*_updated` events, every 60 s as a fallback (5 min while the stream is connected — the stream carries the change;
+// the slow poll only catches what it missed), never while the app is in the background (attentionPollEvery), on app resume, on
 // route push/return (TopRouteObserver → onRouteChanged, throttled) and — at once — after this user's own
 // approve / reject / decide call succeeded (decision_refresh.dart → onDecision; the server tells only the others).
 // Listen with ListenableBuilder(listenable: AttentionService.instance, …) (or AttentionBadge); polling (and the
@@ -34,6 +35,14 @@ Duration attentionEventDelay({DateTime? last, required DateTime now, required bo
   if (!running && (since == null || since >= gap)) return Duration.zero;
   if (since == null || since >= gap || since.isNegative) return gap;
   return gap - since;
+}
+
+/// How often the badges are polled: null = not at all (the app is in the background: the stream is closed there too,
+/// and a 60 s poll behind the person's back only costs battery; resuming reloads at once); 5 min while the live stream
+/// is connected (it brings every change, the poll is only the safety net); 60 s without it.
+Duration? attentionPollEvery({required bool inFront, required bool streamConnected}) {
+  if (!inFront) return null;
+  return streamConnected ? AttentionService.pollEveryLive : AttentionService.pollEvery;
 }
 
 /// Stable tab keys (same list as the server's TABS). Add new ones on both sides.
@@ -119,7 +128,8 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void addListener(VoidCallback listener) {
     super.addListener(listener);
-    if (_timer != null) return;
+    if (_active) return;
+    _active = true;
     WidgetsBinding.instance.addObserver(this);
     _live = LiveEvents.instance.listen({...LiveEvents.silentTypes, LiveEvents.attentionChanged},
         (e) => DecisionRefresh.isLocal(e) ? onDecision() : _onLiveEvent());
@@ -146,7 +156,7 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
     }
     _trailing = Timer(d, () {
       _trailing = null;
-      if (_timer == null) return; // stopped meanwhile
+      if (!_active) return; // stopped meanwhile
       _onLiveEvent();
     });
   }
@@ -156,7 +166,7 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
   /// before the decision, so one more runs right after it.
   @visibleForTesting
   void onDecision() {
-    if (_timer == null) return; // nothing on screen counts
+    if (!_active) return; // nothing on screen counts
     final running = _running;
     if (running == null) {
       refresh();
@@ -166,11 +176,12 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
     _afterRunning = true;
     running.whenComplete(() {
       _afterRunning = false;
-      if (_timer != null) refresh();
+      if (_active) refresh();
     });
   }
 
   void _stop() {
+    _active = false;
     _timer?.cancel();
     _timer = null;
     _trailing?.cancel();
@@ -183,18 +194,25 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
   }
 
-  /// The poll is the fallback: slow while the live stream is connected, 60 s when it is not.
+  /// The poll is the fallback (attentionPollEvery): slow while the live stream is connected, 60 s when it is not,
+  /// none in the background.
   void _startTimer() {
     _timer?.cancel();
-    _timer = Timer.periodic(LiveEventsClient.instance.connected.value ? pollEveryLive : pollEvery, (_) => refresh(quiet: true));
+    _timer = null;
+    final every = attentionPollEvery(inFront: _inFront, streamConnected: LiveEventsClient.instance.connected.value);
+    if (every != null) _timer = Timer.periodic(every, (_) => refresh(quiet: true));
   }
 
   void _onStreamChanged() {
-    if (_timer == null) return;
+    if (!_active) return;
     _startTimer();
     // a reconnect may have missed events (beyond the replay window): catch up once
-    if (LiveEventsClient.instance.connected.value) refresh(quiet: true);
+    if (_inFront && LiveEventsClient.instance.connected.value) refresh(quiet: true);
   }
+
+  /// The poll that runs now (null = none: nothing listens, or the app is in the background).
+  @visibleForTesting
+  Duration? get pollingEvery => _timer == null ? null : attentionPollEvery(inFront: _inFront, streamConnected: LiveEventsClient.instance.connected.value);
 
   static final AttentionService instance = AttentionService._();
   static const pollEvery = Duration(seconds: 60);
@@ -202,6 +220,9 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
   static const _minGap = Duration(seconds: 15);
 
   Timer? _timer;
+  /// Something listens (a badge on screen): the live events are bound; the poll runs while [_inFront] too.
+  bool _active = false;
+  bool _inFront = true;
   Timer? _trailing;
   bool _afterRunning = false;
   StreamSubscription<LiveEvent>? _live;
@@ -332,7 +353,20 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) refresh(quiet: true);
+    switch (state) {
+      case AppLifecycleState.resumed:
+        final was = _inFront;
+        _inFront = true;
+        if (_active && !was) _startTimer();
+        refresh(quiet: true);
+      case AppLifecycleState.paused || AppLifecycleState.hidden || AppLifecycleState.detached:
+        // `inactive` (a system sheet, the app switcher) keeps polling: the app is still on screen
+        _inFront = false;
+        _timer?.cancel();
+        _timer = null;
+      case AppLifecycleState.inactive:
+        break;
+    }
   }
 
   @override

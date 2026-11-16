@@ -65,9 +65,9 @@ class GovDashboardBody extends StatelessWidget {
       // the queue is the page's one key figure: Pending is the sky block (information), the rest paper (D-612)
       AppKpiGrid(children: [
         AppKpiCard(icon: Icons.inbox_rounded, label: t('قيد المعالجة', 'Pending'), value: '${s.pending}', highlight: true, tone: AppBlockTone.sky, onTap: onTile == null ? null : () => onTile!('pending')),
-        AppKpiCard(icon: Icons.gavel_rounded, label: t('بانتظار القرار', 'Pending decision'), value: '${s.pendingDecision}', onTap: onTile == null ? null : () => onTile!('pending_decision')),
-        AppKpiCard(icon: Icons.timer_off_rounded, label: t('متأخرة', 'Overdue'), value: '${s.overdue}', onTap: onTile == null ? null : () => onTile!('overdue')),
-        AppKpiCard(icon: Icons.task_alt_rounded, label: t('قرارات آخر 30 يوماً', 'Decided (30 d)'), value: '${s.decided30d}', onTap: onTile == null ? null : () => onTile!('decided')),
+        AppStatCard(icon: Icons.gavel_rounded, label: t('بانتظار القرار', 'Pending decision'), value: '${s.pendingDecision}', onTap: onTile == null ? null : () => onTile!('pending_decision')),
+        AppStatCard(icon: Icons.timer_off_rounded, label: t('متأخرة', 'Overdue'), value: '${s.overdue}', onTap: onTile == null ? null : () => onTile!('overdue')),
+        AppStatCard(icon: Icons.task_alt_rounded, label: t('قرارات آخر 30 يوماً', 'Decided (30 d)'), value: '${s.decided30d}', onTap: onTile == null ? null : () => onTile!('decided')),
       ]),
       if (statuses.isNotEmpty) ...[
         const SizedBox(height: AppSpace.lg),
@@ -185,6 +185,8 @@ class _GovDashboardCardState extends State<GovDashboardCard> {
       body = GovDashboardBody(stats: _stats!, onTile: _openTile, compact: widget.compact);
     }
     return AppCard(
+      // D-1081: the department dashboard's main card (its one highlighted card)
+      highlight: true,
       margin: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [

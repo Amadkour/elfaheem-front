@@ -11,6 +11,7 @@ library;
 import '../org_page_kit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -18,8 +19,9 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, t;
 import '../org_page_header.dart' show OrgPushedPage, orgUsesDashboardHeader;
-import '../org_v3.dart' show orgCall, orgDay;
+import '../org_v3.dart' show orgCall, orgDay, orgErrorText;
 import 'gov_api.dart';
+import 'gov_council_s2.dart';
 import 'gov_council_ui.dart';
 import 'gov_models.dart';
 
@@ -47,6 +49,7 @@ class GovCouncilSettingsForm extends StatefulWidget {
     this.busy = false,
     this.canEdit = true,
     this.headName,
+    this.canChangeChair = true,
   });
 
   final CouncilSettings settings;
@@ -62,6 +65,9 @@ class GovCouncilSettingsForm extends StatefulWidget {
 
   /// The entity head — the chair when none is chosen.
   final String? headName;
+
+  /// Changing the chair needs the roster right (`can.roster`, D-965): the secretary sends it back unchanged.
+  final bool canChangeChair;
 
   @override
   State<GovCouncilSettingsForm> createState() => _GovCouncilSettingsFormState();
@@ -170,6 +176,26 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
           ]),
         ),
         _Block(
+          title: t('طريقة الانعقاد', 'Meeting'),
+          icon: Icons.meeting_room_rounded,
+          child: GovMeetingStep(
+            key: ValueKey('meeting.${identityHashCode(widget.settings)}'),
+            mode: _s.meetingMode,
+            location: _s.meetingLocation,
+            link: _s.meetingLink,
+            enabled: widget.canEdit,
+            onChanged: (mode, location, link) {
+              if (!widget.canEdit) return;
+              final modeChanged = mode != _s.meetingMode;
+              _s
+                ..meetingMode = mode
+                ..meetingLocation = location
+                ..meetingLink = link;
+              if (modeChanged) setState(() {});
+            },
+          ),
+        ),
+        _Block(
           title: t('قواعد الاحتساب', 'Tally rules'),
           icon: Icons.rule_rounded,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -269,7 +295,7 @@ class _GovCouncilSettingsFormState extends State<GovCouncilSettingsForm> {
                 if (_s.chairUserId != null && _s.chairUserId != 0 && !widget.members.containsKey(_s.chairUserId))
                   DropdownMenuItem(value: _s.chairUserId, child: Text(t('العضو #${_s.chairUserId}', 'Member #${_s.chairUserId}'))),
               ],
-              onChanged: widget.canEdit ? (v) => _set(() => _s.chairUserId = (v ?? 0) == 0 ? null : v) : null,
+              onChanged: widget.canEdit && widget.canChangeChair ? (v) => _set(() => _s.chairUserId = (v ?? 0) == 0 ? null : v) : null,
             ),
             const SizedBox(height: AppSpace.sm),
             AppField(controller: _tz, label: t('المنطقة الزمنية', 'Timezone'), hint: t('فارغ = منطقة المؤسسة، مثل Africa/Cairo', 'Empty = the organization zone, e.g. Africa/Cairo'), ltr: true),
@@ -546,6 +572,20 @@ class GovCouncilSettingsPage extends StatefulWidget {
 
 class _GovCouncilSettingsPageState extends State<GovCouncilSettingsPage> {
   Council? _council;
+  CouncilRoster? _roster;
+  bool _rosterBusy = false;
+  // UX v3: the roster save's error, its field marks and what was sent (the "add as member" fix re-sends it)
+  ApiException? _rosterError;
+  (Map<int, int>?, int?) _rosterSent = (null, null);
+  final _rosterErrors = FieldErrors(
+      aliases: const {'secretary_user_id': 'secretary', 'members': 'members', 'member_ids': 'members'},
+      codes: const {'secretary_not_member': 'secretary', 'not_staff_member': 'members', 'weight_cap': 'members'});
+
+  @override
+  void dispose() {
+    _rosterErrors.dispose();
+    super.dispose();
+  }
   Map<int, String> _members = const {};
   Map<int, String> _categories = const {};
   bool _failed = false, _missing = false, _busy = false;
@@ -576,6 +616,7 @@ class _GovCouncilSettingsPageState extends State<GovCouncilSettingsPage> {
     }
     final council = r.data as Council;
     final team = await GovTeamApi(oid).team(council.dept.id) ?? const <Map<String, dynamic>>[];
+    final rr = await orgCall(() => api.councilMembers(council.id), quiet: true);   // D-965 (an older server: none)
     var cats = const <Category>[];
     if (council.parentDept != null) {
       final cr = await orgCall(() => api.categories(council.parentDept!.id), quiet: true);
@@ -584,6 +625,7 @@ class _GovCouncilSettingsPageState extends State<GovCouncilSettingsPage> {
     if (!mounted) return;
     setState(() {
       _council = council;
+      _roster = rr.ok ? rr.data as CouncilRoster : null;
       _failed = false;
       _members = {for (final m in team) asInt(asMap(m['user'])['id']): '${asMap(m['user'])['name'] ?? ''}'};
       _categories = {for (final c in cats) c.id: c.name};
@@ -598,6 +640,61 @@ class _GovCouncilSettingsPageState extends State<GovCouncilSettingsPage> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (r.ok) _load();
+  }
+
+  Future<void> _saveRoster(Map<int, int>? weights, int? secretary, {Map<String, dynamic>? body}) async {
+    final oid = _orgId, roster = _roster;
+    if (oid == null || roster == null) return;
+    setState(() {
+      _rosterBusy = true;
+      _rosterSent = (weights, secretary);
+    });
+    final r = await orgCall(() => GovApi(oid).saveCouncilMembers(widget.councilId, body ?? rosterBody(weights: weights, secretaryUserId: secretary)), quiet: true);
+    if (!mounted) return;
+    setState(() {
+      _rosterBusy = false;
+      _rosterError = null;
+      _rosterErrors.clear();
+    });
+    if (r.ok) {
+      showAppNotice(t('تم حفظ الأعضاء والأمين', 'Members and secretary saved'));
+      _load();
+    } else if (r.code == 'weight_cap') {
+      final d = r.detail;
+      showAppNotice(weightCapText(roster, d['user_id'] == null ? null : asInt(d['user_id']), capPct: d['cap_pct'] == null ? null : asInt(d['cap_pct'])), error: true);
+    } else {
+      final e = r.error!;
+      final marked = _rosterErrors.take(e, text: orgErrorText(e));
+      setState(() => _rosterError = e);
+      if (marked) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _rosterErrors.revealFirst());
+      } else {
+        showAppError(context, e, text: orgErrorText(e));
+      }
+    }
+  }
+
+  /// The `add_member` fix: the secretary joins the members (weight 1) and the roster is saved again.
+  void _rosterAddMemberFix() {
+    final e = _rosterError, roster = _roster;
+    if (e == null || roster == null) return;
+    final (weights, secretary) = _rosterSent;
+    final uid = rosterFixUserId(asMap(e.detail), secretary);
+    if (uid == null) return;
+    _saveRoster(weights, secretary, body: rosterAddMemberBody(roster, weights: weights, userId: uid, secretaryUserId: secretary));
+  }
+
+  Widget? _rosterErrorBox() {
+    final e = _rosterError;
+    if (e == null) return null;
+    final canFix = rosterCanAddMemberFix(e.code, e.fixAction) && rosterFixUserId(asMap(e.detail), _rosterSent.$2) != null;
+    return AppErrorBox(
+      error: e,
+      text: orgErrorText(e),
+      busy: _rosterBusy,
+      onFix: canFix ? _rosterAddMemberFix : null,
+      fixLabel: t('أضفه عضواً وتابع', 'Add as member and continue'),
+    );
   }
 
   @override
@@ -629,7 +726,15 @@ class _GovCouncilSettingsPageState extends State<GovCouncilSettingsPage> {
             busy: _busy,
             canEdit: canEdit,
             headName: council.chair?.name,
+            canChangeChair: _roster?.canEdit ?? true,
           ),
+          if (_roster != null && widget.section != GovSettingsSection.rules)
+            _Block(
+              title: t('الأعضاء والأوزان والأمين', 'Members, weights and secretary'),
+              icon: Icons.groups_rounded,
+              child: CouncilRosterCard(
+                  roster: _roster!, busy: _rosterBusy, onSave: (w, s) => _saveRoster(w, s), errors: _rosterErrors, errorBox: _rosterErrorBox()),
+            ),
         ]),
       );
     }

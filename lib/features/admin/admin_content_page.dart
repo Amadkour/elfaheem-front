@@ -38,7 +38,7 @@ import 'cfg_common.dart';
 import 'admin_premium_widgets.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppListSkeleton, AppRefresh, AppKpiGrid, AppKpiCard, AppTabs, AppTabItem, AppSpace, appErrorMessage, AppBanner;
+    show AppListSkeleton, AppRefresh, AppKpiGrid, AppStatCard, AppTabs, AppTabItem, AppSpace, appErrorMessage, AppBanner;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
@@ -325,17 +325,17 @@ class _AdminContentPageState extends State<AdminContentPage> {
     if (_tab == 1) return const SizedBox.shrink(); // the legal panel draws its own cards
     if (_tab == 0) {
       return AppKpiGrid(maxColumns: 3, children: [
-        AppKpiCard(icon: Icons.bar_chart_rounded, value: '${_stats.length}', label: t('إحصاءات', 'Stats')),
-        AppKpiCard(icon: Icons.groups_rounded, value: '${_team.length}', label: t('الفريق', 'Team')),
-        AppKpiCard(icon: Icons.alternate_email_rounded, value: '${_contacts.length}', label: t('قنوات التواصل', 'Contacts')),
+        AppStatCard(icon: Icons.bar_chart_rounded, value: '${_stats.length}', label: t('إحصاءات', 'Stats')),
+        AppStatCard(icon: Icons.groups_rounded, value: '${_team.length}', label: t('الفريق', 'Team')),
+        AppStatCard(icon: Icons.alternate_email_rounded, value: '${_contacts.length}', label: t('قنوات التواصل', 'Contacts')),
       ]);
     }
     final active = _sections.where((e) => asBool(e['is_active'], true)).length;
     final version = asStr(_meta?['version']);
     return AppKpiGrid(maxColumns: 3, children: [
-      if (version.isNotEmpty) AppKpiCard(icon: Icons.tag_rounded, value: version, label: t('الإصدار', 'Version')),
-      AppKpiCard(icon: Icons.view_agenda_rounded, value: '${_sections.length}', label: t('الأقسام', 'Sections')),
-      AppKpiCard(icon: Icons.visibility_rounded, value: '$active', label: t('ظاهرة', 'Visible')),
+      if (version.isNotEmpty) AppStatCard(icon: Icons.tag_rounded, value: version, label: t('الإصدار', 'Version')),
+      AppStatCard(icon: Icons.view_agenda_rounded, value: '${_sections.length}', label: t('الأقسام', 'Sections')),
+      AppStatCard(icon: Icons.visibility_rounded, value: '$active', label: t('ظاهرة', 'Visible')),
     ]);
   }
 

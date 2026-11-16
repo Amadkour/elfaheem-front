@@ -8,7 +8,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/exams/exam_review_screen.dart' show EngineReviewSection;
-import 'package:flutter_education_app/features/exams/legacy/student/exam_ui.dart' show HeroStat;
+import 'package:flutter_education_app/design/app_kit.dart' show AppStatCard;
 import 'package:flutter_education_app/features/exams/legacy/teacher/teacher_exam_hub_screen.dart';
 import 'package:flutter_education_app/utils/page_return.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
@@ -99,7 +99,8 @@ void main() {
     await tester.pumpWidget(app(const TeacherExamHubScreen(courseId: 1, courseTitle: 'CS101')));
     await frames(tester, 12);
     // the hero's third tile (translation keys: the test loads no translation.json)
-    Finder tile(String value) => find.ancestor(of: find.text(value), matching: find.byType(HeroStat));
+    // D-1081: the band's HeroStats are drawn as soft-wash AppStatCards
+    Finder tile(String value) => find.ancestor(of: find.text(value), matching: find.byType(AppStatCard)).first;
     expect(find.descendant(of: tile('12'), matching: find.text('btn_questions')), findsOneWidget);    // 4 legacy + 3 + 5 engine
     expect(find.text('exam_hub_attempts'), findsNothing);
     nav.currentState!.push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text('elsewhere'))));

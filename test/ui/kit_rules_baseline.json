@@ -373,7 +373,7 @@
     "lib/features/records/records_studio_parts.dart": 27,
     "lib/features/records/studio_panels.dart": 6,
     "lib/features/records/studio_stage.dart": 10,
-    "lib/features/records/studio_timeline.dart": 16,
+    "lib/features/records/studio_timeline.dart": 17,
     "lib/features/sessions/material/components/add_material_sheet.dart": 4,
     "lib/features/sessions/material/components/material_tile_parts.dart": 2,
     "lib/features/sessions/material/components/session_exam_tile.dart": 5,

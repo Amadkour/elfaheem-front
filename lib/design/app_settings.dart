@@ -19,6 +19,11 @@
 //   AppSettingsHeader(name:, role:, email:, username:, imageUrl:, onEdit:)
 //       the profile hero: the page's one tinted block (identity, a soft primary gradient, D-713) over plain values (kill switch `profile.header`;
 //       `appRoleLabel` names the role).
+//   AppShortcutRow(items: [AppShortcut(...)])
+//       profile E (D-1081): up to four most-used entries as equal tiles under the profile card (each keeps its
+//       kill switch; a switched-off one leaves no hole).
+//   AppVersionLine()
+//       the app's name and version at the very end of an account page (support reads it without another page).
 //   AppSettingsSearchable
 //       implement it on a custom row (CalendarEntryTile does) so the search can see it; a row that is not
 //       searchable is kept while the query is empty and left out while one is typed.
@@ -30,7 +35,10 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'package:package_info_plus/package_info_plus.dart' show PackageInfo;
+
 import '../config/app_config.dart';
+import '../core/app_identity.dart' show AppIdentity;
 import '../config/theme/theme_config_provider.dart';
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/parent_component.dart';
@@ -137,11 +145,16 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
     this.badge,
     this.featureKey,
     this.keywords,
+    this.danger = false,
   });
 
   final IconData icon;
   final String label;
   final String? subtitle;
+
+  /// D-1081: an exit row (leave, sign out) on a plain card — the icon and the label in the danger ink, no chevron.
+  /// The action still asks before it runs.
+  final bool danger;
 
   /// Icon colour; the well is this colour at a faint tint. Default: the section's accent ([AppSettingsAccent]), else
   /// primary. A row that passes the plain primary also takes the section's accent.
@@ -171,7 +184,7 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
   Widget build(BuildContext context) {
     final c = context.colors;
     final section = AppSettingsAccent.of(context);
-    final own = color == null || color == c.primary ? null : color;
+    final own = danger ? c.danger : (color == null || color == c.primary ? null : color);
     final col = own ?? section ?? c.primary;
     final n = badge ?? 0;
     final sub = subtitle;
@@ -201,7 +214,10 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
             const SizedBox(width: AppSpace.sm),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                Text(label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: danger ? AppType.row(context).copyWith(color: c.blockAccentInk(c.danger, c.cardBg)) : AppType.row(context)),
                 if (sub != null && sub.isNotEmpty) ...[
                   const SizedBox(height: AppSpace.xxs / 2),
                   Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
@@ -222,7 +238,7 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
             if (trailing != null) ...[
               const SizedBox(width: AppSpace.sm),
               trailing!,
-            ] else if (onTap != null) ...[
+            ] else if (onTap != null && !danger) ...[
               const SizedBox(width: AppSpace.xs),
               AnimatedSlide(
                 offset: Offset(hovered ? 0.12 : 0, 0), // Flutter mirrors the icon, the slide follows the direction
@@ -568,11 +584,19 @@ class AppSettingsPage extends StatefulWidget {
     this.footer,
     this.searchThreshold = 8,
     this.gutter,
+    this.columns = false,
   });
 
   final Widget? header;
   final List<AppSettingsGroup> groups;
   final Widget? footer;
+
+  /// D-1081: on a wide body (≥ [twoColumnMin]) the groups sit in two balanced columns on the content width, the
+  /// header and the footer across both; a phone keeps one column.
+  final bool columns;
+
+  /// The body width from which [columns] splits the groups.
+  static const double twoColumnMin = Breakpoints.contentMax + AppSpace.xl * 2;
 
   /// A search field appears once the groups hold more tiles than this.
   final int searchThreshold;
@@ -621,9 +645,12 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
         builder: (context, q, _) {
           final groups = _filtered(searchable ? q.text : '');
           final searching = searchable && q.text.trim().isNotEmpty;
+          return LayoutBuilder(builder: (context, box) {
+          final two = widget.columns && box.maxWidth >= AppSettingsPage.twoColumnMin && groups.length > 1;
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             child: ContentBox(
+              width: two ? AppWidth.content : null,
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 const SizedBox(height: AppSpace.lg),
                 if (widget.header != null && !searching) Padding(padding: side, child: widget.header),
@@ -659,7 +686,18 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
                     ]),
                   ),
                 // every group brings its own 32 above its heading (the editorial rhythm): nothing between them
-                for (final g in groups) Padding(padding: side, child: g),
+                if (two)
+                  Padding(
+                    padding: side,
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      for (final (i, part) in appSettingsColumns(groups).indexed) ...[
+                        if (i > 0) const SizedBox(width: AppSpace.lg),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: part)),
+                      ],
+                    ]),
+                  )
+                else
+                  for (final g in groups) Padding(padding: side, child: g),
                 if (widget.footer != null && !searching) ...[
                   const SizedBox(height: AppSpace.lg),
                   Padding(padding: side, child: widget.footer),
@@ -668,8 +706,107 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
               ]),
             ),
           );
+          });
         },
       ),
     );
   }
+}
+
+/// The groups in two columns of about the same height (counted in rows, a heading worth two), in order: the first
+/// column takes groups until it holds half the rows.
+List<List<AppSettingsGroup>> appSettingsColumns(List<AppSettingsGroup> groups) {
+  int weight(AppSettingsGroup g) => g.children.length + 2;
+  final total = groups.fold<int>(0, (n, g) => n + weight(g));
+  final first = <AppSettingsGroup>[];
+  var sum = 0;
+  for (final g in groups) {
+    if (first.isNotEmpty && sum + weight(g) / 2 > total / 2) break;
+    first.add(g);
+    sum += weight(g);
+  }
+  return [first, groups.sublist(first.length)];
+}
+
+/// One shortcut tile of [AppShortcutRow] (profile E, D-1081).
+class AppShortcut {
+  const AppShortcut({required this.key, required this.icon, required this.label, required this.hint, required this.onTap, this.featureKey});
+  final String key;
+  final IconData icon;
+  final String label, hint;
+  final VoidCallback onTap;
+  final String? featureKey;
+}
+
+/// The shortcut tiles in one row: equal tiles, the icon on a primary tint, a two-line label; a switched-off entry
+/// leaves no hole.
+class AppShortcutRow extends StatelessWidget {
+  const AppShortcutRow({super.key, required this.items});
+  final List<AppShortcut> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final shown = [for (final x in items) if (x.featureKey == null || !AppConfig.disableList.contains(x.featureKey)) x];
+    if (shown.isEmpty) return const SizedBox.shrink();
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      for (final (i, x) in shown.indexed) ...[
+        if (i > 0) const SizedBox(width: AppSpace.xs),
+        Expanded(
+          child: Semantics(
+            button: true,
+            label: x.hint,
+            excludeSemantics: true,
+            child: Material(
+              color: c.cardBg,
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider)),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                key: ValueKey(x.key),
+                onTap: x.onTap,
+                child: Tooltip(
+                  message: x.hint,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs, vertical: AppSpace.sm),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Container(
+                        width: AppSettingsTile.well,
+                        height: AppSettingsTile.well,
+                        decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.chipAll),
+                        child: Icon(x.icon, size: AppIconSize.md, color: c.blockAccentInk(c.primary, c.cardBg)),
+                      ),
+                      const SizedBox(height: AppSpace.xs),
+                      Text(x.label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: AppType.meta(context).copyWith(color: c.textDark, fontWeight: FontWeight.w500)),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ]);
+  }
+}
+
+/// The app's name and version at the very end of an account page; nothing until the version is known.
+class AppVersionLine extends StatelessWidget {
+  const AppVersionLine({super.key});
+
+  static Future<String>? _version;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<String>(
+        future: _version ??= PackageInfo.fromPlatform().then((i) => i.version).catchError((_) => ''),
+        builder: (context, snap) {
+          final v = snap.data ?? '';
+          if (v.isEmpty) return const SizedBox.shrink();
+          return Text('${AppIdentity.instance.name} $v',
+              textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: context.colors.textLight));
+        },
+      );
 }
