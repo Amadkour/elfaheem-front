@@ -232,7 +232,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           titleKey: _moreLabel,
           child: _MorePage(showServices: true),
         ),
-        attentionKeys: const [AttentionTabs.adminFinance, AttentionTabs.adminSupport],
+        attentionKeys: const [AttentionTabs.adminFinance, AttentionTabs.adminSupport, AttentionTabs.adminUsers],
       ),
     ];
 
@@ -250,6 +250,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           attentionKeys: switch (groupId) {
             'finance' => const [AttentionTabs.adminFinance],
+            'people' => const [AttentionTabs.adminUsers],
             'support' => const [AttentionTabs.adminSupport],
             _ => const [],
           },

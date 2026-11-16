@@ -24,6 +24,8 @@ import 'models/ai_models_page.dart' show AiModelsPage;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredExamHub;
 import 'package:flutter_education_app/features/exams/paper/templates/omr_template_library.dart' show openOmrTemplateLibrary;
 import 'admin_admins_page.dart';
+import 'admin_account_approval.dart' show AdminPendingAccountsPage;
+import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'admin_auth_settings_page.dart';
 import 'admin_username_stats.dart' show AdminUsernameStatsPage, kUsernameStatsFeatureKey;
 import 'admin_categories_page.dart';
@@ -153,6 +155,17 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
       icon: Icons.groups_rounded,
       colors: AdminPalette.blue,
       services: [
+        // D-1121: new accounts waiting for approval (the admin.users attention count)
+        AdminService(
+          labelKey: 'svc_pending_accounts',
+          descKey: 'svc_pending_accounts_d',
+          label: t('حسابات تنتظر الموافقة', 'Accounts waiting for approval'),
+          desc: t('وافق على الحسابات الجديدة أو ارفضها', 'Approve or reject new accounts'),
+          icon: Icons.how_to_reg_rounded,
+          colors: AdminPalette.orange,
+          badge: AttentionService.instance.count(AttentionTabs.adminUsers),
+          onTap: () => push(const AdminPendingAccountsPage()),
+        ),
         AdminService(
           labelKey: 'svc_datacenter',
           descKey: 'svc_datacenter_d',

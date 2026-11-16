@@ -82,8 +82,11 @@ class AttentionTabs {
   /// features/org/org_invitation_prompt.dart reads it. Same string as the server's attention key.
   static const orgInvitationsItem = 'org_invitations';
 
+  /// New accounts waiting for a platform admin's approval (D-1121).
+  static const adminUsers = 'admin.users';
+
   static const all = [home, profile, parentLink, parentAlerts, adminSupport, adminFinance, orgPeople, orgAcademics,
-    orgTimetable, orgServices, orgSettings, teacherTodo, chat];
+    orgTimetable, orgServices, orgSettings, teacherTodo, chat, adminUsers];
 }
 
 class AttentionItem {

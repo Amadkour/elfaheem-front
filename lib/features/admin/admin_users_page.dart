@@ -37,6 +37,7 @@ import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart' show EntitySummary;
 import 'admin_send_message_page.dart' show AdminSendMessagePage;
 import 'admin_account_fee_widgets.dart';
+import 'admin_account_approval.dart' show PendingAccountsBanner, approvalStatus, decideAccount;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
@@ -328,6 +329,7 @@ class _UsersViewState extends State<_UsersView> {
       body: Padding(
         padding: AdminPage.bodyPadding(context),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const PendingAccountsBanner(), // D-1121: new accounts waiting for approval (hidden at 0)
           AdminActiveFilterChips(host: p, specs: specs, sort: _userSort, quickKeys: const {'status'}),
           Expanded(child: table),
         ]),
@@ -837,6 +839,16 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                           ),
                       ],
                     ),
+                    if (approvalStatus(d!.j) case final waiting?) ...[
+                      const SizedBox(height: AppSpace.sm),
+                      _ApprovalControls(
+                        rejected: waiting == 'rejected',
+                        reason: d!.j['rejection_reason'] as String?,
+                        onDecide: (approve) async {
+                          if (await decideAccount(context, u.id, u.name, approve) && mounted) await _load();
+                        },
+                      ),
+                    ],
                     if (_feeStatus(context, d!.j) case final fee?) ...[
                       const SizedBox(height: AppSpace.sm),
                       _AccountFeeControls(
@@ -942,8 +954,49 @@ String _feeLabel(BuildContext context, String role) {
 /// The fee status of a teacher / parent row, or null (another role, or never asked).
 String? _feeStatus(BuildContext context, Map<String, dynamic> j) {
   final role = '${j['role'] ?? ''}';
-  if (role != 'teacher' && role != 'parent') return null;
+  if (!accountFeeRoles.contains(role)) return null;
   return accountFeeStatus(j, feeOn: _feeOn(context, role));
+}
+
+/// D-1121: a new account waiting for (or refused) approval — the badge, then approve / reject.
+class _ApprovalControls extends StatelessWidget {
+  final bool rejected;
+  final String? reason;
+  final ValueChanged<bool> onDecide;
+
+  const _ApprovalControls({required this.rejected, required this.reason, required this.onDecide});
+
+  @override
+  Widget build(BuildContext context) {
+    final why = (reason ?? '').trim();
+    return Wrap(
+      spacing: AppSpace.sm,
+      runSpacing: AppSpace.xs,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        AppStatusBadge(
+          key: const ValueKey('admin.user_approval_status'),
+          label: rejected
+              ? (why.isEmpty ? t('مرفوض', 'Rejected') : t('مرفوض: $why', 'Rejected: $why'))
+              : t('ينتظر الموافقة', 'Waiting for approval'),
+          tone: rejected ? AppTone.danger : AppTone.warning,
+        ),
+        AppButton.tonal(
+          key: const ValueKey('admin.user_approve'),
+          label: t('موافقة على الحساب', 'Approve the account'),
+          icon: Icons.how_to_reg_rounded,
+          onPressed: () => onDecide(true),
+        ),
+        if (!rejected)
+          AppButton.ghost(
+            key: const ValueKey('admin.user_reject'),
+            label: t('رفض', 'Reject'),
+            icon: Icons.person_off_rounded,
+            onPressed: () => onDecide(false),
+          ),
+      ],
+    );
+  }
 }
 
 Future<bool> _setAccountFee(int userId, String action) async {

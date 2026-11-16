@@ -1515,6 +1515,20 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     return {'amount': amount, 'currency': '${f['currency'] ?? ''}'};
   }
 
+  /// How a new account of [role] (`teacher` / `parent` / `student`) opens: `free`, `paid`, `approval` or
+  /// `paid_approval` (D-1121); `free` when the server is older or says nothing.
+  String registrationMode(String role) {
+    final all = _platform['account_fee'];
+    final f = all is Map ? all[role] : null;
+    if (f is! Map) return 'free';
+    final mode = '${f['mode'] ?? ''}';
+    if (const {'free', 'paid', 'approval', 'paid_approval'}.contains(mode)) return mode;
+    return f['required'] == true ? 'paid' : 'free';
+  }
+
+  /// A new account of [role] waits for an admin's approval (D-1121).
+  bool needsApproval(String role) => const {'approval', 'paid_approval'}.contains(registrationMode(role));
+
   /// Applies the organizations master switch and the platform timezone / time format. An old server that
   /// sends no `platform` block keeps organizations ON and the Cairo / 12h defaults.
   void _applyPlatformSettings(Map<String, dynamic> p) {
