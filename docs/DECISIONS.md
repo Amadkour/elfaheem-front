@@ -4860,3 +4860,20 @@ The move is scripted, never by hand: `tool/apply_moves.dart` over `tool/moves/M1
 - **Landing**: `landing/src/theme/` — `theme-runtime.js` maps `GET /api/v1/theme/web` onto the landing's CSS variables with the app's derivations (sidebar colour for the hero, the canvas tint for the page, every text colour contrast-checked); `ActiveTheme.astro` bakes `theme-default.json` (NextBrain's live theme of 2026-11-15) into `<style id="active-theme">` and the theme-color metas, applies the theme cached in `localStorage` before the first paint, then fetches the live one (same origin, so the CSP's `connect-src 'self'` covers it); any failure keeps what is on screen. The landing's fixed brand colours outside `:root` became variables (`--on-gold`, `--gold-hover`, `--track`, the hero shadow).
 
 **Consequences.** `context.colors.background` is a tint now: a header block in a pastel close to it needs its own step (raised tint or paper, plus a hairline). Refresh `landing/src/theme/theme-default.json` when the production theme changes. Alfaheem drops its A-007 copy and syncs this.
+
+## D-1080 — Video Studio: a playhead that never freezes, trims that follow the finger · 2026-11-16 · accepted
+
+**Context.** Scrubbing, trimming and moving the playhead in the Records Studio felt heavy, and the playhead sometimes froze until the page was reopened. Causes found in the code:
+- the playhead was page state: each scrub move and each playing frame rebuilt the whole Studio page (preview, panels, rail, timeline), and the timeline's painter redrew every lane on every frame;
+- one seek at a time, waiting on `seekTo` with no time limit, and the player's own updates ignored while a seek ran: a seek that never answered (a stalled network on an iPhone, a player replaced mid-seek) stopped the playhead for good; on the web, where a seek answers at once, a scrub sent one seek per pointer move;
+- the page's "scrubbing" flag was cleared only by the timeline's pointer-up: a timeline closed mid-drag (a phone opens a tool's panel in its place) or a cancelled pointer left the page ignoring the player for good;
+- a clip-edge drag read back the live trim the page fed it: dragging the END added the distance dragged once per move (the edge ran away from the finger), snapped the edge to its own last place (it stuck), and at fit zoom the whole timeline rescaled under the finger as the length changed; a grab just before 0:00 lost its first pixels;
+- dragging the in flag seeked to the out flag (the flag that moved was read after the marks changed).
+
+**Decision.**
+- The playhead is a `ValueNotifier` (`_posN`); only the timeline, the transport, the overlays over the picture and the Edit / Text / Picture panels listen to it. The page catches up once when a scrub ends.
+- `StudioSeeker` (`lib/features/records/studio_seeker.dart`): latest wins, throttled to one seek per 40 ms while scrubbing, `flush()` sends the exact frame when the finger lifts, a 1.5 s watchdog per seek, and a generation that ignores an old player's late answer.
+- The timeline draws the playhead on its own layer (`_PlayheadPainter`, `RepaintBoundary`); the tracks repaint only when what they show changes. Overlay rows are packed once per edit.
+- A clip drag works on the edit as it was at the finger's down (`_base`), with that scale; drag distance is unclamped. Every way a drag ends (lift, cancel, a second finger, editing switched off, the timeline disposed) releases the page's scrub exactly once; a cancel is never a tap. A light haptic tick when a touch drag lands on a snap point.
+
+**Consequences.** Tests: `test/ui/studio_scrub_test.dart` (seek queue: latest wins, watchdog, a throwing seek, throttle + flush, reset; trim start / end with the live trim fed back; timeline closed mid-scrub; cancelled pointer; a long back-and-forth scrub). Timeline-only frame times in the widget test (3 h, 60 parts, 40 overlays, zoom 6): scrub median 3.8 → 2.9 ms, p95 7.4 → 5.3 ms; playing 2.2 → 1.5 ms. The page no longer rebuilds during a scrub or playback at all. `video_player` offers no keyframe-only seek, so a scrub shows the frames the player decodes at that pace; no new package.
