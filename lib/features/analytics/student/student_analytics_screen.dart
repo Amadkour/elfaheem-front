@@ -265,7 +265,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
       ),
     );
 
-    // ── tiles: four counts; the key one (exams passed, or what is finished without the profile) is a block that rolls
+    // ── tiles: four soft-wash counts (D-1081); the key one (exams passed, or what is finished without the profile) leads
     final allExams = <(EnrolledCourse, DlExam)>[
       for (final course in prov.courses)
         for (final e in prov.blockOf(course.id)?.exams ?? const <DlExam>[])
@@ -275,50 +275,54 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
     final completed = facts.where((x) => (x.progress ?? 0) >= 100).length;
     final tiles = AppKpiGrid(children: [
       if (p != null) ...[
-        AppKpiCard(
+        AppStatCard(
           icon: Icons.verified_rounded,
           label: anTr('an2_tile_passed', 'Exams passed'),
           value: allExams.isEmpty ? '–' : '$passed/${allExams.length}',
-          highlight: true,
           // every exam passed is an achievement: the gold block
           tone: allExams.isNotEmpty && passed == allExams.length ? AppBlockTone.gold : AppBlockTone.peach,
         ),
-        AppKpiCard(
+        AppStatCard(
+          tone: AppBlockTone.emerald,
           icon: Icons.menu_book_rounded,
           label: anTr('an_courses', 'Courses'),
           value: '${prov.courses.length}',
           onTap: _openAll,
         ),
-        AppKpiCard(
+        AppStatCard(
+          tone: AppBlockTone.sky,
           icon: Icons.event_available_rounded,
           label: anTr('an2_tile_attended', 'Sessions attended'),
           value: totals.held == 0 ? '–' : '${totals.attended}/${totals.held}',
         ),
-        AppKpiCard(
+        AppStatCard(
+          tone: AppBlockTone.peach,
           icon: Icons.bookmark_rounded,
           label: anTr('an2_tile_saved', 'Saved to review'),
           value: '${p.reviewFlags}',
         ),
       ] else ...[
-        AppKpiCard(
+        AppStatCard(
           icon: Icons.task_alt_rounded,
           label: anTr('an2_tile_completed', 'Completed'),
           value: '$completed',
-          highlight: true,
           tone: completed > 0 ? AppBlockTone.emerald : AppBlockTone.peach,
         ),
-        AppKpiCard(
+        AppStatCard(
+          tone: AppBlockTone.gold,
           icon: Icons.menu_book_rounded,
           label: anTr('an_courses', 'Courses'),
           value: '${prov.courses.length}',
           onTap: _openAll,
         ),
-        AppKpiCard(
+        AppStatCard(
+          tone: AppBlockTone.sky,
           icon: Icons.video_library_rounded,
           label: anTr('an2_tile_lectures', 'Lectures'),
           value: '${prov.courses.fold<int>(0, (s, x) => s + x.sessionsCount)}',
         ),
-        AppKpiCard(
+        AppStatCard(
+          tone: AppBlockTone.peach,
           icon: Icons.play_circle_rounded,
           label: anTr('an2_tile_in_progress', 'In progress'),
           value: '${facts.where((x) => (x.progress ?? 0) > 0 && (x.progress ?? 0) < 100).length}',

@@ -4,6 +4,8 @@
 /// "Update account" and "Share"), then the rows grouped into titled section cards, each in its own colour:
 /// teaching / learning · messages & schedule · money · account & security · preferences · help · sign out.
 /// One column on phones; from 900 px two columns balanced by height (profileSectionColumns).
+/// Profile E (D-1081): four shortcut tiles under the header (their rows leave the sections), one primary tint for
+/// every icon, the exits as quiet red rows at the end and the app's version line under them.
 /// Every row keeps its kill switch; the four account sections also answer to `profile.account` together.
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
@@ -109,14 +111,12 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<ProfileProvider>();
-    final c = context.colors; // ← dynamic palette (light / dark)
     final isWide = context.showSidebar;
     final auth = context.read<MyAuthProvider>();
     final teacher = auth.isTeacher;
     final student = auth.currentUser?.role == 'student';
     // colour carries meaning (D-610): gold marks what a person earned (points, certificates), the danger tone is kept
     // for leaving. Each section has its own colour (D-714) so the page reads as a few subjects, not a list of 30 rows.
-    final earned = c.accent2;
     final accents = ProfileSectionAccents.of(context);
 
     Future<void> editAccount() async {
@@ -146,7 +146,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
       if (PersonalAccess.enabled)
         ParentComponent(featureKey: teacher ? 'profile.teacher_profile' : 'profile.my_profile', child: const MyProfileTile()),
       // The Exam Hub (D-350): teachers, and whoever teaches inside an organization; never students or parents
-      if (teacher || examHubTeachesInAnyOrg(AppModeController.instance.liveEntries))
+      // teachers open it from the shortcut tiles; a non-teacher who teaches in an organization keeps the row
+      if (!teacher && examHubTeachesInAnyOrg(AppModeController.instance.liveEntries))
         AppSettingsTile(
           featureKey: kExamHubFeatureKey,
           icon: Icons.fact_check_rounded,
@@ -155,36 +156,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           keywords: 'exams correction results degrees اختبارات امتحانات تصحيح نتائج درجات',
           onTap: () => _push(deferredExamHub()),
         ),
-      if (teacher) ...[
-        AppSettingsTile(
-          featureKey: 'profile.certificate_designs',
-          icon: Icons.workspace_premium_rounded,
-          color: earned,
-          label: 'cert_my_designs'.tr,
-          // personal designs: usable on every course of this teacher (no organization needed)
-          onTap: () => _push(deferredCertificateDesigns()),
-        ),
-        AppSettingsTile(
-          featureKey: 'profile.certificate_requests',
-          icon: Icons.verified_rounded,
-          color: earned,
-          label: 'certificate_requests'.tr,
-          onTap: () => _push(deferredCertificateRequests()),
-        ),
-      ] else ...[
-        AppSettingsTile(
-          featureKey: 'profile.my_certificates',
-          icon: Icons.workspace_premium_rounded,
-          color: earned,
-          label: 'md_p7_grades_certificates'.tr,
-          onTap: () => _push(const StudentGradesPage()),
-        ),
-        AppSettingsTile(
-          featureKey: 'profile.my_favorite',
-          icon: Icons.favorite_rounded,
-          label: 'my_favorite'.tr,
-          onTap: () => _push(const FavouriteCoursesScreen()),
-        ),
+      if (!teacher) ...[
         // Downloaded (encrypted) videos — native apps only.
         if (!kIsWeb)
           AppSettingsTile(
@@ -201,31 +173,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
     ];
 
     // ── Money ────────────────────────────────────────────────
-    final money = <Widget>[
-      // Points wallet + the student live-meeting plan (live-rooms-spec §8 – §9)
-      AppSettingsTile(
-        featureKey: kPointsFeatureKey,
-        icon: Icons.stars_rounded,
-        color: earned,
-        label: t('محفظة النقاط', 'Points wallet'),
-        keywords: 'points wallet نقاط محفظة',
-        onTap: () => _push(const PointsWalletPage()),
-      ),
-      if (teacher)
-        AppSettingsTile(
-          featureKey: 'profile.payout',
-          icon: Icons.payments_rounded,
-          label: 'admin_earnings_payouts'.tr, // the page it opens (L4)
-          onTap: () => _push(const TeacherPayoutsScreen()),
-        )
-      else
-        AppSettingsTile(
-          featureKey: 'profile.my_payments',
-          icon: Icons.receipt_long_rounded,
-          label: 'md_p7_payments_subscriptions'.tr,
-          onTap: () => _push(const StudentMoneyPage()),
-        ),
-    ];
+    // ── Money: points, payouts and payments are shortcut tiles now (profile E); the section draws nothing ──
+    final money = <Widget>[];
 
     // ── Messages & schedule ──────────────────────────────────
     final talk = <Widget>[
@@ -454,7 +403,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
               AppSettingsTile(
                 featureKey: 'profile.logout',
                 icon: DirIcons.logout,
-                color: c.danger,
+                danger: true,
                 label: 'logout'.tr,
                 onTap: () async {
                   final ok = await Helpers.confirmDialog(context);
@@ -471,7 +420,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
               AppSettingsTile(
                 featureKey: 'profile.delete_account',
                 icon: Icons.delete_forever_rounded,
-                color: c.danger,
+                danger: true,
                 label: 'delete_account_title'.tr,
                 onTap: () async {
                   final ok = await Helpers.confirmDialog(
@@ -502,6 +451,82 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
       ),
     ].where((s) => s.$1 > 0).toList();
 
+    // ── Profile E (D-1081): the four most used entries as tiles under the header, each keeps its kill switch ──
+    final shortcuts = teacher
+        ? <AppShortcut>[
+            AppShortcut(
+              key: 'shortcut.exams',
+              featureKey: kExamHubFeatureKey,
+              icon: Icons.fact_check_rounded,
+              label: t('الاختبارات', 'Exams'),
+              hint: t('أنشئ وصحّح وانشر النتائج من مكان واحد', 'Create, correct and publish results in one place'),
+              onTap: () => _push(deferredExamHub()),
+            ),
+            AppShortcut(
+              key: 'shortcut.cert_designs',
+              featureKey: 'profile.certificate_designs',
+              icon: Icons.workspace_premium_rounded,
+              label: 'cert_my_designs'.tr,
+              hint: 'cert_my_designs'.tr,
+              onTap: () => _push(deferredCertificateDesigns()),
+            ),
+            AppShortcut(
+              key: 'shortcut.cert_requests',
+              featureKey: 'profile.certificate_requests',
+              icon: Icons.verified_rounded,
+              label: 'certificate_requests'.tr,
+              hint: 'certificate_requests'.tr,
+              onTap: () => _push(deferredCertificateRequests()),
+            ),
+            AppShortcut(
+              key: 'shortcut.payouts',
+              featureKey: 'profile.payout',
+              icon: Icons.payments_rounded,
+              label: 'admin_earnings_payouts'.tr,
+              hint: 'admin_earnings_payouts'.tr,
+              onTap: () => _push(const TeacherPayoutsScreen()),
+            ),
+          ]
+        : <AppShortcut>[
+            AppShortcut(
+              key: 'shortcut.grades',
+              featureKey: 'profile.my_certificates',
+              icon: Icons.workspace_premium_rounded,
+              label: 'md_p7_grades_certificates'.tr,
+              hint: 'md_p7_grades_certificates'.tr,
+              onTap: () => _push(const StudentGradesPage()),
+            ),
+            AppShortcut(
+              key: 'shortcut.favourites',
+              featureKey: 'profile.my_favorite',
+              icon: Icons.favorite_rounded,
+              label: 'my_favorite'.tr,
+              hint: 'my_favorite'.tr,
+              onTap: () => _push(const FavouriteCoursesScreen()),
+            ),
+            AppShortcut(
+              key: 'shortcut.points',
+              featureKey: kPointsFeatureKey,
+              icon: Icons.stars_rounded,
+              label: t('محفظة النقاط', 'Points wallet'),
+              hint: t('محفظة النقاط', 'Points wallet'),
+              onTap: () => _push(const PointsWalletPage()),
+            ),
+            AppShortcut(
+              key: 'shortcut.payments',
+              featureKey: 'profile.my_payments',
+              icon: Icons.receipt_long_rounded,
+              label: 'md_p7_payments_subscriptions'.tr,
+              hint: 'md_p7_payments_subscriptions'.tr,
+              onTap: () => _push(const StudentMoneyPage()),
+            ),
+          ];
+    // the tiles answer to the old `profile.account` switch too, as their rows did
+    final shortcutRow = ParentComponent(
+      featureKey: 'profile.account',
+      child: Padding(padding: const EdgeInsets.only(top: AppSpace.md), child: AppShortcutRow(items: shortcuts)),
+    );
+
     // Recommended for you (students of personal accounts, D-120; draws nothing — not even its padding — otherwise)
     final recs = ProfileRecommendations(
       role: auth.currentUser?.role,
@@ -526,7 +551,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
             final side = box.maxWidth < AppWidth.phoneMax ? AppSpace.gutter(box.maxWidth) : 0.0;
             final top = Padding(
               padding: const EdgeInsets.only(top: AppSpace.lg),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [enter(0, hero), recs]),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [enter(0, hero), enter(0, shortcutRow), recs]),
             );
             final columns = profileSectionColumns([for (final s in sections) s.$1], box.maxWidth >= _twoColumnsFrom ? 2 : 1);
             Widget column(List<int> ids) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -545,6 +570,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(width: AppSpace.lg),
                     Expanded(child: column(columns[1])),
                   ]),
+                const SizedBox(height: AppSpace.lg),
+                const AppVersionLine(),
               ]),
             );
           }),
@@ -556,9 +583,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
   static const double _twoColumnsFrom = 900;
 }
 
-/// The section colours of the profile page (D-714), all from the theme's roles: teaching / learning in the
-/// purple, messages in a terracotta drawn from the peach accent, money in gold, account & security in the primary,
-/// preferences in the quiet ink and help in the sage.
+/// The section colours of the profile page (D-714). Profile E (D-1081): every section wears the primary tint.
 @immutable
 class ProfileSectionAccents {
   const ProfileSectionAccents({
@@ -574,15 +599,14 @@ class ProfileSectionAccents {
 
   static ProfileSectionAccents of(BuildContext context) {
     final c = context.colors;
-    final peach = HSLColor.fromColor(c.accent);
-    final sage = HSLColor.fromColor(c.accent3);
+    // profile E (D-1081): one primary tint for every section and icon; colour is left to the exits (danger)
     return ProfileSectionAccents(
-      work: c.purple,
-      talk: peach.withSaturation(peach.saturation.clamp(0.45, 0.7)).withLightness(0.5).toColor(),
-      money: c.accent2,
+      work: c.primary,
+      talk: c.primary,
+      money: c.primary,
       security: c.primary,
-      prefs: c.textMedium,
-      help: sage.withSaturation(sage.saturation.clamp(0.2, 0.35)).withLightness(0.4).toColor(),
+      prefs: c.primary,
+      help: c.primary,
     );
   }
 }
