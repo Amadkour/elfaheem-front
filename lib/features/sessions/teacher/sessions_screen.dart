@@ -36,6 +36,8 @@ import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 import 'package:flutter_education_app/features/attendance/attendance_course_entry.dart';
+import 'package:flutter_education_app/features/attendance/attendance_live_screen.dart' show openAttendanceLive;
+import 'package:flutter_education_app/features/attendance/attendance_widgets.dart' show showTeacherAttendanceSheet;
 import 'package:flutter_education_app/features/attendance/teacher_attendance_controller.dart';
 import 'package:flutter_education_app/features/attendance/teacher_attendance_launcher.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
@@ -440,16 +442,36 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             onAction: () => _provider.joinLive(context, d.liveId, course.id, 100, true),
             onTap: () => _setTab(_tabSessions),
           ),
-        const _AttendanceSpot(),
+        // with the page block the Next card starts attendance; the entry stays only as the fallback (and while a web
+        // session waits for this phone's location: its card must stay reachable)
+        _AttendanceSpot(pageMode: page != null),
         if (page != null && page.next != null && !page.next!.liveNow && d.liveId == -1)
-          CourseNextCard(
-            title: page.next!.name,
-            when: coursePageWhen(page.next!.at),
-            caption: coursePageGroupLabel(page, page.next!.track, page.next!.groupNo),
-            section: page.next!.isSection,
-            actionLabel: _t('الجلسات', 'Sessions'),
-            actionIcon: Icons.play_lesson_rounded,
-            onAction: () => _setTab(_tabSessions),
+          ListenableBuilder(
+            listenable: TeacherAttendanceController.instance,
+            builder: (context, _) {
+              final next = page.next!;
+              final running = TeacherAttendanceController.instance.isOpen;
+              final canAttend = course.type != 'recorded';
+              return CourseNextCard(
+                title: next.name,
+                when: coursePageWhen(next.at),
+                caption: coursePageGroupLabel(page, next.track, next.groupNo),
+                section: next.isSection,
+                actionLabel: !canAttend
+                    ? _t('الجلسات', 'Sessions')
+                    : running
+                    ? _t('الحضور الجاري', 'Attendance running')
+                    : _t('بدء الحضور', 'Start attendance'),
+                actionIcon: canAttend ? Icons.qr_code_2_rounded : Icons.play_lesson_rounded,
+                // the same calls as the attendance entry (TeacherAttendanceCourseEntry)
+                onAction: !canAttend
+                    ? () => _setTab(_tabSessions)
+                    : running
+                    ? () => openAttendanceLive(context)
+                    : () => showTeacherAttendanceSheet(context, next.id, title: next.name),
+                onTap: () => _setTab(_tabSessions),
+              );
+            },
           ),
         if (page?.setup != null)
           CourseSetupBar(steps: page!.setup!, onStep: _onSetupStep)
@@ -555,7 +577,11 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
 /// ONE attendance entry for the whole course: hidden for recorded / empty courses — unless a web session is
 /// waiting for this phone's location, then the entry (with its "share location" card) must always be reachable.
 class _AttendanceSpot extends StatelessWidget {
-  const _AttendanceSpot();
+  const _AttendanceSpot({this.pageMode = false});
+
+  /// The page block is in: the Next card starts attendance, so this entry shows only while a web session waits for
+  /// this phone's location.
+  final bool pageMode;
 
   @override
   Widget build(BuildContext context) {
@@ -566,7 +592,7 @@ class _AttendanceSpot extends StatelessWidget {
       listenable: TeacherAttendanceController.instance,
       builder: (ctx, _) {
         final waiting = TeacherAttendanceController.instance.webLocationRequested;
-        if (!waiting && (p.$1 == 'recorded' || p.$2 == 0)) return const SizedBox.shrink();
+        if (!waiting && (pageMode || p.$1 == 'recorded' || p.$2 == 0)) return const SizedBox.shrink();
         final sessions = ctx.read<TeacherCourseScreenProvider>().sessions;
         return TeacherAttendanceCourseEntry(
           padding: EdgeInsets.zero,
