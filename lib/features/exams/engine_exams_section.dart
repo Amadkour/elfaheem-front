@@ -61,8 +61,10 @@ class EngineExamCard extends StatelessWidget {
     final markTint = live ? appTintOn(context, c.primary) : c.inputBg;
     final metaStyle = AppType.meta(context);
     final pct = last != null && last['visible'] == true && last['percentage'] != null ? last['percentage'] : null;
+    // D-1134: the attempt a student left open is the one thing waiting for them: the highlighted card of the list
     return AppCard(
       onTap: onOpen,
+      highlight: open,
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
           width: AppTouch.min, height: AppTouch.min, alignment: Alignment.center,
@@ -86,9 +88,13 @@ class EngineExamCard extends StatelessWidget {
             const SizedBox(height: AppSpace.sm),
             // the action sits under the texts, not beside them: at 320 px with large text a trailing pill left the
             // title column 26 px wide (layout harness)
-            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-              AppStatusBadge(label: action, tone: live ? AppTone.brand : AppTone.neutral,
-                  icon: opensAt != null ? Icons.schedule_rounded : (live ? (open ? Icons.play_arrow_rounded : Icons.arrow_forward_rounded) : null)),
+            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              // D-1134: Start / Resume is a real button (it was a pale pill the same weight as "Saved for offline");
+              // every other state stays a quiet status
+              if (live)
+                AppButton.primary(label: action, icon: open ? Icons.play_arrow_rounded : Icons.arrow_forward_rounded, size: AppButtonSize.sm, onPressed: onOpen)
+              else
+                AppStatusBadge(label: action, tone: AppTone.neutral, icon: opensAt != null ? Icons.schedule_rounded : null),
               if (paper && last != null) AppStatusBadge(label: t('اختبار ورقي', 'Paper exam'), icon: Icons.edit_note_rounded),
               if (offlineSaved) AppStatusBadge(label: t('محفوظ للحل دون اتصال', 'Saved for offline'), tone: AppTone.success, icon: Icons.offline_pin_rounded),
             ]),

@@ -41,6 +41,7 @@ import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
+import 'org_exam_policy_page.dart' show OrgExamPolicyPage;
 import '../admin/admin_premium_widgets.dart' show AdminPalette;
 import 'org_access_page.dart' show OrgAccessPage, OrgActivityPage;
 import 'org_common.dart';
@@ -129,6 +130,13 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
             label: t('رؤية أولياء الأمور للدرجات', 'What parents see of grades'),
             subtitle: t('اتبع إعداد المنصة أو حدّد قاعدة مؤسستك', 'Follow the platform setting or set your own rule'),
             onTap: () => openParentGradeVisibility(context, orgId: s.currentId)),
+      // D-1133: the organization's exam limits and methods, which only tighten the platform's
+      if (s.isOrgAdmin && s.currentId != null)
+        AppSettingsTile(
+            icon: Icons.policy_rounded,
+            label: t('سياسة الاختبارات', 'Exam policy'),
+            subtitle: t('حدود الاختبارات وطرقها في مؤسستك', 'Exam limits and methods in your organization'),
+            onTap: () => open(t('سياسة الاختبارات', 'Exam policy'), OrgExamPolicyPage(orgId: s.currentId!))),
     ];
     // profile E (D-1081): the four most used entries as tiles under the profile card (each keeps its kill switch)
     final shortcuts = <AppShortcut>[

@@ -39,4 +39,7 @@ This file is loaded when working in this folder; the app-wide rules are in the r
   `policy_*`, worded by `examPolicyCodeText`, also inside `examCodeText` / `quickCodeText`). The super admin's page:
   `lib/features/admin/admin_exam_policy_page.dart`. Counts with a noun: `exam_words.dart`. Tests:
   `test/org/exam_policy_test.dart`, `test/ui/exam_policy_layout_test.dart`.
+- **Organization exam policy (D-1133).** `lib/features/org/org_exam_policy_page.dart` (org settings → Exam policy):
+  limits that only tighten the platform's and the organization's method switches; `ExamPolicy.load(orgId:)` gives a
+  new exam inside an organization its effective defaults.
 

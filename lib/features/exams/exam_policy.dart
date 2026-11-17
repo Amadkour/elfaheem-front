@@ -56,6 +56,7 @@ class ExamPolicy {
   /// The last policy read; [fallback] until then.
   static ExamPolicy current = fallback;
   static DateTime? _readAt;
+  static int? _readFor;
 
   static int _int(Object? v, int d) => v is num ? v.toInt() : int.tryParse('$v') ?? d;
 
@@ -145,15 +146,19 @@ class ExamPolicy {
         if (questions != null && maxQuestions > 0 && questions > maxQuestions) 'policy_questions',
       ];
 
-  /// Reads the policy (at most once a minute unless [force]); keeps the last one on any failure.
-  static Future<ExamPolicy> load({bool force = false}) async {
+  /// Reads the policy (at most once a minute per place unless [force]); keeps the last one on any failure. With
+  /// [orgId] it is that organization's EFFECTIVE policy (D-1133: the platform's tightened by the organization).
+  static Future<ExamPolicy> load({int? orgId, bool force = false}) async {
     final at = _readAt;
-    if (!force && at != null && DateTime.now().difference(at) < const Duration(minutes: 1)) return current;
+    if (!force && at != null && _readFor == orgId && DateTime.now().difference(at) < const Duration(minutes: 1)) return current;
     try {
-      final data = await ApiClient().get(kExamPolicyPath).timeout(const Duration(seconds: 4));
+      final data = await ApiClient()
+          .get(kExamPolicyPath, queryParams: orgId == null ? null : {'org_id': orgId})
+          .timeout(const Duration(seconds: 4));
       if (data is Map) {
         current = ExamPolicy.fromJson(Map<String, dynamic>.from(data));
         _readAt = DateTime.now();
+        _readFor = orgId;
       }
     } catch (_) {
       // an older server, offline, slow: the last policy (or the fallback) stands, the engine still enforces
@@ -165,6 +170,7 @@ class ExamPolicy {
   static void reset() {
     current = fallback;
     _readAt = null;
+    _readFor = null;
   }
 }
 

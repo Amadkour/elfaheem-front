@@ -319,7 +319,10 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
       onBack: nav.canPop() ? () => nav.maybePop() : null,
       onRefresh: _load,
       updatedAt: _updated,
-      primaryAction: AppButton.primary(key: const ValueKey('exam.hub.new'), label: t('اختبار جديد', 'New exam'), icon: Icons.add_rounded, onPressed: _newExam),
+      // D-1134: with no exam at all the empty state carries New exam; two identical primaries on one screen was one too many
+      primaryAction: _data != null && _data!.exams.isEmpty
+          ? null
+          : AppButton.primary(key: const ValueKey('exam.hub.new'), label: t('اختبار جديد', 'New exam'), icon: Icons.add_rounded, onPressed: _newExam),
       actions: _headerActions(),
     );
     return BasePage(
