@@ -12,6 +12,7 @@
 // Google Forms" (D-300: [GoogleFormsImportSheet.createExam] makes the draft, named after the form, once the form is
 // picked; pick form → preview → create).
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/exams/exam_words.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
@@ -116,7 +117,7 @@ class ImportReportPanel extends StatelessWidget {
           key: const ValueKey('exam.import.result'),
           icon: r.created > 0 ? Icons.task_alt_rounded : Icons.info_outline_rounded,
           color: r.created > 0 ? c.success : c.warning,
-          text: r.created > 0 ? t('أُضيف ${r.created} سؤالاً', '${r.created} questions added') : t('لم يُضف أي سؤال', 'No question was added')),
+          text: r.created > 0 ? t('أُضيف: ${questionsText(r.created)}', 'Added: ${questionsText(r.created)}') : t('لم يُضف أي سؤال', 'No question was added')),
       if (r.errors.isNotEmpty) ...[
         const SizedBox(height: AppSpace.sm),
         Text(t('صفوف لم تُقبل (${r.errors.length})', 'Rows not accepted (${r.errors.length})'), style: appText(13, w: FontWeight.w700, c: c.danger)),

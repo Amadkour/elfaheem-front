@@ -8,6 +8,7 @@
 // So an icon / label / page is changed in exactly one place.
 library;
 
+import 'admin_exam_policy_page.dart';
 import 'admin_study_profile_settings_page.dart' show AdminStudyProfileSettingsPage;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -530,6 +531,24 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           colors: AdminPalette.indigo,
           featureKey: 'exam.hub',
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredExamHub())),
+        ),
+        // the platform's exam policy and every exam switch (D-1130): ONE place for how exams work
+        AdminService(
+          labelKey: 'svc_exam_policy',
+          descKey: 'svc_exam_policy_d',
+          label: t('إعدادات الاختبارات', 'Exam settings'),
+          desc: t('ما يبدأ به كل اختبار جديد، حدود المنصة، وطرق الإنشاء والتصحيح', 'What every new exam starts with, the platform limits, and the ways to create and grade'),
+          icon: Icons.tune_rounded,
+          colors: AdminPalette.indigo,
+          visible: isSuper,
+          onTap: () => push(AdminExamPolicyPage(links: [
+            (Icons.grid_on_rounded, t('أنواع أوراق التظليل', 'Bubble sheet types'), t('مكتبة الأوراق واعتماد أوراق المعلمين', 'The sheet library and approving teachers’ sheets'),
+                () => openOmrTemplateLibrary(context)),
+            (Icons.family_restroom_rounded, t('رؤية أولياء الأمور للدرجات', 'What parents see of grades'),
+                t('دائماً، عند النشر، أو أبداً', 'Always, when published, or never'), () => openParentGradeVisibility(context)),
+            (Icons.rate_review_rounded, t('بيانات تصحيح الامتحانات', 'Grading feedback store'),
+                t('تصحيحات المعلمين لتحسين التصحيح الآلي', 'Teachers’ corrections that improve automatic grading'), () => push(const AdminFeedbackSettingsPage())),
+          ])),
         ),
         // paper exams (D-155): the global library of bubble-sheet types, learned sheets, approvals
         AdminService(

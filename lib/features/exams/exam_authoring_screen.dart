@@ -20,6 +20,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
 import 'package:flutter_education_app/features/admin/admin_money_p8.dart' show p8SaveBytes;
+import 'package:flutter_education_app/features/exams/exam_policy.dart';
 import 'package:flutter_education_app/features/exams/exam_authoring.dart';
 import 'package:flutter_education_app/features/exams/exam_forms_import.dart';
 import 'package:flutter_education_app/features/exams/exam_grading_widgets.dart' show ResultsViewField;
@@ -1790,7 +1791,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
     super.initState();
     _loadSessions(widget.courseId);
     if (_examId == null) {
-      _newDraft = ExamDraft()
+      _newDraft = ExamDraft.fromPolicy(ExamPolicy.current)    // D-1130: the platform's defaults
         ..courseId = widget.courseId
         ..orgId = widget.orgId;
     } else {

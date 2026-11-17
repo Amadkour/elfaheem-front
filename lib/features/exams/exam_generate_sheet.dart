@@ -9,6 +9,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/exams/exam_words.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -323,7 +324,7 @@ class ExamGenForm extends StatelessWidget {
             ]),
           ],
           const SizedBox(height: 14),
-          AppPrimaryButton(label: t('أنشئ $count سؤالاً', 'Generate $count questions'), icon: Icons.auto_awesome_rounded, onPressed: onGenerate),
+          AppPrimaryButton(label: t('أنشئ ${questionsText(count)}', 'Generate ${questionsText(count)}'), icon: Icons.auto_awesome_rounded, onPressed: onGenerate),
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(t('تُضاف كمسودة تراجعها وتعدّلها قبل النشر.', 'They are added as a draft you review and edit before publishing.'),

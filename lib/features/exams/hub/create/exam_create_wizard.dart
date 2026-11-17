@@ -28,6 +28,7 @@ import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asMapList, t;
 import 'package:flutter_education_app/features/rag/rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
+import 'package:flutter_education_app/features/exams/exam_policy.dart';
 import 'package:flutter_education_app/features/exams/exam_all.dart';
 import 'package:flutter_education_app/features/exams/exam_all_screen.dart' show staffOrgs;
 import 'package:flutter_education_app/features/exams/exam_authoring.dart';
@@ -62,11 +63,15 @@ import 'package:flutter_education_app/features/exams/hub/create/paper_preview.da
 import 'package:flutter_education_app/features/exams/hub/create/question_sources.dart';
 
 /// Opens the wizard. [courseId] / [orgId] fix or narrow where the exam goes.
-Future<void> openExamCreateWizard(BuildContext context, {int? orgId, int? courseId}) => Navigator.of(context).push<void>(MaterialPageRoute(
-      // the name the paper setup already uses: the browser's Back belongs to this page, not to a deep link
-      settings: const RouteSettings(name: '/exam-setup'),
-      builder: (_) => ExamCreateWizard(orgId: orgId, courseId: courseId),
-    ));
+Future<void> openExamCreateWizard(BuildContext context, {int? orgId, int? courseId}) async {
+  await ExamPolicy.load();             // D-1130: the new exam starts from the platform's defaults (cached a minute)
+  if (!context.mounted) return;
+  await Navigator.of(context).push<void>(MaterialPageRoute(
+    // the name the paper setup already uses: the browser's Back belongs to this page, not to a deep link
+    settings: const RouteSettings(name: '/exam-setup'),
+    builder: (_) => ExamCreateWizard(orgId: orgId, courseId: courseId),
+  ));
+}
 
 /// Every place an exam can go: the courses, then each organization the person works in, then personal.
 List<NewExamPlace> createPlaces(AllExamsData data, Map<int, String> orgs, {int? orgId}) {

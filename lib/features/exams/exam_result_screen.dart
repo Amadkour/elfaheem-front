@@ -89,18 +89,26 @@ class ExamResultBody extends StatelessWidget {
                       ExamVerdictMark(verdict: q['score'] == null ? ExamVerdict.pending : examVerdictOf(score: (q['score'] as num?)?.toDouble(), max: (q['max'] as num?)?.toDouble())),
                       const SizedBox(width: AppSpace.sm),
                       Expanded(
+                        flex: 3,
                         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                           Padding(
                             padding: const EdgeInsets.only(top: AppSpace.xxs),
-                            child: Text(t('سؤال #${q['question_id']}', 'Question #${q['question_id']}'), style: AppType.bodyStrong(context)),
+                            // D-1131: the question's place on the paper (an older server sends none: the row's order)
+                            child: Text(t('السؤال ${q['position'] ?? i + 1}', 'Question ${q['position'] ?? i + 1}'), style: AppType.bodyStrong(context)),
                           ),
                           ?_appealLine(context, asInt(q['question_id']), q['score'] != null),
                         ]),
                       ),
                       const SizedBox(width: AppSpace.sm),
-                      Flexible(child: Padding(
+                      // the mark sits at the row's end, in a smaller share that wraps rather than overflows
+                      Expanded(
+                        flex: 2,
+                        child: Padding(
                         padding: const EdgeInsets.only(top: AppSpace.xxs),
-                        child: Text(q['score'] == null ? t('قيد المراجعة', 'review') : '${q['score']}',
+                        child: Text(
+                            q['score'] == null
+                                ? t('قيد المراجعة', 'Under review')
+                                : (q['max'] is num ? '${fmtScore(q['score'])} / ${fmtScore(q['max'])}' : fmtScore(q['score'])),
                             textAlign: TextAlign.end, maxLines: 2, overflow: TextOverflow.ellipsis,
                             style: AppType.label(context).copyWith(
                                 color: q['score'] == null ? c.textMedium : c.textDark,
@@ -318,4 +326,11 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
         appBar: AppHeader(title: t('نتيجة الاختبار', 'Exam result'), actions: const [HelpInfoButton(pageId: 'exam.result')]),
         child: ExamResultBody(result: widget.result, examTitle: widget.examTitle, appeals: _appeals, onAppeal: _canAppeal ? _appeal : null),
       );
+}
+
+/// A mark without a trailing ".0" (2.0 → "2", 2.5 → "2.5").
+String fmtScore(Object? v) {
+  final n = v is num ? v : num.tryParse('$v');
+  if (n == null) return '$v';
+  return n == n.roundToDouble() ? '${n.toInt()}' : n.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '');
 }

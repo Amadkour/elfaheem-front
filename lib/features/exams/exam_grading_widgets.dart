@@ -2,6 +2,7 @@
 // answers are still open" sheet, the published banner, cancel / restore a question, the per-option bars of the item
 // analysis, one answer of the student's result and one row of the grade log. The screens own the API calls.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/exams/exam_words.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -63,7 +64,7 @@ class PublishBlockedSheet extends StatelessWidget {
       const SizedBox(height: 12),
       Wrap(spacing: 8, runSpacing: 8, children: [
         if (pending.openAnswers > 0)
-          AppBadgePill(t('${pending.openAnswers} إجابة مفتوحة', '${pending.openAnswers} open answer(s)'), color: c.warning, icon: Icons.rate_review_rounded),
+          AppBadgePill(openAnswersText(pending.openAnswers), color: c.warning, icon: Icons.rate_review_rounded),
         if (pending.openItems > 0)
           AppBadgePill(t('${pending.openItems} عنصر ورقي مفتوح', '${pending.openItems} open paper item(s)'), color: c.warning, icon: Icons.document_scanner_outlined),
       ]),

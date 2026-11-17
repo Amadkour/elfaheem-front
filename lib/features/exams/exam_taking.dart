@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:flutter_education_app/core/app_time.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, asMapList, t;
+import 'package:flutter_education_app/features/exams/exam_policy.dart';
 
 /// The authoritative timer: the server tells `remaining_seconds` at `server_time`; we count down from that instant
 /// with the device clock's DELTA, never its absolute value, so a wrong device clock cannot help or hurt.
@@ -262,6 +263,8 @@ class EventBuffer {
 
 /// Bilingual texts for the taking flow's codes.
 String examCodeText(String code) => switch (code) {
+      'policy_duration' || 'policy_attempts' || 'policy_unlimited_attempts' || 'policy_answer_key' || 'policy_questions' =>
+        examPolicyCodeText(code)!,
       'consent_required' => t('اقرأ الإقرار واقبله قبل بدء الاختبار', 'Read and accept the consent text before starting'),
       'consent_changed' => t('تغيّر نص الإقرار — اقرأ النسخة الجديدة ثم اقبلها', 'The consent text changed — read the new version and accept it'),
       'bad_passcode' => t('رمز الدخول غير صحيح', 'Wrong passcode'),

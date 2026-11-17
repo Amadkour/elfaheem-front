@@ -15,6 +15,7 @@
 // `hub/revision`, `hub/grade`.
 library;
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -25,6 +26,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/exams/exam_policy.dart';
 import 'package:flutter_education_app/features/exams/exam_all.dart';
 import 'package:flutter_education_app/features/exams/exam_all_screen.dart' show staffOrgs;
 import 'package:flutter_education_app/features/exams/exam_authoring.dart';
@@ -87,6 +89,7 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
   void initState() {
     super.initState();
     _load();
+    unawaited(ExamPolicy.load());      // D-1130: read ahead, so New exam opens at once with the platform's defaults
   }
 
   @override
