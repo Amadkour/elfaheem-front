@@ -132,7 +132,7 @@ void main() {
       await _tap(tester, find.text('Publish results to students'));
       await _tap(tester, find.byKey(const ValueKey('app.confirm.ok')));
       expect(find.byType(PublishBlockedSheet), findsOneWidget);
-      expect(find.text('3 open answer(s)'), findsOneWidget);
+      expect(find.text('3 open answers'), findsOneWidget);
       expect(find.text('1 open paper item(s)'), findsOneWidget);
       expect(find.text('Go to review'), findsOneWidget);
 
@@ -195,8 +195,12 @@ void main() {
 
     testWidgets('no answers in the payload keeps the per-question list', (tester) async {
       await _pump(tester, ExamResultBody(result: {'visible': true, 'state': 'graded', 'percentage': 100, 'score': 1, 'max_score': 1,
-            'questions': [{'question_id': 4, 'score': 1}]}, examTitle: 'Quiz'));
-      expect(find.text('Question #4'), findsOneWidget);
+            'questions': [{'question_id': 4, 'score': 1}, {'question_id': 9, 'position': 7, 'score': 1.5, 'max': 2}]}, examTitle: 'Quiz'));
+      // D-1131: the place on the paper, never the database id; an older server's row falls back to its order
+      expect(find.text('Question 1'), findsOneWidget);
+      expect(find.text('Question 7'), findsOneWidget);
+      expect(find.text('1.5 / 2'), findsOneWidget);
+      expect(find.text('Question #4'), findsNothing);
       expect(find.byType(ResultAnswerCard), findsNothing);
       await _end(tester);
     });

@@ -17,6 +17,7 @@ import 'dart:typed_data';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import 'package:flutter_education_app/features/exams/exam_authoring.dart';
 import 'package:flutter_education_app/features/exams/exam_open_key.dart';
+import 'package:flutter_education_app/features/exams/exam_policy.dart';
 
 /// Where the exam is sat.
 enum QuickMode { online, offline }
@@ -206,16 +207,23 @@ class QuickQuestion {
 class QuickExam {
   QuickExam({required this.kind, this.courseId, this.orgId, this.scheduleSlotId, this.sessionId, String? title, this.startsAt, this.endsAt})
       : title = title ?? quickKindTitle(kind) {
+    // D-1130: a quiz (every new exam of the wizard) starts from the super admin's defaults; a midterm or a final keeps
+    // its own longer time and stakes, inside the platform's limits
+    final p = ExamPolicy.current;
     final window = startsAt != null && endsAt != null ? endsAt!.difference(startsAt!).inMinutes : null;
-    durationMinutes = window != null && window > 0
+    durationMinutes = p.clampDuration(window != null && window > 0
         ? window
         : switch (kind) {
-            QuickKind.quiz => 30,
+            QuickKind.quiz => p.durationMinutes,
             QuickKind.midterm => 60,
             QuickKind.finalExam => 120,
-          };
-    highStakes = kind != QuickKind.quiz;
-    resultsPolicy = kind == QuickKind.quiz ? 'after_submit' : 'when_published';
+          });
+    highStakes = kind == QuickKind.quiz ? p.highStakes : true;
+    resultsPolicy = kind == QuickKind.quiz ? p.resultsPolicy : 'when_published';
+    maxAttempts = p.clampAttempts(p.maxAttempts);
+    shuffle = p.shuffle;
+    passingPercent = p.passingPercent;
+    resultsView = p.resultsView;
   }
 
   final QuickKind kind;
@@ -255,6 +263,14 @@ class QuickExam {
   double passingPercent = 50;
   String passcode = '';
 
+  /// What students see of their result (settings.results_view, D-1130 default from the policy).
+  String resultsView = 'score';
+
+  /// [resultsView] as the engine takes it: the answer key shown right after submitting needs an end time
+  /// (422 `answers_key_needs_end`), so without one the key waits and students see their answers.
+  String get effectiveResultsView =>
+      resultsView == 'answers_key' && resultsPolicy == 'after_submit' && endsAt == null ? 'answers' : resultsView;
+
   bool get isFile => source == QuickSource.file;
   bool get hasFile => fileName != null && (fileBytes != null || filePath != null);
   double get totalPoints => isFile ? filePoints : questions.fold(0.0, (s, q) => s + q.points);
@@ -276,6 +292,8 @@ class QuickExam {
     if (title.trim().isEmpty) out.add('title_required');
     if (durationMinutes <= 0) out.add('bad_duration');
     if (maxAttempts < 0 || maxAttempts > 100) out.add('bad_attempts');
+    out.addAll(ExamPolicy.current.check(
+        durationMinutes: durationMinutes, maxAttempts: maxAttempts, questions: isFile ? null : questions.length));
     if (poolSize != null && !isFile && (poolSize! < 1 || (questions.isNotEmpty && poolSize! > questions.length))) out.add('bad_pool');
     if (startsAt != null && endsAt != null && !endsAt!.isAfter(startsAt!)) out.add('bad_window');
     if (isFile) {
@@ -309,6 +327,7 @@ class QuickExam {
       ..settings = {
         'quick': true,
         'mode': mode == QuickMode.offline ? 'offline' : 'online',
+        if (effectiveResultsView != 'score') 'results_view': effectiveResultsView,
         'schedule_slot_id': ?scheduleSlotId,
       };
     return d;
@@ -347,6 +366,8 @@ String quickTypeLabel(String type) => switch (type) {
 String quickModeTitle(QuickMode m) => m == QuickMode.online ? t('إلكتروني في التطبيق', 'Online in the app') : t('طباعة / تصدير', 'Print / export');
 
 String quickCodeText(String code) => switch (code) {
+      'policy_duration' || 'policy_attempts' || 'policy_unlimited_attempts' || 'policy_answer_key' || 'policy_questions' =>
+        examPolicyCodeText(code)!,
       'mode_required' => t('اختر: إلكتروني أم ورقي', 'Choose online or offline'),
       'title_required' => t('اكتب اسم الاختبار', 'Give the exam a name'),
       'bad_duration' => t('المدة يجب أن تكون أكبر من صفر', 'The duration must be more than zero'),

@@ -269,6 +269,7 @@ class ExamCreatePlan {
       ..shuffle = o.shuffle
       ..highStakes = o.highStakes
       ..resultsPolicy = o.resultsPolicy
+      ..resultsView = o.resultsView
       ..passingPercent = o.passingPercent
       ..passcode = o.passcode;
     exam.questions.addAll(o.questions);

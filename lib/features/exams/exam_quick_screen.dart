@@ -32,6 +32,7 @@ import 'package:flutter_education_app/features/exams/exam_gen_api.dart' show kEx
 import 'package:flutter_education_app/features/exams/exam_open_key.dart';
 import 'package:flutter_education_app/features/exams/exam_open_key_widgets.dart';
 import 'package:flutter_education_app/features/exams/exam_paper_sheet.dart' show openExamPaper;
+import 'package:flutter_education_app/features/exams/exam_policy.dart';
 import 'package:flutter_education_app/features/exams/exam_quick.dart';
 import 'package:flutter_education_app/features/exams/exam_results_screen.dart';
 import 'package:flutter_education_app/features/exams/paper/exam_setup.dart' show ExamSetup, ExamSetupApi;
@@ -63,6 +64,10 @@ const paperFileExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'];
 /// opens the legacy create sheet), so the legacy path stays reachable wherever it exists. [api] is for tests.
 Future<int?> openQuickExam(BuildContext context, {int? courseId, int? orgId, QuickKind kind = QuickKind.quiz, int? scheduleSlotId, int? sessionId,
     String? title, DateTime? startsAt, DateTime? endsAt, String course = '', VoidCallback? onClassic, ExamAuthoringApi? api}) async {
+  if (api == null) {
+    await ExamPolicy.load();          // D-1130: the new exam starts from the platform's defaults (cached a minute)
+    if (!context.mounted) return null;
+  }
   final q = QuickExam(
       kind: kind, courseId: courseId, orgId: orgId, scheduleSlotId: scheduleSlotId, sessionId: sessionId, title: title, startsAt: startsAt, endsAt: endsAt);
   var classic = false;

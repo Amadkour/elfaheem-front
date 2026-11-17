@@ -4993,3 +4993,27 @@ reject with a reason the account sees), reached from the users page's `PendingAc
 People group of the services hub, and the user detail sheet (approve / reject); the count is the new attention tab
 `AttentionTabs.adminUsers` (`admin.users`), drawn on the People hub and the phone's More tab. The sign-up role picker
 shows the fee and / or "Needs admin approval" under each role.
+
+## D-1130 — Exam settings: the super admin's exam policy in the app · 2026-11-17 · accepted
+
+Back D-1130 holds the rules. The app: `lib/features/exams/exam_policy.dart` (pure: `ExamPolicy` parses
+`GET /api/v1/exam-policy`, clamps a duration / attempts to the limits, `check()` mirrors the engine's 422 `policy_*`,
+`examPolicyCodeText` words them; `ExamPolicy.current` is the last one read and `fallback` = the old hard-coded values).
+Every creation flow starts a new exam from it: the wizard and the quick exam (`QuickExam`: a quiz takes the defaults,
+a midterm / final keeps its own length and stakes inside the limits), and the classic editor (`ExamDraft.fromPolicy`).
+`openExamCreateWizard` / `openQuickExam` await `ExamPolicy.load()` (cached a minute, 4 s timeout, keeps the last one on
+any failure) and the hub reads it ahead. The answer key "right after submitting" needs an end time, so without one a
+new exam asks for `answers` (`effectiveResultsView`). The super admin's page is `admin_exam_policy_page.dart`
+(Services → Exam settings): four soft stat cards, the defaults, the limits (a tightened limit pulls the defaults inside
+it, `fitPolicyDefaults`), the methods in three groups (each a kill-switch key, like the AI controls) and links to the
+older exam pages. `ExamPolicyBody` takes plain values (test/ui/exam_policy_layout_test.dart).
+
+## D-1131 — Exam review round · 2026-11-17 · accepted
+
+The student's per-question result reads "Question N · score / max" from the engine's new `position` / `max` (it read
+"Question #<database id>" and had no points to judge a partial mark), its mark sits at the row's end (a Flexible
+beside the Expanded split the free space in two), and "review" reads "Under review". Counts with a noun go through
+`exam_words.dart` (`questionsText`, `questionsReadyText`, `openAnswersText`): the submit dialog, Google Forms import,
+the generator and the open-answers badge said "3 سؤالاً" / "open answer(s)". Back D-1131: a high-stakes exam's result
+waits for the teacher's approval even with results right after submitting.
+

@@ -16,6 +16,7 @@
 // feedback, rag_learning.dart; a rejection at once, the rest as one batch when the exam is saved).
 library;
 
+import 'package:flutter_education_app/features/exams/exam_words.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 
@@ -99,7 +100,7 @@ String? examGenSummary(ExamGenDraft d) {
   final dropped = asInt(r['dropped']);
   final extractive = asInt(r['extractive']);
   final parts = <String>[
-    t('${d.questions.length} سؤالاً', '${d.questions.length} questions'),
+    questionsText(d.questions.length),
     if (topics > 0) t('$topics موضوعات اختارها المخطِّط', '$topics topics picked by the planner'),
     if (dropped > 0) t('حذف المراجع $dropped', 'reviewer dropped $dropped'),
     if (extractive > 0 && d.byModel) t('$extractive مقتبسة مباشرة', '$extractive quoted directly'),

@@ -21,6 +21,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/exams/exam_words.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/core/plural.dart';
@@ -432,7 +433,7 @@ class GenQuestionsStep extends StatelessWidget {
         child: Text(
           tooMany
               ? genV2CodeText('too_many_questions', '')
-              : t('المجموع: $total سؤالاً · ${genNum(genTotalMarks(rows))} درجة', 'Total: $total questions · ${genNum(genTotalMarks(rows))} marks'),
+              : t('المجموع: ${questionsText(total)} · ${genNum(genTotalMarks(rows))} درجة', 'Total: ${questionsText(total)} · ${genNum(genTotalMarks(rows))} marks'),
           style: appText(13.5, w: FontWeight.w700, c: tooMany ? c.danger : c.textDark),
         ),
       ),
@@ -1143,8 +1144,8 @@ class _ExamGenWizardState extends State<ExamGenWizard> {
     unawaited(_api.claim(job.id));
     final left = job.questions.length - items.length;
     appToast(left > 0
-        ? t('${items.length} سؤالاً جاهزاً، وتعذّر كتابة $left', '${items.length} questions ready, $left could not be written')
-        : t('${items.length} سؤالاً جاهزاً', '${items.length} questions ready'));
+        ? t('${questionsReadyText(items.length)}، وتعذّر كتابة $left', '${questionsReadyText(items.length)}, $left could not be written')
+        : questionsReadyText(items.length));
     final notice = [for (final w in job.warnings) if (w.code == 'rules_writer' || w.code == 'topic_only') w.text];
     Navigator.pop(context, ExamGenResult(job.id, items, notice: notice.isEmpty ? '' : notice.first));
   }
@@ -1218,7 +1219,7 @@ class _ExamGenWizardState extends State<ExamGenWizard> {
       };
 
   String get _primaryLabel => switch (_step) {
-        GenWizardStep.language => t('أنشئ ${genTotalQuestions(_rows)} سؤالاً', 'Generate ${genTotalQuestions(_rows)} questions'),
+        GenWizardStep.language => t('أنشئ ${questionsText(genTotalQuestions(_rows))}', 'Generate ${questionsText(genTotalQuestions(_rows))}'),
         _ => t('التالي', 'Next'),
       };
 

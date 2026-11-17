@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppFill, AppPressScale;
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart' show AppFonts;
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -357,7 +358,8 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> with WidgetsBinding
     final unanswered = _paper.onlineCount - _paper.answeredCount;
     final ok = await appConfirm(context,
         message: unanswered > 0
-            ? t('لديك $unanswered سؤالاً بلا إجابة. تسليم الاختبار؟', 'You have $unanswered unanswered question(s). Submit the exam?')
+            ? t('لديك ${countText(unanswered, ar1: 'سؤال واحد', ar2: 'سؤالان', arFew: '{n} أسئلة', arMany: '{n} سؤالاً', en1: '1 question', en: '{n} questions')} بلا إجابة. تسليم الاختبار؟',
+                'You have ${countText(unanswered, ar1: 'سؤال واحد', ar2: 'سؤالان', arFew: '{n} أسئلة', arMany: '{n} سؤالاً', en1: '1 question', en: '{n} questions')} unanswered. Submit the exam?')
             : t('تسليم الاختبار الآن؟', 'Submit the exam now?'),
         confirmLabel: t('تسليم', 'Submit'));
     if (!ok || !mounted) return;

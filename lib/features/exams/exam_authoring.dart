@@ -10,6 +10,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_education_app/core/api_client.dart';
 
+import 'package:flutter_education_app/features/exams/exam_policy.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
 import 'package:flutter_education_app/features/exams/exam_grading.dart' show resultsViews;
@@ -576,6 +577,17 @@ class BankQuestion {
 // ── exam settings ───────────────────────────────────────────────────────────────────────────────────────────────
 
 class ExamDraft {
+  ExamDraft();
+
+  /// A new exam from the super admin's defaults (D-1130): the duration and attempts inside the platform's limits.
+  factory ExamDraft.fromPolicy(ExamPolicy p) => ExamDraft()
+    ..durationMinutes = p.clampDuration(p.durationMinutes)
+    ..maxAttempts = p.clampAttempts(p.maxAttempts)
+    ..resultsPolicy = p.resultsPolicy
+    ..resultsView = p.resultsView == 'answers_key' && p.resultsPolicy == 'after_submit' ? 'answers' : p.resultsView
+    ..passingPercent = p.passingPercent
+    ..highStakes = p.highStakes;
+
   int? id;
   int? orgId;
   int? courseId;
