@@ -64,7 +64,7 @@ import 'package:flutter_education_app/features/exams/hub/create/question_sources
 
 /// Opens the wizard. [courseId] / [orgId] fix or narrow where the exam goes.
 Future<void> openExamCreateWizard(BuildContext context, {int? orgId, int? courseId}) async {
-  await ExamPolicy.load();             // D-1130: the new exam starts from the platform's defaults (cached a minute)
+  await ExamPolicy.load(orgId: orgId);  // D-1130 / D-1133: the platform's (or the organization's) defaults
   if (!context.mounted) return;
   await Navigator.of(context).push<void>(MaterialPageRoute(
     // the name the paper setup already uses: the browser's Back belongs to this page, not to a deep link

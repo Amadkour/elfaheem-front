@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/admin/admin_exam_policy_page.dart';
 import 'package:flutter_education_app/features/exams/exam_policy.dart';
+import 'package:flutter_education_app/features/org/org_exam_policy_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -43,5 +44,34 @@ void main() {
     expect(p.maxAttempts, 3);
     expect(p.resultsView, 'answers');
     expect(p.durationMinutes, 60);
+  });
+
+  testWidgets('organization exam policy body: no overflow anywhere', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () => SingleChildScrollView(
+        child: OrgExamPolicyBody(
+          platform: const ExamPolicy(maxDurationMinutes: 180, attemptsCap: 3, allowAnswerKey: false),
+          limits: const OrgExamLimits(maxDuration: 90, noUnlimited: true),
+          methods: [
+            OrgExamMethod(method: _methods[0], platformOn: true, on: true),
+            OrgExamMethod(method: _methods[1], platformOn: false, on: true),
+            OrgExamMethod(method: _methods[3], platformOn: true, on: false, inheritedOff: true),
+            OrgExamMethod(method: _methods[4], platformOn: true, on: false),
+          ],
+          onLimits: (_) {},
+          onMethod: (_, _) {},
+        ),
+      ),
+    );
+  });
+
+  test('organization limits: follow the platform = null, the body sends every key', () {
+    final l = OrgExamLimits.fromJson(const {'max_attempts': 2, 'allow_answer_key': false});
+    expect(l.maxDuration, isNull);
+    expect(l.toJson(), {'max_duration_minutes': null, 'max_attempts': 2, 'max_questions': null, 'allow_unlimited_attempts': null, 'allow_answer_key': false});
+    expect(l.copy(maxAttempts: () => null).maxAttempts, isNull);
+    const m = OrgExamMethod(method: ExamMethod(key: 'exam.omr', group: 'create', title: 'x', about: '', on: true), platformOn: false, on: true);
+    expect(m.editable, isFalse);
   });
 }

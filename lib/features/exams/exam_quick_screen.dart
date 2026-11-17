@@ -65,7 +65,7 @@ const paperFileExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'];
 Future<int?> openQuickExam(BuildContext context, {int? courseId, int? orgId, QuickKind kind = QuickKind.quiz, int? scheduleSlotId, int? sessionId,
     String? title, DateTime? startsAt, DateTime? endsAt, String course = '', VoidCallback? onClassic, ExamAuthoringApi? api}) async {
   if (api == null) {
-    await ExamPolicy.load();          // D-1130: the new exam starts from the platform's defaults (cached a minute)
+    await ExamPolicy.load(orgId: orgId);   // D-1130 / D-1133: the platform's (or the organization's) defaults
     if (!context.mounted) return null;
   }
   final q = QuickExam(

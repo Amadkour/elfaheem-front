@@ -5017,3 +5017,22 @@ beside the Expanded split the free space in two), and "review" reads "Under revi
 the generator and the open-answers badge said "3 سؤالاً" / "open answer(s)". Back D-1131: a high-stakes exam's result
 waits for the teacher's approval even with results right after submitting.
 
+## D-1133 — The organization's exam policy page · 2026-11-17 · accepted
+
+Back D-1133 holds the rules (an organization only tightens). `lib/features/org/org_exam_policy_page.dart`, opened from
+the organization's settings (org admin, "Exam policy"): each limit is "Follows the platform" or the organization's own
+number, at most the platform's ceiling shown beside it; the unlimited-attempts and answer-key switches can only be
+turned off; the methods (`OrgExamMethod`) save at once, and a method the platform switched off, or a parent
+organization did, reads so and cannot be changed here. `ExamPolicy.load(orgId:)` reads the organization's EFFECTIVE
+policy for a new exam inside it (`openExamCreateWizard`, `openQuickExam`). Tests in test/ui/exam_policy_layout_test.dart.
+
+## D-1134 — Exam screens render round · 2026-11-17 · accepted
+
+The exam screens were rendered at 390 / 1440, ar + en, with the visual suites' real-shaped payloads (hub, wizard,
+quick builder, taking, results, OMR review) and looked at. Changed: the student's exam card makes Start / Resume a
+real primary button (it was a pale pill the weight of "Saved for offline") and highlights the card of an open attempt
+(the A2 one-main-card rule); the empty hub no longer shows New exam twice (header + empty state). Checked and left as
+they are: the hub's one next step per exam and its tracker, role visibility of the hub entry (teachers, and anyone who
+teaches in an organization), exam times through `AppTime` and the server clock, resume of an open attempt and the
+autosave queue's refusal to submit with unsaved answers.
+
