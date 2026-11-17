@@ -23,6 +23,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_api.dart';
+import 'golden_sizes.dart';
 import 'home_screens_golden_test.dart' show pubspecFonts;
 
 String _sdkFonts() {
@@ -75,9 +76,9 @@ Future<void> _render(WidgetTester tester, String name, Widget Function() build, 
   debugDisableShadows = false;
   final fake = FakeApi(const {}, latency: const Duration(milliseconds: 5))..install();
   try {
-    for (final size in const [Size(390, 844), Size(1440, 900)]) {
+    for (final size in goldenSizes(const [Size(390, 844), Size(1440, 900)])) {
       for (final lang in const ['ar', 'en']) {
-        for (final dark in const [false, true]) {
+        for (final dark in goldenThemes()) {
           AppConfig.lang = lang;
           tester.view.devicePixelRatio = 1;
           tester.view.physicalSize = size;

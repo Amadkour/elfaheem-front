@@ -124,6 +124,6 @@ void main() {
     expect(flagText('llm_disagrees'), isNot('llm_disagrees'));
     AppConfig.lang = 'ar';
     expect(flagText('role_swap'), 'تبديل الأدوار بين المفاهيم');
-    expect(flagText('unknown_flag'), 'unknown_flag');
+    expect(flagText('unknown_flag'), 'علامة للمراجعة');   // D-1135: an unknown flag reads as words, never the raw key
   });
 }

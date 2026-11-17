@@ -23,6 +23,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show asInt, asMap, t, asMapList;
 import 'package:flutter_education_app/features/admin/admin_money_p8.dart' show p8SaveBytes;
 import 'package:flutter_education_app/features/courses/student/security/device_id_service.dart';
+import 'package:flutter_education_app/features/exams/exam_authoring.dart' show categoryLabel;
 import 'package:flutter_education_app/features/exams/exam_consent_screen.dart';
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
 import 'package:flutter_education_app/features/exams/exam_integrity.dart';
@@ -267,7 +268,12 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> with WidgetsBinding
       return;
     }
     for (final a in actionsOf(r.map)) {
-      if (a.warns) setState(() => _warning = t('تنبيه: تم تسجيل ${a.category}', 'Warning: ${a.category} was recorded'));
+      if (a.warns) {
+        final what = integrityReasonText(a.category);
+        setState(() => _warning = what == null
+            ? t('تنبيه: سُجّل سلوك مخالف لقواعد الاختبار', 'Warning: something against the exam rules was recorded')
+            : t('تنبيه: سُجّل $what', 'Warning: ${what.toLowerCase()} was recorded'));
+      }
       if (a.locks) setState(() { _locked = true; _lockReason = a.category; });
       if (a.submits) {
         _finished = true;
@@ -355,6 +361,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> with WidgetsBinding
   }
 
   Future<void> _submit() async {
+    if (_submitting || _finished) return;           // a second tap while the first is on its way never sends twice
     final unanswered = _paper.onlineCount - _paper.answeredCount;
     final ok = await appConfirm(context,
         message: unanswered > 0
@@ -362,7 +369,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> with WidgetsBinding
                 'You have ${countText(unanswered, ar1: 'سؤال واحد', ar2: 'سؤالان', arFew: '{n} أسئلة', arMany: '{n} سؤالاً', en1: '1 question', en: '{n} questions')} unanswered. Submit the exam?')
             : t('تسليم الاختبار الآن؟', 'Submit the exam now?'),
         confirmLabel: t('تسليم', 'Submit'));
-    if (!ok || !mounted) return;
+    if (!ok || !mounted || _submitting || _finished) return;
     setState(() => _submitting = true);
     for (var i = 0; i < 3 && !_queue.isEmpty && !_finished; i++) {
       await _flush();
@@ -381,6 +388,13 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> with WidgetsBinding
       if (r.code == 'attempt_submitted' || r.code == 'deadline_passed') {
         final res = await _api.attempt(_attemptId);
         if (mounted) _showResult(res.ok ? asMap(res.map['result']) : {'visible': false});
+        return;
+      }
+      if (r.status == 0) {
+        // D-1135: the connection dropped on the way. Never a silent tap: the answers are saved, the exam is still
+        // open, and a second submit is safe (a submit that did reach the server answers attempt_submitted)
+        appToast(t('انقطع الاتصال قبل التسليم — إجاباتك محفوظة. أعد التسليم عند عودة الاتصال',
+            'The connection dropped before the exam was submitted — your answers are saved. Submit again when you are back online'), error: true);
         return;
       }
       await _handleFailure(r);
@@ -585,13 +599,22 @@ class ExamProgressBar extends StatelessWidget {
         if (locked)
           Padding(
             padding: const EdgeInsets.only(top: AppSpace.xs),
-            child: AppBanner(icon: Icons.lock_rounded, color: c.warning, text: '${examCodeText('attempt_locked')}${lockReason == null || lockReason!.isEmpty ? '' : ' ($lockReason)'}'),
+            child: AppBanner(icon: Icons.lock_rounded, color: c.warning, text: '${examCodeText('attempt_locked')}${integrityReasonText(lockReason) == null ? '' : ' (${integrityReasonText(lockReason)})'}'),
           )
         else if (warning != null)
           Padding(padding: const EdgeInsets.only(top: AppSpace.xs), child: AppBanner(icon: Icons.warning_amber_rounded, color: c.warning, text: warning!)),
       ]),
     ));
   }
+}
+
+/// What an integrity category means, in words (D-1135: the raw key such as "other_app" reached the student); null for
+/// an empty or unknown one, so the caller leaves it out rather than show a code.
+String? integrityReasonText(String? category) {
+  final c = (category ?? '').trim();
+  if (c.isEmpty) return null;
+  final label = categoryLabel(c);
+  return label == c ? null : label;
 }
 
 /// The progress strip: a segment per question, answered = the primary, unanswered = the hairline tone, the open one

@@ -12,18 +12,24 @@ import 'package:flutter_education_app/features/exams/exam_authoring.dart' show E
 import 'package:flutter_education_app/features/exams/exam_grading.dart';
 import 'package:flutter_education_app/features/exams/exam_grading_widgets.dart';
 import 'package:flutter_education_app/features/exams/exam_insights.dart';
+import 'package:flutter_education_app/features/exams/exam_review_screen.dart' show loadExamStudentNames;
 import 'package:flutter_education_app/features/exams/exam_page_width.dart';
 import 'package:flutter_education_app/features/exams/exam_review.dart' show scoreError;
 import 'package:flutter_education_app/features/exams/hub/result/key_fix.dart' show kKeyFixFlags, keyFixCandidates, keyFixable;
 import 'package:flutter_education_app/features/exams/hub/result/key_fix_sheet.dart' show openKeyFix;
+
+String _of(double? max) => max == null ? '' : ' / ${_n(max)}';
 
 String _n(double? v) => v == null ? '—' : (v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2));
 
 // ── appeals ───────────────────────────────────────────────────────────────────────────────────────────────────
 
 class AppealCard extends StatelessWidget {
-  const AppealCard({super.key, required this.appeal, this.onClaim, this.onDecide, this.onWithdraw});
+  const AppealCard({super.key, required this.appeal, this.onClaim, this.onDecide, this.onWithdraw, this.studentName});
   final Appeal appeal;
+
+  /// The student's name (D-1135); the pseudonym under anonymous marking, else "Student #n" when it is not known.
+  final String? studentName;
   final VoidCallback? onClaim;
   final VoidCallback? onDecide;
   final VoidCallback? onWithdraw;
@@ -38,15 +44,16 @@ class AppealCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
           AppBadgePill(appealStateText(a.state), color: color),
-          Text(t('سؤال #${a.questionId}', 'Question #${a.questionId}'), style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
-          if (onClaim != null || onDecide != null) Text(t('الطالب ${a.studentLabel}', 'Student ${a.studentLabel}'), style: appText(12.5, c: c.textMedium)),
+          Text(a.questionLabel, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+          if (onClaim != null || onDecide != null)
+            Text(studentName ?? t('الطالب ${a.studentLabel}', 'Student ${a.studentLabel}'), style: appText(12.5, c: c.textMedium)),
         ]),
         const SizedBox(height: 8),
         Text(a.reason, style: appText(13.5, c: c.textDark)),
         const SizedBox(height: 6),
         Text(a.scoreAfter != null && a.scoreAfter != a.scoreBefore
-                ? t('الدرجة: ${_n(a.scoreBefore)} ← ${_n(a.scoreAfter)}', 'Score: ${_n(a.scoreBefore)} → ${_n(a.scoreAfter)}')
-                : t('الدرجة: ${_n(a.scoreBefore)}', 'Score: ${_n(a.scoreBefore)}'),
+                ? t('الدرجة: ${_n(a.scoreBefore)} ← ${_n(a.scoreAfter)}${_of(a.max)}', 'Score: ${_n(a.scoreBefore)} → ${_n(a.scoreAfter)}${_of(a.max)}')
+                : t('الدرجة: ${_n(a.scoreBefore)}${_of(a.max)}', 'Score: ${_n(a.scoreBefore)}${_of(a.max)}'),
             style: appText(12.5, c: c.textMedium)),
         if (a.note != null && a.note!.isNotEmpty) ...[
           const SizedBox(height: 6),
@@ -110,7 +117,19 @@ class _AppealDecisionSheetState extends State<AppealDecisionSheet> {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        AppSectionTitle(t('قرار التظلم', 'Appeal decision'), subtitle: widget.appeal.reason),
+        AppSectionTitle(t('قرار التظلم', 'Appeal decision'),
+            subtitle: t('${widget.appeal.questionLabel} · الدرجة الحالية ${_n(widget.appeal.scoreBefore)}${_of(widget.points ?? widget.appeal.max)}',
+                '${widget.appeal.questionLabel} · current score ${_n(widget.appeal.scoreBefore)}${_of(widget.points ?? widget.appeal.max)}')),
+        // the student's own words, as they wrote them: what the decision answers
+        AppCard(
+          padding: const EdgeInsets.all(AppSpace.md),
+          margin: const EdgeInsets.only(bottom: AppSpace.md),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(t('سبب الطالب', "The student's reason"), style: appText(12, w: FontWeight.w700, c: c.textMedium)),
+            const SizedBox(height: AppSpace.xxs),
+            Text(widget.appeal.reason, style: appText(13.5, c: c.textDark)),
+          ]),
+        ),
         Wrap(spacing: 8, children: [
           AppChoiceChip(label: t('قبول وتعديل الدرجة', 'Accept, change the score'), selected: _accept, onTap: () => setState(() => _accept = true)),
           AppChoiceChip(label: t('رفض', 'Reject'), selected: !_accept, onTap: () => setState(() => _accept = false)),
@@ -200,13 +219,21 @@ class _ExamAppealsScreenState extends State<ExamAppealsScreen> {
     _load();
   }
 
+  /// student id → name, read once per appeal list (an anonymous exam sends pseudonyms, no ids)
+  final Map<int, String> _names = {};
+
   Future<void> _load() async {
     final r = await _api.examAppeals(widget.examId, state: _state);
     if (!mounted) return;
+    final items = r.ok ? asMapListOf(r.map['items']).map(Appeal.fromJson).toList() : const <Appeal>[];
     setState(() {
       _error = r.ok ? null : appealCodeText(r.code, r.message);
-      _items = r.ok ? asMapListOf(r.map['items']).map(Appeal.fromJson).toList() : const [];
+      _items = items;
     });
+    final want = {for (final a in items) ?a.studentId}..removeAll(_names.keys);
+    if (want.isEmpty) return;
+    await loadExamStudentNames(widget.examId, want, _names);
+    if (mounted) setState(() {});
   }
 
   Future<void> _claim(Appeal a) async {
@@ -219,7 +246,7 @@ class _ExamAppealsScreenState extends State<ExamAppealsScreen> {
   Future<void> _decide(Appeal a) async {
     final done = await showAppSheet<bool>(context, (_) => AppealDecisionSheet(
           appeal: a,
-          points: widget.pointsOf[a.questionId],
+          points: widget.pointsOf[a.questionId] ?? a.max,
           onSave: ({required bool accept, double? score, required String note}) async {
             final r = await _api.decide(a.id, accept: accept, score: score, note: note);
             return r.ok ? null : appealCodeText(r.code, r.message);
@@ -249,7 +276,8 @@ class _ExamAppealsScreenState extends State<ExamAppealsScreen> {
           if (items != null && items.isEmpty) AppEmpty(icon: Icons.inbox_outlined, title: t('لا توجد تظلمات هنا', 'No appeals here')),
           if (items != null)
             for (final a in items)
-              AppealCard(appeal: a, onClaim: a.state == 'open' ? () => _claim(a) : null, onDecide: a.open ? () => _decide(a) : null),
+              AppealCard(appeal: a, studentName: a.studentId == null ? null : _names[a.studentId],
+                  onClaim: a.state == 'open' ? () => _claim(a) : null, onDecide: a.open ? () => _decide(a) : null),
         ])),
       ),
     );
@@ -336,7 +364,7 @@ class ExamAnalyticsBody extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 8),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              Text(t('سؤال #${it.questionId}', 'Question #${it.questionId}'), style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+              Text(it.questionLabel, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
               AppBadgePill(t('صعوبة ${_n(it.difficulty)}', 'p ${_n(it.difficulty)}'), color: c.textMedium),
               AppBadgePill(t('تمييز ${_n(it.discrimination)}', 'r ${_n(it.discrimination)}'), color: c.textMedium),
               for (final f in it.flags) AppBadgePill(itemFlagText(f), color: f == 'negative' ? c.danger : c.warning),
@@ -376,7 +404,8 @@ class ExamAnalyticsBody extends StatelessWidget {
       if (data.riskCount == 0) AppEmpty(icon: Icons.verified_user_outlined, title: t('لا توجد مؤشرات', 'No signals')),
       for (final p in data.riskList('similar_answers'))
         _RiskRow(icon: Icons.content_copy_rounded,
-            text: t('إجابتان متشابهتان على السؤال #${p['question_id']}: ${p['a']} و ${p['b']}', 'Similar answers to question #${p['question_id']}: ${p['a']} and ${p['b']}')),
+            text: t('إجابتان متشابهتان على ${questionText(p['position'] == null ? null : asInt(p['position']))}: ${p['a']} و ${p['b']}',
+                'Similar answers to ${questionText(p['position'] == null ? null : asInt(p['position'])).toLowerCase()}: ${p['a']} and ${p['b']}')),
       for (final p in data.riskList('shared_wrong_answers'))
         _RiskRow(icon: Icons.rule_rounded,
             text: t('${p['a']} و ${p['b']} اختارا الإجابة الخاطئة نفسها في ${asInt(p['shared_wrong'])} أسئلة',
@@ -444,7 +473,7 @@ class _ExamAnalyticsScreenState extends State<ExamAnalyticsScreen> {
   Future<void> _void(ItemStat it, {required bool restore}) async {
     final api = ExamGradingApi();
     final done = await showAppSheet<bool>(context, (_) => VoidQuestionSheet(
-          questionLabel: t('سؤال #${it.questionId}', 'Question #${it.questionId}'),
+          questionLabel: it.questionLabel,
           restoring: restore,
           onSubmit: (reason, mode) async {
             final r = restore

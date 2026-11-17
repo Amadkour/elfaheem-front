@@ -3,6 +3,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/exams/exam_insights.dart';
 import 'package:flutter_education_app/features/exams/exam_insights_screen.dart';
 import 'package:flutter_education_app/features/exams/exam_result_screen.dart' show ExamResultBody;
+import 'package:flutter_education_app/features/exams/exam_review.dart' show flagText;
+import 'package:flutter_education_app/features/exams/exam_taking_screen.dart' show integrityReasonText;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';
@@ -58,7 +60,28 @@ void main() {
     expect(itemFlagText('negative'), isNot('negative'));
   });
 
+  test('D-1135: a question is named by its place, never its database id; grader flags read as words', () {
+    AppConfig.lang = 'en';
+    final a = Appeal.fromJson({..._appeal(), 'position': 3, 'max': 5});
+    expect(a.questionLabel, 'Question 3');
+    expect(a.max, 5);
+    expect(Appeal.fromJson(_appeal()).questionLabel, 'Question');          // an older server: no place, no id either
+    final items = ExamAnalytics.fromJson({
+      ..._analytics(),
+      'data': {...(_analytics()['data'] as Map), 'items': [{'question_id': 4821, 'position': 2, 'type': 'essay', 'points': 2, 'answered': 6, 'flags': []}]},
+    }).items;
+    expect(items.single.questionLabel, 'Question 2');
+    for (final f in const ['symbols', 'memory_wrong', 'other_language', 'something_new']) {
+      expect(flagText(f), isNot(f));
+    }
+    expect(integrityReasonText('other_app'), 'Opening another app');
+    expect(integrityReasonText('not_a_category'), isNull);
+    expect(integrityReasonText(null), isNull);
+  });
+
   testWidgets('appeal card (manager and decided), decision sheet, student sheet — no overflow', (tester) async {
+    await expectNoLayoutErrors(tester, () => SingleChildScrollView(child: AppealCard(appeal: Appeal.fromJson({..._appeal(), 'position': 12, 'max': 5}),
+        studentName: 'مريم عبد الرحمن محمود الشريف', onClaim: () {}, onDecide: () {})));
     await expectNoLayoutErrors(tester, () => SingleChildScrollView(child: AppealCard(appeal: Appeal.fromJson(_appeal()), onClaim: () {}, onDecide: () {})));
     await expectNoLayoutErrors(tester, () => SingleChildScrollView(child: AppealCard(appeal: Appeal.fromJson(_appeal(state: 'accepted', note: 'Fair: full marks for the light step.')))));
     await expectNoLayoutErrors(tester, () => AppealDecisionSheet(appeal: Appeal.fromJson(_appeal()), points: 2,
