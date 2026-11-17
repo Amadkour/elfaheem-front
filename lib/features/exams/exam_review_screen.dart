@@ -92,6 +92,37 @@ String approvableProposalsText(int n) => countText(n,
     en1: '1 high-confidence proposal can be approved now',
     en: '{n} high-confidence proposals can be approved at once');
 
+/// Fills [names] (student id → name) for the ids in [want]: the exam's audience first, then the course roster for
+/// anyone it did not list (a class larger than one audience page). Best effort: a failed read leaves the ids out.
+Future<void> loadExamStudentNames(int examId, Set<int> want, Map<int, String> names, {bool audience = true, bool roster = true}) async {
+  want = {...want}..removeAll(names.keys);
+  if (want.isEmpty) return;
+  if (audience) {
+    final r = await OmrReviewApi().audience(examId, '', limit: kOmrAudiencePage);
+    if (r.ok) {
+      for (final s in OmrAudience.fromJson(r.map).items) {
+        if (s.name.trim().isNotEmpty) names[s.id] = s.name;
+      }
+    }
+    want.removeAll(names.keys);
+  }
+  if (want.isNotEmpty && roster) {
+    final api = ExamAuthoringApi();
+    final ex = await api.exam(examId);
+    final courseId = ex.ok ? ExamView.fromJson(ex.map).exam.courseId : null;
+    if (courseId != null) {
+      final r = await api.courseStudents(courseId);
+      if (r.ok) {
+        final list = r.map['value'] is List ? asMapList(r.map['value']) : asMapList(r.map['items']);
+        for (final s in list) {
+          final name = '${s['name'] ?? ''}'.trim();
+          if (name.isNotEmpty) names.putIfAbsent(asInt(s['id']), () => name);
+        }
+      }
+    }
+  }
+}
+
 /// Who an answer belongs to, in words: the student's name, the pseudonym under anonymous marking, else "Student #n".
 String reviewStudentText(ReviewItem item, Map<int, String> names) {
   final id = item.studentId;
@@ -406,33 +437,10 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
   Future<void> _loadNames(List<ReviewItem> items) async {
     final want = {for (final it in items) ?it.studentId}..removeAll(_names.keys);
     if (want.isEmpty) return;
-    if (!_audienceTried) {
-      _audienceTried = true;
-      final r = await OmrReviewApi().audience(widget.examId, '', limit: kOmrAudiencePage);
-      if (r.ok) {
-        for (final s in OmrAudience.fromJson(r.map).items) {
-          if (s.name.trim().isNotEmpty) _names[s.id] = s.name;
-        }
-      }
-      want.removeAll(_names.keys);
-    }
-    if (want.isNotEmpty && !_rosterTried) {
-      // a class larger than one audience page: the course roster has everyone
-      _rosterTried = true;
-      final api = ExamAuthoringApi();
-      final ex = await api.exam(widget.examId);
-      final courseId = ex.ok ? ExamView.fromJson(ex.map).exam.courseId : null;
-      if (courseId != null) {
-        final r = await api.courseStudents(courseId);
-        if (r.ok) {
-          final list = r.map['value'] is List ? asMapList(r.map['value']) : asMapList(r.map['items']);
-          for (final s in list) {
-            final name = '${s['name'] ?? ''}'.trim();
-            if (name.isNotEmpty) _names.putIfAbsent(asInt(s['id']), () => name);
-          }
-        }
-      }
-    }
+    final tries = (audience: !_audienceTried, roster: !_rosterTried);
+    _audienceTried = true;
+    _rosterTried = true;
+    await loadExamStudentNames(widget.examId, want, _names, audience: tries.audience, roster: tries.roster);
     if (mounted) setState(() {});
   }
 

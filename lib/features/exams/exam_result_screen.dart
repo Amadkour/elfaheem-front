@@ -309,9 +309,19 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
     });
   }
 
+  /// "Question 3 · 2 / 5" from the result's own rows (D-1131 / D-1135), never the database id.
+  String _questionLabel(int questionId) {
+    for (final q in asMapList(widget.result['questions'])) {
+      if (asInt(q['question_id']) != questionId || q['position'] == null) continue;
+      final pos = asInt(q['position']);
+      return t('السؤال $pos', 'Question $pos');
+    }
+    return t('السؤال', 'Question');
+  }
+
   Future<void> _appeal(int questionId) async {
     final sent = await showAppSheet<bool>(context, (_) => StudentAppealSheet(
-          questionLabel: t('سؤال #$questionId', 'Question #$questionId'),
+          questionLabel: _questionLabel(questionId),
           onSubmit: (reason) async {
             final r = await _api.appeal(_attemptId, questionId, reason);
             return r.ok ? null : appealCodeText(r.code, r.message);

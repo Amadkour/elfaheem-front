@@ -28,6 +28,7 @@ import 'package:flutter_education_app/features/exams/offline/offline_exam_core.d
 import 'package:flutter_education_app/features/exams/offline/offline_exam_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'golden_sizes.dart';
 import 'home_screens_golden_test.dart' show pubspecFonts;
 
 String _sdkFonts() {
@@ -237,9 +238,9 @@ Future<void> _render(WidgetTester tester, String name, Widget Function() build) 
   final prevLang = AppConfig.lang;
   debugDisableShadows = false;
   try {
-    for (final size in const [Size(390, 844), Size(1440, 900)]) {
+    for (final size in goldenSizes(const [Size(390, 844), Size(1440, 900)])) {
       for (final lang in const ['ar', 'en']) {
-        for (final dark in const [false, true]) {
+        for (final dark in goldenThemes()) {
           AppConfig.lang = lang;
           tester.view.devicePixelRatio = 1;
           tester.view.physicalSize = size;

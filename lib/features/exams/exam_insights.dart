@@ -10,9 +10,13 @@ import 'package:flutter_education_app/features/exams/exam_engine_api.dart';
 
 double? _d(dynamic v) => v == null ? null : (v is num ? v.toDouble() : double.tryParse('$v'));
 
+/// "Question 3" from a question's place in the exam (D-1135); "Question" when the server sent no place. Never the
+/// database id: a person cannot find "Question #4821" on the paper.
+String questionText(int? position) => position == null ? t('السؤال', 'Question') : t('السؤال $position', 'Question $position');
+
 class Appeal {
   Appeal({required this.id, required this.attemptId, required this.questionId, required this.state, required this.reason,
-      this.studentId, this.studentCode, this.reviewerId, this.note, this.scoreBefore, this.scoreAfter, this.createdAt});
+      this.studentId, this.studentCode, this.reviewerId, this.note, this.scoreBefore, this.scoreAfter, this.createdAt, this.position, this.max});
   final int id;
   final int attemptId;
   final int questionId;
@@ -26,6 +30,13 @@ class Appeal {
   final double? scoreAfter;
   final String? createdAt;
 
+  /// The question's place on the student's paper and its points (D-1135); null from an older server.
+  final int? position;
+  final double? max;
+
+  /// "Question 3", never a database id; an older server without the place reads just "Question".
+  String get questionLabel => questionText(position);
+
   bool get open => state == 'open' || state == 'in_review';
   String get studentLabel => studentCode ?? (studentId == null ? '—' : '#$studentId');
 
@@ -34,7 +45,7 @@ class Appeal {
         reason: '${j['reason'] ?? ''}', studentId: j['student_id'] == null ? null : asInt(j['student_id']),
         studentCode: j['student_code']?.toString(), reviewerId: j['reviewer_id'] == null ? null : asInt(j['reviewer_id']),
         note: j['decision_note']?.toString(), scoreBefore: _d(j['score_before']), scoreAfter: _d(j['score_after']),
-        createdAt: j['created_at']?.toString(),
+        createdAt: j['created_at']?.toString(), position: j['position'] == null ? null : asInt(j['position']), max: _d(j['max']),
       );
 }
 
@@ -81,8 +92,13 @@ class OptionStat {
 class ItemStat {
   ItemStat({required this.questionId, required this.type, required this.points, required this.answered, this.difficulty,
       this.discrimination, this.upperLower, this.options = const {}, this.flags = const [], this.optionStats = const [],
-      this.unusedDistractors = const [], this.voided = false});
+      this.unusedDistractors = const [], this.voided = false, this.position});
   final int questionId;
+
+  /// The question's place in the exam (D-1135); null from an older server.
+  final int? position;
+
+  String get questionLabel => questionText(position);
   final String type;
   final double points;
   final int answered;
@@ -106,7 +122,8 @@ class ItemStat {
     final rawStats = j['option_stats'] is List ? j['option_stats'] : (raw is List ? raw : const []);
     final stats = [for (final o in rawStats as List) if (o is Map) OptionStat.fromJson(asMap(o))];
     return ItemStat(
-      questionId: asInt(j['question_id']), type: '${j['type'] ?? ''}', points: _d(j['points']) ?? 0, answered: asInt(j['answered']),
+      questionId: asInt(j['question_id']), position: j['position'] == null ? null : asInt(j['position']), type: '${j['type'] ?? ''}',
+      points: _d(j['points']) ?? 0, answered: asInt(j['answered']),
       difficulty: _d(j['difficulty']), discrimination: _d(j['discrimination']), upperLower: _d(j['upper_lower']),
       options: raw is Map ? {for (final e in asMap(raw).entries) e.key: asInt(e.value)} : {for (final o in stats) o.key: o.count},
       flags: [for (final f in (j['flags'] as List? ?? const [])) '$f'],

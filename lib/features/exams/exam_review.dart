@@ -211,7 +211,12 @@ String flagText(String f) => switch (f) {
       'llm_disagrees' => t('فحص ثانٍ يخالف هذا التصحيح', 'A second check disagrees with this mark'),
       'empty' => t('إجابة فارغة', 'Empty answer'),
       'ocr_low_confidence' => t('قراءة الخط غير مؤكدة — راجع النص', 'Handwriting reading uncertain — check the text'),
-      _ => f,
+      // D-1135: the tiered grader's own guards (exam_engine/grading/tiers.py), shown as raw keys before
+      'symbols' => t('رموز أو معادلات — تحقق منها', 'Symbols or equations — check them'),
+      'memory_wrong' => t('تشبه إجابة صُحّحت خطأً من قبل', 'Like an answer marked wrong before'),
+      'other_language' => t('مكتوبة بلغة غير لغة الإجابة النموذجية', 'Written in another language than the model answer'),
+      // an unknown future flag: a readable fallback, never the raw key
+      _ => t('علامة للمراجعة', 'Flagged for review'),
     };
 
 /// OCR words of a page region with the ones to highlight for the teacher.

@@ -545,6 +545,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
         context,
         (_) => GoogleFormsImportSheet(
               api: _api,
+              orgId: _plan.exam.orgId,
               createExam: (form) async {
                 final q = _plan.exam;
                 // the form names the exam only when it is the first source (D-717): later it only adds questions
@@ -763,7 +764,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
       error: _error,
       hint: ready ? null : _hint(),
       body: _body(),
-      primaryLabel: last ? (_plan.isElectronic ? t('انشر الاختبار', 'Publish the exam') : t('أنشئ وجهّز الطباعة', 'Create and prepare printing')) : t('متابعة', 'Continue'),
+      primaryLabel: last ? (_plan.isElectronic ? t('انشر الاختبار', 'Publish the exam') : t('أنشئ وجهّز الطباعة', 'Create and print')) : t('متابعة', 'Continue'),
       primaryIcon: last && _plan.isElectronic ? Icons.send_rounded : null,
       // the questions step takes the press even when not ready: it is what shows which question needs what
       onPrimary: _busy || !(ready || _step == CreateStep.questions) ? null : _next,

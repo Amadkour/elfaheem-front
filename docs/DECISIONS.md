@@ -5036,3 +5036,27 @@ they are: the hub's one next step per exam and its tracker, role visibility of t
 teaches in an organization), exam times through `AppTime` and the server clock, resume of an open attempt and the
 autosave queue's refusal to submit with unsaved answers.
 
+
+
+## D-1135 — Exam flow round 3: methods per organization, readable labels, a submit that never goes silent · 2026-11-17 · accepted
+
+The server refuses an organization's switched-off exam method at every entry (back D-1135). The Google Forms import
+sends the draft's organization (`?org_id=`). In the app:
+- **Questions by place.** Appeals, the student's regrade request, item analysis, the cancel-a-question sheet and the
+  similar-answers signal say "Question 3" (`questionText`, from the server's `position`), never "Question #4821". The
+  appeal decision opens on the question, the current mark and the student's own words. The teacher's appeals list
+  names the student (`loadExamStudentNames`, shared with the grading queue) instead of "Student #31".
+- **No raw codes.** The grader's `symbols`, `memory_wrong` and `other_language` flags have text, and an unknown flag
+  reads "Flagged for review". A locked attempt and an integrity warning name the behaviour ("Opening another app")
+  instead of `other_app`. A failed call no screen has text for goes through `engineFailText`: the connection, a gone
+  item, or the server's words in the app's language. Before, the offline-plan steps showed a bare English "Not Found"
+  in Arabic.
+- **Submit.** A submit whose connection drops tells the student their answers are saved and to submit again; before,
+  the tap did nothing. A second tap while one is on its way sends nothing (`test/ui/exam_take_connection_test.dart`:
+  the real taking screen over a network that fails, then recovers).
+- The paper review step's English button reads "Create and print"; the old label was cut at 320 px.
+
+Renders (by eye, `test/visual/exam_round3_golden_test.dart`, 320 and 1400, ar and en): every wizard step of a paper
+exam and an online one, appeals (teacher and student), the decision and request sheets, the grading queue, a paper
+import result and the submit confirmation. `exam_take` / `exam_wizard_ux` goldens take `GOLDEN_SIZES` /
+`GOLDEN_THEMES` (`test/visual/golden_sizes.dart`).

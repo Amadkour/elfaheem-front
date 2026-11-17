@@ -344,7 +344,7 @@ class ResultAnswerCard extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: AppSpace.xxs),
-              child: Text(a.prompt.isEmpty ? t('سؤال #${a.questionId}', 'Question #${a.questionId}') : a.prompt,
+              child: Text(a.prompt.isEmpty ? t('السؤال ${a.position}', 'Question ${a.position}') : a.prompt,
                   maxLines: 4, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
             ),
           ),

@@ -94,13 +94,17 @@ class GoogleFormsApi {
   final ApiClient _api;
   static const _base = '/api/v1/me/cloud/google_drive/forms';
 
-  Future<(String, String)> startPick() async {
-    final r = asMap(await _api.post('$_base/pick'));
+  // [orgId]: the organization the draft belongs to, so the server applies that organization's method switches (D-1135)
+  static String _org(int? orgId) => orgId == null ? '' : '?org_id=$orgId';
+
+  Future<(String, String)> startPick({int? orgId}) async {
+    final r = asMap(await _api.post('$_base/pick${_org(orgId)}'));
     return ('${r['session'] ?? ''}', '${r['picker_url'] ?? ''}');
   }
 
   Future<Map<String, dynamic>> pickState(String session) async => asMap(await _api.get('$_base/pick/$session'));
-  Future<FormPreview> read(String formId) async => FormPreview.fromJson(asMap(await _api.get('$_base/$formId')));
+  Future<FormPreview> read(String formId, {int? orgId}) async =>
+      FormPreview.fromJson(asMap(await _api.get('$_base/$formId${_org(orgId)}')));
 }
 
 /// What an import created and the rows it refused (Excel and Google Forms).
@@ -271,9 +275,12 @@ class GoogleFormsImportBody extends StatelessWidget {
 }
 
 class GoogleFormsImportSheet extends StatefulWidget {
-  const GoogleFormsImportSheet({super.key, required this.api, this.examId, this.sections = const [], this.createExam})
+  const GoogleFormsImportSheet({super.key, required this.api, this.examId, this.sections = const [], this.createExam, this.orgId})
       : assert(examId != null || createExam != null);
   final ExamAuthoringApi api;
+
+  /// The organization of the draft (null = personal): the server refuses the import when it switched the method off.
+  final int? orgId;
 
   /// The draft the questions go into; null = [createExam] makes it when "Create the exam" is pressed.
   final int? examId;
@@ -365,14 +372,14 @@ class _GoogleFormsImportSheetState extends State<GoogleFormsImportSheet> {
   Future<void> _pick() async {
     setState(() => _error = null);
     try {
-      final (session, url) = await _forms.startPick();
+      final (session, url) = await _forms.startPick(orgId: widget.orgId);
       if (url.isEmpty || !await openExternalUrl(url)) throw const ApiException(statusCode: 0, message: '', code: 'cloud_auth_failed');
       _wait('forms_pick', session, () async {
         final s = await _forms.pickState(session);
         final status = '${s['status'] ?? ''}';
         if (status == 'pending') return false;
         if (status == 'picked') {
-          final preview = await _forms.read('${s['form_id'] ?? ''}');
+          final preview = await _forms.read('${s['form_id'] ?? ''}', orgId: widget.orgId);
           if (mounted) {
             setState(() {
               _preview = preview;

@@ -7,7 +7,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_education_app/core/api_client.dart';
 
-import 'package:flutter_education_app/features/admin/admin_common.dart' show asMap;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show asMap, t;
 
 class EngineResult {
   EngineResult.ok(this.map) : ok = true, status = 200, code = null, message = '', detail = const {};
@@ -23,6 +23,20 @@ class EngineResult {
 
   /// The engine is not deployed / not routed: FastAPI's bare 404 or a 405 from a stranger server.
   bool get unavailable => !ok && (code == null && (status == 404 || status == 405) && (message == 'Not Found' || message.isEmpty || status == 405));
+}
+
+/// What to show for a failed call no screen has its own text for (D-1135): never a bare "Not Found" or an Arabic
+/// server sentence in the English app. The connection; a gone item; the server's own words in the app's language
+/// (`message_en` when English); else [fallback] or a plain "the request failed".
+String engineFailText(EngineResult r, {String? fallback}) {
+  if (r.status == 0) return t('تعذّر الاتصال بالخادم — تحقق من الاتصال وحاول مرة أخرى', 'Cannot reach the server — check the connection and try again');
+  if (r.code == null && (r.status == 404 || r.status == 405)) {
+    return t('لم يعد هذا العنصر متاحًا — حدّث الصفحة', 'This item is no longer available — refresh the page');
+  }
+  final en = '${r.detail['message_en'] ?? ''}'.trim();
+  final text = t(r.message, en.isNotEmpty ? en : (fallback ?? '')).trim();
+  if (text.isNotEmpty && r.code != null) return text;
+  return fallback ?? t('تعذّر الطلب — حاول مرة أخرى', 'The request failed — try again');
 }
 
 Future<EngineResult> engineCall(Future<dynamic> Function() fn) async {

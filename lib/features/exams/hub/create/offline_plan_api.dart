@@ -137,7 +137,7 @@ String offlinePlanErrorText(EngineResult r) => switch (r.code) {
       'file_too_large' => t('الملف أكبر من 2 ميجابايت', 'The file is larger than 2 MB'),
       'roster_unavailable' => t('تعذّر الوصول إلى طلاب المقرر الآن. حاول بعد قليل', 'The course\'s students cannot be reached right now. Try again shortly'),
       'forbidden' => t('لا تملك صلاحية تعديل جدول المقرر', 'You may not change the course sheet'),
-      _ => r.message.isNotEmpty ? r.message : t('تعذّر الطلب', 'The request failed'),
+      _ => engineFailText(r),
     };
 
 class OfflinePlanApi {
