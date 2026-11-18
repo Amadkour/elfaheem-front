@@ -301,7 +301,8 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
               }
               final entries = _items(session, compact: Breakpoints.shellFor(w) == AppShellKind.mobile);
               tabs.keys = [for (final e in entries) e.$1];
-              final items = [for (final e in entries) e.$2];
+              // the section key keeps a tab's colour when the language changes its label (D-1170)
+              final items = [for (final e in entries) e.$2..prefKey = e.$1];
               final current = tabs.currentTab.clamp(0, items.length - 1);
               // no shell top bar: every page's OrgPageHeader carries search · refresh · calendar · bell · switcher;
               // Ctrl+K / ⌘K and the header's Search open the command palette (off with `org.search`)
@@ -315,6 +316,7 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
                   items: items,
                   unreadCount: _unread(context),
                   showTopBar: false,
+                  pinScope: 'org${session.currentId}',
                 ),
               );
             }),

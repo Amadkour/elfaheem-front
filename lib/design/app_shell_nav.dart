@@ -29,6 +29,7 @@ import 'package:flutter/cupertino.dart' show CupertinoModalPopupRoute;
 import 'package:flutter/material.dart';
 
 import '../utils/top_route_observer.dart' show topRouteObserver;
+import 'shell_pins.dart' show ShellPinScope, kShellPinTabPrefix;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pure decisions
@@ -100,6 +101,9 @@ class ShellTab {
   Route<dynamic>? root;
 
   Route<dynamic>? get top => routes.isEmpty ? null : routes.last;
+
+  /// A pinned page's tab (D-1170): its first page is the pinned page, so leaving that page goes to the home tab.
+  bool get pinned => label.startsWith(kShellPinTabPrefix);
   /// A page to go back from, or a top page that closes something of its own first (a local history entry: an open
   /// detail panel, D-290).
   bool get canPop => routes.length > 1 || (routes.isNotEmpty && routes.last.willHandlePopInternally);
@@ -236,8 +240,18 @@ class AppTabNavigatorState extends NavigatorState {
     return super.pushAndRemoveUntil<T>(newRoute, predicate);
   }
 
+  /// A pinned page closing itself (its Back, a save that pops) must not close the dashboard: the shell shows its home
+  /// tab instead (D-1170). True when that happened.
+  bool _leavePinned() {
+    final tab = (widget as AppTabNavigator).tab;
+    if (!tab.pinned || canPop()) return false;
+    tab._owner.onPinnedRootPop?.call();
+    return true;
+  }
+
   @override
   void pop<T extends Object?>([T? result]) {
+    if (_leavePinned()) return;
     final up = _up;
     if (up != null && !canPop()) return up.pop<T>(result);
     super.pop<T>(result);
@@ -245,6 +259,7 @@ class AppTabNavigatorState extends NavigatorState {
 
   @override
   Future<bool> maybePop<T extends Object?>([T? result]) {
+    if (_leavePinned()) return Future<bool>.value(true);
     final up = _up;
     if (up != null && !canPop()) return up.maybePop<T>(result);
     return super.maybePop<T>(result);
@@ -286,7 +301,21 @@ class ShellTabs extends ChangeNotifier {
   /// Width of the sidebar / rail on the start side (0 on phones and full-screen pages), and of the top bar.
   double sideChrome = 0;
 
+  /// This dashboard's pins and tab colours (D-1170); null outside a role shell (tests, previews).
+  ShellPinScope? pins;
+
+  /// A pinned tab's first page closed itself: the shell goes to its home tab.
+  VoidCallback? onPinnedRootPop;
+
   ShellTab tab(String label) => _tabs.putIfAbsent(label, () => ShellTab._(this, label));
+
+  /// The tab whose stack holds [route], if any.
+  ShellTab? holding(Route<dynamic> route) {
+    for (final t in _tabs.values) {
+      if (t.routes.contains(route)) return t;
+    }
+    return null;
+  }
 
   bool get activeCanPop => active?.canPop ?? false;
 

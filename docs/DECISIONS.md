@@ -5129,3 +5129,28 @@ Timetable · Services, each page with its badge) and then the units; boxes / tab
 `WsPrefs.mainSection`) and focus mode work as for teachers, and any page can be pinned (`section:<key>`). The admin
 Overview draws the organization's figures from the dashboard call the shell already makes (no new request);
 Profile puts Organization settings first.
+
+## D-1170 — Pin any page to a dashboard's tabs; a colour box per tab · 2026-11-18 · accepted
+
+The owner asked to pin any screen to the dashboard tab list in every dashboard, and to colour the tabs so the flow
+reads at a glance. It lives in the ONE shell (`lib/design/shell_pins.dart` over `AppShell`), so student, teacher,
+parent, admin, the D-103 organization dashboard and the D-1150 workspace all get it with no per-dashboard code.
+- **Pin:** every kit header (`AppHeader`, `AppPageHeader`, `OrgPageHeader`) draws `ShellPinButton` next to the focus
+  toggle; it shows only on a page opened inside a role tab (not a tab's own first page, not a root page, not a
+  guest). One tap pins, a second unpins, both with Undo; at most 8 pins per dashboard.
+- **Where pins go:** on the desktop sidebar and the tablet rail each pin is its own entry under "Pinned", after the
+  role's tabs, with its own back stack; the shell selects it itself, so a dashboard's `currentIndex` never sees it.
+  On phones the bottom bar keeps the role's tabs (D-1160's 5-tab cap holds; the owner chose this over a 6th tab or
+  a scrolling bar) and the pins are a strip of colour boxes at the top of Home; a tap opens the page inside Home.
+  D-1151's single Pinned tab of the workspace stays for its units and boxes.
+- **Colour box:** a long press on any tab, or Customize tabs under the list, gives each tab a colour; a coloured
+  tab draws its icon on a filled tile of that colour, a tab without one keeps the brand look. The brand colour is the
+  theme's primary; the other six are fixed hues (coral, amber, sky, indigo, plum, slate) at one weight, lifted in dark
+  mode — the theme's own accents sit too close to tell steps apart (peach / rust, success / primary). Only these
+  boxes use them; no theme preset was added.
+- **Rebuilding a pin:** the page's route builder is captured when it is pinned. A page with a URL (a named route)
+  is rebuilt after a restart through the router; any other page keeps its pin and reconnects the next time it is
+  opened (matched by its title), and until then its tab says so and offers Unpin. A pinned page that closes itself
+  (Back, a save that pops) goes to the Home tab instead of closing the dashboard.
+- **Storage:** on the device, per user and dashboard (`ui.shell_tabs.v1.<user>|<route or org<id>>`), like D-1157;
+  not synced through `/me/ui-prefs`. No server change, no kill switch.

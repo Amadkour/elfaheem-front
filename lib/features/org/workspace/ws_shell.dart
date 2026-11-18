@@ -167,7 +167,8 @@ class _TeacherWorkspaceState extends State<TeacherWorkspace> {
           child: Consumer<WsController>(builder: (context, ws, _) {
             final entries = wsShellItems(ws);
             tabs.keys = [for (final e in entries) e.$1];
-            final items = [for (final e in entries) e.$2];
+            // the tab key keeps a tab's colour when the language changes its label (D-1170)
+            final items = [for (final e in entries) e.$2..prefKey = e.$1];
             return AppShell(
               width: widget.width,
               currentIndex: tabs.currentTab.clamp(0, items.length - 1),
@@ -175,6 +176,7 @@ class _TeacherWorkspaceState extends State<TeacherWorkspace> {
               items: items,
               unreadCount: widget.unreadCount,
               showTopBar: false,
+              pinScope: 'org${widget.session.currentId}',
             );
           }),
         );
