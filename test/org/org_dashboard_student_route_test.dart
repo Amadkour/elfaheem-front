@@ -119,6 +119,13 @@ void main() {
               'detail': {'code': 'student_forbidden', 'message': 'لوحة المؤسسة لفريق العمل فقط'},
             })
           : {...(jsonDecode(File('test/fixtures/payloads/org_dashboard.json').readAsStringSync()) as Map), 'access': 'staff'},
+      // a teacher without org-wide admin access opens the teacher workspace (D-1150): its calls say the same
+      'GET /api/v1/org/orgs/1/my-workspace': (_) => student
+          ? const FakeResponse(403, {
+              'detail': {'code': 'student_forbidden', 'message': 'لوحة المؤسسة لفريق العمل فقط'},
+            })
+          : const {'managed': [], 'member_of': [], 'stats': {}, 'weeks': {}},
+      'GET /api/v1/org/orgs/1/my-alerts': (_) => const {'items': [], 'counts': {'active': 0, 'unread': 0, 'high': 0}},
     });
     expect(find.byType(OrgStaffOnlyPage), findsNothing);
 

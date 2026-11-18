@@ -51,6 +51,7 @@ import 'package:flutter_education_app/features/profile/change_password_widget.da
 import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaints_hub_page.dart';
 import 'package:flutter_education_app/features/profile/privacy_export.dart' show DataExportPage, dataExportEntryLabel;
+import 'package:flutter_education_app/features/profile/switch_account_tile.dart' show SwitchAccountTile;
 import 'package:flutter_education_app/features/profile/profile_provider.dart' show ProfileProvider;
 import 'package:flutter_education_app/features/profile/profile_hero.dart';
 import 'package:flutter_education_app/features/profile/update_account_widget.dart';
@@ -212,6 +213,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
       const MfaSettingsEntry(rowsOnly: true),
       // an organization member's optional personal profile (UX v3 phase 3); nothing without an organization
       const PersonalAccountTile(),
+      // D-1158: the personal account and every organization account, one tap apart
+      const SwitchAccountTile(),
       if (teacher)
         AppSettingsTile(
           featureKey: 'profile.device_requests',

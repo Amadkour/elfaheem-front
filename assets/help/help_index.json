@@ -226,6 +226,30 @@
    "org_admin"
   ],
   [
+   "home.org/ws_alerts",
+   "teacher"
+  ],
+  [
+   "home.org/ws_management",
+   "teacher"
+  ],
+  [
+   "home.org/ws_membership",
+   "teacher"
+  ],
+  [
+   "home.org/ws_overview",
+   "teacher"
+  ],
+  [
+   "home.org/ws_pinned",
+   "teacher"
+  ],
+  [
+   "home.org/ws_profile",
+   "teacher"
+  ],
+  [
    "home.org",
    "org_admin"
   ],
@@ -372,6 +396,14 @@
   [
    "live.room",
    "teacher"
+  ],
+  [
+   "org.advising",
+   "org_admin"
+  ],
+  [
+   "org.advising",
+   "org_member"
   ],
   [
    "org.courses",

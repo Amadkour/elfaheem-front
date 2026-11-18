@@ -5060,3 +5060,60 @@ Renders (by eye, `test/visual/exam_round3_golden_test.dart`, 320 and 1400, ar an
 exam and an online one, appeals (teacher and student), the decision and request sheets, the grading queue, a paper
 import result and the submit confirmation. `exam_take` / `exam_wizard_ux` goldens take `GOLDEN_SIZES` /
 `GOLDEN_THEMES` (`test/visual/golden_sizes.dart`).
+
+## D-1150 — Teacher organization workspace · 2026-11-18 · accepted
+
+Every non-student organization role WITHOUT organization-wide admin access (`!isOrgAdmin && access != 'admin'`)
+opens the teacher workspace (`lib/features/org/workspace/`) instead of the D-103 admin sections; organization
+admins keep D-103. Kill switch `org.teacher_workspace` (off → D-103 for everyone; the server answers 403
+`feature_off`). Nothing was removed: the organization pages a teacher holds a right to stay reachable from the
+Profile tab, the command palette and deep links (a section that is not a tab is pushed), and every unit keeps its
+full department page. Plan, contract and tracker: `docs/teacher-org/PLAN.md`.
+
+## D-1151 — Workspace tabs and the Pinned tab · 2026-11-18 · accepted
+
+Overview · Management · Membership · Pinned · Alerts · Profile, in that order; Management / Membership hide when
+empty, Pinned when nothing is pinned. Pins (a tab, a unit, an Overview box) live in ONE Pinned tab, never one nav
+entry each (a phone bar cannot hold them): a chip strip that scrolls, and past `wsPinStripMax` (10) an "All pinned"
+grid with search and drag-to-reorder.
+
+## D-1152 — Manager vs member, decided by the server · 2026-11-18 · accepted
+
+`GET …/my-workspace`: a unit is managed when I head it or hold `departments.update` / `team.update` there; council
+entities are left out. A manager sees every person's data and history and gets bulk actions; a member sees names,
+avatars and kinds (no e-mail or phone) and only their own actions in a history. The server enforces both (403
+`not_in_unit` / `not_manager`).
+
+## D-1153 — A unit's items are its people · 2026-11-18 · accepted
+
+The list inside a unit is its people (team seats as head / team, joined members), paged with search, kinds, a
+joined-date range and sort. A person's history comes from `org_audit_log` (the person as target or actor, in that
+unit); bulk changes write a `workspace.remove` / `workspace.restore` row per person so their history shows them.
+
+## D-1154 — Bulk bar at the bottom, Undo by snapshot · 2026-11-18 · accepted
+
+The bulk bar sits at the bottom (thumb reach; the list's header stays still). Remove asks first, then offers Undo,
+which sends back the server's removal snapshot (`op: restore`); heads and the caller are never removed.
+
+## D-1155 — Workspace export goes through the Export Studio · 2026-11-18 · accepted
+
+All, filtered or selected people go through `showAppExportSheet` / `AppTableExport` with the Studio's paged fetch
+and progress; no second export system. A large export keeps running while the person uses the app and ends with a
+notice. A push for "export ready" is not added (the Studio has none today).
+
+## D-1156 — Alerts with per-user state, no migration · 2026-11-18 · accepted
+
+`GET …/my-alerts` normalises the organization's tasks and attention rows for me (source, severity, the person it is
+about, a link). Read / snooze / archive are stored per user in one `app_settings` row `org_alert_state:<uid>:<oid>`
+(the teacher to-do pattern): small, per person, pruned as keys go away, so no table.
+
+## D-1157 — Workspace preferences stay on the device · 2026-11-18 · accepted
+
+Display mode, main tab, focus mode, pins, saved filters and the alert view are stored per user + organization in
+SharedPreferences (`org_ws.<user>.<org>`), like `OrgPersonaStore`. Not synced through `/me/ui-prefs`: that store is
+one 4 KB dictionary other features share, written whole.
+
+## D-1158 — "Switch account" in the personal Profile · 2026-11-18 · accepted
+
+The personal Profile gets a Switch account row (`SwitchAccountTile`) that opens the one context switcher (personal
++ every organization account); choosing an organization opens its dashboard. No second switcher.

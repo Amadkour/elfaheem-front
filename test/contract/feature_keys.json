@@ -263,6 +263,7 @@
  "org.messages.must_ack",
  "org.search",
  "org.setup_checklist",
+ "org.teacher_workspace",
  "parent.insights",
  "parent.message_teacher",
  "parent.org_view",
