@@ -16,6 +16,7 @@
 // server → the home keeps its earlier figures.
 library;
 
+import 'package:flutter_education_app/core/plural.dart' show countText;
 import 'package:flutter/material.dart' show IconData, Icons;
 
 import '../admin/admin_common.dart' show t;
@@ -334,7 +335,7 @@ class OrgAttentionText {
 OrgAttentionText? orgAttentionText(OrgAttentionItem a) {
   final n = a.count;
   return switch (a.key) {
-    'org_join_requests' => OrgAttentionText(Icons.person_add_alt_1_rounded, t('$n يطلبون الانضمام للمؤسسة', '$n people asked to join'),
+    'org_join_requests' => OrgAttentionText(Icons.person_add_alt_1_rounded, countText(n, ar1: 'شخص واحد يطلب الانضمام للمؤسسة', ar2: 'شخصان يطلبان الانضمام للمؤسسة', arFew: '{n} أشخاص يطلبون الانضمام للمؤسسة', arMany: '{n} شخصًا يطلبون الانضمام للمؤسسة', en1: '1 person asked to join', en: '{n} people asked to join'),
         t('راجعهم واقبل من يخصّك', 'Review and let the right people in'), t('مراجعة', 'Review')),
     'unit_join_requests' => OrgAttentionText(Icons.how_to_reg_rounded, t('$n طلب انضمام لأقسامك', '$n department join requests'),
         t('قرارك ينتظره الطلاب', 'Students are waiting for your decision'), t('مراجعة', 'Review')),

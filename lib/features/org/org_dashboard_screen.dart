@@ -283,12 +283,14 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
             child: LayoutBuilder(builder: (context, constraints) {
               final w = constraints.maxWidth;
               if (wsEligible(session)) {
-                // D-1150: a teacher / staff member without organization-wide admin access gets the workspace; the
-                // organization pages they hold a right to stay reachable (its Profile tab, the palette, deep links)
+                // D-1150 / D-1160: every non-student role gets the workspace; the organization pages they hold a
+                // right to stay reachable (an admin's Management tab, the Profile tab, the palette, deep links)
                 final role = '${session.current?['my_role'] ?? ''}';
                 _tabs.sections = {
                   'people': _peopleSubs(session),
                   'academics': _academicSubs(session, role),
+                  if (session.can('schedule'))
+                    'timetable': [('timetable', t('الجدول الدراسي', 'Timetable'), Icons.calendar_month_rounded, const OrgSchedulePage())],
                   'services': _serviceSubs(session),
                 };
                 return AppCommandPaletteScope(

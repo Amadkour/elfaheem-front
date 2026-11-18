@@ -67,6 +67,7 @@ Tracker for the multi-session job. Branch `feature/teacher-org-dashboard` in bot
 | F3 | Management / Membership: boxes · tabs · main tab · focus; people list, filters, saved filters, search, bulk, export, details + history | done |
 | F4 | Alerts + Pinned + Profile tab | done |
 | F5 | Contract snapshots, help ids, layout harness, analyzer, docs (CLAUDE / guide / DECISIONS), review of Overview by eye | done |
+| A1 | D-1160 admins: shell + admin Overview + Management sections + section pins + Profile | done |
 
 ## Still owed
 

@@ -409,7 +409,7 @@ class OrgTaskRow extends StatelessWidget {
           ),
       ],
     ]);
-    final buttons = actions ? _TaskButtons(task: x, busy: busy, onAction: onAction!) : null;
+    final buttons = actions ? OrgTaskButtons(task: x, busy: busy, onAction: onAction!) : null;
     final content = LayoutBuilder(builder: (context, box) {
       final roomy = box.maxWidth >= 520;
       final row = Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -442,8 +442,10 @@ class OrgTaskRow extends StatelessWidget {
   }
 }
 
-class _TaskButtons extends StatelessWidget {
-  const _TaskButtons({required this.task, required this.busy, required this.onAction});
+/// A task's one-tap buttons (secondary text buttons, then the soft-filled primary): the home's rows and the
+/// workspace's alerts (D-1156).
+class OrgTaskButtons extends StatelessWidget {
+  const OrgTaskButtons({super.key, required this.task, required this.busy, required this.onAction});
   final OrgTask task;
   final bool busy;
   final ValueChanged<OrgTaskAction> onAction;

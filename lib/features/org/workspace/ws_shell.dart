@@ -30,9 +30,12 @@ import 'ws_units.dart' show WsUnitsTab;
 /// Kill switch: off → every role opens the D-103 dashboard, as before.
 const wsFeatureKey = 'org.teacher_workspace';
 
-/// D-1150: who opens the workspace in the selected organization.
-bool wsEligible(OrgSession s) =>
-    s.currentId != null && !s.isOrgAdmin && s.access != 'admin' && !AppConfig.disableList.contains(wsFeatureKey);
+/// D-1150 / D-1160: every non-student role opens the workspace in the selected organization — admins too (their
+/// Management tab holds the organization's sections). The D-103 shell stays as the kill switch's fallback.
+bool wsEligible(OrgSession s) => s.currentId != null && !AppConfig.disableList.contains(wsFeatureKey);
+
+/// Organization-wide admin access (org admin, platform admin, admin assistants): the admin workspace (D-1160).
+bool wsIsAdmin(OrgSession s) => s.isOrgAdmin || s.access == 'admin';
 
 /// The tab keys, in the shell's order (D-1151).
 abstract final class WsTabs {
@@ -46,7 +49,7 @@ abstract final class WsTabs {
 
 /// The workspace's one state holder (provided as `ChangeNotifierProvider<WsController>`).
 class WsController extends ChangeNotifier {
-  WsController({required this.orgId, required int? userId, required this.tabs})
+  WsController({required this.orgId, required int? userId, required this.tabs, this.admin = false})
       : api = WsApi(orgId),
         prefs = WsPrefsStore(userId, orgId) {
     prefs.addListener(notifyListeners);
@@ -56,6 +59,10 @@ class WsController extends ChangeNotifier {
   final WsApi api;
   final WsPrefsStore prefs;
   final OrgTabs tabs;
+
+  /// Organization-wide admin access (D-1160): Overview reads the organization's figures (OrgDashController),
+  /// Management leads with the organization's sections.
+  final bool admin;
 
   WsHome? home;
   OrgCall? error;
@@ -72,6 +79,7 @@ class WsController extends ChangeNotifier {
       loading = true;
       _notify();
     }
+    // ONE call on open: the units and the alert counts (stats.alerts_*); the Alerts tab fetches its list when opened
     final (h, r) = await api.home();
     if (_disposed) return;
     loading = false;
@@ -79,12 +87,11 @@ class WsController extends ChangeNotifier {
       home = h;
       error = null;
       loadedAt = DateTime.now();
-      alertCounts = WsAlertCounts(active: h.stats.alertsActive, unread: alertCounts.unread, high: h.stats.alertsHigh);
+      alertCounts = WsAlertCounts(active: h.stats.alertsActive, unread: h.stats.alertsUnread, high: h.stats.alertsHigh);
     } else {
       error = r;
     }
     _notify();
-    refreshAlertCounts();
   }
 
   /// The Alerts tab badge (unread) and the Overview's alert numbers.
@@ -135,10 +142,10 @@ class _TeacherWorkspaceState extends State<TeacherWorkspace> {
   void _ensure(OrgTabs tabs) {
     final id = widget.session.currentId!;
     final e = widget.session.epoch.value;
-    if (_ws != null && _ws!.orgId == id && _epoch == e) return;
+    if (_ws != null && _ws!.orgId == id && _epoch == e && _ws!.admin == wsIsAdmin(widget.session)) return;
     final old = _ws;
     _epoch = e;
-    _ws = WsController(orgId: id, userId: widget.userId, tabs: tabs)..load();
+    _ws = WsController(orgId: id, userId: widget.userId, tabs: tabs, admin: wsIsAdmin(widget.session))..load();
     if (old != null) WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
   }
 
@@ -181,7 +188,8 @@ List<(String, DashboardItem)> wsShellItems(WsController ws) {
   final h = ws.home;
   final p = ws.prefs.prefs;
   // before the first answer both unit tabs are drawn (their pages show skeletons), so the bar doesn't jump
-  final showManaged = h == null || h.managed.isNotEmpty;
+  // an admin's Management always has the organization's sections (D-1160)
+  final showManaged = ws.admin || h == null || h.managed.isNotEmpty;
   final showMember = h == null || h.memberOf.isNotEmpty;
   return [
     (WsTabs.overview, DashboardItem(Icons.space_dashboard_outlined, Icons.space_dashboard_rounded, t('لمحة', 'Overview'), null,

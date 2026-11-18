@@ -8,6 +8,8 @@
 //                           nothing the D-103 shell offered is lost (D-1150)
 //   Workspace preferences   reset the display preferences (confirmed)
 //   Organization settings   the D-103 Settings page (each row there checks its own right): MFA, sign out, …
+// An organization admin (D-1160, WsController.admin) is labelled "Organization admin" and gets Organization
+// settings FIRST (organization edit, sub-organizations, join code, roles, activity log …).
 // WsProfileHeader is plain values (tested in test/org/ws_alerts_test.dart).
 library;
 
@@ -27,6 +29,7 @@ import '../org_dashboard_settings.dart' show OrgSettingsPage;
 import '../org_providers.dart';
 import 'ws_models.dart';
 import 'ws_shell.dart' show WsController, WsTabs;
+import 'ws_units.dart' show wsOrgSectionName;
 
 /// My role in the selected organization, in the singular ("Teacher", "Teaching assistant", "Staff").
 String wsMyRoleLabel(String? memberRole, String access) => switch (memberRole) {
@@ -37,13 +40,7 @@ String wsMyRoleLabel(String? memberRole, String access) => switch (memberRole) {
     };
 
 /// The org sections' names, for the "Organization pages" rows.
-String _sectionName(String key) => switch (key) {
-      'people' => t('الأشخاص', 'People'),
-      'academics' => t('الشؤون الأكاديمية', 'Academics'),
-      'timetable' => t('الجدول', 'Timetable'),
-      'services' => t('الخدمات', 'Services'),
-      _ => key,
-    };
+String _sectionName(String key) => wsOrgSectionName(key);
 
 /// My card: ProfileHero with my organization role and three figures.
 class WsProfileHeader extends StatelessWidget {
@@ -82,7 +79,7 @@ class WsProfileTab extends StatelessWidget {
 
   void _openUnit(WsController ws, WsUnit u) {
     final scope = u.manages ? 'management' : 'membership';
-    ws.prefs.update((p) => p.copyWith(mainUnit: {...p.mainUnit, scope: u.id}));
+    ws.prefs.update((p) => p.setMainUnit(scope, u.id));
     ws.go(u.manages ? WsTabs.management : WsTabs.membership);
   }
 
@@ -95,7 +92,21 @@ class WsProfileTab extends StatelessWidget {
     final c = context.colors;
     final h = ws.home;
     final units = h?.all ?? const <WsUnit>[];
-    final role = wsMyRoleLabel(s.memberRole, s.access);
+    final role = ws.admin ? t('مدير المؤسسة', 'Organization admin') : wsMyRoleLabel(s.memberRole, s.access);
+    // an admin's first group: the whole organization's settings (D-1160); everyone else keeps it last
+    final settings = AppSettingsGroup(title: t('المؤسسة', 'Organization'), icon: Icons.settings_rounded, children: [
+      AppSettingsTile(
+        key: const ValueKey('ws.profile.settings'),
+        icon: Icons.settings_rounded,
+        label: t('إعدادات المؤسسة', 'Organization settings'),
+        subtitle: ws.admin
+            ? t('بيانات المؤسسة والمؤسسات الفرعية ورمز الانضمام والأدوار وسجل النشاط والأمان',
+                'Organization details, sub-organizations, join code, roles, activity log and security')
+            : t('الأمان والإشعارات واللغة وتسجيل الخروج', 'Security, notifications, language and sign out'),
+        keywords: 'settings organization roles join code activity إعدادات مؤسسة أدوار رمز سجل',
+        onTap: () => orgPush(context, t('الإعدادات', 'Settings'), const OrgSettingsPage()),
+      ),
+    ]);
 
     final pages = <Widget>[
       for (final e in tabs.sections.entries)
@@ -126,6 +137,7 @@ class WsProfileTab extends StatelessWidget {
         unread: ws.alertCounts.unread,
       ),
       groups: [
+        if (ws.admin) settings,
         AppSettingsGroup(title: t('الحساب', 'Account'), icon: Icons.person_rounded, children: [
           AppSettingsTile(
             key: const ValueKey('ws.profile.switch'),
@@ -177,15 +189,7 @@ class WsProfileTab extends StatelessWidget {
             },
           ),
         ]),
-        AppSettingsGroup(title: t('المؤسسة', 'Organization'), icon: Icons.settings_rounded, children: [
-          AppSettingsTile(
-            key: const ValueKey('ws.profile.settings'),
-            icon: Icons.settings_rounded,
-            label: t('إعدادات المؤسسة', 'Organization settings'),
-            subtitle: t('الأمان والإشعارات واللغة وتسجيل الخروج', 'Security, notifications, language and sign out'),
-            onTap: () => orgPush(context, t('الإعدادات', 'Settings'), const OrgSettingsPage()),
-          ),
-        ]),
+        if (!ws.admin) settings,
       ],
     );
   }

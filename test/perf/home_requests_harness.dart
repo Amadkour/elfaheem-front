@@ -49,7 +49,10 @@ const homeBudgets = <String, HomeBudget>{
   // a checklist step's page was opened); nothing at all when organizations or `org.setup_checklist` are off.
   // 2026-11-15, D-997 (Institutions v2 phase 5): open 7 → 8 — GET …/governance/{org}/me/attention-flow (the heads'
   // "Needs my attention" row in the tasks area), in PARALLEL with the dashboard (depth stays 2), not on refresh
-  'org-admin': (open: 8, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
+  // 2026-11-18, D-1160: open 8 → 9 — the admin now opens the workspace: GET …/my-workspace (units for Management and
+  // the Alerts badge's counts in one answer), in PARALLEL with the dashboard (depth stays 2); the Alerts list is
+  // fetched only when its tab opens
+  'org-admin': (open: 9, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
   // 2026-10-31: open 3 → 4 — GET /me/home carries the mode's side (scope / org_id, the server's default is the
   // personal account). On a first launch the mode is only known from the overview's smart default, so the home asked
   // in parallel is the personal side's: its course block is dropped and the organization's home is asked once more.

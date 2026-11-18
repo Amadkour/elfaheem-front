@@ -23,12 +23,13 @@ import 'package:flutter_education_app/design/master_detail/entity_specs.dart' sh
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show t;
-import '../home/org_home_tasks.dart' show OrgAllCaughtUp;
+import '../home/org_home_tasks.dart' show OrgAllCaughtUp, OrgTaskButtons, orgDecideTask;
 import '../org_dashboard_home.dart' show orgJump;
 import '../org_page_header.dart' show OrgPageRefresh;
 import '../org_page_kit.dart' show OrgMenuItem, OrgMoreMenu;
 import '../org_ui.dart' show OrgPill;
 import '../org_v3.dart' show orgErrorText;
+import '../home/org_home_logic.dart' show OrgTask, OrgTaskAction;
 import 'ws_models.dart';
 import 'ws_person.dart' show openWsPerson;
 import 'ws_shell.dart' show WsController;
@@ -103,11 +104,14 @@ String _sourceName(WsAlertSource s) {
 
 /// One alert: the severity mark, title, subtitle, the person's avatar, the time, an unread dot, the ⋯ menu.
 class WsAlertRow extends StatelessWidget {
-  const WsAlertRow({super.key, required this.alert, this.onTap, this.actions = const [], this.now});
+  const WsAlertRow({super.key, required this.alert, this.onTap, this.actions = const [], this.now, this.decisions});
 
   final WsAlert alert;
   final VoidCallback? onTap;
   final List<OrgMenuItem> actions;
+
+  /// The task's one-tap decision buttons (OrgTaskButtons), under the text; null = none.
+  final Widget? decisions;
 
   /// The clock the relative time is measured from (tests); null = now.
   final DateTime? now;
@@ -176,6 +180,10 @@ class WsAlertRow extends StatelessWidget {
                   if (meta.isNotEmpty) ...[
                     const SizedBox(height: AppSpace.xxs / 2),
                     Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
+                  ],
+                  if (decisions != null) ...[
+                    const SizedBox(height: AppSpace.xs),
+                    Align(alignment: AlignmentDirectional.centerEnd, child: decisions!),
                   ],
                 ]),
               ),
@@ -295,6 +303,9 @@ class _WsAlertsTabState extends State<WsAlertsTab> {
   String? _error;
   final Set<String> _sources = {};
   final Set<WsSeverity> _severities = {};
+
+  /// Alerts whose one-tap decision is on its way (their buttons are disabled).
+  final Set<String> _deciding = {};
 
   /// The open group cards (grouped style); null until the person toggles one: the first card is open.
   Set<String>? _open;
@@ -437,6 +448,20 @@ class _WsAlertsTabState extends State<WsAlertsTab> {
     }
   }
 
+  /// A task's one-tap decision, as on the home (reason first when required, the dashboard's optimistic call, a
+  /// notice), then the list and the counts reload: a decided task leaves the alerts.
+  Future<void> _decide(WsAlert a, OrgTask task, OrgTaskAction action) async {
+    setState(() => _deciding.add(a.key));
+    try {
+      await orgDecideTask(context, task, action);
+    } finally {
+      if (mounted) setState(() => _deciding.remove(a.key));
+    }
+    if (!mounted) return;
+    await _reload();
+    if (mounted) context.read<WsController>().refreshAlertCounts();
+  }
+
   void _openAlert(WsAlert a) {
     final ws = _ws;
     if (!a.read) _apply([a.key], 'read');
@@ -493,7 +518,17 @@ class _WsAlertsTabState extends State<WsAlertsTab> {
         return true;
       },
       onDismissed: (_) => view == 'active' ? _archive([a.key]) : _restore([a.key]),
-      child: WsAlertRow(alert: a, onTap: () => _openAlert(a), actions: _actions(a)),
+      child: Builder(builder: (context) {
+        final task = view == 'active' ? a.task : null;
+        return WsAlertRow(
+          alert: a,
+          onTap: () => _openAlert(a),
+          actions: _actions(a),
+          decisions: task == null
+              ? null
+              : OrgTaskButtons(task: task, busy: _deciding.contains(a.key), onAction: (action) => _decide(a, task, action)),
+        );
+      }),
     );
   }
 

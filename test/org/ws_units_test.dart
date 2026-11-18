@@ -1,8 +1,11 @@
 // The teacher workspace's unit and people parts (D-1151 – D-1155) on a phone and a wide window, ar / en, text
 // 1.3: the unit card, the unit strip, a person row (plain and selecting), the bulk bar (manager and member) and the
-// history timeline. Plain values only, no network.
+// history timeline; an admin's organization pages (D-1160: section card, scope strip, Boxes grid, section pins).
+// Plain values only, no network.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/org/org_dashboard_screen.dart' show OrgSub;
 import 'package:flutter_education_app/features/org/workspace/ws_models.dart';
+import 'package:flutter_education_app/features/org/workspace/ws_pinned.dart' show wsPinLabel;
 import 'package:flutter_education_app/features/org/workspace/ws_people.dart';
 import 'package:flutter_education_app/features/org/workspace/ws_person.dart';
 import 'package:flutter_education_app/features/org/workspace/ws_units.dart';
@@ -36,7 +39,57 @@ final _history = [
   WsHistoryRow(id: 3, action: 'dept.member.remove', summary: 'Removed', actorName: 'Someone with a long name here', at: DateTime.utc(2026, 10, 3, 9)),
 ];
 
+// an admin's organization pages (D-1160): (key, label, icon, page)
+final Map<String, List<OrgSub>> _sections = {
+  'services': [('complaints', 'Complaints', Icons.forum_rounded, const SizedBox())],
+  'people': [
+    ('members', 'Members', Icons.groups_rounded, const SizedBox()),
+    ('departments', 'الأقسام والإدارات والوحدات الأكاديمية والإدارية التابعة للمؤسسة', Icons.account_tree_rounded, const SizedBox()),
+  ],
+  'academics': [],
+  'timetable': [('timetable', 'Timetable', Icons.calendar_month_rounded, const SizedBox())],
+};
+
 void main() {
+  test('sections: ordered, empty ones dropped; a section pin resolves', () {
+    expect([for (final s in wsOrderedSections(_sections)) s.$1], ['people', 'timetable', 'services']);
+    final pin = wsSectionPin(_sections['people']![0]);
+    expect(pin.id, 'section:members');
+    expect(WsPin.parse(pin.toJson()), pin);
+    final hit = wsFindSection(_sections, pin.ref);
+    expect(hit?.$1, 'people');
+    expect(hit?.$2.$2, 'Members');
+    expect(wsFindSection(_sections, 'gone'), isNull);
+    expect(wsPinLabel(pin, null, sections: _sections), 'Members');
+    expect(wsPinLabel(const WsPin('section', 'gone', labelAr: 'قديم', labelEn: 'Old'), null, sections: _sections), isNotEmpty);
+  });
+
+  testWidgets('section card + admin boxes', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () => ListView(padding: const EdgeInsets.all(16), children: [
+        WsSectionCard(label: _long, icon: Icons.groups_rounded, section: 'people', isMain: true, pinned: true, onTap: () {}, onMore: () {}),
+        WsSectionCard(label: 'Members', icon: Icons.groups_rounded, section: 'academics', onTap: () {}),
+        WsScopeStrip(items: [('section:members', 'Members', Icons.groups_rounded), ('unit:1', _long, Icons.account_tree_rounded)], selectedKey: 'unit:1', mainKey: 'section:members', onSelect: (_) {}),
+      ]),
+    );
+    await expectNoLayoutErrors(
+      tester,
+      () => WsAdminBoxes(
+        sections: wsOrderedSections(_sections),
+        units: _units,
+        mainKey: 'section:members',
+        isPinned: (p) => p.kind == 'unit',
+        badge: (s, child) => Badge(label: const Text('3'), child: child),
+        onSection: (_) {},
+        onSectionMore: (_) {},
+        onUnit: (_) {},
+        onUnitMore: (_) {},
+      ),
+    );
+    await expectNoLayoutErrors(tester, () => WsAdminBoxes(sections: wsOrderedSections(_sections), units: const [], unitsLoading: true));
+  });
+
   testWidgets('unit card + strip', (tester) async {
     await expectNoLayoutErrors(
       tester,

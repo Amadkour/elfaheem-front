@@ -7,6 +7,8 @@ library;
 
 import 'package:flutter_education_app/config/app_config.dart';
 
+import '../home/org_home_logic.dart' show OrgTask;
+
 Map<String, dynamic> _map(Object? v) => v is Map ? v.cast<String, dynamic>() : const {};
 List<Map<String, dynamic>> _maps(Object? v) => v is List ? [for (final e in v) _map(e)] : const [];
 int _int(Object? v) => v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0);
@@ -80,6 +82,7 @@ class WsStats {
     this.membersTotal = 0,
     this.alertsActive = 0,
     this.alertsHigh = 0,
+    this.alertsUnread = 0,
     this.requestsOpen = 0,
     this.requestsOverdue = 0,
     this.votesWaiting = 0,
@@ -92,13 +95,14 @@ class WsStats {
         membersTotal: _int(j['members_total']),
         alertsActive: _int(j['alerts_active']),
         alertsHigh: _int(j['alerts_high']),
+        alertsUnread: _int(j['alerts_unread']),
         requestsOpen: _int(j['requests_open']),
         requestsOverdue: _int(j['requests_overdue']),
         votesWaiting: _int(j['votes_waiting']),
         nextSession: j['next_session'] is Map ? _map(j['next_session']) : null,
       );
 
-  final int peopleManaged, teamManaged, membersTotal, alertsActive, alertsHigh, requestsOpen, requestsOverdue, votesWaiting;
+  final int peopleManaged, teamManaged, membersTotal, alertsActive, alertsHigh, alertsUnread, requestsOpen, requestsOverdue, votesWaiting;
 
   /// The server's next-session row as it sends it (title / starts_at …), or null.
   final Map<String, dynamic>? nextSession;
@@ -365,6 +369,7 @@ class WsAlert {
     this.link = const {},
     this.read = false,
     this.snoozedUntil,
+    this.raw = const {},
   });
 
   factory WsAlert.fromJson(Map<String, dynamic> j) {
@@ -386,6 +391,7 @@ class WsAlert {
       link: _map(j['link']),
       read: j['read'] == true,
       snoozedUntil: _date(j['snoozed_until']),
+      raw: j,
     );
   }
 
@@ -402,6 +408,17 @@ class WsAlert {
   final bool read;
   final DateTime? snoozedUntil;
 
+  /// The row as the server sent it ([task] reads its `actions` / `version`).
+  final Map<String, dynamic> raw;
+
+  /// The organization task behind this alert, with its one-tap decisions (the home's OrgTask); null for an
+  /// attention row or a task without actions this app can name.
+  OrgTask? get task {
+    if ((raw['actions'] is! List) || (raw['actions'] as List).isEmpty) return null;
+    final t = OrgTask.fromJson({...raw, 'id': key, 'urgency': raw['severity']});
+    return t != null && t.oneTap ? t : null;
+  }
+
   String get title => _pick(titleAr, titleEn);
   String get subtitle => _pick(subtitleAr, subtitleEn);
 
@@ -412,6 +429,7 @@ class WsAlert {
         key: key, kind: kind, source: source, severity: severity, titleAr: titleAr, titleEn: titleEn,
         subtitleAr: subtitleAr, subtitleEn: subtitleEn, personId: personId, personName: personName,
         personAvatar: personAvatar, deptId: deptId, at: at, link: link, read: read ?? this.read, snoozedUntil: snoozedUntil,
+        raw: raw,
       );
 }
 
@@ -468,14 +486,15 @@ List<WsAlertGroup> wsGroupAlerts(List<WsAlert> alerts) {
 //  Pins + display preferences (stored per user + organization, ws_prefs.dart)
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// What a pin points at: a whole tab (`tab:management`), one unit (`unit:12`) or one Overview box (`box:alerts`).
+/// What a pin points at: a whole tab (`tab:management`), one unit (`unit:12`), one Overview box (`box:alerts`) or
+/// one organization page of an admin's Management tab (`section:members`, the OrgTabs sub key, D-1160).
 class WsPin {
   const WsPin(this.kind, this.ref, {this.labelAr = '', this.labelEn = ''});
 
   static WsPin? parse(Object? v) {
     final m = _map(v);
     final kind = _str(m['kind']), ref = _str(m['ref']);
-    if (!const {'tab', 'unit', 'box'}.contains(kind) || ref.isEmpty) return null;
+    if (!const {'tab', 'unit', 'box', 'section'}.contains(kind) || ref.isEmpty) return null;
     return WsPin(kind, ref, labelAr: _str(m['ar']), labelEn: _str(m['en']));
   }
 
@@ -512,6 +531,7 @@ class WsPrefs {
   const WsPrefs({
     this.display = const {},
     this.mainUnit = const {},
+    this.mainSection = const {},
     this.focus = false,
     this.pins = const [],
     this.savedFilters = const {},
@@ -524,6 +544,7 @@ class WsPrefs {
             e.key: WsDisplay.values.where((d) => d.name == '${e.value}').firstOrNull ?? WsDisplay.boxes,
         },
         mainUnit: {for (final e in _map(j['main']).entries) if (_intOrNull(e.value) != null) e.key: _intOrNull(e.value)!},
+        mainSection: {for (final e in _map(j['main_section']).entries) if (_str(e.value).isNotEmpty) e.key: _str(e.value)},
         focus: j['focus'] == true,
         pins: [for (final p in (j['pins'] is List ? j['pins'] as List : const [])) ?WsPin.parse(p)],
         savedFilters: {for (final e in _map(j['filters']).entries) e.key: WsPeopleFilter.fromJson(_map(e.value))},
@@ -532,6 +553,10 @@ class WsPrefs {
 
   final Map<String, WsDisplay> display;
   final Map<String, int> mainUnit;
+
+  /// An admin's main tab when it is an organization page (D-1160): scope → OrgTabs sub key. Set together with
+  /// [mainUnit] cleared for that scope (one main per scope).
+  final Map<String, String> mainSection;
   final bool focus;
   final List<WsPin> pins;
   final Map<String, WsPeopleFilter> savedFilters;
@@ -539,6 +564,12 @@ class WsPrefs {
 
   WsDisplay displayOf(String scope) => display[scope] ?? WsDisplay.boxes;
   bool pinned(WsPin p) => pins.contains(p);
+
+  /// One main per scope: a unit (clears the section) or an organization page (clears the unit).
+  WsPrefs setMainUnit(String scope, int id) =>
+      copyWith(mainUnit: {...mainUnit, scope: id}, mainSection: {...mainSection}..remove(scope));
+  WsPrefs setMainSection(String scope, String key) =>
+      copyWith(mainSection: {...mainSection, scope: key}, mainUnit: {...mainUnit}..remove(scope));
 
   /// The unit a tabs view opens on: the pinned main one when it is still in [units], else the first.
   int? openUnit(String scope, List<int> units) {
@@ -550,6 +581,7 @@ class WsPrefs {
   WsPrefs copyWith({
     Map<String, WsDisplay>? display,
     Map<String, int>? mainUnit,
+    Map<String, String>? mainSection,
     bool? focus,
     List<WsPin>? pins,
     Map<String, WsPeopleFilter>? savedFilters,
@@ -558,6 +590,7 @@ class WsPrefs {
       WsPrefs(
         display: display ?? this.display,
         mainUnit: mainUnit ?? this.mainUnit,
+        mainSection: mainSection ?? this.mainSection,
         focus: focus ?? this.focus,
         pins: pins ?? this.pins,
         savedFilters: savedFilters ?? this.savedFilters,
@@ -579,6 +612,7 @@ class WsPrefs {
   Map<String, dynamic> toJson() => {
         'display': {for (final e in display.entries) e.key: e.value.name},
         'main': mainUnit,
+        'main_section': mainSection,
         'focus': focus,
         'pins': [for (final p in pins) p.toJson()],
         'filters': {for (final e in savedFilters.entries) e.key: e.value.toJson()},

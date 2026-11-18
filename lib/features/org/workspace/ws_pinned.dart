@@ -5,6 +5,7 @@
 //   tab pin   a card naming the tab with "Open" (ws.go)
 //   unit pin  that unit's people (WsUnitPeople)
 //   box pin   that Overview box on its own (wsOverviewBox)
+//   section   an admin's organization page (OrgTabs.sections, looked up by its sub key, D-1160); gone → Unpin
 // Every chip unpins (with Undo). Past wsPinStripMax pins the strip still scrolls and ends with "All pinned (n)": a
 // sheet with search (a grid of the matches) and drag-to-reorder (prefs.movePin). The chosen pin lives in this
 // widget's state only. WsPinStrip is plain values (tested in test/org/ws_alerts_test.dart).
@@ -16,10 +17,12 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show t;
+import '../org_dashboard_screen.dart' show OrgSub, OrgTabs;
 import 'ws_models.dart';
 import 'ws_overview.dart' show wsOverviewBox, wsOverviewBoxes;
 import 'ws_people.dart' show WsUnitPeople;
 import 'ws_shell.dart' show WsController;
+import 'ws_units.dart' show wsFindSection;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Pure helpers
@@ -37,9 +40,13 @@ String _tabName(String ref) => switch (ref.startsWith('ws_') ? ref.substring(3) 
       _ => ref,
     };
 
-/// A pin's name now: the unit's current name, the box's / tab's label; the label saved with the pin otherwise.
-String wsPinLabel(WsPin p, WsHome? home) {
+/// A pin's name now: the unit's current name, the box's / tab's label, the organization page's label (when
+/// [sections] is given and still holds it); the label saved with the pin otherwise.
+String wsPinLabel(WsPin p, WsHome? home, {Map<String, List<OrgSub>>? sections}) {
   switch (p.kind) {
+    case 'section':
+      final x = sections == null ? null : wsFindSection(sections, p.ref);
+      if (x != null) return x.$2.$2;
     case 'unit':
       final u = p.unitId == null ? null : home?.unit(p.unitId!);
       if (u != null && u.name.isNotEmpty) return u.name;
@@ -56,6 +63,7 @@ String wsPinLabel(WsPin p, WsHome? home) {
 IconData wsPinIcon(WsPin p) => switch (p.kind) {
       'unit' => Icons.account_tree_rounded,
       'box' => Icons.dashboard_customize_rounded,
+      'section' => Icons.domain_rounded,
       _ => Icons.tab_rounded,
     };
 
@@ -136,6 +144,15 @@ class WsPinnedTab extends StatefulWidget {
 class _WsPinnedTabState extends State<WsPinnedTab> {
   String? _selected;
 
+  /// The organization's pages (admins' `section:` pins); empty outside the dashboard.
+  static Map<String, List<OrgSub>> _sections(BuildContext context) {
+    try {
+      return context.watch<OrgTabs>().sections;
+    } catch (_) {
+      return const {};
+    }
+  }
+
   static List<WsPin> _live(WsController ws) {
     final h = ws.home;
     final pins = ws.prefs.prefs.pins;
@@ -156,7 +173,8 @@ class _WsPinnedTabState extends State<WsPinnedTab> {
   }
 
   Future<void> _all(WsController ws) async {
-    final picked = await showAppSheet<WsPin>(context, (ctx) => _AllPinsSheet(ws: ws, labelOf: (p) => wsPinLabel(p, ws.home)));
+    final sections = context.read<OrgTabs>().sections;
+    final picked = await showAppSheet<WsPin>(context, (ctx) => _AllPinsSheet(ws: ws, labelOf: (p) => wsPinLabel(p, ws.home, sections: sections)));
     if (picked != null && mounted) setState(() => _selected = picked.id);
   }
 
@@ -178,12 +196,25 @@ class _WsPinnedTabState extends State<WsPinnedTab> {
           ]);
         }
         return WsUnitPeople(key: ValueKey('ws-pinned-unit-${u.id}'), unit: u);
+      case 'section':
+        final x = wsFindSection(_sections(context), p.ref);
+        if (x == null) {
+          return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
+            AppEmpty(
+              icon: Icons.link_off_rounded,
+              title: t('هذه الصفحة لم تعد متاحة لك', 'This page is no longer available to you'),
+              actionLabel: t('إلغاء التثبيت', 'Unpin'),
+              onAction: () => _unpin(ws, p),
+            ),
+          ]);
+        }
+        return KeyedSubtree(key: ValueKey('ws-pinned-section-${p.ref}'), child: x.$2.$4);
       case 'box':
         return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xl), children: [
           KeyedSubtree(key: ValueKey('ws-pinned-box-${p.ref}'), child: wsOverviewBox(context, p.ref)),
         ]);
       default:
-        final name = wsPinLabel(p, ws.home);
+        final name = wsPinLabel(p, ws.home, sections: _sections(context));
         return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
           AppCard(
             child: Row(children: [
@@ -224,7 +255,9 @@ class _WsPinnedTabState extends State<WsPinnedTab> {
         AppEmpty(
           icon: Icons.push_pin_outlined,
           title: t('لا شيء مثبّت', 'Nothing pinned'),
-          message: t('ثبّت وحدة أو مربعاً من اللمحة ليظهر هنا.', 'Pin a unit or an Overview box to keep it here.'),
+          message: ws.admin
+              ? t('ثبّت صفحة من المؤسسة أو وحدة أو مربعاً من اللمحة ليظهر هنا.', 'Pin an organization page, a unit or an Overview box to keep it here.')
+              : t('ثبّت وحدة أو مربعاً من اللمحة ليظهر هنا.', 'Pin a unit or an Overview box to keep it here.'),
         ),
       ]);
     }
@@ -233,7 +266,7 @@ class _WsPinnedTabState extends State<WsPinnedTab> {
       WsPinStrip(
         pins: pins,
         selectedId: sel.id,
-        labelOf: (p) => wsPinLabel(p, ws.home),
+        labelOf: (p) => wsPinLabel(p, ws.home, sections: _sections(context)),
         onSelect: (p) => setState(() => _selected = p.id),
         onUnpin: (p) => _unpin(ws, p),
         onAll: () => _all(ws),

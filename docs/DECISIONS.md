@@ -5117,3 +5117,15 @@ one 4 KB dictionary other features share, written whole.
 
 The personal Profile gets a Switch account row (`SwitchAccountTile`) that opens the one context switcher (personal
 + every organization account); choosing an organization opens its dashboard. No second switcher.
+
+## D-1160 — Organization admins get the premium workspace too; at most five tabs · 2026-11-18 · accepted
+
+The owner asked for a premium admin dashboard with the number of tabs left to best practice. Admins (org admin,
+platform admin, admin assistants: `wsIsAdmin`) now open the same workspace (D-1150 widened; the D-103 shell is the
+kill switch's fallback, nothing deleted). Admin tabs: Overview · Management · Pinned (once something is pinned) ·
+Alerts · Profile — five at most, the phone bottom bar's limit (Material's 3–5). Membership appears only when the
+admin is also a plain member of a unit. Management leads with the organization's sections (People · Academics ·
+Timetable · Services, each page with its badge) and then the units; boxes / tabs, the main tab (a unit or a page,
+`WsPrefs.mainSection`) and focus mode work as for teachers, and any page can be pinned (`section:<key>`). The admin
+Overview draws the organization's figures from the dashboard call the shell already makes (no new request);
+Profile puts Organization settings first.

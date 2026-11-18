@@ -16,7 +16,8 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/features/org/org_dashboard_screen.dart' show OrgShellTab, OrgTabs;
-import 'package:flutter_education_app/features/org/org_providers.dart' show OrgSession;
+import 'package:flutter_education_app/features/org/org_dashboard_model.dart' show OrgHomeData;
+import 'package:flutter_education_app/features/org/org_providers.dart' show OrgDashController, OrgSession;
 import 'package:flutter_education_app/features/org/org_v3.dart' show OrgCall;
 import 'package:flutter_education_app/features/org/workspace/ws_models.dart';
 import 'package:flutter_education_app/features/org/workspace/ws_overview.dart';
@@ -92,10 +93,10 @@ Map<String, dynamic> worstPayload() {
   };
 }
 
-WsController controller(Map<String, dynamic>? payload, {OrgCall? error, WsAlertCounts? counts}) {
+WsController controller(Map<String, dynamic>? payload, {OrgCall? error, WsAlertCounts? counts, bool admin = false}) {
   final tabs = OrgTabs()
     ..keys = const [WsTabs.overview, WsTabs.management, WsTabs.membership, WsTabs.alerts, WsTabs.profile];
-  final ws = WsController(orgId: 4, userId: 7, tabs: tabs);
+  final ws = WsController(orgId: 4, userId: 7, tabs: tabs, admin: admin);
   if (payload != null) {
     final h = WsHome.fromJson(payload);
     ws.home = h;
@@ -112,6 +113,120 @@ Widget overview(WsController ws, {bool header = true}) => MultiProvider(
         ChangeNotifierProvider<WsController>.value(value: ws),
       ],
       child: header ? const OrgShellTab(title: 'Overview', child: WsOverviewTab()) : const WsOverviewTab(),
+    );
+
+/// The real dashboard payload the server answered (test/fixtures/payloads/org_dashboard.json).
+Map<String, dynamic> fixtureDashboard() =>
+    (jsonDecode(File('test/fixtures/payloads/org_dashboard.json').readAsStringSync()) as Map)['payload'] as Map<String, dynamic>;
+
+/// A busy organization: every box has something to draw.
+Map<String, dynamic> richDashboard() {
+  final start = DateTime.utc(2026, 10, 19);
+  String day(int i) => start.add(Duration(days: i)).toIso8601String().substring(0, 10);
+  return {
+    'organization': {'id': 4, 'name_ar': 'جامعة النيل الأهلية', 'name_en': 'Nile National University'},
+    'my_role': 'org_admin',
+    'access': 'admin',
+    'kpis': {
+      'students': 1284,
+      'teachers': 86,
+      'staff': 41,
+      'courses': 132,
+      'active_enrollments': 4710,
+      'departments': 3,
+      'programs': 4,
+      'sub_organizations': 0,
+    },
+    'members': {'students': 1284, 'teachers': 86, 'staff': 41, 'pending_join': 7},
+    'attention': [
+      {'key': 'open_complaints', 'count': 2, 'severity': 'danger'},
+      {'key': 'org_join_requests', 'count': 7, 'severity': 'warning'},
+      {'key': 'pending_forms', 'count': 4, 'severity': 'warning'},
+      {'key': 'program_choices', 'count': 12, 'severity': 'info'},
+    ],
+    'pending_total': 25,
+    'tasks': [
+      for (final (id, title, sub, urgency) in const [
+        ('org_join:41', 'سارة أحمد تطلب الانضمام', 'Sara Ahmed asked to join', 'high'),
+        ('form_response:7', 'طلب إجازة من شؤون الطلاب', 'Leave request from Student affairs', 'medium'),
+        ('council_vote:3', 'تصويت على الخطة الدراسية', 'Vote on the study plan', 'medium'),
+      ])
+        {
+          'id': id,
+          'kind': id.split(':').first,
+          'title_ar': title,
+          'title_en': sub,
+          'subtitle_ar': 'شؤون الطلاب',
+          'subtitle_en': 'Student affairs',
+          'person': id.startsWith('org_join') ? {'id': 9, 'name': 'Sara Ahmed'} : null,
+          'dept_id': 1,
+          'created_at': '2026-11-17T08:00:00',
+          'due_at': null,
+          'urgency': urgency,
+          'actions': id.startsWith('council')
+              ? const []
+              : const [
+                  {'id': 'approve', 'style': 'primary'},
+                  {'id': 'reject', 'style': 'danger', 'reason': 'optional'},
+                ],
+          'version': null,
+          'link': {'section': 'people', 'sub': 'join_requests', 'dept_id': null, 'kind': null, 'id': null},
+        },
+    ],
+    'tasks_total': 11,
+    'series': [
+      for (var i = 0; i < 30; i++)
+        {
+          'date': day(i),
+          'joins': (i * 7) % 11 + (i > 22 ? 6 : 1),
+          'attendance': 380 + (i * 37) % 120,
+          'complaints': (i * 5) % 4,
+          'work_items': i % 6,
+        },
+    ],
+    'departments': [
+      {'id': 1, 'unit_type': 'dept', 'name_ar': 'شؤون الطلاب', 'name_en': 'Student affairs', 'icon': 'support', 'color': '#B4683C', 'team': 14, 'waiting': 3},
+      {'id': 2, 'unit_type': 'dept', 'name_ar': 'الموارد البشرية', 'name_en': 'Human resources', 'icon': 'badge', 'color': '#5B6E9A', 'team': 9, 'waiting': 0},
+      {'id': 3, 'unit_type': 'dept', 'name_ar': 'الجودة', 'name_en': 'Quality', 'icon': 'verified', 'color': '#8A6D2B', 'team': 5, 'waiting': 1},
+    ],
+    'programs': [
+      {'id': 11, 'unit_type': 'program', 'name_ar': 'علوم الحاسب', 'name_en': 'Computer science', 'students': 412, 'waiting': 5},
+      {'id': 12, 'unit_type': 'program', 'name_ar': 'الهندسة المدنية', 'name_en': 'Civil engineering', 'students': 296, 'waiting': 0},
+      {'id': 13, 'unit_type': 'program', 'name_ar': 'إدارة الأعمال', 'name_en': 'Business administration', 'students': 351, 'waiting': 2},
+      {'id': 14, 'unit_type': 'program', 'name_ar': 'الصيدلة', 'name_en': 'Pharmacy', 'students': 225, 'waiting': 0},
+    ],
+    'recent_activity': [
+      {'id': 9, 'summary': 'أضاف سارة أحمد بدور معلم', 'action': 'member.add', 'created_at': '2026-11-18T09:12:00'},
+      {'id': 8, 'summary': 'أنشأ قسم الصيدلة', 'action': 'program.create', 'created_at': '2026-11-17T14:40:00'},
+      {'id': 7, 'summary': 'غيّر صلاحيات فريق الجودة', 'action': 'role.update', 'created_at': '2026-11-17T10:05:00'},
+      {'id': 6, 'summary': 'أضاف مقرر الإحصاء التطبيقي', 'action': 'course.create', 'created_at': '2026-11-16T08:30:00'},
+      {'id': 5, 'summary': 'قبل 12 طلب انضمام', 'action': 'member.approve', 'created_at': '2026-11-15T16:20:00'},
+      {'id': 4, 'summary': 'older', 'action': 'x', 'created_at': '2026-11-14T16:20:00'},
+    ],
+  };
+}
+
+/// The organization dashboard the shell would have loaded (no network: the data is set directly).
+OrgDashController dashOf(Map<String, dynamic>? payload, {bool failed = false}) {
+  final d = payload == null ? null : OrgHomeData.fromJson(payload);
+  final dash = OrgDashController()
+    ..data = d
+    ..failed = failed
+    ..error = failed ? 'Could not reach the server' : null;
+  // what ensure / load do after an answer: the one-tap rows into the shared queue
+  dash.tasks.apply(d?.tasks ?? const [], d?.tasksTotal ?? 0);
+  return dash;
+}
+
+/// An organization admin's Overview (D-1160), the way the shell draws it.
+Widget adminOverview(Map<String, dynamic>? dashboard, {bool failed = false, WsController? ws}) => MultiProvider(
+      providers: [
+        ChangeNotifierProvider<OrgSession>.value(value: session()),
+        ChangeNotifierProvider<OrgDashController>.value(value: dashOf(dashboard, failed: failed)),
+        ChangeNotifierProvider<WsController>.value(
+            value: ws ?? controller(memberPayload(), admin: true, counts: const WsAlertCounts(active: 5, unread: 3, high: 1))),
+      ],
+      child: const OrgShellTab(title: 'Overview', child: WsOverviewTab()),
     );
 
 // ── PNG renders ─────────────────────────────────────────────────────────────
@@ -230,8 +345,22 @@ void main() {
     test('visible boxes follow the role', () {
       expect(wsOverviewVisible(WsHome.fromJson(managerPayload())), ['kpis', 'alerts', 'units', 'trends', 'session']);
       expect(wsOverviewVisible(WsHome.fromJson(memberPayload())), ['kpis', 'alerts', 'units']);
-      expect([for (final b in wsOverviewBoxes) b.$1], ['kpis', 'alerts', 'units', 'trends', 'session']);
+      expect([for (final b in wsOverviewBoxes) b.$1].take(5), ['kpis', 'alerts', 'units', 'trends', 'session']);
     });
+
+    test('admin: figures, boxes and units follow the dashboard', () {
+      final real = OrgHomeData.fromJson(fixtureDashboard())!;
+      expect(wsAdminKpis(real), ['students', 'teachers', 'staff', 'courses', 'active_enrollments']);
+      expect(wsAdminVisible(real), ['org_kpis', 'org_waiting', 'alerts', 'org_members', 'org_trends', 'org_units', 'org_activity']);
+      final rich = OrgHomeData.fromJson(richDashboard())!;
+      expect([for (final u in wsAdminUnits(rich)) u.id].take(3), [11, 13, 12]);
+      expect(wsAdminKpis(OrgHomeData.fromJson({'kpis': {'courses': 3}})!), ['courses']);
+      expect(wsAdminVisible(OrgHomeData.empty), ['org_waiting', 'alerts', 'org_units']);
+      for (final k in wsAdminVisible(rich)) {
+        if (k != 'org_insights') expect(wsOverviewBoxes.any((b) => b.$1 == k), isTrue, reason: k);
+      }
+    });
+
 
     test('role line: head of one unit, the rest counted, both languages', () {
       AppConfig.lang = 'en';
@@ -268,9 +397,54 @@ void main() {
     await expectNoLayoutErrors(tester, () => overview(controller(null, error: OrgCall(null, const ApiException(statusCode: 0, message: 'Could not reach the server')))));
   });
 
+  testWidgets('layout: an organization admin (the real payload, a busy one, empty, loading, failed)', (tester) async {
+    await expectNoLayoutErrors(tester, () => adminOverview(fixtureDashboard()));
+    await expectNoLayoutErrors(tester, () => adminOverview(richDashboard()));
+    await expectNoLayoutErrors(tester, () => adminOverview(richDashboard()..remove('tasks')));
+    await expectNoLayoutErrors(tester, () => adminOverview(const {}));
+    await expectNoLayoutErrors(tester, () => adminOverview(null));
+    await expectNoLayoutErrors(tester, () => adminOverview(null, failed: true));
+  });
+
+  testWidgets('admin: the org boxes; waiting opens Alerts, a unit opens Management; a teacher never draws them', (tester) async {
+    AppConfig.lang = 'en';
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1400, 2400);
+    addTearDown(tester.view.resetPhysicalSize);
+    final ws = controller(memberPayload(), admin: true);
+    await tester.pumpWidget(layoutHost(adminOverview(richDashboard(), ws: ws), scale: 1));
+    await tester.pump(const Duration(milliseconds: 500));
+    for (final k in ['org_kpis', 'org_waiting', 'alerts', 'org_members', 'org_trends', 'org_units', 'org_activity']) {
+      expect(find.byKey(ValueKey('ws.overview.box.$k')), findsOneWidget, reason: k);
+    }
+    expect(find.byKey(const ValueKey('ws.kpi.org.enrollments')), findsOneWidget);
+    expect(find.byKey(const ValueKey('ws.overview.box.units')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('ws.overview.unit.11')));
+    await tester.pump();
+    expect(ws.tabs.keys[ws.tabs.currentTab], WsTabs.management);
+    // a D-103 server: the one-tap decisions (OrgNeedsYouSection) hold the waiting box
+    expect(find.byKey(const ValueKey('ws.overview.tasks')), findsOneWidget);
+    expect(find.text('Sara Ahmed asked to join'), findsOneWidget);
+
+    // an older server without tasks: the waiting summary, whose button opens Alerts
+    final ws2 = controller(memberPayload(), admin: true);
+    await tester.pumpWidget(layoutHost(adminOverview(richDashboard()..remove('tasks'), ws: ws2), scale: 1));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const ValueKey('ws.overview.waiting.open')));
+    await tester.pump();
+    expect(ws2.tabs.keys[ws2.tabs.currentTab], WsTabs.alerts);
+
+    // a teacher with a stale admin pin: nothing drawn, no OrgDashController needed
+    await tester.pumpWidget(layoutHost(ChangeNotifierProvider<WsController>.value(
+        value: controller(managerPayload()), child: Builder(builder: (context) => wsOverviewBox(context, 'org_kpis')))));
+    expect(find.text('At a glance'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   testWidgets('a pinned box draws on its own; an unknown key draws nothing', (tester) async {
     final ws = controller(managerPayload());
-    for (final (k, _, _) in wsOverviewBoxes) {
+    for (final (k, _, _) in wsOverviewBoxes.where((b) => !b.$1.startsWith('org_'))) {
       await expectNoLayoutErrors(
         tester,
         () => MultiProvider(
@@ -329,6 +503,8 @@ void main() {
       await _png(tester, pngDir, 'manager', () => overview(controller(managerPayload())));
       await _png(tester, pngDir, 'member', () => overview(controller(memberPayload())));
       await _png(tester, pngDir, 'worst', () => overview(controller(worstPayload())));
+      await _png(tester, pngDir, 'admin', () => adminOverview(richDashboard()));
+      await _png(tester, pngDir, 'admin_real', () => adminOverview(fixtureDashboard()));
     } finally {
       AppConfig.lang = prev;
       debugDisableShadows = true;
