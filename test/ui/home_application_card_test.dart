@@ -1,5 +1,4 @@
 // "Your application" on the personal homes (D-1210): parsing of /me/home's `onboarding[]` and the card's layout.
-import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/features/home/home_application_card.dart';
