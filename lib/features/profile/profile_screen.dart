@@ -59,7 +59,6 @@ import 'package:flutter_education_app/features/profile/study_profile/study_profi
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/features/auth/reauth_sheet.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
-import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/payments/points/points_api.dart' show kPointsFeatureKey;
 import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart' show PointsWalletPage;
@@ -125,7 +124,41 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
       if (context.mounted) _refresh(context);
     }
 
-    // ── The identity header (D-713): the avatar, name, chips, the teacher's figures and the two actions ──
+    // ── The account's exits (D-1190): at the top, in the header, instead of a red group at the end ──
+    Future<void> logout() async {
+      final ok = await Helpers.confirmDialog(context);
+      if (ok == true && context.mounted) {
+        // Downloaded videos belong to this login only.
+        await OfflineVideoService.instance.deleteAll();
+        if (!context.mounted) return;
+        await context.read<ProfileProvider>().logout(context);
+      }
+    }
+
+    Future<void> deleteAccount() async {
+      final ok = await Helpers.confirmDialog(
+        context,
+        title: "are_you_sure_to_delete_account".tr,
+        confirm: "delete".tr,
+      );
+      if (ok != true || !context.mounted) return;
+      final re = await askReauth(context); // current password (+ two-step code), S9
+      if (re == null || !context.mounted) return;
+      final p = context.read<ProfileProvider>();
+      final after = await p.deleteAccount(context, password: re.password, mfaCode: re.mfaCode);
+      if (after == null) {
+        Helpers.showMessage(p.errorMessage ?? 'generic_error'.tr, isError: true);
+        return;
+      }
+      await OfflineVideoService.instance.deleteAll();
+      Helpers.showMessage('your_account_will_deleted_successfully_through_14_days'.tr);
+    }
+
+    // the old Exit group's switches keep working on the two buttons
+    final off = AppConfig.disableList;
+    final exitsOn = !off.contains('profile.exit_group');
+
+    // ── The identity header (D-713): the avatar, name, chips, the teacher's figures, the actions and the exits ──
     final shareName = myShareableUsername(context);
     final hero = ProfileHero(
       name: p.name,
@@ -136,6 +169,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
       heroTag: 'profile-user-${p.id}',
       onEdit: editAccount,
       onShare: shareName == null || !PersonalAccess.enabled ? null : () => shareProfileLink(context, username: shareName, name: p.name),
+      onLogout: exitsOn && !off.contains('profile.logout') ? logout : null,
+      onDeleteAccount: exitsOn && !off.contains('profile.delete_account') ? deleteAccount : null,
       stats: teacher ? profileTeacherFigures(context.select<TeacherHomeProvider, TeacherStats>((h) => h.stats)) : const [],
     );
 
@@ -195,12 +230,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
     // ── Account & security ───────────────────────────────────
     final security = <Widget>[
-      AppSettingsTile(
-        featureKey: 'profile.update_account',
-        icon: Icons.manage_accounts_rounded,
-        label: 'update_account'.tr,
-        onTap: editAccount,
-      ),
+      // "Update account" is the header's main button (D-1190): no second row for it here
       // a student's stage / grade / school (D-790, kill switch profile.study)
       if (student) StudyProfileTile(onOpen: () => _push(const StudyProfilePage())),
       AppSettingsTile(
@@ -267,17 +297,6 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           children: money,
         )),
       ),
-      (
-        security.length,
-        accountSection(AppSettingsGroup(
-          title: 'profile_sec_security'.tr,
-          subtitle: 'profile_sec_security_sub'.tr,
-          icon: Icons.shield_rounded,
-          accent: accents.security,
-          children: security,
-        )),
-      ),
-
       // ── Preferences: the quick switches stay compact ──────
       (
         6,
@@ -319,6 +338,17 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
+      ),
+
+      (
+        security.length,
+        accountSection(AppSettingsGroup(
+          title: 'profile_sec_security'.tr,
+          subtitle: 'profile_sec_security_sub'.tr,
+          icon: Icons.shield_rounded,
+          accent: accents.security,
+          children: security,
+        )),
       ),
 
       // ── Help ───────────────────────────────────────────────
@@ -393,65 +423,6 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
         ),
       ),
 
-      // ── Logout ─────────────────────────────────────────────
-      (
-        2,
-        ParentComponent(
-          featureKey: 'profile.exit_group',
-          child: AppSettingsGroup(
-            title: 'exit'.tr,
-            icon: DirIcons.exitToApp,
-            danger: true,
-            children: [
-              AppSettingsTile(
-                featureKey: 'profile.logout',
-                icon: DirIcons.logout,
-                danger: true,
-                label: 'logout'.tr,
-                onTap: () async {
-                  final ok = await Helpers.confirmDialog(context);
-                  if (ok == true && context.mounted) {
-                    // Downloaded videos belong to this login only.
-                    await OfflineVideoService.instance.deleteAll();
-                    if (!context.mounted) return;
-                    await context.read<ProfileProvider>().logout(
-                      context,
-                    );
-                  }
-                },
-              ),
-              AppSettingsTile(
-                featureKey: 'profile.delete_account',
-                icon: Icons.delete_forever_rounded,
-                danger: true,
-                label: 'delete_account_title'.tr,
-                onTap: () async {
-                  final ok = await Helpers.confirmDialog(
-                    context,
-                    title: "are_you_sure_to_delete_account".tr,
-                    confirm: "delete".tr,
-                  );
-                  if (ok != true || !context.mounted) return;
-                  final re = await askReauth(context); // current password (+ two-step code), S9
-                  if (re == null || !context.mounted) return;
-                  final p = context.read<ProfileProvider>();
-                  final after = await p.deleteAccount(context,
-                      password: re.password, mfaCode: re.mfaCode);
-                  if (after == null) {
-                    Helpers.showMessage(p.errorMessage ?? 'generic_error'.tr, isError: true);
-                    return;
-                  }
-                  await OfflineVideoService.instance.deleteAll();
-                  Helpers.showMessage(
-                    'your_account_will_deleted_successfully_through_14_days'
-                        .tr,
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
     ].where((s) => s.$1 > 0).toList();
 
     // ── Profile E (D-1081): the four most used entries as tiles under the header, each keeps its kill switch ──

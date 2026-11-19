@@ -7,7 +7,7 @@
 //                 led for this release by one "Organization settings moved" row that opens the Organization tab
 //   My units      one chip per unit: opens it in Management / Membership as the main unit
 //   Preferences   orgPreferenceRows + reset the display preferences (confirmed)
-//   Security · Help & legal · exits (orgSecurityGroup, orgHelpGroup, orgExitGroup) and the app version
+//   Security · Help & legal (orgSecurityGroup, orgHelpGroup) and the app version; Log out sits in the card (D-1190)
 // The organization's own pages live in the Organization tab and Management, not here. A NON-admin keeps today's
 // groups: Account (orgAccountRows), My units, Organization pages (every org-wide sub-page I hold a right to, pushed
 // with orgPushPage, D-1150), Workspace preferences and last the D-103 Settings page.
@@ -20,6 +20,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/profile/profile_hero.dart' show ProfileHero, ProfileHeroStat;
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
+import 'package:flutter_education_app/utils/helpers.dart' show Helpers;
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show t;
@@ -55,7 +56,11 @@ class WsProfileHeader extends StatelessWidget {
     this.managed = 0,
     this.memberOf = 0,
     this.unread = 0,
+    this.onLogout,
   });
+
+  /// Signs out from the card (D-1190); null = no button.
+  final VoidCallback? onLogout;
 
   final String name, role, email, username, imageUrl;
   final int managed, memberOf, unread;
@@ -67,6 +72,7 @@ class WsProfileHeader extends StatelessWidget {
         email: email,
         username: username,
         imageUrl: imageUrl,
+        onLogout: onLogout,
         stats: [
           ProfileHeroStat(icon: Icons.admin_panel_settings_rounded, value: '$managed', label: t('أديرها', 'I manage')),
           ProfileHeroStat(icon: Icons.groups_2_rounded, value: '$memberOf', label: t('عضو فيها', 'Member of')),
@@ -150,6 +156,11 @@ class _WsProfileTabState extends State<WsProfileTab> {
         managed: h?.managed.length ?? 0,
         memberOf: h?.memberOf.length ?? 0,
         unread: ws.alertCounts.unread,
+        // the exits sit in the card at the top (D-1190), as on the personal Profile
+        onLogout: () async {
+          final ok = await Helpers.confirmDialog(context);
+          if (ok == true && context.mounted) await context.read<ProfileProvider>().logout(context);
+        },
       ),
       groups: [
         AppSettingsGroup(title: t('الحساب', 'Account'), icon: Icons.person_rounded, children: [
@@ -207,13 +218,8 @@ class _WsProfileTabState extends State<WsProfileTab> {
         if (!ws.admin) settings,
         if (ws.admin) ...[orgSecurityGroup(), orgHelpGroup(context)],
       ],
-      footer: ws.admin
-          ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              orgExitGroup(context, s),
-              const SizedBox(height: AppSpace.md),
-              const AppVersionLine(),
-            ])
-          : null,
+      // sign out is in the card at the top now (D-1190): only the version closes the page
+      footer: ws.admin ? const AppVersionLine() : null,
     );
   }
 }

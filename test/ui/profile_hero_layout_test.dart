@@ -35,6 +35,7 @@ void main() {
 
   testWidgets('figures and both actions (D-713)', (tester) async {
     var shares = 0;
+    var exits = 0;
     await expectNoLayoutErrors(
       tester,
       () => page(ProfileHero(
@@ -44,6 +45,9 @@ void main() {
         username: 'abdulrahman',
         onEdit: () {},
         onShare: () => shares++,
+        // the exits in the header (D-1190): four buttons at 320 px and text 1.3 still fit
+        onLogout: () => exits++,
+        onDeleteAccount: () => exits++,
         stats: const [
           ProfileHeroStat(icon: Icons.menu_book_rounded, value: '128', label: 'Courses and learning paths'),
           ProfileHeroStat(icon: Icons.groups_rounded, value: '1250000', label: 'Students'),
@@ -54,9 +58,12 @@ void main() {
       act: (t) async {
         expect(find.text('A fourth figure is never drawn'), findsNothing);
         await t.tap(find.byIcon(Icons.ios_share_rounded));
+        await t.tap(find.byKey(const ValueKey('profile.hero.logout')));
+        await t.tap(find.byKey(const ValueKey('profile.hero.delete')));
       },
     );
     expect(shares, greaterThan(0));
+    expect(exits, greaterThan(1));
   });
 
   test('profile sections split into two columns of about the same height', () {

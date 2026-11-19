@@ -999,7 +999,7 @@ class AppAssistantBubbleTile extends StatelessWidget implements AppSettingsSearc
           return AppSettingsTile(
             featureKey: appAssistantFeatureKey,
             icon: Icons.chat_bubble_outline_rounded,
-            color: color ?? context.colors.textMedium,
+            color: color, // the section's accent (primary) like every row beside it
             label: 'assistant_bubble_show'.tr,
             subtitle: 'assistant_bubble_show_sub'.tr,
             trailing: AppSwitch(

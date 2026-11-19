@@ -5180,3 +5180,15 @@ the organization's own identity visible nowhere. Plan and element mapping: `docs
 - **Redirects:** the home's "Settings & roles" link and a `settings` attention / deep-link request open the
   Organization tab when the workspace has it; the `org.settings` badge sits on that tab. Exams moved to Management.
 - Help page `home.org/ws_organization` (back `data/help_seed.json`), features guide `org_admin_organization_tab`.
+
+## D-1190 — Log out and Delete account in the profile card; one icon colour; a reading order · 2026-11-19 · accepted
+
+The owner asked for Log out and Delete account in the profile's top card, icons in the primary colour only, and an
+easier order. `ProfileHero` takes `onLogout` / `onDeleteAccount`: two quiet buttons under Update account (Log out a
+paper button, Delete account a ghost one, both in the primary ink; phones put them side by side, wide screens in the
+action column). The callers keep their confirmations (Delete still asks twice: confirm, then the password + two-step
+code). The red Exit group at the end of the personal Profile is gone; its kill switches (`profile.exit_group`,
+`profile.logout`, `profile.delete_account`) now hide the buttons. The org workspace's Profile card gets Log out too
+(leaving an organization stays where it was). The second "Update account" row in Account & security is removed (the
+card's main button is the one). Every row icon is the primary: the floating-assistant row was the last grey one.
+Sections now read: My learning / teaching · Messages & schedule · Settings · Account & security · Help.
