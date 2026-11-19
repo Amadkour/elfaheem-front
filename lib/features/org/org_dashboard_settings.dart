@@ -2,71 +2,44 @@
 //
 // The org-admin Settings section ("More" on phones, where it also carries the Services links) and the
 // organization sheets:
-//   OrgSettingsPage       AppSettingsPage (profile E, D-1081): the profile card (avatar · name · role · e-mail, the
-//                         organization chip with Switch) and four shortcut tiles (certificate designs · exports ·
-//                         organization notifications · display & reading) → (phones) Communication & services with
-//                         the live counts → Organization (switch · edit · join code · sub-organization · new) →
-//                         Governance (roles, activity log, regulations, parents' grades) → App (language,
-//                         assistant, floating assistant, dark mode) → Help & legal (verify a certificate, get the
-//                         app, privacy, terms) → the footer: two-step verification, the admin's danger zone, then
-//                         the exits (leave · sign out) as quiet red rows. One primary tint for the icons; two
-//                         columns on a wide body. A search field appears past 40 tiles.
+//   OrgSettingsPage       the D-103 Settings tab (the workspace kill switch's fallback): the profile card, then the
+//                         SAME groups as the workspace's Organization and Profile tabs (org_settings_groups.dart,
+//                         D-1180) — Communication & services · Organization (edit) · Joining & access · Structure ·
+//                         Policies · Records & billing · Account · Preferences · Help & legal — and the footer:
+//                         security, the folded danger zone, the exits. Two columns on a wide body; search past 40.
 //   OrgFirstOrganization  the org admin who has none yet.
 //   showOrgSwitcher · showOrgForm · showJoinCode   the sheets (also used by org_status_screen.dart).
 // Every sub-page opens through orgPush (the session carried along, the exit button in its bar).
 library;
 
-import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/profile/legal/legal_links.dart' show legalSettingsGroup;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppSettingsGroup, AppSettingsPage, AppSettingsTile, AppShortcut, AppShortcutRow, AppVersionLine, AppSwitch, appRoleLabel, showAppNotice;
+    show AppSettingsGroup, AppSettingsPage, AppSettingsTile, AppVersionLine, appRoleLabel;
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/design/calendar_entry.dart' show ChatEntryTile;
 import 'package:flutter_education_app/design/context_switcher.dart' show showContextSwitcherSheet;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/core/personal_access.dart' show PersonalAccess;
-import 'package:flutter_education_app/core/app_mode.dart' show AppModeController;
-import 'package:flutter_education_app/features/profile/personal_account_tile.dart' show PersonalAccountTile;
-import 'package:flutter_education_app/features/auth/mfa_entry.dart' show MfaSettingsEntry;
-import 'package:flutter_education_app/design/app_language_switch.dart' show AppLanguageTile;
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
-import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
-import 'org_exam_policy_page.dart' show OrgExamPolicyPage;
-import '../admin/admin_premium_widgets.dart' show AdminPalette;
-import 'org_access_page.dart' show OrgAccessPage, OrgActivityPage;
 import 'org_common.dart';
 import 'org_creation_fee.dart' show OrgCreationFeePanel;
-import 'org_danger_zone.dart';
-import 'org_inst_notify.dart' show OrgNotifyPrefsPage;
-import 'org_v3.dart' show orgCall, orgCodeText;
 import 'org_dashboard_home.dart' show orgPush;
 import 'org_dashboard_screen.dart' show OrgSub;
-import 'package:flutter_education_app/features/exams/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
 import 'package:flutter_education_app/features/exams/hub/hub_entry.dart' show examHubTeachingRole, kExamHubFeatureKey;
-import 'org_chat_settings_tile.dart';
 import 'org_providers.dart';
-import 'org_terms_pages.dart' show OrgTermsAdminPage;
-import 'governance/gov_councils_setup.dart' show OrgCouncilsSetupPage, councilsSetupTitle;
-import 'advising/adv_models.dart' show advOrgTypes;
-import 'org_institution_wizard.dart' show institutionWizardTitle, openInstitutionWizard;
-import 'org_institutions.dart' show OrgDeptCatalogPage, OrgStudySystemPage, orgInstitutionFeatureKey;
+import 'org_settings_groups.dart';
+
+// moved with the other rows (D-1180); kept importable from here
+export 'org_settings_groups.dart' show orgStaffCannotLeave, orgDangerGroup, orgLeaveTile;
 import 'org_ui.dart' show orgPickAndUpload;
-import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
-import 'package:flutter_education_app/features/profile/display/display_settings_page.dart' show DisplaySettingsPage;
-import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show CertVerifyEntryTile;
-import 'package:flutter_education_app/features/get_app/get_app_banner.dart' show GetAppTile;
-import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Settings ("More" on phones)
@@ -98,102 +71,26 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
     final s = context.watch<OrgSession>();
     final p = context.watch<ProfileProvider>();
     final dash = context.watch<OrgDashController>();
-    Future<void> open(String title, Widget child) => orgPush(context, title, child);
     int badge(String key) => switch (key) {
           'forms' => dash.count('pending_forms'),
           'complaints' => dash.count('open_complaints'),
           _ => 0,
         };
-    final governance = <Widget>[
-      if (s.can('roles'))
-        AppSettingsTile(
-            icon: Icons.admin_panel_settings_rounded,
-            label: t('الأدوار والصلاحيات', 'Roles & privileges'),
-            subtitle: t('من يستطيع رؤية وتعديل كل جزء', 'Who can see and change each part'),
-            onTap: () => open(t('الأدوار والصلاحيات', 'Roles & privileges'), const OrgAccessPage())),
-      if (s.can('audit'))
-        AppSettingsTile(
-            icon: Icons.history_rounded,
-            label: t('سجل النشاط', 'Activity log'),
-            subtitle: t('من فعل ماذا ومتى', 'Who did what, and when'),
-            onTap: () => open(t('سجل النشاط', 'Activity log'), const OrgActivityPage())),
-      if (s.can('terms'))
-        AppSettingsTile(
-            icon: Icons.gavel_rounded,
-            color: AdminPalette.orange.last,
-            label: t('الشروط واللوائح', 'Terms & regulations'),
-            onTap: () => open(t('الشروط واللوائح', 'Terms & regulations'), const OrgTermsAdminPage())),
-      if (s.isOrgAdmin)
-        AppSettingsTile(
-            icon: Icons.family_restroom_rounded,
-            featureKey: kParentVisibilityKey,
-            label: t('رؤية أولياء الأمور للدرجات', 'What parents see of grades'),
-            subtitle: t('اتبع إعداد المنصة أو حدّد قاعدة مؤسستك', 'Follow the platform setting or set your own rule'),
-            onTap: () => openParentGradeVisibility(context, orgId: s.currentId)),
-      // D-1133: the organization's exam limits and methods, which only tighten the platform's
-      if (s.isOrgAdmin && s.currentId != null)
-        AppSettingsTile(
-            icon: Icons.policy_rounded,
-            label: t('سياسة الاختبارات', 'Exam policy'),
-            subtitle: t('حدود الاختبارات وطرقها في مؤسستك', 'Exam limits and methods in your organization'),
-            onTap: () => open(t('سياسة الاختبارات', 'Exam policy'), OrgExamPolicyPage(orgId: s.currentId!))),
-    ];
-    // profile E (D-1081): the four most used entries as tiles under the profile card (each keeps its kill switch)
-    final shortcuts = <AppShortcut>[
-      if (s.canAny('certificates') || s.isOrgAdmin)
-        AppShortcut(
-            key: 'settings.tile.certificates',
-            icon: Icons.workspace_premium_rounded,
-            label: t('الشهادات', 'Certificates'),
-            hint: t('تصميمات الشهادات', 'Certificate designs'),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCertificateDesigns(orgId: s.currentId)))),
-      // Export Studio (D-130): scheduled exports and shared links; org admins also get the export log
-      AppShortcut(
-          key: 'settings.tile.exports',
-          icon: Icons.ios_share_rounded,
-          featureKey: 'export.studio',
-          label: t('التصدير', 'Exports'),
-          hint: t('التصدير المجدول والروابط المشتركة وسجل التصدير', 'Scheduled exports, shared links and the export log'),
-          onTap: () => Navigator.pushNamed(context, '/exports', arguments: s.isOrgAdmin)),
-      // Institutions v2 phase 2: phone alerts for this organization's requests (all · important · off)
-      if (s.currentId != null)
-        AppShortcut(
-            key: 'settings.tile.notifications',
-            icon: Icons.notifications_active_rounded,
-            label: t('الإشعارات', 'Notifications'),
-            hint: t('تنبيهات الهاتف لطلبات المؤسسة', 'Phone alerts for organization requests'),
-            onTap: () => orgPush(context, OrgNotifyPrefsPage.title(), OrgNotifyPrefsPage(orgId: s.currentId!, embedded: true), maxWidth: AppWidth.form.max)),
-      AppShortcut(
-          key: 'settings.tile.display',
-          icon: Icons.text_fields_rounded,
-          featureKey: 'profile.display',
-          label: t('العرض', 'Display'),
-          hint: t('العرض والقراءة: الخط، حجم النص، التباين، الحركة', 'Display & reading: font, text size, contrast, motion'),
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DisplaySettingsPage()))),
-    ];
-    final legal = legalSettingsGroup(context); // privacy policy · terms of service (D-308)
     // The Exam Hub (D-350), scoped to this organization: whoever manages its exams, and its teachers
     final showExams = s.currentId != null && (s.isOrgAdmin || s.can('exams', 'view') || examHubTeachingRole(s.memberRole));
-    // D-103 page anatomy: a slim profile row (the big hero pushed the settings below the fold on phones), then the
-    // groups, the organization's own entries first — edit · join code · sub-organization (they left the Home) —
-    // each with one plain line saying what it does. No second search box: the header's search is right above.
+    // D-1180: the same groups as the workspace's Organization and Profile tabs (org_settings_groups.dart) — the
+    // organization first, then me — so the kill switch's fallback holds exactly the same rows.
     return AppSettingsPage(
       gutter: AppSpace.md,
       searchThreshold: 40,
       columns: true,
-      header: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        OrgProfileCard(
-            name: p.name,
-            role: p.role,
-            email: p.email,
-            imageUrl: p.imageUrl,
-            org: s.current == null ? '' : s.name,
-            onSwitch: () => showOrgSwitcher(context)),
-        if (shortcuts.isNotEmpty) ...[
-          const SizedBox(height: AppSpace.md),
-          AppShortcutRow(items: shortcuts),
-        ],
-      ]),
+      header: OrgProfileCard(
+          name: p.name,
+          role: p.role,
+          email: p.email,
+          imageUrl: p.imageUrl,
+          org: s.current == null ? '' : s.name,
+          onSwitch: () => showOrgSwitcher(context)),
       groups: [
         if (widget.services.isNotEmpty || showExams)
           AppSettingsGroup(title: t('التواصل والخدمات', 'Communication & services'), icon: Icons.forum_rounded, children: [
@@ -205,216 +102,32 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
                   subtitle: t('أنشئ وصحّح وانشر النتائج من مكان واحد', 'Create, correct and publish results in one place'),
                   keywords: 'exams correction results degrees اختبارات امتحانات تصحيح نتائج درجات',
                   onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredExamHub(orgId: s.currentId, orgName: s.name)))),
-            for (final x in widget.services) AppSettingsTile(icon: x.$3, label: x.$2, badge: badge(x.$1), onTap: () => open(x.$2, x.$4)),
+            for (final x in widget.services)
+              AppSettingsTile(icon: x.$3, label: x.$2, badge: badge(x.$1), onTap: () => orgPush(context, x.$2, x.$4)),
           ]),
-        AppSettingsGroup(title: t('المؤسسة', 'Organization'), icon: Icons.domain_rounded, children: [
-          if (s.isOrgAdmin) ...[
-            const ChatEntryTile(),
-            if (s.currentId != null) OrgChatSettingsTile(orgId: s.currentId!),
+        if (s.isOrgAdmin)
+          AppSettingsGroup(title: t('المؤسسة', 'Organization'), icon: Icons.domain_rounded, children: [
             AppSettingsTile(
+                key: const ValueKey('org.set.edit'),
                 icon: Icons.edit_rounded,
                 label: t('تعديل بيانات المؤسسة', 'Edit organization'),
                 subtitle: t('الاسم والشعار وبيانات التواصل', 'Name, logo and contact details'),
                 onTap: () => showOrgForm(context, edit: s.current)),
-            AppSettingsTile(
-                icon: Icons.vpn_key_rounded,
-                label: t('كود الانضمام', 'Join code'),
-                subtitle: t('شاركه ليطلب الناس الانضمام', 'Share it so people can ask to join'),
-                keywords: 'code qr invite دعوة رمز',
-                onTap: () => showJoinCode(context)),
-            // C3: what students and staff pay, the creation fee and the payments — read-only
-            AppSettingsTile(
-                icon: Icons.receipt_long_rounded,
-                featureKey: 'org.billing_view', // = orgBillingFeatureKey (the page itself is a deferred part)
-                label: t('الفوترة والرسوم', 'Billing'),
-                subtitle: t('ما يدفعه الطلاب والموظفون وإيصالات المؤسسة', "What students and staff pay, and the organization's receipts"),
-                keywords: 'billing fees plans payments receipt رسوم اشتراك مدفوعات',
-                onTap: () => open(t('الفوترة والرسوم', 'Billing'), deferredOrgBillingPage(orgId: s.currentId))),
-          ],
-          // Institutions S1 (D-960 – D-962): the study system and the department catalog
-          if (s.can('organization', 'update'))
-            AppSettingsTile(
-                key: const ValueKey('settings.study_system'),
-                icon: Icons.timer_outlined,
-                featureKey: orgInstitutionFeatureKey,
-                label: t('نظام الدراسة', 'Study system'),
-                subtitle: t('تقليدي أو ساعات معتمدة', 'Traditional or credit hours'),
-                keywords: 'study system credit hours traditional gpa نظام الدراسة ساعات معتمدة تقليدي',
-                onTap: () => orgPush(context, t('نظام الدراسة', 'Study system'), const OrgStudySystemPage(), helpPageId: 'org.settings')),
-          if (s.can('departments'))
-            AppSettingsTile(
-                key: const ValueKey('settings.dept_catalog'),
-                icon: Icons.apartment_rounded,
-                featureKey: orgInstitutionFeatureKey,
-                label: t('دليل الإدارات', 'Department catalog'),
-                subtitle: t('أنشئ الإدارات العلمية والخدمية وأنواع طلباتها بنقرة', 'Create academic and service departments and their request types in one go'),
-                keywords: 'departments catalog template student affairs exam control إدارات أقسام شئون الطلاب كنترول',
-                onTap: () => orgPush(context, t('دليل الإدارات', 'Department catalog'), const OrgDeptCatalogPage(), helpPageId: 'org.departments')),
-          // Institutions v2 phase 3 (D-989 – D-990): faculty council, department councils, both or none
-          if (s.isOrgAdmin)
-            AppSettingsTile(
-                key: const ValueKey('settings.councils_setup'),
-                icon: Icons.account_balance_rounded,
-                featureKey: orgInstitutionFeatureKey,
-                label: councilsSetupTitle(),
-                subtitle: t('مجلس الكلية، مجالس الأقسام، كلاهما أو بدون', 'Faculty council, department councils, both or none'),
-                keywords: 'councils faculty council department council dean مجالس مجلس الكلية مجلس القسم',
-                onTap: () => orgPush(context, councilsSetupTitle(), const OrgCouncilsSetupPage(), helpPageId: 'org.governance')),
-          // Institutions v2 phase 4 (D-991 – D-993): the guided setup, resumable, for a university or a faculty
-          if (s.isOrgAdmin && advOrgTypes.contains('${s.current?['type']}'))
-            AppSettingsTile(
-                key: const ValueKey('settings.institution_wizard'),
-                icon: Icons.auto_fix_high_rounded,
-                featureKey: orgInstitutionFeatureKey,
-                label: institutionWizardTitle(),
-                subtitle: t('الأساسيات، الإدارات، الرؤساء والمجالس خطوة بخطوة', 'Basics, departments, heads and councils, step by step'),
-                keywords: 'setup wizard launch institution معالج إعداد إطلاق المؤسسة',
-                onTap: () => openInstitutionWizard(context)),
-          if (s.can('sub_orgs', 'insert') || s.isOrgAdmin)
-            AppSettingsTile(
-                icon: Icons.account_tree_rounded,
-                label: t('مؤسسة فرعية جديدة', 'New sub-organization'),
-                subtitle: t('كلية أو فرع أو معهد تابع', 'A faculty, branch or institute under this one'),
-                onTap: () => showOrgForm(context, parentId: s.currentId)),
-          AppSettingsTile(
-              icon: Icons.swap_horiz_rounded,
-              label: t('تبديل المؤسسة', 'Switch organization'),
-              subtitle: PersonalAccess.enabled
-                  ? t('أو العودة إلى حسابك الشخصي', 'Or go back to your personal account')
-                  : t('أو الانضمام إلى مؤسسة أخرى', 'Or join another organization'),
-              onTap: () => showOrgSwitcher(context)),
-          // UX v3 phase 3: the optional personal profile (public profile + courses outside the institution)
-          const PersonalAccountTile(inOrg: true),
-          if (s.canCreateRoot)
-            AppSettingsTile(icon: Icons.add_business_rounded, label: t('مؤسسة جديدة', 'New organization'), onTap: () => showOrgForm(context)),
-        ]),
-        if (governance.isNotEmpty) AppSettingsGroup(title: t('الحوكمة', 'Governance'), icon: Icons.shield_rounded, children: governance),
-        AppSettingsGroup(title: t('التطبيق', 'App'), icon: Icons.settings_rounded, children: [
-          const AppLanguageTile(),
-          const AppAssistantOpenTile(),
-          const AppAssistantBubbleTile(),
-          AppSettingsTile(
-              icon: Icons.dark_mode_rounded,
-              label: 'dark_mode'.tr,
-              trailing: AppSwitch(value: p.darkMode, onChanged: (b) async => p.changeMode(b))),
-        ]),
-        AppSettingsGroup(title: t('المساعدة والشروط', 'Help & legal'), icon: Icons.policy_rounded, children: [
-          const CertVerifyEntryTile(),
-          if (GetAppTile.available) const GetAppTile(), // web: the store / installer for this device
-          ...legal.children,
-        ]),
+          ]),
+        ...orgOrganizationGroups(context, s),
+        AppSettingsGroup(title: t('الحساب', 'Account'), icon: Icons.person_rounded, children: orgAccountRows(context, s)),
+        AppSettingsGroup(title: t('التفضيلات', 'Preferences'), icon: Icons.tune_rounded, children: orgPreferenceRows(context, s, p)),
+        orgHelpGroup(context),
       ],
       footer: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // two-step verification of the signed-in org admin / staff member (shown when the server allows it)
-        const MfaSettingsEntry(),
-        // the org admin's seat and the organization itself: still a danger zone, at the end of the page
-        if (s.current != null && s.isOrgAdmin) _dangerGroup(context, s),
-        // profile E: the exits close the page, quiet red rows on a plain card (each still asks first)
-        AppSettingsGroup(title: 'exit'.tr, icon: DirIcons.exitToApp, children: [
-          if (s.current != null && !s.isOrgAdmin) _leaveTile(context, s),
-          AppSettingsTile(
-              key: const ValueKey('settings.logout'),
-              icon: DirIcons.logout,
-              danger: true,
-              label: 'logout'.tr,
-              onTap: () async {
-                final ok = await Helpers.confirmDialog(context);
-                if (ok == true && context.mounted) await context.read<ProfileProvider>().logout(context);
-              }),
-        ]),
+        orgSecurityGroup(),
+        if (s.current != null && s.isOrgAdmin) const OrgDangerFold(),
+        orgExitGroup(context, s),
         const SizedBox(height: AppSpace.md),
         const AppVersionLine(),
       ]),
     );
   }
-}
-
-/// Teacher assistants and admin assistants cannot leave on their own: the server refuses with `staff_cannot_leave`.
-bool orgStaffCannotLeave(String? myRole) => myRole == 'teacher_assistant' || myRole == 'admin_assistant';
-
-/// Danger zone: the org admin transfers the admin seat or closes the organization (typed-name confirmation); anyone
-/// else can leave it. Every action names what it does and asks first.
-AppSettingsGroup _dangerGroup(BuildContext context, OrgSession s) {
-  final c = context.colors;
-  return AppSettingsGroup(title: t('منطقة الخطر', 'Danger zone'), icon: Icons.warning_amber_rounded, danger: true, children: [
-    if (s.isOrgAdmin) ...[
-      AppSettingsTile(
-          key: const ValueKey('danger.transfer'),
-          icon: Icons.swap_horiz_rounded,
-          color: c.danger,
-          label: t('نقل إدارة المؤسسة', 'Transfer the admin seat'),
-          subtitle: t('اختر عضواً ليصبح المدير الجديد', 'Pick a member to become the new admin'),
-          onTap: () async {
-            final id = s.currentId;
-            if (id == null) return;
-            final done = await showOrgTransferAdmin(context, orgId: id, orgName: s.name, platform: false);
-            if (done) await s.load();
-          }),
-      AppSettingsTile(
-          key: const ValueKey('danger.close'),
-          icon: Icons.delete_outline_rounded,
-          color: c.danger,
-          label: t('إغلاق / حذف المؤسسة', 'Close / delete the organization'),
-          subtitle: t('يتطلب كتابة اسم المؤسسة', "You will type the organization's name to confirm"),
-          onTap: () => _closeOrg(context, s)),
-    ] else
-      _leaveTile(context, s),
-  ]);
-}
-
-/// Leave the organization: a quiet red exit row (profile E), or — for the staff the server keeps (403
-/// staff_cannot_leave) — a plain row that says so up front instead of after a confirmation.
-Widget _leaveTile(BuildContext context, OrgSession s) => orgStaffCannotLeave('${s.current?['my_role']}')
-    ? AppSettingsTile(
-        key: const ValueKey('danger.leave_blocked'),
-        icon: DirIcons.logout,
-        label: t('مغادرة المؤسسة', 'Leave the organization'),
-        subtitle: orgCodeText('staff_cannot_leave'),
-        onTap: () => showAppNotice(orgCodeText('staff_cannot_leave')))
-    : AppSettingsTile(
-        key: const ValueKey('danger.leave'),
-        icon: DirIcons.logout,
-        danger: true,
-        label: t('مغادرة المؤسسة', 'Leave the organization'),
-        subtitle: t('تفقد الوصول إلى لوحتها حتى تنضم مجدداً', 'You lose access to its dashboard until you join again'),
-        onTap: () => _leaveOrg(context, s));
-
-Future<void> _closeOrg(BuildContext context, OrgSession s) async {
-  final org = s.current;
-  if (org == null) return;
-  final reason = await askTypedNameConfirm(context,
-      org: org,
-      askReason: false,
-      title: t('إغلاق المؤسسة', 'Close the organization'),
-      body: t('يجب ألا يكون لها فروع أو مقررات. لا يمكن التراجع عن هذا الإجراء.',
-          'It must have no sub-organizations or courses. This cannot be undone.'),
-      confirmLabel: t('إغلاق المؤسسة', 'Close the organization'));
-  if (reason == null) return;
-  await s.deleteOrg();
-}
-
-Future<void> _leaveOrg(BuildContext context, OrgSession s) async {
-  final id = s.currentId;
-  if (id == null) return;
-  final ok = await confirm(context,
-      message: t('هل تريد مغادرة «${s.name}»؟ ستفقد الوصول إلى لوحتها.', 'Leave "${s.name}"? You will lose access to its dashboard.'),
-      danger: true,
-      confirmLabel: t('مغادرة', 'Leave'));
-  if (!ok) return;
-  final r = await orgCall(() => ApiClient().delete('$orgBase/public/$id/leave'), ok: t('تمت المغادرة', 'You left the organization'));
-  if (!r.ok || !context.mounted) return;
-  // the last membership gone: the server may restore the role (org-staff -> teacher / student) and turns the
-  // personal account back on, so the user is re-read and a role without the organization dashboard goes home
-  final auth = context.read<MyAuthProvider>();
-  final before = auth.currentUser?.role;
-  await auth.getMe();
-  final after = auth.currentUser?.role;
-  if (context.mounted && after != null && after != before && !PersonalAccess.isOrgRole(after)) {
-    await AppModeController.instance.refresh();
-    if (context.mounted) Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(auth.homeRoute, (_) => false);
-    return;
-  }
-  await s.load(keepSelection: false);
 }
 
 /// The signed-in person in one slim card row: avatar · name · role and e-mail (D-102 language: card + hairline).
@@ -568,9 +281,12 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
             Field(controller: en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
             ChoiceRow<String>(label: t('النوع', 'Type'), options: orgTypeLabels(), value: type, onChanged: (v) => set(() => type = v)),
             const SizedBox(height: 10),
-            ChoiceRow<String>(label: t('طريقة الانضمام', 'How people join'), options: joinModeLabels(), value: mode, onChanged: (v) => set(() => mode = v)),
-            const SizedBox(height: 12),
-            Text(t('لون المؤسسة', 'Brand colour'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, color: c.textDark)),
+            // how people join is its own setting once the organization exists (Organization › Joining & access, D-1180)
+            if (edit == null) ...[
+              ChoiceRow<String>(label: t('طريقة الانضمام', 'How people join'), options: joinModeLabels(), value: mode, onChanged: (v) => set(() => mode = v)),
+              const SizedBox(height: 12),
+            ],
+            Text(t('لون المؤسسة', 'Brand colour'), style: AppType.label(ctx).copyWith(color: c.textDark)),
             const SizedBox(height: 8),
             Wrap(spacing: 10, children: [
               for (final h in palette)
@@ -616,7 +332,7 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
             if (official) ...[
               const SizedBox(height: 6),
               Text(t('بيانات رسمية — تساعد فريق المنصة على اعتماد مؤسستك بسرعة', 'Official details — they help the platform team approve you quickly'),
-                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, color: c.textDark)),
+                  style: AppType.label(ctx).copyWith(color: c.textDark)),
               const SizedBox(height: 8),
               Field(controller: license, label: t('رقم القرار / الترخيص', 'Decree / licence number')),
               Field(controller: email, label: t('البريد الرسمي', 'Official e-mail'), ltr: true),
@@ -641,7 +357,7 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
                   'name_ar': ar.text.trim(),
                   'name_en': en.text.trim(),
                   'type': type,
-                  'join_mode': mode,
+                  if (edit == null) 'join_mode': mode,
                   if (color.isNotEmpty) 'color': color,
                   if (logo.text.trim().isNotEmpty) 'logo_url': logo.text.trim(),
                   if (desc.text.trim().isNotEmpty) 'description': desc.text.trim(),
@@ -661,22 +377,6 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
                 }
               },
             ),
-            if (edit != null) ...[
-              const SizedBox(height: 10),
-              TextButton.icon(
-                onPressed: () async {
-                  final typed = await askTypedNameConfirm(ctx,
-                      org: edit,
-                      askReason: false,
-                      title: t('حذف المؤسسة', 'Delete the organization'),
-                      body: t('يجب أن تكون بلا فروع أو مقررات. لا يمكن التراجع.', 'It must have no sub-organizations or courses. This cannot be undone.'),
-                      confirmLabel: t('حذف المؤسسة', 'Delete the organization'));
-                  if (typed != null && await s.deleteOrg() && ctx.mounted) Navigator.pop(ctx);
-                },
-                icon: Icon(Icons.delete_outline_rounded, color: c.danger),
-                label: Text(t('حذف المؤسسة', 'Delete organization'), style: TextStyle(color: c.danger)),
-              ),
-            ],
           ]),
         );
       }));

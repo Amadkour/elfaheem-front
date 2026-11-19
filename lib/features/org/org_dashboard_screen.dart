@@ -187,7 +187,9 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
     AttentionService.instance.orgTabRequest.value = null;       // consumed
     if (s.currentId != r.orgId && s.items.any((o) => asInt(o['id']) == r.orgId)) s.select(r.orgId);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _tabs.go(r.section, sub: r.sub)) return;
+      // the workspace has no 'settings' tab: an admin's settings link opens its Organization tab
+      final section = r.section == 'settings' && _tabs.keys.contains('ws_organization') ? 'ws_organization' : r.section;
+      if (!mounted || _tabs.go(section, sub: r.sub)) return;
       final x = r.sub == null ? null : _tabs.subOf(r.section, r.sub!);
       if (x != null) orgPushPage(context, session: s, dash: _dash, title: x.$2, page: x.$4);
     });

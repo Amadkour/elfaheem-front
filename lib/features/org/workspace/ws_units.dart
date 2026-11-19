@@ -25,7 +25,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/config/app_config.dart' show AppConfig;
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredExamHub;
+import 'package:flutter_education_app/features/exams/hub/hub_entry.dart' show examHubTeachingRole, kExamHubFeatureKey;
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show t;
@@ -110,6 +113,8 @@ WsPin wsSectionPin(OrgSub x) => WsPin('section', x.$1, labelAr: x.$2, labelEn: x
 /// The tabs display's item keys: `section:<sub key>` / `unit:<id>`.
 String _secKey(String sub) => 'section:$sub';
 String _unitKey(int id) => 'unit:$id';
+/// The Tabs strip's Exams chip: an action (opens the hub), never a selected item.
+const _examsKey = 'action:exams';
 
 class WsUnitsTab extends StatefulWidget {
   const WsUnitsTab({super.key, required this.scope});
@@ -142,6 +147,19 @@ class _WsUnitsTabState extends State<WsUnitsTab> {
       );
 
   void _openDepartment(WsUnit u) => openDepartmentDashboard(context, unitType: u.unitType, unitId: u.id);
+
+  /// The Exam Hub (D-350) for an admin: not an organization section, so it is not pinnable and never in OrgTabs.sections.
+  bool get _showExams {
+    final s = context.read<OrgSession>();
+    return s.currentId != null &&
+        !AppConfig.disableList.contains(kExamHubFeatureKey) &&
+        (s.isOrgAdmin || s.can('exams', 'view') || examHubTeachingRole(s.memberRole));
+  }
+
+  void _openExams() {
+    final s = context.read<OrgSession>();
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredExamHub(orgId: s.currentId, orgName: s.name)));
+  }
 
   void _openSection(OrgSub x) => orgPushPage(context,
       session: context.read<OrgSession>(), dash: context.read<OrgDashController>(), tabs: context.read<OrgTabs>(), title: x.$2, page: x.$4);
@@ -431,6 +449,7 @@ class _WsUnitsTabState extends State<WsUnitsTab> {
                 return tab == null ? child : AttentionBadge(tabKey: tab, orgId: oid, child: child);
               },
               onSection: _openSection,
+              onExams: _showExams ? _openExams : null,
               onSectionMore: (x) => _sectionActions(ws, x),
               onUnit: (u) => _openUnit(ws, u),
               onUnitMore: (u) => _unitActions(ws, u),
@@ -455,6 +474,7 @@ class _WsUnitsTabState extends State<WsUnitsTab> {
     final subs = [for (final s in sections) for (final x in s.$2) (s.$1, x)];
     final items = <WsStripItem>[
       for (final (_, x) in subs) (_secKey(x.$1), x.$2, x.$3),
+      if (_showExams) (_examsKey, t('الاختبارات', 'Exams'), Icons.fact_check_rounded),
       for (final u in units) (_unitKey(u.id), u.waiting > 0 ? '${u.name} · ${u.waiting}' : u.name, unitKindIcon(u.unitType)),
     ];
     final keys = [for (final i in items) i.$1];
@@ -463,7 +483,13 @@ class _WsUnitsTabState extends State<WsUnitsTab> {
     final unit = si >= 0 ? null : units.firstWhere((u) => _unitKey(u.id) == key);
     if (si >= 0) _seenSections.add(subs[si].$2.$1);
     final isMain = key == mainKey;
-    final strip = WsScopeStrip(items: items, selectedKey: key, mainKey: mainKey, onSelect: (k) => setState(() => _selectedKey = k));
+    final strip = WsScopeStrip(items: items, selectedKey: key, mainKey: mainKey, onSelect: (k) {
+      if (k == _examsKey) {
+        _openExams();
+      } else {
+        setState(() => _selectedKey = k);
+      }
+    });
     final Widget header;
     if (unit != null) {
       header = _tabsHeader(
@@ -655,6 +681,7 @@ class WsAdminBoxes extends StatelessWidget {
     this.badge,
     this.onSection,
     this.onSectionMore,
+    this.onExams,
     this.onUnit,
     this.onUnitMore,
   });
@@ -668,6 +695,9 @@ class WsAdminBoxes extends StatelessWidget {
   final bool Function(WsPin)? isPinned;
   final Widget Function(String section, Widget child)? badge;
   final ValueChanged<OrgSub>? onSection, onSectionMore;
+
+  /// Opens the Exam Hub; null hides the Exams card.
+  final VoidCallback? onExams;
   final ValueChanged<WsUnit>? onUnit, onUnitMore;
 
   @override
@@ -677,6 +707,15 @@ class WsAdminBoxes extends StatelessWidget {
         final cols = (inner / 300).floor().clamp(1, 4);
         final w = (inner - gap * (cols - 1)) / cols;
         bool pinned(WsPin p) => isPinned?.call(p) ?? false;
+        final examsCard = WsSectionCard(
+          key: const ValueKey('ws.section.card.exams'),
+          label: t('الاختبارات', 'Exams'),
+          icon: Icons.fact_check_rounded,
+          section: 'services',
+          isMain: false,
+          pinned: false,
+          onTap: onExams,
+        );
         return ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xl),
@@ -699,7 +738,13 @@ class WsAdminBoxes extends StatelessWidget {
                       onMore: onSectionMore == null ? null : () => onSectionMore!(x),
                     ),
                   ),
+                // the Exam Hub joins the Services group it belongs to (one heading, D-1180)
+                if (section == 'services' && onExams != null) SizedBox(width: w, child: examsCard),
               ]),
+            ],
+            if (onExams != null && !sections.any((e) => e.$1 == 'services')) ...[
+              _SectionHeading(section: 'services', badge: badge),
+              Wrap(spacing: gap, runSpacing: gap, children: [SizedBox(width: w, child: examsCard)]),
             ],
             if (units.isNotEmpty || unitsLoading) ...[
               const SizedBox(height: AppSpace.lg),

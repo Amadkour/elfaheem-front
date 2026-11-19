@@ -17,6 +17,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show t;
+import '../org_dashboard_home.dart' show orgPush;
 import '../org_dashboard_screen.dart' show OrgSub, OrgTabs;
 import 'ws_models.dart';
 import 'ws_overview.dart' show wsOverviewBox, wsOverviewBoxes;
@@ -136,7 +137,10 @@ class WsPinStrip extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class WsPinnedTab extends StatefulWidget {
-  const WsPinnedTab({super.key});
+  const WsPinnedTab({super.key, this.only});
+
+  /// Draws just this pin's content, with no strip (the page a phone's Overview strip pushes).
+  final WsPin? only;
   @override
   State<WsPinnedTab> createState() => _WsPinnedTabState();
 }
@@ -160,7 +164,9 @@ class _WsPinnedTabState extends State<WsPinnedTab> {
     return h == null ? pins : wsLivePins(pins, {for (final u in h.all) u.id});
   }
 
-  void _unpin(WsController ws, WsPin p) {
+  void _unpin(WsController ws, WsPin p) => _unpinPin(ws, p);
+
+  static void _unpinPin(WsController ws, WsPin p) {
     ws.prefs.update((x) => x.togglePin(p));
     showAppNotice(
       t('أُلغي التثبيت', 'Unpinned'),
@@ -250,6 +256,7 @@ class _WsPinnedTabState extends State<WsPinnedTab> {
   Widget build(BuildContext context) {
     final ws = context.watch<WsController>();
     final pins = _live(ws);
+    if (widget.only != null) return _content(ws, widget.only!);
     if (pins.isEmpty) {
       return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
         AppEmpty(
@@ -273,6 +280,35 @@ class _WsPinnedTabState extends State<WsPinnedTab> {
       ),
       Expanded(child: KeyedSubtree(key: ValueKey('ws-pinned-${sel.id}'), child: _content(ws, sel))),
     ]);
+  }
+}
+
+/// Phones (Q1): the Pinned tab is not in the bar, so the pins are this strip at the top of Overview. A chip opens
+/// what the Pinned tab would show for it (a pushed page); a tab pin switches to that tab. Nothing when nothing is pinned.
+class WsPhonePins extends StatelessWidget {
+  const WsPhonePins({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final ws = context.watch<WsController>();
+    final pins = _WsPinnedTabState._live(ws);
+    if (pins.isEmpty) return const SizedBox.shrink();
+    final sections = _WsPinnedTabState._sections(context);
+    String label(WsPin p) => wsPinLabel(p, ws.home, sections: sections);
+    return WsPinStrip(
+      pins: pins,
+      selectedId: null,
+      labelOf: label,
+      onSelect: (p) {
+        if (p.kind == 'tab') {
+          if (!ws.go(wsPinTabKey(p))) showAppNotice(t('هذا التبويب غير متاح الآن', 'This tab is not available right now'));
+          return;
+        }
+        orgPush(context, label(p),
+            ChangeNotifierProvider<WsController>.value(value: ws, child: WsPinnedTab(key: ValueKey('ws-phone-pin-${p.id}'), only: p)));
+      },
+      onUnpin: (p) => _WsPinnedTabState._unpinPin(ws, p),
+    );
   }
 }
 

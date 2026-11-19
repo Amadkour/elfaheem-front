@@ -227,27 +227,31 @@
   ],
   [
    "home.org/ws_alerts",
-   "teacher"
+   "org_member"
   ],
   [
    "home.org/ws_management",
-   "teacher"
+   "org_member"
   ],
   [
    "home.org/ws_membership",
-   "teacher"
+   "org_member"
+  ],
+  [
+   "home.org/ws_organization",
+   "org_admin"
   ],
   [
    "home.org/ws_overview",
-   "teacher"
+   "org_member"
   ],
   [
    "home.org/ws_pinned",
-   "teacher"
+   "org_member"
   ],
   [
    "home.org/ws_profile",
-   "teacher"
+   "org_member"
   ],
   [
    "home.org",

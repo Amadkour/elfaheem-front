@@ -12,6 +12,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
+import 'package:flutter_education_app/design/app_responsive.dart' show AppShellKind, Breakpoints;
 import 'package:flutter_education_app/design/app_shell.dart' show AppShell, DashboardItem;
 import 'package:provider/provider.dart';
 
@@ -22,7 +24,8 @@ import '../org_v3.dart' show OrgCall;
 import 'ws_alerts.dart' show WsAlertsTab;
 import 'ws_models.dart';
 import 'ws_overview.dart' show WsOverviewTab;
-import 'ws_pinned.dart' show WsPinnedTab;
+import 'ws_pinned.dart' show WsPhonePins, WsPinnedTab;
+import 'ws_organization.dart' show WsOrganizationTab;
 import 'ws_profile.dart' show WsProfileTab;
 import 'ws_store.dart';
 import 'ws_units.dart' show WsUnitsTab;
@@ -41,6 +44,8 @@ bool wsIsAdmin(OrgSession s) => s.isOrgAdmin || s.access == 'admin';
 abstract final class WsTabs {
   static const overview = 'ws_overview';
   static const management = 'ws_management';
+  /// The organization itself, admins only (D-1180).
+  static const organization = 'ws_organization';
   static const membership = 'ws_membership';
   static const pinned = 'ws_pinned';
   static const alerts = 'ws_alerts';
@@ -165,7 +170,11 @@ class _TeacherWorkspaceState extends State<TeacherWorkspace> {
         return ChangeNotifierProvider<WsController>.value(
           value: _ws!,
           child: Consumer<WsController>(builder: (context, ws, _) {
-            final entries = wsShellItems(ws);
+            final entries = wsShellItems(ws, phone: Breakpoints.shellFor(widget.width) == AppShellKind.mobile);
+            // Pinned comes and goes with the width: keep the open tab by its key, not its index
+            final openKey = tabs.currentTab < tabs.keys.length ? tabs.keys[tabs.currentTab] : null;
+            final moved = openKey == null ? -1 : entries.indexWhere((e) => e.$1 == openKey);
+            if (moved >= 0) tabs.currentTab = moved;
             tabs.keys = [for (final e in entries) e.$1];
             // the tab key keeps a tab's colour when the language changes its label (D-1170)
             final items = [for (final e in entries) e.$2..prefKey = e.$1];
@@ -186,7 +195,10 @@ class _TeacherWorkspaceState extends State<TeacherWorkspace> {
 }
 
 /// The shell's tabs for what [ws] holds right now (D-1151).
-List<(String, DashboardItem)> wsShellItems(WsController ws) {
+///
+/// On a [phone] the bar stays at five (Overview · Management · Organization · Alerts · Profile): Pinned is left out
+/// and the pins are a strip at the top of Overview instead (Q1).
+List<(String, DashboardItem)> wsShellItems(WsController ws, {bool phone = false}) {
   final h = ws.home;
   final p = ws.prefs.prefs;
   // before the first answer both unit tabs are drawn (their pages show skeletons), so the bar doesn't jump
@@ -195,14 +207,21 @@ List<(String, DashboardItem)> wsShellItems(WsController ws) {
   final showMember = h == null || h.memberOf.isNotEmpty;
   return [
     (WsTabs.overview, DashboardItem(Icons.space_dashboard_outlined, Icons.space_dashboard_rounded, t('لمحة', 'Overview'), null,
-        OrgShellTab(title: t('لمحة', 'Overview'), helpPageId: 'home.org/ws_overview', child: const WsOverviewTab()))),
+        OrgShellTab(title: t('لمحة', 'Overview'), helpPageId: 'home.org/ws_overview', child: phone && p.pins.isNotEmpty
+            ? const Column(children: [WsPhonePins(), Expanded(child: WsOverviewTab())])
+            : const WsOverviewTab()))),
     if (showManaged)
       (WsTabs.management, DashboardItem(Icons.admin_panel_settings_outlined, Icons.admin_panel_settings_rounded, t('الإدارة', 'Management'), null,
           OrgShellTab(title: t('الإدارة', 'Management'), helpPageId: 'home.org/ws_management', child: const WsUnitsTab(scope: 'management')))),
+    // the organization's identity and settings (D-1180): Profile is only me now
+    if (ws.admin)
+      (WsTabs.organization, DashboardItem(Icons.domain_outlined, Icons.domain_rounded, t('المؤسسة', 'Organization'), null,
+          OrgShellTab(title: t('المؤسسة', 'Organization'), helpPageId: 'home.org/ws_organization', child: const WsOrganizationTab()),
+          attentionKeys: const [AttentionTabs.orgSettings], attentionOrgId: ws.orgId)),
     if (showMember)
       (WsTabs.membership, DashboardItem(Icons.groups_2_outlined, Icons.groups_2_rounded, t('العضوية', 'Membership'), null,
           OrgShellTab(title: t('العضوية', 'Membership'), helpPageId: 'home.org/ws_membership', child: const WsUnitsTab(scope: 'membership')))),
-    if (p.pins.isNotEmpty)
+    if (!phone && p.pins.isNotEmpty)
       (WsTabs.pinned, DashboardItem(Icons.push_pin_outlined, Icons.push_pin_rounded, t('المثبّتة', 'Pinned'), null,
           OrgShellTab(title: t('المثبّتة', 'Pinned'), helpPageId: 'home.org/ws_pinned', child: const WsPinnedTab()))),
     (WsTabs.alerts, DashboardItem(Icons.notifications_none_rounded, Icons.notifications_rounded, t('التنبيهات', 'Alerts'), null,

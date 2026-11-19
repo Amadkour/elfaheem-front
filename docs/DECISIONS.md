@@ -5154,3 +5154,29 @@ parent, admin, the D-103 organization dashboard and the D-1150 workspace all get
   (Back, a save that pops) goes to the Home tab instead of closing the dashboard.
 - **Storage:** on the device, per user and dashboard (`ui.shell_tabs.v1.<user>|<route or org<id>>`), like D-1157;
   not synced through `/me/ui-prefs`. No server change, no kill switch.
+
+## D-1180 — Organization admins: Profile is the person, a new Organization tab is the organization · 2026-11-19 · accepted
+
+The owner found the admin's Profile overloaded: one "Organization settings" row led to a page of about 40 rows that
+mixed personal settings (dark mode, language, sign out) with the organization's (roles, billing, closing it), with
+duplicates (three ways to switch, two personal-account rows, Delete in both the Edit sheet and the danger zone) and
+the organization's own identity visible nowhere. Plan and element mapping: `docs/org-profile/PLAN.md`.
+- **Profile = me; Organization = the organization; Management = its daily work.** Admins get a 5th tab,
+  Organization (Overview · Management · Organization · Alerts · Profile): an identity card (logo or initial on the
+  brand colour, name, type, status, about, official details, Edit details, prompts for a missing logo / about) and
+  the groups Joining & access · Structure · Policies · Records & billing, then the danger zone folded to one row.
+- **Profile (admins)** keeps the hero, Account (one Switch account, personal account, messages, create another
+  organization), My units, Preferences (organization alerts, display, language, dark mode, assistant, workspace
+  reset), Security, Help & legal, Sign out. A "settings moved" row points to the new tab for this release. Non-admins
+  keep their Profile as it was.
+- **One source of rows:** `org_settings_groups.dart`; the D-103 Settings tab (the `org.teacher_workspace` fallback)
+  composes the same groups, organization first, so both stay identical. Every row keeps its right check and its
+  kill-switch key; nothing was removed.
+- **Edit sheet:** identity and contact only. "How people join" is its own row (it sends only `join_mode`; the
+  server's `PUT /orgs/{id}` changes only the fields it is sent, so the plan's whole-object risk did not apply). The
+  sheet's second Delete is gone (the danger zone keeps Close / delete); its raw TextStyles use the kit's.
+- **Phones keep five tabs** (D-1160): the workspace's Pinned tab folds into a strip at the top of Overview; desktop
+  and tablet keep the Pinned tab. The shell keeps the open tab by key when Pinned comes and goes with the width.
+- **Redirects:** the home's "Settings & roles" link and a `settings` attention / deep-link request open the
+  Organization tab when the workspace has it; the `org.settings` badge sits on that tab. Exams moved to Management.
+- Help page `home.org/ws_organization` (back `data/help_seed.json`), features guide `org_admin_organization_tab`.

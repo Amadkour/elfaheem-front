@@ -1,25 +1,25 @@
 // lib/features/org/workspace/ws_profile.dart
 //
-// The workspace's Profile tab (D-1150 / D-1158, docs/teacher-org/PLAN.md): my card (ProfileHero: name, avatar, my
-// role in this organization, units managed · member of · unread alerts), then the groups —
-//   Account                 Switch account (the context switcher) · Personal account (PersonalAccountTile)
-//   My units                one chip per unit: opens it in Management / Membership as the main unit
-//   Organization pages      every org-wide sub-page I hold a right to (OrgTabs.sections), pushed with orgPushPage:
-//                           nothing the D-103 shell offered is lost (D-1150)
-//   Workspace preferences   reset the display preferences (confirmed)
-//   Organization settings   the D-103 Settings page (each row there checks its own right): MFA, sign out, …
-// An organization admin (D-1160, WsController.admin) is labelled "Organization admin" and gets Organization
-// settings FIRST (organization edit, sub-organizations, join code, roles, activity log …).
+// The workspace's Profile tab (D-1150 / D-1158 / D-1180, docs/org-profile/PLAN.md): "Profile = me". My card
+// (ProfileHero: name, avatar, my role in this organization, units managed · member of · unread alerts), then —
+// for an organization admin (D-1160, WsController.admin), personal only:
+//   Account       orgAccountRows (switch account · personal account · messages · create another organization),
+//                 led for this release by one "Organization settings moved" row that opens the Organization tab
+//   My units      one chip per unit: opens it in Management / Membership as the main unit
+//   Preferences   orgPreferenceRows + reset the display preferences (confirmed)
+//   Security · Help & legal · exits (orgSecurityGroup, orgHelpGroup, orgExitGroup) and the app version
+// The organization's own pages live in the Organization tab and Management, not here. A NON-admin keeps today's
+// groups: Account (orgAccountRows), My units, Organization pages (every org-wide sub-page I hold a right to, pushed
+// with orgPushPage, D-1150), Workspace preferences and last the D-103 Settings page.
 // WsProfileHeader is plain values (tested in test/org/ws_alerts_test.dart).
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/context_switcher.dart' show showContextSwitcherSheet;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/profile/personal_account_tile.dart' show PersonalAccountTile;
 import 'package:flutter_education_app/features/profile/profile_hero.dart' show ProfileHero, ProfileHeroStat;
+import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show t;
@@ -27,6 +27,7 @@ import '../org_dashboard_home.dart' show orgPush, orgPushPage;
 import '../org_dashboard_screen.dart' show OrgTabs;
 import '../org_dashboard_settings.dart' show OrgSettingsPage;
 import '../org_providers.dart';
+import '../org_settings_groups.dart';
 import 'ws_models.dart';
 import 'ws_shell.dart' show WsController, WsTabs;
 import 'ws_units.dart' show wsOrgSectionName;
@@ -74,8 +75,22 @@ class WsProfileHeader extends StatelessWidget {
       );
 }
 
-class WsProfileTab extends StatelessWidget {
+class WsProfileTab extends StatefulWidget {
   const WsProfileTab({super.key});
+
+  @override
+  State<WsProfileTab> createState() => _WsProfileTabState();
+}
+
+class _WsProfileTabState extends State<WsProfileTab> {
+  @override
+  void initState() {
+    super.initState();
+    // the preference rows read the profile provider (dark mode …): load it like the old Settings page did
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<ProfileProvider>().initData(context.read<MyAuthProvider>().currentUser);
+    });
+  }
 
   void _openUnit(WsController ws, WsUnit u) {
     final scope = u.manages ? 'management' : 'membership';
@@ -137,17 +152,16 @@ class WsProfileTab extends StatelessWidget {
         unread: ws.alertCounts.unread,
       ),
       groups: [
-        if (ws.admin) settings,
         AppSettingsGroup(title: t('الحساب', 'Account'), icon: Icons.person_rounded, children: [
-          AppSettingsTile(
-            key: const ValueKey('ws.profile.switch'),
-            icon: Icons.swap_horiz_rounded,
-            label: t('تبديل الحساب', 'Switch account'),
-            subtitle: t('حسابك الشخصي وحسابات مؤسساتك', 'Your personal account and your organization accounts'),
-            keywords: 'switch account organization تبديل حساب مؤسسة',
-            onTap: () => showContextSwitcherSheet(context, session: context.read<OrgSession>()),
-          ),
-          const PersonalAccountTile(inOrg: true),
+          if (ws.admin)
+            AppSettingsTile(
+              key: const ValueKey('ws.profile.moved'),
+              icon: Icons.domain_rounded,
+              label: t('إعدادات المؤسسة انتقلت', 'Organization settings moved'),
+              subtitle: t('تجدها الآن في تبويب «المؤسسة»', 'Find them in the Organization tab now'),
+              onTap: () => ws.go(WsTabs.organization),
+            ),
+          ...orgAccountRows(context, s),
         ]),
         if (units.isNotEmpty)
           AppSettingsGroup(title: t('وحداتي', 'My units'), icon: Icons.account_tree_rounded, children: [
@@ -165,14 +179,15 @@ class WsProfileTab extends StatelessWidget {
               ]),
             ),
           ]),
-        if (pages.isNotEmpty)
+        if (!ws.admin && pages.isNotEmpty)
           AppSettingsGroup(
             title: t('صفحات المؤسسة', 'Organization pages'),
             subtitle: t('الصفحات التي تملك صلاحيتها في المؤسسة', 'The organization pages you have access to'),
             icon: Icons.domain_rounded,
             children: pages,
           ),
-        AppSettingsGroup(title: t('تفضيلات مساحة العمل', 'Workspace preferences'), icon: Icons.tune_rounded, children: [
+        AppSettingsGroup(title: ws.admin ? t('التفضيلات', 'Preferences') : t('تفضيلات مساحة العمل', 'Workspace preferences'), icon: Icons.tune_rounded, children: [
+          if (ws.admin) ...orgPreferenceRows(context, s, context.watch<ProfileProvider>()),
           AppSettingsTile(
             key: const ValueKey('ws.profile.reset'),
             icon: Icons.restart_alt_rounded,
@@ -190,7 +205,15 @@ class WsProfileTab extends StatelessWidget {
           ),
         ]),
         if (!ws.admin) settings,
+        if (ws.admin) ...[orgSecurityGroup(), orgHelpGroup(context)],
       ],
+      footer: ws.admin
+          ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              orgExitGroup(context, s),
+              const SizedBox(height: AppSpace.md),
+              const AppVersionLine(),
+            ])
+          : null,
     );
   }
 }
