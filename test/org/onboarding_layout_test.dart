@@ -12,6 +12,7 @@ import 'package:flutter_education_app/features/org/onboarding/onboarding_intake.
 import 'package:flutter_education_app/features/org/onboarding/onboarding_invite.dart';
 import 'package:flutter_education_app/features/org/onboarding/onboarding_models.dart';
 import 'package:flutter_education_app/features/org/onboarding/onboarding_page.dart';
+import 'package:flutter_education_app/features/org/onboarding/onboarding_report.dart';
 import 'package:flutter_education_app/features/org/onboarding/onboarding_review.dart';
 import 'package:flutter_education_app/features/org/onboarding/onboarding_types_page.dart';
 import 'package:flutter_education_app/features/org/onboarding/onboarding_wizard.dart';
@@ -80,6 +81,29 @@ void main() {
       () => OnboardingPage(orgId: 4, api: api, can: (_, _) => true, live: false, places: const OnbPlaces()),
       frames: 6,
     );
+  });
+
+  testWidgets('the admissions report: tiles, funnel, overdue cards, reviewers', (tester) async {
+    final report = OnbReport.fromJson({
+      'funnel': {'draft': 3, 'submitted': 5, 'under_review': 2, 'needs_correction': 1, 'approved': 4, 'active': 40, 'rejected': 2, 'withdrawn': 1},
+      'by_type': <String, dynamic>{},
+      'overdue': [
+        {'case_id': 9, 'full_name': 'فاطمة عبد الرحمن إبراهيم محمد السيد الشاذلي', 'type_key': type.key, 'due_at': '2026-11-01T10:00:00', 'missing': ['birth_certificate', 'military_form', 'fee_receipt']},
+      ],
+      'avg_review_hours': 52.5,
+      'by_reviewer': [
+        {'user_id': 1, 'name': 'Dr. Mohamed Abdelhamid Ibrahim El-Sayed El-Shazly', 'decided': 31, 'avg_hours': 20.25},
+        {'user_id': 2, 'name': '', 'decided': 0, 'avg_hours': null},
+      ],
+    });
+    await expectNoLayoutErrors(tester, () => OnbReportView(report: report, types: [type], range: DateTimeRange(start: DateTime(2026, 9, 1), end: DateTime(2026, 11, 1))), frames: 4);
+    await expectNoLayoutErrors(tester, () => OnbReportView(report: OnbReport.fromJson(const {'funnel': {}}), types: [type]), frames: 4);
+    await expectNoLayoutErrors(tester, () => const OnbReportView(report: null, error: 'x'), frames: 3);
+    await expectNoLayoutErrors(tester, () => const OnbReportView(report: null), frames: 3);
+  });
+
+  testWidgets('the import done view shows kept drafts and skipped invitations', (tester) async {
+    await expectNoLayoutErrors(tester, () => const OnbImportDoneView(result: OnbImportResult(created: 5, skipped: 1, invited: 2, keptDraft: 3, inviteSkipped: 2), mode: 'invite', hasProblems: true));
   });
 
   testWidgets('the admissions page on every stage and empty', (tester) async {

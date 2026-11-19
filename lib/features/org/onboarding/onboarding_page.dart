@@ -30,6 +30,7 @@ import 'onboarding_api.dart';
 import 'onboarding_import.dart';
 import 'onboarding_invite.dart';
 import 'onboarding_models.dart';
+import 'onboarding_report.dart';
 import 'onboarding_review.dart';
 import 'onboarding_types_page.dart';
 import 'onboarding_wizard.dart';
@@ -39,7 +40,7 @@ const _splitFrom = 1000.0;
 
 String onbStageLabel(OnbStage s) => switch (s) {
       OnbStage.review => t('للمراجعة', 'To review'),
-      OnbStage.correction => t('يحتاج تصحيحاً', 'Needs correction'),
+      OnbStage.correction => t('يحتاج تعديلاً', 'Needs correction'),
       OnbStage.conditional => t('مشروط', 'Conditional'),
       OnbStage.drafts => t('مسودات', 'Drafts'),
       OnbStage.done => t('منتهية', 'Done'),
@@ -249,6 +250,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
     await _openWizard(type, initial: c);
   }
 
+  void _openCaseById(int id) => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => _scope(OnbReviewPage(orgId: widget.orgId, caseId: id, api: _api, onChanged: _changed, onEdit: _edit)),
+      ));
+
   void _show(OnbCase c) {
     if (MediaQuery.sizeOf(context).width >= _splitFrom) {
       setState(() => _open = c.id);
@@ -265,6 +270,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   Widget build(BuildContext context) {
     final canAdd = [for (final ty in _types) if (ty.active && _can(ty.module, 'insert')) ty].isNotEmpty;
     final canConfigure = _can('onboarding', 'update');
+    final canReport = _can('students', 'view') || _can('teachers', 'view') || _can('staff', 'view');
     final stages = OnbStage.values;
     final list = ParentComponent(
       featureKey: onboardingFeatureKey,
@@ -278,7 +284,14 @@ class _OnboardingPageState extends State<OnboardingPage> {
             }),
         more: [
           if (_stage == OnbStage.drafts && _invitable([for (final ty in _types) if (ty.active) ty]).isNotEmpty)
-            OrgMenuItem(icon: Icons.mail_outline_rounded, label: t('Ø¯Ø¹ÙØ© ÙØ¥ÙÙØ§Ù Ø§ÙØ¨ÙØ§ÙØ§Øª', 'Invite to complete'), onTap: () => _pickDrafts(_types.where((x) => x.key == _type).firstOrNull)),
+            OrgMenuItem(icon: Icons.mail_outline_rounded, label: t('دعوة لاستكمال البيانات', 'Invite to complete'), onTap: () => _pickDrafts(_types.where((x) => x.key == _type).firstOrNull)),
+          if (canReport)
+            OrgMenuItem(
+              icon: Icons.insights_rounded,
+              label: t('التقرير', 'Report'),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => _scope(OnbReportPage(orgId: widget.orgId, api: _api, types: _types, onOpenCase: (id) => _openCaseById(id))))),
+            ),
           if (canConfigure)
             OrgMenuItem(
               icon: Icons.tune_rounded,
@@ -404,7 +417,7 @@ class OnbCaseList extends StatelessWidget {
 
   String _emptyTitle(OnbStage s) => switch (s) {
         OnbStage.review => t('لا طلبات للمراجعة', 'Nothing to review'),
-        OnbStage.correction => t('لا طلبات تنتظر تصحيحاً', 'Nothing waits for a correction'),
+        OnbStage.correction => t('لا طلبات تنتظر تعديلاً', 'Nothing waits for a correction'),
         OnbStage.conditional => t('لا حالات قبول مشروط', 'No conditional admissions'),
         OnbStage.drafts => t('لا مسودات', 'No drafts'),
         OnbStage.done => t('لا طلبات منتهية', 'No finished cases'),

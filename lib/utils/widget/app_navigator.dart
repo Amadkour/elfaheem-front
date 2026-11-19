@@ -257,6 +257,22 @@ class AppNavigator {
       case 'org_invitations': // an invitation to join an organization (phone invites, push + notification tap) → My organizations, which shows the invitations card
         await nav.pushNamed(AppRoutes.location(AppRoutes.orgMemberships.id));
         return;
+      case 'org_onboarding': // member onboarding (D-1200): staff open the case review page, the applicant their own page
+        if (targetId == null || AppConfig.disableList.contains('org.onboarding')) {
+          await nav.pushNamed('/notifications');
+          return;
+        }
+        final staffSide = orgId != null && AppModeController.instance.opensDashboardFor(orgId) == true;
+        if (staffSide) {
+          await nav.pushNamed(AppRoutes.location(AppRoutes.orgOnboardingCase.id, {'orgId': orgId, 'caseId': targetId}));
+        } else {
+          await nav.push(MaterialPageRoute(builder: (_) => deferredOnbApplicantPage(caseId: targetId, orgId: orgId ?? 0)));
+        }
+        return;
+      case 'onboard_intake': // an intake link tapped inside the app: /onboard/<code>
+        final code = '${data['code'] ?? ''}';
+        if (code.isNotEmpty) await nav.pushNamed(AppRoutes.location(AppRoutes.onboardIntakeLink.id, {'code': code}));
+        return;
       case 'org_reports': // a report sent to me → Received reports
         await nav.push(MaterialPageRoute(builder: (_) => deferredOrgReceivedReports()));
         return;
@@ -543,9 +559,9 @@ class AppNavigator {
     final timetable = data['type'] == 'org_timetable';        // a draft timetable is ready (schedule_auto / autopilot)
     // the wallet and the plan push {type: points | live_plan | live_plan_expiring | live_plan_renewed | …} (spec §9, §15)
     final module = data['module']?.toString() ??
-        (profile ? 'course_profile' : (timetable ? 'org_timetable' : (data['type'] == 'exam_notice' ? 'exam_notice' : data['type'] == 'org_invitation' ? 'org_invitation' : pointsModuleFor(data['type']?.toString()))));
+        (profile ? 'course_profile' : (timetable ? 'org_timetable' : (data['type'] == 'exam_notice' ? 'exam_notice' : data['type'] == 'org_invitation' ? 'org_invitation' : data['type'] == 'org_onboarding' ? 'org_onboarding' : pointsModuleFor(data['type']?.toString()))));
     final govPush = (module ?? '').startsWith('org_');        // governance pushes carry {module, id}
-    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? (module == 'org_invitation' ? data['related_id'] : null) ?? ''}') ?? _examIdFromRef(data['exam_ref']);
+    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (module == 'org_onboarding' ? data['case_id'] ?? data['related_id'] : null) ?? (profile || timetable || govPush ? data['id'] : null) ?? (module == 'org_invitation' ? data['related_id'] : null) ?? ''}') ?? _examIdFromRef(data['exam_ref']);
     final orgId = int.tryParse('${data['org_id'] ?? ''}');
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) {

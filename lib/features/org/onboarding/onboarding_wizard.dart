@@ -376,7 +376,7 @@ class _OnbWizardState extends State<OnbWizard> {
       return;
     }
     final c = OnbCase.fromJson(r.map);
-    showAppNotice(approve ? t('قُدِّم الطلب وتم قبوله', 'Submitted and approved') : t('قُدِّم الطلب', 'Submitted'));
+    showAppNotice(approve ? t('قُدِّم الطلب وتم اعتماده', 'Submitted and approved') : t('قُدِّم الطلب', 'Submitted'));
     if (c.generatedPassword != null) await showGeneratedPassword(context, c.generatedPassword!, name: c.fullName);
     if (mounted) widget.onDone?.call(c);
   }
@@ -705,7 +705,7 @@ class _OnbWizardState extends State<OnbWizard> {
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: [
         AppButton.secondary(key: const ValueKey('onb.review.draft'), label: t('حفظ كمسودة', 'Save as draft'), busy: _busy, onPressed: _busy ? null : _saveAndClose),
         if (widget.mode == OnbMode.staff && widget.canApproveNow)
-          AppButton.tonal(key: const ValueKey('onb.review.approve'), label: t('تقديم وقبول', 'Submit and approve'), onPressed: ok && !_busy ? () => _submit(approve: true) : null),
+          AppButton.tonal(key: const ValueKey('onb.review.approve'), label: t('تقديم واعتماد', 'Submit and approve'), onPressed: ok && !_busy ? () => _submit(approve: true) : null),
         AppButton.primary(
             key: const ValueKey('onb.review.submit'), label: t('تقديم', 'Submit'), busy: _busy, onPressed: ok && !_busy ? _submit : null),
       ]),

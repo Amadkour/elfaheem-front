@@ -33,7 +33,7 @@ const onboardingIntakeKey = 'org.onboarding.intake';
 
 String onbImportModeLabel(String m) => switch (m) {
       'submit' => t('إرسال للمراجعة', 'Submit for review'),
-      'invite' => t('دعوة لإكمال البيانات', 'Invite to complete'),
+      'invite' => t('دعوة لاستكمال البيانات', 'Invite to complete'),
       _ => t('حفظ كمسودات', 'Save as drafts'),
     };
 
@@ -479,6 +479,10 @@ class OnbImportDoneView extends StatelessWidget {
       Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         AppStatusBadge(key: const ValueKey('onb.import.done.created'), label: t('أُنشئ ${result.created}', 'Created ${result.created}'), tone: AppTone.success),
         if (mode == 'invite' || result.invited > 0) AppStatusBadge(key: const ValueKey('onb.import.done.invited'), label: t('دُعي ${result.invited}', 'Invited ${result.invited}'), tone: AppTone.info),
+        if (result.keptDraft > 0)
+          AppStatusBadge(key: const ValueKey('onb.import.done.kept'), label: t('بقي مسودة ${result.keptDraft} لنقص المستندات', 'Kept as draft ${result.keptDraft} (documents missing)'), tone: AppTone.warning),
+        if (result.inviteSkipped > 0)
+          AppStatusBadge(key: const ValueKey('onb.import.done.invite_skipped'), label: t('تعذرت دعوة ${result.inviteSkipped}', 'Not invited ${result.inviteSkipped}'), tone: AppTone.warning),
         AppStatusBadge(key: const ValueKey('onb.import.done.skipped'), label: t('تُخطّي ${result.skipped}', 'Skipped ${result.skipped}'), tone: result.skipped > 0 ? AppTone.warning : AppTone.neutral),
       ]),
       AppSpace.gapMd,

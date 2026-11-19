@@ -43,7 +43,7 @@ String onbStatusLabel(String s) => switch (s) {
       'draft' => t('مسودة', 'Draft'),
       'submitted' => t('بانتظار المراجعة', 'Waiting for review'),
       'under_review' => t('قيد المراجعة', 'Under review'),
-      'needs_correction' => t('يحتاج تصحيحاً', 'Needs correction'),
+      'needs_correction' => t('يحتاج تعديلاً', 'Needs correction'),
       'approved' => t('مقبول', 'Approved'),
       'active' => t('مُفعَّل', 'Active'),
       'rejected' => t('مرفوض', 'Rejected'),
@@ -484,9 +484,9 @@ class OnbEvent {
       'created' => t('أُنشئ الطلب', 'Case created'),
       'submitted' => t('قُدِّم الطلب', 'Submitted'),
       'claimed' => t('بدأت المراجعة', 'Review started'),
-      'correction_requested' => t('طُلب تصحيح', 'Correction requested'),
-      'resubmitted' => t('أُعيد التقديم بعد التصحيح', 'Resubmitted after correction'),
-      'approved' => t('تم القبول', 'Approved'),
+      'correction_requested' => t('طُلب تعديل', 'Correction requested'),
+      'resubmitted' => t('أُعيد التقديم بعد التعديل', 'Resubmitted after correction'),
+      'approved' => t('تم الاعتماد', 'Approved'),
       'step_approved' => t('اعتُمدت مرحلة', 'A step was approved'),
       'rejected' => t('رُفض الطلب', 'Rejected'),
       'activated' => t('فُعِّلت العضوية', 'Membership activated'),
@@ -804,13 +804,16 @@ class OnbBatch {
 
 /// `{created, skipped, invited, case_ids}` of a confirmed import (skipped may be a number or a list).
 class OnbImportResult {
-  const OnbImportResult({this.created = 0, this.skipped = 0, this.invited = 0, this.caseIds = const []});
-  final int created, skipped, invited;
+  const OnbImportResult({this.created = 0, this.skipped = 0, this.invited = 0, this.keptDraft = 0, this.inviteSkipped = 0, this.caseIds = const []});
+
+  /// [keptDraft]: submit mode, rows whose required documents are missing stay drafts. [inviteSkipped]: invite mode,
+  /// people who could not be invited (no contact, already invited, ...).
+  final int created, skipped, invited, keptDraft, inviteSkipped;
   final List<int> caseIds;
 
   factory OnbImportResult.fromJson(Map<String, dynamic> j) {
     int n(Object? v) => v is List ? v.length : asInt(v);
-    return OnbImportResult(created: n(j['created']), skipped: n(j['skipped']), invited: n(j['invited']), caseIds: [for (final x in (j['case_ids'] is List ? j['case_ids'] as List : const [])) asInt(x)]);
+    return OnbImportResult(created: n(j['created']), skipped: n(j['skipped']), invited: n(j['invited']), keptDraft: n(j['kept_draft']), inviteSkipped: n(j['invite_skipped']), caseIds: [for (final x in (j['case_ids'] is List ? j['case_ids'] as List : const [])) asInt(x)]);
   }
 }
 

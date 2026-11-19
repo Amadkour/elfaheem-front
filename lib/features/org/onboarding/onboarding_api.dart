@@ -176,6 +176,27 @@ class OnboardingApi {
           body: {'enabled': enabled, 'valid_until': validUntil == null ? null : orgUtc(validUntil), 'capacity': capacity, if (rotate) 'rotate': true}),
       quiet: true);
 
+  // ── Phase D: report ─────────────────────────────────────────────────────────
+
+  Map<String, dynamic> _reportQuery(String? from, String? to, String type) => {
+        if (from != null) 'from': from,
+        if (to != null) 'to': to,
+        if (type.isNotEmpty) 'type': type,
+      };
+
+  /// `{funnel, by_type, overdue, avg_review_hours, by_reviewer}` for the date range (`YYYY-MM-DD`) and type.
+  Future<OrgCall> report(int orgId, {String? from, String? to, String type = ''}) =>
+      orgCall(() => _api.get('${_base(orgId)}/report', queryParams: _reportQuery(from, to, type)), quiet: true);
+
+  /// The same report as a workbook (`?format=xlsx`), or null.
+  Future<Uint8List?> reportBytes(int orgId, {String? from, String? to, String type = ''}) async {
+    try {
+      return await _api.getBytes('${_base(orgId)}/report', queryParams: {..._reportQuery(from, to, type), 'format': 'xlsx'});
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ── Applicant ───────────────────────────────────────────────────────────────
 
   Future<OrgCall> myCases() => orgCall(() => _api.get(meBase), quiet: true);

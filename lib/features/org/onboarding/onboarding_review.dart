@@ -292,9 +292,9 @@ class _ActionBar extends StatelessWidget {
         AppButton.secondary(key: const ValueKey('onb.action.claim'), label: t('بدء المراجعة', 'Start review'), onPressed: busy ? null : onClaim),
       if (can.reject && onReject != null) AppButton.danger(key: const ValueKey('onb.action.reject'), label: t('رفض', 'Reject'), onPressed: busy ? null : onReject),
       if (can.requestCorrection && onRequestCorrection != null)
-        AppButton.secondary(key: const ValueKey('onb.action.correct'), label: t('طلب تصحيح', 'Request correction'), onPressed: busy ? null : onRequestCorrection),
+        AppButton.secondary(key: const ValueKey('onb.action.correct'), label: t('طلب تعديل', 'Request correction'), onPressed: busy ? null : onRequestCorrection),
       if (can.activate && onActivate != null) AppButton.tonal(key: const ValueKey('onb.action.activate'), label: t('تفعيل العضوية', 'Activate'), onPressed: busy ? null : onActivate),
-      if (can.approve && onApprove != null) AppButton.primary(key: const ValueKey('onb.action.approve'), label: t('قبول', 'Approve'), busy: busy, onPressed: busy ? null : onApprove),
+      if (can.approve && onApprove != null) AppButton.primary(key: const ValueKey('onb.action.approve'), label: t('اعتماد', 'Approve'), busy: busy, onPressed: busy ? null : onApprove),
     ];
     if (children.isEmpty) return const SizedBox.shrink();
     return Padding(
@@ -397,16 +397,16 @@ class _OnbReviewPaneState extends State<OnbReviewPane> {
 
   Future<void> _approve() async {
     final c = _case!;
-    final note = await _askNote(context, title: t('قبول الطلب', 'Approve the case'), hint: t('ملاحظة (اختياري)', 'Note (optional)'), confirm: t('قبول', 'Approve'), required: false);
+    final note = await _askNote(context, title: t('اعتماد الطلب', 'Approve the case'), hint: t('ملاحظة (اختياري)', 'Note (optional)'), confirm: t('اعتماد', 'Approve'), required: false);
     if (note == null) return;
-    await _run(() => _api.approve(widget.orgId, c.id, note: note), done: t('تم القبول', 'Approved'));
+    await _run(() => _api.approve(widget.orgId, c.id, note: note), done: t('تم الاعتماد', 'Approved'));
   }
 
   Future<void> _correct() async {
     final c = _case!;
     final r = await showOnbCorrectionSheet(context, c);
     if (r == null) return;
-    await _run(() => _api.requestCorrection(widget.orgId, c.id, reason: r.reason, fields: r.fields, documents: r.documents), done: t('أُرسل طلب التصحيح', 'Correction requested'));
+    await _run(() => _api.requestCorrection(widget.orgId, c.id, reason: r.reason, fields: r.fields, documents: r.documents), done: t('أُرسل طلب التعديل', 'Correction requested'));
   }
 
   Future<void> _reject() async {
@@ -573,8 +573,8 @@ Future<OnbCorrectionRequest?> showOnbCorrectionSheet(BuildContext context, OnbCa
   return showAppSheet<OnbCorrectionRequest>(context, (ctx) {
     String? err;
     return StatefulBuilder(
-      builder: (ctx, set) => AppSheetContent(title: t('طلب تصحيح', 'Request correction'), children: [
-        AppField(key: const ValueKey('onb.correct.reason'), controller: reason, label: t('ما المطلوب تصحيحه؟', 'What needs to be corrected?'), maxLines: 3, errorText: err, required: true),
+      builder: (ctx, set) => AppSheetContent(title: t('طلب تعديل', 'Request correction'), children: [
+        AppField(key: const ValueKey('onb.correct.reason'), controller: reason, label: t('ما المطلوب تعديله؟', 'What needs to be corrected?'), maxLines: 3, errorText: err, required: true),
         if (fields.isNotEmpty) ...[
           AppSectionTitle(t('حقول بعينها', 'Specific fields')),
           for (final f in fields)

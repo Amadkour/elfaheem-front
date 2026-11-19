@@ -34,8 +34,8 @@ bool onbApplicantOpen(OnbCase c) => c.isOpen || (c.status == 'approved' && c.con
 
 /// What the applicant is asked to do next, one line.
 String onbApplicantNext(OnbCase c) => switch (c.status) {
-      'draft' => t('أكمل بياناتك ثم أرسل الطلب', 'Finish your details, then submit'),
-      'needs_correction' => t('المراجعون طلبوا تصحيحاً', 'The reviewers asked for a correction'),
+      'draft' => t('استكمل بياناتك ثم قدّم الطلب', 'Finish your details, then submit'),
+      'needs_correction' => t('طلب المراجعون تعديلاً', 'The reviewers asked for a correction'),
       'submitted' || 'under_review' => t('طلبك قيد المراجعة', 'Your application is being reviewed'),
       'approved' when c.conditional => c.dueAt == null ? t('قُبلت بشرط استكمال مستندات', 'Accepted on condition: bring the missing documents') : t('أحضر المستندات قبل ${AppTime.date(c.dueAt!)}', 'Bring the documents before ${AppTime.date(c.dueAt!)}'),
       'approved' || 'active' => t('تم قبولك', 'You are accepted'),

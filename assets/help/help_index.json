@@ -402,6 +402,18 @@
    "teacher"
   ],
   [
+   "me.onboarding",
+   "org_member"
+  ],
+  [
+   "me.onboarding",
+   "student"
+  ],
+  [
+   "me.onboarding",
+   "teacher"
+  ],
+  [
    "org.advising",
    "org_admin"
   ],
@@ -431,6 +443,22 @@
   ],
   [
    "org.member",
+   "org_member"
+  ],
+  [
+   "org.onboarding.import",
+   "org_admin"
+  ],
+  [
+   "org.onboarding.types",
+   "org_admin"
+  ],
+  [
+   "org.onboarding",
+   "org_admin"
+  ],
+  [
+   "org.onboarding",
    "org_member"
   ],
   [

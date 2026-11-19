@@ -456,6 +456,10 @@ Widget deferredOnboardIntake({required String code}) => DeferredPage(
 Widget deferredOnbApplicantCard() =>
     DeferredSlot(id: 'onboard_intake', load: onboarding_applicant.loadLibrary, builder: (_) => onboarding_applicant.OnbApplicantCard());
 
+/// The applicant's own page of one admission case (a notification tap for the applicant).
+Widget deferredOnbApplicantPage({required int caseId, int orgId = 0}) => DeferredPage(
+    id: 'onboard_intake', load: onboarding_applicant.loadLibrary, builder: (_) => onboarding_applicant.OnbApplicantPage(caseId: caseId, orgId: orgId));
+
 /// `/org/<o>/onboarding/<caseId>` (D-1200): the staff review page of one case.
 Widget deferredOnbCasePage({required int orgId, required int caseId}) => DeferredPage(
     id: 'onboard_review', load: onboarding_review.loadLibrary, builder: (_) => onboarding_review.OnbReviewPage(orgId: orgId, caseId: caseId));

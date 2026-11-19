@@ -15,10 +15,7 @@ import 'dart:io';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const notInCatalog = <String, String>{
-  // member onboarding phase A: the back end adds the key to feature_catalog.py in its own branch
-  'org.onboarding': 'onboarding phase A, snapshot regenerated at merge',
-};
+const notInCatalog = <String, String>{};
 
 final _patterns = [
   RegExp(r"featureKey:\s*'([^'$]+)'"),

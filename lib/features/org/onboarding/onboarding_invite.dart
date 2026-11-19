@@ -82,7 +82,7 @@ class _OnbDraftPickerPageState extends State<OnbDraftPickerPage> {
   Widget build(BuildContext context) {
     final res = _result;
     return OrgPushedPage(
-      title: t('دعوة لإكمال البيانات', 'Invite to complete'),
+      title: t('دعوة لاستكمال البيانات', 'Invite to complete'),
       subtitle: widget.type?.label ?? t('الالتحاق والتعيين', 'Admissions & appointments'),
       helpPageId: 'org.onboarding',
       width: AppWidth.reading,
