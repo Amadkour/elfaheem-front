@@ -62,6 +62,7 @@ import 'package:flutter_education_app/features/courses/roadmap/recommendations.d
 import 'package:flutter_education_app/features/home/student/home_continue.dart';
 import 'package:flutter_education_app/features/home/student/home_event_rows.dart';
 import 'package:flutter_education_app/features/home/student/home_journey.dart';
+import 'package:flutter_education_app/features/home/home_application_card.dart';
 import 'package:flutter_education_app/features/home/student/home_live.dart';
 import 'package:flutter_education_app/features/home/student/home_provider.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show StudyProfileApi, kStudyProfileFeatureKey;
@@ -291,6 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   onOpenNotifications: () => Navigator.of(context).pushNamed('/notifications'),
                                   onOpenTodo: () => showAttentionItems(context, AttentionTabs.home),
                                   onOpenOrgs: () => showContextSwitcherSheet(context),
+                                  onOpenApplication: (x) => openHomeApplication(context, x, onClosed: svc.refresh),
                                   // the study card (D-793): the page, then a reload (a saved profile drops the card);
                                   // "Not now" hides it at once and for 30 days on the server
                                   onCompleteStudy: _studyHidden
@@ -434,6 +436,7 @@ class StudentHomeBody extends StatelessWidget {
     this.onOpenNotifications,
     this.onOpenTodo,
     this.onOpenOrgs,
+    this.onOpenApplication,
     this.onCompleteStudy,
     this.onDismissStudy,
     this.feeds,
@@ -454,6 +457,9 @@ class StudentHomeBody extends StatelessWidget {
   final ValueChanged<CalEvent>? onOpenEvent;
   final VoidCallback? onOpenInbox;
   final VoidCallback? onOpenNotifications, onOpenTodo, onOpenOrgs;
+
+  /// A case of "Your application" → its applicant page (D-1210).
+  final ValueChanged<MeOnboardingItem>? onOpenApplication;
 
   /// The "Complete your study profile" card (D-793): open the study page / hide it; both null = no card.
   final VoidCallback? onCompleteStudy, onDismissStudy;
@@ -644,6 +650,8 @@ class _Sections extends StatelessWidget {
           // live now: a room I'm invited to is on air → one tap into it (the only strong accent of the page)
           if (live.isNotEmpty)
             HelpTourTarget(pageId: 'home.student', id: 'live_card', child: HomeLiveNow(rooms: live, now: data.now, padding: EdgeInsets.zero)),
+          if (home.onboarding.isNotEmpty && homeApplicationNeedsAction(home.onboarding))
+            HomeApplicationCard(items: home.onboarding, onOpen: body.onOpenApplication),
         ],
         queue: HomeEntrance(index: 1, child: queue),
         side: [HomeEntrance(index: 2, child: today), ?inbox],
@@ -663,6 +671,8 @@ class _Sections extends StatelessWidget {
               featureKey: kStudyProfileFeatureKey,
               child: StudyPromptCard(onOpen: body.onCompleteStudy!, onDismiss: body.onDismissStudy!),
             ),
+          if (home.onboarding.isNotEmpty && !homeApplicationNeedsAction(home.onboarding))
+            HomeApplicationCard(items: home.onboarding, onOpen: body.onOpenApplication),
         ],
       ),
       ?body.feeds,

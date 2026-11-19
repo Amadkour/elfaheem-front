@@ -17,6 +17,7 @@ import 'org_common.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_member_form.dart';
+import 'onboarding/onboarding_entry.dart';
 import 'org_access_page.dart' show OrgPersonAccess;
 import 'org_invitations.dart' show invitationsFeatureKey;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredOrgInvitationsPage, showDeferredOrgInviteSheet;
@@ -134,6 +135,12 @@ class _MembersView extends StatelessWidget {
               icon: Icons.person_add_alt_1_rounded,
               label: addLabel,
               onTap: () async {
+                // the one front door (D-1208): the onboarding wizard; null = not available, so the legacy form below
+                final viaOnb = await openOnboardingAdd(context, module: module);
+                if (viaOnb != null) {
+                  if (viaOnb) p.refresh();
+                  return;
+                }
                 final r = await showOrgMemberForm(context,
                     roles: kind == 'students' ? const ['student'] : kind == 'teachers' ? const ['teacher'] : const ['teacher_assistant', 'admin_assistant', 'org_admin']);
                 if (r != null) p.refresh();
@@ -167,6 +174,11 @@ class _MembersView extends StatelessWidget {
             icon: Icons.upload_file_rounded,
             label: t('استيراد من Excel', 'Import from Excel'),
             onTap: () async {
+              final viaOnb = await openOnboardingImport(context, module: module);
+              if (viaOnb != null) {
+                if (viaOnb && context.mounted) p.refresh();
+                return;
+              }
               if (await importExcelFlow(context, kind) && context.mounted) p.refresh();
             },
           ),

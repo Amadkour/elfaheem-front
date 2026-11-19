@@ -8,7 +8,7 @@
 library;
 
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/core/home/me_home.dart' show MeLiveRoom;
+import 'package:flutter_education_app/core/home/me_home.dart' show MeLiveRoom, MeOnboardingItem;
 import 'package:flutter_education_app/features/home/teacher/todo/teacher_todo_models.dart' show TodoList;
 
 class TeacherHomeExtra {
@@ -24,6 +24,7 @@ class TeacherHomeExtra {
     this.liveNow = const [],
     this.liveNowKnown = false,
     this.todo,
+    this.onboarding = const [],
   });
 
   /// `todo` (D-303): the automatic to-do list's top items + counts + states; null on an older server or when the
@@ -54,6 +55,9 @@ class TeacherHomeExtra {
   final List<MeLiveRoom> liveNow;
   final bool liveNowKnown;
 
+  /// My open admission cases (D-1210): `onboarding[]` of the same payload.
+  final List<MeOnboardingItem> onboarding;
+
   bool get hasEarnings => earningsMonth != null;
 
   /// The same block with [liveNow] replaced (a live event dropped / added a room before the reload answered).
@@ -69,6 +73,7 @@ class TeacherHomeExtra {
         liveNow: rooms,
         liveNowKnown: liveNowKnown,
         todo: todo,
+        onboarding: onboarding,
       );
 
   factory TeacherHomeExtra.fromJson(Map<String, dynamic> j) {
@@ -103,6 +108,7 @@ class TeacherHomeExtra {
           .toList(),
       liveNowKnown: j['live_now'] is List,
       todo: j['todo'] is Map ? TodoList.fromJson(j['todo']) : null,
+      onboarding: [for (final x in j['onboarding'] is List ? j['onboarding'] as List : const []) MeOnboardingItem.fromJson(x)].whereType<MeOnboardingItem>().toList(),
     );
   }
 }

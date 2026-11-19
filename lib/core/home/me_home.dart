@@ -238,6 +238,53 @@ class MeNextUp {
   final bool live;
 }
 
+/// One row of `/me/home`'s `onboarding[]`: my open admission case (D-1200), max 3 from the server.
+class MeOnboardingItem {
+  const MeOnboardingItem({
+    required this.caseId,
+    required this.orgId,
+    this.orgName = '',
+    this.orgLogo = '',
+    this.typeKey = '',
+    this.typeLabelAr = '',
+    this.typeLabelEn = '',
+    this.status = '',
+    this.conditional = false,
+    this.missingCount = 0,
+    this.dueAt,
+    this.needsAction = false,
+  });
+  final int caseId, orgId, missingCount;
+  final String orgName, orgLogo, typeKey, typeLabelAr, typeLabelEn, status;
+  final bool conditional, needsAction;
+  final DateTime? dueAt;
+
+  String get typeLabel => AppConfig.lang == 'ar'
+      ? (typeLabelAr.isEmpty ? typeLabelEn : typeLabelAr)
+      : (typeLabelEn.isEmpty ? typeLabelAr : typeLabelEn);
+
+  static MeOnboardingItem? fromJson(dynamic v) {
+    if (v is! Map) return null;
+    final m = meHomeMap(v);
+    final id = meHomeInt(m['case_id']);
+    if (id <= 0) return null;
+    return MeOnboardingItem(
+      caseId: id,
+      orgId: meHomeInt(m['org_id']),
+      orgName: '${m['org_name'] ?? ''}',
+      orgLogo: '${m['org_logo'] ?? ''}',
+      typeKey: '${m['type_key'] ?? ''}',
+      typeLabelAr: '${m['type_label_ar'] ?? ''}',
+      typeLabelEn: '${m['type_label_en'] ?? ''}',
+      status: '${m['status'] ?? ''}',
+      conditional: m['conditional'] == true,
+      missingCount: meHomeInt(m['missing_count']),
+      dueAt: meHomeUtc(m['due_at']),
+      needsAction: m['needs_action'] == true,
+    );
+  }
+}
+
 class MeHome {
   const MeHome({
     required this.now,
@@ -257,6 +304,7 @@ class MeHome {
     this.liveNow = const [],
     this.liveNowKnown = false,
     this.journey,
+    this.onboarding = const [],
     this.legacy = false,
     this.raw = const {},
   });
@@ -305,6 +353,9 @@ class MeHome {
   /// switch on, stage / grade or a required field missing, not dismissed in 30 days); false from an older server.
   bool get studyPrompt => raw['study_prompt'] == true;
 
+  /// My open admission cases (D-1210): `onboarding[]`, max 3; empty when none or from an older server.
+  final List<MeOnboardingItem> onboarding;
+
   /// Composed from today's separate calls (older server).
   final bool legacy;
   final Map<String, dynamic> raw;
@@ -332,6 +383,7 @@ class MeHome {
           .toList(),
       liveNowKnown: m['live_now'] is List,
       journey: m['journey'] is Map ? meHomeMap(m['journey']) : null,
+      onboarding: [for (final x in m['onboarding'] is List ? m['onboarding'] as List : const []) MeOnboardingItem.fromJson(x)].whereType<MeOnboardingItem>().toList(),
       legacy: legacy,
       raw: m,
     );
