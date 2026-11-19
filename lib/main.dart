@@ -574,7 +574,7 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
       guestLiveTokenFromRoute(r) != null || certVerifyTokenFromRoute(r) != null || isCertVerifyHomeRoute(r) ||
       exportLinkTokenFromRoute(r) != null ||
       DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null || AppLink.parse(r) != null ||
-      const {'link.org_join', 'link.org_invitation'}.contains(AppRoutes.match(r)?.id) ||
+      const {'link.org_join', 'link.org_invitation', 'link.onboard'}.contains(AppRoutes.match(r)?.id) ||
       ExploreRequest.matches(r) || isInstitutionRoute(r) ||
       // /register?role=teacher (the landing's teacher card) is a sign-in page: signed out only, like /register
       (!context.read<MyAuthProvider>().isAuthenticated && registerRoleFromRoute(r) != null);
@@ -868,6 +868,11 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
         return _fade(OrgsGate(child: deferredOrgJoinLink(code: page!.params['code']!)), settings);
       case 'link.org_invitation':
         return _fade(OrgsGate(child: deferredOrgInvitation(token: page!.params['token']!)), settings);
+      case 'link.onboard': // member onboarding intake link (D-1200): the public preview handles a signed-out visitor itself
+        return _fade(OrgsGate(child: deferredOnboardIntake(code: page!.params['code']!)), settings);
+      case 'org.onboarding_case': // one admission case on its own page (staff)
+        final onbOrg = page!.intParam('orgId'), onbCase = page.intParam('caseId');
+        if (onbOrg != null && onbCase != null) return _fade(_Guard(child: OrgsGate(child: deferredOnbCasePage(orgId: onbOrg, caseId: onbCase))), settings);
       case 'org.memberships':
         return _fade(_Guard(child: OrgsGate(child: deferredOrgMemberships())), settings);
       case 'meetings.links': // every meeting / live session link (D-307)

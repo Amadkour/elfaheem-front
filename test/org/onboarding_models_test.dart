@@ -110,4 +110,58 @@ void main() {
     expect(OnbType.fromJson(const {}).fields, isEmpty);
     expect(OnbSummary.fromJson(const {}).done, 0);
   });
+
+  test('BatchOut: counts, rows with bilingual messages naming the field, filters', () {
+    final b = OnbBatch.fromJson({
+      'id': 9,
+      'type_key': 'student_new',
+      'mode': 'invite',
+      'counts': {'ok': 1, 'warning': 1, 'error': 1},
+      'expires_at': '2026-11-20T10:00:00',
+      'rows': [
+        {'row_no': 3, 'state': 'ok', 'data': {'full_name': 'Sara Ali'}, 'messages': <dynamic>[]},
+        {'row_no': 4, 'state': 'warning', 'data': {'full_name': 'Omar'}, 'messages': [{'field': 'email', 'code': 'email_in_file', 'ar': 'بريد مكرر', 'en': 'Duplicate e-mail'}]},
+        {'row_no': 5, 'state': 'error', 'data': {'phone': '010'}, 'messages': [{'field': 'phone', 'code': 'phone_invalid', 'ar': 'هاتف غير صالح', 'en': 'Invalid phone'}]},
+      ],
+    });
+    expect(b.id, 9);
+    expect((b.ok, b.warning, b.error, b.total), (1, 1, 1, 3));
+    expect(b.mode, 'invite');
+    expect(b.expiresAt, isNotNull);
+    expect(b.rowsIn('error').single.rowNo, 5);
+    expect(b.rowsIn(''), hasLength(3));
+    expect(b.rows[1].messages.single.field, 'email');
+    expect(b.rows[1].messages.single.text, 'Duplicate e-mail');
+    expect(b.rows[2].title, '010');
+    expect(b.willCreate(includeWarnings: false), 1);
+    expect(b.willCreate(includeWarnings: true), 2);
+    // counts missing: counted from the rows
+    expect(OnbBatch.fromJson({'id': 1, 'rows': [{'row_no': 1, 'state': 'error'}]}).error, 1);
+  });
+
+  test('confirm and invite answers, intake link and preview', () {
+    final r = OnbImportResult.fromJson({'created': 4, 'skipped': 2, 'invited': 3, 'case_ids': [1, 2, 3, 4]});
+    expect((r.created, r.skipped, r.invited), (4, 2, 3));
+    expect(r.caseIds, [1, 2, 3, 4]);
+    expect(OnbImportResult.fromJson({'skipped': [1, 2]}).skipped, 2);
+    final inv = OnbInviteResult.fromJson({'invited': 2, 'skipped': [{'id': 7, 'reason': 'no_contact'}]});
+    expect(inv.invited, 2);
+    expect(inv.skipped.single.id, 7);
+    expect(onbSkipReason('no_contact'), 'No e-mail or phone');
+    final link = OnbIntakeLink.fromJson({'code': 'AB12CD', 'link': 'https://nextbrain.site/onboard/AB12CD'});
+    expect(link.hasCode, isTrue);
+    expect(OnbIntakeLink.fromJson(const {}).hasCode, isFalse);
+    final p = OnbIntakePreview.fromJson({'org': {'id': 4, 'name': 'Uni', 'logo': ''}, 'type': {'key': 'student_new', 'label_ar': 'طالب', 'label_en': 'Student'}, 'open': false});
+    expect((p.orgId, p.orgName, p.typeLabel, p.open), (4, 'Uni', 'Student', false));
+    final intake = OnbIntake.fromJson({'enabled': true, 'valid_until': '2026-12-31T00:00:00', 'capacity': 50, 'used': 3});
+    expect((intake.enabled, intake.capacity, intake.used), (true, 50, 3));
+    expect(intake.validUntil, isNotNull);
+  });
+
+  test('an applicant case carries its organization', () {
+    final c = OnbCase.fromJson({'id': 5, 'status': 'draft', 'org': {'id': 4, 'name': 'Uni', 'logo': 'x.png'}});
+    expect((c.orgId, c.orgName, c.orgLogo), (4, 'Uni', 'x.png'));
+    final d = OnbCase.fromJson({'id': 6, 'org_id': 9, 'org_name': 'Inst'});
+    expect((d.orgId, d.orgName), (9, 'Inst'));
+  });
 }

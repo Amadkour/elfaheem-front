@@ -6,6 +6,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/org/onboarding/onboarding_api.dart';
+import 'package:flutter_education_app/features/org/onboarding/onboarding_applicant.dart';
+import 'package:flutter_education_app/features/org/onboarding/onboarding_import.dart';
+import 'package:flutter_education_app/features/org/onboarding/onboarding_intake.dart';
+import 'package:flutter_education_app/features/org/onboarding/onboarding_invite.dart';
 import 'package:flutter_education_app/features/org/onboarding/onboarding_models.dart';
 import 'package:flutter_education_app/features/org/onboarding/onboarding_page.dart';
 import 'package:flutter_education_app/features/org/onboarding/onboarding_review.dart';
@@ -92,7 +96,7 @@ void main() {
     await expectNoLayoutErrors(tester, () => OnbCaseList(items: [item, item], loading: false, total: 5, onOpen: (_) {}, selectedId: 41));
   });
 
-  testWidgets('the Add dialog: one person, Excel and invite (disabled)', (tester) async {
+  testWidgets('the Add dialog: one person, Excel and invite', (tester) async {
     await expectNoLayoutErrors(
       tester,
       () => Builder(builder: (c) => TextButton(onPressed: () => showOnbAddSheet(c, types: [type]), child: const Text('go'))),
@@ -247,5 +251,99 @@ void main() {
         expect(find.byKey(const ValueKey('onb.preset.apply')), findsOneWidget);
       },
     );
+  });
+
+  // ── Phases B and C ─────────────────────────────────────────────────────────
+
+  OnbBatch batch() => OnbBatch.fromJson({
+        'id': 9,
+        'type_key': 'student_new',
+        'mode': 'draft',
+        'counts': {'ok': 1, 'warning': 1, 'error': 2},
+        'rows': [
+          {'row_no': 3, 'state': 'ok', 'data': {'full_name': 'سارة علي'}, 'messages': <dynamic>[]},
+          {'row_no': 4, 'state': 'warning', 'data': {'full_name': 'عمر'}, 'messages': [{'field': 'email', 'code': 'email_in_file', 'ar': 'بريد مكرر داخل الملف', 'en': 'Duplicate e-mail in the file'}]},
+          {
+            'row_no': 5,
+            'state': 'error',
+            'data': {'full_name': 'فاطمة عبد الرحمن إبراهيم محمد السيد الشاذلي'},
+            'messages': [
+              {'field': 'national_id', 'code': 'nid_invalid', 'ar': 'الرقم القومي غير صحيح ويحتاج مراجعة طويلة جداً لنص الرسالة', 'en': 'The national ID is not valid and the message is very long'},
+              {'field': 'phone', 'code': 'phone_invalid', 'ar': 'هاتف غير صالح', 'en': 'Invalid phone'},
+            ],
+          },
+          {'row_no': 6, 'state': 'error', 'data': {'phone': '010'}, 'messages': <dynamic>[]},
+        ],
+      });
+
+  testWidgets('import: setup, preview (every filter), expired, done', (tester) async {
+    await expectNoLayoutErrors(tester, () => OnbImportSetupView(types: [type, const OnbType(key: 'faculty', labelEn: 'Faculty', labelAr: 'هيئة التدريس')], type: type, fileName: 'students-2026-with-a-long-file-name.xlsx', error: 'The file could not be read'));
+    await expectNoLayoutErrors(tester, () => OnbImportSetupView(types: [type], canInvite: false, mode: 'invite'));
+    for (final f in ['', 'error', 'warning', 'ok']) {
+      await expectNoLayoutErrors(tester, () => OnbImportPreviewView(batch: batch(), type: type, filter: f, includeWarnings: true, error: f == 'ok' ? 'x' : null));
+    }
+    await expectNoLayoutErrors(tester, () => OnbImportPreviewView(batch: batch(), type: type, expired: true, error: 'The import file expired; upload it again'));
+    await expectNoLayoutErrors(tester, () => const OnbImportDoneView(result: OnbImportResult(created: 40, skipped: 3, invited: 12), mode: 'invite', hasProblems: true));
+  });
+
+  testWidgets('import preview: the confirm button counts what will be saved', (tester) async {
+    var includes = false;
+    await expectNoLayoutErrors(
+      tester,
+      () {
+        includes = false;
+        return StatefulBuilder(builder: (c, set) => OnbImportPreviewView(batch: batch(), includeWarnings: includes, onIncludeWarnings: (v) => set(() => includes = v)));
+      },
+      act: (t) async {
+        await t.scrollUntilVisible(find.byKey(const ValueKey('onb.import.confirm')), 200, scrollable: find.byType(Scrollable).first);
+        expect(find.byKey(const ValueKey('onb.import.confirm')), findsOneWidget);
+        expect(find.descendant(of: find.byKey(const ValueKey('onb.import.confirm')), matching: find.textContaining(' 1')), findsOneWidget);
+        await t.ensureVisible(find.byKey(const ValueKey('onb.import.warnings')));
+        await t.tap(find.byKey(const ValueKey('onb.import.warnings')));
+        await t.pump();
+        expect(find.descendant(of: find.byKey(const ValueKey('onb.import.confirm')), matching: find.textContaining(' 2')), findsOneWidget);
+      },
+    );
+  });
+
+  testWidgets('invite: the draft picker and the result', (tester) async {
+    final drafts = [item, OnbCase.fromJson({...caseJson, 'id': 50, 'status': 'draft', 'type': null, 'phone': '', 'email': ''})];
+    await expectNoLayoutErrors(tester, () => OnbDraftPickerView(items: drafts, picked: const {41}));
+    await expectNoLayoutErrors(tester, () => const OnbDraftPickerView(items: [], picked: {}));
+    await expectNoLayoutErrors(tester, () => const OnbDraftPickerView(items: [], picked: {}, loading: true));
+    await expectNoLayoutErrors(
+        tester,
+        () => const OnbInviteResultView(
+            result: OnbInviteResult(invited: 3, skipped: [(id: 7, reason: 'no_contact'), (id: 8, reason: 'not_draft')]), names: {7: 'فاطمة عبد الرحمن إبراهيم محمد السيد الشاذلي'}));
+  });
+
+  testWidgets('intake panel: off, on, and the one-time code', (tester) async {
+    final cap = TextEditingController(text: '120');
+    addTearDown(cap.dispose);
+    await expectNoLayoutErrors(tester, () => OnbIntakeView(enabled: false, capacity: cap));
+    await expectNoLayoutErrors(tester, () => ListView(children: [OnbIntakeView(enabled: true, capacity: cap, validUntil: DateTime.utc(2026, 12, 31), used: 7)]));
+    await expectNoLayoutErrors(
+        tester, () => ListView(children: [OnbIntakeView(enabled: true, capacity: cap, link: const OnbIntakeLink(code: 'AB12CDEF', link: 'https://nextbrain.site/onboard/AB12CDEF-a-rather-long-link-for-wrapping'))]));
+  });
+
+  testWidgets('applicant: the card, the status block, the landing page', (tester) async {
+    final mine = OnbCase.fromJson({
+      ...caseJson,
+      'status': 'needs_correction',
+      'org': {'id': 4, 'name': 'جامعة المنصورة الأهلية للعلوم والتكنولوجيا', 'logo': ''},
+      'decision_reason': 'Please fix the highlighted items',
+      'due_at': '2026-12-01T00:00:00',
+      'type': typeJson,
+    });
+    await expectNoLayoutErrors(tester, () => OnbApplicantCardView(items: [mine, OnbCase.fromJson({...caseJson, 'id': 77, 'status': 'submitted', 'type': null})], onOpen: (_) {}));
+    await expectNoLayoutErrors(tester, () => const OnbApplicantCardView(items: []));
+    await expectNoLayoutErrors(tester, () => ListView(children: [OnbApplicantStatus(item: mine)]));
+    await expectNoLayoutErrors(tester, () => OnbApplicantStatus(item: mine, compact: true));
+    await expectNoLayoutErrors(tester, () => OnbApplicantStatus(item: OnbCase.fromJson({...caseJson, 'status': 'rejected', 'decision_reason': 'Not eligible', 'type': typeJson})));
+    const preview = OnbIntakePreview(orgId: 4, orgName: 'جامعة المنصورة الأهلية للعلوم والتكنولوجيا', typeLabelAr: 'طالب مستجد', typeLabelEn: 'New student');
+    await expectNoLayoutErrors(tester, () => const OnbIntakeLandingView(preview: preview, signedIn: false));
+    await expectNoLayoutErrors(tester, () => const OnbIntakeLandingView(preview: preview));
+    await expectNoLayoutErrors(tester, () => const OnbIntakeLandingView(preview: OnbIntakePreview(orgName: 'Uni', open: false), error: 'Applications are closed'));
+    await expectNoLayoutErrors(tester, () => const OnbIntakeLandingView(error: 'Applications are closed'));
   });
 }

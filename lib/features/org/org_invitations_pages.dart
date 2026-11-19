@@ -31,6 +31,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../admin/admin_common.dart' show asMap, asMapList, asInt, t;
+import 'onboarding/onboarding_applicant.dart' show OnbApplicantPage;
 import 'org_invitations.dart';
 import 'org_page_header.dart' show OrgPushedPage;
 import 'org_page_kit.dart' show OrgFilterButton, OrgPageBody, OrgPrimaryAction;
@@ -703,12 +704,20 @@ class _OrgInviteePageState extends State<OrgInviteePage> {
       return;
     }
     final lk = _lookup;
+    final caseId = accept ? int.tryParse('${r.map['onboarding_case_id'] ?? ''}') : null;
     setState(() {
       _busy = false;
-      _doneText = accept
+      _doneText = caseId != null
+          ? t('ÙØ¨ÙØª Ø§ÙØ¯Ø¹ÙØ©. Ø£ÙÙÙ Ø·ÙØ¨Ù Ø§ÙØ¢Ù.', 'Invitation accepted. Complete your application now.')
+          : accept
           ? t('أصبحت عضواً في «${lk?.orgName ?? ''}».', 'You are now a member of "${lk?.orgName ?? ''}".')
           : t('رفضت الدعوة.', 'You declined the invitation.');
     });
+    if (caseId != null) {
+      // an onboarding invitation makes no membership: the application comes first (D-1200)
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => OnbApplicantPage(caseId: caseId, orgId: lk?.orgId ?? 0)));
+      return;
+    }
     if (accept && lk != null) {
       _afterAccepted();
       widget.onAccepted?.call(lk.orgId);
@@ -920,6 +929,11 @@ class _OrgMyInvitationsCardState extends State<OrgMyInvitationsCard> {
       return;
     }
     setState(() => _items = _items.where((x) => x.id != i.id).toList());
+    final caseId = accept ? int.tryParse('${r.map['onboarding_case_id'] ?? ''}') : null;
+    if (caseId != null) {
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => OnbApplicantPage(caseId: caseId, orgId: i.orgId)));
+      return;
+    }
     showAppNotice(accept ? t('أصبحت عضواً في «${i.orgName}»', 'You joined "${i.orgName}"') : t('رُفضت الدعوة', 'Invitation declined'));
     if (accept) widget.onChanged?.call(i);
   }

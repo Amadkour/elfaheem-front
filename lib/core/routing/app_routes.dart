@@ -81,6 +81,8 @@ class AppRoutes {
       aliases: ['/course-profile/:courseId'], description: 'The course page (D-111), every role');
   static const orgMember =
       AppRouteDef('org.member', '/org/:orgId', description: "A student's organization page (Organization mode)");
+  static const orgOnboardingCase = AppRouteDef('org.onboarding_case', '/org/:orgId/onboarding/:caseId',
+      description: "One admission case on its own page (staff review), opened from a notification or a link (D-1200)");
   static const orgMemberships = AppRouteDef('org.memberships', '/my-organizations',
       description: 'My organizations: memberships, join requests and invitations (D-283)');
   static const calendar = AppRouteDef('calendar', '/calendar', description: 'The schedule page (D-085)');
@@ -115,14 +117,16 @@ class AppRoutes {
       signIn: false, description: 'A share link (D-307): a lesson, session, meeting, path, teacher, course or page');
   static const orgInvitationLink = AppRouteDef('link.org_invitation', '/i/:token',
       signIn: false, description: 'An organization invitation: accept or decline, after signing in (D-283)');
+  static const onboardIntakeLink = AppRouteDef('link.onboard', '/onboard/:code',
+      signIn: false, description: "A member onboarding intake link: the public preview, then sign in and start the application (D-1200)");
 
   /// Every page, in match order.
   static const all = <AppRouteDef>[
     login, register, forgotPassword,
     studentHome, teacherHome, adminHome, parentHome, orgHome,
-    course, orgMember, orgMemberships, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
+    course, orgMember, orgOnboardingCase, orgMemberships, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
     downloads, exports, exportLog, exportSchedules, exportLinks, entityView, meetingLinks,
-    courseLink, profileLink, liveLink, verifyHome, verifyLink, exportLink, orgJoinLink, orgInvitationLink, shareLink,
+    courseLink, profileLink, liveLink, verifyHome, verifyLink, exportLink, orgJoinLink, orgInvitationLink, onboardIntakeLink, shareLink,
     privacy, terms,
   ];
 

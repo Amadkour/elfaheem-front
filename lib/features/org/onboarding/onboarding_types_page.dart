@@ -11,6 +11,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -20,6 +21,8 @@ import '../../admin/admin_common.dart' show t, asMapList;
 import '../org_page_header.dart' show OrgPushedPage;
 import '../org_v3.dart' show orgErrorText;
 import 'onboarding_api.dart';
+import 'onboarding_import.dart' show onboardingIntakeKey;
+import 'onboarding_intake.dart';
 import 'onboarding_models.dart';
 
 const _acceptChoices = ['jpg', 'png', 'pdf'];
@@ -197,16 +200,24 @@ class _OnbTypeEditorPageState extends State<OnbTypeEditorPage> {
       subtitle: t('تعديل النوع', 'Edit the type'),
       helpPageId: 'org.onboarding.types',
       width: AppWidth.reading,
-      child: OnbTypeEditor(type: widget.type, busy: _busy, onSave: _save),
+      child: OnbTypeEditor(
+        type: widget.type,
+        busy: _busy,
+        onSave: _save,
+        footer: AppConfig.disableList.contains(onboardingIntakeKey) ? null : OnbIntakePanel(orgId: widget.orgId, type: widget.type, api: _api),
+      ),
     );
   }
 }
 
 class OnbTypeEditor extends StatefulWidget {
-  const OnbTypeEditor({super.key, required this.type, required this.onSave, this.busy = false});
+  const OnbTypeEditor({super.key, required this.type, required this.onSave, this.busy = false, this.footer});
   final OnbType type;
   final bool busy;
   final void Function(OnbType) onSave;
+
+  /// Extra panels after the approval steps (the intake link).
+  final Widget? footer;
 
   @override
   State<OnbTypeEditor> createState() => _OnbTypeEditorState();
@@ -324,6 +335,7 @@ class _OnbTypeEditorState extends State<OnbTypeEditor> {
                 ]),
               ),
             ),
+          if (widget.footer != null) ...[AppSpace.gapSm, widget.footer!],
         ]),
       ),
       Padding(

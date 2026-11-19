@@ -579,12 +579,19 @@ class OnbCase {
     this.generatedPassword,
     this.warnings = const [],
     this.detailed = false,
+    this.orgId,
+    this.orgName = '',
+    this.orgLogo = '',
   });
 
   final int id, step, missingCount;
   final String typeKey, typeLabelAr, typeLabelEn, status, stepLabelAr, stepLabelEn, source, fullName, nidMasked, email, phone;
   final String nameEn, nidKind, nationality, gender, decisionReason;
   final bool conditional, overdue, detailed;
+
+  /// The organization of an applicant's own case (`GET /me/onboarding`).
+  final int? orgId;
+  final String orgName, orgLogo;
   final DateTime? dueAt, submittedAt, updatedAt;
   final String? birthDate;
   final int? deptId, programId, memberId;
@@ -636,6 +643,7 @@ class OnbCase {
     final corrections = asMap(j['corrections']);
     final required = asMap(j['required']), missing = asMap(j['missing']);
     final typeJson = asMap(j['type']);
+    final orgJson = asMap(j['org']);
     final birth = asStr(j['birth_date']);
     return OnbCase(
       id: asInt(j['id']),
@@ -681,6 +689,9 @@ class OnbCase {
       generatedPassword: asStr(j['generated_password']).isEmpty ? null : asStr(j['generated_password']),
       warnings: asMapList(j['warnings']),
       detailed: j.containsKey('can') || j.containsKey('documents'),
+      orgId: orgJson.isNotEmpty ? asInt(orgJson['id']) : (j['org_id'] == null ? null : asInt(j['org_id'])),
+      orgName: asStr(orgJson['name'] ?? j['org_name']),
+      orgLogo: asStr(orgJson['logo'] ?? j['org_logo']),
     );
   }
 }
@@ -719,4 +730,138 @@ class OnbRejectReason {
 
   factory OnbRejectReason.fromJson(Map<String, dynamic> j) =>
       OnbRejectReason(asStr(j['key']), asStr(j['label_ar'] ?? j['ar']), asStr(j['label_en'] ?? j['en']));
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Phase B / C: import batches, intake link, invite result
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// One message of an import row: the field it names, the code and the bilingual text.
+class OnbRowMessage {
+  const OnbRowMessage({this.field = '', this.code = '', this.ar = '', this.en = ''});
+  final String field, code, ar, en;
+  String get text => _bi(ar, en);
+
+  factory OnbRowMessage.fromJson(Map<String, dynamic> j) => OnbRowMessage(field: asStr(j['field']), code: asStr(j['code']), ar: asStr(j['ar']), en: asStr(j['en']));
+}
+
+class OnbImportRow {
+  const OnbImportRow({required this.rowNo, this.state = 'ok', this.data = const {}, this.messages = const []});
+  final int rowNo;
+  final String state; // ok | warning | error
+  final Map<String, dynamic> data;
+  final List<OnbRowMessage> messages;
+
+  /// The person of the row, for the card title: the full name, else the first value.
+  String get title {
+    final n = asStr(data['full_name']);
+    if (n.isNotEmpty) return n;
+    for (final v in data.values) {
+      if ('$v'.isNotEmpty && v != null) return '$v';
+    }
+    return '#$rowNo';
+  }
+
+  factory OnbImportRow.fromJson(Map<String, dynamic> j) => OnbImportRow(
+        rowNo: asInt(j['row_no']),
+        state: asStr(j['state']).isEmpty ? 'ok' : asStr(j['state']),
+        data: Map<String, dynamic>.from(asMap(j['data'])),
+        messages: asMapList(j['messages']).map(OnbRowMessage.fromJson).toList(),
+      );
+}
+
+/// BatchOut: the staged import the person reviews before confirming (24 h).
+class OnbBatch {
+  const OnbBatch({required this.id, this.typeKey = '', this.mode = 'draft', this.ok = 0, this.warning = 0, this.error = 0, this.rows = const [], this.expiresAt});
+  final int id, ok, warning, error;
+  final String typeKey, mode;
+  final List<OnbImportRow> rows;
+  final DateTime? expiresAt;
+
+  int get total => ok + warning + error;
+
+  /// What a confirm would save (rows with a warning only when included).
+  int willCreate({required bool includeWarnings}) => ok + (includeWarnings ? warning : 0);
+
+  List<OnbImportRow> rowsIn(String state) => state.isEmpty ? rows : [for (final r in rows) if (r.state == state) r];
+
+  factory OnbBatch.fromJson(Map<String, dynamic> j) {
+    final c = asMap(j['counts']);
+    final rows = asMapList(j['rows']).map(OnbImportRow.fromJson).toList();
+    int n(String k, String state) => c.containsKey(k) ? asInt(c[k]) : rows.where((r) => r.state == state).length;
+    return OnbBatch(
+      id: asInt(j['id']),
+      typeKey: asStr(j['type_key']),
+      mode: asStr(j['mode']).isEmpty ? 'draft' : asStr(j['mode']),
+      ok: n('ok', 'ok'),
+      warning: n('warning', 'warning'),
+      error: n('error', 'error'),
+      rows: rows,
+      expiresAt: orgParseUtc(j['expires_at']),
+    );
+  }
+}
+
+/// `{created, skipped, invited, case_ids}` of a confirmed import (skipped may be a number or a list).
+class OnbImportResult {
+  const OnbImportResult({this.created = 0, this.skipped = 0, this.invited = 0, this.caseIds = const []});
+  final int created, skipped, invited;
+  final List<int> caseIds;
+
+  factory OnbImportResult.fromJson(Map<String, dynamic> j) {
+    int n(Object? v) => v is List ? v.length : asInt(v);
+    return OnbImportResult(created: n(j['created']), skipped: n(j['skipped']), invited: n(j['invited']), caseIds: [for (final x in (j['case_ids'] is List ? j['case_ids'] as List : const [])) asInt(x)]);
+  }
+}
+
+/// `{invited, skipped:[{id, reason}]}` of "Invite to complete".
+class OnbInviteResult {
+  const OnbInviteResult({this.invited = 0, this.skipped = const []});
+  final int invited;
+  final List<({int id, String reason})> skipped;
+
+  factory OnbInviteResult.fromJson(Map<String, dynamic> j) => OnbInviteResult(
+        invited: j['invited'] is List ? (j['invited'] as List).length : asInt(j['invited']),
+        skipped: [for (final x in asMapList(j['skipped'])) (id: asInt(x['id']), reason: asStr(x['reason']))],
+      );
+}
+
+/// The reason text of a skipped invitation.
+String onbSkipReason(String code) => switch (code) {
+      'no_contact' => t('لا بريد ولا هاتف', 'No e-mail or phone'),
+      'not_draft' => t('ليس مسودة', 'Not a draft'),
+      'already_invited' => t('مدعو بالفعل', 'Already invited'),
+      'duplicate_member' => t('عضو بالفعل', 'Already a member'),
+      _ => code.isEmpty ? t('تم تخطيه', 'Skipped') : code,
+    };
+
+/// The answer of saving an intake link: the code shows once.
+class OnbIntakeLink {
+  const OnbIntakeLink({this.code = '', this.link = ''});
+  final String code, link;
+  bool get hasCode => code.isNotEmpty;
+
+  factory OnbIntakeLink.fromJson(Map<String, dynamic> j) => OnbIntakeLink(code: asStr(j['code']), link: asStr(j['link']));
+}
+
+/// `GET /public/onboarding/intake/{code}`.
+class OnbIntakePreview {
+  const OnbIntakePreview({this.orgId, this.orgName = '', this.orgLogo = '', this.typeKey = '', this.typeLabelAr = '', this.typeLabelEn = '', this.open = true});
+  final int? orgId;
+  final String orgName, orgLogo, typeKey, typeLabelAr, typeLabelEn;
+  final bool open;
+  String get typeLabel => _bi(typeLabelAr, typeLabelEn);
+
+  factory OnbIntakePreview.fromJson(Map<String, dynamic> j) {
+    final o = asMap(j['org']), ty = asMap(j['type']);
+    return OnbIntakePreview(
+      orgId: o['id'] == null ? null : asInt(o['id']),
+      orgName: asStr(o['name']),
+      orgLogo: asStr(o['logo']),
+      typeKey: asStr(ty['key']),
+      typeLabelAr: asStr(ty['label_ar']),
+      typeLabelEn: asStr(ty['label_en']),
+      open: j['open'] != false,
+    );
+  }
 }

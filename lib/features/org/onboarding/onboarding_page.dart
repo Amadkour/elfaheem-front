@@ -13,6 +13,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart' show EventOrPoll;
@@ -26,6 +27,8 @@ import '../org_page_kit.dart' show OrgMenuItem, OrgPageBody, OrgPrimaryAction, O
 import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgErrorText;
 import 'onboarding_api.dart';
+import 'onboarding_import.dart';
+import 'onboarding_invite.dart';
 import 'onboarding_models.dart';
 import 'onboarding_review.dart';
 import 'onboarding_types_page.dart';
@@ -169,9 +172,66 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   Future<void> _add() async {
     final insertable = [for (final ty in _types) if (ty.active && _can(ty.module, 'insert')) ty];
-    final pick = await showOnbAddSheet(context, types: insertable);
+    final pick = await showOnbAddSheet(context, types: insertable, canImport: _importable(insertable).isNotEmpty, canInvite: _invitable(insertable).isNotEmpty);
     if (pick == null || !mounted) return;
-    await _openWizard(pick);
+    switch (pick.kind) {
+      case OnbAddKind.one:
+        await _openWizard(pick.type!);
+      case OnbAddKind.excel:
+        await _openImport(_importable(insertable), initial: pick.type);
+      case OnbAddKind.invite:
+        await _inviteGuided(_invitable(insertable), pick.type!);
+    }
+  }
+
+  /// Types the person may import into: the kill switch and the module's import right.
+  List<OnbType> _importable(List<OnbType> l) =>
+      AppConfig.disableList.contains(onboardingImportKey) ? const [] : [for (final ty in l) if (_can(ty.module, 'import') || _can(ty.module, 'insert')) ty];
+
+  /// Types the person may invite for: the kill switch and the module's update right.
+  List<OnbType> _invitable(List<OnbType> l) =>
+      AppConfig.disableList.contains(onboardingInviteKey) ? const [] : [for (final ty in l) if (_can(ty.module, 'update')) ty];
+
+  Future<void> _openImport(List<OnbType> types, {OnbType? initial, String mode = 'draft'}) async {
+    if (types.isEmpty) return;
+    await Navigator.of(context).push<bool>(MaterialPageRoute(
+      builder: (_) => _scope(OnbImportPage(orgId: widget.orgId, types: types, initialType: initial, initialMode: mode, canInvite: _invitable(types).isNotEmpty, api: _api)),
+    ));
+    if (mounted) _load(reset: true);
+  }
+
+  /// "Invite people": [type] is chosen; pick existing drafts or import a list with the `invite` mode.
+  Future<void> _inviteGuided(List<OnbType> types, OnbType type) async {
+    final how = await showAppSheet<String>(
+      context,
+      (ctx) => AppSheetContent(title: t('Ø¯Ø¹ÙØ© Ø£Ø´Ø®Ø§Øµ', 'Invite people'), subtitle: type.label, children: [
+        _Choice(
+            key: const ValueKey('onb.invite.drafts'),
+            icon: Icons.drafts_outlined,
+            title: t('ÙÙ Ø§ÙÙØ³ÙØ¯Ø§Øª', 'From the drafts'),
+            text: t('Ø§Ø®ØªØ± ÙØ³ÙØ¯Ø§Øª ÙÙØ¬ÙØ¯Ø© ÙØ¯Ø¹ÙØ© Ø£ØµØ­Ø§Ø¨ÙØ§.', 'Pick existing drafts and invite their owners.'),
+            onTap: () => Navigator.of(ctx).pop('drafts')),
+        AppSpace.gapXs,
+        if (!AppConfig.disableList.contains(onboardingImportKey))
+          _Choice(
+              key: const ValueKey('onb.invite.import'),
+              icon: Icons.upload_file_rounded,
+              title: t('Ø§Ø³ØªÙØ±Ø§Ø¯ ÙØ§Ø¦ÙØ©', 'Import a list'),
+              text: t('Ø§Ø±ÙØ¹ ÙÙÙ Excel ÙØ§Ø¯Ø¹Ù Ø£ØµØ­Ø§Ø¨Ù ÙØ¨Ø§Ø´Ø±Ø©.', 'Upload an Excel file and invite everyone in it.'),
+              onTap: () => Navigator.of(ctx).pop('import')),
+      ]),
+    );
+    if (how == null || !mounted) return;
+    if (how == 'import') {
+      await _openImport(types, initial: type, mode: 'invite');
+    } else {
+      await _pickDrafts(type);
+    }
+  }
+
+  Future<void> _pickDrafts(OnbType? type) async {
+    await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => _scope(OnbDraftPickerPage(orgId: widget.orgId, type: type, api: _api))));
+    if (mounted) _load(reset: true);
   }
 
   Future<void> _openWizard(OnbType type, {OnbCase? initial}) async {
@@ -217,6 +277,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
               _load(reset: true);
             }),
         more: [
+          if (_stage == OnbStage.drafts && _invitable([for (final ty in _types) if (ty.active) ty]).isNotEmpty)
+            OrgMenuItem(icon: Icons.mail_outline_rounded, label: t('Ø¯Ø¹ÙØ© ÙØ¥ÙÙØ§Ù Ø§ÙØ¨ÙØ§ÙØ§Øª', 'Invite to complete'), onTap: () => _pickDrafts(_types.where((x) => x.key == _type).firstOrNull)),
           if (canConfigure)
             OrgMenuItem(
               icon: Icons.tune_rounded,
@@ -388,40 +450,52 @@ class OnbCaseCard extends StatelessWidget {
   }
 }
 
-/// "Add": the three entry methods. Only the first is live (phases B and C bring the others); it resolves with the
-/// chosen [OnbType] (asking which one first when there are several).
-Future<OnbType?> showOnbAddSheet(BuildContext context, {required List<OnbType> types}) async {
-  final one = await showAppSheet<bool>(
+enum OnbAddKind { one, excel, invite }
+
+/// What the Add dialog resolved to: the way and the chosen type (null for "Excel" until the import page asks).
+class OnbAddChoice {
+  const OnbAddChoice(this.kind, this.type);
+  final OnbAddKind kind;
+  final OnbType? type;
+}
+
+/// "Add": the three entry methods (one person, from Excel, invite people). Excel and invite are offered only when
+/// [canImport] / [canInvite] (kill switch + right) allow; the type is asked first when there are several.
+Future<OnbAddChoice?> showOnbAddSheet(BuildContext context, {required List<OnbType> types, bool canImport = true, bool canInvite = true}) async {
+  final way = await showAppSheet<OnbAddKind>(
     context,
-    (ctx) => AppSheetContent(title: t('إضافة', 'Add'), children: [
+    (ctx) => AppSheetContent(title: t('Ø¥Ø¶Ø§ÙØ©', 'Add'), children: [
       _Choice(
         key: const ValueKey('onb.add.one'),
         icon: Icons.person_add_alt_1_rounded,
-        title: t('شخص واحد', 'One person'),
-        text: t('أدخل بياناته خطوة بخطوة، بدءاً بالرقم القومي.', 'Enter the details step by step, starting with the national ID.'),
-        onTap: types.isEmpty ? null : () => Navigator.of(ctx).pop(true),
+        title: t('Ø´Ø®Øµ ÙØ§Ø­Ø¯', 'One person'),
+        text: t('Ø£Ø¯Ø®Ù Ø¨ÙØ§ÙØ§ØªÙ Ø®Ø·ÙØ© Ø¨Ø®Ø·ÙØ©Ø Ø¨Ø¯Ø¡Ø§Ù Ø¨Ø§ÙØ±ÙÙ Ø§ÙÙÙÙÙ.', 'Enter the details step by step, starting with the national ID.'),
+        onTap: types.isEmpty ? null : () => Navigator.of(ctx).pop(OnbAddKind.one),
       ),
       AppSpace.gapXs,
       _Choice(
-          key: const ValueKey('onb.add.excel'),
-          icon: Icons.upload_file_rounded,
-          title: t('من ملف Excel', 'From Excel'),
-          text: t('استيراد قائمة كاملة مع مراجعة الأخطاء قبل الحفظ.', 'Import a whole list, with the errors reviewed before saving.'),
-          soon: true),
+        key: const ValueKey('onb.add.excel'),
+        icon: Icons.upload_file_rounded,
+        title: t('ÙÙ ÙÙÙ Excel', 'From Excel'),
+        text: t('Ø§Ø³ØªÙØ±Ø§Ø¯ ÙØ§Ø¦ÙØ© ÙØ§ÙÙØ© ÙØ¹ ÙØ±Ø§Ø¬Ø¹Ø© Ø§ÙØ£Ø®Ø·Ø§Ø¡ ÙØ¨Ù Ø§ÙØ­ÙØ¸.', 'Import a whole list, with the errors reviewed before saving.'),
+        onTap: types.isEmpty || !canImport ? null : () => Navigator.of(ctx).pop(OnbAddKind.excel),
+      ),
       AppSpace.gapXs,
       _Choice(
-          key: const ValueKey('onb.add.invite'),
-          icon: Icons.mail_outline_rounded,
-          title: t('دعوة أشخاص', 'Invite people'),
-          text: t('أرسل رابطاً ليُكمل كل شخص بياناته بنفسه.', 'Send a link so each person completes their own details.'),
-          soon: true),
+        key: const ValueKey('onb.add.invite'),
+        icon: Icons.mail_outline_rounded,
+        title: t('Ø¯Ø¹ÙØ© Ø£Ø´Ø®Ø§Øµ', 'Invite people'),
+        text: t('Ø£Ø±Ø³Ù Ø±Ø§Ø¨Ø·Ø§Ù ÙÙÙÙÙÙ ÙÙ Ø´Ø®Øµ Ø¨ÙØ§ÙØ§ØªÙ Ø¨ÙÙØ³Ù.', 'Send a link so each person completes their own details.'),
+        onTap: types.isEmpty || !canInvite ? null : () => Navigator.of(ctx).pop(OnbAddKind.invite),
+      ),
     ]),
   );
-  if (one != true || !context.mounted) return null;
-  if (types.length == 1) return types.first;
-  return showAppSheet<OnbType>(
+  if (way == null || !context.mounted) return null;
+  if (way == OnbAddKind.excel) return OnbAddChoice(way, types.length == 1 ? types.first : null);
+  if (types.length == 1) return OnbAddChoice(way, types.first);
+  final ty = await showAppSheet<OnbType>(
     context,
-    (ctx) => AppSheetContent(title: t('اختر النوع', 'Choose the type'), children: [
+    (ctx) => AppSheetContent(title: t('Ø§Ø®ØªØ± Ø§ÙÙÙØ¹', 'Choose the type'), children: [
       for (final ty in types)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.xs),
@@ -429,19 +503,19 @@ Future<OnbType?> showOnbAddSheet(BuildContext context, {required List<OnbType> t
         ),
     ]),
   );
+  return ty == null ? null : OnbAddChoice(way, ty);
 }
 
 class _Choice extends StatelessWidget {
-  const _Choice({super.key, required this.icon, required this.title, required this.text, this.onTap, this.soon = false});
+  const _Choice({super.key, required this.icon, required this.title, required this.text, this.onTap});
   final IconData icon;
   final String title, text;
   final VoidCallback? onTap;
-  final bool soon;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final off = soon || onTap == null;
+    final off = onTap == null;
     return Opacity(
       opacity: off ? 0.6 : 1,
       child: AppCard(
@@ -455,10 +529,6 @@ class _Choice extends StatelessWidget {
               Text(text, style: AppType.meta(context)),
             ]),
           ),
-          if (soon) ...[
-            AppSpace.gapXs,
-            AppStatusBadge(label: t('قريباً', 'Coming soon'), tone: AppTone.neutral, dense: true),
-          ],
         ]),
       ),
     );

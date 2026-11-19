@@ -29,7 +29,7 @@ const kWebUrlPages = {'/notifications', '/inbox', '/change-password', '/subscrip
 
 /// Registry pages (by id) with a path of their own that a signed-in person may open by URL, over the home.
 const kWebUrlRouteIds = {
-  'course', 'org.member', 'org.memberships', 'exports', 'exports.log', 'exports.schedules', 'exports.links',
+  'course', 'org.member', 'org.onboarding_case', 'org.memberships', 'exports', 'exports.log', 'exports.schedules', 'exports.links',
   'entity.view', 'meetings.links',
 };
 

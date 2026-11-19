@@ -6,7 +6,7 @@ import 'package:flutter_education_app/core/routing/app_routes.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Help ids wired before the back end's help_seed has them: onboarding phase A, snapshot regenerated at merge.
-const _pendingHelpIds = {'org.onboarding', 'org.onboarding.types'};
+const _pendingHelpIds = {'org.onboarding', 'org.onboarding.types', 'org.onboarding.import', 'me.onboarding'};
 
 void main() {
   test('wired help page ids exist in help_seed or AppRoutes', () {

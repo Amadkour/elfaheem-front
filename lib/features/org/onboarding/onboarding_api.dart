@@ -5,7 +5,7 @@ library;
 
 import 'dart:typed_data';
 
-import 'package:dio/dio.dart' show Options, ResponseType;
+import 'package:dio/dio.dart' show Dio, Options, ResponseType;
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../org_providers.dart' show orgBase;
@@ -24,10 +24,17 @@ enum OnbStage {
 }
 
 class OnboardingApi {
-  OnboardingApi([ApiClient? api]) : _api = api ?? ApiClient();
+  OnboardingApi([ApiClient? api, this.applicant = false]) : _api = api ?? ApiClient();
   final ApiClient _api;
 
+  /// The signed-in applicant's own routes (`/me/onboarding`) instead of the staff ones; the org id is then ignored.
+  OnboardingApi.forApplicant([ApiClient? api]) : this(api, true);
+  final bool applicant;
+
+  static const meBase = '$orgBase/me/onboarding';
+
   static String _base(int orgId) => '$orgBase/orgs/$orgId/onboarding';
+  String _case(int orgId, int id) => applicant ? '$meBase/$id' : '${_base(orgId)}/cases/$id';
 
   Future<OrgCall> presets(int orgId) => orgCall(() => _api.get('${_base(orgId)}/presets'), quiet: true);
 
@@ -61,12 +68,12 @@ class OnboardingApi {
   Future<OrgCall> createCase(int orgId, {required String typeKey, required Map<String, dynamic> fields, bool submit = false, bool approveNow = false}) =>
       orgCall(() => _api.post('${_base(orgId)}/cases', body: {'type_key': typeKey, 'fields': fields, 'submit': submit, 'approve_now': approveNow}), quiet: true);
 
-  Future<OrgCall> getCase(int orgId, int id) => orgCall(() => _api.get('${_base(orgId)}/cases/$id'), quiet: true);
+  Future<OrgCall> getCase(int orgId, int id) => orgCall(() => _api.get(_case(orgId, id)), quiet: true);
 
   Future<OrgCall> patchCase(int orgId, int id, Map<String, dynamic> fields) =>
-      orgCall(() => _api.patch('${_base(orgId)}/cases/$id', body: {'fields': fields}), quiet: true);
+      orgCall(() => _api.patch(_case(orgId, id), body: {'fields': fields}), quiet: true);
 
-  Future<OrgCall> submit(int orgId, int id) => orgCall(() => _api.post('${_base(orgId)}/cases/$id/submit'), quiet: true);
+  Future<OrgCall> submit(int orgId, int id) => orgCall(() => _api.post('${_case(orgId, id)}/submit'), quiet: true);
 
   Future<OrgCall> claim(int orgId, int id) => orgCall(() => _api.post('${_base(orgId)}/cases/$id/claim'), quiet: true);
 
@@ -80,11 +87,11 @@ class OnboardingApi {
 
   Future<OrgCall> activate(int orgId, int id) => orgCall(() => _api.post('${_base(orgId)}/cases/$id/activate'), quiet: true);
 
-  Future<OrgCall> withdraw(int orgId, int id) => orgCall(() => _api.post('${_base(orgId)}/cases/$id/withdraw'), quiet: true);
+  Future<OrgCall> withdraw(int orgId, int id) => orgCall(() => _api.post('${_case(orgId, id)}/withdraw'), quiet: true);
 
   /// Multipart `req_key` + `file`. [path] is for mobile, [bytes] for the web.
   Future<OrgCall> uploadDocument(int orgId, int id, {required String reqKey, required String fileName, String? path, Uint8List? bytes}) => orgCall(
-      () => _api.postMultipart('${_base(orgId)}/cases/$id/documents',
+      () => _api.postMultipart('${_case(orgId, id)}/documents',
           fields: {'req_key': reqKey}, fileField: 'file', fileName: fileName, filePath: bytes != null ? null : path, fileBytes: bytes),
       quiet: true);
 
@@ -92,23 +99,30 @@ class OnboardingApi {
   Future<OrgCall> documentAction(int orgId, int docId, {required String action, String note = '', DateTime? dueAt}) =>
       orgCall(() => _api.patch('${_base(orgId)}/documents/$docId', body: {'action': action, 'note': note, if (dueAt != null) 'due_at': orgUtc(dueAt)}), quiet: true);
 
-  /// The one-minute link of a document: the file route answers 307 to a presigned URL (audited server side), so the
-  /// redirect is not followed and its `Location` is returned. Falls back to null when the server answers the bytes.
-  Future<String?> documentLink(int orgId, int docId) async {
-    try {
-      final r = await _api.dio.get('${_base(orgId)}/documents/$docId/file',
-          options: Options(followRedirects: false, validateStatus: (s) => s != null && s < 400, responseType: ResponseType.plain, extra: {'auth': true, 'noEnc': true}));
-      final loc = r.headers.value('location');
-      return (loc == null || loc.isEmpty) ? null : loc;
-    } catch (_) {
-      return null;
-    }
+  /// The file route with `?as=json` answers `{url, mime, file_name, expires_in}` (a 60 s presigned link, audited server
+  /// side), so the same code works on the web and on phones. Null when the route cannot be read.
+  Future<({String url, String mime, String fileName})?> documentInfo(int orgId, int docId) async {
+    final r = await orgCall(() => _api.get(_docFile(orgId, docId), queryParams: const {'as': 'json'}), quiet: true);
+    if (!r.ok) return null;
+    final url = '${r.map['url'] ?? ''}';
+    if (url.isEmpty) return null;
+    return (url: url, mime: '${r.map['mime'] ?? ''}', fileName: '${r.map['file_name'] ?? ''}');
   }
 
-  /// The bytes of a document (images are drawn in the app); null when the route cannot be read.
+  String _docFile(int orgId, int docId) => applicant ? '$meBase/documents/$docId/file' : '${_base(orgId)}/documents/$docId/file';
+
+  /// The one-minute link of a document (what an external viewer opens).
+  Future<String?> documentLink(int orgId, int docId) async => (await documentInfo(orgId, docId))?.url;
+
+  /// The bytes of an image document (drawn in the app); null when it cannot be read. The presigned URL carries its own
+  /// authority, so it is fetched without the app's token.
   Future<Uint8List?> documentBytes(int orgId, int docId) async {
     try {
-      return await _api.getBytes('${_base(orgId)}/documents/$docId/file');
+      final info = await documentInfo(orgId, docId);
+      if (info == null) return null;
+      final r = await Dio().get<List<int>>(info.url, options: Options(responseType: ResponseType.bytes));
+      final d = r.data;
+      return d == null || d.isEmpty ? null : Uint8List.fromList(d);
     } catch (_) {
       return null;
     }
@@ -118,4 +132,57 @@ class OnboardingApi {
   Future<OrgCall> unmask(int orgId, int id) => orgCall(() => _api.get('${_base(orgId)}/cases/$id/nid'), quiet: true);
 
   Future<OrgCall> rejectReasons(int orgId) => orgCall(() => _api.get('${_base(orgId)}/reject-reasons'), quiet: true);
+
+  // ── Phase B: Excel import ───────────────────────────────────────────────────
+
+  /// The blank workbook of a type (xlsx bytes), or null when it cannot be read.
+  Future<Uint8List?> templateBytes(int orgId, String typeKey) async {
+    try {
+      return await _api.getBytes('${_base(orgId)}/templates/$typeKey');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Multipart `file` + `type_key` + `mode` (`draft | submit | invite`): the server stages the rows and answers the
+  /// preview (a BatchOut).
+  Future<OrgCall> uploadImport(int orgId, {required String typeKey, required String mode, required String fileName, String? path, Uint8List? bytes}) => orgCall(
+      () => _api.postMultipart('${_base(orgId)}/imports',
+          fields: {'type_key': typeKey, 'mode': mode}, fileField: 'file', fileName: fileName, filePath: bytes != null ? null : path, fileBytes: bytes),
+      quiet: true);
+
+  Future<OrgCall> importBatch(int orgId, int id) => orgCall(() => _api.get('${_base(orgId)}/imports/$id'), quiet: true);
+
+  Future<OrgCall> confirmImport(int orgId, int id, {required bool includeWarnings}) =>
+      orgCall(() => _api.post('${_base(orgId)}/imports/$id/confirm', body: {'include_warnings': includeWarnings}), quiet: true);
+
+  /// The xlsx of the error / warning rows (bytes), or null.
+  Future<Uint8List?> importReportBytes(int orgId, int id) async {
+    try {
+      return await _api.getBytes('${_base(orgId)}/imports/$id/report');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Phase C: invitations and intake ─────────────────────────────────────────
+
+  /// Invites the people of the draft cases (`{invited, skipped:[{id, reason}]}`).
+  Future<OrgCall> inviteCases(int orgId, List<int> caseIds) => orgCall(() => _api.post('${_base(orgId)}/cases/invite', body: {'case_ids': caseIds}), quiet: true);
+
+  /// The intake link of a type: `{code, link}` (the code is shown once; [rotate] makes a new one).
+  Future<OrgCall> saveIntake(int orgId, String typeKey, {required bool enabled, DateTime? validUntil, int? capacity, bool rotate = false}) => orgCall(
+      () => _api.put('${_base(orgId)}/types/$typeKey/intake',
+          body: {'enabled': enabled, 'valid_until': validUntil == null ? null : orgUtc(validUntil), 'capacity': capacity, if (rotate) 'rotate': true}),
+      quiet: true);
+
+  // ── Applicant ───────────────────────────────────────────────────────────────
+
+  Future<OrgCall> myCases() => orgCall(() => _api.get(meBase), quiet: true);
+
+  /// The public preview of an intake link (no account needed).
+  Future<OrgCall> intakePreview(String code) => orgCall(() => _api.get('$orgBase/public/onboarding/intake/$code'), quiet: true);
+
+  /// Starts (or resumes) my draft from an intake link.
+  Future<OrgCall> startIntake(String code) => orgCall(() => _api.post('$meBase/intake/$code'), quiet: true);
 }
