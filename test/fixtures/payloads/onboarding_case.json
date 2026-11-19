@@ -1,0 +1,27 @@
+{
+  "_source": "docs/onboarding/CONTRACT.md §6 CaseOut, written by hand until the back end's dump_payloads exports a real one (phase A)",
+  "payload": {
+    "id": 41, "type_key": "student_new", "type_label_ar": "طالب مستجد", "type_label_en": "New student",
+    "status": "under_review", "step": 0, "step_label_ar": "شؤون الطلاب", "step_label_en": "Student affairs", "source": "manual",
+    "full_name": "أحمد محمد علي", "nid_masked": "2••••••••••1234", "email": "a@x.org", "phone": "01012345678",
+    "conditional": false, "due_at": null, "overdue": false, "missing_count": 1,
+    "submitted_at": "2026-11-18T09:30:00", "updated_at": "2026-11-18T10:00:00",
+    "name_en": "Ahmed Mohamed Ali", "nid_kind": "national_id", "nationality": "EG", "birth_date": "2005-03-14", "gender": "m",
+    "dept_id": null, "program_id": 7, "data": {"seat_no": "123456"}, "decision_reason": "",
+    "corrections": {"fields": [{"key": "phone", "note": "wrong number"}], "documents": []},
+    "required": {"fields": ["full_name", "national_id"], "documents": ["photo", "military_form"]},
+    "missing": {"fields": [], "documents": ["military_form"]},
+    "documents": [
+      {"id": 90, "req_key": "photo", "status": "verified", "file_name": "me.jpg", "mime": "image/jpeg", "size": 120400, "version": 1,
+       "uploaded_at": "2026-11-18T09:20:00", "verified_at": "2026-11-18T10:00:00", "note": "", "due_at": null,
+       "file_path": "/api/v1/org/orgs/4/onboarding/documents/90/file"}
+    ],
+    "events": [
+      {"id": 1, "kind": "created", "from_status": "", "to_status": "draft", "reason": "", "details": {}, "actor_name": "Sara", "created_at": "2026-11-18T09:00:00"},
+      {"id": 2, "kind": "submitted", "from_status": "draft", "to_status": "submitted", "reason": "", "details": {}, "actor_name": "Sara", "created_at": "2026-11-18T09:30:00"}
+    ],
+    "member_id": null, "locked_fields": ["national_id"],
+    "can": {"edit": true, "submit": false, "claim": false, "approve": true, "reject": true, "request_correction": true, "activate": false, "withdraw": true, "view_documents": true, "unmask": true},
+    "type": null
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "_source": "docs/onboarding/CONTRACT.md §2/§6 TypeOut, written by hand until the back end's dump_payloads exports a real one (phase A)",
+  "payload": {
+    "key": "student_new",
+    "label_ar": "طالب مستجد",
+    "label_en": "New student",
+    "base_role": "student",
+    "module": "students",
+    "fields": [
+      {"key": "full_name", "kind": "text", "label_ar": "الاسم بالعربية", "label_en": "Arabic name", "required": "mandatory", "group": "identity", "system": true},
+      {"key": "national_id", "kind": "national_id", "label_ar": "الرقم القومي", "label_en": "National ID", "required": "mandatory", "when": {"nationality": "EG"}, "group": "identity", "system": true},
+      {"key": "passport_no", "kind": "text", "label_ar": "رقم الجواز", "label_en": "Passport number", "required": "conditional", "when": {"nationality": "!EG"}, "group": "identity", "system": true},
+      {"key": "nationality", "kind": "nationality", "label_ar": "الجنسية", "label_en": "Nationality", "required": "mandatory", "group": "identity", "system": true},
+      {"key": "birth_date", "kind": "date", "label_ar": "تاريخ الميلاد", "label_en": "Birth date", "required": "mandatory", "group": "personal", "system": true},
+      {"key": "gender", "kind": "select", "label_ar": "النوع", "label_en": "Gender", "required": "mandatory", "group": "personal", "system": true,
+       "options": [{"value": "m", "label_ar": "ذكر", "label_en": "Male"}, {"value": "f", "label_ar": "أنثى", "label_en": "Female"}]},
+      {"key": "phone", "kind": "phone", "label_ar": "الهاتف", "label_en": "Phone", "required": "mandatory", "group": "personal", "system": true},
+      {"key": "email", "kind": "email", "label_ar": "البريد", "label_en": "E-mail", "required": "optional", "group": "personal", "system": true},
+      {"key": "seat_no", "kind": "text", "label_ar": "رقم الجلوس", "label_en": "Seat number", "required": "optional", "group": "academic"},
+      {"key": "guardian_name", "kind": "text", "label_ar": "اسم ولي الأمر", "label_en": "Guardian name", "required": "conditional", "when": {"age_max": 17}, "group": "guardian"}
+    ],
+    "documents": [
+      {"key": "photo", "label_ar": "صورة شخصية", "label_en": "Personal photo", "required": "mandatory", "accept": ["jpg", "png"], "max_mb": 5,
+       "photo": {"min_px": 600, "aspect": "3:4"}, "original_needed": false, "allow_later": false, "default_due_days": 30},
+      {"key": "military_form", "label_ar": "نموذج 2 جند", "label_en": "Military form 2", "required": "conditional", "when": {"gender": "m", "nationality": "EG", "age_min": 18, "age_max": 30},
+       "accept": ["jpg", "png", "pdf"], "max_mb": 5, "photo": null, "original_needed": true, "allow_later": true, "default_due_days": 30}
+    ],
+    "chain": [{"key": "faculty", "label_ar": "شؤون الطلاب", "label_en": "Student affairs", "need": {"module": "students", "action": "approve"}}],
+    "settings": {"auto_activate": true, "student_code_pattern": null, "invite_days": 14, "purge_rejected_days": 180, "guardian_under": 18},
+    "preset_key": "egypt_public",
+    "active": true,
+    "sort": 1,
+    "intake": {"enabled": false, "valid_until": null, "capacity": null, "used": 0}
+  }
+}

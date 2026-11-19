@@ -63,6 +63,8 @@ class AttentionTabs {
   static const orgTimetable = 'org.timetable';
   static const orgServices = 'org.services';
   static const orgSettings = 'org.settings';
+  /// Admissions & appointments: cases the viewer can act on (D-1200, server TABS key `org_onboarding`).
+  static const orgOnboarding = 'org_onboarding';
   /// The high-priority items of the teacher's automatic to-do list (D-303, services/teacher_todo_service.py).
   static const teacherTodo = 'teacher.todo';
 
@@ -86,7 +88,7 @@ class AttentionTabs {
   static const adminUsers = 'admin.users';
 
   static const all = [home, profile, parentLink, parentAlerts, adminSupport, adminFinance, orgPeople, orgAcademics,
-    orgTimetable, orgServices, orgSettings, teacherTodo, chat, adminUsers];
+    orgTimetable, orgServices, orgSettings, orgOnboarding, teacherTodo, chat, adminUsers];
 }
 
 class AttentionItem {

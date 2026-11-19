@@ -17,6 +17,7 @@ import 'package:flutter_education_app/design/app_errors.dart' show appSharedFix,
 import '../admin/admin_common.dart';
 import 'advising/adv_texts.dart' show advCodeTexts;
 import 'governance/gov_models.dart' show govCodeTexts;
+import 'onboarding/onboarding_errors.dart' show onbCodeTexts;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Calls
@@ -408,7 +409,7 @@ String _orgErrorBase(ApiException e) {
     if (f.isNotEmpty) return featureDisabledText(f);
   }
   if (c != null) {
-    final txt = _codeTexts()[c] ?? govCodeTexts()[c] ?? advCodeTexts()[c];   // governance (D-057) · advising codes
+    final txt = _codeTexts()[c] ?? govCodeTexts()[c] ?? advCodeTexts()[c] ?? onbCodeTexts()[c];   // governance (D-057) · advising codes
     if (txt != null) {
       if (c == 'too_many_attempts') {
         final m = asInt(asMap(ApiException.asMap(e.body)?['detail'])['retry_after_minutes']);

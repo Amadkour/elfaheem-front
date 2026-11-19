@@ -59,6 +59,8 @@ import 'org_services_pages.dart';
 import 'org_status_screen.dart';
 import 'org_ui.dart';
 import 'org_people_page.dart';
+import 'onboarding/onboarding_models.dart' show onboardingFeatureKey;
+import 'onboarding/onboarding_page.dart' show OnboardingPage;
 import 'org_providers.dart';
 import 'org_schedule_autopilot.dart';
 import 'org_schedule_pages.dart';
@@ -213,7 +215,7 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
       if (people.isNotEmpty)
         ('people', DashboardItem(Icons.groups_outlined, Icons.groups_rounded, t('الأعضاء', 'People'), null,
             OrgShellTab(helpPageId: 'home.org/people', title: t('الأعضاء والإدارات', 'People & departments'), child: _SectionHub(id: 'people', subs: people)),
-            attentionKeys: const [AttentionTabs.orgPeople], attentionOrgId: oid)),
+            attentionKeys: const [AttentionTabs.orgPeople, AttentionTabs.orgOnboarding], attentionOrgId: oid)),
       if (academics.isNotEmpty)
         ('academics', DashboardItem(Icons.school_outlined, Icons.school_rounded, t('الأكاديمي', 'Academics'), null,
             OrgShellTab(helpPageId: 'home.org/academics', title: t('الشؤون الأكاديمية', 'Academics'), child: _SectionHub(id: 'academics', subs: academics)),
@@ -465,6 +467,9 @@ class OrgStaffOnlyPage extends StatelessWidget {
 List<OrgSub> _peopleSubs(OrgSession s) => [
       if (s.can('students') || s.can('teachers') || s.can('staff'))
         ('members', t('الأعضاء', 'Members'), Icons.groups_rounded, const OrgPeoplePage()),
+      // admissions & appointments (D-1200): cases from a draft to an active member; kill switch org.onboarding
+      if (s.currentId != null && !AppConfig.disableList.contains(onboardingFeatureKey) && (s.can('students') || s.can('teachers') || s.can('staff')))
+        ('onboarding', t('الالتحاق والتعيين', 'Admissions & appointments'), Icons.how_to_reg_rounded, OnboardingPage(orgId: s.currentId!)),
       if (s.can('departments') || s.myDeptIds.isNotEmpty)
         ('departments', t('الإدارات والأقسام', 'Departments'), Icons.apartment_rounded, const OrgDepartmentsPage()),
       // approvers can be unit managers or chosen assistants — the server lists only what I may decide

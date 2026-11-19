@@ -20,6 +20,29 @@ import 'api_call_scan.dart';
 /// `METHOD template` (as the failure message prints it) → why it is allowed to have no server route today.
 /// Checked by hand (Phase 10, A05); delete an entry when its call is fixed or removed — the test says when.
 const knownMissing = <String, String>{
+  // member onboarding phase A (D-1200..D-1207), docs/onboarding/CONTRACT.md §6: onboarding phase A, snapshot regenerated at merge
+  'GET /api/v1/org/orgs/{}/onboarding/cases': 'onboarding phase A, snapshot regenerated at merge',
+  'GET /api/v1/org/orgs/{}/onboarding/cases/{}': 'onboarding phase A, snapshot regenerated at merge',
+  'GET /api/v1/org/orgs/{}/onboarding/cases/{}/nid': 'onboarding phase A, snapshot regenerated at merge',
+  'GET /api/v1/org/orgs/{}/onboarding/documents/{}/file': 'onboarding phase A, snapshot regenerated at merge',
+  'GET /api/v1/org/orgs/{}/onboarding/presets': 'onboarding phase A, snapshot regenerated at merge',
+  'GET /api/v1/org/orgs/{}/onboarding/reject-reasons': 'onboarding phase A, snapshot regenerated at merge',
+  'GET /api/v1/org/orgs/{}/onboarding/summary': 'onboarding phase A, snapshot regenerated at merge',
+  'GET /api/v1/org/orgs/{}/onboarding/types': 'onboarding phase A, snapshot regenerated at merge',
+  'PATCH /api/v1/org/orgs/{}/onboarding/cases/{}': 'onboarding phase A, snapshot regenerated at merge',
+  'PATCH /api/v1/org/orgs/{}/onboarding/documents/{}': 'onboarding phase A, snapshot regenerated at merge',
+  'POST /api/v1/org/orgs/{}/onboarding/cases': 'onboarding phase A, snapshot regenerated at merge',
+  'POST /api/v1/org/orgs/{}/onboarding/cases/{}/activate': 'onboarding phase A, snapshot regenerated at merge',
+  'POST /api/v1/org/orgs/{}/onboarding/cases/{}/approve': 'onboarding phase A, snapshot regenerated at merge',
+  'POST /api/v1/org/orgs/{}/onboarding/cases/{}/claim': 'onboarding phase A, snapshot regenerated at merge',
+  'POST /api/v1/org/orgs/{}/onboarding/cases/{}/documents': 'onboarding phase A, snapshot regenerated at merge',
+  'POST /api/v1/org/orgs/{}/onboarding/cases/{}/reject': 'onboarding phase A, snapshot regenerated at merge',
+  'POST /api/v1/org/orgs/{}/onboarding/cases/{}/request-correction': 'onboarding phase A, snapshot regenerated at merge',
+  'POST /api/v1/org/orgs/{}/onboarding/cases/{}/submit': 'onboarding phase A, snapshot regenerated at merge',
+  'POST /api/v1/org/orgs/{}/onboarding/cases/{}/withdraw': 'onboarding phase A, snapshot regenerated at merge',
+  'POST /api/v1/org/orgs/{}/onboarding/types': 'onboarding phase A, snapshot regenerated at merge',
+  'POST /api/v1/org/orgs/{}/onboarding/types/from-preset': 'onboarding phase A, snapshot regenerated at merge',
+  'PUT /api/v1/org/orgs/{}/onboarding/types/{}': 'onboarding phase A, snapshot regenerated at merge',
   // fallback for an older backend: tried only after GET /api/v1/my-enrolled-courses answers 404
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
   // the paper exam flow (D-697 over the back's OFFLINE_FLOW_CONTRACT.md §2 / §3, branch of/b)
