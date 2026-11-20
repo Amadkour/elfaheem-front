@@ -1,7 +1,8 @@
-// PendingIntent (D-1324): a guest's "book this course" is saved, resumed exactly once, gone after 24 h and on sign-out.
+// PendingIntent (D-1324): a guest's "book this course" is saved, resumed exactly once, gone after 2 h, on sign-out and when guest mode starts again.
 import 'dart:convert';
 
 import 'package:flutter_education_app/core/routing/pending_intent.dart';
+import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -57,16 +58,24 @@ void main() {
     expect(await PendingIntent.peek(), isNull);
   });
 
-  test('expired after 24 h: dropped unread', () async {
+  test('expired after 2 h: dropped unread', () async {
     await PendingIntent.save(book());
-    now = t0.add(const Duration(hours: 23, minutes: 59));
+    now = t0.add(const Duration(hours: 1, minutes: 59));
     expect(await PendingIntent.peek(), isNotNull);
 
-    now = t0.add(const Duration(hours: 24, minutes: 1));
+    now = t0.add(const Duration(hours: 2, minutes: 1));
     var opened = 0;
     expect(await PendingIntent.resume((_) async => opened++), isFalse);
     expect(opened, 0);
     expect((await SharedPreferences.getInstance()).getString('pending_intent'), isNull);
+  });
+
+  test('starting guest mode again drops it (a guest who backed out of the login)', () async {
+    await PendingIntent.save(book());
+    GuestState.instance.start();
+    await pumpEventQueue();
+    expect(await PendingIntent.take(), isNull);
+    GuestState.instance.stop();
   });
 
   test('cleared on sign-out (MyAuthProvider.logout calls clear)', () async {

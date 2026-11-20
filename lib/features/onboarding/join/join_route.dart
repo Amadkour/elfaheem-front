@@ -2,8 +2,14 @@
 // router and the web entry check share it. `role=org` belongs to the institution application (`/start/institution`).
 library;
 
+/// The kill switch of the join flow (CONTRACT §4): off = `/join` opens the guest search instead.
+const kJoinFlowKey = 'join.flow';
+
 class JoinRequest {
   const JoinRequest({this.role, this.lang});
+
+  /// The join flow is switched off in [disabled] (AppConfig.disableList): the router opens `/guest-search`.
+  static bool switchedOff(Iterable<String> disabled) => disabled.contains(kJoinFlowKey);
 
   /// student · teacher · parent; null = ask on the first step.
   final String? role;

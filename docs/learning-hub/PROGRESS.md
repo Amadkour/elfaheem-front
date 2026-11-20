@@ -24,6 +24,7 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | 4.3 | Landing: four entry buttons | L1 | todo | |
 | 4.4 | Front: filter bar on explorer + student home | F6 | todo | |
 | 4.R | Review: landing → join → course → login → checkout walk | planner | todo | |
+| 4.F | Phase 4 review + QA fixes (D-1326) | F/B fix | done | the 7 must-fix items + the QA fails / highs / mediums, see "4.F fixes" under 4.R; e2e_course_search 128 checks, e2e_registration 106; QA re-walk in QA_PHASE4.md |
 | 5.1 | Back: store, tax, orders, settle, downloads (0105) | B5 | todo | |
 | 5.2 | Front: store tab, cart, checkout, My Library | F7 | todo | |
 | 5.3 | Front: store management + country VAT fields | F8 | todo | |
@@ -185,3 +186,15 @@ Gates: back `e2e_course_search.py` + the dashboard e2e (SQLite), the snapshot ex
 - `/options` v2 caches per raw `country` (at most 676 keys) while unknown codes resolve to the default country: key the cache by the resolved code.
 - The landing counter still uses the old `subject` / `level` params of `/match`; move it to `stage_id` / `grade_id` in the Phase 10 copy pass.
 - `consent_service.py` docstring `minor_basis` (3.R nit) is still open.
+
+### 4.F fixes (D-1326, 2026-11-20) — for the reviewer to verify
+Must-fix items:
+1. Fixed: `learning_filters` country = that country OR `country_code IS NULL`; docstring + `FLUTTER_API_CHANGES.md`. e2e: a NULL-country course appears under `country=EG` and `country=SA` (also `/match`), absent under `stage_id` / `grade_id`.
+2. Fixed: `student_dashboard` takes `country, stage_id, grade_id, subject_id, delivery, area_id` + `level=profile` (same `Query` patterns); filters `other_courses` and `other_courses_total`; answers `applied_filters` and, signed in, `study_level` (null for non-students / no stage). e2e: profile + `level=profile`, no params, explicit params beat `level`, guest (level ignored, explicit filters apply), no profile, enrolled course left out, 422s.
+3. Fixed: `join.flow` + `courses.filters` in `feature_catalog.py` (tab home), `app_features_guide.json` gains `join_flow` and `course_filters`; snapshots regenerated.
+4. Fixed: `GuestState.start()` clears the intent; TTL 2 h (header comment). Tests: start → take null; 2 h 1 min → null.
+5. Fixed: `JoinDraft.at` (written by `save`), `load` drops a draft older than 7 days or without `at`; `MyAuthProvider.clearGuestHandoff()` (intent + draft) is the first step of `logout`; after `_linkChild` name / phone / child code are cleared. Tests in `join_flow_layout_test.dart`.
+6. Fixed: `HomeProvider` sends the remembered filters (else `level=profile` for a signed-in student, never guests, nothing with `courses.filters` off), reads `applied_filters` as the bar's value and `study_level` into `rememberProfile`; a bar change = `GET /api/v1/courses` (`limit: 12`, mode scope, filters), enrolled dropped, first 6, server total (minus enrolled on that page) as the count; no dashboard reload. `CourseFilterScope` is now controlled (`value` / `onChanged`). `CourseFilterEmpty` ("No courses for this level yet" + "Show every level", clears stage / grade only) on the home and the explorer. Perf budget unchanged. Test: `test/ui/home_filters_test.dart`.
+7. Fixed: `/join` → `/guest-search` with `join.flow` off (`JoinRequest.switchedOff`); the bar is under `ParentComponent(featureKey: 'courses.filters')` on both pages, and with the key off the explorer ignores remembered / profile filters (the join flow's start filters still apply). Tests in `course_filters_test.dart`.
+
+QA fixes: explorer cards (`CategoryCourseModel` reads `name_ar` / `name_en` and keeps the raw `CourseResponse` for `CourseModel.fromJson`), root register "Sign in" (`pushReplacementNamed('/login')` when nothing to pop), verify-otp → login as the only route named `/login` (also after the teacher's extra step), the guest sheet's background, the study step's area (the draft's study profile carries the governorate key), checkout currency from `price-options.currency`. Re-walk: QA_PHASE4.md "Re-test".

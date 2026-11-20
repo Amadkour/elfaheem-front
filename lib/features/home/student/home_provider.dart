@@ -13,6 +13,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/features/courses/course_filters.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart' show modeCourseScopeQuery;
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
 import 'package:flutter_education_app/features/guest/guest_state.dart';
@@ -123,6 +125,17 @@ class HomeProvider extends BaseProvider {
 
   List<CourseModel> myCourses=[];
   List<CourseModel> otherCourses=[];
+
+  /// How many "Other courses" there are for [homeFilters] (the strip shows the first few).
+  int otherCoursesTotal = 0;
+
+  /// The course filter bar's value on the home (D-1326): what the server applied to [otherCourses] (the dashboard's
+  /// `applied_filters`, or the last bar change).
+  CourseFilters homeFilters = CourseFilters.empty;
+
+  /// A bar change is loading (GET /courses).
+  bool filtering = false;
+  int _filterSeq = 0;
   List<CategoryModel> categories=[];
   List<InstructorData> instructors = [];
 
@@ -157,11 +170,21 @@ class HomeProvider extends BaseProvider {
     loadFailed = false;
     _fetched = true;
     final side = _side;
+    // the home's filters ride on the same call (D-1326): the remembered ones, else (a signed-in student with nothing
+    // remembered) `level=profile` = the study profile's level; nothing with the kill switch courses.filters
+    final start = await _filterStart();
+    _filterSeq++; // a bar change still loading is older than this answer
+    filtering = false;
+    final query = <String, dynamic>{
+      // the mode's side; a guest has none (no token at all → the server answers with the public catalogue)
+      if (!GuestState.active) ...modeCourseScopeQuery(),
+      ...?start.filters?.toQuery(),
+      if (start.level) 'level': 'profile',
+    };
     final result = await run(
           () => api.get(
         '/api/v1/teacher/student-dashboard',
-        // the mode's side; a guest has none (no token at all → the server answers with the public catalogue)
-        queryParams: GuestState.active ? null : modeCourseScopeQuery(),
+        queryParams: query.isEmpty ? null : query,
         // Guest: no token at all → the server answers with the public catalogue.
         auth: !GuestState.active,
       ),
@@ -204,6 +227,18 @@ class HomeProvider extends BaseProvider {
 
     myCourses = asMapList(result['enrolled_courses']).map(CourseModel.fromJson).toList();
     otherCourses = asMapList(result['other_courses']).map(CourseModel.fromJson).toList();
+    otherCoursesTotal = (result['other_courses_total'] as num?)?.toInt() ?? otherCourses.length;
+    // the bar starts from what the server applied (an older server applies nothing: the bar starts empty)
+    final applied = result['applied_filters'];
+    homeFilters = applied is Map
+        ? CourseFilters.fromQuery(Map<String, dynamic>.from(applied)).withAreaNamesFrom(start.filters ?? CourseFilters.empty)
+        : CourseFilters.empty;
+    // the study profile's level, so the explorer starts from it without opening the study page
+    final level = result['study_level'];
+    if (level is Map) {
+      CourseFilterStore.rememberProfile(
+          country: level['country'] as String?, stageId: (level['stage_id'] as num?)?.toInt(), gradeId: (level['grade_id'] as num?)?.toInt());
+    }
 
     if (result['best_teachers'] is Map &&
         result['best_teachers']['items'] is List) {
@@ -216,4 +251,54 @@ class HomeProvider extends BaseProvider {
     stopLoading();
     notifyListeners();
   }
+
+  /// What the dashboard call sends for the filter bar: the remembered filters (when the user has any, an explicit
+  /// "Clear" included), else `level=profile` for a signed-in student; nothing when the bar is switched off.
+  Future<({CourseFilters? filters, bool level})> _filterStart() async {
+    if (courseFiltersOff()) return (filters: null, level: false);
+    try {
+      final u = await CourseFilterStore.user();
+      if (await CourseFilterStore.known(u.id)) return (filters: await CourseFilterStore.initial(u.id), level: false);
+      return (filters: null, level: !GuestState.active && u.student);
+    } catch (_) {
+      return (filters: null, level: false);
+    }
+  }
+
+  /// A bar change on the home (D-1326): GET /courses with the filters (the mode's side), the enrolled courses left
+  /// out, the first [_stripSize] shown and the server's total as the count. The dashboard is not reloaded.
+  Future<void> applyHomeFilters(CourseFilters f) async {
+    final seq = ++_filterSeq;
+    homeFilters = f;
+    filtering = true;
+    notifyListeners();
+    final mine = {for (final c in myCourses) c.id};
+    try {
+      final r = await api.get(
+        '/api/v1/courses',
+        queryParams: {
+          'limit': 12,
+          if (!GuestState.active) ...modeCourseScopeQuery(),
+          ...f.toQuery(),
+        },
+        auth: !GuestState.active,
+      );
+      if (seq != _filterSeq) return;
+      final items = r is Map && r['items'] is List ? (r['items'] as List).whereType<Map<String, dynamic>>().toList() : const <Map<String, dynamic>>[];
+      final courses = items.map(CourseModel.fromJson).toList();
+      final kept = [for (final c in courses) if (!mine.contains(c.id)) c];
+      final total = r is Map ? (r['total'] as num?)?.toInt() : null;
+      otherCourses = kept.take(_stripSize).toList();
+      // the server's total counts the enrolled courses too: the ones this page had are taken off
+      otherCoursesTotal = total == null ? kept.length : (total - (courses.length - kept.length)).clamp(kept.length, total);
+    } catch (e) {
+      if (seq != _filterSeq) return;
+      showAppNotice(ApiException.from(e).message, error: true); // the strip keeps what it showed
+    }
+    filtering = false;
+    notifyListeners();
+  }
+
+  /// How many courses the home's strip shows (the server's OTHER_COURSES).
+  static const _stripSize = 6;
 }

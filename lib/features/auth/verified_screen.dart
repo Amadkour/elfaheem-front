@@ -579,14 +579,19 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       return;
     }
     if (_isReg) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          // Only teachers have the extra profile step; students AND parents go straight to login.
-          builder: (_) => widget.role == 'teacher'
-              ? AdditionalRegisterScreen(email: widget.email)
-              : const LoginScreen(),
-        ),
-      );
+      if (widget.role == 'teacher') {
+        // Only teachers have the extra profile step
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => AdditionalRegisterScreen(email: widget.email)),
+        );
+      } else {
+        // students AND parents go straight to login, as the only route named /login: the address bar says /login, so
+        // a reload lands on the login page and not on the registration (D-1326)
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(settings: const RouteSettings(name: '/login'), builder: (_) => const LoginScreen()),
+          (_) => false,
+        );
+      }
     } else {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(

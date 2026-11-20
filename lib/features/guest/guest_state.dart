@@ -45,6 +45,9 @@ class GuestState extends ChangeNotifier {
   static bool get active => instance._active;
 
   void start() {
+    // A guest who backed out of the login to browse again drops what they were about to do: it must not fire for
+    // whoever signs in next on this device (D-1326).
+    unawaited(PendingIntent.clear());
     if (_active) return;
     _active = true;
     notifyListeners();
@@ -132,8 +135,7 @@ class GuestGuard {
         context: context,
         useRootNavigator: true,
         isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => _GuestLoginSheet(reasonKey: reasonKey),
+        builder: (_) => _GuestLoginSheet(reasonKey: reasonKey),   // the theme's opaque sheet colour (D-1326)
       );
     } finally {
       _sheetOpen = false;

@@ -3,7 +3,9 @@
 //   role · country · stage + grade (+ track) or a teacher's teaching levels · online / in-person · area (+ address)
 //   · name + phone · a parent's child code.
 // [filters] is what the explorer sends to GET /courses (CONTRACT §4); [studyProfile] prefills the registration's
-// study step. Cleared once the account is created (the registration takes it over).
+// study step. Kept on this device only and never sent before the account is created; a draft older than 7 days (or
+// without `at`) is dropped unread, logout clears it, and a parent's name / phone / child code go once the child is
+// linked (D-1326).
 library;
 
 import 'dart:convert';
@@ -43,12 +45,20 @@ class JoinDraft {
     this.name = '',
     this.phone = '',
     this.childCode = '',
+    this.at,
   }) : teachingLevels = teachingLevels ?? [];
 
   static const prefsKey = 'join_draft';
 
-  /// Test hook.
+  /// How long a draft is kept on the device.
+  static const ttl = Duration(days: 7);
+
+  /// Test hooks.
   static Future<SharedPreferences> Function() prefs = SharedPreferences.getInstance;
+  static DateTime Function() clock = DateTime.now;
+
+  /// When it was last saved (UTC); set by [save].
+  DateTime? at;
 
   String role;
   String? country;
@@ -94,8 +104,9 @@ class JoinDraft {
   }
 
   /// The registration's study step, prefilled (a student only).
-  StudyProfile get studyProfile =>
-      StudyProfile(countryCode: country, stageId: stageId, gradeId: gradeId, areaId: area?.id, track: trackKey);
+  /// `governorate` carries the level-1 area's key so the study step can name a city (it looks the city up under it).
+  StudyProfile get studyProfile => StudyProfile(
+      countryCode: country, stageId: stageId, gradeId: gradeId, areaId: area?.id, governorate: area1?.key, track: trackKey);
 
   Map<String, dynamic> toJson() => {
         'role': role,
@@ -111,6 +122,7 @@ class JoinDraft {
         'name': name,
         'phone': phone,
         'child_code': childCode,
+        'at': at?.toUtc().toIso8601String(),
       };
 
   static JoinDraft fromJson(Object? j) {
@@ -134,22 +146,36 @@ class JoinDraft {
       name: _str(j['name']),
       phone: _str(j['phone']),
       childCode: _str(j['child_code']),
+      at: DateTime.tryParse(_str(j['at']))?.toUtc(),
     );
   }
 
   // ── Store ────────────────────────────────────────────────────────────────────
 
-  /// The saved draft, or null when there is none (or it cannot be read).
+  /// The saved draft, or null when there is none, it cannot be read, or it is older than [ttl] (or has no `at`): such
+  /// a draft is removed.
   static Future<JoinDraft?> load() async {
     try {
-      final raw = (await prefs()).getString(prefsKey);
-      return raw == null ? null : fromJson(jsonDecode(raw));
+      final p = await prefs();
+      final raw = p.getString(prefsKey);
+      if (raw == null) return null;
+      JoinDraft? d;
+      try {
+        d = fromJson(jsonDecode(raw));
+      } catch (_) {}
+      final at = d?.at;
+      if (d == null || at == null || clock().toUtc().difference(at) > ttl) {
+        await p.remove(prefsKey);
+        return null;
+      }
+      return d;
     } catch (_) {
       return null;
     }
   }
 
   Future<void> save() async {
+    at = clock().toUtc();
     try {
       await (await prefs()).setString(prefsKey, jsonEncode(toJson()));
     } catch (_) {}

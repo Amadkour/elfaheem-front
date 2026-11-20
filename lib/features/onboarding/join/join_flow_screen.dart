@@ -217,7 +217,10 @@ class _JoinFlowScreenState extends State<JoinFlowScreen> {
       if (p.lastErrorCode != 'consent_required') showAppNotice(p.errorMessage ?? _t('تعذّر الربط', 'Could not link'), error: true);
       return;
     }
+    // the child is linked: the parent's name / phone and the child's code are not kept on the device (D-1326)
     _childCode.clear();
+    _name.clear();
+    _phone.clear();
     _persist();
     showAppNotice(r['status'] == 'approved'
         ? _t('تم ربط ابنك بحسابك', 'Your child is linked to your account')

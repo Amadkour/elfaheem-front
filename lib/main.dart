@@ -912,6 +912,10 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
     }
     // the landing's Student / Teacher / Parent buttons (D-1323): the join flow, signed in or out, web and apps alike
     if (JoinRequest.matches(settings.name)) {
+      // switched off (kill switch join.flow, D-1326): the old guest search
+      if (JoinRequest.switchedOff(AppConfig.disableList)) {
+        return _fade(const GuestSearchScreen(), const RouteSettings(name: '/guest-search'));
+      }
       final join = JoinRequest.parse(settings.name);
       return _fade(JoinFlowScreen(role: join.role, lang: join.lang), settings);
     }

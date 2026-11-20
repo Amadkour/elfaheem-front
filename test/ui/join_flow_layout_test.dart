@@ -1,11 +1,15 @@
 // The join flow (D-1323): every step at 320×640 and 1400×900, Arabic and English, text ×1.3, for each role.
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/core/edu/edu_countries.dart';
 import 'package:flutter_education_app/features/auth/register_levels_step.dart' show TeachingLevel;
 import 'package:flutter_education_app/features/onboarding/join/join_draft.dart';
 import 'package:flutter_education_app/features/onboarding/join/join_steps.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'layout_harness.dart';
 
@@ -136,5 +140,42 @@ void main() {
     final back = JoinDraft.fromJson(d.toJson());
     expect(back.area?.id, 51);
     expect(back.studyProfile.gradeId, 36);
+    // the study step names a city through its governorate's key (D-1326)
+    expect(back.studyProfile.areaId, back.area?.id);
+    expect(back.studyProfile.governorate, back.area1?.key);
+  });
+
+  group('JoinDraft privacy (D-1326)', () {
+    final t0 = DateTime.utc(2026, 11, 20, 10);
+    var now = t0;
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      now = t0;
+      JoinDraft.clock = () => now;
+    });
+    tearDown(() => JoinDraft.clock = DateTime.now);
+
+    test('kept 7 days, then dropped and removed', () async {
+      await (_draft('parent', filled: true)..name = 'Mona').save();
+      now = t0.add(const Duration(days: 6, hours: 23));
+      expect((await JoinDraft.load())?.name, 'Mona');
+      now = t0.add(const Duration(days: 7, minutes: 1));
+      expect(await JoinDraft.load(), isNull);
+      expect((await SharedPreferences.getInstance()).getString(JoinDraft.prefsKey), isNull);
+    });
+
+    test('a draft without `at` (an older build) is dropped', () async {
+      final j = _draft('student', filled: true).toJson()..remove('at');
+      SharedPreferences.setMockInitialValues({JoinDraft.prefsKey: jsonEncode(j)});
+      expect(await JoinDraft.load(), isNull);
+      expect((await SharedPreferences.getInstance()).getString(JoinDraft.prefsKey), isNull);
+    });
+
+    test('logout clears it', () async {
+      await _draft('student', filled: true).save();
+      expect(await JoinDraft.load(), isNotNull);
+      await MyAuthProvider.clearGuestHandoff(); // the first thing MyAuthProvider.logout does
+      expect(await JoinDraft.load(), isNull);
+    });
   });
 }

@@ -552,7 +552,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: LinkRow(
                 message: 'have_account'.tr,
                 linkText: 'auth_sign_in'.tr,
-                onTap: () => Navigator.pop(context),
+                // the register page can be the first route (a reload): popping it left a white page (D-1326)
+                onTap: () {
+                  final nav = Navigator.of(context);
+                  if (nav.canPop()) {
+                    nav.pop();
+                  } else {
+                    nav.pushReplacementNamed('/login');
+                  }
+                },
               ),
             ),
           ],

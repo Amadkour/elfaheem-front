@@ -78,7 +78,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   Future<void> _start() async {
     final u = await CourseFilterStore.user();
     var f = CourseFilters.fromQuery(widget.filters);
-    if (f.isEmpty) {
+    // the bar switched off (courses.filters): only the join flow's start filters apply, nothing remembered (D-1326)
+    if (f.isEmpty && !courseFiltersOff()) {
       final country = f.country;
       if (u.student && !await CourseFilterStore.known(u.id)) {
         try {
@@ -109,6 +110,9 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     return edu;
   }
 
+  /// "Show every level" on the empty list (D-1326).
+  void showEveryLevel() => _onFilters(_filters.withLevel(null, null));
+
   void _onFilters(CourseFilters f) {
     setState(() => _filters = f);
     CourseFilterStore.save(_user, f);
@@ -123,13 +127,16 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bar = Consumer<CategoriesProvider>(
-      builder: (_, p, _) => CourseFilterBar(
-        value: _filters,
-        edu: _edu,
-        loadEdu: _loadEdu,
-        resultCount: p.isLoadingCourse ? null : p.total,
-        onChanged: _onFilters,
+    final bar = ParentComponent(
+      featureKey: kCourseFiltersKey,
+      child: Consumer<CategoriesProvider>(
+        builder: (_, p, _) => CourseFilterBar(
+          value: _filters,
+          edu: _edu,
+          loadEdu: _loadEdu,
+          resultCount: p.isLoadingCourse ? null : p.total,
+          onChanged: _onFilters,
+        ),
       ),
     );
     return BasePage(
@@ -798,8 +805,15 @@ class _CoursesSliver extends StatelessWidget {
       );
     }
 
+    // a level picked and nothing for it: say so, and offer every level (D-1326)
+    final screen = context.findAncestorStateOfType<_CategoriesScreenState>();
+    if (courses.isEmpty && screen != null && screen._filters.hasLevel && !provider.isSearching) {
+      return SliverToBoxAdapter(
+        child: CourseFilterEmpty(filters: screen._filters, onChanged: (_) => screen.showEveryLevel()),
+      );
+    }
     if (courses.isEmpty) {
-      final hasFilter = provider.selectedCategoryId != null || provider.isSearching;
+      final hasFilter = provider.selectedCategoryId != null || provider.isSearching || (screen?._filters.isEmpty == false);
       return SliverToBoxAdapter(
         child: AppEmpty(
           icon: hasFilter ? Icons.search_off_rounded : Icons.category_rounded,

@@ -79,7 +79,7 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
 import 'package:flutter_education_app/features/courses/category/categories_screen.dart';
 import 'package:flutter_education_app/features/courses/course_access.dart';
-import 'package:flutter_education_app/features/courses/course_filters.dart' show CourseFilterScope;
+import 'package:flutter_education_app/features/courses/course_filters.dart' show CourseFilterEmpty, CourseFilterScope;
 import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/features/courses/student/list/courses_list_screen.dart';
 import 'package:flutter_education_app/features/home/student/dashboard/dashboard_screen.dart' show CalendarIcon, NotificationIcon, UserChipButton;
@@ -811,17 +811,19 @@ class _MarketingFeeds extends StatelessWidget {
         ),
       ],
 
-      // ── Other courses (at most 8 here; "Show more" lists them all) under the course filter bar (D-1325): the
-      //    remembered filters (else the study profile's level) narrow the list the marketing call already brought —
-      //    no request of their own; "Show more" with filters opens the explorer, which asks GET /courses with them
-      if (provider.otherCourses.isNotEmpty) ...[
+      // ── Other courses under the course filter bar (D-1325, D-1326): the server filters them — the dashboard call
+      //    carries the remembered filters (else the study profile's level) and answers `applied_filters`; a bar
+      //    change asks GET /courses on its own, without reloading the home. "Show more" with filters opens the
+      //    explorer with them.
+      if (provider.otherCourses.isNotEmpty || !provider.homeFilters.isEmpty) ...[
         const SizedBox(height: AppSpace.xl),
         ParentComponent(
           featureKey: 'student_home.other_courses',
-          child: CourseFilterScope(builder: (context, filters, bar) {
-            final shown = filters.isEmpty
-                ? provider.otherCourses
-                : [for (final c in provider.otherCourses) if (filters.matches(c.setup)) c];
+          child: CourseFilterScope(
+            value: provider.homeFilters,
+            onChanged: provider.applyHomeFilters,
+            builder: (context, filters, bar) {
+            final shown = provider.otherCourses;
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               HomeSectionTitle(
                 'other_courses'.tr,
@@ -834,25 +836,23 @@ class _MarketingFeeds extends StatelessWidget {
               const SizedBox(height: AppSpace.sm),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset),
-                child: bar(resultCount: filters.isEmpty ? null : shown.length),
+                // the count is the server's total for these filters (the strip shows the first few)
+                child: bar(resultCount: filters.isEmpty || provider.filtering ? null : provider.otherCoursesTotal),
               ),
               const SizedBox(height: AppSpace.sm),
-              if (shown.isEmpty)
+              if (provider.filtering && shown.isEmpty)
+                const AppListSkeleton(items: 1, padding: EdgeInsets.symmetric(horizontal: kStudentHomeInset))
+              else if (shown.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset, vertical: AppSpace.sm),
-                  child: Text(
-                    AppConfig.lang == 'ar'
-                        ? 'لا توجد دورات هنا بهذه الاختيارات. جرّب "عرض المزيد" أو امسح التصفية.'
-                        : 'No courses here for these choices. Try "Show more" or clear the filters.',
-                    style: AppType.meta(context),
-                  ),
+                  child: CourseFilterEmpty(filters: filters, onChanged: provider.applyHomeFilters, compact: true),
                 )
               else
                 HomeCourseList(
                   pageName: 'home-other-courses',
                   // the home's full width: a narrower centred strip broke the dashboard's edges on a desktop
                   maxWidth: kHomeWideMax,
-                  courses: shown.take(8).toList(),
+                  courses: shown,
                   isTeacher: false,
                   // Private courses ask for the access code first.
                   onTap: (CourseModel c) => openCourse(context, c, provider.api),

@@ -3,14 +3,19 @@
 // `subject_id`, `delivery`, `area_id`).
 //
 //   CourseFilters       the filter model ↔ the query params (the same map the join flow hands the explorer), plus
-//                       `matches(CourseSetup)`: the server's rules on a list already loaded (the student home)
+//                       `matches(CourseSetup)`: the server's rules on a list already loaded
 //   CourseFilterStore   remembered per user (SharedPreferences `course_filters_<user>`); with nothing remembered the
 //                       start is the study profile's country / stage / grade (`course_filters_seed_<user>`, written
 //                       whenever StudyProfileApi loads or saves the profile, so the home never asks for it)
 //   CourseFilterEdu     the catalog the bar draws names from (EduCatalog); `storedOnly` = no request
 //   CourseFilterBar     plain values in, a callback out: chips + a "Filters" sheet on a phone, one row on a desktop,
 //                       the result count and "Clear"
-//   CourseFilterScope   the student home's host: remembered filters + the stored catalog, no request on load
+//   CourseFilterScope   the student home's host: the filters the home's dashboard call applied (`applied_filters`,
+//                       D-1326) + the stored catalog, no request on load; a change goes to the home, which asks
+//                       GET /courses itself
+//   CourseFilterEmpty   a filtered list with nothing in it: "No courses for this level yet" + "Show every level"
+//
+// Kill switch `courses.filters` (kCourseFiltersKey): the bar is hidden and neither list sends its params.
 library;
 
 import 'dart:convert';
@@ -25,6 +30,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/edu_pickers.dart';
 import 'package:flutter_education_app/features/courses/course_setup.dart';
 import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
@@ -34,6 +40,12 @@ int? _int(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}');
 String _str(Object? v) => v is String ? v : '';
 
 const Object _keep = Object();
+
+/// The filter bar's kill switch (CONTRACT §4).
+const kCourseFiltersKey = 'courses.filters';
+
+/// The bar is switched off: it is hidden and no list sends its params.
+bool courseFiltersOff() => AppConfig.disableList.contains(kCourseFiltersKey);
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  The model
@@ -145,6 +157,13 @@ class CourseFilters {
 
   /// "Clear": every filter off, the country kept.
   CourseFilters cleared() => CourseFilters(country: country);
+
+  /// A stage or a grade is picked.
+  bool get hasLevel => stageId != null || gradeId != null;
+
+  /// The area's names from [other] when it is the same area (a server answer carries the id only).
+  CourseFilters withAreaNamesFrom(CourseFilters other) =>
+      areaId != null && areaId == other.areaId ? _copy(areaAr: other.areaAr, areaEn: other.areaEn) : this;
 
   /// The server's rules (CONTRACT §4) on a course already loaded: a grade matches a target of that grade or a
   /// whole-stage target of its stage; a stage any target of it; online / in person also match `both`; a level-1
@@ -694,12 +713,16 @@ class _CourseFilterSheetState extends State<_CourseFilterSheet> {
 
 typedef CourseFilterBarBuilder = Widget Function({int? resultCount});
 
-/// Loads the user's remembered filters (else the study profile's level) and the STORED catalog — no request on load
-/// (the home's request budget, test/perf/home_requests_*); the catalog comes from the network only when the person
-/// opens the filter sheet. [builder] gets the filters and the bar to place.
+/// The student home's bar host: [value] is the filters the home's list was loaded with (the dashboard's
+/// `applied_filters`, D-1326) and a change goes to [onChanged] (the home asks GET /courses) and is remembered for the
+/// user. Only the STORED catalog is read on load — no request (the home's request budget, test/perf/home_requests_*);
+/// the catalog comes from the network only when the person opens the filter sheet. [builder] gets the filters and
+/// the bar to place (hidden by the kill switch `courses.filters`).
 class CourseFilterScope extends StatefulWidget {
-  const CourseFilterScope({super.key, required this.builder});
+  const CourseFilterScope({super.key, required this.value, required this.onChanged, required this.builder});
 
+  final CourseFilters value;
+  final ValueChanged<CourseFilters> onChanged;
   final Widget Function(BuildContext context, CourseFilters filters, CourseFilterBarBuilder bar) builder;
 
   @override
@@ -707,7 +730,6 @@ class CourseFilterScope extends StatefulWidget {
 }
 
 class _CourseFilterScopeState extends State<CourseFilterScope> {
-  CourseFilters _f = CourseFilters.empty;
   CourseFilterEdu? _edu;
   String? _user;
 
@@ -719,31 +741,74 @@ class _CourseFilterScopeState extends State<CourseFilterScope> {
 
   Future<void> _init() async {
     final u = await CourseFilterStore.user();
-    final f = await CourseFilterStore.initial(u.id);
-    final edu = await CourseFilterEdu.load(f.country, storedOnly: true);
+    final edu = await CourseFilterEdu.load(widget.value.country, storedOnly: true);
     if (!mounted) return;
     setState(() {
       _user = u.id;
-      _f = f;
       _edu = edu;
     });
   }
 
   Future<CourseFilterEdu?> _loadEdu() async {
-    final edu = await CourseFilterEdu.load(_f.country);
+    final edu = await CourseFilterEdu.load(widget.value.country);
     if (mounted && edu != null) setState(() => _edu = edu);
     return edu;
   }
 
   void _set(CourseFilters f) {
-    setState(() => _f = f);
     if (_user != null) CourseFilterStore.save(_user!, f);
+    widget.onChanged(f);
   }
 
   @override
   Widget build(BuildContext context) => widget.builder(
         context,
-        _f,
-        ({int? resultCount}) => CourseFilterBar(value: _f, edu: _edu, loadEdu: _loadEdu, resultCount: resultCount, onChanged: _set),
+        widget.value,
+        ({int? resultCount}) => ParentComponent(
+          featureKey: kCourseFiltersKey,
+          child: CourseFilterBar(value: widget.value, edu: _edu, loadEdu: _loadEdu, resultCount: resultCount, onChanged: _set),
+        ),
       );
+}
+
+/// A filtered list with no course (D-1326). With a stage / grade picked: "No courses for this level yet" and
+/// "Show every level", which clears the stage and the grade only; otherwise a plain line. [compact] = a line and a
+/// text button (the home's strip), else the page's empty state (the explorer).
+class CourseFilterEmpty extends StatelessWidget {
+  const CourseFilterEmpty({super.key, required this.filters, required this.onChanged, this.compact = false});
+
+  final CourseFilters filters;
+  final ValueChanged<CourseFilters> onChanged;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final level = filters.hasLevel;
+    final title = level
+        ? _t('لا توجد دورات لهذا المستوى بعد', 'No courses for this level yet')
+        : _t('لا توجد دورات بهذه الاختيارات', 'No courses for these choices');
+    final action = level ? _t('اعرض كل المستويات', 'Show every level') : null;
+    void every() => onChanged(filters.withLevel(null, null));
+    if (!compact) {
+      return AppEmpty(
+        key: const ValueKey('course_filters.empty'),
+        icon: Icons.search_off_rounded,
+        title: title,
+        message: level ? null : _t('غيّر الاختيارات أو امسح التصفية.', 'Change the choices or clear the filters.'),
+        actionLabel: action,
+        onAction: level ? every : null,
+      );
+    }
+    return Column(
+      key: const ValueKey('course_filters.empty'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: AppType.meta(context)),
+        if (action != null) ...[
+          const SizedBox(height: AppSpace.xs),
+          AppButton.ghost(key: const ValueKey('course_filters.every_level'), label: action, icon: Icons.layers_clear_rounded, onPressed: every),
+        ],
+      ],
+    );
+  }
 }

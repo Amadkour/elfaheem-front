@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 
 
@@ -36,12 +37,26 @@ class CategoryCourseModel with DiscountInfo {
     required this.discountActive,
     required this.discountPercentage,
     this.discountDays,
+    this.raw,
   });
+
+  /// The course as GET /courses sent it (CourseResponse): the card is drawn from it (title, type, teacher, rating,
+  /// currency, who / where), D-1326.
+  final Map<String, dynamic>? raw;
+
+  /// CourseResponse has `name_ar` / `name_en` (no `name`): the person's language first, then the other one.
+  static String _title(Map<dynamic, dynamic> j) {
+    String s(Object? v) => v is String ? v.trim() : '';
+    final ar = s(j['name_ar']), en = s(j['name_en']), name = s(j['name']);
+    final first = AppConfig.lang == 'ar' ? ar : en;
+    final other = AppConfig.lang == 'ar' ? en : ar;
+    return first.isNotEmpty ? first : (other.isNotEmpty ? other : name);
+  }
 
   factory CategoryCourseModel.fromJson(Map<dynamic, dynamic> json) =>
       CategoryCourseModel(
         id: json['id'].toString(),
-        title: json['name'] as String? ?? '',
+        title: _title(json),
         categoryId: json['category_id']?.toString() ?? '',
         imageUrl: json['image_url'] as String? ?? '',
         rating:
@@ -65,7 +80,18 @@ class CategoryCourseModel with DiscountInfo {
         discountPercentage:
         (json['discount_percentage'] as num?)?.toDouble() ?? 0.0,
         discountDays: (json['discount_days'] as num?)?.toInt(),
+        raw: json['id'] == null ? null : Map<String, dynamic>.from(json),
       );
 
-  CourseModel get toCourseModel => CourseModel.fromCategoryModel(this);
+  /// The full course model when the row came from GET /courses (the same parser as the student home's lists), else
+  /// the sparse one.
+  CourseModel get toCourseModel {
+    final j = raw;
+    if (j != null) {
+      try {
+        return CourseModel.fromJson(j);
+      } catch (_) {}
+    }
+    return CourseModel.fromCategoryModel(this);
+  }
 }

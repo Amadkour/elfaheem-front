@@ -28,6 +28,7 @@ import 'username.dart';
 import 'package:flutter_education_app/core/personal_access.dart';
 import 'package:flutter/material.dart' show MaterialPageRoute;
 import 'package:flutter_education_app/core/routing/pending_intent.dart';
+import 'package:flutter_education_app/features/onboarding/join/join_draft.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart' show CoursePageLoader;
 
 // ── Model ─────────────────────────────────────────────────────────────────────
@@ -1113,8 +1114,15 @@ class MyAuthProvider extends BaseProvider {
 
   // ── Logout ────────────────────────────────────────────────────────────────────
 
+  /// What a sign-out drops from the device before anything else: a guest's "book this course" (PendingIntent) and
+  /// the join flow's answers (JoinDraft: name, phone, child code), so neither carries over to the next person (D-1326).
+  static Future<void> clearGuestHandoff() async {
+    await PendingIntent.clear();
+    await JoinDraft.clear();
+  }
+
   Future<void> logout() async {
-    await PendingIntent.clear(); // a guest's "book this course" never carries over to the next person
+    await clearGuestHandoff();
     ViewAsState.instance.stop(); // never carry view-as into the next session
     AppModeController.instance.reset(); // Organization/Individual mode belongs to the user who chose it
     EntitiesApi.instance.invalidate(); // a cached detail or access answer is this user's, never the next one's (D-290)

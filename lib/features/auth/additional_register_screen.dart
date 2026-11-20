@@ -139,7 +139,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
     if (ok) {
       docProvider.clearCustomEntries();
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(settings: const RouteSettings(name: '/login'), builder: (_) => const LoginScreen()),
             (r) => false,
       );
     } else {

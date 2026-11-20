@@ -48,6 +48,13 @@ class EnrollmentProvider extends PaymentFlowProvider {
   // ── Price plans ───────────────────────────────────────────────────────────
   List<PriceOption> _options = const [];
   bool _optionsLoaded = false;
+
+  /// The course's own currency from GET /payments/price-options (D-1326): the prices and the fee quote are in it,
+  /// whatever the gateway's currency (/config) is.
+  String? _priceCurrency;
+
+  @override
+  String get currencySymbol => _priceCurrency == null ? super.currencySymbol : currencySymbolFor(_priceCurrency);
   String _plan = PlanKeys.yearly;
   int? _pendingPaymentId;
   String? _pendingTransactionId;
@@ -238,6 +245,8 @@ class EnrollmentProvider extends PaymentFlowProvider {
     ];
     if (json != null) {
       _options = parsed;
+      final cur = json['currency'];
+      if (cur is String && cur.trim().isNotEmpty) _priceCurrency = cur;
       // A renewal starts on the plan the student had (D-210); otherwise the teacher's default.
       final had = course.access?.plan;
       final def = parsed.any((o) => o.plan == had) ? had : json['default_plan'] as String?;

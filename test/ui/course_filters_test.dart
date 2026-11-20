@@ -8,6 +8,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart';
 import 'package:flutter_education_app/features/courses/course_filters.dart';
 import 'package:flutter_education_app/features/courses/course_setup.dart';
+import 'package:flutter_education_app/features/onboarding/join/join_route.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -133,6 +134,47 @@ void main() {
       expect(got?.gradeId, 11);
       await tester.tap(find.byKey(const ValueKey('course_filters.clear')));
       expect(got?.toQuery(), {'country': 'EG'});
+    });
+  });
+  group('empty list and kill switches (D-1326)', () {
+    const level = CourseFilters(country: 'EG', stageId: 1, gradeId: 11, delivery: 'online');
+
+    testWidgets('the empty state, page and compact', (tester) async {
+      await expectNoLayoutErrors(tester, () => CourseFilterEmpty(filters: level, onChanged: (_) {}));
+      await expectNoLayoutErrors(tester, () => CourseFilterEmpty(filters: level, onChanged: (_) {}, compact: true));
+      await expectNoLayoutErrors(tester, () => CourseFilterEmpty(filters: const CourseFilters(delivery: 'online'), onChanged: (_) {}, compact: true));
+    });
+
+    testWidgets('"Show every level" clears the stage and the grade only', (tester) async {
+      AppConfig.lang = 'en';
+      CourseFilters? got;
+      await tester.pumpWidget(layoutHost(CourseFilterEmpty(filters: level, onChanged: (f) => got = f, compact: true)));
+      await tester.pump();
+      expect(find.text('No courses for this level yet'), findsOneWidget);
+      await tester.tap(find.text('Show every level'));
+      expect(got?.toQuery(), {'country': 'EG', 'delivery': 'online'});
+    });
+
+    testWidgets('courses.filters off: the home bar is hidden', (tester) async {
+      AppConfig.lang = 'en';
+      SharedPreferences.setMockInitialValues({});
+      final before = AppConfig.disableList;
+      AppConfig.disableList = [kCourseFiltersKey];
+      addTearDown(() => AppConfig.disableList = before);
+      expect(courseFiltersOff(), isTrue);
+      await tester.pumpWidget(layoutHost(CourseFilterScope(
+        value: level,
+        onChanged: (_) {},
+        builder: (context, f, bar) => Column(children: [bar(resultCount: 3), const Text('list')]),
+      )));
+      await tester.pump();
+      expect(find.byType(CourseFilterBar), findsNothing);
+      expect(find.text('list'), findsOneWidget);
+    });
+
+    test('join.flow off: /join opens the guest search', () {
+      expect(JoinRequest.switchedOff(const ['join.flow']), isTrue);
+      expect(JoinRequest.switchedOff(const ['courses.filters']), isFalse);
     });
   });
 }

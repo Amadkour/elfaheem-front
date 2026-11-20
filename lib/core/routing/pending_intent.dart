@@ -8,7 +8,8 @@
 //   MyAuthProvider.logout                clears it
 //
 // Stored as JSON `{v: 1, kind, id, plan, filters, at}` under the SharedPreferences key `pending_intent`; older than
-// [PendingIntent.ttl] (24 h) it is dropped unread. Every storage failure is silent: the worst case is a guest who lands
+// [PendingIntent.ttl] (2 h: a Google round trip or a registration with verification fits, the next person on a
+// shared device a day later does not) it is dropped unread. Starting guest mode again clears it (GuestState.start). Every storage failure is silent: the worst case is a guest who lands
 // on their home instead of the course.
 library;
 
@@ -38,7 +39,7 @@ class PendingIntent {
 
   static const prefsKey = 'pending_intent';
   static const version = 1;
-  static const ttl = Duration(hours: 24);
+  static const ttl = Duration(hours: 2);
 
   /// Test hooks.
   static DateTime Function() clock = DateTime.now;
