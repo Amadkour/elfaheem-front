@@ -46,7 +46,7 @@ void main() {
   test('loads once, stores a copy, then refetches without If-None-Match and keeps the stored copy offline', () async {
     var calls = 0;
     final cat = EduCatalog(fetch: (path, {query, headers}) async {
-      if (path == '/edu/countries') {
+      if (path == '/api/v1/edu/countries') {
         return [
           {
             'code': 'EG',
@@ -66,7 +66,7 @@ void main() {
 
     Map<String, String>? seen;
     final cat2 = EduCatalog(fetch: (path, {query, headers}) async {
-      if (path == '/edu/catalog') seen = headers;
+      if (path == '/api/v1/edu/catalog') seen = headers;
       throw Exception('offline');
     });
     final b = await cat2.load('EG');

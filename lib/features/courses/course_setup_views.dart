@@ -1,5 +1,6 @@
 // lib/features/courses/course_setup_views.dart — the course setup, drawn from plain values (D-1314):
 //   CourseSetupSection   the teacher's form block: targets (removable chips), subject, delivery mode, area + address
+//   CourseSetupLoadError the form block's place when the course's detail failed to load (an error line + Retry)
 //   CourseWhoWhereBlock  the course page's compact "Who it's for / Where" block (target chips, delivery badge, areas)
 // Neither reads a provider or makes a request: the caller loads the catalog and hands over the values.
 library;
@@ -29,7 +30,7 @@ IconData _deliveryIcon(String mode) => switch (mode) {
     };
 
 /// The bilingual text of the server's 422 `course_area_required`.
-String courseAreaRequiredText() => _t('اختر المنطقة للكورس الحضوري', 'Choose the area for an in-person course');
+String courseAreaRequiredText() => _t('اختر المحافظة أو المنطقة للكورس الحضوري', 'Pick the area for an in-person course');
 
 /// A 48 px pill that is selected or not.
 class _Pick extends StatelessWidget {
@@ -261,6 +262,38 @@ class _CourseSetupSectionState extends State<CourseSetupSection> {
             ),
         ],
       ],
+    );
+  }
+}
+
+/// Shown instead of [CourseSetupSection] when the edit form could not load the course's detail: editing the section
+/// then would send nothing, so the teacher retries first (D-1315).
+class CourseSetupLoadError extends StatelessWidget {
+  const CourseSetupLoadError({super.key, required this.onRetry, this.busy = false});
+  final VoidCallback onRetry;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      liveRegion: true,
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpace.sm,
+        runSpacing: AppSpace.xs,
+        children: [
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.error_outline_rounded, size: AppIconSize.sm, color: c.danger),
+            const SizedBox(width: AppSpace.xs),
+            Flexible(
+              child: Text(_t('تعذّر تحميل «لمن هذا الكورس وأين».', 'Could not load "Who it\'s for / Where".'),
+                  style: AppType.meta(context).copyWith(color: c.danger)),
+            ),
+          ]),
+          AppButton.secondary(label: _t('إعادة المحاولة', 'Retry'), icon: Icons.refresh_rounded, onPressed: busy ? null : onRetry),
+        ],
+      ),
     );
   }
 }

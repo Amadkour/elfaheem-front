@@ -141,10 +141,10 @@ class PlCard extends StatelessWidget {
       AppCard(margin: const EdgeInsets.only(bottom: AppSpace.sm), padding: padding, onTap: onTap, child: child);
 }
 
-/// Shows an error from a provider as a toast (above sheets and dialogs).
-void plToast(String? m) {
+/// Shows an error from a provider as a toast (above sheets and dialogs); `error: false` for a success message.
+void plToast(String? m, {bool error = true}) {
   if (m == null || m.isEmpty) return;
-  Helpers.showMessage(m);
+  Helpers.showMessage(m, isError: error);
 }
 
 Future<String?> plAskText(BuildContext context, String title,

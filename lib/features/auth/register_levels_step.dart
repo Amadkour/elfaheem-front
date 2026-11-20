@@ -5,13 +5,11 @@
 //   TeachingLevelsStep   a teacher's "stages and years I teach": any number of stages, each the whole stage or
 //                        some of its grades
 //   TeachingLevelsApi    GET|PUT /me/teaching-levels {levels: [{stage_id, grade_id|null}]}
-//   PendingTeachingLevels  a teacher has no session during registration (the route needs a signed-in teacher), so the
-//                        choice waits in SharedPreferences and is sent after the first sign-in
+//   The registration sends the teacher's choice inside the complete-profile call (`teaching_levels`, D-1315), so it is
+//   saved with the profile, for that account only.
 //
 // Plain values in, callbacks out: the caller loads `EduCatalog` / `EduCountries` and passes the data.
 library;
-
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -22,7 +20,6 @@ import 'package:flutter_education_app/core/edu/edu_countries.dart';
 import 'package:flutter_education_app/core/share/external_link.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/edu_pickers.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -233,36 +230,4 @@ class TeachingLevelsApi {
 
   Future<List<TeachingLevel>> save(List<TeachingLevel> levels) async =>
       parse(await _api.put(_path, body: {'levels': [for (final l in levels) l.toJson()]}));
-}
-
-/// The choice made while registering, kept until the teacher first signs in.
-class PendingTeachingLevels {
-  static const _key = 'pending_teaching_levels';
-
-  static Future<void> store(List<TeachingLevel> levels) async {
-    try {
-      final p = await SharedPreferences.getInstance();
-      if (levels.isEmpty) {
-        await p.remove(_key);
-      } else {
-        await p.setString(_key, jsonEncode([for (final l in levels) l.toJson()]));
-      }
-    } catch (_) {}
-  }
-
-  /// Send the stored choice (no-op without one). Kept when the network failed, dropped on any server answer.
-  static Future<void> flush([TeachingLevelsApi? api]) async {
-    try {
-      final p = await SharedPreferences.getInstance();
-      final raw = p.getString(_key);
-      if (raw == null) return;
-      final levels = [for (final e in jsonDecode(raw) as List) TeachingLevel.fromJson(Map<String, dynamic>.from(e as Map))];
-      try {
-        await (api ?? TeachingLevelsApi()).save(levels);
-      } on ApiException catch (e) {
-        if (e.statusCode == 0) return;
-      }
-      await p.remove(_key);
-    } catch (_) {}
-  }
 }

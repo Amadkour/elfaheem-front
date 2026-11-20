@@ -54,8 +54,8 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
   //   phase 2: required + custom docs -> finalizeRegistration()
   bool _profileSubmitted = false;
 
-  // The stages and years the teacher teaches (Learning Hub F3): the first country's catalog, saved after the first
-  // sign-in (a teacher has no session during registration), see PendingTeachingLevels.
+  // The stages and years the teacher teaches (Learning Hub F3): the first country's catalog, sent inside the
+  // complete-profile call and saved with the profile (D-1315).
   List<EduStage> _stages = const [];
   List<TeachingLevel> _levels = const [];
   bool _levelsError = false;
@@ -96,12 +96,11 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
       experienceYears: int.parse(_yearCtrl.text.trim()),
       email: widget.email,
       bio: _bioCtrl.text.trim().isEmpty ? null : _bioCtrl.text.trim(),
+      levels: _levels,
     );
 
     if (!mounted) return;
     if (success) {
-      await PendingTeachingLevels.store(_levels);
-      if (!mounted) return;
       setState(() => _profileSubmitted = true);
       // Profile now exists server-side, so the document endpoints will work.
       await docProvider.loadOverview(email);

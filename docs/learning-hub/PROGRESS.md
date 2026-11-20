@@ -18,6 +18,7 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | 3.2 | Front: registration capture (student, teacher, parent) | F3 | done | levels steps, study profile ids, parent consent (D-1311) |
 | 3.3 | Front: course form + profile block | F4 | done | CourseSetupSection in the form (targets chips, subject, delivery, area + address), CourseWhoWhereBlock in the About tab; setup sent only after the detail loads; test/ui/course_setup_test.dart |
 | 3.R | Review: real web app, three registrations + one in-person course | planner | doing | code half: needs fixes (3.R code review below); web half: QA_PHASE3.md |
+| 3.F | Phase 3 review + QA fixes (D-1315) | F/B fix | done | the 7 must-fix items + the 4 QA findings, see "3.F fixes" under 3.R; e2e_registration 106 checks, e2e_edu 55, PG backfill on seeded data OK; QA re-walk in QA_PHASE3.md |
 | 4.1 | Back: search filters, indexes (0104), landing options / match | B4 | todo | |
 | 4.2 | Front: join flow + PendingIntent hand-off | F5 | todo | |
 | 4.3 | Landing: four entry buttons | L1 | todo | |
@@ -130,3 +131,16 @@ Gates: back `e2e_registration.py` + `e2e_edu.py` (SQLite; item 1 also on Postgre
 - `parent_link_screen.dart`: check the first 422 `consent_required` shows no error toast before the consent dialog.
 - A teacher with no levels (signed up before F3) gets no prompt; a home nudge in Phase 10.
 - `/parent/children`: 3 queries per child for `needs_consent`; batch in Phase 10.
+
+### 3.F fixes (D-1315, 2026-11-20) — for the reviewer to verify
+Must-fix items:
+1. Fixed: `features/edu/backfill.py` (`PROFILE_SQL`, `backfill_profile_ids`); 0103 runs the same strings; `seed_all` runs it before its commit under the `EduMeta` lock. SQL: `MIN(id)` for stage and area, `LOWER(TRIM(...))` on both keys, EG also for governorate-only rows; the stage / area match the profile's own `country_code` (EG for every old row, so the same as the literal). e2e: 6 key-only rows before seeding (secondary/2, " Primary "/3, university/3, " Cairo " only, nosuchkey, all NULL). PostgreSQL (nb-pg, reset, 0102, EG + a duplicated level-1 `cairo`, 7 rows, upgrade, `seed_all`): every id as expected, the 0103 area statement survived the duplicate (MIN).
+2. Fixed: `consent_service.minor_basis` (dob, else `ADULT_STAGES` by the stage row's key or the old key, else minor); `view()` adds `minor_basis`; docstring + `FLUTTER_API_CHANGES.md`. e2e: no DOB + secondary -> 422, no DOB + no profile -> 422, no DOB + university -> linked, DOB 30 years + secondary -> linked.
+3. Fixed: `TeacherProfileCreate.teaching_levels`; `teacher_levels.replace` (no commit) + `save`; `complete_teacher_profile` replaces first (a 422 leaves no profile). e2e lifts the real method out of `auth_service.py` (the harness stubs the module): 2 levels saved, a bad grade -> 422 with no profile / rows, no list -> no levels.
+4. Fixed: `completeTeacherProfile(levels:)` sends `teaching_levels` when not empty; `PendingTeachingLevels` and its flush deleted. Test: the body carries the list, and leaves the key out when empty.
+5. Fixed: the form's country is `pickEduCountry(await EduCountries.load(), null)`.
+6. Fixed: `setupLoadFailed` + `retrySetup()`; the form shows `CourseSetupLoadError` (error line + Retry) instead of the section; the detail applies only when `!_setupDirty`; the address field is refilled after a retry. Tests: the real form over FakeApi (detail 500 -> Retry -> section with the address).
+7. Fixed: literal `/api/v1/edu/...` paths at the call sites, no prefixing in `_apiFetch`; test fake matches the full paths.
+
+QA findings: the create-form blocker (see QA_PHASE3.md re-test), the area reopen (`_resolveArea` looks `area_id` up level 1, then the governorate's children), the consent-refused toast (`plToast` is error-toned, success passes `error: false`; the course form's `_showSnack` now honours the danger colour), the teacher's Details tab draws `CourseWhoWhereBlock` (address included). `courseAreaRequiredText` matches the server's wording.
+

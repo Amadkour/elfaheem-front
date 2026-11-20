@@ -1,8 +1,10 @@
 // lib/core/edu/edu_catalog.dart — the education catalog (D-1303, docs/learning-hub/CONTRACT.md §2.2): a country's
 // stages > grades (+ tracks) > subjects and its two-level areas (governorate > city), from the public routes
-//   GET /edu/catalog?country=XX   (always a full answer: no If-None-Match, the encryption layer wraps each body per session)
-//   GET /edu/countries            (geo_labels: the country's names for the two area levels)
-//   GET /edu/areas?country=XX&parent_id=
+//   GET /api/v1/edu/catalog?country=XX   (always a full answer: no If-None-Match, the encryption layer wraps each body
+//                                        per session)
+//   GET /api/v1/edu/countries            (geo_labels: the country's names for the two area levels)
+//   GET /api/v1/edu/areas?country=XX&parent_id=
+// The full paths are written at each call site so test/contract/ sees them (D-1315).
 // One load per country per run, an in-memory cache plus a SharedPreferences copy that paints first and is
 // replaced by every fetch. Names follow AppConfig.lang. Every failure degrades to the cached copy or null.
 library;
@@ -204,7 +206,7 @@ class EduCatalog {
   static final EduCatalog instance = EduCatalog();
 
   static Future<dynamic> _apiFetch(String path, {Map<String, dynamic>? query, Map<String, String>? headers}) =>
-      ApiClient().get(path.startsWith('/api/') ? path : '/api/v1$path', queryParams: query, auth: false, headers: headers);
+      ApiClient().get(path, queryParams: query, auth: false, headers: headers);
 
   final EduFetch _fetch;
   final Future<SharedPreferences> Function() _prefs;
@@ -235,7 +237,7 @@ class EduCatalog {
     } catch (_) {}
     var current = stored == null ? null : _build(stored);
     try {
-      final body = await _fetch('/edu/catalog', query: {'country': c});
+      final body = await _fetch('/api/v1/edu/catalog', query: {'country': c});
       if (body is Map) {
         final j = Map<String, dynamic>.from(body);
         j['geo_labels'] = await _labels(c, stored?['geo_labels']);
@@ -256,7 +258,7 @@ class EduCatalog {
 
   Future<dynamic> _labels(String c, dynamic fallback) async {
     try {
-      final list = await _fetch('/edu/countries');
+      final list = await _fetch('/api/v1/edu/countries');
       if (list is List) {
         for (final e in list) {
           if (e is Map && _s(e['code']).toUpperCase() == c) return e['geo_labels'];
@@ -272,7 +274,7 @@ class EduCatalog {
     final hit = _areas[k];
     if (hit != null) return hit;
     try {
-      final r = await _fetch('/edu/areas',
+      final r = await _fetch('/api/v1/edu/areas',
           query: {'country': country.toUpperCase(), 'parent_id': ?parentId});
       return _areas[k] = [for (final a in _list(r)) EduArea.fromJson(a)];
     } catch (_) {

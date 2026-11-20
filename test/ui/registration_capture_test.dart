@@ -1,6 +1,8 @@
 // Learning Hub F3 (D-1311): the registration capture. The new fields parse and are sent as ids, the countries parse
 // with minor_age / contact_whatsapp, and every new widget (the student's levels step, the teacher's multi-select, the
 // consent body and card, the study form over the catalog) has no layout error at 320 / 1400, ar + en, textScaler 1.3.
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart';
@@ -9,8 +11,13 @@ import 'package:flutter_education_app/features/auth/register_levels_step.dart';
 import 'package:flutter_education_app/features/parent/parent_consent.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_form.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
+import 'package:flutter_education_app/config/storage_service.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_api.dart';
 import 'layout_harness.dart';
 
 final _stages = [
@@ -162,5 +169,66 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('consent.agree')));
     await tester.pumpAndSettle();
     expect(result, isTrue);
+  });
+
+  testWidgets("the teacher's levels ride in the complete-profile call, for that account only (D-1315)", (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    mockRequestPlugins();
+    final storage = await StorageService.getInstance();
+    final bodies = <Map<String, dynamic>>[];
+    Map<String, dynamic> read(Object? d) =>
+        Map<String, dynamic>.from((d is String ? jsonDecode(d) : d) as Map);
+    final api = FakeApi({
+      'POST /api/v1/auth/teacher-profile': (o) {
+        bodies.add(read(o.data));
+        return {'ok': true};
+      },
+    }, latency: const Duration(milliseconds: 5))
+      ..install();
+    addTearDown(api.uninstall);
+    final auth = MyAuthProvider(api: ApiClient(), storage: storage)
+      ..selectedTeachingType = {'text': 'both'}
+      ..selectedPaymentType = {'text': 'free'}
+      ..selectedSpecialization = {'id': 4};
+    var done = false;
+    auth
+        .completeTeacherProfile(experienceYears: 2, email: 't@x.io', levels: const [
+          TeachingLevel(1),
+          TeachingLevel(2, 22),
+        ])
+        .then((_) => done = true);
+    await tester.pump(const Duration(milliseconds: 100));
+    auth.completeTeacherProfile(experienceYears: 2, email: 't@x.io').ignore();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(done, isTrue);
+    expect(bodies.first['teaching_levels'], [
+      {'stage_id': 1, 'grade_id': null},
+      {'stage_id': 2, 'grade_id': 22},
+    ]);
+    expect(bodies.last.containsKey('teaching_levels'), isFalse); // none chosen: the key is left out (old servers)
+  });
+
+  testWidgets('a saved city reopens with its own name and its governorate (D-1315)', (tester) async {
+    const cairo = EduArea(id: 5, key: 'cairo', nameAr: 'القاهرة', nameEn: 'Cairo', hasChildren: true);
+    const nasr = EduArea(id: 6, key: 'nasr', nameAr: 'مدينة نصر', nameEn: 'Nasr City', level: 2);
+    Future<List<EduArea>> load(int? parent) async => parent == null ? const [cairo] : (parent == 5 ? const [nasr] : const []);
+    Widget form(StudyProfile v) => layoutHost(SingleChildScrollView(
+          child: StudyProfileForm(
+            value: v,
+            edu: StudyEduData(countries: _countries, country: 'EG', stages: _stages, loadAreas: load),
+            onChanged: (_) {},
+          ),
+        ));
+    await tester.pumpWidget(form(const StudyProfile(countryCode: 'EG', stageId: 2, gradeId: 22, areaId: 6, governorate: 'cairo')));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Nasr City, Cairo'), findsOneWidget);
+    // a governorate saved on its own stays the governorate
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(form(const StudyProfile(countryCode: 'EG', stageId: 2, gradeId: 22, areaId: 5, governorate: 'cairo')));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Cairo'), findsOneWidget);
+    expect(find.textContaining('Nasr'), findsNothing);
   });
 }

@@ -86,12 +86,14 @@ class _StudyProfileFormState extends State<StudyProfileForm> {
   void initState() {
     super.initState();
     _parent.addListener(_onParent);
+    _resolveArea();
   }
 
   @override
   void didUpdateWidget(covariant StudyProfileForm old) {
     super.didUpdateWidget(old);
     if (!_more && _optionalShown(widget.value)) _more = true;
+    _resolveArea();
   }
 
   @override
@@ -112,7 +114,40 @@ class _StudyProfileFormState extends State<StudyProfileForm> {
   EduArea? _area1, _area2;
   String? _pendingTrack;
 
-  /// The saved area before the person picks one again: its name is the old governorate key the server wrote.
+  int? _resolvedFor;
+
+  /// The saved area's own names (D-1315): `area_id` may be a city (level 2), so it is looked up in the areas list,
+  /// level 1 first, then the children of the governorate the server wrote next to it. Until then (or when it is not
+  /// found) [_areaFromProfile] shows the governorate's name.
+  Future<void> _resolveArea() async {
+    final id = widget.value.areaId;
+    final edu = widget.edu;
+    if (id == null || edu == null || _area1 != null || _resolvedFor == id) return;
+    _resolvedFor = id;
+    void use(EduArea a1, EduArea? a2) {
+      if (!mounted || _area1 != null || widget.value.areaId != id) return;
+      setState(() {
+        _area1 = a1;
+        _area2 = a2;
+      });
+    }
+
+    try {
+      final top = await edu.loadAreas(null);
+      final key = (widget.value.governorate ?? '').trim().toLowerCase();
+      EduArea? parent;
+      for (final a in top) {
+        if (a.id == id) return use(a, null);
+        if (a.key == key) parent = a;
+      }
+      if (parent == null) return;
+      for (final c in await edu.loadAreas(parent.id)) {
+        if (c.id == id) return use(parent, c);
+      }
+    } catch (_) {}
+  }
+
+  /// The saved area before its names are resolved: the old governorate key the server wrote.
   EduArea? _areaFromProfile(StudyProfile v) {
     if (v.areaId == null) return null;
     final name = v.governorate == null ? '' : studyGovernorateLabel(v.governorate!);

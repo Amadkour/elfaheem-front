@@ -126,7 +126,7 @@ class _ParentLinkPageState extends State<ParentLinkPage> {
     for (final c in _ctrls.values) {
       c.clear();
     }
-    plToast(r['status'] == 'approved' ? 'pl_linked_ok'.tr : 'pl_submitted_pending'.tr);
+    plToast(r['status'] == 'approved' ? 'pl_linked_ok'.tr : 'pl_submitted_pending'.tr, error: false);
   }
 
   Widget _fieldWidget(Map<String, dynamic> f) {

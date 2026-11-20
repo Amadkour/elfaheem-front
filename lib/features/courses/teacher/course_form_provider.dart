@@ -23,6 +23,7 @@ import 'package:flutter_education_app/features/home/student/models.dart'
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart' show RoadmapDraft;
 import 'package:flutter_education_app/core/edu/edu_catalog.dart';
+import 'package:flutter_education_app/core/edu/edu_countries.dart';
 import 'package:flutter_education_app/features/courses/course_setup.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -180,6 +181,11 @@ class CourseFormProvider extends BaseProvider {
   bool _setupDirty = false;
   bool get setupDirty => _setupDirty;
 
+  /// The edit form's detail call failed: the section shows an error line with Retry ([retrySetup]) instead of fields
+  /// whose edits would not be sent (D-1315).
+  bool setupLoadFailed = false;
+  TeacherCourse? _setupCourse;
+
   void _setupTouch() {
     _setupDirty = true;
     areaMissing = false;
@@ -238,13 +244,13 @@ class CourseFormProvider extends BaseProvider {
     };
   }
 
-  /// The platform country: the course's own, else the first country the server lists, else Egypt. Then the catalog.
+  /// The platform country: the course's own, else the registration's rule (the first country the server lists, one
+  /// cached call), else Egypt. Then the catalog.
   Future<void> _loadSetupCatalog(CourseSetup? setup) async {
     var country = setup?.countryCode;
     if (country == null || country.isEmpty) {
       try {
-        final r = await _api.get('/api/v1/edu/countries', auth: false);
-        if (r is List && r.isNotEmpty && r.first is Map) country = '${(r.first as Map)['code'] ?? ''}'.toUpperCase();
+        country = pickEduCountry(await EduCountries.load(), null)?.code;
       } catch (_) {}
     }
     countryCode = (country == null || country.isEmpty) ? 'EG' : country;
@@ -270,19 +276,33 @@ class CourseFormProvider extends BaseProvider {
     address = s.address ?? '';
   }
 
-  /// The edit form's own detail call fills the setup (the list answer may not carry targets).
+  /// The edit form's own detail call fills the setup (the list answer may not carry targets). Edits made while it
+  /// loads win over it; a failed call leaves [setupLoadFailed] set, so the form offers Retry instead of fields whose
+  /// edits would not be sent.
   Future<void> _loadSetupFor(TeacherCourse course) async {
+    _setupCourse = course;
     _setupReady = false;
-    _applySetup(course.setup);
+    setupLoadFailed = false;
+    if (!_setupDirty) _applySetup(course.setup);
     await _loadSetupCatalog(course.setup);
     try {
       final r = await _api.get('/api/v1/courses/${course.id}');
-      if (r is Map<String, dynamic>) {
-        _applySetup(CourseSetup.fromJson(r));
-        _setupReady = true;
-      }
-    } catch (_) {}
+      if (r is! Map<String, dynamic>) throw const FormatException('course detail');
+      if (!_setupDirty) _applySetup(CourseSetup.fromJson(r));
+      _setupReady = true;
+    } catch (_) {
+      setupLoadFailed = true;
+    }
     notifyListeners();
+  }
+
+  /// Retry after [setupLoadFailed].
+  Future<void> retrySetup() async {
+    final c = _setupCourse;
+    if (c == null) return;
+    setupLoadFailed = false;
+    notifyListeners();
+    await _loadSetupFor(c);
   }
 
   /// Options not already chosen as a next-course step (so the picker
@@ -395,6 +415,8 @@ class CourseFormProvider extends BaseProvider {
     address = '';
     _setupReady = true;
     _setupDirty = false;
+    setupLoadFailed = false;
+    _setupCourse = null;
     notifyListeners();
     await Future.wait([_loadCategories(context), _loadOtherCourses(), _loadSetupCatalog(null)]);
   }

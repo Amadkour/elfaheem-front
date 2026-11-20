@@ -2,7 +2,8 @@
 //
 // The teacher's pieces of the shared course page (CourseSpace), plain values only so the layout harness can pump
 // them (test/ui/teacher_course_layout_test.dart):
-//   TeacherCourseDetails      the Details tab: about · rating · content produced · schedule · prerequisites ·
+//   TeacherCourseDetails      the Details tab: about · who it's for / where (with the address, D-1315) · rating ·
+//                             content produced · schedule · prerequisites ·
 //                             tools · certificates (each with its manage action)
 //   TeacherSessionsHeader     the Sessions tab's header (count + Add session)
 //   TeacherSessionsEmpty      no session yet: the first-session call to action
@@ -19,6 +20,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppFill;
+import 'package:flutter_education_app/features/courses/course_setup_views.dart' show CourseWhoWhereBlock;
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 
@@ -53,6 +55,7 @@ class TeacherCourseDetails extends StatelessWidget {
     final planned = course.expectedHours;
     final showSchedule = course.type != 'recorded' || course.schedules.isNotEmpty;
     final empty = description.isEmpty &&
+        course.setup.isEmpty &&
         rating == null &&
         planned <= 0 &&
         !showSchedule &&
@@ -86,6 +89,8 @@ class TeacherCourseDetails extends StatelessWidget {
               color: c.textMedium,
               children: [Text(description, style: body.copyWith(height: 1.7))],
             ),
+          // the server sends the address to the course's teacher, so the block shows it here (D-1315)
+          if (!course.setup.isEmpty) CourseWhoWhereBlock(setup: course.setup),
           if (rating != null)
             CourseInfoSection(
               title: _t('تقييم الطلاب', 'Student rating'),

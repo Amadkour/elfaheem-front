@@ -3,13 +3,46 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart';
 import 'package:flutter_education_app/features/courses/course_setup.dart';
 import 'package:flutter_education_app/features/courses/course_setup_views.dart';
+import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
+import 'package:flutter_education_app/features/courses/teacher/course_form_screen.dart';
+import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/teacher_course_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_api.dart';
 import 'layout_harness.dart';
+
+/// The real course form (create or edit) over a fake backend.
+Future<void> _pumpForm(WidgetTester tester, {TeacherCourse? course}) async {
+  tester.view.physicalSize = const Size(1400, 3200);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  final theme = ThemeConfigProvider(api: ApiClient());
+  await tester.pumpWidget(ThemeConfigScope(
+    provider: theme,
+    child: MaterialApp(
+      theme: theme.materialTheme(dark: false),
+      home: Scaffold(
+        body: MultiProvider(providers: [
+          ChangeNotifierProvider<TeacherCoursesProvider>(create: (_) => TeacherCoursesProvider()),
+          ChangeNotifierProvider<CategoriesProvider>(create: (_) => CategoriesProvider()),
+        ], child: CourseFormScreen(course: course)),
+      ),
+    ),
+  ));
+  for (var i = 0; i < 20; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
 
 void main() {
   final json = jsonDecode(File('test/fixtures/payloads/course_setup.json').readAsStringSync()) as Map<String, dynamic>;
@@ -112,5 +145,63 @@ void main() {
         })));
     await tester.pumpWidget(layoutHost(const CourseWhoWhereBlock(setup: CourseSetup())));
     expect(find.byType(Text), findsNothing);
+  });
+
+  group('the real form over a fake backend', () {
+    late FakeApi api;
+    var detailFails = true;
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      mockRequestPlugins();
+      detailFails = true;
+      final catJson = jsonDecode(File('test/fixtures/payloads/edu_catalog_eg.json').readAsStringSync());
+      api = FakeApi({
+        'GET /api/v1/edu/countries': (_) => [
+              {'code': 'EG', 'name_ar': 'مصر', 'name_en': 'Egypt'}
+            ],
+        'GET /api/v1/edu/catalog': (_) => catJson,
+        'GET /api/v1/edu/areas': (_) => [
+              {'id': 5, 'key': 'cairo', 'name_ar': 'القاهرة', 'name_en': 'Cairo', 'level': 1}
+            ],
+        'GET /api/v1/my-courses': (_) => {'items': [], 'total': 0},
+        'GET /api/v1/courses/7': (_) => detailFails ? const FakeResponse(500, {'detail': 'boom'}) : json,
+      }, latency: const Duration(milliseconds: 5))
+        ..install();
+    });
+    tearDown(() => api.uninstall());
+
+    testWidgets('create: a stage chip opens its grades', (tester) async {
+      await _pumpForm(tester);
+      await tester.ensureVisible(find.text('Primary'));
+      await tester.tap(find.text('Primary'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Whole stage'), findsOneWidget);
+    });
+
+    testWidgets('edit: a failed detail call shows Retry instead of the section; Retry loads it', (tester) async {
+      await _pumpForm(tester, course: TeacherCourse.fromJson(json));
+      expect(find.byType(CourseSetupLoadError), findsOneWidget);
+      expect(find.byType(CourseSetupSection), findsNothing);
+      detailFails = false;
+      await tester.ensureVisible(find.text('Retry'));
+      await tester.tap(find.text('Retry'));
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(find.byType(CourseSetupLoadError), findsNothing);
+      expect(find.byType(CourseSetupSection), findsOneWidget);
+      expect(find.widgetWithText(TextField, '12 Tahrir St'), findsOneWidget);
+    });
+  });
+
+  testWidgets('load error line: no layout error', (tester) async {
+    await expectNoLayoutErrors(tester, () => CourseSetupLoadError(onRetry: () {}));
+  });
+
+  testWidgets("the teacher's Details tab shows who / where with the address", (tester) async {
+    await tester.pumpWidget(layoutHost(SingleChildScrollView(child: TeacherCourseDetails(course: TeacherCourse.fromJson(json)))));
+    await tester.pump();
+    expect(find.byType(CourseWhoWhereBlock), findsOneWidget);
+    expect(find.text('12 Tahrir St'), findsOneWidget);
   });
 }

@@ -518,8 +518,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     );
   }
 
+  /// [color] picks the notice's tone: the danger colour is an error notice, anything else a plain one.
   void _showSnack(String msg, Color color) {
-    showAppNotice(msg);
+    showAppNotice(msg, error: color == context.colors.danger);
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -732,6 +733,12 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                             icon: Icons.groups_2_outlined,
                             title: AppConfig.lang == 'ar' ? 'لمن هذا الكورس وأين' : "Who it's for / Where",
                             children: [
+                              if (provider.setupLoadFailed)
+                                CourseSetupLoadError(onRetry: () async {
+                                  await provider.retrySetup();
+                                  if (mounted) _addressCtrl.text = provider.address;
+                                })
+                              else
                               CourseSetupSection(
                                 stages: provider.eduCatalog?.stages ?? const [],
                                 subjects: provider.eduCatalog?.subjects ?? const [],
