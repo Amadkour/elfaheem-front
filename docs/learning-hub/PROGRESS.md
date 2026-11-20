@@ -201,3 +201,98 @@ QA fixes: explorer cards (`CategoryCourseModel` reads `name_ar` / `name_en` and 
 
 ### 4.R re-check (planner, 2026-11-20): verified
 All 7 must-fix items are in back 72edf8e and front f465e887 as written (diffs read; test results as the lead reported). Back: `country` also matches NULL; `student-dashboard` takes the filters + `level=profile`, answers `applied_filters` / `study_level`; `join.flow` + `courses.filters` in the catalog, guide and snapshots. Front: PendingIntent TTL 2 h, cleared by `GuestState.start` and logout; JoinDraft `at` + 7 days, cleared on logout and after a child link; the home sends the filters on the dashboard call and a bar change asks `GET /api/v1/courses` only; empty state "No courses for this level yet"; `/join` with `join.flow` off → guest search; the bar under `ParentComponent(courses.filters)`, params dropped when off. Nice-to-haves above stay open. Phase 5 briefs (PLAN Phase 5 incl. the 4.R F7 additions, CONTRACT §5) are ready to run.
+
+### 5.R back review (planner, 2026-11-20) — back 939d377
+**Verdict: not yet.** The settle core is right:
+- Decimal + ROUND_HALF_UP throughout `store_tax`, with snapshots on the order and its lines.
+- The amount AND the currency are checked before `paid`. The move to paid is a compare-and-set under `FOR UPDATE`.
+- Webhook replays are deduplicated by `claim_event`, and `settle` is idempotent.
+- `uq_store_orders_payment` stops one transaction paying two store orders.
+- The points debit is in the same transaction as the library insert.
+- `Idempotency-Key` is unique per user (`uq_store_orders_user_idem`, and `_existing` filters by user).
+- Download grants are SHA-256-hashed, valid 120 s and single use by compare-and-set. The redirect is a 302 to a 60 s signed URL with `no-store` + `no-referrer`.
+- Another user's token gets 403. The daily limit and `require_device` are in place.
+- `file_ref` / `preview_ref` never reach JSON (`public_item` / `manage_item` / `order_dict` name their fields).
+
+The `/api/v1/store/` entries in both `_OPEN_PREFIXES` only skip the subscription paywall and the (dead) device guard. Every store route keeps its own auth dependency, and `/api/v1/admin/store/` is not under the prefix, so nothing paid or private became public.
+
+There are eight must-fixes. Two of them are double-spend holes across products.
+
+#### Must-fix — brief for one Opus agent
+Work in `_wt/lh-back`, on top of 939d377. Don't reformat whole files. Test only around the change: `tests/learning_hub/e2e_store.py` on SQLite, then the PostgreSQL run once at the end.
+
+1. **Moyasar: bind the payment to THIS store order, strictly.**
+   - Problem: `features/store/orders.py:389-392` (`settle_moyasar`) accepts a re-fetched paid payment whose `metadata` has NO `store_token`.
+   - Attack:
+     1. Pay a points top-up (or a course) of the same amount by Moyasar.
+     2. Call `POST /store/checkout/moyasar/attach {token, id}` with that payment id. It needs no login.
+     3. Open `/store/checkout/return?token=…&id=<that id>&status=paid`.
+     
+     The store order now settles from money that already bought points. The reuse check only looks at `store_orders`.
+   - Change: `if str(meta.get("store_token") or "") != o.checkout_token: return "not_linked"`. Also refuse when `points_token` / `payment_token` / `fee_token` is present.
+   - Nothing legitimate breaks: every store payment is made by our `pay_page`, which always sets `store_token`.
+   - Test: a paid Moyasar payment with `metadata={"points_token": …}`, attached and returned, and the same payment through the webhook. Each answers `not_linked`; the order stays `pending` with no library row.
+2. **Paymob: fail closed on the order binding.**
+   - Problem: `orders.py:206-208` keeps `gateway_order_id` only when `intention_order_id` is in the session. Without it, `order_linked` (`payment_webhook_service.py:86-90`) returns True for ANY signed callback. The redirect's `token` query param is not covered by the HMAC, so a signed redirect from any other Paymob payment of the same amount, plus `&token=<store order>`, settles the order.
+   - Change (a): in `_open_checkout`, when the provider is `paymob` and there is no `intention_order_id`, call `db.rollback()` and answer 502 `gateway_error`. No order is opened unbound.
+   - Change (b): `card_return` (`orders.py:448`) and `webhook_paymob` (`orders.py:490`) use a strict check: `stored = (o.meta or {}).get("gateway_order_id")`; if `not stored or str(order_id or "") != stored`, answer failed / `"not_linked"`. Store orders are new, so there are no legacy rows to tolerate.
+   - Tests:
+     - A correctly signed redirect naming another order id, plus this token → `failed`; the order stays `pending`.
+     - A session without `intention_order_id` → 502 and no order row.
+3. **Two orders for the same item charge twice.**
+   - Problem: `priced` (`store_service.py:218-220`) checks ownership before the order, but two concurrent orders with different keys both pass. The second order's `grant_library` (`orders.py:286-288`) just `continue`s on the owned item, and `_settle` still answers `paid`. The points are debited (or the card charged) for nothing.
+   - Change in `_settle` (`orders.py:350-351`): `granted = grant_library(db, o)`; `lines = count(StoreOrderItem where order_id)`. If `granted < lines`:
+     - for `method == "points"` (or `free`): `db.rollback()` and return `"already_owned"`. `create_order` (`orders.py:178-180`) maps that to 409 `store_already_owned`, with nothing debited and no order;
+     - for `card`: keep `paid` (the money moved), but write `meta.duplicate_item_ids` and `log.warning`; `admin_orders` shows `needs_refund: true`.
+   - Test: own an item through a library row inserted directly, then place a points order for it with `svc.owned_ids` patched to return `set()`. Expect 409, the balance unchanged and no order row.
+4. **Magic bytes on upload confirm.**
+   - Problem: `store_service.py:450-456` trusts the content type from `stat_object`, which is whatever the uploader sent with the PUT.
+   - Change: add a seam `head_bytes(key, n=64)` (`get_object(bucket, key, offset=0, length=n)`) and detect the type from the bytes:
+     - PDF: starts with `b"%PDF-"`;
+     - EPUB: starts with `b"PK\x03\x04"` and `data[30:58] == b"mimetypeapplication/epub+zip"`;
+     - JPEG: starts with `b"\xff\xd8\xff"`;
+     - PNG: starts with `b"\x89PNG\r\n\x1a\n"`;
+     - WEBP: `data[:4] == b"RIFF" and data[8:12] == b"WEBP"`.
+   - The detected type must be in `FILE_TYPES[kind]`. Otherwise remove the object and answer 422 `store_bad_file_type`.
+   - The size is still checked from `stat_object` (> 0 and ≤ 200 MB).
+   - Test: PNG bytes uploaded as `application/pdf` for `kind=file` → 422, and `remove` is called. A real `%PDF-` file passes.
+5. **Only the super admin reviews.**
+   - Problem: `require_store_admin` (`store_service.py:488-491`) uses `is_admin`, which lets `admin`, `super-admin` and `developer` in.
+   - Change: import `is_super_admin` from `features.platform.feature_catalog` and answer 403 `admin_required` when `not is_super_admin(user.role)`. This guards `admin_items`, `review` and `admin_orders`. Leave `require_manager` on `is_admin`.
+   - Test: the role `admin` gets 403 on `POST /admin/store/items/{id}/review`; the super admin gets 200.
+6. **An approved item can be changed without re-review.**
+   - Problem: `update_item` (`store_service.py:349-360`) and `file_confirm` (`:457-466`) let a teacher swap the file, price or text of a `published` item.
+   - Change: set `it.status = "pending"` when ALL of these hold:
+     - `not is_admin(user)`;
+     - `settings(db)["review_required"]` is on;
+     - `it.status in ("published", "pending")`;
+     - a file or preview was confirmed, or any of these fields changed: `title_ar/en`, `description_ar/en`, `cover_url`, `price`, `points_price`, `currency`, `vat_exempt`, `kind`, `country_code`.
+   - Test: approve an item, then the teacher PATCHes the price → the item is `pending` and gone from `GET /store/items`. Buyers keep their library rows and downloads.
+7. **Minor units per currency.**
+   - Problem: `store_tax.minor_units` (`store_tax.py:274-276`) always multiplies by 100, and `_apply` (`store_service.py:321-324`) accepts any 3-letter code. A KWD/BHD/OMR/JOD price (3 decimals) or a JPY price (0 decimals) would be wrong, and `Numeric(10,2)` cannot hold 3 decimals.
+   - Change:
+     - add `MINOR_DIGITS = {"EGP": 2, "SAR": 2, "AED": 2, "USD": 2, …}` to `store_tax`;
+     - `minor_units(amount, currency)` uses it and raises `ValueError` for an unknown code (callers: `orders.py:96, 324, 424`);
+     - `_apply` refuses a currency that is not in `MINOR_DIGITS` or whose digits are not 2 → 422 `store_bad_currency`.
+   - Test: `currency: "KWD"` → 422; SAR 114.00 → 11400.
+8. **Settings resolution ready for `module_settings`.**
+   - Problem: `settings()` (`store_service.py:61-71`) falls back to the code defaults on any exception, at `debug` level, so a broken resolver would go unnoticed.
+   - Change:
+     - catch `ImportError` / `AttributeError` (the module is not there yet) at `debug`, and log any other exception at `log.warning`;
+     - the buyer's calls resolve per country: `orders.py:136` and `store_service.py:241` pass `country=user_country(db, user)`;
+     - add a line to the B6 brief: the store already calls `module_settings.resolve(db, "store", country=, org_id=)`, and `store_service.DEFAULTS` is the registry entry for the module `store`.
+
+**Gates:**
+- Run `PYTHONUTF8=1 DATABASE_URL=sqlite:///…/store.db python tests/learning_hub/e2e_store.py`, then once on PostgreSQL.
+- Run `export_api_paths.py` only if a route changed (none should).
+- Add a `D-` entry for items 1–3: strict binding of store card payments, and the duplicate-item settle.
+
+**Must-fix 1–8: fixed** in back 18185ae (D-1338, back `docs/DECISIONS.md`). `e2e_store.py` 482 checks on SQLite and 486 on PostgreSQL; the new checks fail on 939d377. `e2e_payments_review`, `e2e_points_live_plan` and `e2e_access_hooks` pass. No route change, so no snapshot regeneration. Extra: the Moyasar webhook never routes a payment tagged `points_token` / `payment_token` / `fee_token` to a store order, so that product's own handler still gets it. API notes are in `FLUTTER_API_CHANGES.md` "Store 5.R fixes". The #8 B6 line is in the `store_service` docstring; the B6 brief itself is still owed in the front docs.
+
+#### Nice to have
+- The Moyasar decline path in `card_return` (`orders.py:459-463`) fails the order from the unverified query string. Re-fetch the payment when an `id` is present before failing it. A verified success repairs the order today, but the page says "failed".
+- `cover_url` accepts any string. Require `https://`, or a URL our storage made.
+- `POST /store/checkout/moyasar/attach` needs no login and has no rate limit. Add the usual IP limiter.
+- VAT follows the buyer's self-declared study-profile country (`vat_country`). That's fine for now; note it in D-1331 so finance knows.
+- `order_dict` shows the buyer a `failure_reason` with the `expected=/actual=` amounts. Map it to a code for the buyer and keep the detail for `admin_orders`.
+- When the super admin turns `teacher_items` on, consider turning `review_required` on by default. The contract default is false, so this is an owner decision.
