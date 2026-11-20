@@ -395,3 +395,165 @@ PLAN Phase 6 (waves A/B: B6, B7, S1, then F9, F10, F11) and CONTRACT §6 are com
 1. **B6:** `module_settings.resolve(db, module, *, country=None, org_id=None) -> dict` is the signature the store already calls. The code registry holds `store_service.DEFAULTS` as module `store` (10 / false / false / false). The country layer reads the buyer's study-profile country.
 2. **B6 / F11:** the module switches page lists the `store` flags, `points_enabled` / `teacher_items` / `review_required` / `download_daily_limit`, with `review_required` explained next to `teacher_items`.
 3. **F9–F11:** the student tab count has grown with `store`. The "nine student tabs on a phone" decision (D-1340) is taken at the Phase 6 review, with the store counted.
+
+### 5.R re-check (planner, 2026-11-20): verified — back ad2be80, front b0cd782c
+I read the diffs of all five front must-fixes; they are in as written. I didn't run the tests; the results are the lead's: e2e_store 626 checks on SQLite and 630 on PostgreSQL, the front store / contract / help tests pass, the analyzer is clean.
+1. **Cover route.** `POST /store/manage/items/{id}/cover`: 404 for someone else's item before reading the body; at most 2 MB + 1 bytes read; the type comes from `sniff_type`; the file goes to the public images bucket under `store-covers/{id}/`; then `back_to_review`. `_apply` takes a `cover_url` only when it is `https://` or one of our image URLs (`store_bad_cover`). The front calls the new route; the org upload route is gone.
+2. **Sign-out wipe.** `MyAuthProvider.wipeStoreFiles()` runs in `logout`. `wipe()` also clears leftover keys and part files, and `prune(owned)` runs when the library loads.
+3. **Help ids.** `store.browse`, `store.item`, `store.library`, `store.manage` and `admin.store` are in the back seed, `help_index.json` and the fixture, and all five pages wire them.
+4. **Failure codes.** `failure_code` comes from the reason's prefix; `failure_reason` is sent only to `admin_orders`; the front shows `storeFailureText(code)`.
+5. **Idempotency key.** It is reset only on a definite answer (`storeDefiniteAnswer`).
+
+The extras are sound:
+- **Review.** Only the owner submits, and only the super admin skips review. That closes the "hide, then publish" bypass.
+- **VAT.** VAT follows the item's country. A cart with items from two countries gets a 409. An item with no country takes the buyer's country only when that country prices in the item's currency.
+- **Store settings.** The store reads `module_settings` rows directly until the module exists, and checks for the table with the inspector, so a missing table never aborts a PostgreSQL transaction.
+
+Card checkout and the phone reader were not re-walked (no provider keys locally), and stay on the deploy checklist. The `linux/` / `windows/` plugin registrant files are still uncommitted local `pub get` output; leave them out of the store commits.
+
+### Phase 6 — run plan (planner, 2026-11-20): all Opus, waves of at most 3
+This replaces the agent and model lines of PLAN Phase 6. The scope and CONTRACT §6 are unchanged.
+
+| Wave | Agents (Opus) | Starts when |
+|---|---|---|
+| **6A — back** | B6 (switches + games), B7 (Quran + nahw), S1 (seed data) | now |
+| **6B — front** | F9 (learn kit + games), F10 (Quran), F11 (nahw + module switches) | 6A is merged into `_wt/lh-back` and the contract snapshots are exported |
+
+**Shared rules for every brief:**
+- Work only in your own files.
+- Use plain `def` routes (D-016).
+- Back: run e2e on SQLite, and the lead runs PostgreSQL once before merging. Front: run the analyzer on your paths and only your own tests.
+- Don't run `dart format`.
+- Commit per repo; don't push.
+- Take D-numbers from D-1340 – D-1349. B6 owns D-1340 – D-1342, B7 D-1343 – D-1345, the front agents D-1346 – D-1349.
+
+#### B6 — `module_settings` + country layer + games (migration 0106)
+**Owns:**
+- `features/platform/module_settings.py` and its routes;
+- the country layer in `feature_policy.py` and the theme response;
+- `features/platform/feature_catalog.py`: ALL six Phase 6 keys (`student_tab_games`, `student_tab_quran`, `student_tab_nahw`, `games.rewards`, `quran.teacher_apply`, `admin.modules`). B7 adds none;
+- `features/games/`;
+- migration `0106` (`down_revision = "0105"`);
+- `tests/learning_hub/e2e_module_settings.py` and `e2e_games.py`;
+- the snapshot export.
+
+**Compatibility with the store.** The store already reads this table itself; read `features/store/store_service.py` (`settings`, `_rows_resolve`, `_coerce`, `_settings_table`) before writing anything. Build EXACTLY this:
+1. **Table `module_settings`.** Columns are named literally `id`, `module String(20)`, `scope String(10)`, `scope_key String(20) NOT NULL`, `values JSON`, `updated_by`, `updated_at`. The store's raw SQL is `SELECT scope, scope_key, "values" FROM module_settings WHERE module = :m`, so don't rename `values`.
+   - Unique `(module, scope, scope_key)`.
+   - `scope_key` values:
+     - `platform` rows: `''`, never NULL (PostgreSQL treats NULLs as distinct, so the unique index would let two platform rows in);
+     - `country` rows: the upper-case 2-letter code;
+     - `org` rows: `str(org_id)`.
+   - `values` is a JSON object of partial values, for example `{"points_enabled": true}`.
+2. **Resolver.** `module_settings.resolve(db, module: str, *, country: Optional[str] = None, org_id: Optional[int] = None) -> Dict[str, Any]`.
+   - The result is the registry defaults ← the platform row ← the country row ← the org row (org wins).
+   - Unknown keys are dropped. Missing rows or a missing table give the defaults, and never raise.
+   - The store calls exactly this, and from the moment the module exists it stops reading rows itself. A raise there only logs a warning and falls back to the defaults, which would silently switch off a super admin's choice.
+3. **Registry.** `REGISTRY: Dict[str, Dict[str, Any]]` holds:
+   - `store`: imported lazily from `features.store.store_service.DEFAULTS` (`download_daily_limit` 10, `points_enabled` false, `teacher_items` false, `review_required` false). Don't copy the values: one source;
+   - `games`: `points_rewards` false, `points_daily_cap` 20;
+   - `quran`: `teacher_verification_required` false, `content_review_required` false, `gender_matching` `"off"`, `self_log` true.
+4. **Types.** Validate on `PUT` by the default's type, the same way the store's `_coerce` reads it:
+   - bool: a JSON bool;
+   - int: an int ≥ 0;
+   - str: one of the allowed values, e.g. `gender_matching` is `off` | `same` | `prefer`. Confirm the set against RESEARCH.md / PLAN §3.
+   
+   Anything else is 422 `module_setting_bad_value`; an unknown module is 404 `module_unknown`; an unknown key is 422.
+5. **Routes.**
+   - `GET /api/v1/module-settings/{module}?org_id=`: the resolved values for the caller's study-profile country, or `?country=` for a guest.
+   - `GET|PUT /api/v1/admin/module-settings/{module}?scope=&scope_key=`: super admin only (`is_super_admin`), kill switch `admin.modules`. A PUT replaces that scope's `values`; a body of `{}` deletes the row.
+6. **Caching.** Keep a short in-process cache keyed by `(module, country, org_id)` (≤ 30 s), cleared on every PUT. The store calls `settings()` on every download and order.
+7. **e2e, with the store wired through:**
+   - a platform `download_daily_limit: 2` → the third `POST /store/library/{id}/download` that day is 429;
+   - a country `SA` `points_enabled: true` → an SA buyer can pay with points while an EG buyer gets 403 `store_points_off`;
+   - an org row beats the country row;
+   - a bad type → 422.
+   
+   `tests/learning_hub/e2e_store.py` must stay green unchanged.
+
+**Country layer:**
+- `edu_countries.disabled_features` (add it in 0106 if it is missing) and `PUT /admin/edu/countries/{code}/features {disabled}`.
+- `feature_policy.effective_disable_list` adds the country's keys: the study profile's country when signed in, `?country=` for a guest on the theme route.
+- A super-admin OFF still wins.
+- Test: a tab key in a country's list is hidden for that country only.
+
+**Games:** CONTRACT §6 tables and routes.
+- `POST /games/{id}/plays` is idempotent on `(user_id, client_id)`.
+- Points only when `games.points_rewards` and the `games.rewards` switch are on, capped per day by `points_daily_cap`, through `points_service` in the same transaction.
+- `GET /parent/children/{id}/games` works only for a linked child; otherwise 404.
+
+Also add the `app_features_guide.json` entries for games and module switches.
+
+#### B7 — Quran + nahw (migration 0107)
+**Owns:**
+- `features/quran/` and `features/nahw/`;
+- migration `0107` (`down_revision = "0106"`, written against B6's revision id; until B6 lands, test on the SQLite `create_all` harness);
+- `tests/learning_hub/e2e_quran_rules.py` and `e2e_nahw.py`;
+- the `app_features_guide.json` entries for Quran and nahw.
+
+**Rules:**
+- Read the Quran flags with `module_settings.resolve(db, "quran", country=…, org_id=…)`. Until B6's module exists, put a local `try: … except ImportError: defaults` shim in ONE helper, so the lead can delete it at merge.
+- `gender_matching`:
+  - `same` blocks (403 `quran_gender_rule`) a booking or enrolment in a quran course whose teacher's gender differs from the student's;
+  - `off` allows it;
+  - `prefer` only sorts.
+- `teacher_verification_required` hides unverified teachers and answers 403 `quran_teacher_unverified` on booking.
+- `POST /quran/progress`:
+  - allowed for the teacher of the student's course, or for the student only when `self_log` is on;
+  - idempotent on `(recorded_by, client_id)`;
+  - `surah` 1–114 and `from_ayah ≤ to_ayah ≤` that surah's ayah count, from S1's metadata.
+- `GET /quran/meta` is served from S1's file.
+- Nahw: `GET /nahw/lessons/{id}` sends the answers (the client grades offline, D-1343). Attempts are idempotent on `client_id`.
+
+#### S1 — seed data (`back/data/learn_seed/`)
+**Owns** only that folder plus a loader `scripts/dev/load_learn_seed.py` (idempotent, every row `is_demo=false` except the sample games).
+
+**Files:**
+- `quran_meta.json`: 114 surahs with `number`, `name_ar`, `name_en`, `ayahs`, and the 30 juz boundaries as `{juz, start: {surah, ayah}}`. Source: Tanzil quran-data, with the source and licence in `README.md`.
+- `nahw.json`: 3 levels × 3 lessons × 5 exercises, in the CONTRACT §6 shapes, with `kind` from `choose` | `fill` | `classify`.
+- `games.json`: 6 starter games over the 3 engines F9 builds. Agree the engine keys with this brief: `match`, `order`, `quiz`; the `config` shapes are in PLAN §3.5.
+
+**Checks:** a JSON schema check in the loader. The ayah counts sum to 6236.
+
+#### F9 — `lib/features/learn_kit/` + `lib/features/games/`
+**Owns:**
+- the games tab (`student_tab_games`);
+- the three engines;
+- progress, badges and the parent view;
+- `learn_kit`: the shared question / result / progress widgets.
+
+**Order of work:** commit `learn_kit` FIRST, as its own commit with a header comment naming its public API. F11 builds the nahw exercises on it.
+
+**Rules:**
+- A `client_id` UUID per play, kept until the server answers.
+- Every widget goes through `expectNoLayoutErrors`.
+- Perf: the student home's request budget doesn't move.
+
+#### F10 — `lib/features/quran/`
+**Owns:**
+- the teacher list, with gender / goal / session-type filters through `CourseFilterBar`'s pattern (not a second filter kit);
+- the teacher profile;
+- booking = the existing course checkout;
+- progress by surah and juz (from `GET /quran/meta`);
+- the teacher's record sheet (`POST /quran/progress`, `client_id`);
+- the `student_tab_quran` tab.
+
+`quran_gender_rule` and `quran_teacher_unverified` get bilingual texts.
+
+#### F11 — `lib/features/nahw/` + `lib/features/admin/modules/`
+**Owns:**
+- the nahw levels, lessons and exercises, on F9's `learn_kit`. Start with the reading screens and the admin page, and wire the exercises after F9's `learn_kit` commit;
+- the module switches page.
+
+**Module switches page:**
+- Scope picker: platform / country / org.
+- One section per registry module: `store`, `games`, `quran`.
+- Each field typed from the GET answer: `AppSwitchTile` for bools, a number field for ints, `AppDropdown` for `gender_matching`.
+- `review_required` is explained next to `teacher_items`.
+- The country kill-switch editor uses `PUT /admin/edu/countries/{code}/features`.
+- Kill switch `admin.modules`; super admin only.
+
+**Review after 6B:**
+- The switch model.
+- The phone layout with every student tab: home, courses, store, games, Quran, nahw, … (decision D-1340, store counted).
+- The planner reads `module_settings.py` against the store's reader.
