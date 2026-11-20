@@ -112,6 +112,7 @@
  "course_details.tools",
  "course_form",
  "course_form.advanced",
+ "course_form.audience",
  "course_form.basic_info",
  "course_form.certificate_template",
  "course_form.course_type",

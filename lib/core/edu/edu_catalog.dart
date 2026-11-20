@@ -204,7 +204,7 @@ class EduCatalog {
   static final EduCatalog instance = EduCatalog();
 
   static Future<dynamic> _apiFetch(String path, {Map<String, dynamic>? query, Map<String, String>? headers}) =>
-      ApiClient().get(path, queryParams: query, auth: false, headers: headers);
+      ApiClient().get(path.startsWith('/api/') ? path : '/api/v1$path', queryParams: query, auth: false, headers: headers);
 
   final EduFetch _fetch;
   final Future<SharedPreferences> Function() _prefs;

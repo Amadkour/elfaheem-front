@@ -243,7 +243,7 @@ class CourseFormProvider extends BaseProvider {
     var country = setup?.countryCode;
     if (country == null || country.isEmpty) {
       try {
-        final r = await _api.get('/edu/countries', auth: false);
+        final r = await _api.get('/api/v1/edu/countries', auth: false);
         if (r is List && r.isNotEmpty && r.first is Map) country = '${(r.first as Map)['code'] ?? ''}'.toUpperCase();
       } catch (_) {}
     }
