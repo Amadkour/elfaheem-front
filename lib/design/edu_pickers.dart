@@ -15,9 +15,9 @@ import 'package:flutter_education_app/design/app_kit.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
-/// One selectable pill: a 48 px touch target, the primary wash when selected.
-class _EduChip extends StatelessWidget {
-  const _EduChip({required this.label, required this.selected, required this.onTap});
+/// One selectable pill: a 48 px touch target, the primary wash when selected (the course filter bar uses it too).
+class EduChoiceChip extends StatelessWidget {
+  const EduChoiceChip({super.key, required this.label, required this.selected, required this.onTap});
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -120,7 +120,7 @@ class EduStageGradePicker extends StatelessWidget {
           label: stageLabel ?? _t('المرحلة', 'Stage'),
           children: [
             for (final s in stages)
-              _EduChip(label: s.name, selected: s.id == stageId, onTap: () => onChanged(s.id, null, null)),
+              EduChoiceChip(label: s.name, selected: s.id == stageId, onTap: () => onChanged(s.id, null, null)),
           ],
         ),
         if (stage != null && stage.hasGrades && stage.grades.isNotEmpty) ...[
@@ -129,7 +129,7 @@ class EduStageGradePicker extends StatelessWidget {
             label: gradeLabel ?? _t('الصف', 'Grade'),
             children: [
               for (final g in stage.grades)
-                _EduChip(label: g.name, selected: g.id == gradeId, onTap: () => onChanged(stage!.id, g.id, null)),
+                EduChoiceChip(label: g.name, selected: g.id == gradeId, onTap: () => onChanged(stage!.id, g.id, null)),
             ],
           ),
         ],
@@ -139,7 +139,7 @@ class EduStageGradePicker extends StatelessWidget {
             label: trackLabel ?? _t('الشعبة', 'Track'),
             children: [
               for (final t in grade.tracks)
-                _EduChip(label: t.name, selected: t.key == trackKey, onTap: () => onChanged(stage!.id, grade!.id, t.key)),
+                EduChoiceChip(label: t.name, selected: t.key == trackKey, onTap: () => onChanged(stage!.id, grade!.id, t.key)),
             ],
           ),
         ],

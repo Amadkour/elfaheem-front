@@ -16,6 +16,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart' show EduStage;
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/courses/course_filters.dart' show CourseFilterStore;
 
 /// Kill switch of every study-data surface (the sign-up step, the profile row, the home card, the admin page).
 const kStudyProfileFeatureKey = 'profile.study';
@@ -448,9 +449,17 @@ class StudyProfileApi {
   static const _me = '/api/v1/me/study-profile';
   static const _admin = '/api/v1/admin/study-profile/settings';
 
-  Future<StudyProfileView> load() async => StudyProfileView.fromJson(_map(await _api.get(_me)));
+  Future<StudyProfileView> load() async => _seed(StudyProfileView.fromJson(_map(await _api.get(_me))));
 
-  Future<StudyProfileView> save(StudyProfile p) async => StudyProfileView.fromJson(_map(await _api.put(_me, body: p.toJson())));
+  Future<StudyProfileView> save(StudyProfile p) async =>
+      _seed(StudyProfileView.fromJson(_map(await _api.put(_me, body: p.toJson()))));
+
+  /// The course filter bar's start (D-1325): the level is kept per user, so the student home never asks for it.
+  static StudyProfileView _seed(StudyProfileView v) {
+    final p = v.profile;
+    CourseFilterStore.rememberProfile(country: p.countryCode, stageId: p.stageId, gradeId: p.gradeId);
+    return v;
+  }
 
   Future<void> dismiss() => _api.post('$_me/dismiss');
 

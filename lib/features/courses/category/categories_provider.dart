@@ -113,6 +113,32 @@ class CategoriesProvider extends BaseProvider {
 
   bool get isSearching => _query.trim().isNotEmpty;
 
+  // ── The filter bar (D-1325) ────────────────────────────────────────────────
+
+  /// The course filter bar's GET /courses params (CourseFilters.toQuery: stage_id, grade_id, subject_id, delivery,
+  /// area_id, country), sent with every course call of this page.
+  Map<String, dynamic> _filterQuery = const {};
+  Map<String, dynamic> get filterQuery => _filterQuery;
+
+  /// The server's `total` of the last course answer (null before one, or from an older server).
+  int? _total;
+  int? get total => _total;
+
+  /// New filters from the bar: the bar owns them from now on (the join flow's start filters are folded into them),
+  /// and the list on screen is asked again ([fetch] false: the caller's own first fetch carries them).
+  Future<void> setFilters(Map<String, dynamic> query, {bool fetch = true}) async {
+    _filterQuery = {...query};
+    _exploreFilters = const {};
+    if (!fetch) return;
+    if (isSearching) {
+      await _runSearch();
+    } else if (_selectedId != null) {
+      await _fetchCoursesFor(_selectedId!);
+    } else {
+      await _fetchAllCourses();
+    }
+  }
+
   CategoryModel? get selectedCategory {
     if (_selectedId == null) return null;
     for (final c in _categories) {
@@ -183,7 +209,7 @@ class CategoriesProvider extends BaseProvider {
     isLoadingCourse = true;
     notifyListeners();
 
-    final params = <String, dynamic>{'search': q, 'limit': 30, 'skip': 0, ..._side, ..._explore};
+    final params = <String, dynamic>{'search': q, 'limit': 30, 'skip': 0, ..._side, ..._explore, ..._filterQuery};
     if (_selectedId != null) params['category_id'] = _selectedId;
 
     final result = await run(
@@ -271,7 +297,7 @@ class CategoriesProvider extends BaseProvider {
     final result = await run(
       () => _api.get(
         '/api/v1/courses',
-        queryParams: {'category_id': categoryId, 'limit': 20, 'skip': 0, ..._side, ..._explore},
+        queryParams: {'category_id': categoryId, 'limit': 20, 'skip': 0, ..._side, ..._explore, ..._filterQuery},
         auth: _sideNeedsAuth,
       ),
     );
@@ -286,7 +312,7 @@ class CategoriesProvider extends BaseProvider {
     final result = await run(
       () => _api.get(
         '/api/v1/courses',
-        queryParams: {'limit': 20, 'skip': 0, ..._side, ..._explore},
+        queryParams: {'limit': 20, 'skip': 0, ..._side, ..._explore, ..._filterQuery},
         auth: _sideNeedsAuth,
       ),
     );
@@ -300,8 +326,11 @@ class CategoriesProvider extends BaseProvider {
       _courses = (result['items'] as List)
           .map((e) => CategoryCourseModel.fromJson(e as Map))
           .toList();
+      final t = result['total'];
+      _total = t is num ? t.toInt() : _courses.length;
     } else {
       _courses = [];
+      _total = null;
     }
   }
 

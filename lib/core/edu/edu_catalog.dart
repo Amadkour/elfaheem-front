@@ -219,6 +219,18 @@ class EduCatalog {
   /// The catalog already in memory (no request), or null.
   EduCountryCatalog? cached(String country) => _mem[country.toUpperCase()];
 
+  /// Memory, else the stored copy: never a request (the student home's course filter bar, D-1325). Null when neither.
+  Future<EduCountryCatalog?> stored(String country) async {
+    final c = country.toUpperCase();
+    final hit = _mem[c];
+    if (hit != null) return hit;
+    try {
+      final raw = (await _prefs()).getString(_key(c));
+      if (raw != null) return _build(Map<String, dynamic>.from(jsonDecode(raw) as Map));
+    } catch (_) {}
+    return null;
+  }
+
   /// Load once per country: memory, else the stored copy revalidated against the server, else the network. Null
   /// when nothing is available (offline and never loaded). [force] revalidates even when memory has it.
   Future<EduCountryCatalog?> load(String country, {bool force = false}) {
