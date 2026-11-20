@@ -1,0 +1,21 @@
+{
+  "country": "EG",
+  "stages": [
+    {"id": 1, "key": "primary", "name_ar": "الابتدائي", "name_en": "Primary", "kind": "school", "has_grades": true, "contact_only": false,
+     "grades": [
+       {"id": 11, "key": "g1", "name_ar": "الصف الأول الابتدائي", "name_en": "Primary 1", "number": 1, "tracks": null, "subject_ids": [1, 2]},
+       {"id": 12, "key": "g2", "name_ar": "الصف الثاني الابتدائي", "name_en": "Primary 2", "number": 2, "tracks": null, "subject_ids": [1]}
+     ]},
+    {"id": 2, "key": "secondary", "name_ar": "الثانوي", "name_en": "Secondary", "kind": "school", "has_grades": true, "contact_only": false,
+     "grades": [
+       {"id": 21, "key": "g3", "name_ar": "الصف الثالث الثانوي", "name_en": "Secondary 3", "number": 3,
+        "tracks": [{"key": "science", "name_ar": "علمي", "name_en": "Science"}, {"key": "arts", "name_ar": "أدبي", "name_en": "Arts"}], "subject_ids": [2]}
+     ]},
+    {"id": 3, "key": "university", "name_ar": "الجامعي", "name_en": "University", "kind": "university", "has_grades": false, "contact_only": true, "grades": []}
+  ],
+  "subjects": [
+    {"id": 1, "key": "math", "name_ar": "الرياضيات", "name_en": "Math"},
+    {"id": 2, "key": "english", "name_ar": "اللغة الإنجليزية", "name_en": "English"}
+  ],
+  "version": "7"
+}
