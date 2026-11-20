@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter_education_app/core/routing/pending_intent.dart';
 import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/features/store/store_item_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -94,5 +95,26 @@ void main() {
     expect(await PendingIntent.peek(), isNull);
     await p.setString('pending_intent', jsonEncode({...book().toJson(), 'v': 2}));
     expect(await PendingIntent.peek(), isNull);
+  });
+
+  // MyAuthProvider.resumePendingIntent's buy_store_item (D-1333): the item page with its checkout, never with the
+  // store tab off, the page alone when the item is owned or buying is off.
+  test('buy_store_item resumes once into the item checkout, within the store switches', () async {
+    await PendingIntent.save(PendingIntent(kind: PendingIntentKind.buyStoreItem, id: '7'));
+    final opened = <(String, StoreResumeAction)>[];
+    expect(
+        await PendingIntent.resume((i) async {
+          expect(i.kind, PendingIntentKind.buyStoreItem);
+          opened.add((i.id, storeResumeAction()));
+        }),
+        isTrue);
+    expect(opened, [('7', StoreResumeAction.checkout)]);
+    expect(await PendingIntent.peek(), isNull);
+
+    expect(storeResumeAction(owned: false), StoreResumeAction.checkout);
+    expect(storeResumeAction(owned: true), StoreResumeAction.page);
+    expect(storeResumeAction(owned: false, disabled: ['store.buy']), StoreResumeAction.page);
+    expect(storeResumeAction(owned: false, disabled: ['student_tab_store']), StoreResumeAction.none);
+    expect(storeResumeAction(owned: true, disabled: ['student_tab_store']), StoreResumeAction.none);
   });
 }

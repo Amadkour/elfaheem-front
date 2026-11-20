@@ -19,6 +19,7 @@ import 'package:flutter_education_app/features/courses/student/my_courses/my_cou
 import 'package:flutter_education_app/features/courses/student/my_courses/my_courses_screen.dart';
 import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/home/student/home_screen.dart';
+import 'package:flutter_education_app/features/store/store_tab.dart';
 
 // The shells (WideShell / RailShell / MobileShell), DashboardItem and the top-bar icons live in the design layer
 // (D-062); re-exported here for the home screens that still import them from this file.
@@ -103,6 +104,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           messageKey: 'guest_locked_my_courses',
           child: MyCoursesScreen(courses: context.read<HomeProvider>().myCourses),
         ),
+      ),
+      // the digital store (D-1333): browsing works for a guest, buying asks them to sign in
+      DashboardItem(
+        Icons.local_mall_outlined,
+        Icons.local_mall_rounded,
+        'store',
+        null,
+        const StoreTab(),
       ),
       DashboardItem(
         Icons.calendar_month_outlined,

@@ -5192,3 +5192,18 @@ code). The red Exit group at the end of the personal Profile is gone; its kill s
 (leaving an organization stays where it was). The second "Update account" row in Account & security is removed (the
 card's main button is the one). Every row icon is the primary: the floating-assistant row was the last grey one.
 Sections now read: My learning / teaching · Messages & schedule · Settings · Account & security · Help.
+
+## D-1333 — The student store: one filter bar, the top-up's card flow, encrypted files read in the app · 2026-11-20 · accepted
+
+`lib/features/store/` (tab `student_tab_store`): the browse reuses `CourseFilterBar` with `withPlace: false` (stage,
+grade, subject; the courses' remembered level is the store's start) plus a category row and a search. Buy goes through
+`GuestGuard` with the `buy_store_item` intent; `resumeStoreBuy` opens the item page, with its checkout only when
+`storeResumeAction` allows (not owned, `store.buy` and the tab on). The checkout quotes, then orders with one
+`Idempotency-Key` per attempt (a new one when the method changes or an attempt failed); card opens the provider page
+through the points top-up's `openPointsPaymentPage` and polls `GET /store/orders/{id}`; `store_already_owned` closes the
+sheet into My Library; `gateway_error` (no order made) offers "Try again". My Library keeps a PDF on phones and
+desktops AES-CTR encrypted with the offline-video scheme (`StoreVault`, SHA-256 checked, key in Keystore / Keychain)
+and reads it in memory under `ScreenSecurity.protect` / `release`; the web, and an EPUB anywhere, open the short link.
+**New package `pdfrx` 3.0.0** (PDFium) for the reader: `pubspec.lock` gained only it and its own dependencies
+(pdfrx_engine, pdfium_dart, pdfium_flutter, native_toolchain_c, glob, process), nothing downgraded; its web assets
+(pdfium.wasm) ship in the web build but load only when the reader opens, which the web never does.

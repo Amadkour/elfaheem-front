@@ -30,6 +30,7 @@ import 'package:flutter/material.dart' show MaterialPageRoute;
 import 'package:flutter_education_app/core/routing/pending_intent.dart';
 import 'package:flutter_education_app/features/onboarding/join/join_draft.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart' show CoursePageLoader;
+import 'package:flutter_education_app/features/store/store_item_page.dart' show resumeStoreBuy;
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -1107,7 +1108,9 @@ class MyAuthProvider extends BaseProvider {
             builder: (_) => CoursePageLoader(courseId: id, openCheckout: student),
           ));
         case PendingIntentKind.buyStoreItem:
-          break; // the store arrives in Phase 5 (CONTRACT §5); until then the intent is dropped
+          // the item page with its checkout; nothing with the store tab off, the page alone when the item is owned or
+          // buying is off (storeResumeAction, D-1333)
+          await resumeStoreBuy(nav, i);
       }
     });
   }

@@ -330,6 +330,10 @@ class CourseFilterBar extends StatelessWidget {
     this.edu,
     this.loadEdu,
     this.resultCount,
+    this.withPlace = true,
+    this.countLabel,
+    this.sheetTitle,
+    this.applyLabel,
   });
 
   final CourseFilters value;
@@ -338,13 +342,23 @@ class CourseFilterBar extends StatelessWidget {
   final Future<CourseFilterEdu?> Function()? loadEdu;
   final int? resultCount;
 
+  /// The delivery and area fields (courses). False = stage, grade and subject only (the store, D-1333).
+  final bool withPlace;
+
+  /// The result line ("12 courses" by default).
+  final String Function(int n)? countLabel;
+
+  /// The sheet's title and its apply button ("Filter courses" / "Show courses" by default).
+  final String? sheetTitle, applyLabel;
+
   /// From this width (and with the catalog) the bar is one row of fields.
   static const double rowFrom = 900;
 
   Future<void> _openSheet(BuildContext context) async {
     final r = await showAppSheet<CourseFilters>(
       context,
-      (_) => _CourseFilterSheet(initial: value, edu: edu, loadEdu: loadEdu),
+      (_) => _CourseFilterSheet(
+          initial: value, edu: edu, loadEdu: loadEdu, withPlace: withPlace, title: sheetTitle, applyLabel: applyLabel),
     );
     if (r != null && r != value) onChanged(r);
   }
@@ -364,7 +378,7 @@ class CourseFilterBar extends StatelessWidget {
           Flexible(
             child: Semantics(
               liveRegion: true,
-              child: Text(courseCountText(n),
+              child: Text((countLabel ?? courseCountText)(n),
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textDark)),
             ),
           ),
@@ -390,8 +404,9 @@ class CourseFilterBar extends StatelessWidget {
       if (v.stageId != null || v.gradeId != null)
         _ActiveChip(label: _levelName(v, cat), onRemove: () => onChanged(v.withLevel(null, null))),
       if (v.subjectId != null) _ActiveChip(label: _subjectName(v, cat), onRemove: () => onChanged(v.withSubject(null))),
-      if (v.delivery != null) _ActiveChip(label: _deliveryName(v.delivery), onRemove: () => onChanged(v.withDelivery(null))),
-      if (v.areaId != null) _ActiveChip(label: _areaLabel(v), onRemove: () => onChanged(v.withArea(null))),
+      if (withPlace && v.delivery != null)
+        _ActiveChip(label: _deliveryName(v.delivery), onRemove: () => onChanged(v.withDelivery(null))),
+      if (withPlace && v.areaId != null) _ActiveChip(label: _areaLabel(v), onRemove: () => onChanged(v.withArea(null))),
     ];
     final n = v.activeCount;
     return Column(
@@ -491,6 +506,7 @@ class CourseFilterBar extends StatelessWidget {
             onChanged: (id) => onChanged(v.withSubject(id == null || id == 0 ? null : id)),
           ),
         ),
+        if (withPlace) ...[
         const SizedBox(width: AppSpace.sm),
         field(
           _t('طريقة الدراسة', 'How'),
@@ -521,6 +537,7 @@ class CourseFilterBar extends StatelessWidget {
             },
           ),
         ),
+        ],
         const SizedBox(width: AppSpace.sm),
         Flexible(
           flex: 3,
@@ -579,8 +596,11 @@ class _ActiveChip extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class _CourseFilterSheet extends StatefulWidget {
-  const _CourseFilterSheet({required this.initial, this.edu, this.loadEdu});
+  const _CourseFilterSheet(
+      {required this.initial, this.edu, this.loadEdu, this.withPlace = true, this.title, this.applyLabel});
   final CourseFilters initial;
+  final bool withPlace;
+  final String? title, applyLabel;
   final CourseFilterEdu? edu;
   final Future<CourseFilterEdu?> Function()? loadEdu;
 
@@ -626,7 +646,7 @@ class _CourseFilterSheetState extends State<_CourseFilterSheet> {
     final f = _f;
     final subjects = cat?.subjectsOf(f.gradeId) ?? const <EduSubject>[];
     return AppSheetContent(
-      title: _t('تصفية الدورات', 'Filter courses'),
+      title: widget.title ?? _t('تصفية الدورات', 'Filter courses'),
       icon: Icons.tune_rounded,
       children: [
         if (_loading)
@@ -646,6 +666,7 @@ class _CourseFilterSheetState extends State<_CourseFilterSheet> {
                 EduChoiceChip(label: s.name, selected: s.id == f.subjectId, onTap: () => setState(() => _f = f.withSubject(s.id))),
             ]),
           ],
+          if (widget.withPlace) ...[
           const SizedBox(height: AppSpace.md),
           _group(_t('طريقة الدراسة', 'How'), [
             for (final d in const [null, ...CourseFilters.deliveries])
@@ -679,6 +700,7 @@ class _CourseFilterSheetState extends State<_CourseFilterSheet> {
                 ),
               ),
           ],
+          ],
         ],
         const SizedBox(height: AppSpace.lg),
         Row(children: [
@@ -695,7 +717,7 @@ class _CourseFilterSheetState extends State<_CourseFilterSheet> {
           Expanded(
             child: AppButton(
               key: const ValueKey('course_filters.sheet.apply'),
-              label: _t('عرض الدورات', 'Show courses'),
+              label: widget.applyLabel ?? _t('عرض الدورات', 'Show courses'),
               expand: true,
               onPressed: () => Navigator.of(context).pop(_f),
             ),

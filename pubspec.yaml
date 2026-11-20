@@ -92,6 +92,7 @@ dependencies:
   screen_brightness: ^2.1.11
   volume_controller: ^3.7.1
   local_auth: ^3.0.2
+  pdfrx: 3.0.0
 dependency_overrides:
   # The fork rebased on upstream v1.6.2+hotfix.4 (the exact version livekit_client 2.13.1 pins, WebRTC-SDK
   # 150.7871.01 on Android and iOS), branch nextbrain/1.6.2-hotfix.4: the single-projection screen-share capturer,
