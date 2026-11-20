@@ -9,6 +9,7 @@
 library;
 
 import 'admin_exam_policy_page.dart';
+import 'edu/edu_levels_page.dart';
 import 'admin_study_profile_settings_page.dart' show AdminStudyProfileSettingsPage;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -302,6 +303,18 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           featureKey: 'admin.course_trash',
           visible: isSuper,
           onTap: () => push(const CourseTrashPage()),
+        ),
+        // the education levels of every country (learning hub phase 2, D-1304)
+        AdminService(
+          labelKey: 'admin_edu_levels',
+          descKey: 'admin_edu_levels_d',
+          label: t('المراحل الدراسية', 'Education levels'),
+          desc: t('المراحل والصفوف والمواد والمناطق لكل دولة', 'Stages, grades, subjects and areas for each country'),
+          icon: Icons.school_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: 'admin.edu_levels',
+          visible: isSuper,
+          onTap: () => push(const AdminEduLevelsPage()),
         ),
         AdminService(
           labelKey: 'admin_points',
