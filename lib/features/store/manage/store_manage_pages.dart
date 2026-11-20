@@ -119,7 +119,7 @@ class StoreItemsPaneState extends State<StoreItemsPane> {
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= kStoreSplitWidth;
       final open = _items.where((x) => x.id == _openId).firstOrNull;
-      final list = ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
+      final list = ListView(padding: AdminPage.bodyPadding(context, fab: true), children: [
         Align(
           alignment: AlignmentDirectional.centerEnd,
           child: AppButton.primary(label: t('عنصر جديد', 'New item'), icon: Icons.add_rounded, onPressed: () => _open(null, wide)),
@@ -148,7 +148,7 @@ class StoreItemsPaneState extends State<StoreItemsPane> {
                   message: t('أو أنشئ عنصراً جديداً لتعديله هنا.', 'Or create a new one to edit it here.'),
                 )
               : SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: AppSpace.xxl),
+                  padding: AdminPage.bodyPadding(context, fab: true),
                   child: StoreItemEditor(
                     key: ValueKey(open?.id ?? 'new'),
                     item: open,
@@ -171,6 +171,7 @@ class StoreManagePage extends StatelessWidget {
         title: t('عناصري في المتجر', 'My store items'),
         subtitle: t('كتب وملخصات ومذكرات تبيعها للطلاب.', 'Books, summaries and notes you sell to students.'),
         icon: Icons.storefront_rounded,
+        helpPageId: 'store.manage',
         body: const StoreItemsPane(),
       );
 }
@@ -188,7 +189,7 @@ class StoreItemEditorPage extends StatelessWidget {
         title: item == null ? t('عنصر جديد', 'New item') : t('تعديل العنصر', 'Edit item'),
         icon: Icons.menu_book_rounded,
         body: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: AppSpace.xxl),
+          padding: AdminPage.bodyPadding(context, fab: true),
           child: StoreItemEditor(
             item: item,
             onChanged: onChanged,
@@ -272,14 +273,20 @@ class _StoreItemEditorState extends State<StoreItemEditor> implements StoreFormA
 
   @override
   Future<String?> pickCover() async {
+    if (_item == null) return null; // the form saves a new item first (the cover route needs its id)
     final f = await FilePicker.pickFile(type: FileType.image);
     if (f == null || !mounted) return null;
     final bytes = await f.readAsBytes();
     if (!mounted) return null;
     final cropped = await showAppImageCropper(context, bytes, shape: CropShape.square, allowTransparent: false);
     if (cropped == null) return null;
+    final it = _item;
+    if (it == null || !mounted) return null;
     final base = f.name.replaceAll(RegExp(r'\.[^.]+$'), '');
-    return _api.uploadCover(cropped, '${base.isEmpty ? 'cover' : base}.png');
+    final r = await _api.uploadCover(it.id, cropped, '${base.isEmpty ? 'cover' : base}.png', wasStatus: it.status);
+    if (r == null || !mounted) return null;
+    _set(r);
+    return r.coverUrl;
   }
 
   static String _type(String name) => switch (name.split('.').last.toLowerCase()) {
@@ -438,7 +445,7 @@ class _StoreReviewPaneState extends State<StoreReviewPane> {
     }
     return AppRefresh(
       onRefresh: _load,
-      child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.xxl), children: [
+      child: ListView(padding: AdminPage.bodyPadding(context, fab: true), children: [
         StoreReviewQueueBody(items: _items, loading: _loading, busyId: _busy, onApprove: (it) => _review(it, true), onReject: (it) => _review(it, false)),
       ]),
     );
@@ -529,6 +536,7 @@ class _StoreAdminHubPageState extends State<StoreAdminHubPage> {
       title: t('المتجر الرقمي', 'Digital store'),
       subtitle: t('العناصر ومراجعتها وطلبات الشراء.', 'Items, their review and the purchase orders.'),
       icon: Icons.storefront_rounded,
+      helpPageId: 'admin.store',
       bottom: Padding(
         padding: const EdgeInsets.only(top: AppSpace.xs),
         child: AppTabs(

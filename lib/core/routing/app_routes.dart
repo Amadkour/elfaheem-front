@@ -99,6 +99,10 @@ class AppRoutes {
   static const exportLinks = AppRouteDef('exports.links', '/exports/links', description: 'Export share links');
   static const meetingLinks = AppRouteDef('meetings.links', '/meeting-links',
       description: 'Meeting links: every live session and meeting link to join, copy or share (D-307)');
+  static const storeLibrary = AppRouteDef('store.library', '/store/library',
+      description: "The store's My Library: what the person bought, and the purchases (D-1339)");
+  static const storeItem = AppRouteDef('store.item', '/store/:itemId',
+      description: 'One item of the digital store: its price and Buy (D-1339)');
   static const entityView = AppRouteDef('entity.view', '/view/:kind/:id',
       description: 'A student, course, teacher or category on a page of its own (D-290), every role');
 
@@ -125,7 +129,7 @@ class AppRoutes {
     login, register, forgotPassword,
     studentHome, teacherHome, adminHome, parentHome, orgHome,
     course, orgMember, orgOnboardingCase, orgMemberships, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
-    downloads, exports, exportLog, exportSchedules, exportLinks, entityView, meetingLinks,
+    downloads, exports, exportLog, exportSchedules, exportLinks, entityView, meetingLinks, storeLibrary, storeItem,
     courseLink, profileLink, liveLink, verifyHome, verifyLink, exportLink, orgJoinLink, orgInvitationLink, onboardIntakeLink, shareLink,
     privacy, terms,
   ];

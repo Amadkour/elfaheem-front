@@ -14,6 +14,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../admin/admin_common.dart' show asMap, asMapList, asInt, asDouble, asBool, asStr, asStrOrNull, t, toast;
 import '../../org/org_v3.dart' show OrgCall, orgCall, orgErrorText;
+import '../store_models.dart' show storeCoverUrl;
 
 const kStoreManagePath = '/api/v1/store/manage/items';
 const kStoreAdminPath = '/api/v1/admin/store';
@@ -83,6 +84,10 @@ String? storeErrorText(String? code) => switch (code) {
       'store_bad_upload_id' || 'store_upload_missing' => t('لم يكتمل رفع الملف، حاول مرة أخرى', 'The upload did not finish, try again'),
       'store_file_missing' => t('ارفع ملف العنصر قبل النشر', 'Upload the item file before publishing'),
       'store_item_not_found' => t('العنصر غير موجود', 'The item was not found'),
+      'store_not_owner' => t('صاحب العنصر وحده يرسله للنشر', "Only the item's owner can send it for publishing"),
+      'store_bad_cover' => t('اختر صورة الغلاف من جهازك', 'Choose the cover picture from your device'),
+      'store_cover_too_large' => t('صورة الغلاف أكبر من 2 ميجابايت', 'The cover picture is larger than 2 MB'),
+      'store_upload_unavailable' => t('تعذّر الرفع الآن، حاول بعد قليل', 'Uploading is not available right now, try again shortly'),
       'store_not_pending' => t('العنصر لم يعد بانتظار المراجعة', 'The item is no longer pending review'),
       'admin_required' => t('للمشرف العام فقط', 'Super admins only'),
       'feature_disabled' => t('هذه الخدمة متوقفة حالياً', 'This service is switched off right now'),
@@ -177,7 +182,7 @@ class StoreManageItem {
         titleEn: asStr(m['title_en']),
         descriptionAr: asStr(m['description_ar']),
         descriptionEn: asStr(m['description_en']),
-        coverUrl: asStrOrNull(m['cover_url']),
+        coverUrl: storeCoverUrl(m['cover_url']).isEmpty ? null : storeCoverUrl(m['cover_url']),
         status: asStr(m['status'], 'draft'),
         basePrice: asDouble(m['base_price']),
         price: StorePrice.from(m['price']),
@@ -380,12 +385,15 @@ class StoreManageApi {
     return done.ok ? StoreManageItem.from(done.map) : null;
   }
 
-  /// A cover image (already cropped): stored through the member upload route, which answers a signed, lasting link.
-  Future<String?> uploadCover(Uint8List png, String fileName) async {
-    final r = await _call(() => ApiClient().postMultipart('/api/v1/org/public/uploads', fields: const {}, fileField: 'file', fileName: fileName, fileBytes: png));
+  /// A cover image (already cropped) of an existing item: the store's own route (D-1339; JPEG / PNG / WEBP by the
+  /// bytes, 2 MB) sets the item's `cover_url` to a lasting public URL and answers the item.
+  Future<StoreManageItem?> uploadCover(int id, Uint8List png, String fileName, {String? wasStatus}) async {
+    final r = await _call(() => ApiClient().postMultipart('$kStoreManagePath/$id/cover', fields: const {}, fileField: 'file', fileName: fileName, fileBytes: png));
     if (!r.ok) return null;
-    final u = asStr(r.map['url']);
-    return u.isEmpty ? null : u;
+    final it = StoreManageItem.from(r.map);
+    final reReview = it.status == 'pending' && wasStatus == 'published';
+    toast(reReview ? t('حُفظ الغلاف وأُرسل العنصر للمراجعة مرة أخرى', 'Cover saved and the item sent for review again') : t('حُفظ الغلاف', 'Cover saved'));
+    return it;
   }
 
   // ── super admin ──────────────────────────────────────────────────────────

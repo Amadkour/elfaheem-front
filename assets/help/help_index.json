@@ -90,6 +90,10 @@
    "super_admin"
   ],
   [
+   "admin.store",
+   "super_admin"
+  ],
+  [
    "admin.teacher_documents",
    "super_admin"
   ],
@@ -503,6 +507,22 @@
   ],
   [
    "rag.library",
+   "teacher"
+  ],
+  [
+   "store.browse",
+   "student"
+  ],
+  [
+   "store.item",
+   "student"
+  ],
+  [
+   "store.library",
+   "student"
+  ],
+  [
+   "store.manage",
    "teacher"
   ],
   [

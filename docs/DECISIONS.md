@@ -5207,3 +5207,18 @@ and reads it in memory under `ScreenSecurity.protect` / `release`; the web, and 
 **New package `pdfrx` 3.0.0** (PDFium) for the reader: `pubspec.lock` gained only it and its own dependencies
 (pdfrx_engine, pdfium_dart, pdfium_flutter, native_toolchain_c, glob, process), nothing downgraded; its web assets
 (pdfium.wasm) ship in the web build but load only when the reader opens, which the web never does.
+
+## D-1339 — Store review + QA fixes: own cover route, sign-out wipe, kept Idempotency-Key, store URLs · 2026-11-20 · accepted
+
+Front half of back D-1339. Covers go through `POST /store/manage/items/{id}/cover` (a new item is saved first, the
+route needs its id); the form sends `cover_url` only to clear it, and `storeCoverUrl` puts an older relative
+`/api/v1/org/files/…` path on the API base. Sign-out runs `MyAuthProvider.wipeStoreFiles` (every kept `.enc` and every
+`store_file_key_*`, also keys without a file); My Library prunes kept copies whose row is gone. The checkout drops its
+Idempotency-Key only on a definite server answer (`storeDefiniteAnswer`: an `ApiException` with a status), so a retry
+after a timeout or a lost connection returns the same order. Buyers see `storeFailureText(failure_code)`, never the
+provider's reason. `/store/<id>` and `/store/library` are registry routes (`store.item`, `store.library`) opened by URL
+or a reload over the home, signed out → the login, then back. On a phone the item page pins Buy / Add to cart in a bar
+above the shell's bottom nav; the store header's icons take the header's own colour (they were `onHero`, white on the
+white tray). A download refused for the device (`DEVICE_MISMATCH` / `DEVICE_ID_MISSING` on `/store/library/…`) says
+the purchase is safe and opens the device-switch dialog; paying is not tied to the device. Help ids `store.browse`,
+`store.item`, `store.library`, `store.manage`, `admin.store`.

@@ -68,6 +68,8 @@ class _StoreLibraryPageState extends State<StoreLibraryPage> {
       final items = r[0] as List<StoreLibraryItem>;
       final kept = <int>{};
       if (_vault.available) {
+        // a revoked library row: its kept copy and key go too (D-1339)
+        await _vault.prune({for (final i in items) i.itemId});
         for (final i in items) {
           if (await _vault.has(i.itemId)) kept.add(i.itemId);
         }
@@ -141,7 +143,7 @@ class _StoreLibraryPageState extends State<StoreLibraryPage> {
   Widget build(BuildContext context) {
     return BasePage(
       width: AppWidth.content,
-      appBar: ScreenAppBar(title: t('مكتبتي', 'My Library')),
+      appBar: ScreenAppBar(title: t('مكتبتي', 'My Library'), helpPageId: 'store.library'),
       child: SafeArea(
         child: StoreLibraryView(
           tab: _tab,
@@ -395,9 +397,9 @@ class _OrderRow extends StatelessWidget {
           ].join(' · '),
           style: AppType.meta(context),
         ),
-        if (o.failureReason != null && o.status != StoreOrderStatus.paid) ...[
+        if (o.failureCode != null && o.status != StoreOrderStatus.paid) ...[
           const SizedBox(height: AppSpace.xxs),
-          Text(o.failureReason!, style: AppType.meta(context)),
+          Text(storeFailureText(o.failureCode), style: AppType.meta(context)),
         ],
       ]),
     );

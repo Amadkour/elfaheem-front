@@ -134,7 +134,7 @@ void main() {
           {'item_id': 1, 'title': 'The complete physics summary for the third secondary grade', 'unit_gross': 1419.76},
         ],
       }),
-      StoreOrder.fromJson({'id': 13, 'status': 'failed', 'method': 'points', 'points_spent': 300, 'failure_reason': 'Declined'}),
+      StoreOrder.fromJson({'id': 13, 'status': 'failed', 'method': 'points', 'points_spent': 300, 'failure_code': 'declined'}),
     ];
     for (final tab in [0, 1]) {
       await expectNoLayoutErrors(

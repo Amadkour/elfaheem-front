@@ -1550,6 +1550,7 @@
   "POST /api/v1/store/checkout/moyasar/attach",
   "POST /api/v1/store/library/{item_id:int}/download",
   "POST /api/v1/store/manage/items",
+  "POST /api/v1/store/manage/items/{item_id:int}/cover",
   "POST /api/v1/store/manage/items/{item_id:int}/file",
   "POST /api/v1/store/manage/items/{item_id:int}/publish",
   "POST /api/v1/store/orders",

@@ -9,7 +9,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
@@ -221,11 +220,12 @@ class _StoreTabState extends State<StoreTab> {
       appBar: ScreenAppBar(
         title: t('المتجر', 'Store'),
         showBack: false,
+        helpPageId: 'store.browse',
         actions: [
           IconButton(
             key: const ValueKey('store.library'),
             tooltip: t('مكتبتي', 'My Library'),
-            icon: Icon(Icons.local_library_rounded, color: context.colors.onHero),
+            icon: const Icon(Icons.local_library_rounded),
             onPressed: _openLibrary,
           ),
           IconButton(
@@ -234,7 +234,7 @@ class _StoreTabState extends State<StoreTab> {
             icon: Badge(
               isLabelVisible: cart > 0,
               label: Text('$cart'),
-              child: Icon(Icons.shopping_cart_rounded, color: context.colors.onHero),
+              child: const Icon(Icons.shopping_cart_rounded),
             ),
             onPressed: cart == 0 ? null : _openCart,
           ),

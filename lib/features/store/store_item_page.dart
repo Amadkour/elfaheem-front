@@ -166,7 +166,8 @@ class _StoreItemPageState extends State<StoreItemPage> {
     final it = _item;
     return BasePage(
       width: AppWidth.content,
-      appBar: ScreenAppBar(title: it?.title ?? t('المتجر', 'Store')),
+      // the item's title is the page's headline; the header names the place (a long title broke it in two, D-1339)
+      appBar: ScreenAppBar(title: it == null ? t('المتجر', 'Store') : storeKindLabel(it.kind), helpPageId: 'store.item'),
       child: SafeArea(
         child: it == null
             ? (_loading
@@ -213,23 +214,45 @@ class StoreItemView extends StatelessWidget {
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SizedBox(width: box.maxWidth * 0.36, child: AspectRatio(aspectRatio: 3 / 4, child: cover)),
             const SizedBox(width: AppSpace.lg),
-            Expanded(child: details),
+            Expanded(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              details,
+              const SizedBox(height: AppSpace.md),
+              _actions(context, expand: false),
+              _more(context),
+            ])),
           ]),
         );
       }
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpace.md),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: box.maxWidth * 0.75),
-              child: AspectRatio(aspectRatio: 3 / 4, child: cover),
+      // phones: Buy / Add to cart stay pinned above the shell's bottom bar, never scrolled out of reach (D-1339)
+      return Column(children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpace.md),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: box.maxWidth * 0.6),
+                  child: AspectRatio(aspectRatio: 3 / 4, child: cover),
+                ),
+              ),
+              const SizedBox(height: AppSpace.md),
+              details,
+              _more(context),
+            ]),
+          ),
+        ),
+        Material(
+          key: const ValueKey('store.item.bar'),
+          color: context.colors.cardBg,
+          child: DecoratedBox(
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: context.colors.divider))),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
+              child: _actions(context, expand: true),
             ),
           ),
-          const SizedBox(height: AppSpace.md),
-          details,
-        ]),
-      );
+        ),
+      ]);
     });
   }
 
@@ -253,30 +276,52 @@ class StoreItemView extends StatelessWidget {
         Semantics(header: true, child: Text(item.title, style: AppType.headline(context))),
         const SizedBox(height: AppSpace.md),
         AppCard(child: StorePriceBlock(price: item.price, pointsPrice: item.pointsPrice)),
-        const SizedBox(height: AppSpace.md),
-        if (item.owned)
-          AppBanner(
-            icon: Icons.check_circle_rounded,
-            text: t('هذا العنصر في مكتبتك. افتحه من «مكتبتي».', 'This item is in your library. Open it from My Library.'),
-            color: c.success,
-          )
-        else if (buyOff)
-          AppBanner(icon: Icons.block_rounded, text: t('الشراء متوقف حالياً', 'Buying is switched off right now'), color: c.warning)
-        else
-          Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
-            AppButton.primary(
-              key: const ValueKey('store.item.buy'),
-              label: item.price.isFree ? t('احصل عليه مجاناً', 'Get it free') : t('اشترِ الآن', 'Buy now'),
-              icon: Icons.shopping_bag_rounded,
-              onPressed: onBuy,
-            ),
-            AppButton.secondary(
-              key: const ValueKey('store.item.cart'),
-              label: inCart ? t('إزالة من السلة', 'Remove from cart') : t('أضف إلى السلة', 'Add to cart'),
-              icon: inCart ? Icons.remove_shopping_cart_rounded : Icons.add_shopping_cart_rounded,
-              onPressed: onToggleCart,
-            ),
-          ]),
+      ],
+    );
+  }
+
+  /// Owned / buying off / Buy + Add to cart. [expand]: the phone's pinned bar (two equal buttons).
+  Widget _actions(BuildContext context, {required bool expand}) {
+    final c = context.colors;
+    final buy = AppButton.primary(
+      key: const ValueKey('store.item.buy'),
+      label: item.price.isFree ? t('احصل عليه مجاناً', 'Get it free') : t('اشترِ الآن', 'Buy now'),
+      icon: Icons.shopping_bag_rounded,
+      expand: expand,
+      onPressed: onBuy,
+    );
+    final cart = AppButton.secondary(
+      key: const ValueKey('store.item.cart'),
+      // the phone's bar has half a row each: the short words (the icon says "cart")
+      label: inCart
+          ? (expand ? t('إزالة', 'Remove') : t('إزالة من السلة', 'Remove from cart'))
+          : (expand ? t('للسلة', 'To cart') : t('أضف إلى السلة', 'Add to cart')),
+      icon: inCart ? Icons.remove_shopping_cart_rounded : Icons.add_shopping_cart_rounded,
+      expand: expand,
+      onPressed: onToggleCart,
+    );
+    if (item.owned) {
+      return AppBanner(
+        icon: Icons.check_circle_rounded,
+        text: t('هذا العنصر في مكتبتك. افتحه من «مكتبتي».', 'This item is in your library. Open it from My Library.'),
+        color: c.success,
+      );
+    }
+    if (buyOff) {
+      return AppBanner(icon: Icons.block_rounded, text: t('الشراء متوقف حالياً', 'Buying is switched off right now'), color: c.warning);
+    }
+    if (expand) {
+      return Row(children: [Expanded(child: buy), const SizedBox(width: AppSpace.sm), Expanded(child: cart)]);
+    }
+    return Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [buy, cart]);
+  }
+
+  /// The description and the preview, under the price.
+  Widget _more(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
         if (item.description.trim().isNotEmpty) ...[
           const SizedBox(height: AppSpace.lg),
           AppSectionTitle(t('عن هذا العنصر', 'About this item')),

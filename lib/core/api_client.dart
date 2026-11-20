@@ -1227,6 +1227,9 @@ class ApiClient {
                 .split('/')
                 .last;
             _showDeviceBlocked(courseId: int.parse(courseId));
+          } else if (error.requestOptions.path.contains('/api/v1/store/library/')) {
+            // a store download on a device the account is not bound to: offer the switch request (D-1339)
+            _showDeviceBlocked();
           }
         }
         // D-1121: a new account waiting for (or refused) an admin's approval → the waiting page (never while viewing as)

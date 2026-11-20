@@ -296,3 +296,102 @@ Work in `_wt/lh-back`, on top of 939d377. Don't reformat whole files. Test only 
 - VAT follows the buyer's self-declared study-profile country (`vat_country`). That's fine for now; note it in D-1331 so finance knows.
 - `order_dict` shows the buyer a `failure_reason` with the `expected=/actual=` amounts. Map it to a code for the buyer and keep the detail for `admin_orders`.
 - When the super admin turns `teacher_items` on, consider turning `review_required` on by default. The contract default is false, so this is an owner decision.
+
+### 5.R back re-check (planner, 2026-11-20): verified — back 18185ae
+I read the diff of all 8 must-fix items; they are in as written. I didn't run the suite; the test counts are the lead's: 482 checks on SQLite, 486 on PostgreSQL.
+- Moyasar: `settle_moyasar` is strict on `store_token` and refuses the foreign tokens.
+- Paymob: `paymob_linked` is strict, and `_open_checkout` fails closed (502) when there's no `intention_order_id`.
+- Duplicates: a points or free order rolls back with `already_owned` → 409 and nothing debited; a card order keeps `paid` and records `duplicate_item_ids` / `needs_refund`.
+- Uploads: `sniff_type(head_bytes())` decides the type, never the uploader's Content-Type.
+- Review: `require_store_admin` is `is_super_admin`.
+- Re-review: `back_to_review` runs on a changed reviewed field and on a confirmed file.
+- Currency: `MINOR_DIGITS` + `minor_units(amount, currency)`, and `_apply` accepts 2-digit currencies only.
+- Settings: `ImportError` / `AttributeError` stay at debug, anything else is a warning; the buyer's calls resolve per country.
+
+The addition beyond the brief is correct. `order_for_moyasar` returns None for a payment tagged `points_token` / `payment_token` / `fee_token`, so the webhook falls through to that product's own handler instead of answering `store:not_linked` and swallowing the event. `D-1338` is recorded.
+
+### 5.R front review (planner, 2026-11-20) — front c997df11 (F7) + ce2a84de (F8)
+**Verdict: good, with five must-fixes.**
+
+What's right:
+- No screen, model or test fixture reads or shows `file_ref` / `preview_ref` (grep over `lib/features/store/` and `lib/features/admin/edu/`).
+- Encrypted library on phone / desktop (`store_vault_io.dart`):
+  - the file is encrypted while it downloads (AES-256-CTR, "EFV1" | nonce | ciphertext, the offline-video scheme), so no plain copy is ever written;
+  - one random key per file in the Keystore / Keychain (`unlocked_this_device`);
+  - the SHA-256 is checked before the copy is kept;
+  - the reader decrypts into memory only.
+- `StoreReaderPage` uses `ScreenSecurity.instance.protect(this)` / `release(this)` (D-083), never the plugin.
+- On the web nothing is kept; the library opens the 120 s link in the browser. That is an accepted gap: the web has no screen protection anyway.
+- Checkout: one `Idempotency-Key` per attempt, and `store_already_owned` lands in the library. The card path goes through `openPointsPaymentPage`, then polls `GET /store/orders/{id}` for at most 2 min. That poll is on a timer like the points top-up it copies; acceptable, see the nice-to-haves.
+- `buyStoreItem` resumes through `resumeStoreBuy`. The store tab follows `student_tab_store`. The admin hub card is `admin.store` for the super admin and `store.manage` for others, which matches the back.
+- `pubspec.lock` gains only `pdfrx` 3.0.0 and its own deps (`pdfrx_engine`, `pdfium_dart`, `pdfium_flutter`, `native_toolchain_c`, `glob`, `process`); nothing is downgraded.
+
+The points you asked about:
+- **`pdfrx` on web and desktop.** It's OK.
+  - Mobile and desktop use PDFium through a build hook (`pdfium_dart/hook/build.dart`). The hook downloads the prebuilt binary from `github.com/bblanchon/pdfium-binaries` at BUILD time, so the owner's runner, Codemagic and CI need GitHub access during the build. Each ABI or desktop target gains about 5–6 MB (the PDFium library).
+  - On the web the package ships `assets/pdfium.wasm` (5.2 MB) + `pdfium_worker.js` (108 KB) into `build/web/assets`. The browser fetches them only when a `PdfViewer` opens, and on the web the reader never opens (no vault), so this costs deploy size, not page load.
+  - Nice to have: put `store_reader.dart` behind the same conditional import as the vault, so the web build drops the wasm.
+- **Covers through `/api/v1/org/public/uploads`.** Not acceptable; must-fix 1.
+  - That route lives under the org prefix: with organizations switched off it answers 403 `orgs_disabled`, so a non-org teacher (and the super admin) can't set a cover.
+  - The file lands under `org-member-files/{user}` with no image check.
+  - `cover_url` stays free text.
+- **No "rejected" status.** Rejected → draft is acceptable; the review queue stays simple. But the reason only travels in the push notification, so the manage page shows a plain "Draft". Nice to have: a `review_note` on the item, in the next store migration.
+- **No help ids.** Must-fix 3: the CLAUDE.md rule is that every page has its "i", and `help_ids_test.dart` guards it.
+- **At rest and on sign-out.** The files are encrypted at rest, but sign-out doesn't wipe them. The keys are named per item, not per user, and `wipe()` says "Phase 7". On a shared phone the next account keeps the previous buyer's copies and keys. Must-fix 2.
+- **Housekeeping.** The uncommitted changes to the `linux/` and `windows/` `generated_plugin_registrant*` / `generated_plugins.cmake` files come from a local `flutter pub get` (they add plugins that predate the store). Don't commit them with the store; restore them with `git checkout -- linux windows`, or commit them separately on purpose.
+
+#### Must-fix — brief for one Opus agent (both repos)
+Work in `_wt/lh-back` and `_wt/lh-front`, on top of back 18185ae and front 6c4fc456. Don't run `dart format`. Test only around the change. Commit per repo; don't push.
+
+1. **A store cover upload of its own (back + front).**
+   - Back: add `POST /api/v1/store/manage/items/{item_id}/cover`, multipart `file`, in `features/store/api/store_manage_router.py`:
+     - `require_manager` + `managed_item` (owner or admin);
+     - read at most 2 MB and check the type with `store_service.sniff_type`: jpeg / png / webp only, else 422 `store_bad_file_type`;
+     - store it through the existing public image upload helper (the one `store_upload` in `org_member_router.py:214` wraps), under `store-covers/{item_id}/`;
+     - set `cover_url` and call `back_to_review`;
+     - answer `manage_item`.
+   - Back, `_apply`: accept a `cover_url` only when it is empty or starts with the public storage base URL (or `https://`); otherwise 422 `store_bad_cover`.
+   - Back, docs: regenerate the route snapshot (`export_api_paths.py --front ../nextbrain-front`, pointed at `_wt/lh-front`) and add a line to `FLUTTER_API_CHANGES.md`.
+   - e2e: a PNG → 200 with `cover_url` set; PDF bytes → 422; another teacher's item → 404; a teacher's change to a published item with `review_required` → `pending`.
+   - Front: in `lib/features/store/manage/store_manage_api.dart:385`, replace `/api/v1/org/public/uploads` with the new route. Upload after the item exists; on create, save first and then upload.
+2. **Wipe the kept files on sign-out (front).**
+   - In `MyAuthProvider.logout()`, next to `clearGuestHandoff()`, call `await StoreVault.instance.wipe()` (the stub is a no-op on the web).
+   - On load, `store_library.dart` also removes kept copies whose item is no longer in the library (a revoked row).
+   - Update the `wipe()` doc comment (it now runs at sign-out, not "Phase 7").
+   - Test in `test/store/`: `StoreVault.test(dir:)` keeps 2 files; `wipe()` leaves no `.enc` and no keys. Reaching logout through a seam is enough.
+3. **Help ids (back seed + front).**
+   - Back: add the pages `store.browse`, `store.item`, `store.library`, `store.manage`, `admin.store` to `../back/data/help_seed.json` (Arabic + English, short).
+   - Front: regenerate `assets/help/help_index.json` (`dart run tool/gen_help_index.dart ../lh-back/data/help_seed.json`).
+   - Front: pass `helpPageId:` on the store tab header, the item page, My Library, the manage page and the admin store hub.
+   - Gate: `test/ui/help_ids_test.dart`, `test/ui/help_index_test.dart`.
+4. **No raw failure text for the buyer (back + front).**
+   - Back: `order_dict` (`features/store/orders.py`) gains `failure_code`: `declined` | `amount_mismatch` | `currency_mismatch` | `transaction_reused` | null. Derive it from the prefix of `failure_reason`. Keep `failure_reason` only in `admin_orders`; the buyer's `my_order` / `my_orders` / `create_order` answers drop it.
+   - Front: `StoreOrder.failureCode`, and `store_checkout.dart` shows `storeCodeText(code)` with bilingual texts. Today it shows `a.order.failureReason` (e.g. `declined: …` or `amount_mismatch expected=11400 actual=…`).
+   - Update the contract fixture or payload if `test/contract/` holds one.
+5. **Keep the Idempotency-Key across a lost answer (front).**
+   - `store_checkout.dart:146-160`: the generic `catch` sets `_key = null`. Reset the key only on a definite server answer (an `ApiException` with a status), not on a timeout or offline error. Then a retry after a lost response returns the same order instead of opening a second one.
+   - Test in `test/store/`: a fake API that throws a timeout once and then answers; both calls carry the same key.
+
+**Gates:**
+- Back: `tests/learning_hub/e2e_store.py` on SQLite (PostgreSQL once at the end), plus the snapshot export.
+- Front: `flutter analyze --no-fatal-infos --fatal-warnings lib/features/store lib/features/auth`, and `flutter test test/store/ test/ui/store_layout_test.dart test/ui/store_manage_layout_test.dart test/ui/help_ids_test.dart test/ui/help_index_test.dart test/contract/`.
+
+#### Nice to have
+- `pdfrx` off the web build: a conditional import for `store_reader.dart` (stub on web), which saves the 5.2 MB wasm in `build/web`.
+- The order wait (`pollStoreOrder`, every 3 s for up to 2 min) is a timer poll, like the points top-up. Later: a `store_order` live event from `settle` (paid / failed) and `JobWatch` with a slow poll fallback (CLAUDE.md real-time rule).
+- A `review_note` on `store_items` (next store migration), shown on the manage card as "Returned: …".
+- The item page opens the preview in an external browser. On phones, consider the in-app reader without caching.
+
+#### Status (lead, 2026-11-20): must-fix 1–5 fixed, plus the QA_PHASE5 high / medium items — back + front D-1339
+1. **Fixed.** `POST /store/manage/items/{id}/cover` (JPEG / PNG / WEBP by the bytes, ≤ 2 MB, owner / admin, re-review), stored in the public images bucket (a lasting absolute URL, not the org member upload); `_apply` refuses a `cover_url` that is not `https://` or ours (422 `store_bad_cover`). Front: the editor saves a new item first, then uploads.
+2. **Fixed.** `MyAuthProvider.logout` → `wipeStoreFiles` (every `.enc` + every `store_file_key_*`); My Library prunes copies of revoked rows; `wipe()` doc updated. Test `test/store/store_review_fixes_test.dart`.
+3. **Fixed.** `store.browse`, `store.item`, `store.library`, `store.manage`, `admin.store` in `help_seed.json`, `help_index.json` regenerated, wired on the five pages.
+4. **Fixed.** `failure_code` for buyers (`failure_reason` only in `admin_orders`); `storeFailureText` in the checkout and the purchases list.
+5. **Fixed.** The checkout drops the key only on a definite server answer (`storeDefiniteAnswer`); test: a timeout then a retry carries the same key.
+QA: admin cannot publish another seller's item / skip review (`store_not_owner`, only the super admin skips review); VAT by the item's country; covers absolute; header icons; pinned Buy bar on phones; device refusal explained + switch dialog; `/store/<id>` and `/store/library` routes; settings read from `module_settings` rows when the table exists (no shim). Tests: `e2e_store.py` 626 checks SQLite / 630 PostgreSQL; front store tests, `pending_intent_test`, `test/contract/` (snapshots regenerated), help tests, analyzer 0. Re-walk: `QA_PHASE5.md` "Re-test".
+
+### Phase 6 briefs: ready
+PLAN Phase 6 (waves A/B: B6, B7, S1, then F9, F10, F11) and CONTRACT §6 are complete enough to start. Add three lines to the briefs:
+1. **B6:** `module_settings.resolve(db, module, *, country=None, org_id=None) -> dict` is the signature the store already calls. The code registry holds `store_service.DEFAULTS` as module `store` (10 / false / false / false). The country layer reads the buyer's study-profile country.
+2. **B6 / F11:** the module switches page lists the `store` flags, `points_enabled` / `teacher_items` / `review_required` / `download_daily_limit`, with `review_required` explained next to `teacher_items`.
+3. **F9–F11:** the student tab count has grown with `store`. The "nine student tabs on a phone" decision (D-1340) is taken at the Phase 6 review, with the store counted.

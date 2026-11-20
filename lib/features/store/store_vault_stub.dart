@@ -20,5 +20,9 @@ class StoreVault {
 
   Future<void> remove(int itemId) async {}
 
+  Future<Set<int>> keptIds() async => const {};
+
+  Future<void> prune(Set<int> owned) async {}
+
   Future<void> wipe() async {}
 }

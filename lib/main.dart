@@ -105,6 +105,8 @@ import 'package:flutter_education_app/features/share/share_link_page.dart';
 import 'package:flutter_education_app/features/records/record_guest_page.dart' show GuestMediaKind, GuestRecordPage;
 import 'package:flutter_education_app/features/records/records_guests_api.dart' show isGuestRecordToken;
 import 'package:flutter_education_app/features/live/meeting_links_page.dart';
+import 'package:flutter_education_app/features/store/store_item_page.dart';
+import 'package:flutter_education_app/features/store/store_library.dart';
 import 'core/routing/deferred_screens.dart';
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'firebase_options.dart';
@@ -879,6 +881,11 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
         return _fade(_Guard(child: OrgsGate(child: deferredOrgMemberships())), settings);
       case 'meetings.links': // every meeting / live session link (D-307)
         return _fade(const _Guard(child: MeetingLinksPage()), settings);
+      case 'store.library': // the store's My Library by URL / a reload (D-1339)
+        return _fade(const _Guard(child: StoreLibraryPage()), settings);
+      case 'store.item': // a store item by URL / a reload / a shared link (D-1339)
+        final storeId = page!.intParam('itemId');
+        if (storeId != null) return _fade(_Guard(child: StoreItemPage(itemId: storeId)), settings);
       case 'course':
         final id = page!.intParam('courseId');
         if (id != null) return _fade(_Guard(child: CoursePageLoader(courseId: id)), settings); // the one course page (D-111)

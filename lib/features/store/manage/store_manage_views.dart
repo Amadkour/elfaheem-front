@@ -191,7 +191,8 @@ class StoreItemDraft {
         subjectId = it?.subjectId,
         categoryId = it?.categoryId,
         vatExempt = it?.vatExempt ?? false,
-        coverUrl = it?.coverUrl;
+        coverUrl = it?.coverUrl,
+        _initialCover = it?.coverUrl;
 
   static String _num(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
 
@@ -201,12 +202,14 @@ class StoreItemDraft {
   int? stageId, gradeId, subjectId, categoryId;
   bool vatExempt;
   String? coverUrl;
+  final String? _initialCover;
 
   bool get hasTitle => titleAr.text.trim().isNotEmpty || titleEn.text.trim().isNotEmpty;
   double? get priceValue => double.tryParse(price.text.trim().replaceAll(',', '.'));
   bool get valid => hasTitle && priceValue != null && priceValue! >= 0;
 
-  /// The body of POST / PATCH. Every field is sent (null clears an optional one).
+  /// The body of POST / PATCH. Every field is sent (null clears an optional one), except the cover: it is set by its
+  /// own upload route, so the body only clears it (D-1339).
   Map<String, dynamic> body() => {
         'title_ar': titleAr.text.trim(),
         'title_en': titleEn.text.trim(),
@@ -222,7 +225,7 @@ class StoreItemDraft {
         'grade_id': gradeId,
         'subject_id': subjectId,
         'category_id': categoryId,
-        'cover_url': coverUrl,
+        if (_initialCover != null && coverUrl == null) 'cover_url': null,
       };
 
   void dispose() {
@@ -240,7 +243,7 @@ abstract class StoreFormActions {
   /// Save the [body]; the host creates the item when it is new.
   Future<void> save(Map<String, dynamic> body);
 
-  /// Pick + crop + upload a cover; the new URL or null.
+  /// Pick + crop + upload the cover of the saved item; the new URL or null.
   Future<String?> pickCover();
 
   /// Pick + upload the item file (`file`) or its preview (`preview`).
@@ -307,6 +310,20 @@ class _StoreItemFormState extends State<StoreItemForm> {
   void _set(VoidCallback fn) => setState(fn);
 
   Future<void> _cover() async {
+    // a new item is saved first: the cover route needs its id (D-1339)
+    if (widget.item == null) {
+      if (!_d.valid) {
+        showAppNotice(t('اكتب العنوان والسعر أولاً، ثم أضف الغلاف', 'Enter the title and the price first, then add the cover'), error: true);
+        return;
+      }
+      setState(() => _coverBusy = true);
+      await widget.actions.save(_d.body());
+      if (!mounted) return;
+      if (widget.item == null) {
+        setState(() => _coverBusy = false);
+        return;
+      }
+    }
     setState(() => _coverBusy = true);
     final url = await widget.actions.pickCover();
     if (!mounted) return;

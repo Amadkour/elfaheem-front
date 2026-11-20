@@ -18,6 +18,15 @@ int? _intOrNull(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}');
 
 String _str(Object? v) => v is String ? v : (v == null ? '' : '$v');
 
+/// A cover URL the app can load: a server-relative path (`/api/v1/…`, older covers) is put on the API's base, as
+/// [orgFileUrl] does; an absolute one is kept (D-1339).
+String storeCoverUrl(Object? v) {
+  final u = _str(v).trim();
+  if (!u.startsWith('/')) return u;
+  final base = AppConfig.baseUrl.endsWith('/') ? AppConfig.baseUrl.substring(0, AppConfig.baseUrl.length - 1) : AppConfig.baseUrl;
+  return '$base$u';
+}
+
 DateTime? _date(Object? v) {
   final s = _str(v);
   if (s.isEmpty) return null;
@@ -109,7 +118,7 @@ class StoreItem {
         kind: _str(j['kind']),
         titleAr: _str(j['title_ar']),
         titleEn: _str(j['title_en']),
-        coverUrl: _str(j['cover_url']),
+        coverUrl: storeCoverUrl(j['cover_url']),
         price: StorePrice.fromJson(j['price']),
         pointsPrice: _intOrNull(j['points_price']),
         stageId: _intOrNull(j['stage_id']),
@@ -264,7 +273,7 @@ class StoreOrder {
     this.countryCode,
     this.vatPercent = 0,
     this.pointsSpent,
-    this.failureReason,
+    this.failureCode,
     this.createdAt,
     this.paidAt,
     this.items = const [],
@@ -284,7 +293,7 @@ class StoreOrder {
       vatAmount: _num(m['vat_amount']),
       total: _num(m['total']),
       pointsSpent: _intOrNull(m['points_spent']),
-      failureReason: _str(m['failure_reason']).isEmpty ? null : _str(m['failure_reason']),
+      failureCode: _str(m['failure_code']).isEmpty ? null : _str(m['failure_code']),
       createdAt: _date(m['created_at']),
       paidAt: _date(m['paid_at']),
       items: [for (final e in _maps(m['items'])) StoreOrderLine.fromJson(e)],
@@ -300,7 +309,9 @@ class StoreOrder {
   final String currency;
   final double subtotal, vatPercent, vatAmount, total;
   final int? pointsSpent;
-  final String? failureReason;
+  /// Why a failed order failed: `declined | amount_mismatch | currency_mismatch | transaction_reused` (D-1339; the
+  /// provider's own text stays with the super admin).
+  final String? failureCode;
   final DateTime? createdAt, paidAt;
   final List<StoreOrderLine> items;
 
@@ -384,7 +395,7 @@ class StoreLibraryItem {
         kind: _str(j['kind']),
         titleAr: _str(j['title_ar']),
         titleEn: _str(j['title_en']),
-        coverUrl: _str(j['cover_url']),
+        coverUrl: storeCoverUrl(j['cover_url']),
         pages: _intOrNull(j['pages']),
         fileName: _str(j['file_name']),
         fileSize: _intOrNull(j['file_size']) ?? 0,

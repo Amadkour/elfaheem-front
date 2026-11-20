@@ -79,7 +79,8 @@ class _StoreCheckoutSheetState extends State<StoreCheckoutSheet> {
   String? _error;
   String _method = 'card';
 
-  /// One key per checkout attempt; reset when the method changes or an attempt failed.
+  /// One key per checkout attempt; reset when the method changes or the server refused the attempt (never on a
+  /// timeout / lost connection, D-1339).
   String? _key;
 
   List<int> get _ids => [for (final i in widget.items) i.id];
@@ -136,7 +137,7 @@ class _StoreCheckoutSheetState extends State<StoreCheckoutSheet> {
         _key = null;
         return setState(() {
           _phase = StoreCheckoutPhase.failed;
-          _error = a.order.failureReason;
+          _error = storeFailureText(a.order.failureCode);
         });
       }
       final status = await openPointsPaymentPage(context, c.url);
@@ -144,7 +145,7 @@ class _StoreCheckoutSheetState extends State<StoreCheckoutSheet> {
       await _confirm(wait: status == 'cancelled' ? Duration.zero : const Duration(minutes: 2));
     } catch (e) {
       if (!mounted) return;
-      _key = null;
+      if (storeDefiniteAnswer(e)) _key = null; // a lost answer keeps the key: the retry finds the same order
       if (storeErrorCode(e) == 'store_already_owned') {
         // paid before (another device, an earlier attempt): it is in the library already
         StoreCart.instance.removeAll(_ids);
@@ -173,7 +174,7 @@ class _StoreCheckoutSheetState extends State<StoreCheckoutSheet> {
       if (o != null && o.done) {
         _key = null;
         _phase = StoreCheckoutPhase.failed;
-        _error = o.failureReason;
+        _error = storeFailureText(o.failureCode);
       } else {
         _phase = StoreCheckoutPhase.waiting;
       }

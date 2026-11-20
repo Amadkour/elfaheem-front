@@ -1,5 +1,6 @@
 library;
 
+import 'package:flutter_education_app/features/store/store_vault.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show StudySettings;
 import 'package:flutter_education_app/features/auth/register_levels_step.dart' show TeachingLevel;
 import 'package:flutter_education_app/features/messaging/chat/chat_store.dart' show ChatHub;
@@ -1124,8 +1125,17 @@ class MyAuthProvider extends BaseProvider {
     await JoinDraft.clear();
   }
 
+  /// The store's kept copies and their keys (D-1339): named per item, not per account, so a sign-out removes them
+  /// all and the next account on a shared phone finds nothing. A no-op on the web. Never fails the sign-out.
+  static Future<void> wipeStoreFiles({Future<void> Function()? wipe}) async {
+    try {
+      await (wipe ?? StoreVault.instance.wipe)();
+    } catch (_) {}
+  }
+
   Future<void> logout() async {
     await clearGuestHandoff();
+    await wipeStoreFiles();
     ViewAsState.instance.stop(); // never carry view-as into the next session
     AppModeController.instance.reset(); // Organization/Individual mode belongs to the user who chose it
     EntitiesApi.instance.invalidate(); // a cached detail or access answer is this user's, never the next one's (D-290)

@@ -172,14 +172,52 @@ class StoreVault {
     } catch (_) {}
   }
 
-  /// Every kept file and key (a sign-out, Phase 7).
+  /// The items with a kept copy on this device.
+  Future<Set<int>> keptIds() async {
+    final out = <int>{};
+    try {
+      final d = await _dir();
+      await for (final e in d.list()) {
+        final name = e.uri.pathSegments.last;
+        if (!name.endsWith('.enc')) continue;
+        final id = int.tryParse(name.split('.').first);
+        if (id != null) out.add(id);
+      }
+    } catch (_) {}
+    return out;
+  }
+
+  /// Removes the kept copies whose item is no longer in [owned] (a revoked library row, D-1339).
+  Future<void> prune(Set<int> owned) async {
+    for (final id in await keptIds()) {
+      if (!owned.contains(id)) await remove(id);
+    }
+  }
+
+  /// Every kept file and key. Runs at sign-out (MyAuthProvider.logout, D-1339): the keys are named per item, not
+  /// per account, so the next account on a shared phone must find nothing.
   Future<void> wipe() async {
     try {
       final d = await _dir();
       await for (final e in d.list()) {
         final name = e.uri.pathSegments.last;
         final id = int.tryParse(name.split('.').first);
-        if (id != null) await remove(id);
+        if (id != null) {
+          await remove(id);
+        } else if (e is File) {
+          await e.delete();
+        }
+      }
+    } catch (_) {}
+    try {
+      // keys without a file (an interrupted save) go too
+      if (_memKeys != null) {
+        _memKeys.removeWhere((k, _) => k.startsWith('store_file_key_'));
+      } else {
+        final all = await _keys!.readAll();
+        for (final k in all.keys) {
+          if (k.startsWith('store_file_key_')) await _keys.delete(key: k);
+        }
       }
     } catch (_) {}
   }

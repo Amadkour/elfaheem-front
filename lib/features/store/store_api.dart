@@ -83,11 +83,26 @@ String? storeCodeText(String? code, [Map<String, dynamic> d = const {}]) => swit
       'store_link_invalid' || 'store_link_expired' =>
         t('انتهت صلاحية رابط التنزيل. نزّله من جديد.', 'The download link expired. Download it again.'),
       'store_link_forbidden' => t('رابط التنزيل لحساب آخر', 'This download link belongs to another account'),
-      'DEVICE_ID_MISSING' || 'DEVICE_MISMATCH' =>
-        t('لا يمكن التنزيل على هذا الجهاز', 'Downloads are not allowed on this device'),
+      'DEVICE_ID_MISSING' || 'DEVICE_MISMATCH' => t(
+          'حسابك مسجّل على جهاز آخر، فلا يمكن التنزيل هنا. ما اشتريته محفوظ في حسابك: نزّله من جهازك المسجّل، أو اطلب نقل الحساب إلى هذا الجهاز.',
+          'Your account is registered on another device, so downloads are not allowed here. Your purchase is safe in your account: download it on your registered device, or request to move the account to this device.'),
       'store_file_corrupt' => t('وصل الملف تالفاً. نزّله من جديد.', 'The file arrived damaged. Download it again.'),
       _ => null,
     };
+
+/// Why a failed order failed, for the buyer (`failure_code`, D-1339): never the provider's raw text.
+String storeFailureText(String? code) => switch (code) {
+      'amount_mismatch' || 'currency_mismatch' => t('لم يطابق المبلغ المدفوع الطلب، فلم يكتمل الشراء. إن خُصم منك مبلغ فسيُعاد إليك.',
+          'The amount paid did not match the order, so the purchase did not complete. If you were charged, it will be refunded.'),
+      'transaction_reused' => t('عملية الدفع هذه استُخدمت لطلب آخر. أعد المحاولة بدفع جديد.',
+          'This payment was already used for another order. Try again with a new payment.'),
+      _ => t('لم يتم الدفع ولم يُخصم شيء. يمكنك المحاولة مرة أخرى.', 'The payment did not go through and nothing was charged. You can try again.'),
+    };
+
+/// A store call failed with a definite server answer (a status), so a retry is a new attempt: only then is the
+/// Idempotency-Key dropped. A timeout or a lost connection keeps it, so a retry after a lost answer returns the
+/// same order instead of opening a second one (D-1339).
+bool storeDefiniteAnswer(Object e) => e is ApiException && e.statusCode > 0;
 
 /// What to show for a failed store call: the store's own text, else the app's (feature_disabled, network …).
 String storeErrorText(Object e) {
