@@ -59,6 +59,8 @@ import 'package:flutter_education_app/features/profile/study_profile/study_profi
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/features/auth/reauth_sheet.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
+import 'package:flutter_education_app/features/store/manage/store_manage_api.dart' show kStoreManageFeatureKey;
+import 'package:flutter_education_app/features/store/manage/store_manage_pages.dart' show StoreManagePage;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/payments/points/points_api.dart' show kPointsFeatureKey;
 import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart' show PointsWalletPage;
@@ -222,6 +224,15 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           icon: Icons.campaign_rounded,
           label: 'my_ads'.tr,
           onTap: () => _push(const TeacherAdsPage()),
+        ),
+        // the teacher's own store items (learning hub phase 5, D-1336; kill switch store.manage)
+        AppSettingsTile(
+          featureKey: kStoreManageFeatureKey,
+          icon: Icons.storefront_rounded,
+          label: t('عناصري في المتجر', 'My store items'),
+          subtitle: t('كتب وملخصات تبيعها للطلاب', 'Books and summaries you sell to students'),
+          keywords: 'store books summaries notes sell متجر كتب ملخصات مذكرات',
+          onTap: () => _push(const StoreManagePage()),
         ),
         // https://nextbrain.site/@name — confirmed usernames only (D-074)
         if (PersonalAccess.enabled) const ShareMyProfileTile(),

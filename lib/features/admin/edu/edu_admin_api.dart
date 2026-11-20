@@ -64,12 +64,26 @@ class EduRow {
 }
 
 class EduCountryRow {
-  const EduCountryRow({required this.code, required this.nameAr, required this.nameEn, this.active = true, this.labels = const {}});
+  const EduCountryRow({
+    required this.code,
+    required this.nameAr,
+    required this.nameEn,
+    this.active = true,
+    this.labels = const {},
+    this.currency,
+    this.vatPercent = 0,
+    this.pricesIncludeVat = false,
+  });
 
   final String code;
   final String nameAr;
   final String nameEn;
   final bool active;
+
+  /// Money in this country (learning hub phase 5, D-1336): the store's default currency and its VAT rule.
+  final String? currency;
+  final double vatPercent;
+  final bool pricesIncludeVat;
 
   /// `{ '1': (ar, en), '2': (ar, en) }`: what the two area levels are called in this country.
   final Map<String, (String, String)> labels;
@@ -90,6 +104,9 @@ class EduCountryRow {
       nameEn: '${m['name_en'] ?? m['code']}',
       active: m['active'] != false,
       labels: labels,
+      currency: '${m['currency'] ?? ''}'.trim().isEmpty ? null : '${m['currency']}'.trim(),
+      vatPercent: (m['vat_percent'] as num?)?.toDouble() ?? 0,
+      pricesIncludeVat: m['prices_include_vat'] == true,
     );
   }
 }

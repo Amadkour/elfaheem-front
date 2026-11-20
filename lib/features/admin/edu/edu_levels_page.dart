@@ -37,6 +37,9 @@ abstract class EduActions {
   void delete(EduKind kind, EduRow row);
   void move(EduKind kind, EduRow row, int dir);
   void pickGradeSubjects(EduRow grade);
+
+  /// The country's currency and VAT rule (D-1336).
+  void editTax();
 }
 
 /// The whole page body from plain values.
@@ -63,6 +66,7 @@ class _EduLevelsBodyState extends State<EduLevelsBody> {
     final tree = widget.tree;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _CountryBar(countries: widget.countries, value: widget.country, actions: widget.actions),
+      if (tree != null) ...[AppSpace.gapSm, EduTaxCard(country: tree.country, onEdit: widget.actions.editTax)],
       AppSpace.gapSm,
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final tb in EduTab.values)
@@ -507,6 +511,19 @@ class _AdminEduLevelsPageState extends State<AdminEduLevelsPage> implements EduA
   }
 
   @override
+  Future<void> editTax() async {
+    final tr = _tree;
+    if (tr == null) return;
+    final r = await showAppSheet<EduTaxValues>(context, (ctx) => EduTaxSheet(country: tr.country));
+    if (r == null) return;
+    await _after(await _api.editCountry(_country, {
+      'currency': r.currency,
+      'vat_percent': r.vatPercent,
+      'prices_include_vat': r.pricesIncludeVat,
+    }, t('حُفظت إعدادات الضريبة', 'VAT settings saved')), reloadCountries: true);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AdminPage(
       width: AppWidth.content,
@@ -662,6 +679,122 @@ class _EduSubjectPickerState extends State<EduSubjectPicker> {
           Expanded(child: AppButton.primary(label: t('حفظ', 'Save'), onPressed: () => Navigator.of(context).pop(_sel))),
         ]),
       ]),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Money: currency + VAT (learning hub phase 5, D-1336)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// "EGP · VAT 14 % · prices include VAT" with an Edit button (plain values).
+class EduTaxCard extends StatelessWidget {
+  const EduTaxCard({super.key, required this.country, required this.onEdit});
+  final EduCountryRow country;
+  final VoidCallback onEdit;
+
+  static String pct(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+
+  @override
+  Widget build(BuildContext context) {
+    final cur = country.currency ?? t('بلا عملة', 'No currency');
+    final vat = country.vatPercent <= 0
+        ? t('بلا ضريبة قيمة مضافة', 'No VAT')
+        : '${t('ضريبة', 'VAT')} ${pct(country.vatPercent)}% · ${country.pricesIncludeVat ? t('الأسعار شاملة الضريبة', 'prices include VAT') : t('الضريبة تُضاف على السعر', 'VAT added on top')}';
+    return AppSectionCard(
+      title: t('العملة والضريبة', 'Currency & VAT'),
+      subtitle: t('يستخدمها المتجر لحساب السعر النهائي في هذه الدولة.', 'The store uses them to work out final prices in this country.'),
+      actions: [AppButton.tonal(label: t('تعديل', 'Edit'), icon: Icons.edit_rounded, size: AppButtonSize.sm, onPressed: onEdit)],
+      child: Text('$cur · $vat', style: AppType.row(context)),
+    );
+  }
+}
+
+/// What [EduTaxSheet] pops.
+class EduTaxValues {
+  const EduTaxValues(this.currency, this.vatPercent, this.pricesIncludeVat);
+  final String? currency;
+  final double vatPercent;
+  final bool pricesIncludeVat;
+}
+
+class EduTaxSheet extends StatefulWidget {
+  const EduTaxSheet({super.key, required this.country});
+  final EduCountryRow country;
+
+  @override
+  State<EduTaxSheet> createState() => _EduTaxSheetState();
+}
+
+class _EduTaxSheetState extends State<EduTaxSheet> {
+  late final _cur = TextEditingController(text: widget.country.currency ?? '');
+  late final _vat = TextEditingController(text: EduTaxCard.pct(widget.country.vatPercent));
+  late bool _incl = widget.country.pricesIncludeVat;
+
+  @override
+  void dispose() {
+    _cur.dispose();
+    _vat.dispose();
+    super.dispose();
+  }
+
+  double? get _vatValue {
+    final v = double.tryParse(_vat.text.trim().replaceAll(',', '.'));
+    return v == null || v < 0 || v > 100 ? null : v;
+  }
+
+  bool get _curOk => _cur.text.trim().isEmpty || RegExp(r'^[A-Za-z]{3}$').hasMatch(_cur.text.trim());
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = _vatValue != null && _curOk;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.md + MediaQuery.of(context).viewInsets.bottom),
+      child: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(t('العملة والضريبة', 'Currency & VAT'), style: AppType.section(context)),
+          AppSpace.gapMd,
+          AppField(
+            controller: _cur,
+            label: t('العملة (3 أحرف، مثل EGP)', 'Currency (3 letters, e.g. EGP)'),
+            ltr: true,
+            maxLength: 3,
+            textCapitalization: TextCapitalization.characters,
+            errorText: _curOk ? null : t('3 أحرف لاتينية', '3 Latin letters'),
+            onChanged: (_) => setState(() {}),
+          ),
+          AppSpace.gapSm,
+          AppField(
+            controller: _vat,
+            label: t('نسبة ضريبة القيمة المضافة ٪', 'VAT rate %'),
+            ltr: true,
+            keyboard: const TextInputType.numberWithOptions(decimal: true),
+            errorText: _vatValue == null ? t('من 0 إلى 100', 'From 0 to 100') : null,
+            onChanged: (_) => setState(() {}),
+          ),
+          AppSwitchTile(
+            title: t('الأسعار شاملة الضريبة', 'Prices include VAT'),
+            subtitle: _incl
+                ? t('السعر المكتوب هو ما يدفعه الطالب.', 'The price entered is what the student pays.')
+                : t('تُضاف الضريبة فوق السعر المكتوب.', 'VAT is added on top of the price entered.'),
+            value: _incl,
+            onChanged: (v) => setState(() => _incl = v),
+          ),
+          AppSpace.gapMd,
+          Row(children: [
+            Expanded(child: AppButton.secondary(label: t('إلغاء', 'Cancel'), onPressed: () => Navigator.of(context).pop())),
+            AppSpace.gapSm,
+            Expanded(
+              child: AppButton.primary(
+                label: t('حفظ', 'Save'),
+                onPressed: ready
+                    ? () => Navigator.of(context).pop(EduTaxValues(_cur.text.trim().isEmpty ? null : _cur.text.trim().toUpperCase(), _vatValue!, _incl))
+                    : null,
+              ),
+            ),
+          ]),
+        ]),
+      ),
     );
   }
 }

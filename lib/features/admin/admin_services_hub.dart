@@ -10,6 +10,8 @@ library;
 
 import 'admin_exam_policy_page.dart';
 import 'edu/edu_levels_page.dart';
+import 'package:flutter_education_app/features/store/manage/store_manage_api.dart' show kAdminStoreFeatureKey, kStoreManageFeatureKey;
+import 'package:flutter_education_app/features/store/manage/store_manage_pages.dart' show StoreAdminHubPage;
 import 'admin_study_profile_settings_page.dart' show AdminStudyProfileSettingsPage;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -315,6 +317,20 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           featureKey: 'admin.edu_levels',
           visible: isSuper,
           onTap: () => push(const AdminEduLevelsPage()),
+        ),
+        // the digital store (learning hub phase 5, D-1336): every admin manages items; the review queue and the
+        // orders are the super admin's only (`/admin/store/*` answers 403 admin_required to admin / developer)
+        AdminService(
+          labelKey: 'admin_store',
+          descKey: 'admin_store_d',
+          label: t('المتجر الرقمي', 'Digital store'),
+          desc: isSuper
+              ? t('الكتب والملخصات، مراجعة ما يرسله المعلمون، وطلبات الشراء', 'Books and summaries, the review of what teachers send, and the purchase orders')
+              : t('الكتب والملخصات التي يبيعها المتجر', 'The books and summaries the store sells'),
+          icon: Icons.storefront_rounded,
+          colors: AdminPalette.green,
+          featureKey: isSuper ? kAdminStoreFeatureKey : kStoreManageFeatureKey,
+          onTap: () => push(StoreAdminHubPage(superAdmin: isSuper)),
         ),
         AdminService(
           labelKey: 'admin_points',
