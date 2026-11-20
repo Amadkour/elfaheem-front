@@ -17,7 +17,7 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | 3.1 | Back: profile ids, teaching levels, consent, course fields (0103) | B3 | done | e2e_registration 85 checks, e2e_edu 55, PG up/down OK; consent rides on redeem (consent + text_version), address via address_view |
 | 3.2 | Front: registration capture (student, teacher, parent) | F3 | done | levels steps, study profile ids, parent consent (D-1311) |
 | 3.3 | Front: course form + profile block | F4 | done | CourseSetupSection in the form (targets chips, subject, delivery, area + address), CourseWhoWhereBlock in the About tab; setup sent only after the detail loads; test/ui/course_setup_test.dart |
-| 3.R | Review: real web app, three registrations + one in-person course | planner | todo | |
+| 3.R | Review: real web app, three registrations + one in-person course | planner | doing | code half: needs fixes (3.R code review below); web half: QA_PHASE3.md |
 | 4.1 | Back: search filters, indexes (0104), landing options / match | B4 | todo | |
 | 4.2 | Front: join flow + PendingIntent hand-off | F5 | todo | |
 | 4.3 | Landing: four entry buttons | L1 | todo | |
@@ -94,3 +94,39 @@ Profile widths moved to 0102; 0103 backfills the ids from the old keys; legacy k
 
 ### 2.R re-check (planner, 2026-11-20): verified
 All 8 must-fix items are in back 9e61711 and front 4fabbd1e as written. The nice-to-have list stays open. PLAN.md Phase 3 briefs updated to CONTRACT §3 (B3 also owns `features/edu/` for the countries fields and the old-key counts; F3 gets the `contact_only` hand-off and the country rule).
+
+## 3.R code review (planner, 2026-11-20) — verdict: needs fixes
+
+Read: back `9e61711..f085a08`, front `4fabbd1e..5eae7f59`. No test run by the reviewer. The real-app walk is QA_PHASE3.md (separate).
+
+Sound: CONTRACT §3 tables / columns / routes as written; `course_levels.apply` touches only the keys sent and `update_course` uses `exclude_unset`, so old apps and the other PUT callers (status, roadmap) never touch the new fields; the address is fail-closed (`CourseResponse.address` reads `address_view`, hidden unless the service marked the viewer) and no other serializer, `/me/home` card, public profile or export carries `address`; the course relationships are `selectin` (no N+1 on lists); consent rides on redeem (`gate` before the mode branch, row + audit committed with the link) and `GET|POST /parent/children/{id}/consent` covers an already linked child: accepted, since no parent-creates-child route exists.
+Path check (phases 2–3): every new front call carries `/api/v1` (`kAdminEduPath`, teaching-levels, consent, redeem, study profile, course form, `EduCountries`); only `EduCatalog` went through the helper (fixed in 5eae7f59; item 7 makes its paths visible to the contract scanner).
+Course PUT data loss: one path left (item 6). The detail call shows the address to exactly the people the PUT accepts (the course's teacher, admins), so `'address': null` cannot wipe an address the editor could not see.
+
+### Must fix (one brief, Sonnet, both repos; don't `dart format`)
+
+Back, `_wt/lh-back`:
+1. **The 0103 backfill is a no-op in production.** The seed loads at app start (`features/edu/seeder.ensure_seeded`), after the migration; 0102 and 0103 deploy together, so `edu_stages` / `geo_areas` are empty when 0103 runs and every profile keeps NULL ids. `student_profile_service._values` resolves on read but never saves, so the Phase 4 search / home filters would see no student's level. Change: new `features/edu/backfill.py` with `PROFILE_SQL` (the four statements) and `backfill_profile_ids(db)`; `migrations/versions/0103_registration_course_targets.py:471-483` runs the same strings; `features/edu/seeder.py:123` calls `backfill_profile_ids(db)` just before `db.commit()` on every `seed_all` (under the `EduMeta` lock; cheap: every statement filters `... _id IS NULL`). SQL fixes in the same strings:
+   - `SELECT MIN(s.id)` / `SELECT MIN(a.id)` in the stage and area subqueries (PostgreSQL: the unique index does not cover level-1 areas with a NULL parent; a duplicate makes the scalar subquery fail and aborts the deploy);
+   - match on `LOWER(TRIM(student_study_profiles.stage))` / `LOWER(TRIM(student_study_profiles.governorate))`;
+   - `country_code = 'EG'` also where `governorate IS NOT NULL` (an area without a stage);
+   - unknown keys, NULLs and `university` + a year keep NULL ids (as now).
+   e2e (`tests/learning_hub/e2e_registration.py`): insert profile rows with keys BEFORE seeding (`secondary`/2, `' Primary '`/3, `university`/3, `cairo` only, `nosuchkey`, NULL stage), call `seed_all`, check the ids; once on PostgreSQL with a duplicated level-1 area.
+2. **Consent: an unknown date of birth must not mean adult.** The student sign-up sends no `dob` (`toBody(withDob: false)`), so today almost no child ever needs consent. `features/parents/consent_service.py:55-57` becomes: with a DOB, `age < minor_age`; without one, a minor unless the profile's stage key (the `stage_id` row's key, else `stage`) is in `ADULT_STAGES = {"university", "graduate"}` (no profile, `other` or a school stage = minor). `view()` adds `minor_basis: "dob" | "stage" | "unknown"`. Update the module docstring (lines 6-9) and `FLUTTER_API_CHANGES.md` ("A child with no date of birth is not a minor" → this rule). e2e: no DOB + secondary → 422 `consent_required`; no DOB + university → linked; DOB 30 years ago + secondary → linked. (Already linked school-age children will show `needs_consent: true`: intended, the parent sees the notice; enforcement stays Phase 10.)
+3. **Teacher levels inside the registration.** `data/schemas.py:122` `TeacherProfileCreate` + `teaching_levels: Optional[List[CourseTargetIn]] = Field(None, max_length=200)` (move `CourseTargetIn` above it or add a `LevelIn`). Split `features/edu/teacher_levels.save` into `replace(db, user_id, pairs)` (check + delete + add, no commit) and `save` (role check + `replace` + commit); `features/auth/auth_service.py:474` `complete_teacher_profile` calls `replace` when the list is not None, in the same commit, before anything is written (a 422 leaves no half profile). `FLUTTER_API_CHANGES.md` + e2e (register with 2 levels → `GET /me/teaching-levels` after login returns them; a bad grade → 422).
+
+Front, `_wt/lh-front`:
+4. `lib/features/auth/auth_provider.dart:673` `completeTeacherProfile` takes `List<TeachingLevel> levels = const []` and sends `'teaching_levels': [for (final l in levels) l.toJson()]` when not empty; `additional_register_screen.dart:95` passes `_levels` and drops `PendingTeachingLevels.store` (~line 103). Delete `PendingTeachingLevels` (`register_levels_step.dart:239-268`) and its flush in `_persistTokens` (`auth_provider.dart:1152`): it was not per user (the next account to sign in on that device received the levels) and was lost on another device or a reinstall. Update the file header (lines 7-8) and `test/ui/registration_capture_test.dart`.
+5. `lib/features/courses/teacher/course_form_provider.dart:242-250`: the country comes from `pickEduCountry(await EduCountries.load(), null)?.code ?? 'EG'` (one cached call, the registration's rule) instead of the raw `/edu/countries` call.
+6. `course_form_provider.dart:274-286` (`_loadSetupFor`): (a) when the detail call fails, `_setupReady` stays false and every later edit of the section is silently not sent: add `bool setupLoadFailed`, set it in the catch, and in `course_form_screen.dart` (the `course_form.audience` card) show an error line with Retry (re-runs `_loadSetupFor`) instead of the editable section; (b) the detail must not overwrite edits made while it loaded: `if (!_setupDirty) _applySetup(...)`, and set `_addressCtrl.text` from `p.address` after the load. Add the failed-load case to `test/ui/course_setup_test.dart`.
+7. `lib/core/edu/edu_catalog.dart:206,238,259,275`: write the full literal paths at the call sites (`'/api/v1/edu/catalog'`, `'/api/v1/edu/countries'`, `'/api/v1/edu/areas'`) and drop the `startsWith('/api/')` prefix in `_apiFetch`, so `test/contract/` sees them (the helper hid the bug). Adjust the fake fetch in `test/core/edu_catalog_test.dart` if it matches the short path.
+
+Gates: back `e2e_registration.py` + `e2e_edu.py` (SQLite; item 1 also on PostgreSQL); front `flutter analyze --no-fatal-infos --fatal-warnings` on the changed paths, `flutter test test/ui/registration_capture_test.dart test/ui/course_setup_test.dart test/core/edu_catalog_test.dart test/contract/`. No new route, so no snapshot change expected.
+
+### Nice to have
+- Advanced link mode: the consent row is written when the request is filed; a rejected request keeps it. Revoke it on reject (`revoked_at`), or record it on approval.
+- `features/profiles/student_profile_service.py:403`: a line joined by a run of spaces (a lost continuation); rewrap.
+- `may_see_address`: an organization's managers of an org course (and `developer`) don't see the address; decide in Phase 10's privacy pass.
+- `parent_link_screen.dart`: check the first 422 `consent_required` shows no error toast before the consent dialog.
+- A teacher with no levels (signed up before F3) gets no prompt; a home nudge in Phase 10.
+- `/parent/children`: 3 queries per child for `needs_consent`; batch in Phase 10.

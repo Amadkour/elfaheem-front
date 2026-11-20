@@ -60,9 +60,10 @@ Routes:
 
 Indexes: `ix_course_targets_grade (grade_id, course_id)`, `ix_course_targets_stage (stage_id, course_id)`, `ix_courses_country_delivery (country_code, delivery_mode) WHERE is_published`, `ix_courses_area_parent`, `ix_courses_area`, `ix_courses_subject`; PostgreSQL only: `CREATE EXTENSION IF NOT EXISTS pg_trgm` + GIN `gin_trgm_ops` on `name_ar`, `name_en` (inside a savepoint; a failure is logged and skipped).
 
-- `GET /courses` adds `country, stage_id, grade_id, subject_id, delivery (online|in_person), kind (live|recorded), area_id, program_kind`. `delivery=online` matches `online | both`; `in_person` matches `in_person | both`. `grade_id` matches a target of that grade OR a whole-stage target of its stage. Old params unchanged. Answer shape unchanged.
+- `GET /courses` adds `country, stage_id, grade_id, subject_id, delivery (online|in_person), kind (live|recorded), area_id, program_kind`. `delivery=online` matches `online | both`; `in_person` matches `in_person | both`. `grade_id` matches a target of that grade OR a whole-stage target of its stage. Old params unchanged. Answer shape unchanged. Every list keeps `CourseResponse` (`address` only through `address_view`, 3.R). A student's default filters are the profile's `stage_id` / `grade_id` (backfilled by `features/edu/backfill.py` on every seed, 3.R).
 - `GET /public/landing/options?country=` adds `countries`, `stages` (with grades) and `families` (the category tree) next to `subjects`.
 - `GET /public/landing/match` adds `country, stage_id, grade_id, delivery, area_id`.
+- Registration through `/join`: a teacher's levels ride in `POST /auth/teacher-profile` as `teaching_levels: [{stage_id, grade_id|null}]` (3.R); a parent's redeem answers 422 `consent_required` for a minor (no DOB = a minor unless the stage is university / graduate, 3.R).
 - App routes: `/join?role=student|teacher|parent|org`; `PendingIntent` JSON `{v: 1, kind, id, plan, filters, at}` under the SharedPreferences key `pending_intent`.
 
 Kill switches: `join.flow` (off = the old guest search), `courses.filters` (the filter bar).
