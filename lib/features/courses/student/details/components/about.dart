@@ -11,6 +11,8 @@ import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
+import 'package:flutter_education_app/features/courses/course_setup.dart';
+import 'package:flutter_education_app/features/courses/course_setup_views.dart';
 import 'package:flutter_education_app/features/profile/public_profile/public_profile_page.dart' show openPersonProfile;
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
@@ -40,6 +42,7 @@ class AboutTab extends StatelessWidget {
       certificates: c.certificates,
       tools: c.tools,
       prerequisites: c.prerequisites,
+      setup: c.setup,
     );
   }
 }
@@ -58,6 +61,7 @@ class CourseAboutView extends StatelessWidget {
     this.certificates = const [],
     this.tools = const [],
     this.prerequisites = const [],
+    this.setup = const CourseSetup(),
   });
 
   final String description;
@@ -72,6 +76,9 @@ class CourseAboutView extends StatelessWidget {
   final List<CourseCertificate> certificates;
   final List<CourseTool> tools;
   final List<CoursePrerequisite> prerequisites;
+
+  /// Who it's for / Where (D-1314); draws nothing when empty.
+  final CourseSetup setup;
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +103,7 @@ class CourseAboutView extends StatelessWidget {
               icon: Icons.info_outline_rounded,
               children: [_ExpandableText(text: description.trim())],
             ),
+          if (!setup.isEmpty) CourseWhoWhereBlock(setup: setup),
           if (teacherName != null) CourseInstructorCard(name: teacherName!, category: category, onTap: onTeacher),
           if (rating != null)
             CourseInfoSection(

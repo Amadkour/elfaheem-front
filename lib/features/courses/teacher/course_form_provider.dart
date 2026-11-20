@@ -22,6 +22,8 @@ import 'package:flutter_education_app/features/home/student/models.dart'
     show AppCurrency, AppCurrencyX, CourseStatus, CourseStatusX;
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart' show RoadmapDraft;
+import 'package:flutter_education_app/core/edu/edu_catalog.dart';
+import 'package:flutter_education_app/features/courses/course_setup.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PendingSchedule  — a locally-added weekly appointment for a course that
@@ -158,6 +160,131 @@ class CourseFormProvider extends BaseProvider {
   }
   Set<int> selectedRecommendedCourseIds = {};
 
+  // ── Who it's for / Where (D-1314) ────────────────────────────────────────
+  List<CourseTarget> targets = [];
+  int? subjectId;
+
+  /// online | in_person | both.
+  String deliveryMode = 'online';
+  EduArea? area1, area2;
+  String address = '';
+  String? countryCode;
+  EduCountryCatalog? eduCatalog;
+
+  /// The server refused a save for want of an area (`course_area_required`).
+  bool areaMissing = false;
+
+  /// An edit session sends the setup fields only after the course's own detail filled them in, so a list answer that
+  /// carries no targets can never wipe the stored ones (the targets list replaces the old one).
+  bool _setupReady = true;
+  bool _setupDirty = false;
+  bool get setupDirty => _setupDirty;
+
+  void _setupTouch() {
+    _setupDirty = true;
+    areaMissing = false;
+    notifyListeners();
+  }
+
+  void toggleTarget(CourseTarget t) {
+    targets = targets.contains(t) ? ([...targets]..remove(t)) : [...targets, t];
+    _setupTouch();
+  }
+
+  void setSubject(int? id) {
+    subjectId = id;
+    _setupTouch();
+  }
+
+  void setDeliveryMode(String mode) {
+    deliveryMode = mode;
+    _setupTouch();
+  }
+
+  void setArea(EduArea l1, EduArea? l2) {
+    area1 = l1;
+    area2 = l2;
+    _setupTouch();
+  }
+
+  void setAddress(String v) {
+    if (v == address) return;
+    address = v;
+    _setupDirty = true;
+  }
+
+  Future<List<EduArea>> loadAreas(int? parentId) => EduCatalog.instance.areas(countryCode ?? 'EG', parentId: parentId);
+
+  /// Marks the save as refused for want of an area (the form shows the bilingual text under the area tile).
+  void markAreaMissing() {
+    areaMissing = true;
+    notifyListeners();
+  }
+
+  /// The setup fields of a create / update body. An edit session that has not loaded the course's detail yet sends
+  /// nothing (see [_setupReady]). An update always sends every field, so a cleared one really clears.
+  Map<String, dynamic> _setupBody({required bool update}) {
+    if (!_setupReady) return const {};
+    final inPerson = deliveryMode != 'online';
+    final area = inPerson ? (area2 ?? area1) : null;
+    final addr = inPerson && address.trim().isNotEmpty ? address.trim() : null;
+    return {
+      'country_code': ?countryCode,
+      'delivery_mode': deliveryMode,
+      if (update || subjectId != null) 'subject_id': subjectId,
+      if (update || area != null) 'area_id': area?.id,
+      if (update || addr != null) 'address': addr,
+      'targets': [for (final t in targets) t.toJson()],
+    };
+  }
+
+  /// The platform country: the course's own, else the first country the server lists, else Egypt. Then the catalog.
+  Future<void> _loadSetupCatalog(CourseSetup? setup) async {
+    var country = setup?.countryCode;
+    if (country == null || country.isEmpty) {
+      try {
+        final r = await _api.get('/edu/countries', auth: false);
+        if (r is List && r.isNotEmpty && r.first is Map) country = '${(r.first as Map)['code'] ?? ''}'.toUpperCase();
+      } catch (_) {}
+    }
+    countryCode = (country == null || country.isEmpty) ? 'EG' : country;
+    eduCatalog = await EduCatalog.instance.load(countryCode!);
+    notifyListeners();
+  }
+
+  void _applySetup(CourseSetup s) {
+    targets = [...s.targets];
+    subjectId = s.subject?.id;
+    deliveryMode = s.deliveryMode;
+    countryCode = s.countryCode ?? countryCode;
+    final a = s.area;
+    if (a == null) {
+      area1 = area2 = null;
+    } else {
+      final p = a.parent;
+      EduArea mk(CourseNamed n, int level) =>
+          EduArea(id: n.id, key: '', nameAr: n.nameAr, nameEn: n.nameEn, level: level, hasChildren: false);
+      area1 = mk(p ?? a, 1);
+      area2 = p == null ? null : mk(a, 2);
+    }
+    address = s.address ?? '';
+  }
+
+  /// The edit form's own detail call fills the setup (the list answer may not carry targets).
+  Future<void> _loadSetupFor(TeacherCourse course) async {
+    _setupReady = false;
+    _applySetup(course.setup);
+    await _loadSetupCatalog(course.setup);
+    try {
+      final r = await _api.get('/api/v1/courses/${course.id}');
+      if (r is Map<String, dynamic>) {
+        _applySetup(CourseSetup.fromJson(r));
+        _setupReady = true;
+      }
+    } catch (_) {}
+    notifyListeners();
+  }
+
   /// Options not already chosen as a next-course step (so the picker
   /// doesn't offer the same course twice).
   List<Map<String, dynamic>> get availableNextCourseOptions {
@@ -261,8 +388,15 @@ class CourseFormProvider extends BaseProvider {
     nextCoursesInPath = false;
     _listsChanged = false;
     _pendingSchedules = [];
+    targets = [];
+    subjectId = null;
+    deliveryMode = 'online';
+    area1 = area2 = null;
+    address = '';
+    _setupReady = true;
+    _setupDirty = false;
     notifyListeners();
-    await Future.wait([_loadCategories(context), _loadOtherCourses()]);
+    await Future.wait([_loadCategories(context), _loadOtherCourses(), _loadSetupCatalog(null)]);
   }
 
   /// Call once from initState when opening in UPDATE mode.
@@ -284,12 +418,14 @@ class CourseFormProvider extends BaseProvider {
     level = course.level;
     tags = [...course.tags];
     _listsChanged = false;
+    _setupDirty = false;
     _pendingSchedules = [];
     notifyListeners();
 
     await Future.wait([
       _loadCategories(context),
       _loadOtherCourses(excludeCourseId: course.id),
+      _loadSetupFor(course),
     ]);
     _restoreSpecialization(course);
     _restoreNextCourses(course);
@@ -455,6 +591,7 @@ class CourseFormProvider extends BaseProvider {
       'recommended_course_ids': selectedRecommendedCourseIds.toList(),
       'discount_percentage': ?discountPercentage,
       'discount_days': ?discountDays,
+      ..._setupBody(update: false),
       },
       ),
     );
@@ -558,6 +695,7 @@ class CourseFormProvider extends BaseProvider {
       'discount_percentage': null
       else 'discount_percentage': ?discountPercentage,
       'discount_days': ?discountDays,
+      ..._setupBody(update: true),
       },
       ),
     );

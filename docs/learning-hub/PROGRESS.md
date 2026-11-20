@@ -14,9 +14,9 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | 2.3 | Front: `EduCatalog` + pickers | F1 | done | EduCatalog (no If-None-Match) + pickers |
 | 2.4 | Front: super admin levels page | F2 | done | levels page under admin.edu_levels |
 | 2.R | Review: data model + seeds | planner | verified | all 8 fixes confirmed in back 9e61711 + front 4fabbd1e (diffs read; tests as the lead reported) |
-| 3.1 | Back: profile ids, teaching levels, consent, course fields (0103) | B3 | todo | |
+| 3.1 | Back: profile ids, teaching levels, consent, course fields (0103) | B3 | done | e2e_registration 85 checks, e2e_edu 55, PG up/down OK; consent rides on redeem (consent + text_version), address via address_view |
 | 3.2 | Front: registration capture (student, teacher, parent) | F3 | todo | |
-| 3.3 | Front: course form + profile block | F4 | todo | |
+| 3.3 | Front: course form + profile block | F4 | done | CourseSetupSection in the form (targets chips, subject, delivery, area + address), CourseWhoWhereBlock in the About tab; setup sent only after the detail loads; test/ui/course_setup_test.dart |
 | 3.R | Review: real web app, three registrations + one in-person course | planner | todo | |
 | 4.1 | Back: search filters, indexes (0104), landing options / match | B4 | todo | |
 | 4.2 | Front: join flow + PendingIntent hand-off | F5 | todo | |

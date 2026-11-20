@@ -39,6 +39,8 @@ import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_errors.dart' show appSharedFix, showAppError;
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/core/edu/edu_catalog.dart' show EduGeoLabels;
+import 'package:flutter_education_app/features/courses/course_setup_views.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
@@ -79,6 +81,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   final _formKey = GlobalKey<FormState>();
   late bool _isPrivate;
   final _accessCodeCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController(); // the in-person address (D-1314)
   late final TextEditingController _titleArCtrl,
       _titleEnCtrl,
       _descArCtrl,
@@ -229,6 +232,8 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       } else {
         await p.initCreate(context);
       }
+      _addressCtrl.text = p.address;
+      _addressCtrl.addListener(() => p.setAddress(_addressCtrl.text));
       _fadeCtrl.forward();
     });
   }
@@ -257,6 +262,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     _certTitleCtrl.dispose();
     _fadeCtrl.dispose();
     _accessCodeCtrl.dispose();
+    _addressCtrl.dispose();
     super.dispose();
   }
 
@@ -286,6 +292,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
             c.defaultPricePlanIndex ||
         _removeDiscount ||
         _logoFile != null ||
+        context.read<CourseFormProvider>().setupDirty ||
         _reelCtrl.hasChanges;
   }
 
@@ -301,6 +308,12 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   }) async {
     if (!_formKey.currentState!.validate()) {
       setState(() => _advancedOpen = true); // an invalid discount may be hidden
+      return;
+    }
+    if (formProvider.deliveryMode != 'online' && formProvider.area1 == null) {
+      // in person needs an area: say so before any request (the server refuses it too, `course_area_required`)
+      formProvider.markAreaMissing();
+      _showSnack(courseAreaRequiredText(), context.colors.danger);
       return;
     }
     final type =
@@ -393,6 +406,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       showAppError(context, formProvider.lastApiError!,
           text: formProvider.errorMessage,
           onRetry: () => _submit(publish: publish, listProvider: listProvider, formProvider: formProvider));
+    } else if (formProvider.lastApiError?.code == 'course_area_required') {
+      formProvider.markAreaMissing();
+      _showSnack(courseAreaRequiredText(), context.colors.danger);
     } else {
       _showSnack(
         formProvider.errorMessage ?? 'error_please_retry'.tr,
@@ -704,6 +720,34 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 label: 'currency_label'.tr,
                                 selected: provider.selectedCurrency,
                                 onChanged: provider.onChangeCurrency,
+                              ),
+                            ],
+                          )),
+                      const SizedBox(height: AppSpace.md),
+
+                      // Who it's for / Where (D-1314)
+                      ParentComponent(
+                          featureKey: 'course_form.audience',
+                          child: _FormCard(
+                            icon: Icons.groups_2_outlined,
+                            title: AppConfig.lang == 'ar' ? 'لمن هذا الكورس وأين' : "Who it's for / Where",
+                            children: [
+                              CourseSetupSection(
+                                stages: provider.eduCatalog?.stages ?? const [],
+                                subjects: provider.eduCatalog?.subjects ?? const [],
+                                targets: provider.targets,
+                                onToggleTarget: provider.toggleTarget,
+                                subjectId: provider.subjectId,
+                                onSubject: provider.setSubject,
+                                deliveryMode: provider.deliveryMode,
+                                onDeliveryMode: provider.setDeliveryMode,
+                                loadAreas: provider.loadAreas,
+                                onArea: provider.setArea,
+                                area1: provider.area1,
+                                area2: provider.area2,
+                                labels: provider.eduCatalog?.geoLabels ?? const EduGeoLabels(),
+                                address: _addressCtrl,
+                                areaMissing: provider.areaMissing,
                               ),
                             ],
                           )),

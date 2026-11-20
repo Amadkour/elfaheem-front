@@ -10,6 +10,7 @@ import 'package:flutter_education_app/features/courses/category/categories_provi
 import 'package:flutter_education_app/features/courses/category/model.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart' show CourseOrg;
+import 'package:flutter_education_app/features/courses/course_setup.dart';
 
 export 'package:flutter_education_app/features/courses/discount_info.dart';
 
@@ -566,8 +567,12 @@ class CourseModel with DiscountInfo {
   /// The organization the course belongs to; null = a personal course (or an older server).
   final CourseOrg? org;
 
+  /// Who the course is for and where it is held (D-1314).
+  final CourseSetup setup;
+
   CourseModel({
     this.org,
+    this.setup = const CourseSetup(),
     this.isPrivate = false,                                 // constructor
     this.allowResubscribe = true,
     required this.id,
@@ -704,6 +709,7 @@ class CourseModel with DiscountInfo {
     descriptionAr: j['description_ar'] as String?,
     descriptionEn: j['description_en'] as String?,
     org: CourseOrg.fromJson(j['org']),
+    setup: CourseSetup.fromJson(j),
   );
 
   /// Builds a minimal-but-valid CourseModel from a lightweight summary card
@@ -727,6 +733,7 @@ class CourseModel with DiscountInfo {
 
   TeacherCourse get toTeacherModel => TeacherCourse(
     org: org,
+    setup: setup,
     titleAr: titleAr,
     titleEn: titleEn,
     descriptionAr: descriptionAr,
@@ -798,6 +805,7 @@ class CourseModel with DiscountInfo {
     discountPercentage: discountPercentage,
     discountDays: discountDays,
     org: org,
+    setup: setup,
   );
 }
 
