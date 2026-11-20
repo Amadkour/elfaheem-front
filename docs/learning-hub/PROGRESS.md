@@ -17,7 +17,7 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | 3.1 | Back: profile ids, teaching levels, consent, course fields (0103) | B3 | done | e2e_registration 85 checks, e2e_edu 55, PG up/down OK; consent rides on redeem (consent + text_version), address via address_view |
 | 3.2 | Front: registration capture (student, teacher, parent) | F3 | done | levels steps, study profile ids, parent consent (D-1311) |
 | 3.3 | Front: course form + profile block | F4 | done | CourseSetupSection in the form (targets chips, subject, delivery, area + address), CourseWhoWhereBlock in the About tab; setup sent only after the detail loads; test/ui/course_setup_test.dart |
-| 3.R | Review: real web app, three registrations + one in-person course | planner | doing | code half: needs fixes (3.R code review below); web half: QA_PHASE3.md |
+| 3.R | Review: real web app, three registrations + one in-person course | planner | verified | 7 must-fix + 4 QA fixes in back a9a12a4 + front 2bc2bebe (diffs read); phone-width create form re-walked at 4.R |
 | 3.F | Phase 3 review + QA fixes (D-1315) | F/B fix | done | the 7 must-fix items + the 4 QA findings, see "3.F fixes" under 3.R; e2e_registration 106 checks, e2e_edu 55, PG backfill on seeded data OK; QA re-walk in QA_PHASE3.md |
 | 4.1 | Back: search filters, indexes (0104), landing options / match | B4 | todo | |
 | 4.2 | Front: join flow + PendingIntent hand-off | F5 | todo | |
@@ -144,3 +144,8 @@ Must-fix items:
 
 QA findings: the create-form blocker (see QA_PHASE3.md re-test), the area reopen (`_resolveArea` looks `area_id` up level 1, then the governorate's children), the consent-refused toast (`plToast` is error-toned, success passes `error: false`; the course form's `_showSnack` now honours the danger colour), the teacher's Details tab draws `CourseWhoWhereBlock` (address included). `courseAreaRequiredText` matches the server's wording.
 
+
+### 3.R re-check (planner, 2026-11-20): verified
+All 7 must-fix items are in back a9a12a4 and front 2bc2bebe as written. I read the diffs; the test results are as the lead reported: e2e_registration 106 checks, e2e_edu 55, the backfill on PostgreSQL, the phase 3 front tests, contract and the analyzer. Backfill: shared `PROFILE_SQL` with MIN / LOWER(TRIM) / the area-only country, run by 0103 and by `seed_all` under the lock. Consent: `minor_basis`, where no date of birth counts as a minor unless the stage is university or graduate. Teacher levels: `replace` runs before the profile is written, `PendingTeachingLevels` is gone. Course form: `setupLoadFailed` + Retry, and edits made while the detail loads win. EduCatalog: literal `/api/v1` paths.
+One nit, not blocking: the `consent_service.py` docstring lists `minor_basis` as "dob | stage" but the code also returns `unknown`.
+The create form's "chips don't respond" at phone width was not reproduced; it does not block Phase 4, which doesn't touch the course form. **4.R adds a step:** create an in-person course with 2 targets at 360 px width in the real web app.
