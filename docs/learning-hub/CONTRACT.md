@@ -36,11 +36,19 @@ Kill switch: `admin.edu_levels` (the admin page).
 
 | Table | Change |
 |---|---|
-| `student_study_profiles` | + `country_code String(2) NULL`, `stage_id FK NULL`, `grade_id FK NULL`, `area_id FK geo_areas NULL`, `gender String(1) NULL`. `stage` / `grade` / `governorate` are still written (stage key, grade number, level-1 area key) |
+| `student_study_profiles` | + `country_code String(2) NULL`, `stage_id FK NULL`, `grade_id FK NULL`, `area_id FK geo_areas NULL`, `gender String(1) NULL`. `stage` / `grade` / `governorate` are still written (stage key, grade number, level-1 area key). Widths after the 2.R fix (in 0102): `stage` 40, `track` 40, `governorate` 60. 0103 backfills: `country_code = 'EG'` where a stage is set, then `stage_id` / `grade_id` / `area_id` from (EG, stage key, grade number, governorate key); a row with no match keeps NULL ids |
 | `teacher_teaching_levels` | `id`, `user_id FK CASCADE`, `stage_id FK`, `grade_id FK NULL` (NULL = the whole stage); unique `(user_id, stage_id, grade_id)`; index `(grade_id)`, `(stage_id)` |
 | `parent_consents` | `id`, `parent_id FK`, `student_id FK`, `kind String(30)` (`minor_account`), `text_version String(20)`, `granted_at`, `ip String(64)`, `user_agent String(300)`, `revoked_at NULL`; index `(student_id, kind)` |
 | `courses` | + `country_code String(2) NULL`, `delivery_mode String(12) NOT NULL default 'online'` (online \| in_person \| both), `subject_id FK edu_subjects NULL`, `area_id FK geo_areas NULL`, `area_parent_id FK geo_areas NULL`, `address String(300) NULL`, `program_kind String(12) NOT NULL default 'course'` (course \| quran) |
 | `course_targets` | `course_id FK CASCADE`, `stage_id FK`, `grade_id FK NULL`; unique `(course_id, stage_id, grade_id)` |
+
+Rules from the 2.R review (what Phase 2 built):
+- The table and column names above are fixed: `edu_service.REFS` already counts `student_study_profiles.stage_id|grade_id|area_id`, `teacher_teaching_levels.stage_id|grade_id`, `course_targets.stage_id|grade_id`, `courses.subject_id|area_id|area_parent_id` for "in use". Once 0103 has backfilled, B3 removes the old-key counts added in 2.R.
+- Old keys: a write with `stage` / `grade` / `governorate` and no ids resolves the ids against the profile's `country_code` (default `EG`); a key with no row (e.g. `university` + year 3, which has no grade rows) is saved as before with NULL ids. A write with ids also writes the keys (stage key, grade number, level-1 area key; a level-2 area writes its parent's key). `track` is checked against the grade's `tracks`.
+- A stage with `has_grades = false`: `grade_id` must be NULL. A `contact_only` stage saves the profile the same way; the WhatsApp hand-off is the front's, with the country's `contact_whatsapp`.
+- `GET /edu/countries` adds `minor_age`, `phone_code`, `contact_whatsapp` (registration needs them before sign-in). `disabled_features` stays admin-only until Phase 6.
+- The catalog: the app never sends `If-None-Match` (its answers are encrypted per session, so the server answers it `private, no-store` and no 304); ETag / 304 / `public, max-age=300` serve callers without `X-Enc-Session` (the landing, Phase 4).
+- The student's country: the profile's `country_code`; before one exists, the first row of `GET /edu/countries` (sort order), changeable in the picker.
 
 Routes:
 - `GET|PUT /me/study-profile` (the existing route): accepts and returns `country_code, stage_id, grade_id, area_id, gender` next to the old fields; ids win when both are sent. 422 `edu_grade_mismatch` when the grade is not of the stage.

@@ -4,16 +4,16 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 
 | # | Step | Agent | Status | Notes |
 |---|---|---|---|---|
-| 0.1 | RESEARCH.md (reference apps, verified stages + VAT) | R1 | todo | |
-| 1.1 | Reproduce the 500 on PostgreSQL (`e2e_onboarding_prod_case.py`) | A1 | todo | |
-| 1.2 | Migration 0101: `nid_kind` width + literal audit | A1 | todo | |
-| 1.3 | Teacher + staff types pass; where 500 refs are logged | A1 | todo | |
-| 1.R | Review: traceback + migration | planner | todo | |
-| 2.1 | Back: edu tables, seeder, public + admin routes (0102) | B1 | todo | |
-| 2.2 | Seeds EG.json, SA.json | B2 | todo | |
+| 0.1 | RESEARCH.md (reference apps, verified stages + VAT) | R1 | done | 4 JS-rendered sites only titles; book VAT + Tanzil licence flagged |
+| 1.1 | Reproduce the 500 on PostgreSQL (`e2e_onboarding_prod_case.py`) | A1 | done | PG: StringDataRightTruncation varchar(10) |
+| 1.2 | Migration 0101: `nid_kind` width + literal audit | A1 | done | back e2c804f, no other overflow |
+| 1.3 | Teacher + staff types pass; where 500 refs are logged | A1 | done | teacher+staff pass on PG; errors: `docker logs edu_api 2>&1 \| grep -A40 "ref=<REF>"` |
+| 1.R | Review: traceback + migration | planner | verified | lead checked; hotfix pushed to production + backend deploy 2026-11-20 |
+| 2.1 | Back: edu tables, seeder, public + admin routes (0102) | B1 | doing | |
+| 2.2 | Seeds EG.json, SA.json | B2 | doing | |
 | 2.3 | Front: `EduCatalog` + pickers | F1 | todo | |
 | 2.4 | Front: super admin levels page | F2 | todo | |
-| 2.R | Review: data model + seeds | planner | todo | |
+| 2.R | Review: data model + seeds | planner | needs fixes | 8 must-fix in "2.R review" below; re-check items 1, 2, 4 on PostgreSQL |
 | 3.1 | Back: profile ids, teaching levels, consent, course fields (0103) | B3 | todo | |
 | 3.2 | Front: registration capture (student, teacher, parent) | F3 | todo | |
 | 3.3 | Front: course form + profile block | F4 | todo | |
@@ -59,3 +59,36 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | What | Phase | Why |
 |---|---|---|
 | | | |
+
+## 2.R review (planner, 2026-11-20) — verdict: needs fixes
+
+Read: back `e2c804f..55446a1`, front `603698d3..0ad3535a`. The reviewer ran no test (the agents' results are taken as reported).
+
+Sound: the tables match CONTRACT §2.1 (+ `edu_meta`, accepted); admin routes are super admin only (`require_admin` + `is_super_admin`), each write audited and versioned; `GET /admin/edu/catalog` and the hash-gated seeder accepted; seed stages match RESEARCH.md (EG KG 2 / 6 / 3 / 3, SA KG 3 / 6 / 3 / 3), VAT 14 / 15; per-stage grade numbers keep the old profile keys valid; the 27 old governorate keys + `other` are present; the longest seed key is 16 characters; `contact_only` is true on university only; the front files use tokens, `context.colors`, `AppDropdown`, bilingual text and no raw colour.
+
+### Must fix (one brief)
+
+Back, `_wt/lh-back`:
+1. **Encrypted clients + caching** — `features/edu/api/edu_router.py:35-36`. The app sends `X-Enc-Session`, so `helpers/encryption_middleware.py:235-251` wraps the answer per session: a 304 gets a body, and `public, max-age=300` lets a browser replay an envelope of an older session. Change: read `x_enc_session: Optional[str] = Header(None)`; add `"Vary": "X-Enc-Session"` to `headers`; when the header is present use `Cache-Control: private, no-store` and never answer 304. Add both cases to `tests/learning_hub/e2e_edu.py`.
+2. **Column widths (the Phase 1 bug class)** — `data/student_profile_models.py:29,31,33`: `stage` `String(20)` → `String(40)`, `track` `String(20)` → `String(40)`, `governorate` `String(40)` → `String(60)` (stage / track keys are 40, area keys 60, and `options()` now accepts table keys). Add the three `batch_alter_table` widenings to `migrations/versions/0102_edu_levels.py` the way 0101 does (0102 is not deployed), with the downgrade.
+3. **Old university grades are dropped** — `features/profiles/student_profile_service.py:106-107`: the EG seed has `university.has_grades = false`, the old constant is `range(1, 8)`, so an old app's university year is silently saved as NULL. Change line 107 to `out[st.key] = STAGES.get(st.key)` (a legacy range wins for a legacy key; a new key gets None). Add an e2e check: `university` + grade 3 is kept.
+4. **Seeder race** — `features/edu/seeder.py:102`: PostgreSQL treats NULL as distinct, so `uq_geo_areas_country_parent_key` does not guard level-1 areas; two workers loading a changed file double them. After `S.meta(db)`, lock the row (`db.query(EduMeta).filter(EduMeta.id == 1).with_for_update().one()`) and read `seeded` from the locked row.
+5. **Delete ignores old-key use** — `features/edu/edu_service.py:409-417`: `REFS` counts id columns that do not exist until 0103, so a stage / governorate used by many profiles is hard deleted. For a stage of country `EG` add the count of `student_study_profiles` where `stage = row.key`; for a level-1 `EG` area, where `governorate = row.key`.
+6. **PATCH with an explicit null answers 500** — `features/edu/api/admin_edu_router.py:159-160`: `_patch` keeps `null`, then NOT NULL fails. Drop None values except for `currency`, `phone_code`, `geo_labels`, `contact_whatsapp`, `number`, `tracks`.
+
+Front, `_wt/lh-front`:
+7. `lib/core/edu/edu_catalog.dart:239-240`: stop sending `If-None-Match` (pass no `headers`); keep the stored copy as the first paint and the fallback. Update the header comment (lines 3, 6-7) and `test/core/edu_catalog_test.dart`.
+8. The contract snapshots were not regenerated: `test/contract/api_paths.json` has no `/edu/` route and `feature_keys.json` no `admin.edu_levels`. From `lh-back`: `.venv312/Scripts/python scripts/contract/export_api_paths.py --front ../lh-front`, then run `flutter test test/contract/`.
+
+### Nice to have
+- SA level 1 mixes regions and cities under the label "City" (`jeddah`, `dammam` next to `asir`, `qassim`; no Eastern Province entry for Khobar / Ahsa): relabel `geo_labels.1` "Region or city" and add `eastern`, or log it under Gaps.
+- SA secondary has no tracks (the Saudi tracks system is not in RESEARCH.md): log under Gaps; the super admin can add them.
+- `0102`: partial unique indexes for the NULL cases (`geo_areas` level 1, global `edu_subjects`).
+- `edu_router.py:33`: compare the version before building the catalog; cache `options()` by `edu_meta.version` (it adds 3 queries to every `/me/home`).
+- `seeder.py:102-115`: a bad file stops the files after it and rolls back the ones before it.
+- `test/ui/help_ids_test.dart:34` `knownMissing`: add `admin.edu_levels` to `back/data/help_seed.json` and the features guide in 10.3, then remove the entry.
+- `edu_levels_page.dart:96,181,257`: three raw layout breakpoints (900 / 520).
+
+### Contract changes made for Phase 3 (CONTRACT §3)
+Profile widths moved to 0102; 0103 backfills the ids from the old keys; legacy keys resolve against the profile's country; `GET /edu/countries` gains `minor_age`, `phone_code`, `contact_whatsapp`; a stage without grades takes `grade_id` NULL; the app never sends `If-None-Match`; the ref table / column names are fixed by `edu_service.REFS`.
+
