@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import 'package:flutter_education_app/features/analytics/analytics_ui.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_models.dart' show DlProfile;
+import 'parent_consent.dart';
 import 'parent_link_providers.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
@@ -205,6 +206,10 @@ class _ChildCard extends StatelessWidget {
             )
           else
             const SizedBox(height: AppSpace.md),
+          if (data['needs_consent'] == true) ...[
+            ConsentNeededNotice(onGive: () => _giveConsent(context, id, name)),
+            const SizedBox(height: AppSpace.sm),
+          ],
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
             AppButton(label: 'pl_tab_reports'.tr, icon: Icons.insights_rounded, variant: AppButtonVariant.secondary, size: AppButtonSize.sm, onPressed: report),
             if (pr != null) AppStatusBadge(label: '${pr.courses.length} ${anTr('an_courses', 'Courses')}', icon: Icons.menu_book_rounded),
@@ -225,6 +230,13 @@ class _ChildCard extends StatelessWidget {
       }),
     );
   }
+}
+
+Future<void> _giveConsent(BuildContext context, int id, String name) async {
+  final p = context.read<ParentLinkProvider>();
+  if (!await showParentConsentDialog(context, childName: name)) return;
+  final ok = await p.giveConsent(id);
+  if (!ok) plToast(p.errorMessage);
 }
 
 bool _needsAttention(double? attendance, double? exams) =>

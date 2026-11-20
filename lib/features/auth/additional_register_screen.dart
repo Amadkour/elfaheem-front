@@ -23,6 +23,9 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'auth_provider.dart';
 import 'auth_shell.dart';
 import 'auth_widgets.dart';
+import 'register_levels_step.dart';
+import 'package:flutter_education_app/core/edu/edu_catalog.dart';
+import 'package:flutter_education_app/core/edu/edu_countries.dart';
 import 'login_screen.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -51,6 +54,24 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
   //   phase 2: required + custom docs -> finalizeRegistration()
   bool _profileSubmitted = false;
 
+  // The stages and years the teacher teaches (Learning Hub F3): the first country's catalog, saved after the first
+  // sign-in (a teacher has no session during registration), see PendingTeachingLevels.
+  List<EduStage> _stages = const [];
+  List<TeachingLevel> _levels = const [];
+  bool _levelsError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStages();
+  }
+
+  Future<void> _loadStages() async {
+    final country = pickEduCountry(await EduCountries.load(), null)?.code ?? 'EG';
+    final cat = await EduCatalog.instance.load(country);
+    if (mounted && cat != null) setState(() => _stages = cat.stages);
+  }
+
   @override
   void dispose() {
     _yearCtrl.dispose();
@@ -63,6 +84,10 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
 
   Future<void> _submitProfile({required String email}) async {
     if (!_formKey.currentState!.validate()) return;
+    if (_stages.isNotEmpty && _levels.isEmpty) {
+      setState(() => _levelsError = true);
+      return;
+    }
 
     final auth = context.read<MyAuthProvider>();
     final docProvider = context.read<TeacherDocumentProvider>();
@@ -75,6 +100,8 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
 
     if (!mounted) return;
     if (success) {
+      await PendingTeachingLevels.store(_levels);
+      if (!mounted) return;
       setState(() => _profileSubmitted = true);
       // Profile now exists server-side, so the document endpoints will work.
       await docProvider.loadOverview(email);
@@ -172,6 +199,20 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                             auth.onChangeSpecialization(i, _specCtrl),
                       ),
                       const SizedBox(height: AppSpace.md)])),
+
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      TeachingLevelsStep(
+                        stages: _stages,
+                        selected: _levels,
+                        errorText: _levelsError && _levels.isEmpty
+                            ? (AppConfig.lang == 'ar' ? 'اختر مرحلة واحدة على الأقل' : 'Pick at least one stage')
+                            : null,
+                        onChanged: (v) => setState(() {
+                          _levels = v;
+                          _levelsError = false;
+                        }),
+                      ),
+                      const SizedBox(height: AppSpace.md)]),
 
                     ParentComponent(featureKey: 'additional_register.payment_method', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'payment_method'.tr),
                       const SizedBox(height: AppSpace.xs),

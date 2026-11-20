@@ -18,8 +18,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
+import 'package:flutter_education_app/core/edu/edu_catalog.dart';
+import 'package:flutter_education_app/core/edu/edu_countries.dart';
+import 'package:flutter_education_app/design/edu_pickers.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/auth/register_levels_step.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
+
+/// The catalog behind the form (Learning Hub): the countries, the chosen country's stages and its area loader. With
+/// it the stage / grade / area fields come from the catalog and the profile carries ids; without it the form is the
+/// older fixed-key one (an older server, or a catalog that did not load).
+class StudyEduData {
+  const StudyEduData({required this.countries, required this.country, required this.stages, required this.loadAreas, this.labels = const EduGeoLabels()});
+
+  final List<EduCountry> countries;
+  final String country;
+  final List<EduStage> stages;
+  final EduAreaLoader loadAreas;
+  final EduGeoLabels labels;
+}
 
 class StudyProfileForm extends StatefulWidget {
   const StudyProfileForm({
@@ -30,7 +47,13 @@ class StudyProfileForm extends StatefulWidget {
     this.showErrors = false,
     this.showDob = true,
     this.compact = false,
+    this.edu,
+    this.onCountry,
   });
+
+  /// The catalog (see [StudyEduData]); [onCountry] asks the page to load another country's catalog.
+  final StudyEduData? edu;
+  final ValueChanged<String>? onCountry;
 
   final StudyProfile value;
   final ValueChanged<StudyProfile> onChanged;
@@ -86,7 +109,69 @@ class _StudyProfileFormState extends State<StudyProfileForm> {
 
   bool _req(String f) => widget.required.contains(f);
 
-  List<String> get _missing => widget.showErrors ? widget.value.missing(widget.required) : const [];
+  EduArea? _area1, _area2;
+  String? _pendingTrack;
+
+  /// The saved area before the person picks one again: its name is the old governorate key the server wrote.
+  EduArea? _areaFromProfile(StudyProfile v) {
+    if (v.areaId == null) return null;
+    final name = v.governorate == null ? '' : studyGovernorateLabel(v.governorate!);
+    return EduArea(id: v.areaId!, key: v.governorate ?? '', nameAr: name, nameEn: name);
+  }
+
+  List<String> get _missing =>
+      widget.showErrors ? widget.value.missingIn(widget.edu?.stages, widget.required) : const [];
+
+  void _eduChanged(String? country, int? stageId, int? gradeId, String? track) {
+    final v = widget.value;
+    final edu = widget.edu!;
+    if (country != null && country != edu.country) {
+      widget.onCountry?.call(country);
+      widget.onChanged(v.withEdu(countryCode: country, gender: v.gender));
+      return;
+    }
+    EduStage? st;
+    for (final s in edu.stages) {
+      if (s.id == stageId) st = s;
+    }
+    EduGrade? gr;
+    for (final g in st?.grades ?? const <EduGrade>[]) {
+      if (g.id == gradeId) gr = g;
+    }
+    final keepArea = v.countryCode == edu.country;
+    widget.onChanged(v.withEdu(
+      countryCode: edu.country,
+      stageId: stageId,
+      gradeId: gradeId,
+      track: track,
+      areaId: keepArea ? v.areaId : null,
+      gender: v.gender,
+      stageKey: st?.key,
+      gradeNumber: gr?.number,
+    ));
+  }
+
+  Widget _gender(StudyProfile v) => _ChipGroup(
+        label: t('النوع (اختياري)', 'Gender (optional)'),
+        children: [
+          for (final g in const ['m', 'f'])
+            AppChoiceChip(
+              key: ValueKey('study.gender.$g'),
+              label: g == 'm' ? t('ذكر', 'Male') : t('أنثى', 'Female'),
+              selected: v.gender == g,
+              onTap: () => widget.onChanged(v.withEdu(
+                countryCode: v.countryCode,
+                stageId: v.stageId,
+                gradeId: v.gradeId,
+                track: v.track,
+                areaId: v.areaId,
+                gender: v.gender == g ? null : g,
+                stageKey: v.stage,
+                gradeNumber: v.grade,
+              )),
+            ),
+        ],
+      );
 
   Future<void> _pickDob() async {
     final cur = DateTime.tryParse(widget.value.dob ?? '');
@@ -122,6 +207,30 @@ class _StudyProfileFormState extends State<StudyProfileForm> {
         textCapitalization: TextCapitalization.words,
         onChanged: (s) => widget.onChanged(widget.value.withText('school_name', s)),
       ),
+      if (widget.edu != null) ...[
+        EduAreaPicker(
+          loadAreas: widget.edu!.loadAreas,
+          labels: widget.edu!.labels,
+          required: _req('governorate'),
+          level1: _area1 ?? _areaFromProfile(v),
+          level2: _area2,
+          onChanged: (a1, a2) {
+            _area1 = a1;
+            _area2 = a2;
+            widget.onChanged(v.withEdu(
+              countryCode: v.countryCode,
+              stageId: v.stageId,
+              gradeId: v.gradeId,
+              track: v.track,
+              areaId: (a2 ?? a1).id,
+              gender: v.gender,
+              stageKey: v.stage,
+              gradeNumber: v.grade,
+            ));
+          },
+        ),
+        if (missing.contains('governorate')) _ErrorLine(_requiredText),
+      ] else
       AppPicker<String>(
         label: t('المحافظة', 'Governorate') + (_req('governorate') ? ' *' : ''),
         value: v.governorate,
@@ -138,10 +247,11 @@ class _StudyProfileFormState extends State<StudyProfileForm> {
           city: v.city,
           parentPhone: v.parentPhone,
           dob: v.dob,
+          gender: v.gender,
         )),
       ),
-      if (missing.contains('governorate')) _ErrorLine(_requiredText),
-      if (v.governorate == 'other')
+      if (widget.edu == null && missing.contains('governorate')) _ErrorLine(_requiredText),
+      if (widget.edu == null && v.governorate == 'other')
         AppField(
           controller: _city,
           label: t('المدينة / البلد', 'City / country'),
@@ -176,62 +286,80 @@ class _StudyProfileFormState extends State<StudyProfileForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (widget.edu != null) ...[
+          RegisterLevelsStep(
+            countries: widget.edu!.countries,
+            country: widget.edu!.country,
+            stages: widget.edu!.stages,
+            stageId: v.stageId,
+            gradeId: v.gradeId,
+            trackKey: v.track,
+            onTrack: (tr) => _pendingTrack = tr,
+            errorText: missing.contains('stage')
+                ? t('اختر مرحلتك الدراسية', 'Pick your stage')
+                : (missing.contains('grade') ? t('اختر صفك', 'Pick your grade') : null),
+            onChanged: (c, st, g) => _eduChanged(c, st, g, _pendingTrack),
+          ),
+          AppSpace.gapMd,
+          _gender(v),
+        ] else ...[
         _ChipGroup(
-          label: studyFieldLabel('stage'),
-          required: true,
-          error: missing.contains('stage') ? t('اختر مرحلتك الدراسية', 'Pick your stage') : null,
-          children: [
-            for (final s in kStudyStages)
-              AppChoiceChip(
-                key: ValueKey('study.stage.$s'),
-                label: studyStageLabel(s),
-                selected: v.stage == s,
-                onTap: () => widget.onChanged(v.copyWith(stage: s)),
-              ),
-          ],
-        ),
-        AnimatedSize(
-          duration: AppMotion.of(context).base,
-          curve: AppMotion.curve,
-          alignment: Alignment.topCenter,
-          child: grades == 0
-              ? const SizedBox(width: double.infinity)
-              : _ChipGroup(
-                  label: v.stage == 'university' ? t('الفرقة', 'Year') : t('الصف', 'Grade'),
-                  required: true,
-                  error: missing.contains('grade') ? t('اختر صفك', 'Pick your grade') : null,
-                  children: [
-                    for (var g = 1; g <= grades; g++)
-                      AppChoiceChip(
-                        key: ValueKey('study.grade.$g'),
-                        label: studyGradeShort(v.stage!, g),
-                        selected: v.grade == g,
-                        onTap: () => widget.onChanged(v.copyWith(grade: g)),
-                      ),
-                  ],
+            label: studyFieldLabel('stage'),
+            required: true,
+            error: missing.contains('stage') ? t('اختر مرحلتك الدراسية', 'Pick your stage') : null,
+            children: [
+              for (final s in kStudyStages)
+                AppChoiceChip(
+                  key: ValueKey('study.stage.$s'),
+                  label: studyStageLabel(s),
+                  selected: v.stage == s,
+                  onTap: () => widget.onChanged(v.copyWith(stage: s)),
                 ),
-        ),
-        AnimatedSize(
-          duration: AppMotion.of(context).base,
-          curve: AppMotion.curve,
-          alignment: Alignment.topCenter,
-          child: !studyTrackApplies(v.stage, v.grade)
-              ? const SizedBox(width: double.infinity)
-              : _ChipGroup(
-                  label: studyFieldLabel('track'),
-                  required: _req('track'),
-                  error: missing.contains('track') ? t('اختر شعبتك', 'Pick your track') : null,
-                  children: [
-                    for (final tr in kStudyTracks)
-                      AppChoiceChip(
-                        key: ValueKey('study.track.$tr'),
-                        label: studyTrackLabel(tr),
-                        selected: v.track == tr,
-                        onTap: () => widget.onChanged(v.track == tr ? v.copyWith(clearTrack: true) : v.copyWith(track: tr)),
-                      ),
-                  ],
-                ),
-        ),
+            ],
+          ),
+          AnimatedSize(
+            duration: AppMotion.of(context).base,
+            curve: AppMotion.curve,
+            alignment: Alignment.topCenter,
+            child: grades == 0
+                ? const SizedBox(width: double.infinity)
+                : _ChipGroup(
+                    label: v.stage == 'university' ? t('الفرقة', 'Year') : t('الصف', 'Grade'),
+                    required: true,
+                    error: missing.contains('grade') ? t('اختر صفك', 'Pick your grade') : null,
+                    children: [
+                      for (var g = 1; g <= grades; g++)
+                        AppChoiceChip(
+                          key: ValueKey('study.grade.$g'),
+                          label: studyGradeShort(v.stage!, g),
+                          selected: v.grade == g,
+                          onTap: () => widget.onChanged(v.copyWith(grade: g)),
+                        ),
+                    ],
+                  ),
+          ),
+          AnimatedSize(
+            duration: AppMotion.of(context).base,
+            curve: AppMotion.curve,
+            alignment: Alignment.topCenter,
+            child: !studyTrackApplies(v.stage, v.grade)
+                ? const SizedBox(width: double.infinity)
+                : _ChipGroup(
+                    label: studyFieldLabel('track'),
+                    required: _req('track'),
+                    error: missing.contains('track') ? t('اختر شعبتك', 'Pick your track') : null,
+                    children: [
+                      for (final tr in kStudyTracks)
+                        AppChoiceChip(
+                          key: ValueKey('study.track.$tr'),
+                          label: studyTrackLabel(tr),
+                          selected: v.track == tr,
+                          onTap: () => widget.onChanged(v.track == tr ? v.copyWith(clearTrack: true) : v.copyWith(track: tr)),
+                        ),
+                    ],
+                  ),
+          ),
+        ],
         AppSpace.gapXs,
         if (_more)
           ...optional

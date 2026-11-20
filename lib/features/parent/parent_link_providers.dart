@@ -11,6 +11,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 
 import 'package:flutter_education_app/features/data_lab/data_lab_models.dart' show DlProfile;
+import 'parent_consent.dart' show kConsentVersion;
 import 'parent_widgets.dart';
 
 /// A child's analytics profile — the same one the student sees (progress, attendance, exams, the marks the
@@ -156,20 +157,60 @@ class ParentLinkProvider extends BaseProvider {
   }
 
   /// Returns the request (status approved | pending) or null (errorMessage holds the reason).
+  /// The server's code of the last failed [redeem] / [giveConsent] (`consent_required` asks the screen for consent).
+  String? lastErrorCode;
+
   Future<Map<String, dynamic>?> redeem(
       String code,
       Map<String, String> fieldValues,
-      Map<String, PlatformFile> docs,
-      ) async {
+      Map<String, PlatformFile> docs, {
+      bool consent = false,
+      }) async {
+    lastErrorCode = null;
     final res = await run(() async {
+      try {
+        return await _redeemCall(code, fieldValues, docs, consent);
+      } on ApiException catch (e) {
+        lastErrorCode = e.code ?? e.detail['code']?.toString();
+        rethrow;
+      }
+    });
+    if (res is! Map) return null;
+    await refreshChildrenAndRequests();
+    return Map<String, dynamic>.from(res);
+  }
+
+  /// A linked child under the minor age: record the parent's consent (POST /parent/children/{id}/consent).
+  Future<bool> giveConsent(int studentId) async {
+    lastErrorCode = null;
+    final r = await run(() async {
+      try {
+        return await _api.post('/api/v1/parent/children/$studentId/consent',
+            body: {'accepted': true, 'text_version': kConsentVersion});
+      } on ApiException catch (e) {
+        lastErrorCode = e.code ?? e.detail['code']?.toString();
+        rethrow;
+      }
+    });
+    if (r == null) return false;
+    await refreshChildrenAndRequests();
+    return true;
+  }
+
+  Future<dynamic> _redeemCall(
+      String code, Map<String, String> fieldValues, Map<String, PlatformFile> docs, bool consent) async {
       if (mode != 'advanced') {
-        return await _api.post('/api/v1/parent/link/redeem',
-            body: {'code': code, 'fields': fieldValues});
+        return await _api.post('/api/v1/parent/link/redeem', body: {
+          'code': code,
+          'fields': fieldValues,
+          if (consent) ...{'consent': true, 'text_version': kConsentVersion},
+        });
       }
       final form = FormData();
       form.fields
         ..add(MapEntry('code', code))
-        ..add(MapEntry('fields', jsonEncode(fieldValues)));
+        ..add(MapEntry('fields', jsonEncode(fieldValues)))
+        ..addAll([if (consent) ...[const MapEntry('consent', 'true'), const MapEntry('text_version', kConsentVersion)]]);
       for (final e in docs.entries) {
         // file_picker v12+: bytes are read from the PlatformFile (no `withData`).
         List<int>? bytes;
@@ -187,10 +228,6 @@ class ParentLinkProvider extends BaseProvider {
       } on DioException catch (e) {
         throw ApiException.from(e);
       }
-    });
-    if (res is! Map) return null;
-    await refreshChildrenAndRequests();
-    return Map<String, dynamic>.from(res);
   }
 
   Future<bool> cancel(int id) async {

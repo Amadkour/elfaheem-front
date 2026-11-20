@@ -1,6 +1,7 @@
 library;
 
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show StudySettings;
+import 'package:flutter_education_app/features/auth/register_levels_step.dart' show PendingTeachingLevels;
 import 'package:flutter_education_app/features/messaging/chat/chat_store.dart' show ChatHub;
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_access.dart';
@@ -1148,6 +1149,7 @@ class MyAuthProvider extends BaseProvider {
     final refresh = data['refresh_token'] as String?;
     if (access != null && refresh != null) {
       await _api.saveTokens(access: access, refresh: refresh); // secure storage (lib/core/token_storage.dart)
+      PendingTeachingLevels.flush(); // a teacher's levels chosen while registering (no-op without them)
     }
   }
 }

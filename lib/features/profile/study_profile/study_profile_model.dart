@@ -13,6 +13,7 @@
 library;
 
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/edu/edu_catalog.dart' show EduStage;
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 
@@ -134,6 +135,11 @@ class StudyProfile {
     this.city,
     this.parentPhone,
     this.dob,
+    this.countryCode,
+    this.stageId,
+    this.gradeId,
+    this.areaId,
+    this.gender,
   });
 
   final String? stage;
@@ -146,6 +152,12 @@ class StudyProfile {
 
   /// YYYY-MM-DD (users.dob).
   final String? dob;
+
+  /// The catalog ids (Learning Hub, CONTRACT §3): the country, the stage and grade rows, the area (a governorate or a
+  /// city) and `m` / `f`. Sent instead of the old keys when a stage id is set; the server writes the old keys itself.
+  final String? countryCode;
+  final int? stageId, gradeId, areaId;
+  final String? gender;
 
   static const empty = StudyProfile();
 
@@ -166,21 +178,83 @@ class StudyProfile {
       city: _s(j['city']),
       parentPhone: _s(j['parent_phone']),
       dob: _s(j['dob']),
+      countryCode: _s(j['country_code']),
+      stageId: _n(j['stage_id']),
+      gradeId: _n(j['grade_id']),
+      areaId: _n(j['area_id']),
+      gender: _s(j['gender']),
     );
   }
 
+  static int? _n(dynamic v) => v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}'));
+
   /// The body of PUT /me/study-profile (every field: null clears it). [withDob] false for the sign-up, whose form
   /// sends the date of birth itself.
-  Map<String, dynamic> toJson({bool withDob = true}) => {
+  Map<String, dynamic> toJson({bool withDob = true}) {
+    final byIds = stageId != null;
+    return {
+      if (byIds) ...{
+        'country_code': countryCode,
+        'stage_id': stageId,
+        'grade_id': gradeId,
+        'area_id': areaId,
+        'gender': gender,
+        'track': track,
+      } else ...{
         'stage': stage,
         'grade': grade,
         'track': studyTrackApplies(stage, grade) ? track : null,
-        'school_name': schoolName,
         'governorate': governorate,
         'city': governorate == 'other' ? city : null,
-        'parent_phone': parentPhone,
-        if (withDob) 'dob': dob,
-      };
+        if (gender != null) 'gender': gender,
+      },
+      'school_name': schoolName,
+      'parent_phone': parentPhone,
+      if (withDob) 'dob': dob,
+    };
+  }
+
+  /// The catalog choice (country, stage, grade, track, area, gender) replaced as one; the old keys follow the ids.
+  StudyProfile withEdu({
+    String? countryCode,
+    int? stageId,
+    int? gradeId,
+    String? track,
+    int? areaId,
+    String? gender,
+    String? stageKey,
+    int? gradeNumber,
+  }) =>
+      StudyProfile(
+        stage: stageKey ?? stage,
+        grade: gradeNumber,
+        track: track,
+        schoolName: schoolName,
+        governorate: governorate,
+        city: city,
+        parentPhone: parentPhone,
+        dob: dob,
+        countryCode: countryCode,
+        stageId: stageId,
+        gradeId: gradeId,
+        areaId: areaId,
+        gender: gender,
+      );
+
+  /// What is still missing when the stage and grade come from the catalog [stages] (ids), else the old rule.
+  List<String> missingIn(List<EduStage>? stages, List<String> required) {
+    if (stages == null || stages.isEmpty) return missing(required);
+    EduStage? st;
+    for (final s in stages) {
+      if (s.id == stageId) st = s;
+    }
+    if (st == null) return const ['stage', 'grade'];
+    return [
+      if (st.hasGrades && st.grades.isNotEmpty && gradeId == null) 'grade',
+      for (final f in required)
+        if (f == 'governorate' ? areaId == null : (f == 'track' ? false : valueOf(f) == null)) f,
+    ];
+  }
 
   StudyProfile copyWith({
     String? stage,
@@ -210,6 +284,11 @@ class StudyProfile {
       city: city ?? this.city,
       parentPhone: parentPhone ?? this.parentPhone,
       dob: dob ?? this.dob,
+      countryCode: countryCode,
+      stageId: stageId,
+      gradeId: gradeId,
+      areaId: areaId,
+      gender: gender,
     );
   }
 
@@ -225,6 +304,11 @@ class StudyProfile {
       city: field == 'city' ? v : city,
       parentPhone: field == 'parent_phone' ? v : parentPhone,
       dob: field == 'dob' ? v : dob,
+      countryCode: countryCode,
+      stageId: stageId,
+      gradeId: gradeId,
+      areaId: areaId,
+      gender: gender,
     );
   }
 
@@ -275,10 +359,15 @@ class StudyProfile {
       other.governorate == governorate &&
       other.city == city &&
       other.parentPhone == parentPhone &&
-      other.dob == dob;
+      other.dob == dob &&
+      other.countryCode == countryCode &&
+      other.stageId == stageId &&
+      other.gradeId == gradeId &&
+      other.areaId == areaId &&
+      other.gender == gender;
 
   @override
-  int get hashCode => Object.hash(stage, grade, track, schoolName, governorate, city, parentPhone, dob);
+  int get hashCode => Object.hash(stage, grade, track, schoolName, governorate, city, parentPhone, dob, countryCode, stageId, gradeId, areaId, gender);
 }
 
 /// The super admin's settings (also in the public auth policy).
@@ -334,6 +423,8 @@ class StudyProfileView {
 /// The server's `study_*` codes in the person's language (the server's own text is Arabic + `message_en`).
 String studyErrorText(Object error) {
   final e = ApiException.from(error);
+  final known = eduErrorText(e.code ?? e.detail['code']?.toString());
+  if (known != null) return known;
   final body = e.body;
   final detail = body is Map && body['detail'] is Map ? body['detail'] as Map : null;
   final en = detail?['message_en']?.toString();
@@ -369,3 +460,15 @@ class StudyProfileApi {
 
   static Map<String, dynamic> _map(dynamic r) => r is Map ? Map<String, dynamic>.from(r) : <String, dynamic>{};
 }
+
+/// The Learning Hub's 422 codes on the study profile, the teaching levels and the parent link, in the person's
+/// language (null for any other code).
+String? eduErrorText(String? code) => switch (code) {
+      'edu_grade_mismatch' => t('هذا الصف لا يتبع المرحلة المختارة', 'That grade does not belong to the chosen stage'),
+      'edu_stage_invalid' => t('المرحلة المختارة غير متاحة', 'That stage is not available'),
+      'edu_area_invalid' => t('المنطقة المختارة غير صحيحة', 'That area is not valid'),
+      'study_grade_required' => t('اختر الصف أو الفرقة', 'Pick your grade or year'),
+      'consent_required' => t('يلزم موافقة ولي الأمر على ربط هذا الحساب', "A parent's consent is needed to link this account"),
+      'consent_version_required' => t('تعذّر تسجيل الموافقة، حاول مرة أخرى', 'The consent could not be recorded, try again'),
+      _ => null,
+    };
