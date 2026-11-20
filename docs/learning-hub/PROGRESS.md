@@ -13,7 +13,7 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | 2.2 | Seeds EG.json, SA.json | B2 | done | EG + SA seeds hash-loaded by the seeder |
 | 2.3 | Front: `EduCatalog` + pickers | F1 | done | EduCatalog (no If-None-Match) + pickers |
 | 2.4 | Front: super admin levels page | F2 | done | levels page under admin.edu_levels |
-| 2.R | Review: data model + seeds | planner | needs fixes | 8 must-fix in "2.R review" below; re-check items 1, 2, 4 on PostgreSQL |
+| 2.R | Review: data model + seeds | planner | verified | all 8 fixes confirmed in back 9e61711 + front 4fabbd1e (diffs read; tests as the lead reported) |
 | 3.1 | Back: profile ids, teaching levels, consent, course fields (0103) | B3 | todo | |
 | 3.2 | Front: registration capture (student, teacher, parent) | F3 | todo | |
 | 3.3 | Front: course form + profile block | F4 | todo | |
@@ -92,3 +92,5 @@ Front, `_wt/lh-front`:
 ### Contract changes made for Phase 3 (CONTRACT §3)
 Profile widths moved to 0102; 0103 backfills the ids from the old keys; legacy keys resolve against the profile's country; `GET /edu/countries` gains `minor_age`, `phone_code`, `contact_whatsapp`; a stage without grades takes `grade_id` NULL; the app never sends `If-None-Match`; the ref table / column names are fixed by `edu_service.REFS`.
 
+### 2.R re-check (planner, 2026-11-20): verified
+All 8 must-fix items are in back 9e61711 and front 4fabbd1e as written. The nice-to-have list stays open. PLAN.md Phase 3 briefs updated to CONTRACT §3 (B3 also owns `features/edu/` for the countries fields and the old-key counts; F3 gets the `contact_only` hand-off and the country rule).
