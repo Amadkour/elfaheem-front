@@ -69,6 +69,8 @@ import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart'
 import 'package:flutter_education_app/features/exams/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
 import 'landing/admin_landing_page.dart' show AdminLandingPage, landingTitle;
 import 'landing/landing_admin_api.dart' show kLandingAdminFeatureKey;
+import 'modules/admin_modules_page.dart' show AdminModulesPage;
+import 'modules/module_settings_api.dart' show kAdminModulesFeatureKey;
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -331,6 +333,20 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           colors: AdminPalette.green,
           featureKey: isSuper ? kAdminStoreFeatureKey : kStoreManageFeatureKey,
           onTap: () => push(StoreAdminHubPage(superAdmin: isSuper)),
+        ),
+        // module switches (learning hub phase 6, D-1348): store / games / quran rule flags per platform, country or
+        // organization, and each country's student tabs; super admin only
+        AdminService(
+          labelKey: 'admin_modules',
+          descKey: 'admin_modules_d',
+          label: t('مفاتيح الوحدات', 'Module switches'),
+          desc: t('قواعد المتجر والألعاب والقرآن لكل المنصة أو لدولة أو لمؤسسة، وتبويبات الطلاب لكل دولة',
+              'Store, games and Quran rules for the platform, a country or an organization, and each country\'s student tabs'),
+          icon: Icons.tune_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: kAdminModulesFeatureKey,
+          visible: isSuper,
+          onTap: () => push(const AdminModulesPage()),
         ),
         AdminService(
           labelKey: 'admin_points',
