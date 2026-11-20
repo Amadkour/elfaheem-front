@@ -244,13 +244,20 @@ class CategoriesProvider extends BaseProvider {
   /// The guest search's "explore" filter: null = off (every other caller); else 'any' / 'online' / 'center'.
   String? _exploreMode;
   String? get exploreMode => _exploreMode;
-  void setExploreMode(String? mode) => _exploreMode = mode;
+  void setExploreMode(String? mode, {Map<String, dynamic>? filters}) {
+    _exploreMode = mode;
+    _exploreFilters = mode == null ? const {} : {...?filters};
+  }
+
+  /// The join flow's filters (CONTRACT §4: country, stage_id, grade_id, delivery, area_id), sent with the explore
+  /// mode only.
+  Map<String, dynamic> _exploreFilters = const {};
 
   /// `mode` and, with a category, its sub-categories too (a subject lists its levels' courses). `any` / `center`
   /// widen the server's default personal scope to the whole public catalogue, so the list matches the landing's count.
   Map<String, dynamic> get _explore => _exploreMode == null
       ? const {}
-      : {'mode': _exploreMode, if (_selectedId != null) 'with_subcategories': true};
+      : {'mode': _exploreMode, if (_selectedId != null) 'with_subcategories': true, ..._exploreFilters};
 
   /// The mode's side on GET /courses (the server's default is the personal account). An organization's side is
   /// for its members only, so that request goes signed in; the personal catalogue stays public (guests). The guest

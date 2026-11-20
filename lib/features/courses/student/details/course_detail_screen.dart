@@ -28,6 +28,7 @@ import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart'
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_tab.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppNavigator;
 import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/core/routing/pending_intent.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/profile/compalints/new_complaint_screen.dart';
 import 'package:flutter_education_app/features/profile/public_profile/public_profile_page.dart' show openPersonProfile;
@@ -63,7 +64,11 @@ void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
 /// course details (enrolled state, price, etc). Shared by the enroll button
 /// and by the payment-status banner's "send it again" action.
 Future<void> _openEnrollment(BuildContext context, CourseModel course) async {
-  if (!GuestGuard.ensure(context, reasonKey: 'guest_reason_enroll')) return;
+  // a guest: the login sheet, and this course's checkout opens again right after the sign-in (D-1324)
+  if (!GuestGuard.ensure(context,
+      reasonKey: 'guest_reason_enroll', intent: PendingIntent(kind: PendingIntentKind.bookCourse, id: course.id))) {
+    return;
+  }
   await Navigator.of(context).push(MaterialPageRoute(builder: (_) => EnrollmentScreen(course: course)));
   if (context.mounted) {
     await context.read<CourseDetailProvider>().refresh();
@@ -90,9 +95,12 @@ void _openSupport(BuildContext context, CourseModel course) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class CourseDetailScreen extends StatefulWidget {
-  const CourseDetailScreen({super.key, required this.course, this.profileHub, this.initialTab});
+  const CourseDetailScreen({super.key, required this.course, this.profileHub, this.initialTab, this.openCheckout = false});
 
   final CourseModel course;
+
+  /// Opens the checkout once the course has loaded (a resumed [PendingIntent], D-1324).
+  final bool openCheckout;
 
   /// The course profile already loaded (opened from an old profile entry point); null → loaded on demand.
   final CourseProfileHub? profileHub;
@@ -129,8 +137,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     _provider.block = null; // a block from the previous course page must not flash here
     _provider.pageState = null; // nor the previous course's unread count
     _provider.addListener(_seedHub);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _provider.init(widget.course);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _provider.init(widget.course);
+      // a guest's "book this course" resumed after the sign-in (D-1324): its checkout, unless already enrolled
+      final c = _provider.course;
+      if (widget.openCheckout && mounted && _provider.block == null && !c.isEnrolled && c.id == widget.course.id) {
+        await _openEnrollment(context, c);
+      }
     });
   }
 

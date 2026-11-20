@@ -26,6 +26,7 @@ import 'auth_widgets.dart';
 import 'register_levels_step.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart';
 import 'package:flutter_education_app/core/edu/edu_countries.dart';
+import 'package:flutter_education_app/features/onboarding/join/join_draft.dart';
 import 'login_screen.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -67,9 +68,19 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
   }
 
   Future<void> _loadStages() async {
-    final country = pickEduCountry(await EduCountries.load(), null)?.code ?? 'EG';
+    // the join flow's answers (D-1323): its country and the levels picked there, sent with the profile below
+    final join = await JoinDraft.load();
+    final fromJoin = join != null && join.isTeacher ? join : null;
+    final country = pickEduCountry(await EduCountries.load(), fromJoin?.country)?.code ?? fromJoin?.country ?? 'EG';
     final cat = await EduCatalog.instance.load(country);
-    if (mounted && cat != null) setState(() => _stages = cat.stages);
+    if (!mounted || cat == null) return;
+    setState(() {
+      _stages = cat.stages;
+      if (_levels.isEmpty && fromJoin != null) {
+        final ids = {for (final s in cat.stages) s.id};
+        _levels = [for (final l in fromJoin.teachingLevels) if (ids.contains(l.stageId)) l];
+      }
+    });
   }
 
   @override
@@ -101,6 +112,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
 
     if (!mounted) return;
     if (success) {
+      JoinDraft.clear(); // the levels are saved with the profile now
       setState(() => _profileSubmitted = true);
       // Profile now exists server-side, so the document endpoints will work.
       await docProvider.loadOverview(email);

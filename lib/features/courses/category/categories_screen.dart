@@ -38,12 +38,15 @@ const double _kWideBreakpoint = 840;
 const double _kSideWidth = 280;
 
 class CategoriesScreen extends StatefulWidget {
-  const CategoriesScreen({super.key, this.selectedId, this.mode});
+  const CategoriesScreen({super.key, this.selectedId, this.mode, this.filters});
 
   final String? selectedId;
 
   /// The guest search's filter ('any' / 'online' / 'center'); null for every other caller.
   final String? mode;
+
+  /// The join flow's search filters (CONTRACT §4), sent with [mode].
+  final Map<String, dynamic>? filters;
 
   @override
   State<CategoriesScreen> createState() => _CategoriesScreenState();
@@ -55,7 +58,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<CategoriesProvider>().setExploreMode(widget.mode);
+    context.read<CategoriesProvider>().setExploreMode(widget.mode, filters: widget.filters);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CategoriesProvider>().fetchCategories();
     });

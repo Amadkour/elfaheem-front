@@ -22,6 +22,7 @@ import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/routing/pending_intent.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/login_screen.dart';
 import 'package:flutter_education_app/features/auth/register_screen.dart';
@@ -69,15 +70,22 @@ void startGuest(NavigatorState nav) {
 class GuestGuard {
   GuestGuard._();
 
-  /// `true` → the caller may continue. `false` → guest: the login sheet is already shown.
+  /// `true` → the caller may continue. `false` → guest: the login sheet is already shown. [intent] is what the guest
+  /// was about to do (book this course …): written as the [PendingIntent] when they choose Log in / Create account,
+  /// and resumed once after the sign-in (D-1324).
   static bool ensure(
     BuildContext context, {
     String reasonKey = 'guest_reason_generic',
+    PendingIntent? intent,
   }) {
     if (!GuestState.active) return true;
+    _intent = intent;
     _showSheet(context, reasonKey);
     return false;
   }
+
+  /// The intent of the login sheet on screen; saved only when the guest leaves for login / register.
+  static PendingIntent? _intent;
 
   /// `onPressed: () => GuestGuard.run(context, doThing)`.
   /// Returns Future<void> so it fits both VoidCallback and Future<void> Function().
@@ -85,8 +93,9 @@ class GuestGuard {
     BuildContext context,
     FutureOr<void> Function() action, {
     String reasonKey = 'guest_reason_generic',
+    PendingIntent? intent,
   }) async {
-    if (!ensure(context, reasonKey: reasonKey)) return;
+    if (!ensure(context, reasonKey: reasonKey, intent: intent)) return;
     await action();
   }
 
@@ -102,6 +111,9 @@ class GuestGuard {
   static void goToRegister() => _leaveTo(const RegisterScreen(), '/register');
 
   static void _leaveTo(Widget page, String name) {
+    final intent = _intent;
+    _intent = null;
+    if (intent != null) unawaited(PendingIntent.save(intent)); // before the sign-in page: survives a reload too
     GuestState.instance.stop();
     _rootNavigator()?.pushAndRemoveUntil(
       MaterialPageRoute(settings: RouteSettings(name: name), builder: (_) => page),
@@ -125,6 +137,7 @@ class GuestGuard {
       );
     } finally {
       _sheetOpen = false;
+      _intent = null; // "keep browsing" (Log in / Create account took it already)
     }
   }
 

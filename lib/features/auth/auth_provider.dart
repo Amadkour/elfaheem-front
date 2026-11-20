@@ -26,6 +26,9 @@ import 'mfa.dart';
 import 'teacher_onboarding_token.dart';
 import 'username.dart';
 import 'package:flutter_education_app/core/personal_access.dart';
+import 'package:flutter/material.dart' show MaterialPageRoute;
+import 'package:flutter_education_app/core/routing/pending_intent.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart' show CoursePageLoader;
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -1085,9 +1088,33 @@ class MyAuthProvider extends BaseProvider {
     notifyListeners();
   }
 
+  // ── A guest's pending intent (D-1324) ─────────────────────────────────────────
+
+  /// Called by the first signed-in page (main.dart's route guard: after a sign-in, a finished registration and a
+  /// page reload alike): what the person tried as a guest ("book this course") opens once, on top of [nav] — the
+  /// course page and, for a student, its checkout. False when nothing was pending (or not signed in).
+  Future<bool> resumePendingIntent(NavigatorState nav) async {
+    if (!isAuthenticated) return false;
+    final student = isStudent;
+    return PendingIntent.resume((i) async {
+      switch (i.kind) {
+        case PendingIntentKind.bookCourse:
+          final id = int.tryParse(i.id);
+          if (id == null || !nav.mounted) return;
+          nav.push(MaterialPageRoute<void>(
+            settings: RouteSettings(name: '/courses/$id'),
+            builder: (_) => CoursePageLoader(courseId: id, openCheckout: student),
+          ));
+        case PendingIntentKind.buyStoreItem:
+          break; // the store arrives in Phase 5 (CONTRACT §5); until then the intent is dropped
+      }
+    });
+  }
+
   // ── Logout ────────────────────────────────────────────────────────────────────
 
   Future<void> logout() async {
+    await PendingIntent.clear(); // a guest's "book this course" never carries over to the next person
     ViewAsState.instance.stop(); // never carry view-as into the next session
     AppModeController.instance.reset(); // Organization/Individual mode belongs to the user who chose it
     EntitiesApi.instance.invalidate(); // a cached detail or access answer is this user's, never the next one's (D-290)

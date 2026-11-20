@@ -55,6 +55,8 @@ import 'features/auth/register_screen.dart';
 import 'features/org/org_application_screen.dart';
 import 'features/onboarding/explore_entry_page.dart';
 import 'features/onboarding/guest_search_screen.dart';
+import 'features/onboarding/join/join_flow_screen.dart';
+import 'features/onboarding/join/join_route.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/onboarding/onboarding_store.dart';
 import 'features/onboarding/start_route.dart';
@@ -575,7 +577,7 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
       exportLinkTokenFromRoute(r) != null ||
       DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null || AppLink.parse(r) != null ||
       const {'link.org_join', 'link.org_invitation', 'link.onboard'}.contains(AppRoutes.match(r)?.id) ||
-      ExploreRequest.matches(r) || isInstitutionRoute(r) ||
+      ExploreRequest.matches(r) || isInstitutionRoute(r) || JoinRequest.matches(r) ||
       // /register?role=teacher (the landing's teacher card) is a sign-in page: signed out only, like /register
       (!context.read<MyAuthProvider>().isAuthenticated && registerRoleFromRoute(r) != null);
 
@@ -905,8 +907,13 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
     if (ExploreRequest.matches(settings.name)) {
       return _fade(ExploreEntryPage(request: ExploreRequest.parse(settings.name)), const RouteSettings(name: '/explore'));
     }
-    if (isInstitutionRoute(settings.name)) {
+    if (isInstitutionRoute(settings.name) || JoinRequest.isOrg(settings.name)) {
       return _fade(const OrgApplicationScreen(), const RouteSettings(name: '/start/institution'));
+    }
+    // the landing's Student / Teacher / Parent buttons (D-1323): the join flow, signed in or out, web and apps alike
+    if (JoinRequest.matches(settings.name)) {
+      final join = JoinRequest.parse(settings.name);
+      return _fade(JoinFlowScreen(role: join.role, lang: join.lang), settings);
     }
     final regRole = registerRoleFromRoute(settings.name);
     if (regRole != null) {
@@ -1235,6 +1242,10 @@ class _GuardState extends State<_Guard> {
       DeepLinkService.instance.consumePending(); // link opened while logged out
       ExportLinkPending.consume(Navigator.of(context)); // an export share link, likewise
       SignInReturn.consume(); // any other page opened by URL while signed out (D-170)
+      if (!ViewAsState.active) {
+        // a guest's "book this course" (D-1324): the course and its checkout, once, also after a page reload
+        context.read<MyAuthProvider>().resumePendingIntent(Navigator.of(context));
+      }
       if (!ViewAsState.active) {
         AdminMessageDialogs.checkPending(); // dialogs sent by admins
       }
