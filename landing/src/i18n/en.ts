@@ -28,6 +28,13 @@ export const en: Dict = {
     modes: { any: 'anywhere', online: 'online', center: 'at a center' },
     cta: 'Show matching courses',
     browse: 'Browse all courses',
+    join: {
+      label: 'Join NextBrain',
+      student: 'Join as a student',
+      teacher: 'Join as a teacher',
+      parent: 'Parent',
+      org: 'Add your organization',
+    },
     resultEmpty: '—',
     resultLine: '{courses} · {teachers}',
     courses: { one: '1 course', two: '{n} courses', few: '{n} courses', many: '{n} courses', other: '{n} courses' },

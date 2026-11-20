@@ -25,6 +25,13 @@ export const ar = {
     modes: { any: 'بأي طريقة', online: 'أونلاين', center: 'في مركز تعليمي' },
     cta: 'اعرض الدورات المناسبة',
     browse: 'تصفّح كل الدورات',
+    join: {
+      label: 'انضم إلى نكست برين',
+      student: 'انضم كطالب',
+      teacher: 'انضم كمعلم',
+      parent: 'ولي أمر',
+      org: 'أضف مؤسستك',
+    },
     resultEmpty: '—',
     resultLine: '{courses} · {teachers}',
     courses: { one: 'دورة واحدة', two: 'دورتان', few: '{n} دورات', many: '{n} دورة', other: '{n} دورة' },
