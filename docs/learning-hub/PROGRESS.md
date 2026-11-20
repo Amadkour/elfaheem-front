@@ -9,10 +9,10 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | 1.2 | Migration 0101: `nid_kind` width + literal audit | A1 | done | back e2c804f, no other overflow |
 | 1.3 | Teacher + staff types pass; where 500 refs are logged | A1 | done | teacher+staff pass on PG; errors: `docker logs edu_api 2>&1 \| grep -A40 "ref=<REF>"` |
 | 1.R | Review: traceback + migration | planner | verified | lead checked; hotfix pushed to production + backend deploy 2026-11-20 |
-| 2.1 | Back: edu tables, seeder, public + admin routes (0102) | B1 | doing | |
-| 2.2 | Seeds EG.json, SA.json | B2 | doing | |
-| 2.3 | Front: `EduCatalog` + pickers | F1 | todo | |
-| 2.4 | Front: super admin levels page | F2 | todo | |
+| 2.1 | Back: edu tables, seeder, public + admin routes (0102) | B1 | done | back tables + seeder + routes (0102) with the 2.R fixes |
+| 2.2 | Seeds EG.json, SA.json | B2 | done | EG + SA seeds hash-loaded by the seeder |
+| 2.3 | Front: `EduCatalog` + pickers | F1 | done | EduCatalog (no If-None-Match) + pickers |
+| 2.4 | Front: super admin levels page | F2 | done | levels page under admin.edu_levels |
 | 2.R | Review: data model + seeds | planner | needs fixes | 8 must-fix in "2.R review" below; re-check items 1, 2, 4 on PostgreSQL |
 | 3.1 | Back: profile ids, teaching levels, consent, course fields (0103) | B3 | todo | |
 | 3.2 | Front: registration capture (student, teacher, parent) | F3 | todo | |

@@ -43,7 +43,7 @@ void main() {
     expect(l.level2, 'City or district');
   });
 
-  test('loads once, stores a copy, then revalidates a stored copy with If-None-Match', () async {
+  test('loads once, stores a copy, then refetches without If-None-Match and keeps the stored copy offline', () async {
     var calls = 0;
     final cat = EduCatalog(fetch: (path, {query, headers}) async {
       if (path == '/edu/countries') {
@@ -71,7 +71,7 @@ void main() {
     });
     final b = await cat2.load('EG');
     expect(b!.stages.length, 3);
-    expect(seen?['If-None-Match'], '"edu-EG-7"');
+    expect(seen, isNull);
     expect(b.geoLabels.level1, 'Governorate');
   });
 

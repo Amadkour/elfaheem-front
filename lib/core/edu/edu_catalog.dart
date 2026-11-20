@@ -1,10 +1,10 @@
 // lib/core/edu/edu_catalog.dart — the education catalog (D-1303, docs/learning-hub/CONTRACT.md §2.2): a country's
 // stages > grades (+ tracks) > subjects and its two-level areas (governorate > city), from the public routes
-//   GET /edu/catalog?country=XX   (ETag "edu-XX-<version>", cache 300 s)
+//   GET /edu/catalog?country=XX   (always a full answer: no If-None-Match, the encryption layer wraps each body per session)
 //   GET /edu/countries            (geo_labels: the country's names for the two area levels)
 //   GET /edu/areas?country=XX&parent_id=
 // One load per country per run, an in-memory cache plus a SharedPreferences copy that paints first and is
-// revalidated with If-None-Match. Names follow AppConfig.lang. Every failure degrades to the cached copy or null.
+// replaced by every fetch. Names follow AppConfig.lang. Every failure degrades to the cached copy or null.
 library;
 
 import 'dart:convert';
@@ -234,10 +234,8 @@ class EduCatalog {
       if (raw != null) stored = Map<String, dynamic>.from(jsonDecode(raw) as Map);
     } catch (_) {}
     var current = stored == null ? null : _build(stored);
-    final version = current?.version ?? '';
     try {
-      final body = await _fetch('/edu/catalog',
-          query: {'country': c}, headers: version.isEmpty ? null : {'If-None-Match': '"edu-$c-$version"'});
+      final body = await _fetch('/edu/catalog', query: {'country': c});
       if (body is Map) {
         final j = Map<String, dynamic>.from(body);
         j['geo_labels'] = await _labels(c, stored?['geo_labels']);
@@ -247,7 +245,7 @@ class EduCatalog {
         } catch (_) {}
       }
     } on ApiException {
-      // a 304, offline or a server error: keep what is stored
+      // offline or a server error: keep what is stored
     } catch (_) {}
     if (current != null) _mem[c] = current;
     return current;

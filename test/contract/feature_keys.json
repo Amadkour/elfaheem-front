@@ -17,6 +17,7 @@
  "admin.app_releases",
  "admin.course_students",
  "admin.course_trash",
+ "admin.edu_levels",
  "admin.export_log",
  "admin.fee_policy",
  "admin.help",
