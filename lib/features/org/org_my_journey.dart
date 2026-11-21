@@ -391,7 +391,11 @@ class OrgMyJourneyView extends StatelessWidget {
     this.onOpenRequest,
     this.onAllRequests,
     this.padding = const EdgeInsets.symmetric(horizontal: AppSpace.md),
+    this.asksWaiting = false,
   });
+
+  /// The organization asked me something still open (D-1400, the asks card above): the hero never says "nothing".
+  final bool asksWaiting;
 
   final MyJourney journey;
   final void Function(JourneyStep step)? onAction;
@@ -411,7 +415,7 @@ class OrgMyJourneyView extends StatelessWidget {
     return Padding(
       padding: padding,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        JourneyHero(step: j.top, onAction: j.top?.action == null || onAction == null ? null : () => onAction!(j.top!)),
+        JourneyHero(step: j.top, asksWaiting: asksWaiting, onAction: j.top?.action == null || onAction == null ? null : () => onAction!(j.top!)),
         if (rows.isNotEmpty) ...[
           AppSpace.gapLg,
           _Heading(t('مهم', 'Important'), count: j.importantCount),
@@ -481,22 +485,25 @@ class _Heading extends StatelessWidget {
 
 /// "What should I do now?": the most urgent step, why, by when, and its one button. Nothing → a calm emerald line.
 class JourneyHero extends StatelessWidget {
-  const JourneyHero({super.key, required this.step, this.onAction});
+  const JourneyHero({super.key, required this.step, this.onAction, this.asksWaiting = false});
   final JourneyStep? step;
   final VoidCallback? onAction;
+
+  /// No step, but an ask of the organization waits for my answer (the asks card above the journey).
+  final bool asksWaiting;
 
   @override
   Widget build(BuildContext context) {
     final s = step;
     return AppBlock(
       key: const ValueKey('journey.hero'),
-      tone: s == null ? AppBlockTone.emerald : AppBlockTone.peach,
+      tone: s == null && !asksWaiting ? AppBlockTone.emerald : AppBlockTone.peach,
       padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.md),
       child: Builder(builder: (context) {
         final b = AppBlock.colorsOf(context);
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            Icon(s == null ? Icons.check_circle_rounded : Icons.near_me_rounded, size: AppIconSize.md, color: b.ink),
+            Icon(s == null && !asksWaiting ? Icons.check_circle_rounded : Icons.near_me_rounded, size: AppIconSize.md, color: b.ink),
             const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Semantics(
@@ -507,13 +514,13 @@ class JourneyHero extends StatelessWidget {
             ),
           ]),
           const SizedBox(height: AppSpace.xs),
-          Text(s == null ? t('لا شيء ينتظرك الآن', 'Nothing needs you right now') : s.title,
+          Text(s == null ? (asksWaiting ? t('ردّ على ما طلبته مؤسستك أعلاه', 'Answer what your organization asked above') : t('لا شيء ينتظرك الآن', 'Nothing needs you right now')) : s.title,
               maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
           if (s != null && s.why.isNotEmpty) ...[
             const SizedBox(height: AppSpace.xxs),
             Text(s.why, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: b.muted)),
           ],
-          if (s == null) ...[
+          if (s == null && !asksWaiting) ...[
             const SizedBox(height: AppSpace.xxs),
             Text(t('سنخبرك عند ظهور خطوة جديدة', "We'll tell you when a new step comes up"),
                 maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: b.muted)),
@@ -922,9 +929,12 @@ Future<void> showJourneyContacts(BuildContext context, int orgId, List<JourneyCo
 
 /// The live "My journey" section: draws nothing until the journey arrives, or when it is empty / failed.
 class OrgMyJourney extends StatelessWidget {
-  const OrgMyJourney({super.key, required this.orgId, required this.journey});
+  const OrgMyJourney({super.key, required this.orgId, required this.journey, this.asksWaiting = false});
   final int orgId;
   final MyJourney journey;
+
+  /// An open ask of this organization is shown above (OrgMemberHome): the hero points at it instead of "nothing".
+  final bool asksWaiting;
 
   @override
   Widget build(BuildContext context) {
@@ -938,6 +948,7 @@ class OrgMyJourney extends StatelessWidget {
       onContacts: () => showJourneyContacts(context, orgId, journey.contacts),
       onOpenRequest: (r) => push(GovItemScreen(r.id, orgId: orgId, member: true)),
       onAllRequests: () => push(GovMyItemsPage(orgId: orgId)),
+      asksWaiting: asksWaiting,
     );
   }
 }

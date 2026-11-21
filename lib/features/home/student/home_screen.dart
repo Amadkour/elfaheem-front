@@ -196,8 +196,10 @@ class _HomeScreenState extends State<HomeScreen> {
               final featured = guest || isOrg || home == null
                   ? null
                   : homeContinueCourse(home.coursesProgress, events: [...home.today, ...home.upcoming]);
+              // room above the greeting (as the other homes' HomeA2Layout): at the scroll view's top edge a phone
+              // clipped the title's tall Arabic glyphs
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset),
+                padding: const EdgeInsets.fromLTRB(kStudentHomeInset, AppSpace.sm, kStudentHomeInset, 0),
                 child: StudentGreeting(
                   name: guest ? 'guest_name'.tr : _firstOr(user?.name, 'sir'.tr),
                   subline: guest
@@ -369,7 +371,11 @@ String? orgModeDaySummary(MeHome? home, AppModeController ctl, int liveRooms, [D
   final current = ctl.isOrg ? ctl.current : null;
   if (home == null || current == null) return null;
   final orgId = meHomeInt(meHomeMap(current['organization'])['id'], -1);
-  final entry = home.orgEntry(orgId) ?? current;
+  final base = home.orgEntry(orgId) ?? current;
+  // this organization's open asks (D-1400) wait for my answer too: never 'nothing waiting' beside the asks card
+  final asks = homeAsksOf(home.raw).where((x) => x.orgId == orgId).length;
+  final todo = meHomeMap(base['todo']);
+  final entry = asks == 0 ? base : {...base, 'todo': {...todo, 'total': meHomeInt(todo['total']) + asks}};
   return orgDaySummaryOf(entry, home.todayOf(orgId), home.inboxPreviewOf(orgId), liveRooms, nowUtc);
 }
 

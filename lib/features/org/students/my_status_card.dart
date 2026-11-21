@@ -6,7 +6,7 @@
 //                                the institution shows the student nothing (`student_sees`)
 //   MyStatusCard.fromHome(orgId:, data:)   the same card from the `my_status[]` entry of GET /me/home
 //                                (MeHome.myStatusOf): never a request of its own; null data = nothing drawn
-//   MyStatusView(status:, onRequests:)   plain values (onRequests: the "My requests" pill → MyRequestsPage): enrolment · standing · the flags the student may see · the last change
+//   MyStatusView(status:, onRequests:)   plain values (onRequests: the "Study requests" pill → MyRequestsPage): enrolment · standing · the flags the student may see · the last change
 //                                with its reason and decision number. Staff-only flags never reach it (MyStatus drops
 //                                them again), and nothing here names a staff-only flag.
 library;
@@ -97,7 +97,7 @@ class MyStatusView extends StatelessWidget {
   const MyStatusView({super.key, required this.status, this.onRequests});
   final MyStatus status;
 
-  /// "My requests": ask for a change in the studies and follow the answers (MyRequestsPage); null = no pill.
+  /// "Study requests": ask for a change in the studies and follow the answers (MyRequestsPage); null = no pill.
   final VoidCallback? onRequests;
 
   @override
@@ -161,7 +161,7 @@ class MyStatusView extends StatelessWidget {
             Text(
               [
                 if (last.decisionNo != null) t('قرار رقم ${last.decisionNo}', 'Decision no. ${last.decisionNo}'),
-                if (last.at != null) AppTime.date(last.at!),
+                if (last.at != null) AppTime.date(last.at!.toUtc()), // orgParseUtc is a local wall time: back to UTC first
               ].join(' · '),
               style: AppType.meta(context),
             ),
@@ -169,7 +169,7 @@ class MyStatusView extends StatelessWidget {
         ],
         if (onRequests != null) ...[
           AppSpace.gapSm,
-          AppPill(key: const ValueKey('me.status.requests'), label: t('طلباتي', 'My requests'), icon: Icons.assignment_rounded, onTap: onRequests),
+          AppPill(key: const ValueKey('me.status.requests'), label: t('طلبات الدراسة', 'Study requests'), icon: Icons.assignment_rounded, onTap: onRequests),
         ],
       ]),
     );

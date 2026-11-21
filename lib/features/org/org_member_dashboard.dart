@@ -44,6 +44,7 @@ import 'package:flutter_education_app/features/calendar/calendar_models.dart' sh
 import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart';
 import 'package:flutter_education_app/features/home/student/home_event_rows.dart' show homeAgendaItemOf, homeDaySummaryOf, openHomeEvent;
 import 'package:flutter_education_app/features/home/student/home_live.dart' show HomeLiveNow;
+import 'package:flutter_education_app/features/home/home_application_card.dart' show HomeAsksCard, MeAskItem, homeAsksOf;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/rag/rag_chat_screen.dart';
@@ -430,6 +431,8 @@ class OrgMemberHome extends StatelessWidget {
         final student = [for (final r in (data['roles'] as List? ?? const [])) '$r'].contains('student');
         if (student) OrgJourneyStore.instance.ensure(orgId);
         final journey = student ? OrgJourneyStore.instance.of(orgId) : null;
+        // what this organization asks me (D-1400): the same `asks[]` of /me/home as the personal home, no request
+        final asks = me == null ? const <MeAskItem>[] : [for (final x in homeAsksOf(me.raw)) if (x.orgId == orgId) x];
         return AnimatedSwitcher(
           duration: AppMotion.of(context).base,
           switchInCurve: Curves.easeOutCubic,
@@ -439,9 +442,11 @@ class OrgMemberHome extends StatelessWidget {
             key: ValueKey('org-$orgId'),
             entry: data,
             showHero: showHero,
-            journey: journey == null ? null : OrgMyJourney(orgId: orgId, journey: journey),
+            journey: journey == null ? null : OrgMyJourney(orgId: orgId, journey: journey, asksWaiting: asks.isNotEmpty),
             // student lifecycle (D-1400): my study status from the home payload, no request of its own
             myStatus: student ? me?.myStatusOf(orgId) : null,
+            asks: asks,
+            onOpenAsk: (x) => AppNavigator.openModule('student_ask', targetId: x.id, orgId: x.orgId).then((_) => svc.refresh()),
             showPicker: showPickerInHero && ctl.liveEntries.length > 1,
             today: me?.todayOf(orgId),
             inbox: me?.inboxPreviewOf(orgId),
@@ -553,6 +558,8 @@ class OrgMemberHomeBody extends StatelessWidget {
     this.showHero = true,
     this.journey,
     this.myStatus,
+    this.asks = const [],
+    this.onOpenAsk,
   });
 
   /// The organization banner (name + my role + the switch). The standalone page's header says it already: false there.
@@ -588,6 +595,11 @@ class OrgMemberHomeBody extends StatelessWidget {
 
   /// A student's `my_status[]` entry of this organization (MeHome.myStatusOf): MyStatusCard.fromHome; null = no card.
   final Map<String, dynamic>? myStatus;
+
+  /// This organization's open asks to me (`asks[]` of /me/home, D-1400): they wait for MY answer, so they sit in the
+  /// head, above "My journey" (never folded under "More").
+  final List<MeAskItem> asks;
+  final ValueChanged<MeAskItem>? onOpenAsk;
 
   @override
   Widget build(BuildContext context) {
@@ -662,6 +674,7 @@ class OrgMemberHomeBody extends StatelessWidget {
       else
         AppSpace.gapSm,
       if (liveNow.isNotEmpty) HomeLiveNow(rooms: liveNow, now: now, padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md)),
+      if (asks.isNotEmpty) HomeAsksCard(items: asks, onOpen: onOpenAsk, padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md)),
       if ('${org['status']}' != 'approved')
         Padding(
           padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),

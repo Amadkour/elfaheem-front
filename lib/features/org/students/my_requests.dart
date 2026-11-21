@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show bidiIsolate, ltrIsolate;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -120,7 +121,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
     var docsOk = true;
     if (d.documents.isNotEmpty && item.id > 0) docsOk = (await _api.attach(item.id, d.documents)).ok;
     showAppNotice(docsOk
-        ? t('أُرسل طلبك${item.ref.isEmpty ? '' : ' برقم ${item.ref}'}، وسنبلغك فور البت فيه', 'Your request${item.ref.isEmpty ? '' : ' ${item.ref}'} was sent; you will be told as soon as it is decided')
+        ? t('أُرسل طلبك${item.ref.isEmpty ? '' : ' برقم ${ltrIsolate(item.ref)}'}، وسنبلغك فور البت فيه', 'Your request${item.ref.isEmpty ? '' : ' ${item.ref}'} was sent; you will be told as soon as it is decided')
         : t('أُرسل طلبك، لكن تعذّر إرفاق المستندات؛ أرسلها من صفحة الطلب في الطلبات والشكاوى', 'Your request was sent, but the documents could not be attached; send them from the request in Requests & complaints'),
         error: !docsOk);
     if (sheet.mounted) Navigator.of(sheet).pop(true);
@@ -150,7 +151,8 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
   Widget build(BuildContext context) => BasePage(
         useWebCard: true,
         width: AppWidth.reading,
-        appBar: ScreenAppBar(title: t('طلباتي', 'My requests')),
+        // 'Study requests', never a second 'My requests' (the member home's tile opens the general requests)
+        appBar: ScreenAppBar(title: t('طلبات الدراسة', 'Study requests')),
         child: MyRequestsView(
           data: _data,
           loading: _loading,
@@ -295,7 +297,8 @@ class MyRequestCard extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(r.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
               if (r.ref.isNotEmpty || created != null)
-                Text([if (r.ref.isNotEmpty) r.ref, if (created != null) AppTime.date(created)].join(' · '),
+                // the ref (Latin letters and digits) and the date are isolated: in Arabic they never swap places or split
+                Text([if (r.ref.isNotEmpty) ltrIsolate(r.ref), if (created != null) bidiIsolate(AppTime.date(created.toUtc()))].join(' · '),
                     maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
               const SizedBox(height: AppSpace.xxs),
               AppStatusBadge(label: requestStageLabel(r.stage), tone: requestStageTone(r.stage), dense: true, dot: true),
@@ -306,7 +309,7 @@ class MyRequestCard extends StatelessWidget {
           AppSpace.gapSm,
           AppStatusPath.request(
             reached: requestPathReached(r.stage),
-            times: [created == null ? null : AppTime.date(created), null, decided == null ? null : AppTime.date(decided)],
+            times: [created == null ? null : AppTime.date(created.toUtc()), null, decided == null ? null : AppTime.date(decided.toUtc())],
           ),
         ],
         if (r.stage == 'council') ...[
