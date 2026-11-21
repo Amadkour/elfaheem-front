@@ -75,6 +75,8 @@
   "org.insights",
   "org.member",
   "org.members",
+  "org.students",
+  "org.students.file",
   "org.onboarding",
   "org.onboarding.import",
   "org.onboarding.types",

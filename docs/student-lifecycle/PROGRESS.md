@@ -13,8 +13,8 @@ On resume: read this file and continue from the first step that is not `done`.
 | A | Inspect the current system → INVENTORY.md + status table | done | INVENTORY.md; status table goes in PLAN.md |
 | B | Research → RESEARCH.md | done | 24 sources; unverified items listed in it |
 | C | PLAN.md + grouped questions, STOP for approval | done | PLAN.md (Fable). Owner 2026-11-21: approved, the DEFAULT answer for all 16 questions in §7 |
-| P0 | Contract: CONTRACT.md + D-1400..D-1412 in DECISIONS.md | in progress | |
-| P1 | Students section, unified file, timeline, open logging (0110) | todo | |
+| P0 | Contract: CONTRACT.md + D-1400..D-1412 in DECISIONS.md | done | front 25d3ee03 (docs); back d21994b (catalog: module, 4 roles, 6 kill switches; rbac + roles e2e pass) |
+| P1 | Students section, unified file, timeline, open logging (0110) | in progress | wave: B (back), F1 (list + api), F2 (file page). Lead after: main.py check, navigator/dashboard wiring, help + guide, FLUTTER_API_CHANGES, contract snapshots, real-app check, Fable review |
 | P2 | Statuses, decisions, undo, decision matrix | todo | |
 | P3 | Add Student completed (types, entry policy, inline import fix, missing-data sheet, student number; 0112) | todo | |
 | P4 | Ask the student, meetings, complaint flow (0111) | todo | |

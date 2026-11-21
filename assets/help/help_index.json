@@ -462,6 +462,22 @@
    "org_member"
   ],
   [
+   "org.students.file",
+   "org_admin"
+  ],
+  [
+   "org.students.file",
+   "org_member"
+  ],
+  [
+   "org.students",
+   "org_admin"
+  ],
+  [
+   "org.students",
+   "org_member"
+  ],
+  [
    "org.timetable",
    "org_admin"
   ],
