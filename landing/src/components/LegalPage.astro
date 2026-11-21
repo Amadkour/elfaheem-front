@@ -195,6 +195,7 @@ const jsonLd = [
       </div>
       <nav aria-label={L.kicker}>
         <a href={`/${lang}/`}>{L.home}</a>
+        <a href={`/${lang}/download/`}>{lang === 'ar' ? 'التحميل' : 'Download'}</a>
         <a href={`/${lang}/privacy/`} aria-current={doc === 'privacy' ? 'page' : undefined}>{lang === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}</a>
         <a href={`/${lang}/terms/`} aria-current={doc === 'terms' ? 'page' : undefined}>{lang === 'ar' ? 'شروط الاستخدام' : 'Terms of Service'}</a>
         <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>

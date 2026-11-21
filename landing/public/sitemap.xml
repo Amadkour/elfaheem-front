@@ -36,4 +36,16 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/terms/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/terms/"/>
   </url>
+  <url>
+    <loc>https://nextbrain.site/ar/download/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/download/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/download/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/en/download/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/en/download/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/download/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/download/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/en/download/"/>
+  </url>
 </urlset>

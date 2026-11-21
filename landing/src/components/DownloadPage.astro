@@ -1,0 +1,589 @@
+---
+// The downloads page (Learning Hub Phase 9, L2): /ar/download/ and /en/download/. The page itself is static; the
+// list of files comes from the SAME releases manifest the app reads (`/releases/releases.json`, D-137), fetched in
+// the browser by src/scripts/download.ts. That script picks this device, recommends its file and fills one card per
+// platform (version, size, date, SHA-256). A platform with no manifest entry says "coming soon"; a manifest that
+// cannot be read says so plainly (never a guessed link). The install guides below are plain HTML, so they are
+// readable without the script.
+import Base from '../layouts/Base.astro';
+import { APP, RELEASES, jsonForScript } from '../config';
+import logo from '../assets/logo_mark.png';
+import { Image } from 'astro:assets';
+
+interface Props {
+  lang: 'ar' | 'en';
+  preload: string[];
+}
+const { lang, preload } = Astro.props;
+const other = lang === 'ar' ? 'en' : 'ar';
+const path = `/${lang}/download/`;
+const year = new Date().getFullYear();
+
+const L = {
+  ar: {
+    name: 'نكست برين',
+    title: 'حمّل تطبيق نكست برين',
+    description: 'حمّل تطبيق نكست برين لأندرويد وويندوز وماك ولينكس، مع رقم الإصدار والحجم وبصمة SHA-256 لكل ملف وخطوات التثبيت.',
+    kicker: 'التحميل',
+    lead: 'نختار لك الملف المناسب لجهازك. كل ملف معه رقم الإصدار والحجم وتاريخ النشر وبصمة {sha} للتحقق منه.',
+    skip: 'انتقل إلى المحتوى',
+    openApp: 'افتح التطبيق',
+    switchLabel: 'English',
+    home: 'الرئيسية',
+    all: 'كل الأنظمة',
+    guides: 'خطوات التثبيت',
+    guidesLead: 'الملفات غير موقّعة من المتاجر بعد، لذلك قد يحذّرك النظام عند أول تشغيل. هذه خطوات كل نظام.',
+    rights: 'جميع الحقوق محفوظة',
+    by: 'نكست برين من DoubleY',
+    noscript: 'تحتاج هذه القائمة إلى تفعيل JavaScript. يمكنك دائمًا استخدام التطبيق من المتصفح.',
+  },
+  en: {
+    name: 'NextBrain',
+    title: 'Download the NextBrain app',
+    description: 'Download NextBrain for Android, Windows, macOS and Linux, with the version, size and SHA-256 of every file and the install steps.',
+    kicker: 'Download',
+    lead: 'We pick the right file for your device. Every file lists its version, size, release date and {sha} so you can check it.',
+    skip: 'Skip to content',
+    openApp: 'Open the app',
+    switchLabel: 'العربية',
+    home: 'Home',
+    all: 'All platforms',
+    guides: 'Install guides',
+    guidesLead: 'The files are not store-signed yet, so your system may warn you the first time. Here is what to do on each one.',
+    rights: 'All rights reserved',
+    by: 'NextBrain by DoubleY',
+    noscript: 'This list needs JavaScript. You can always use the app in your browser.',
+  },
+}[lang];
+
+// Strings the browser script needs ({p} = platform name, {v} = version).
+const dict = {
+  ar: {
+    platforms: { android: 'أندرويد', ios: 'آيفون وآيباد', windows: 'ويندوز', macos: 'ماك', linux: 'لينكس' },
+    loading: 'نتحقق من آخر إصدار…',
+    unavailableTitle: 'قائمة التحميل غير متاحة الآن',
+    unavailableBody: 'تعذّر الوصول إلى قائمة الملفات. حاول بعد قليل، أو استخدم التطبيق من المتصفح الآن.',
+    retry: 'حاول مرة أخرى',
+    forDevice: 'المناسب لجهازك: {p}',
+    pickDevice: 'اختر نظام جهازك من القائمة بالأسفل.',
+    download: 'حمّل نسخة {p}',
+    downloadFile: 'تحميل',
+    version: 'الإصدار {v}',
+    released: 'نُشر في',
+    size: 'الحجم',
+    minOs: 'يتطلب {v} أو أحدث',
+    sha: 'SHA-256',
+    copy: 'نسخ',
+    copied: 'تم النسخ',
+    noSha: 'البصمة غير منشورة',
+    soon: 'قريبًا',
+    soonBody: 'لا يوجد ملف لهذا النظام بعد. استخدم التطبيق من المتصفح حتى يصدر.',
+    soonFor: 'تطبيق {p} قريبًا',
+    pwaTitle: 'استخدم تطبيق الويب على {p}',
+    pwaBody: 'افتح التطبيق في المتصفح ثم اختر «إضافة إلى الشاشة الرئيسية» أو «تثبيت» ليعمل كتطبيق.',
+    pwaAlso: 'متاح أيضًا كتطبيق ويب',
+    openWeb: 'افتح تطبيق الويب',
+    recommended: 'مقترح لجهازك',
+    guide: 'خطوات التثبيت',
+    files: 'الملفات',
+  },
+  en: {
+    platforms: { android: 'Android', ios: 'iPhone and iPad', windows: 'Windows', macos: 'macOS', linux: 'Linux' },
+    loading: 'Checking the latest version…',
+    unavailableTitle: 'The download list is unavailable right now',
+    unavailableBody: 'We could not reach the list of files. Try again in a moment, or use the app in your browser now.',
+    retry: 'Try again',
+    forDevice: 'For your device: {p}',
+    pickDevice: 'Choose your system from the list below.',
+    download: 'Download for {p}',
+    downloadFile: 'Download',
+    version: 'Version {v}',
+    released: 'Released',
+    size: 'Size',
+    minOs: 'Needs {v} or later',
+    sha: 'SHA-256',
+    copy: 'Copy',
+    copied: 'Copied',
+    noSha: 'Checksum not published',
+    soon: 'Coming soon',
+    soonBody: 'There is no file for this system yet. Use the app in your browser until it ships.',
+    soonFor: 'The {p} app is coming soon',
+    pwaTitle: 'Use the web app on {p}',
+    pwaBody: 'Open the app in your browser, then choose "Add to Home Screen" or "Install" to use it like an app.',
+    pwaAlso: 'Also available as a web app',
+    openWeb: 'Open the web app',
+    recommended: 'Recommended for your device',
+    guide: 'Install guide',
+    files: 'Files',
+  },
+}[lang];
+
+const G = {
+  ar: [
+    {
+      id: 'guide-windows',
+      title: 'ويندوز: تحذير SmartScreen',
+      steps: [
+        'شغّل ملف التثبيت الذي حمّلته (‎.exe).',
+        'إذا ظهرت نافذة «Windows protected your PC» فاضغط «More info» (مزيد من المعلومات).',
+        'تأكد أن الناشر واسم الملف صحيحان، ثم اضغط «Run anyway» (تشغيل على أي حال).',
+        'أكمل خطوات المثبّت، وستجد نكست برين في قائمة ابدأ.',
+      ],
+    },
+    {
+      id: 'guide-android',
+      title: 'أندرويد: السماح بالتثبيت من مصادر غير معروفة',
+      steps: [
+        'حمّل ملف ‎.apk ثم افتحه من الإشعارات أو من تطبيق «الملفات».',
+        'إذا طلب الهاتف الإذن، اضغط «الإعدادات» ثم فعّل «السماح من هذا المصدر» للمتصفح أو تطبيق الملفات.',
+        'ارجع واضغط «تثبيت». بعد التثبيت يمكنك إيقاف الإذن مرة أخرى.',
+        'إذا ظهر تحذير Play Protect فاختر «مزيد من التفاصيل» ثم «التثبيت على أي حال».',
+      ],
+    },
+    {
+      id: 'guide-macos',
+      title: 'ماك: Gatekeeper',
+      steps: [
+        'افتح ملف ‎.dmg واسحب نكست برين إلى مجلد Applications.',
+        'افتح التطبيق مرة واحدة. إذا ظهر أنه «لا يمكن فتحه» فأغلق الرسالة.',
+        'افتح إعدادات النظام ← الخصوصية والأمان، ثم اضغط «فتح على أي حال» بجانب اسم نكست برين.',
+        'أكّد بكلمة مرور الجهاز. بعدها يفتح التطبيق عاديًا.',
+      ],
+    },
+    {
+      id: 'guide-linux',
+      title: 'لينكس: AppImage',
+      steps: [
+        'اجعل الملف قابلًا للتشغيل: chmod +x NextBrain-*.AppImage',
+        'ثم شغّله: ./NextBrain-*.AppImage',
+        'إذا طلب مكتبة FUSE على أوبونتو أو دبيان: sudo apt install libfuse2',
+        'لملف ‎.deb استخدم: sudo apt install ./NextBrain-*.deb',
+      ],
+    },
+    {
+      id: 'guide-verify',
+      title: 'تحقق من الملف ببصمة SHA-256',
+      steps: [
+        'ويندوز (PowerShell): Get-FileHash .\\NextBrain-*.exe -Algorithm SHA256',
+        'ماك: shasum -a 256 NextBrain-*.dmg',
+        'لينكس: sha256sum NextBrain-*.AppImage',
+        'قارن الناتج بالبصمة المكتوبة تحت الملف في هذه الصفحة. إذا اختلفت فلا تثبّت الملف وحمّله من جديد.',
+      ],
+    },
+  ],
+  en: [
+    {
+      id: 'guide-windows',
+      title: 'Windows: the SmartScreen warning',
+      steps: [
+        'Run the installer you downloaded (.exe).',
+        'If "Windows protected your PC" appears, click "More info".',
+        'Check that the file name is right, then click "Run anyway".',
+        'Finish the installer; NextBrain is then in the Start menu.',
+      ],
+    },
+    {
+      id: 'guide-android',
+      title: 'Android: allow installs from unknown sources',
+      steps: [
+        'Download the .apk and open it from the notification or the Files app.',
+        'If the phone asks, tap "Settings" and turn on "Allow from this source" for your browser or Files app.',
+        'Go back and tap "Install". You can turn the permission off again afterwards.',
+        'If Play Protect warns you, tap "More details", then "Install anyway".',
+      ],
+    },
+    {
+      id: 'guide-macos',
+      title: 'macOS: Gatekeeper',
+      steps: [
+        'Open the .dmg and drag NextBrain into Applications.',
+        'Open the app once. If macOS says it "cannot be opened", close the message.',
+        'Open System Settings → Privacy & Security and click "Open Anyway" next to NextBrain.',
+        'Confirm with your password. From then on it opens normally.',
+      ],
+    },
+    {
+      id: 'guide-linux',
+      title: 'Linux: AppImage',
+      steps: [
+        'Make the file executable: chmod +x NextBrain-*.AppImage',
+        'Then run it: ./NextBrain-*.AppImage',
+        'If it asks for FUSE on Ubuntu or Debian: sudo apt install libfuse2',
+        'For the .deb file: sudo apt install ./NextBrain-*.deb',
+      ],
+    },
+    {
+      id: 'guide-verify',
+      title: 'Check a file with its SHA-256',
+      steps: [
+        'Windows (PowerShell): Get-FileHash .\\NextBrain-*.exe -Algorithm SHA256',
+        'macOS: shasum -a 256 NextBrain-*.dmg',
+        'Linux: sha256sum NextBrain-*.AppImage',
+        'Compare the result with the checksum under the file on this page. If it differs, do not install it; download it again.',
+      ],
+    },
+  ],
+}[lang];
+
+// A step's command part (after the first ": ") is shown as LTR code.
+const split = (s: string): [string, string] => {
+  const i = s.indexOf(': ');
+  return i > 0 && /^(chmod|\.\/|sudo|Get-FileHash|shasum|sha256sum)/.test(s.slice(i + 2)) ? [s.slice(0, i + 1), s.slice(i + 2)] : [s, ''];
+};
+const ORDER = ['android', 'windows', 'macos', 'linux', 'ios'] as const;
+---
+
+<Base
+  lang={lang}
+  title={`${L.title} · ${L.name}`}
+  description={L.description}
+  path={path}
+  ogAlt={L.title}
+  preload={preload}
+  alternates={{ ar: '/ar/download/', en: '/en/download/', xdefault: '/en/download/' }}
+>
+  <a class="skip" href="#dl">{L.skip}</a>
+  <header class="header">
+    <div class="wrap header__in">
+      <a class="brand" href={`/${lang}/`} aria-label={L.name}>
+        <Image src={logo} alt="" width={96} height={54} loading="eager" />
+        <span>{L.name}</span>
+      </a>
+      <div class="header__end">
+        <a class="langsw" href={`/${other}/download/`} hreflang={other} lang={other} data-setlang={other}>{L.switchLabel}</a>
+        <a class="btn" href={`${APP}/login`}>{L.openApp}</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="dl" class="dl" data-lang={lang} data-manifest={RELEASES} data-app={APP} data-dict={jsonForScript(dict)}>
+    <section class="dl__hero">
+      <div class="wrap">
+        <p class="dl__kicker">{L.kicker}</p>
+        <h1>{L.title}</h1>
+        <p class="dl__lead">{L.lead.split('{sha}')[0]}<span class="dl-nowrap" dir="ltr">SHA-256</span>{L.lead.split('{sha}')[1]}</p>
+        <div id="dl-rec" class="dl-rec" aria-live="polite">
+          <p class="dl-rec__status">{dict.loading}</p>
+        </div>
+        <noscript><p class="dl__lead">{L.noscript} <a class="dl__weblink" href={`${APP}/`}>{dict.openWeb}</a></p></noscript>
+      </div>
+    </section>
+
+    <section class="wrap dl__section" aria-labelledby="dl-all-t">
+      <h2 id="dl-all-t">{L.all}</h2>
+      <div id="dl-grid" class="dl-grid">
+        {ORDER.map((p) => (
+          <article class="dl-card" id={`dl-${p}`} data-platform={p}>
+            <header class="dl-card__head">
+              <h3>{dict.platforms[p]}</h3>
+            </header>
+            <p class="dl-card__muted">{dict.loading}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="wrap dl__section" aria-labelledby="dl-guides-t">
+      <h2 id="dl-guides-t">{L.guides}</h2>
+      <p class="dl-card__muted">{L.guidesLead}</p>
+      <div class="dl-guides">
+        {G.map((g) => (
+          <details class="dl-guide" id={g.id}>
+            <summary>{g.title}</summary>
+            <ol>
+              {g.steps.map((s) => {
+                const [text, code] = split(s);
+                return (
+                  <li>
+                    {text}
+                    {code && (
+                      <>
+                        {' '}
+                        <code dir="ltr">{code}</code>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </details>
+        ))}
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer__in">
+      <div>
+        <strong>{L.name}</strong>
+        <small>{L.by}</small>
+        <small>© {year} {L.name}. {L.rights}.</small>
+      </div>
+      <nav aria-label={L.kicker}>
+        <a href={`/${lang}/`}>{L.home}</a>
+        <a href={path} aria-current="page">{L.kicker}</a>
+        <a href={`${APP}/`}>{L.openApp}</a>
+        <a href={`/${lang}/privacy/`}>{lang === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}</a>
+        <a href={`/${lang}/terms/`}>{lang === 'ar' ? 'شروط الاستخدام' : 'Terms of Service'}</a>
+        <a href={`/${other}/download/`} hreflang={other} lang={other} data-setlang={other}>{L.switchLabel}</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    import '../scripts/download';
+  </script>
+  <script is:inline>
+    document.querySelectorAll('[data-setlang]').forEach(function (a) {
+      a.addEventListener('click', function () {
+        try {
+          localStorage.setItem('nb_lang', a.getAttribute('data-setlang'));
+        } catch (e) {}
+      });
+    });
+  </script>
+</Base>
+
+<style is:global>
+  /* global (not scoped): most of these nodes are built by src/scripts/download.ts */
+  .dl__hero {
+    background: linear-gradient(160deg, var(--hero-from), var(--hero-to));
+    color: var(--on-hero);
+    padding-block: 40px 48px;
+  }
+  .dl__kicker {
+    display: inline-block;
+    margin: 0 0 12px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--on-hero) 14%, transparent);
+    color: var(--on-hero-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .dl__hero h1 {
+    font-size: clamp(1.8rem, 4.5vw, 2.7rem);
+    margin-bottom: 12px;
+  }
+  .dl__lead {
+    color: var(--on-hero-muted);
+    font-size: 1.05rem;
+    max-width: 62ch;
+  }
+  .dl-nowrap {
+    white-space: nowrap;
+  }
+  .dl__weblink {
+    color: var(--on-hero);
+  }
+  .dl-rec {
+    margin-top: 24px;
+    max-width: 640px;
+    padding: 20px;
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--on-hero) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--on-hero) 24%, transparent);
+  }
+  .dl-rec__status,
+  .dl-rec__meta {
+    margin: 0;
+    color: var(--on-hero-muted);
+  }
+  .dl-rec__title {
+    margin: 0 0 6px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--on-hero);
+  }
+  .dl-rec__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .dl-rec .btn {
+    background: var(--on-hero);
+    color: var(--hero-from);
+  }
+  .dl-rec .btn:hover {
+    background: var(--on-hero-muted);
+  }
+  .dl-rec .btn--ghost {
+    background: transparent;
+    color: var(--on-hero);
+    border-color: color-mix(in srgb, var(--on-hero) 40%, transparent);
+  }
+  .dl-rec .btn--ghost:hover {
+    background: color-mix(in srgb, var(--on-hero) 12%, transparent);
+  }
+  .dl__section {
+    padding-block: 32px 8px;
+  }
+  .dl__section:last-of-type {
+    padding-bottom: 48px;
+  }
+  .dl__section h2 {
+    font-size: 1.4rem;
+  }
+  .dl-grid {
+    display: grid;
+    gap: 16px;
+  }
+  .dl-card {
+    min-width: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .dl-card.is-rec {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px var(--primary);
+  }
+  .dl-card__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .dl-card__head h3 {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+  .dl-chip {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    color: var(--link);
+  }
+  .dl-chip--soon {
+    background: color-mix(in srgb, var(--gold) 18%, transparent);
+    color: var(--text);
+  }
+  .dl-card__muted {
+    color: var(--muted);
+    margin: 0 0 8px;
+  }
+  .dl-files {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0 0;
+    display: grid;
+    gap: 12px;
+  }
+  .dl-file {
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    min-width: 0;
+  }
+  .dl-file__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+  }
+  .dl-file__name {
+    font-weight: 700;
+  }
+  .dl-file__meta {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .dl-file .btn {
+    min-height: 44px;
+    padding: 0 18px;
+  }
+  .dl-sha {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .dl-sha code {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-all;
+    font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+    color: var(--text);
+  }
+  .dl-copy {
+    flex: none;
+    min-height: 32px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-alt);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .dl-card__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin-top: 12px;
+    font-size: 0.92rem;
+  }
+  .dl-card__links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .dl-guides {
+    display: grid;
+    gap: 12px;
+  }
+  .dl-guide {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0 20px;
+    scroll-margin-top: 80px;
+  }
+  .dl-guide summary {
+    cursor: pointer;
+    font-weight: 700;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+  }
+  .dl-guide ol {
+    margin: 0 0 16px;
+    padding-inline-start: 1.4em;
+  }
+  .dl-guide li {
+    margin-bottom: 8px;
+  }
+  .dl-guide code {
+    display: inline-block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--bg-alt);
+    font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.85em;
+  }
+  @media (min-width: 720px) {
+    .dl-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 1040px) {
+    .dl-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .dl__hero {
+      padding-block: 64px 72px;
+    }
+  }
+</style>
