@@ -98,7 +98,7 @@ class MissingBadge extends StatelessWidget {
     final label = countText(n, ar1: 'ينقصه بند واحد', ar2: 'ينقصه بندان', arFew: 'ينقصه {n} بنود', arMany: 'ينقصه {n} بندًا',
         en1: '1 item missing', en: '{n} items missing');
     final body = Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
       decoration: BoxDecoration(
         color: appTintOn(context, appToneColor(context, AppTone.warning)),
         borderRadius: BorderRadius.circular(AppRadius.pill),

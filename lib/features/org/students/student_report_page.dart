@@ -315,8 +315,9 @@ class StudentReportView extends StatelessWidget {
     }
     return LayoutBuilder(builder: (context, box) {
       final w = box.maxWidth.isFinite ? box.maxWidth : MediaQuery.sizeOf(context).width;
+      final side = AppWidth.gutter(w) / 2;
       return SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: AppWidth.gutter(w) / 2, vertical: AppSpace.md),
+        padding: EdgeInsets.symmetric(horizontal: side, vertical: AppSpace.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -561,6 +562,7 @@ class ReportBarList extends StatelessWidget {
     final c = context.colors;
     final color = appChartPalette(context).first;
     final top = bars.fold<int>(0, (m, b) => math.max(m, b.count));
+    double frac(int n) => top <= 0 ? 0.0 : n / top;
     final sem = [for (final b in bars) '${b.label}: ${b.count}'].join('. ');
     return Semantics(
       container: true,
@@ -588,7 +590,7 @@ class ReportBarList extends StatelessWidget {
                       ColoredBox(color: c.inputBg),
                       FractionallySizedBox(
                         alignment: AlignmentDirectional.centerStart,
-                        widthFactor: top <= 0 ? 0 : b.count / top,
+                        widthFactor: frac(b.count),
                         child: ColoredBox(color: color),
                       ),
                     ]),

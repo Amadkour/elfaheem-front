@@ -297,7 +297,9 @@ class StudentsPageView extends StatelessWidget {
         top: d == null ? null : StudentsSummaryBar(summary: d.summary, selected: query.chip, onChip: onChip, onAwaiting: onAwaiting),
         child: Padding(
           // phones: room under the list for the Add button that floats at the bottom end
-          padding: EdgeInsets.only(bottom: !wide && add != null ? AppTouch.primary + AppSpace.md : 0),
+          padding: !wide && add != null
+              ? const EdgeInsets.only(bottom: AppTouch.primary + AppSpace.md)
+              : EdgeInsets.zero,
           child: _body(context),
         ),
       );
@@ -492,7 +494,7 @@ class _SummaryCard extends StatelessWidget {
         onTap: onTap,
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            padding: const EdgeInsets.all(AppSpace.xxs + 2),
+            padding: const EdgeInsets.all(AppSpace.xxs),
             decoration: BoxDecoration(color: appTintOn(context, appToneColor(context, kind.tone)), borderRadius: AppRadius.chipAll),
             child: Icon(kind.icon, size: AppIconSize.md, color: ink),
           ),

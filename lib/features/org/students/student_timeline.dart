@@ -250,7 +250,9 @@ class StudentTimelineView extends StatelessWidget {
       body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (final (gi, g) in groups.indexed) ...[
           Padding(
-            padding: EdgeInsets.only(top: gi == 0 ? 0 : AppSpace.lg, bottom: AppSpace.xs),
+            padding: gi == 0
+                ? const EdgeInsets.only(bottom: AppSpace.xs)
+                : const EdgeInsets.only(top: AppSpace.lg, bottom: AppSpace.xs),
             child: Semantics(header: true, child: Text(g.label, style: AppType.section(context))),
           ),
           for (final d in g.days) ...[
@@ -393,7 +395,7 @@ class StudentTimelineRow extends StatelessWidget {
                   const SizedBox(height: AppSpace.xxs),
                   Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Padding(
-                      padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
+                      padding: const EdgeInsets.only(top: AppSpace.xxs),
                       child: Icon(Icons.undo_rounded, size: AppIconSize.xs, color: c.textMedium),
                     ),
                     const SizedBox(width: AppSpace.xxs),
