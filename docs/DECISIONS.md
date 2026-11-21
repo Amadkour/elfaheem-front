@@ -5837,3 +5837,31 @@ A Quran teacher and a Learning Hub v2 teacher are the same `TeacherCard`, so the
 ## D-1665 — One way in for a teacher, one review for the admin · 2026-11-22 · accepted
 
 With `teacher_onboarding` on, Profile has one entry, "My teacher profile and packages"; the old "My Quran teaching" tile shows only while onboarding is off. `TeacherHubPage` opens the Quran record sheet and programs (`teacher.hub.quran`, hidden with `student_tab_quran`). `QuranTeacherHubPage` keeps its route; with onboarding on it leads with the teacher-profile card, then the programs, and folds the Quran-only card fields (ijazah, goals, session types, country: the Quran tab's filters) into an expand card instead of a competing editor. The super admin's Quran teachers page links to Teacher review (`quran.admin.teacher_review`) and says it only verifies. The admin hub's grouping is not changed here.
+
+## D-1670 — The word puzzle: square tiles, and the built word is one Text · 2026-11-22 · accepted
+
+`WordPuzzleEngine` draws one small square slot per letter (`WordPuzzleSlot.size` = `AppTouch.min`) and the pool as square tiles (`WordPuzzleTile.size` = `AppTouch.primary`), both in wrapping rows, so a word of any length fits a 320 px phone. Above them, `WordPuzzleAnswer` draws the word built so far as ONE `Text` (`WordPuzzleEngine.builtText`: the placed letters joined, the word's own spaces put back), so Arabic letters connect as they do in the word; once checked only that joined word stays, in the check's colour. The slots and tiles keep their taps (a slot gives its letter back). The rows and the word take the WORD's direction (`contentDirection`), so an Arabic word runs right to left in the English interface too. The hint "a word of n letters" goes through `countText`. The admin's live preview is the same engine.
+
+## D-1671 — Author text keeps its own direction in the learn kit · 2026-11-22 · accepted
+
+`LearnPrompt` (caption and question) and the option rows draw with `AutoDirText`, as do the game card and the admin list titles and the self-learning admin rows: an Arabic question in the English interface reads "كم عدد أركان الإسلام؟" with its "؟" at the end. The rows still line up on the page's start edge.
+
+## D-1672 — The game editor marks the field, and the preview shows a missing blank · 2026-11-22 · accepted
+
+`GameConfigDraft.rowProblems(row)` gives each row's mistakes by field key; `problems()` is built from it (same fields and texts as before). `GameDraftRowCard` shows a mistake under its own field once that field holds text (a sentence without `___`, a one-letter word, an answer not among the options); an empty field's "write the …" stays in the summary above Save, so a row being typed is not painted red. `FillBlankEngine.show` no longer appends a blank to a sentence that has none: the server never stores one, and the live preview now shows the author's mistake instead of hiding it.
+
+## D-1673 — One name per game type · 2026-11-22 · accepted
+
+`kGameEngines` holds THE name of each type: Quiz / اختبار سريع, Match / توصيل, Order / ترتيب, Memory cards / بطاقات الذاكرة, Fill in the blank / أكمل الفراغ, Word puzzle / كوّن الكلمة. The editor's type menu uses these names whatever the server's engine list says (`gameEditorEngines`), the admin's empty state lists them, and the server's catalog was given the same names (back D-1710).
+
+## D-1674 — The game editor beside its preview on a wide window · 2026-11-22 · accepted
+
+`GameEditorPage` is `AppWidth.wide`; from `kGameEditorTwoPane` (960) the fields sit in their own scroll at the form width and the live preview beside them in another, so it stays in view while the rows are typed. Narrower, one column as before. A phone admin row moves the publish switch into the row's menu (Publish / Hide from students), so the title and its meta keep the room.
+
+## D-1675 — A Learning content group in the admin services hub · 2026-11-22 · accepted
+
+The super admin's hub has a fifth group, `learning` ("Learning content" / "محتوى التعلّم", a sidebar tab between Finance and Support): education levels, module switches, Quran teachers, teacher review, grammar content, educational games and self-learning content moved there from "Finance & requests", which keeps money and requests (payouts, enrollments, subscriptions, courses and students, the trash, the store, points, payment methods, fees, payments). No badge moves: none of the moved pages has an attention count.
+
+## D-1676 — Fill-in-the-blank options are compared as written · 2026-11-22 · accepted
+
+Found in the real-app walk: the seeded "Fill in the right ending" offers العلمُ / العلمَ / العلمِ, and the engine dropped options that matched after the Arabic normalization, so the student saw one option and any ending counted right. `FillBlankEngine.itemsOf` now drops only exact repeats, a picked option is right only when it is the answer as written (the server already requires `answer in options` exactly), and the editor's "the answer is not one of the options" uses the same exact check. A TYPED answer is still compared after the normalization (no tashkeel, any alef).
