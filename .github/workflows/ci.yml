@@ -25,7 +25,7 @@ jobs:
         run: |
           flutter analyze --no-fatal-infos --fatal-warnings
       - name: tests (the real suites)
-        run: flutter test test/org/ test/export/ test/ui/ test/auth/ test/access/ test/admin/ test/perf/ test/chat/
+        run: flutter test test/org/ test/export/ test/ui/ test/auth/ test/access/ test/admin/ test/perf/ test/chat/ test/sync/
       - name: API contract (every path the app calls exists in the server snapshot, D-026)
         run: flutter test test/contract/
       - name: web build
