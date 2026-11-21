@@ -124,6 +124,7 @@ void main() {
       expect(items[0].options, ['pear', 'apple']);
       expect(items[1].options, isEmpty);
       expect(FillBlankEngine.show('The ___ is red'), 'The ______ is red');
+      expect(FillBlankEngine.show('No blank here'), 'No blank here'); // the preview shows the author's mistake
     });
 
     test('a typed Arabic answer is right without its tashkeel and with any alef', () {
@@ -173,6 +174,37 @@ void main() {
           {'word': 'cat', 'hint': 'pet'},
         ],
       }), [(word: 'cat', hint: 'pet')]);
+    });
+
+    test('the built word is one string: letters joined, its own spaces kept', () {
+      final word = String.fromCharCodes([0x0641, 0x0627, 0x0639, 0x0644]); // فاعل
+      final tiles = WordPuzzleEngine.lettersOf(word);
+      expect(WordPuzzleEngine.builtText(word, tiles), word);
+      expect(WordPuzzleEngine.builtText(word, tiles.take(2).toList()), word.substring(0, 2));
+      expect(WordPuzzleEngine.builtText('ice cream', WordPuzzleEngine.lettersOf('ice cream')), 'ice cream');
+      expect(WordPuzzleEngine.builtText('ice cream', ['i', 'c', 'e']), 'ice');
+    });
+
+    testWidgets('slots and tiles are small squares; the solved word shows as one Text', (tester) async {
+      final word = String.fromCharCodes([0x0641, 0x0627, 0x0639, 0x0644]);
+      await _pump(
+        tester,
+        WordPuzzleEngine(
+          config: {
+            'words': [
+              {'word': word, 'hint': ''},
+            ],
+          },
+          onFinished: (_, _) {},
+          random: Random(3),
+        ),
+      );
+      expect(tester.getSize(find.byKey(const ValueKey('word.slot.0'))), const Size.square(WordPuzzleSlot.size));
+      expect(tester.getSize(find.byKey(const ValueKey('word.tile.0'))), const Size.square(WordPuzzleTile.size));
+      for (final k in [0, 1, 2, 3]) {
+        await _tap(tester, 'word.tile.$k');
+      }
+      expect(find.descendant(of: find.byKey(const ValueKey('word.built')), matching: find.text(word)), findsOneWidget);
     });
 
     testWidgets('rebuilt clean scores; a hinted word does not', (tester) async {

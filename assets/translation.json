@@ -8541,6 +8541,10 @@
     "en": "Finance & requests",
     "ar": "المالية والطلبات"
   },
+  "admin_group_learning": {
+    "en": "Learning content",
+    "ar": "محتوى التعلّم"
+  },
   "admin_group_config": {
     "en": "App configuration",
     "ar": "إعدادات التطبيق"
@@ -11744,6 +11748,10 @@
   "svc_group_finance_sub": {
     "ar": "التحويلات والاشتراكات والتسجيلات والمدفوعات",
     "en": "Payouts, enrollments, subscriptions and payments"
+  },
+  "svc_group_learning_sub": {
+    "ar": "المراحل الدراسية والمعلمون والنحو والألعاب والتعلّم الذاتي",
+    "en": "Education levels, teachers, grammar, games and self-learning"
   },
   "svc_group_support_sub": {
     "ar": "مركز المساعدة والأجهزة وقواعد الدخول ومستندات المعلمين",

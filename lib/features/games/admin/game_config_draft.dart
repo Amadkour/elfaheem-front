@@ -266,6 +266,41 @@ class GameConfigDraft {
 
   static List<String> _optionLines(Map<String, dynamic> r) => [for (final o in _strings(r['options'])) if (o.isNotEmpty) o];
 
+  /// What is wrong with one [r]ow, by field key (the field the editor marks, D-1672): empty for a blank row, which
+  /// is dropped rather than checked.
+  Map<String, String> rowProblems(Map<String, dynamic> r) {
+    final out = <String, String>{};
+    if (rowBlank(r)) return out;
+    void bad(String field, String ar, String en) => out.putIfAbsent(field, () => t(ar, en));
+    switch (engine) {
+      case 'quiz':
+        final q = _quizQuestion(r);
+        if (_s(r['prompt_ar']).isEmpty && _s(r['prompt_en']).isEmpty) bad('prompt_ar', 'اكتب السؤال', 'write the question');
+        final n = (q['options'] as List).length;
+        if (n < 2 || n > 6) bad('options', 'من خيارين إلى 6 خيارات', '2 to 6 options');
+        if ((q['answer'] as int) < 0) bad('answer', 'علّم الإجابة الصحيحة', 'mark the right option');
+      case 'match':
+      case 'memory':
+        if (_s(r['a']).isEmpty) bad('a', 'املأ الطرفين', 'fill both sides');
+        if (_s(r['b']).isEmpty) bad('b', 'املأ الطرفين', 'fill both sides');
+      case 'order':
+        break;
+      case 'fill_blank':
+        final text = _s(r['text']);
+        if (kGameBlank.allMatches(text).length != 1) bad('text', 'ضع ___ مرة واحدة', 'put ___ exactly once');
+        final answer = _s(r['answer']);
+        if (answer.isEmpty) bad('answer', 'اكتب الإجابة', 'write the answer');
+        final opts = _optionLines(r);
+        if (opts.length == 1) bad('options', 'خياران على الأقل أو اتركها فارغة', 'at least 2 options, or none');
+        if (opts.isNotEmpty && answer.isNotEmpty && !opts.any((o) => gameSameAnswer(o, answer))) {
+          bad('options', 'الإجابة ليست بين الخيارات', 'the answer is not one of the options');
+        }
+      case 'word_puzzle':
+        if (WordPuzzleEngine.lettersOf(_s(r['word'])).length < 2) bad('word', 'كلمة من حرفين على الأقل', 'a word of 2 letters or more');
+    }
+    return out;
+  }
+
   /// What keeps this draft from being saved (empty = it can be). `field` is the config path the server would name.
   List<GameConfigProblem> problems() {
     final f = form;
@@ -279,34 +314,9 @@ class GameConfigDraft {
       ));
     }
     for (var i = 0; i < filled.length; i++) {
-      final r = filled[i];
-      final at = '${f.rowsKey}[$i]';
       final row = f.rowLabel(i);
-      void bad(String field, String ar, String en) => out.add((field: '$at.$field', message: '$row: ${t(ar, en)}'));
-      switch (engine) {
-        case 'quiz':
-          final q = _quizQuestion(r);
-          if (_s(r['prompt_ar']).isEmpty && _s(r['prompt_en']).isEmpty) bad('prompt_ar', 'اكتب السؤال', 'write the question');
-          final n = (q['options'] as List).length;
-          if (n < 2 || n > 6) bad('options', 'من خيارين إلى 6 خيارات', '2 to 6 options');
-          if ((q['answer'] as int) < 0) bad('answer', 'علّم الإجابة الصحيحة', 'mark the right option');
-        case 'match':
-        case 'memory':
-          if (_s(r['a']).isEmpty || _s(r['b']).isEmpty) bad('a', 'املأ الطرفين', 'fill both sides');
-        case 'order':
-          break;
-        case 'fill_blank':
-          final text = _s(r['text']);
-          if (kGameBlank.allMatches(text).length != 1) bad('text', 'ضع ___ مرة واحدة', 'put ___ exactly once');
-          final answer = _s(r['answer']);
-          if (answer.isEmpty) bad('answer', 'اكتب الإجابة', 'write the answer');
-          final opts = _optionLines(r);
-          if (opts.length == 1) bad('options', 'خياران على الأقل أو اتركها فارغة', 'at least 2 options, or none');
-          if (opts.isNotEmpty && answer.isNotEmpty && !opts.any((o) => gameSameAnswer(o, answer))) {
-            bad('options', 'الإجابة ليست بين الخيارات', 'the answer is not one of the options');
-          }
-        case 'word_puzzle':
-          if (WordPuzzleEngine.lettersOf(_s(r['word'])).length < 2) bad('word', 'كلمة من حرفين على الأقل', 'a word of 2 letters or more');
+      for (final e in rowProblems(filled[i]).entries) {
+        out.add((field: '${f.rowsKey}[$i].${e.key}', message: '$row: ${e.value}'));
       }
     }
     return out;

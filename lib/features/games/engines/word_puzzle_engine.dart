@@ -4,12 +4,19 @@
 // normalization of game_text.dart. The Hint button places the next right letter; a word rebuilt with a hint (or after a wrong try) is
 // solved but scores nothing (like a pair matched after a slip). Score = words rebuilt right with no hint, max = words.
 // config = {prompt_ar, prompt_en, words: [{word, hint}]} (1..15)
+//
+// Layout (D-1670): the word built so far is ONE Text ([WordPuzzleEngine.builtText]), so Arabic letters join as they
+// do in the word; under it one small square slot per letter (tap a placed one to take it back) and the pool of
+// square tiles, both wrapping rows sized by the touch tokens, laid out in the WORD's direction (an Arabic word runs
+// right to left in the English interface too).
 library;
 
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/engines/game_text.dart';
@@ -37,6 +44,22 @@ class WordPuzzleEngine extends StatefulWidget {
         for (final g in word.trim().characters)
           if (g.trim().isNotEmpty) g,
       ];
+
+  /// The word as far as [placed] goes, as one string: the letters joined (so Arabic ones connect) with the word's own
+  /// spaces put back between them.
+  static String builtText(String word, List<String> placed) {
+    final out = StringBuffer();
+    var k = 0;
+    for (final g in word.trim().characters) {
+      if (k >= placed.length) break;
+      if (g.trim().isEmpty) {
+        out.write(' ');
+      } else {
+        out.write(placed[k++]);
+      }
+    }
+    return out.toString();
+  }
 
   /// Whether the placed letters spell [word].
   static bool isRight(List<String> placed, String word) => gameSameAnswer(placed.join(), lettersOf(word).join());
@@ -140,7 +163,6 @@ class _WordPuzzleEngineState extends State<WordPuzzleEngine> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     if (_words.isEmpty) {
       return AppEmpty(icon: Icons.abc_rounded, title: t('لا توجد كلمات في هذه اللعبة', 'This game has no words'));
     }
@@ -150,6 +172,9 @@ class _WordPuzzleEngineState extends State<WordPuzzleEngine> {
     final last = _i + 1 >= _words.length;
     final right = _right;
     final pool = [for (final k in _pool) if (!_placed.contains(k)) k];
+    final dir = contentDirection(w.word) ?? Directionality.of(context);
+    final mark = right == null ? LearnMark.selected : (right ? LearnMark.correct : LearnMark.wrong);
+    final n = _letters.length;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (!inShell) ...[
         LearnProgressHeader(current: _i + 1, total: _words.length, score: _score),
@@ -158,22 +183,38 @@ class _WordPuzzleEngineState extends State<WordPuzzleEngine> {
       LearnPrompt(
         key: ValueKey('word.q.$_i'),
         caption: prompt.isEmpty ? t('رتّب الحروف لتكوّن الكلمة', 'Put the letters together into the word') : prompt,
-        text: w.hint.isEmpty ? t('كلمة من ${_letters.length} حروف', 'A word of ${_letters.length} letters') : w.hint,
+        text: w.hint.isEmpty
+            ? countText(n,
+                ar1: 'كلمة من حرف واحد',
+                ar2: 'كلمة من حرفين',
+                arFew: 'كلمة من $n حروف',
+                arMany: 'كلمة من $n حرفًا',
+                en1: 'A one-letter word',
+                en: 'A word of $n letters')
+            : w.hint,
       ),
       const SizedBox(height: AppSpace.sm),
-      // the word so far: one slot per letter
-      Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
-        for (var p = 0; p < _letters.length; p++)
-          WordPuzzleSlot(
-            key: ValueKey('word.slot.$p'),
-            letter: p < _placed.length ? _letters[_placed[p]] : null,
-            mark: right == null ? LearnMark.selected : (right ? LearnMark.correct : LearnMark.wrong),
-            onTap: p < _placed.length && right == null ? () => _unplace(p) : null,
-          ),
-      ]),
-      const SizedBox(height: AppSpace.md),
+      WordPuzzleAnswer(
+        key: const ValueKey('word.built'),
+        text: WordPuzzleEngine.builtText(w.word, [for (final k in _placed) _letters[k]]),
+        mark: mark,
+        direction: dir,
+        placeholder: t('اضغط الحروف بالترتيب', 'Tap the letters in order'),
+      ),
       if (right == null) ...[
-        Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        const SizedBox(height: AppSpace.sm),
+        // one slot per letter: how many are left, and a placed one taps back into the pool
+        Wrap(textDirection: dir, alignment: WrapAlignment.center, spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
+          for (var p = 0; p < n; p++)
+            WordPuzzleSlot(
+              key: ValueKey('word.slot.$p'),
+              letter: p < _placed.length ? _letters[_placed[p]] : null,
+              mark: mark,
+              onTap: p < _placed.length ? () => _unplace(p) : null,
+            ),
+        ]),
+        const SizedBox(height: AppSpace.md),
+        Wrap(textDirection: dir, alignment: WrapAlignment.center, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final k in pool)
             WordPuzzleTile(key: ValueKey('word.tile.$k'), letter: _letters[k], onTap: () => _place(k)),
         ]),
@@ -187,36 +228,93 @@ class _WordPuzzleEngineState extends State<WordPuzzleEngine> {
             onPressed: _hint,
           ),
         ),
-      ] else
+      ] else ...[
+        const SizedBox(height: AppSpace.md),
         LearnFeedback(
           correct: right,
           neutral: right && (_hinted || _slipped),
           title: right && _hinted ? t('حُلّت بتلميح', 'Solved with a hint') : null,
-          explanation: right ? null : t('الكلمة: ${w.word}', 'The word: ${w.word}'),
+          explanation: right ? null : t('الكلمة: ${bidiIsolate(w.word)}', 'The word: ${bidiIsolate(w.word)}'),
           actionLabel: right ? (last ? t('النتيجة', 'See result') : t('التالي', 'Next')) : t('حاول مرة أخرى', 'Try again'),
           onAction: right ? _next : _retry,
         ),
+      ],
       if (right == false) ...[
         const SizedBox(height: AppSpace.xs),
         Align(
           alignment: AlignmentDirectional.centerEnd,
-          child: AppButton.ghost(
-            key: const ValueKey('word.skip'),
-            label: last ? t('النتيجة', 'See result') : t('الكلمة التالية', 'Next word'),
-            onPressed: _next,
+          // its own node, never merged into the feedback's text (N18)
+          child: Semantics(
+            container: true,
+            child: AppButton.ghost(
+              key: const ValueKey('word.skip'),
+              label: last ? t('النتيجة', 'See result') : t('الكلمة التالية', 'Next word'),
+              onPressed: _next,
+            ),
           ),
         ),
       ],
-      if (_placed.isEmpty && right == null)
-        Text(t('اضغط الحروف بالترتيب.', 'Tap the letters in order.'),
-            textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
     ]);
   }
 }
 
-/// One slot of the word: empty (a line), or a placed letter (tap to take it back).
+/// The word built so far, as ONE Text so its letters join (Arabic), in the word's own [direction]; its frame takes
+/// the check's colour once every letter is placed. Empty: the [placeholder] instruction.
+class WordPuzzleAnswer extends StatelessWidget {
+  const WordPuzzleAnswer({super.key, required this.text, required this.direction, this.mark = LearnMark.selected, this.placeholder = ''});
+
+  final String text;
+  final TextDirection direction;
+  final LearnMark mark;
+  final String placeholder;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final checked = mark == LearnMark.correct || mark == LearnMark.wrong;
+    final tone = switch (mark) {
+      LearnMark.correct => c.success,
+      LearnMark.wrong => c.danger,
+      _ => c.primary,
+    };
+    final bg = checked ? appTintOn(context, tone) : c.inputBg;
+    final empty = text.isEmpty;
+    return Semantics(
+      liveRegion: true,
+      label: empty ? placeholder : text,
+      excludeSemantics: true,
+      child: AnimatedContainer(
+        duration: AppMotion.of(context).fast,
+        constraints: const BoxConstraints(minHeight: AppTouch.primary),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: AppRadius.cardAll,
+          border: Border.all(color: checked ? tone : c.divider, width: checked ? AppBorder.strong : AppBorder.hairline),
+        ),
+        child: empty
+            ? Text(placeholder, textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium))
+            : FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  text,
+                  textDirection: direction,
+                  maxLines: 1,
+                  style: AppType.display(context).copyWith(color: checked ? appInkOn(context, tone, bg) : c.textDark),
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+/// One slot of the word, a small square: empty (a line), or a placed letter (tap to take it back).
 class WordPuzzleSlot extends StatelessWidget {
   const WordPuzzleSlot({super.key, this.letter, this.mark = LearnMark.selected, this.onTap});
+
+  /// The slot's side: the smallest touch target.
+  static const double size = AppTouch.min;
 
   final String? letter;
   final LearnMark mark;
@@ -239,23 +337,31 @@ class WordPuzzleSlot extends StatelessWidget {
         borderRadius: AppRadius.chipAll,
         onTap: onTap,
         child: Container(
-          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+          width: WordPuzzleSlot.size,
+          height: WordPuzzleSlot.size,
           alignment: Alignment.center,
+          padding: const EdgeInsets.all(AppSpace.xxs),
           decoration: BoxDecoration(
             color: l == null ? c.inputBg : appTintOn(context, tone),
             borderRadius: AppRadius.chipAll,
-            border: Border(bottom: BorderSide(color: tone, width: 2)),
+            border: Border(bottom: BorderSide(color: l == null ? c.divider : tone, width: AppBorder.strong)),
           ),
-          child: Text(l ?? '', style: AppType.section(context).copyWith(color: l == null ? c.textLight : appInkOn(context, tone, appTintOn(context, tone)))),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(l ?? '', style: AppType.section(context).copyWith(color: appInkOn(context, tone, appTintOn(context, tone)))),
+          ),
         ),
       ),
     );
   }
 }
 
-/// One letter in the pool.
+/// One letter in the pool, a square tile.
 class WordPuzzleTile extends StatelessWidget {
   const WordPuzzleTile({super.key, required this.letter, this.onTap});
+
+  /// The tile's side: a primary touch target (four or five fit a row on a 320 px phone).
+  static const double size = AppTouch.primary;
 
   final String letter;
   final VoidCallback? onTap;
@@ -274,9 +380,14 @@ class WordPuzzleTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Container(
-            constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
+            width: WordPuzzleTile.size,
+            height: WordPuzzleTile.size,
             alignment: Alignment.center,
-            child: Text(letter, style: AppType.section(context).copyWith(color: c.textDark)),
+            padding: const EdgeInsets.all(AppSpace.xxs),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(letter, style: AppType.headline(context).copyWith(color: c.textDark)),
+            ),
           ),
         ),
       ),

@@ -51,10 +51,11 @@ class FillBlankEngine extends StatefulWidget {
   /// Whether [given] fills [item]'s blank.
   static bool isRight(FillBlankItem item, String given) => gameSameAnswer(given, item.answer);
 
-  /// [text] with its blank drawn as a line, or as [filled] once answered (a text with no blank gets one at the end).
+  /// [text] with its blank drawn as a line, or as [filled] once answered. A text with no blank stays as written (the
+  /// server never stores one; the editor's live preview then shows the mistake rather than a made-up blank, D-1672).
   static String show(String text, {String? filled}) {
     final blank = filled == null ? '______' : '«$filled»';
-    return text.contains(kGameBlank) ? text.replaceFirst(kGameBlank, blank) : '$text $blank';
+    return text.replaceFirst(kGameBlank, blank);
   }
 
   @override

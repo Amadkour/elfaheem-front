@@ -426,7 +426,7 @@ class SlDailyView extends StatelessWidget {
         if (reviews.isNotEmpty) {
           children.add(AppSection(
             title: t('المراجعة', 'Review'),
-            subtitle: slReviewsText(reviews.length),
+            // no count here: the list shrinks as answers go in, while the runner keeps counting "2 of 2" (N16)
             child: SlReviewRunner(
               items: reviews,
               submit: submit,

@@ -207,8 +207,8 @@ class GamesAdminListBody extends StatelessWidget {
       return AppEmpty(
         icon: Icons.extension_rounded,
         title: t('لا ألعاب بعد', 'No games yet'),
-        message: t('أضف لعبة واختر نوعها: اختبار، توصيل، ترتيب، ذاكرة، أكمل الفراغ أو كوّن الكلمة.',
-            'Add a game and pick its type: quiz, match, order, memory, fill the blank or word puzzle.'),
+        message: t('أضف لعبة واختر نوعها: ${kGameEngines.values.map((e) => e.nameAr).join('، ')}.',
+            'Add a game and pick its type: ${kGameEngines.values.map((e) => e.nameEn).join(', ')}.'),
       );
     }
     return ReorderableListView.builder(
@@ -254,9 +254,13 @@ class GameAdminRow extends StatelessWidget {
     ].join(' · ');
     final well = gameThemeColors(context, game.theme);
     final cover = game.coverUrl;
+    // a phone row (N13): the switch moves into the menu ("Publish" / "Hide"), so the title and its meta keep the room
+    // (the meta already says the status)
     return AppCard(
       onTap: onEdit,
-      child: Row(children: [
+      child: LayoutBuilder(builder: (context, box) {
+        final roomy = box.maxWidth >= 420;
+        return Row(children: [
         ReorderableDragStartListener(
           index: index,
           child: Semantics(
@@ -289,21 +293,34 @@ class GameAdminRow extends StatelessWidget {
             Text(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
           ]),
         ),
-        AppSwitch(
-          key: ValueKey('games.admin.toggle.${game.id}'),
-          value: game.published,
-          semanticLabel: t('منشورة', 'Published'),
-          onChanged: busy ? null : onToggle,
-        ),
+        if (roomy)
+          AppSwitch(
+            key: ValueKey('games.admin.toggle.${game.id}'),
+            value: game.published,
+            semanticLabel: t('منشورة', 'Published'),
+            onChanged: busy ? null : onToggle,
+          ),
         PopupMenuButton<String>(
+          key: ValueKey('games.admin.menu.${game.id}'),
           tooltip: t('المزيد', 'More'),
-          onSelected: (v) => (v == 'edit' ? onEdit : onDelete)?.call(),
+          onSelected: (v) => switch (v) {
+            'toggle' => onToggle?.call(!game.published),
+            'edit' => onEdit?.call(),
+            _ => onDelete?.call(),
+          },
           itemBuilder: (_) => [
+            if (!roomy)
+              PopupMenuItem(
+                value: 'toggle',
+                enabled: onToggle != null && !busy,
+                child: Text(game.published ? t('إخفاء عن الطلاب', 'Hide from students') : t('نشر', 'Publish')),
+              ),
             PopupMenuItem(value: 'edit', enabled: onEdit != null, child: Text(t('تعديل', 'Edit'))),
             PopupMenuItem(value: 'delete', enabled: onDelete != null, child: Text(t('حذف', 'Delete'))),
           ],
         ),
-      ]),
+      ]);
+      }),
     );
   }
 }
@@ -323,12 +340,12 @@ class GameEditorPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = initial;
     return AdminPage(
-      width: AppWidth.content,
+      width: AppWidth.wide,
       title: g == null ? t('لعبة جديدة', 'New game') : t('تعديل اللعبة', 'Edit game'),
       icon: Icons.extension_rounded,
-      body: SingleChildScrollView(
-        padding: AdminPage.bodyPadding(context),
-        child: GameEditorForm(
+      body: GameEditorForm(
+          scrolls: true,
+          padding: AdminPage.bodyPadding(context),
           initial: g,
           engines: engines,
           onSave: (body) async {
@@ -354,24 +371,38 @@ class GameEditorPage extends StatelessWidget {
                     return (url: null, error: gamesAdminErrorText(e));
                   }
                 },
-        ),
       ),
     );
   }
 }
 
-/// The engines the form offers: the server's that this app can edit (null = the app's own list).
+/// The engines the form offers: the server's that this app can edit (null = the app's own list), always under the
+/// app's own names ([kGameEngines]), so the type menu, the lists and the student's filter call a type the same thing
+/// (D-1673).
 List<GameAdminEngine> gameEditorEngines(List<GameAdminEngine>? server) {
-  final local = [
-    for (final e in kGameEngineForms.keys)
-      (key: e, nameAr: kGameEngines[e]?.nameAr ?? e, nameEn: kGameEngines[e]?.nameEn ?? e),
-  ];
-  if (server == null || server.isEmpty) return local;
-  return [for (final s in server) if (kGameEngineForms.containsKey(s.key) && kGameEngines.containsKey(s.key)) s];
+  GameAdminEngine named(String e) => (key: e, nameAr: kGameEngines[e]?.nameAr ?? e, nameEn: kGameEngines[e]?.nameEn ?? e);
+  if (server == null || server.isEmpty) return [for (final e in kGameEngineForms.keys) named(e)];
+  return [for (final s in server) if (kGameEngineForms.containsKey(s.key) && kGameEngines.containsKey(s.key)) named(s.key)];
 }
 
 class GameEditorForm extends StatefulWidget {
-  const GameEditorForm({super.key, this.initial, this.engines, required this.onSave, this.onUploadCover, this.random});
+  const GameEditorForm({
+    super.key,
+    this.initial,
+    this.engines,
+    required this.onSave,
+    this.onUploadCover,
+    this.random,
+    this.scrolls = false,
+    this.padding = EdgeInsets.zero,
+  });
+
+  /// True: the form scrolls by itself inside a bounded box (the editor page), side by side with its preview on a
+  /// wide window; false: a plain column for a parent that scrolls.
+  final bool scrolls;
+
+  /// The body padding when [scrolls].
+  final EdgeInsets padding;
 
   final GameSummary? initial;
   final List<GameAdminEngine>? engines;
@@ -502,7 +533,32 @@ class _GameEditorFormState extends State<GameEditorForm> {
     final titled = _titleAr.text.trim().isNotEmpty || _titleEn.text.trim().isNotEmpty;
     final canSave = problems.isEmpty && titled && _saving == null;
     final spec = gameEngine(_engine);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    final preview = <Widget>[
+      Row(children: [
+        Expanded(child: AppSectionTitle(t('معاينة مباشرة', 'Live preview'))),
+        IconButton(
+          key: const ValueKey('games.edit.replay'),
+          tooltip: t('ابدأ المعاينة من جديد', 'Restart the preview'),
+          icon: const Icon(Icons.replay_rounded),
+          onPressed: () => setState(() => _previewRound++),
+        ),
+      ]),
+      AppCard(
+        key: const ValueKey('games.edit.preview'),
+        child: spec == null
+            ? Text(t('لا معاينة لهذا النوع', 'No preview for this type'), style: AppType.meta(context))
+            : GameRound(
+                key: ValueKey('preview.$_previewRound.${jsonEncode(_preview)}.$_theme'),
+                spec: spec,
+                config: _preview,
+                theme: _theme,
+                showMute: false,
+                random: widget.random,
+                onFinished: (_, _) => setState(() => _previewRound++),
+              ),
+      ),
+    ];
+    final fields = <Widget>[
       // ── basics
       AppSectionTitle(t('الأساسيات', 'Basics')),
       AppField(key: const ValueKey('games.edit.titleAr'), controller: _titleAr, label: t('العنوان بالعربية', 'Title in Arabic'), onChanged: (_) => setState(() {})),
@@ -595,6 +651,7 @@ class _GameEditorFormState extends State<GameEditorForm> {
             form: form,
             index: i,
             row: _draft.rows[i],
+            problems: _draft.rowProblems(_draft.rows[i]),
             onChanged: _changed,
             onRemove: _draft.rows.length <= 1
                 ? null
@@ -620,33 +677,8 @@ class _GameEditorFormState extends State<GameEditorForm> {
           ),
       ],
       const SizedBox(height: AppSpace.lg),
-
-      // ── preview
-      Row(children: [
-        Expanded(child: AppSectionTitle(t('معاينة مباشرة', 'Live preview'))),
-        IconButton(
-          key: const ValueKey('games.edit.replay'),
-          tooltip: t('ابدأ المعاينة من جديد', 'Restart the preview'),
-          icon: const Icon(Icons.replay_rounded),
-          onPressed: () => setState(() => _previewRound++),
-        ),
-      ]),
-      AppCard(
-        key: const ValueKey('games.edit.preview'),
-        child: spec == null
-            ? Text(t('لا معاينة لهذا النوع', 'No preview for this type'), style: AppType.meta(context))
-            : GameRound(
-                key: ValueKey('preview.$_previewRound.${jsonEncode(_preview)}.$_theme'),
-                spec: spec,
-                config: _preview,
-                theme: _theme,
-                showMute: false,
-                random: widget.random,
-                onFinished: (_, _) => setState(() => _previewRound++),
-              ),
-      ),
-      const SizedBox(height: AppSpace.lg),
-
+    ];
+    final save = <Widget>[
       // ── save
       if (problems.isNotEmpty || !titled)
         AppBanner(
@@ -677,9 +709,37 @@ class _GameEditorFormState extends State<GameEditorForm> {
         ),
       ]),
       const SizedBox(height: AppSpace.xl),
-    ]);
+    ];
+    Widget column(List<Widget> children) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+    return LayoutBuilder(builder: (context, box) {
+      final pad = widget.padding;
+      // a wide window (D-1674): the fields at a form's width, the live preview beside them in its own scroll, so
+      // it stays in view while the rows are typed
+      if (widget.scrolls && box.hasBoundedHeight && box.maxWidth >= kGameEditorTwoPane) {
+        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: AppWidth.form.max + pad.horizontal / 2),
+            child: SingleChildScrollView(
+              padding: EdgeInsetsDirectional.only(start: pad.left, end: AppSpace.md, top: pad.top, bottom: pad.bottom),
+              child: column([...fields, ...save]),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsetsDirectional.only(start: AppSpace.md, end: pad.right, top: pad.top, bottom: pad.bottom),
+              child: column(preview),
+            ),
+          ),
+        ]);
+      }
+      final body = column([...fields, ...preview, const SizedBox(height: AppSpace.lg), ...save]);
+      return widget.scrolls ? SingleChildScrollView(padding: pad, child: body) : body;
+    });
   }
 }
+
+/// From this width the editor shows its live preview beside the fields rather than under them.
+const double kGameEditorTwoPane = 960;
 
 /// Two fields side by side on a wide box, stacked on a phone.
 class _Pair extends StatelessWidget {
@@ -742,11 +802,24 @@ class _CoverRow extends StatelessWidget {
 
 /// One row of the draft (a question, a pair, an item, a sentence, a word) with its typed fields.
 class GameDraftRowCard extends StatelessWidget {
-  const GameDraftRowCard({super.key, required this.form, required this.index, required this.row, required this.onChanged, this.onRemove});
+  const GameDraftRowCard({
+    super.key,
+    required this.form,
+    required this.index,
+    required this.row,
+    required this.onChanged,
+    this.onRemove,
+    this.problems = const {},
+  });
 
   final GameEngineForm form;
   final int index;
   final Map<String, dynamic> row;
+
+  /// What is wrong with this row, by field key ([GameConfigDraft.rowProblems]). A field shows its mistake under itself
+  /// once it holds text (D-1672); an empty field's "write the …" stays in the summary above Save, so a row being typed
+  /// is not painted red field by field.
+  final Map<String, String> problems;
   final VoidCallback onChanged;
   final VoidCallback? onRemove;
 
@@ -765,11 +838,18 @@ class GameDraftRowCard extends StatelessWidget {
         ]),
         for (final f in form.fields)
           switch (f.kind) {
-            GameFieldKind.choices => _QuizChoices(row: row, label: f.label, help: f.help, onChanged: onChanged),
+            GameFieldKind.choices => _QuizChoices(
+                row: row,
+                label: f.label,
+                help: f.help,
+                error: problems['options'] ?? problems['answer'],
+                onChanged: onChanged,
+              ),
             GameFieldKind.lines => _DraftField(
                 id: '$id.${f.key}',
                 label: f.label,
                 helper: f.help,
+                error: _shown(f.key),
                 maxLines: 4,
                 value: [for (final o in (row[f.key] as List? ?? const [])) '$o'].join('\n'),
                 onChanged: (v) {
@@ -781,6 +861,7 @@ class GameDraftRowCard extends StatelessWidget {
                 id: '$id.${f.key}',
                 label: f.label,
                 helper: f.help,
+                error: _shown(f.key),
                 maxLines: f.kind == GameFieldKind.multiline ? 3 : 1,
                 value: '${row[f.key] ?? ''}',
                 onChanged: (v) {
@@ -794,13 +875,22 @@ class GameDraftRowCard extends StatelessWidget {
   }
 }
 
+extension on GameDraftRowCard {
+  /// [key]'s mistake when the field holds text (see [GameDraftRowCard.problems]).
+  String? _shown(String key) {
+    final v = row[key];
+    final typed = v is List ? v.any((x) => '$x'.trim().isNotEmpty) : '${v ?? ''}'.trim().isNotEmpty;
+    return typed ? problems[key] : null;
+  }
+}
+
 /// The quiz's options: one field each, the right one marked with the check, add / remove (2..6).
 class _QuizChoices extends StatelessWidget {
-  const _QuizChoices({required this.row, required this.label, this.help, required this.onChanged});
+  const _QuizChoices({required this.row, required this.label, this.help, this.error, required this.onChanged});
 
   final Map<String, dynamic> row;
   final String label;
-  final String? help;
+  final String? help, error;
   final VoidCallback onChanged;
 
   @override
@@ -812,6 +902,8 @@ class _QuizChoices extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Text(label, style: AppType.label(context)),
       if (help != null) Text(help!, style: AppType.meta(context)),
+      if (error != null && opts.any((o) => o.trim().isNotEmpty))
+        Text(error!, style: AppType.meta(context).copyWith(color: c.danger)),
       const SizedBox(height: AppSpace.xs),
       for (var k = 0; k < opts.length; k++)
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -867,11 +959,11 @@ class _QuizChoices extends StatelessWidget {
 
 /// An AppField that owns its controller (the draft holds plain strings).
 class _DraftField extends StatefulWidget {
-  _DraftField({required this.id, required this.label, required this.value, required this.onChanged, this.helper, this.maxLines = 1})
+  _DraftField({required this.id, required this.label, required this.value, required this.onChanged, this.helper, this.error, this.maxLines = 1})
       : super(key: ValueKey('games.edit.f.$id'));
 
   final String id, label, value;
-  final String? helper;
+  final String? helper, error;
   final int maxLines;
   final ValueChanged<String> onChanged;
 
@@ -893,6 +985,7 @@ class _DraftFieldState extends State<_DraftField> {
         controller: _c,
         label: widget.label,
         helper: widget.helper,
+        errorText: widget.error,
         maxLines: widget.maxLines,
         onChanged: widget.onChanged,
       );

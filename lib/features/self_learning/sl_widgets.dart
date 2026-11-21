@@ -30,7 +30,7 @@ final _arabic = RegExp(r'[؀-ۿ]');
 TextDirection slTextDirection(String s) => _arabic.hasMatch(s) ? TextDirection.rtl : TextDirection.ltr;
 
 String slDaysText(int n) => countText(n,
-    ar1: 'يوم واحد', ar2: 'يومان', arFew: '$n أيام', arMany: '$n يوماً', en1: '1 day', en: '$n days', ar0: '0 يوم', en0: '0 days');
+    ar1: 'يوم واحد', ar2: 'يومان', arFew: '$n أيام', arMany: '$n يوماً', en1: '1 day', en: '$n days', ar0: '0 أيام', en0: '0 days');
 
 /// The marks of a single-pick question: [picked] and, once [checked], right / wrong / missed against [answer].
 List<LearnMark> slPickMarks(int count, int? picked, int answer, bool checked) => [
@@ -60,8 +60,8 @@ class SlProgressRing extends StatelessWidget {
     final v = all <= 0 ? 0.0 : p.learned / all;
     final size = compact ? AppDashSize.disc : AppDashSize.ring;
     final gold = appToneColor(context, AppTone.gold);
-    final label = t('تعلّمت ${p.learned}، للمراجعة ${p.due}، أيام متتالية ${p.streakDays}',
-        'Learned ${p.learned}, due ${p.due}, streak ${p.streakDays} days');
+    final label = t('تعلّمت ${p.learned}، للمراجعة ${p.due}، متتالية: ${slDaysText(p.streakDays)}',
+        'Learned ${p.learned}, due ${p.due}, streak ${slDaysText(p.streakDays)}');
     return Semantics(
       container: true,
       label: label,
@@ -331,17 +331,28 @@ class SlSubjectBars extends StatelessWidget {
       final p = progress.perSubject[s] ?? const SlSubjectProgress();
       if (rows.isNotEmpty) rows.add(AppSpace.gapSm);
       final pct = (p.fraction * 100).round();
+      // the bar is lessons learned of the subject's lessons (S21): the label says so, and the due count apart
+      final learned = p.total > 0
+          ? t('تعلّمت ${p.learned} من ${p.total}', '${p.learned} of ${p.total} learned')
+          : t('تعلّمت ${p.learned}', '${p.learned} learned');
+      final due = p.due > 0 ? t('للمراجعة ${p.due}', '${p.due} to review') : '';
+      final line = due.isEmpty ? learned : '$learned · $due';
       rows.add(Semantics(
         container: true,
-        label: t('${slSubjectLabel(s)}: تعلّمت ${p.learned}، للمراجعة ${p.due}', '${slSubjectLabel(s)}: learned ${p.learned}, due ${p.due}'),
+        label: '${slSubjectLabel(s)}: $line',
         value: '$pct%',
         excludeSemantics: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
             Expanded(child: Text(slSubjectLabel(s), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context))),
             const SizedBox(width: AppSpace.xs),
-            Text(t('${p.learned} · للمراجعة ${p.due}', '${p.learned} · ${p.due} due'),
-                style: AppType.meta(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+            Flexible(
+              flex: 2,
+              child: Text(line,
+                  textAlign: TextAlign.end,
+                  maxLines: 2,
+                  style: AppType.meta(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+            ),
           ]),
           const SizedBox(height: AppSpace.xxs),
           ClipRRect(

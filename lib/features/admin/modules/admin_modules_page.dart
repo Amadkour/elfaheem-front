@@ -79,7 +79,7 @@ IconData moduleIcon(String module) => switch (module) {
           t('أقل وقت بين درس وآخر للطالب الواحد.', 'The shortest time between two deliveries to one student.')),
       'self_learning.daily_limit' => (t('الحد اليومي', 'Daily limit'),
           t('أقصى عدد دروس وأسئلة تصل الطالب في اليوم.', 'The most lessons and questions one student gets in a day.')),
-      'self_learning.active_from_min' => (t('بداية أوقات النشاط', 'Active hours start'), t('بتوقيت الطالب.', "In the student's time zone.")),
+      'self_learning.active_from_min' => (t('بداية أوقات النشاط', 'Active hours start'), t('بتوقيت مؤسسة الطالب، وإلا بتوقيت المنصة.', "In the student's organization's time zone, else the platform's.")),
       'self_learning.active_to_min' => (t('نهاية أوقات النشاط', 'Active hours end'), ''),
       'self_learning.quiet_from_min' => (t('بداية وقت الهدوء', 'Quiet hours start'),
           t('لا يصل شيء في وقت الهدوء، حتى داخل أوقات النشاط.', 'Nothing is delivered in quiet hours, even inside active hours.')),

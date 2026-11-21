@@ -36,7 +36,8 @@ class GameEngineSpec {
 
 List<Object?> _list(Object? v) => v is List ? v : const [];
 
-/// The engines this app plays.
+/// The engines this app plays. Each name is THE name of its type on every screen, the editor's type menu included
+/// (D-1673); the server's catalog uses the same ones (features/games/games_config.py).
 final Map<String, GameEngineSpec> kGameEngines = {
   'quiz': GameEngineSpec(
     key: 'quiz',
@@ -64,8 +65,8 @@ final Map<String, GameEngineSpec> kGameEngines = {
   ),
   'memory': GameEngineSpec(
     key: 'memory',
-    nameAr: 'ذاكرة',
-    nameEn: 'Memory',
+    nameAr: 'بطاقات الذاكرة',
+    nameEn: 'Memory cards',
     icon: Icons.grid_view_rounded,
     steps: (c) => MemoryEngine.pairsOf(c).length,
     build: (c, done, r) => MemoryEngine(config: c, onFinished: done, random: r),
@@ -73,7 +74,7 @@ final Map<String, GameEngineSpec> kGameEngines = {
   'fill_blank': GameEngineSpec(
     key: 'fill_blank',
     nameAr: 'أكمل الفراغ',
-    nameEn: 'Fill the blank',
+    nameEn: 'Fill in the blank',
     icon: Icons.edit_note_rounded,
     steps: (c) => FillBlankEngine.itemsOf(c).length,
     build: (c, done, r) => FillBlankEngine(config: c, onFinished: done, random: r),

@@ -12,6 +12,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/admin/admin_page.dart';
@@ -365,8 +366,9 @@ class _ItemTile extends StatelessWidget {
         const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
-            if (preview.isNotEmpty) Text(preview, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            // what the admin wrote keeps its own direction (an Arabic question in the English interface, S13)
+            AutoDirText(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+            if (preview.isNotEmpty) AutoDirText(preview, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
             const SizedBox(height: AppSpace.xxs),
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
               AppStatusBadge(label: slSubjectLabel(item.subject), tone: AppTone.brand, dense: true),
@@ -447,7 +449,8 @@ class _SlItemFormState extends State<SlItemForm> {
   late int _answer = _i?.question?.answer ?? 0;
   late int? _lessonId = _i?.lessonId;
   late int? _nahwLessonId = _i?.source.type == 'nahw_lesson' ? _i?.source.id : null;
-  late bool _published = _i?.published ?? false;
+  /// A new item starts published (N11): a quick Save gives the students the item; a draft is the deliberate choice.
+  late bool _published = _i?.published ?? true;
 
   List<SlItem>? _lessons;
   String? _lessonsFor;
@@ -516,7 +519,9 @@ class _SlItemFormState extends State<SlItemForm> {
       _busy = true;
       _serverError = null;
     });
-    final err = await widget.onSave(_draft.toJson());
+    final body = _draft.toJson();
+    if (_i == null) body['sort'] = null; // the server puts a new item last in its subject (D-1712)
+    final err = await widget.onSave(body);
     if (!mounted) return;
     if (err == null) {
       Navigator.of(context).maybePop();
@@ -537,10 +542,7 @@ class _SlItemFormState extends State<SlItemForm> {
     final problem = slItemProblem(_draft);
     final lessons = _lessons;
     final nahw = _nahw;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.md + MediaQuery.of(context).viewInsets.bottom),
-      child: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    final fields = <Widget>[
           Text(isNew ? t('عنصر جديد', 'New item') : t('تعديل العنصر', 'Edit item'), style: AppType.section(context)),
           AppSpace.gapMd,
           if (isNew) ...[
@@ -694,7 +696,9 @@ class _SlItemFormState extends State<SlItemForm> {
             value: _published,
             onChanged: (v) => setState(() => _published = v),
           ),
-          AppSpace.gapSm,
+    ];
+    // the actions stay in view under the scrolling fields (S16): what is missing, the server's error, Cancel / Save
+    final footer = <Widget>[
           if (problem != null) ...[Text(problem, style: AppType.meta(context)), AppSpace.gapXs],
           if (_serverError != null) ...[
             Semantics(liveRegion: true, child: Text(_serverError!, style: AppType.body(context).copyWith(color: appInk(context, c.danger)))),
@@ -712,8 +716,22 @@ class _SlItemFormState extends State<SlItemForm> {
               ),
             ),
           ]),
-        ]),
-      ),
+    ];
+    const pad = EdgeInsets.all(AppSpace.md);
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: LayoutBuilder(builder: (context, box) {
+        Widget column(List<Widget> children) =>
+            Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+        if (!box.hasBoundedHeight) return Padding(padding: pad, child: column([...fields, AppSpace.gapSm, ...footer]));
+        return column([
+          Flexible(child: SingleChildScrollView(padding: pad, child: column(fields))),
+          DecoratedBox(
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline))),
+            child: Padding(padding: pad, child: column(footer)),
+          ),
+        ]);
+      }),
     );
   }
 }
