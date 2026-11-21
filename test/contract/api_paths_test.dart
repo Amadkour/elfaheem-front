@@ -24,54 +24,7 @@ const knownMissing = <String, String>{
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
   // the paper exam flow (D-697 over the back's OFFLINE_FLOW_CONTRACT.md §2 / §3, branch of/b)
   // org_inst_notify.dart: the phone-push setting and "Message this department"
-  // repeating meetings (Learning Hub v2 §4 + C5, D-1570), built against the contract before the server
-  'DELETE /api/v1/me/calendar/series/{}': 'lands with feature/lh2-cal',
-  'DELETE /api/v1/me/calendar/series/{}/occurrences/{}': 'lands with feature/lh2-cal',
-  'GET /api/v1/me/calendar/series/{}': 'lands with feature/lh2-cal',
-  'PATCH /api/v1/me/calendar/series/{}': 'lands with feature/lh2-cal',
-  'PATCH /api/v1/me/calendar/series/{}/occurrences/{}': 'lands with feature/lh2-cal',
-  'POST /api/v1/me/calendar/series': 'lands with feature/lh2-cal',
-  'POST /api/v1/me/calendar/series/{}/occurrences/{}/open': 'lands with feature/lh2-cal',
-  // Learning Hub v2 games (CONTRACT §3 + C9): the server half is built in parallel
-  'GET /api/v1/games/{}/leaderboard': 'lands with feature/lh2-learn',
-  'PUT /api/v1/me/games/leaderboard': 'lands with feature/lh2-learn',
-  'POST /api/v1/admin/games/reorder': 'lands with feature/lh2-learn',
-  'GET /api/v1/admin/games/engines': 'lands with feature/lh2-learn',
-  'POST /api/v1/admin/games/{}/cover': 'lands with feature/lh2-learn (cover upload, asked under the contract\'s Requests)',
 
-  // self-learning (Learning Hub v2 CONTRACT §5, D-1600): the server routes land with the back's branch
-  'DELETE /api/v1/admin/self-learning/items/{}': 'lands with feature/lh2-learn',
-  'GET /api/v1/admin/self-learning/items': 'lands with feature/lh2-learn',
-  'GET /api/v1/me/self-learning': 'lands with feature/lh2-learn',
-  'POST /api/v1/admin/self-learning/items': 'lands with feature/lh2-learn',
-  'POST /api/v1/admin/self-learning/items/reorder': 'lands with feature/lh2-learn',
-  'POST /api/v1/me/self-learning/lessons/{}/seen': 'lands with feature/lh2-learn',
-  'POST /api/v1/me/self-learning/reviews/{}': 'lands with feature/lh2-learn',
-  'PUT /api/v1/admin/self-learning/items/{}': 'lands with feature/lh2-learn',
-  'PUT /api/v1/me/self-learning': 'lands with feature/lh2-learn',
-  // Learning Hub v2 teachers and packages (CONTRACT.md §1 / §2, lib/features/teachers/teachers_api.dart)
-  'DELETE /api/v1/me/teacher-profile/documents/{}': 'lands with feature/lh2-core',
-  'GET /api/v1/admin/teachers': 'lands with feature/lh2-core',
-  'GET /api/v1/admin/teachers/{}/documents/{}/url': 'lands with feature/lh2-core',
-  'GET /api/v1/me/packages': 'lands with feature/lh2-core',
-  'GET /api/v1/me/teacher-profile': 'lands with feature/lh2-core',
-  'GET /api/v1/me/teachers': 'lands with feature/lh2-core',
-  'GET /api/v1/packages': 'lands with feature/lh2-core',
-  'GET /api/v1/packages/{}': 'lands with feature/lh2-core',
-  'GET /api/v1/packages/{}/enrollments': 'lands with feature/lh2-core',
-  'GET /api/v1/teachers': 'lands with feature/lh2-core',
-  'GET /api/v1/teachers/{}': 'lands with feature/lh2-core',
-  'POST /api/v1/admin/teachers/{}/approve': 'lands with feature/lh2-core',
-  'POST /api/v1/admin/teachers/{}/reject': 'lands with feature/lh2-core',
-  'POST /api/v1/me/teacher-profile/documents': 'lands with feature/lh2-core',
-  'POST /api/v1/me/teacher-profile/submit': 'lands with feature/lh2-core',
-  'POST /api/v1/packages': 'lands with feature/lh2-core',
-  'POST /api/v1/packages/{}/duplicate': 'lands with feature/lh2-core',
-  'POST /api/v1/packages/{}/enroll': 'lands with feature/lh2-core',
-  'POST /api/v1/packages/{}/leave': 'lands with feature/lh2-core',
-  'POST /api/v1/packages/{}/status': 'lands with feature/lh2-core',
-  'PUT /api/v1/me/teacher-profile': 'lands with feature/lh2-core',
-  'PUT /api/v1/packages/{}': 'lands with feature/lh2-core',
 };
 
 void main() {
