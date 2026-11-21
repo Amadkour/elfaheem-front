@@ -20,8 +20,8 @@ import 'package:flutter_education_app/features/courses/student/my_courses/my_cou
 import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/home/student/home_screen.dart';
 import 'package:flutter_education_app/features/store/store_tab.dart';
-import 'package:flutter_education_app/features/quran/quran_tab.dart';
 import 'package:flutter_education_app/features/games/games_tab.dart';
+import 'package:flutter_education_app/features/quran/quran_tab.dart';
 
 // The shells (WideShell / RailShell / MobileShell), DashboardItem and the top-bar icons live in the design layer
 // (D-062); re-exported here for the home screens that still import them from this file.
@@ -115,14 +115,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         null,
         const StoreTab(),
       ),
-      // Quran memorization (D-1347, kill switch student_tab_quran): teachers browse for a guest, progress needs sign-in
-      DashboardItem(
-        Icons.menu_book_outlined,
-        Icons.menu_book_rounded,
-        'quran',
-        null,
-        const QuranTab(),
-      ),
       // educational games (D-1346, kill switch student_tab_games): a guest plays without saving
       DashboardItem(
         Icons.extension_outlined,
@@ -130,6 +122,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'games',
         null,
         const GamesTab(),
+      ),
+      // Quran memorization (D-1347, kill switch student_tab_quran): teachers browse for a guest, progress needs sign-in
+      DashboardItem(
+        Icons.menu_book_outlined,
+        Icons.menu_book_rounded,
+        'quran',
+        null,
+        const QuranTab(),
       ),
       DashboardItem(
         Icons.calendar_month_outlined,

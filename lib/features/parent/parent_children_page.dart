@@ -216,19 +216,6 @@ class _ChildCard extends StatelessWidget {
           ],
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
             AppButton(label: 'pl_tab_reports'.tr, icon: Icons.insights_rounded, variant: AppButtonVariant.secondary, size: AppButtonSize.sm, onPressed: report),
-            // the child's Quran memorization by surah and juz (D-1347; hidden with the Quran tab)
-            if (!quranOff())
-              AppButton(
-                key: ValueKey('parent.quran.$id'),
-                label: t('القرآن', 'Quran'),
-                icon: Icons.menu_book_rounded,
-                variant: AppButtonVariant.secondary,
-                size: AppButtonSize.sm,
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                  settings: RouteSettings(name: '/parent/children/$id/quran'),
-                  builder: (_) => QuranProgressPage.child(childId: id, name: name),
-                )),
-              ),
             // the child's games: stars, badges, rounds (D-1346; hidden with the Games tab)
             if (!gamesOff())
               AppButton(
@@ -240,6 +227,19 @@ class _ChildCard extends StatelessWidget {
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
                   settings: RouteSettings(name: '/parent/children/$id/games'),
                   builder: (_) => ParentChildGamesPage(studentId: id, studentName: name),
+                )),
+              ),
+            // the child's Quran memorization by surah and juz (D-1347; hidden with the Quran tab)
+            if (!quranOff())
+              AppButton(
+                key: ValueKey('parent.quran.$id'),
+                label: t('القرآن', 'Quran'),
+                icon: Icons.menu_book_rounded,
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  settings: RouteSettings(name: '/parent/children/$id/quran'),
+                  builder: (_) => QuranProgressPage.child(childId: id, name: name),
                 )),
               ),
             if (pr != null) AppStatusBadge(label: '${pr.courses.length} ${anTr('an_courses', 'Courses')}', icon: Icons.menu_book_rounded),
