@@ -11,14 +11,16 @@
 //   PackageWizardForm    the plain-values form (test/ui/teachers_layout_test.dart)
 //   MyPackagesSection    the teacher's list: Edit, Duplicate, Publish / Pause / Resume, Close, Roster
 //
-// The recurrence slot: [RecurrenceSlotBuilder]. The shared RecurrencePicker (another stream) is wired at merge;
-// until then [packageRecurrencePlaceholder] says the sessions are scheduled with the teacher and edits nothing.
+// The recurrence slot: [RecurrenceSlotBuilder], by default the shared RecurrencePicker (D-1570). A test can pass
+// [packageRecurrencePlaceholder], which edits nothing.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
+import 'package:flutter_education_app/features/calendar/recurrence/recurrence_picker.dart' show RecurrencePicker;
+import 'package:flutter_education_app/features/calendar/recurrence/recurrence_rule.dart' show RecurrenceRule;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/teachers/teachers_api.dart';
 import 'package:flutter_education_app/features/teachers/teachers_models.dart';
@@ -295,9 +297,24 @@ class _PackageWizardFormState extends State<PackageWizardForm> {
         ],
       ]);
 
+  /// The shared Repeat section (D-1570). Its first date is the package's start date, and picking a first date in
+  /// it moves the start date with it, so the two never disagree. The server stops the series after
+  /// `sessions_count` (contract C6).
+  Widget _pickerSlot(BuildContext context, Map<String, dynamic>? rule, ValueChanged<Map<String, dynamic>?> onChanged) {
+    final s = _d.startDate ?? DateTime.now();
+    return RecurrencePicker(
+      rule: RecurrenceRule.fromJson(rule),
+      start: DateTime(s.year, s.month, s.day, 17),
+      onChanged: (r) {
+        if (r != null) _d.startDate = r.startDate;
+        onChanged(r?.toJson());
+      },
+    );
+  }
+
   Widget _schedule(BuildContext context) {
     final c = context.colors;
-    final slot = widget.recurrenceSlot ?? packageRecurrencePlaceholder;
+    final slot = widget.recurrenceSlot ?? _pickerSlot;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       if (widget.locked) ...[
         AppBanner(
