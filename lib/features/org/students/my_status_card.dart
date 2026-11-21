@@ -4,7 +4,7 @@
 //   MyStatusCard(orgId:, api:)   loads GET /api/v1/org/public/{org}/my-status and draws MyStatusView; draws nothing
 //                                while loading, on any error, with the kill switch `org.students.status` off, or when
 //                                the institution shows the student nothing (`student_sees`)
-//   MyStatusView(status:)        plain values: enrolment · standing · the flags the student may see · the last change
+//   MyStatusView(status:, onRequests:)   plain values (onRequests: the "My requests" pill → MyRequestsPage): enrolment · standing · the flags the student may see · the last change
 //                                with its reason and decision number. Staff-only flags never reach it (MyStatus drops
 //                                them again), and nothing here names a staff-only flag.
 library;
@@ -15,6 +15,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
+import 'my_requests.dart' show openMyRequests;
 import 'student_status_models.dart';
 import 'students_api.dart';
 import 'students_models.dart';
@@ -23,8 +24,11 @@ import 'students_models.dart';
 const kMyStatusHelpId = 'me.status';
 
 class MyStatusCard extends StatefulWidget {
-  const MyStatusCard({super.key, required this.orgId, this.api});
+  const MyStatusCard({super.key, required this.orgId, this.api, this.padding = EdgeInsets.zero});
   final int orgId;
+
+  /// Around the card only while it is drawn (no empty gap when there is nothing to show).
+  final EdgeInsetsGeometry padding;
 
   /// For tests.
   final StudentsApi? api;
@@ -62,14 +66,17 @@ class _MyStatusCardState extends State<MyStatusCard> {
   Widget build(BuildContext context) {
     final s = _status;
     if (s == null || s.isEmpty || AppConfig.disableList.contains(kStudentsStatusKey)) return const SizedBox.shrink();
-    return MyStatusView(status: s);
+    return Padding(padding: widget.padding, child: MyStatusView(status: s, onRequests: () => openMyRequests(context, widget.orgId)));
   }
 }
 
 /// The card over plain values (the layout harness pumps it).
 class MyStatusView extends StatelessWidget {
-  const MyStatusView({super.key, required this.status});
+  const MyStatusView({super.key, required this.status, this.onRequests});
   final MyStatus status;
+
+  /// "My requests": ask for a change in the studies and follow the answers (MyRequestsPage); null = no pill.
+  final VoidCallback? onRequests;
 
   @override
   Widget build(BuildContext context) {
@@ -137,6 +144,10 @@ class MyStatusView extends StatelessWidget {
               style: AppType.meta(context),
             ),
           ],
+        ],
+        if (onRequests != null) ...[
+          AppSpace.gapSm,
+          AppPill(key: const ValueKey('me.status.requests'), label: t('طلباتي', 'My requests'), icon: Icons.assignment_rounded, onTap: onRequests),
         ],
       ]),
     );

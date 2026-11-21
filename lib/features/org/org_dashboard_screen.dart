@@ -71,7 +71,7 @@ import 'org_join_pages.dart' show OrgJoinInboxPage;
 import 'advising/adv_wiring.dart' show advServiceSubs;
 import 'governance/gov_wiring.dart' show govServiceSubs;
 import 'org_messages.dart' show msgServiceSubs;
-import 'students/students_wiring.dart' show studentsSub;
+import 'students/students_wiring.dart' show studentRequestsSub, studentsSub;
 import 'workspace/ws_shell.dart' show TeacherWorkspace, wsEligible;
 
 export 'org_dashboard_settings.dart' show showJoinCode, showOrgForm, showOrgSwitcher;
@@ -468,6 +468,8 @@ class OrgStaffOnlyPage extends StatelessWidget {
 List<OrgSub> _peopleSubs(OrgSession s) => [
       // the Students section and the unified student file (D-1400); kill switch org.students
       ?studentsSub(s),
+      // the asks and lifecycle requests about students (D-1400); kill switch org.students.asks
+      ?studentRequestsSub(s),
       if (s.can('students') || s.can('teachers') || s.can('staff'))
         ('members', t('الأعضاء', 'Members'), Icons.groups_rounded, const OrgPeoplePage()),
       // admissions & appointments (D-1200): cases from a draft to an active member; kill switch org.onboarding
@@ -618,6 +620,7 @@ class OrgOverviewPage extends StatelessWidget {
 const _subHelpIds = <String, String>{
   'members': 'org.members',
   'students': 'org.students',
+  'student_requests': 'org.students.requests',
   'departments': 'org.departments',
   'courses': 'org.courses',
   'governance': 'org.governance',

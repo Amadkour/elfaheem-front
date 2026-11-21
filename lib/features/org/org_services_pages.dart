@@ -44,6 +44,8 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppButton, AppCard;
 import 'org_v3.dart' show OrgCall, orgCall;
+import 'students/my_ask_page.dart' show myAsksEnabled;
+import 'students/student_ask_sheet.dart' show showStudentAskSheet;
 import 'students/student_status_models.dart' show StatusSource;
 import 'students/student_status_sheet.dart' show showStudentStatusSheet;
 import 'students/students_api.dart' show StudentsApi;
@@ -1050,8 +1052,18 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
     }
   }
 
-  /// "Request a meeting" from the student strip: the calendar meeting with the sender (busy rule on the server).
+  /// "Request a meeting" from the student strip: a meeting ask to the sender (D-1400; source = this complaint, the
+  /// student accepts or declines it), or the calendar meeting with the sender when asks are switched off.
   Future<void> _meeting(OrgSession s, Map<String, dynamic> d) async {
+    final orgId = widget.orgId ?? s.currentId!;
+    final st = asMap(d['student']);
+    if (myAsksEnabled() && asInt(st['id']) > 0) {
+      final a = await showStudentAskSheet(context, orgId, asInt(st['id']),
+          kind: 'meeting', source: StatusSource('complaint', widget.id), name: '${st['name'] ?? ''}', canFullscreen: s.can('student_status', 'update'));
+      if (a != null && mounted) _load();
+      return;
+    }
+    if (!mounted) return;
     if (await showComplaintMeetingSheet(context, orgId: widget.orgId ?? s.currentId!, complaintId: widget.id, subject: '${d['subject']}')) _load();
   }
 

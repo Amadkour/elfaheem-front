@@ -170,7 +170,7 @@ void main() {
     await settle(tester);
     expect(find.byType(MyAskOverlay), findsNothing);
     asks.open = [...asks.open, ask(id: 8, presentation: 'fullscreen')];
-    LiveEvents.instance.emit(kStudentLifecycleEvent, {'ask_id': '8'});
+    LiveEvents.instance.emit(LiveEvents.studentLifecycle, {'ask_id': '8'});
     await settle(tester);
     expect(asks.fetches, 2);
     expect(find.byKey(const ValueKey('my_ask.8')), findsOneWidget);

@@ -36,9 +36,6 @@ import 'students_api.dart' show MyAsksApi;
 /// The kill switch of asks (CONTRACT §12).
 const kMyAsksFeatureKey = 'org.students.asks';
 
-/// The live event the server sends on every ask change (asks.py EVENT).
-const kStudentLifecycleEvent = 'student_lifecycle';
-
 bool myAsksEnabled() => !AppConfig.disableList.contains(kMyAsksFeatureKey);
 
 /// Whether the app should ask GET /me/asks at all.
@@ -888,7 +885,7 @@ class _MyAskPageState extends State<MyAskPage> {
   @override
   void initState() {
     super.initState();
-    _live = LiveEvents.instance.listen({kStudentLifecycleEvent}, (e) {
+    _live = LiveEvents.instance.listen({LiveEvents.studentLifecycle}, (e) {
       final id = asInt(e.data['ask_id']);
       if (id == 0 || id == widget.askId) _load();
     });

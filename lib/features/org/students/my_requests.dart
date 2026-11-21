@@ -27,7 +27,6 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show t;
 import '../governance/gov_models.dart' show GovAttachment;
 import '../governance/gov_request_parts.dart' show uploadGovAttachment;
-import 'student_asks_models.dart' show kStudentLifecycleEvent;
 import 'student_requests_api.dart';
 import 'student_status_models.dart' show reasonLabel, statusCodeTexts;
 import 'student_status_sheet.dart' show StatusDateField;
@@ -62,7 +61,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
       poll: () => _load(quiet: true),
       every: const Duration(seconds: 90),
       fallbackEvery: const Duration(minutes: 5),
-      names: {kStudentLifecycleEvent, LiveEvents.complaints},
+      names: {LiveEvents.studentLifecycle, LiveEvents.complaints},
     )..start();
   }
 

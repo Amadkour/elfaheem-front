@@ -41,7 +41,7 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart' show asMap, asMapList, t;
 import 'org_messages_models.dart';
 import 'org_v3.dart' show OrgCall;
-import 'students/my_ask_page.dart' show MyAsk, MyAskOverlay, MyAskSource, MyAsksState, RemoteMyAskSource, kStudentLifecycleEvent, myAsksEnabled, myAsksShouldAsk;
+import 'students/my_ask_page.dart' show MyAsk, MyAskOverlay, MyAskSource, MyAsksState, RemoteMyAskSource, myAsksEnabled, myAsksShouldAsk;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  The host
@@ -99,7 +99,7 @@ class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObse
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _live = LiveEvents.instance.listen({LiveEvents.orgMustAck, kStudentLifecycleEvent},
+    _live = LiveEvents.instance.listen({LiveEvents.orgMustAck, LiveEvents.studentLifecycle},
         (e) => _ask(force: true, ack: e.type == LiveEvents.orgMustAck, asks: e.type != LiveEvents.orgMustAck));
     LiveFocus.examOpen.addListener(_onFocus);
     LiveRoomHost.listenable.addListener(_onFocus);

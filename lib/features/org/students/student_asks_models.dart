@@ -32,9 +32,6 @@ import 'students_models.dart' show StudentUser;
 /// The kill switch of asks (§12).
 const kStudentAsksKey = 'org.students.asks';
 
-/// The live event of the student lifecycle (payload {org_id, student_id, ask_id, kind}).
-const kStudentLifecycleEvent = 'student_lifecycle';
-
 /// The help page of the inbox (the ask sheet shares it, §12).
 const kStudentRequestsHelpId = 'org.students.requests';
 

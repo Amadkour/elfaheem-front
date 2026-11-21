@@ -293,6 +293,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   onOpenTodo: () => showAttentionItems(context, AttentionTabs.home),
                                   onOpenOrgs: () => showContextSwitcherSheet(context),
                                   onOpenApplication: (x) => openHomeApplication(context, x, onClosed: svc.refresh),
+                                  // an ask of an organization (D-1400) → my ask page; the answer leaves the card on return
+                                  onOpenAsk: (x) => AppNavigator.openModule('student_ask', targetId: x.id, orgId: x.orgId).then((_) => svc.refresh()),
                                   // the study card (D-793): the page, then a reload (a saved profile drops the card);
                                   // "Not now" hides it at once and for 30 days on the server
                                   onCompleteStudy: _studyHidden
@@ -437,6 +439,7 @@ class StudentHomeBody extends StatelessWidget {
     this.onOpenTodo,
     this.onOpenOrgs,
     this.onOpenApplication,
+    this.onOpenAsk,
     this.onCompleteStudy,
     this.onDismissStudy,
     this.feeds,
@@ -460,6 +463,9 @@ class StudentHomeBody extends StatelessWidget {
 
   /// A case of "Your application" → its applicant page (D-1210).
   final ValueChanged<MeOnboardingItem>? onOpenApplication;
+
+  /// An ask of "Waiting for your answer" (`/me/home` asks[], D-1400) → the ask page.
+  final ValueChanged<MeAskItem>? onOpenAsk;
 
   /// The "Complete your study profile" card (D-793): open the study page / hide it; both null = no card.
   final VoidCallback? onCompleteStudy, onDismissStudy;
@@ -641,6 +647,7 @@ class _Sections extends StatelessWidget {
     final j = homeJourney(home.journey);
     final invite = j == null && body.onPickInterests != null && homeJourneyInvite(home.journeyHint);
     final study = home.studyPrompt && body.onCompleteStudy != null && body.onDismissStudy != null;
+    final asks = homeAsksOf(home.raw);
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       HomeA2Layout(
@@ -652,6 +659,8 @@ class _Sections extends StatelessWidget {
             HelpTourTarget(pageId: 'home.student', id: 'live_card', child: HomeLiveNow(rooms: live, now: data.now, padding: EdgeInsets.zero)),
           if (home.onboarding.isNotEmpty && homeApplicationNeedsAction(home.onboarding))
             HomeApplicationCard(items: home.onboarding, onOpen: body.onOpenApplication),
+          // what an organization asks me (D-1400): it waits for MY answer, so it sits with the banners
+          if (asks.isNotEmpty) HomeAsksCard(items: asks, onOpen: body.onOpenAsk),
         ],
         queue: HomeEntrance(index: 1, child: queue),
         side: [HomeEntrance(index: 2, child: today), ?inbox],

@@ -69,6 +69,8 @@ import 'org_registrar_member.dart' show openAdvising, openConsents, openMyWeek, 
 import 'org_services_pages.dart' show OrgAnnouncementsPage, OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
 import 'org_ui.dart' show memberRoleLabels, orgNameOf;
 import 'advising/adv_wiring.dart' show AdvMemberHubEntry;
+import 'students/my_requests.dart' show openMyRequests;
+import 'students/student_status_models.dart' show kStudentsStatusKey;
 import 'governance/gov_wiring.dart' show govMemberPills;
 import 'org_messages_models.dart' show orgMessagesEnabled;
 import 'org_my_journey.dart' show OrgJourneyStore, OrgMyJourney;
@@ -270,6 +272,9 @@ List<OrgQuickGroup> orgQuickGroups(BuildContext context, Map<String, dynamic> en
     OrgQuickGroup(t('الطلبات والنماذج', 'Requests & forms'), [
       if (isMember) ...[
         OrgQuickAction(icon: Icons.assignment_rounded, label: t('طلباتي', 'My requests'), onTap: () => space(2)),
+        // student lifecycle (D-1400): suspend · postpone · withdraw · re-enrol · an excuse · a detail of my file
+        if (student && !AppConfig.disableList.contains(kStudentsStatusKey))
+          OrgQuickAction(icon: Icons.fact_check_rounded, label: t('طلبات الدراسة', 'Study requests'), onTap: () => openMyRequests(context, orgId)),
         // governance (D-057): submit to an entity · my items · my votes · forms I must answer
         for (final w in govMemberPills(context, orgId,
             ({required icon, required label, required onTap}) => _ActionCarrier(OrgQuickAction(icon: icon, label: label, onTap: onTap))))

@@ -258,9 +258,21 @@ class AppNavigator {
       case 'org_invitations': // an invitation to join an organization (phone invites, push + notification tap) → My organizations, which shows the invitations card
         await nav.pushNamed(AppRoutes.location(AppRoutes.orgMemberships.id));
         return;
-      case 'org_student': // student lifecycle (D-1400): a status notice for staff → the unified student file
+      case 'org_student': // student lifecycle (D-1400): a status notice for staff → the unified student file;
+        // focus `asks` (a student answered an ask) → the Student requests inbox, where it is decided
+        if (orgId != null && (link?.focus ?? data['focus']) == 'asks' &&
+            await _deferred('students_wiring', students_wiring.loadLibrary, () => students_wiring.openStudentRequestsFromLink(nav, orgId: orgId))) {
+          return;
+        }
         if (orgId != null && targetId != null &&
             await _deferred('students_wiring', students_wiring.loadLibrary, () => students_wiring.openStudentFromLink(nav, orgId: orgId, uid: targetId))) {
+          return;
+        }
+        await nav.pushNamed('/notifications');
+        return;
+      case 'student_ask': // student lifecycle (D-1400): the organization asks me something → my ask page (id = the ask)
+        if (targetId != null &&
+            await _deferred('students_wiring', students_wiring.loadLibrary, () => students_wiring.openStudentAskFromLink(nav, targetId))) {
           return;
         }
         await nav.pushNamed('/notifications');

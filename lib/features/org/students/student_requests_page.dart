@@ -66,7 +66,7 @@ class _OrgStudentRequestsPageState extends State<OrgStudentRequestsPage> {
       poll: () => _load(quiet: true),
       every: const Duration(seconds: 60),
       fallbackEvery: const Duration(minutes: 5),
-      names: {kStudentLifecycleEvent, LiveEvents.onboarding},
+      names: {LiveEvents.studentLifecycle, LiveEvents.onboarding},
     )..start();
   }
 

@@ -8,6 +8,9 @@
 //   openStudentFile(context, orgId, uid, {name})   pushes the unified student file (the session carried over)
 //   openStudentsList(context, orgId)               pushes the Students list on its own (a deep link, the palette)
 //   openStudentFromLink(nav, orgId:, uid:)         the deep link `org_student` {org_id, id} / `/org/:orgId/students/:uid`
+//   studentRequestsSub(OrgSession s)               the People sub-page "Student requests" (kill switch org.students.asks)
+//   openStudentRequestsFromLink(nav, orgId:)       the deep link `org_student` with focus `asks` → the requests inbox
+//   openStudentAskFromLink(nav, askId)             the student's deep link `student_ask` {id} → their ask page
 library;
 
 import 'package:flutter/material.dart';
@@ -15,7 +18,9 @@ import 'package:flutter_education_app/config/app_config.dart';
 
 import '../../admin/admin_common.dart' show t;
 import '../org_providers.dart' show OrgSession;
+import 'my_ask_page.dart' show myAsksEnabled, openMyAsk;
 import 'student_file_page.dart';
+import 'student_requests_page.dart' show OrgStudentRequestsPage;
 import 'students_models.dart' show StudentRow, kStudentsFeatureKey;
 import 'students_page.dart' show OrgStudentsPage;
 
@@ -33,6 +38,15 @@ void _openRow(BuildContext context, int orgId, StudentRow row) =>
   return ('students', t('الطلاب', 'Students'), Icons.school_rounded, OrgStudentsPage(orgId: oid, onOpenStudent: _openRow));
 }
 
+/// The "Student requests" sub-page of People, right after Students: `('student_requests', title, icon, page)`. null
+/// without `students` / `student_status` rights, with no organization open or with asks switched off.
+(String, String, IconData, Widget)? studentRequestsSub(OrgSession s) {
+  final oid = s.currentId;
+  if (oid == null || !(s.can('students') || s.can('student_status')) || !studentsEnabled() || !myAsksEnabled()) return null;
+  return ('student_requests', t('طلبات الطلاب', 'Student requests'), Icons.assignment_turned_in_rounded,
+      OrgStudentRequestsPage(orgId: oid, canFullscreen: s.can('student_status', 'update')));
+}
+
 /// Pushes the unified file of student [uid] ([name] is the title until it loads).
 Future<void> openStudentFile(BuildContext context, int orgId, int uid, {String? name}) =>
     pushStudentPage<void>(context, OrgStudentFilePage(orgId: orgId, uid: uid, name: name));
@@ -46,5 +60,20 @@ Future<void> openStudentsList(BuildContext context, int orgId) =>
 Future<bool> openStudentFromLink(NavigatorState nav, {required int orgId, required int uid}) async {
   if (!studentsEnabled()) return false;
   await nav.push(MaterialPageRoute<void>(builder: (_) => OrgStudentFilePage(orgId: orgId, uid: uid)));
+  return true;
+}
+
+/// The staff deep link `org_student` with focus `asks` (a student answered an ask): the requests inbox, where it is
+/// decided. False with the switches off (the caller falls back to the file / the notifications).
+Future<bool> openStudentRequestsFromLink(NavigatorState nav, {required int orgId}) async {
+  if (!studentsEnabled() || !myAsksEnabled()) return false;
+  await nav.push(MaterialPageRoute<void>(builder: (_) => OrgStudentRequestsPage(orgId: orgId, pushed: true)));
+  return true;
+}
+
+/// The student's deep link `student_ask` {id}: their ask page. False with asks switched off.
+Future<bool> openStudentAskFromLink(NavigatorState nav, int askId) async {
+  if (!myAsksEnabled()) return false;
+  await openMyAsk(nav, askId);
   return true;
 }
