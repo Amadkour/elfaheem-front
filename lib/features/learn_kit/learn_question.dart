@@ -6,6 +6,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/features/learn_kit/learn_grading.dart';
@@ -72,7 +73,7 @@ class LearnPrompt extends StatelessWidget {
                 container: true,
                 label: caption,
                 excludeSemantics: true,
-                child: Text(caption!, style: AppType.overline(context).copyWith(color: c.textMedium)),
+                child: AutoDirText(caption!, style: AppType.overline(context).copyWith(color: c.textMedium)),
               ),
               const SizedBox(height: AppSpace.xxs),
             ],
@@ -82,7 +83,8 @@ class LearnPrompt extends StatelessWidget {
               headingLevel: 2,
               label: text,
               excludeSemantics: true,
-              child: Text(text, style: AppType.section(context)),
+              // an author's text keeps its own direction ("كم عدد أركان الإسلام؟" in the English interface, S13)
+              child: AutoDirText(text, style: AppType.section(context)),
             ),
           ]),
         ),
@@ -152,7 +154,7 @@ class LearnOptionTile extends StatelessWidget {
                     ),
                     const SizedBox(width: AppSpace.sm),
                   ],
-                  Expanded(child: Text(label, style: AppType.row(context).copyWith(color: s.ink))),
+                  Expanded(child: AutoDirText(label, style: AppType.row(context).copyWith(color: s.ink))),
                   if (s.glyph != null) ...[
                     const SizedBox(width: AppSpace.xs),
                     Icon(s.glyph, size: AppIconSize.md, color: s.edge),
@@ -271,7 +273,7 @@ class _Chip extends StatelessWidget {
                     Icon(s.glyph, size: AppIconSize.sm, color: s.edge),
                     const SizedBox(width: AppSpace.xxs),
                   ],
-                  Flexible(child: Text(label, style: AppType.row(context).copyWith(color: s.ink))),
+                  Flexible(child: AutoDirText(label, style: AppType.row(context).copyWith(color: s.ink))),
                 ]),
               ),
             ),

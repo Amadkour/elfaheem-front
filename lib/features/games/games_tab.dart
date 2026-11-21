@@ -17,6 +17,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/courses/course_filters.dart';
@@ -402,7 +403,7 @@ class GameCard extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(game.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+              AutoDirText(game.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
               const SizedBox(height: AppSpace.xxs),
               Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 Text(gameEngineName(game.engine), style: AppType.meta(context)),
@@ -412,7 +413,12 @@ class GameCard extends StatelessWidget {
                 else
                   LearnStars(stars: p.stars, size: AppIconSize.sm),
                 if (rewards && game.pointsReward > 0)
-                  AppStatusBadge(label: t('+${game.pointsReward} نقطة', '+${game.pointsReward} points'), tone: AppTone.gold, dense: true),
+                  AppStatusBadge(
+                      label: countText(game.pointsReward,
+                          ar1: '+1 نقطة', ar2: '+نقطتان', arFew: '+${game.pointsReward} نقاط', arMany: '+${game.pointsReward} نقطة',
+                          en1: '+1 point', en: '+${game.pointsReward} points'),
+                      tone: AppTone.gold,
+                      dense: true),
               ]),
             ]),
           ),

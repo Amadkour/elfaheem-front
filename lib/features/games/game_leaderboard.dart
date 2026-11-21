@@ -202,7 +202,7 @@ class GameLeaderboardView extends StatelessWidget {
           key: const ValueKey('games.board.visible'),
           title: t('أظهرني في لوحات المتصدرين', 'Show me on leaderboards'),
           subtitle: t('عند الإخفاء ترى ترتيبك وحدك.', 'When hidden, only you see your rank.'),
-          icon: Icons.visibility_rounded,
+          icon: v ? Icons.visibility_rounded : Icons.visibility_off_rounded,
           value: v,
           onChanged: onVisible,
         ),

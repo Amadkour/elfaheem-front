@@ -20,6 +20,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
+import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/admin/admin_page.dart';
@@ -288,7 +289,8 @@ class GameAdminRow extends StatelessWidget {
         const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(game.title.isEmpty ? game.key : game.title,
+            // the admin's own text keeps its direction (an Arabic title in the English interface, S13)
+            AutoDirText(game.title.isEmpty ? game.key : game.title,
                 maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: game.published ? null : c.textLight)),
             Text(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
           ]),
@@ -829,7 +831,7 @@ class GameDraftRowCard extends StatelessWidget {
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Expanded(child: Text(form.rowLabel(index), style: AppType.section(context))),
+          Expanded(child: Text(form.rowLabel(index), style: AppType.section(context).copyWith(fontFeatures: const [FontFeature.liningFigures(), FontFeature.tabularFigures()]))),
           IconButton(
             tooltip: t('حذف', 'Remove'),
             icon: const Icon(Icons.delete_outline_rounded),

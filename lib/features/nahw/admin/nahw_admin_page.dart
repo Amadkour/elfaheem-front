@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart';
 import 'package:flutter_education_app/core/edu/edu_countries.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/admin/admin_page.dart';
@@ -30,7 +31,8 @@ int? _intOf(String s) => int.tryParse(s.trim());
 
 String _inactive() => t('متوقف', 'Inactive');
 
-String _exerciseCount(int n) => n == 1 ? t('تمرين واحد', '1 exercise') : t('$n تمارين', '$n exercises');
+String _exerciseCount(int n) =>
+    countText(n, ar1: 'تمرين واحد', ar2: 'تمرينان', arFew: '$n تمارين', arMany: '$n تمريناً', en1: '1 exercise', en: '$n exercises', ar0: 'لا تمارين', en0: 'No exercises');
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Levels

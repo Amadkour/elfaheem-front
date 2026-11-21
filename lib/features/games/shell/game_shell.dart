@@ -246,7 +246,8 @@ class GameShellHeader extends StatelessWidget {
             child: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
               Text(
                 total <= 0 ? t('جولة', 'Round') : t('$done من $total', '$done of $total'),
-                style: AppType.section(context).copyWith(color: b.ink),
+                // lining figures: the editorial face's old-style zero reads as an "o" (N20)
+                style: AppType.section(context).copyWith(color: b.ink, fontFeatures: const [FontFeature.liningFigures(), FontFeature.tabularFigures()]),
               ),
               AppBump(
                 trigger: score,
@@ -473,7 +474,7 @@ class GameFinishView extends StatelessWidget {
           Text('$score / $max · ${learnPercent(score, max)}%',
               key: const ValueKey('learn.result.score'),
               textAlign: TextAlign.center,
-              style: AppType.section(context).copyWith(color: b.muted)),
+              style: AppType.section(context).copyWith(color: b.muted, fontFeatures: const [FontFeature.liningFigures(), FontFeature.tabularFigures()])),
           if (points > 0) ...[
             const SizedBox(height: AppSpace.sm),
             Row(mainAxisSize: MainAxisSize.min, children: [
