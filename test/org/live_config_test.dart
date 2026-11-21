@@ -15,7 +15,8 @@ void main() {
       expect(c.cameraMaxHost, LiveCameraCap.p720);
       expect(c.cameraMaxParticipant, LiveCameraCap.p360);
       expect(c.cameraFps, 24);
-      expect(c.screenFpsMax, 30);
+      expect(c.cameraFpsHost, 30, reason: 'D-1504: the host camera at 30 fps');
+      expect(c.screenFpsMax, 15, reason: "D-1504: the server's recommended value");
       expect(c.screenBitrateKbps, 2500);
       expect(c.audioDtx, isTrue);
       expect(c.audioRed, isTrue);
@@ -128,6 +129,19 @@ void main() {
       expect(c.recordingMode, isNull);
       expect(LiveConfig.parse({'screen_fps_max': 1, 'screen_bitrate_kbps': 99999}).screenFpsMax, 5);
       expect(LiveConfig.parse({'screen_bitrate_kbps': 99999}).screenBitrateKbps, 6000);
+    });
+
+    test('D-1504: a 1080p host cap only when sent, the host fps, the participant ceiling', () {
+      expect(LiveConfig.parse({'camera_max_host': '1080p'}).cameraMaxHost, LiveCameraCap.p1080);
+      expect(LiveConfig.parse({'camera_max_participant': '1080p'}).cameraMaxParticipant, LiveCameraCap.p540);
+      expect(LiveConfig.parse({}).cameraMaxHost, LiveCameraCap.p720);
+      expect(LiveConfig.parse({'camera_fps': 24}).cameraFpsHost, 30);
+      expect(LiveConfig.parse({'camera_fps': 15}).cameraFpsHost, 15, reason: 'the saving setting covers the host');
+      expect(LiveConfig.parse({'camera_fps': 15, 'camera_fps_host': 30}).cameraFpsHost, 30);
+      expect(LiveConfig.parse({'camera_fps_host': 22}).cameraFpsHost, 24);
+      expect(LiveConfig.parse({'screen_fps_max': 30}).screenFpsMax, 30, reason: "the server's value wins");
+      expect(LiveConfig.parse({}).cameraFpsFor(host: true), 30);
+      expect(LiveConfig.parse({}).cameraFpsFor(host: false), 24);
     });
 
     test('camera fps snaps to 15 / 24 / 30', () {

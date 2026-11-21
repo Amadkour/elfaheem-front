@@ -53,7 +53,7 @@ void main() {
       expect(list[0].recordEnabled, isFalse);
       expect(list[0].held, isFalse);
       expect(list[1].held, isTrue);
-      expect(list[1].recordEnabled, isTrue);
+      expect(list[1].recordEnabled, isFalse, reason: 'D-1503: no record_enabled = off');
       expect(goLiveSessionsFrom(null), isEmpty);
       expect(goLiveSessionsFrom([{'id': 1}]).single.id, 1);
     });
@@ -121,13 +121,15 @@ void main() {
     expect(goLiveDefaultTitle(_now), startsWith('حصة مباشرة · '));
   });
 
-  test('default Record: the suggested session, else the course\'s latest live session, else on', () {
+  test('default Record: the suggested session, else the course\'s latest live session, else off (D-1503)', () {
     final off = GoLiveSuggestion(sessionId: 1, title: '', startsAt: _now, recordEnabled: false);
     expect(goLiveDefaultRecord(off, const []), isFalse);
     final slot = GoLiveSuggestion(title: '', startsAt: _now, recordEnabled: false);
     expect(goLiveDefaultRecord(slot, [_s(3, record: false), _s(2)]), isFalse, reason: 'a slot follows the course');
     expect(goLiveDefaultRecord(null, [_s(2, record: false), _s(3, type: 'pre-recorded')]), isFalse);
-    expect(goLiveDefaultRecord(null, const []), isTrue);
+    expect(goLiveDefaultRecord(null, const []), isFalse);
+    expect(goLiveDefaultRecord(null, [_s(4, record: true)]), isTrue, reason: 'the host turned it on last time');
+    expect(GoLiveSession.fromJson({'id': 9})!.recordEnabled, isFalse);
   });
 
   test('RemoteGoLiveApi: the requests on the wire (create · record · start · end) and the start payload', () async {

@@ -720,12 +720,12 @@ class TeacherCourseScreenProvider extends BaseProvider {
   int joinSessionId = -1;
   int startSessionId = -1;
 
-  /// The session's own recording switch (`record_enabled`), true when unknown.
+  /// The session's own recording switch (`record_enabled`), false when unknown (D-1503).
   bool recordEnabledFor(int sessionId) {
     for (final s in _sessions) {
       if (s.id == sessionId) return s.recordEnabled;
     }
-    return true;
+    return false;
   }
 
   Future<LiveResponseModel?> startLive(
@@ -942,7 +942,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         sessionId: sessionId,
         url: result['ws_url'] as String? ?? '',
         token: result['token'] as String? ?? '',
-        recordingEnabled: result['recording_enabled'] as bool? ?? true,
+        recordingEnabled: result['recording_enabled'] == true, // D-1503
         liveStartedAt: outcome.liveStartedAt,
         liveConfig: outcome.liveConfig, // D-090
       );

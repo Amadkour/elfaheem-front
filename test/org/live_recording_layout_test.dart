@@ -124,6 +124,35 @@ void main() {
     });
   });
 
+  group('liveRecordOffer (D-1503)', () {
+    bool offer({bool meeting = false, bool canMeeting = false, bool teacher = true, bool guest = false, bool device = true, bool running = false, bool ending = false}) =>
+        liveRecordOffer(
+          isMeeting: meeting,
+          canRecordMeeting: canMeeting,
+          isTeacher: teacher,
+          isGuest: guest,
+          deviceRecorder: device,
+          recorderRunning: running,
+          ending: ending,
+        );
+
+    test('every room\'s host sees Record while nothing records', () {
+      expect(offer(), isTrue, reason: 'a course teacher whose session started with recording off');
+      expect(offer(meeting: true, canMeeting: true, teacher: false), isTrue);
+      expect(offer(meeting: true, canMeeting: false), isFalse, reason: 'a meeting follows its creator, not isTeacher');
+    });
+
+    test('never for a student, a guest, a server-mode run, a running recorder or while ending', () {
+      expect(offer(teacher: false), isFalse);
+      expect(offer(guest: true), isFalse);
+      expect(offer(meeting: true, canMeeting: true, guest: true), isFalse);
+      expect(offer(device: false), isFalse);
+      expect(offer(running: true), isFalse);
+      expect(offer(meeting: true, canMeeting: true, running: true), isFalse);
+      expect(offer(ending: true), isFalse);
+    });
+  });
+
   group('full view', () {
     test('a phone hides the system bars and turns; leaving gives them back; the web asks nothing', () {
       final on = liveFullViewSystemUi(on: true, mobile: true)!;

@@ -49,7 +49,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
   final _orderCtrl = TextEditingController(text: '0');
   String _type = 'pre-recorded';
   String _track = 'lecture';   // lecture (teacher) · section (assistant)
-  bool _recordEnabled = true;  // live sessions: "Record this session" (server default on)
+  bool _recordEnabled = false; // live sessions: "Record this session" (off until the host turns it on, D-1503)
   DateTime? _scheduled;
 
   String? _nameError;

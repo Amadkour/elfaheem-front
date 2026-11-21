@@ -327,7 +327,7 @@ class JoinOutcome {
 
   bool get canPublish => payload['can_publish'] != false;
 
-  bool get recordingEnabled => payload['recording_enabled'] != false;
+  bool get recordingEnabled => payload['recording_enabled'] == true; // D-1503: off unless the server says on
 
   String? get identity {
     final v = '${payload['identity'] ?? ''}';

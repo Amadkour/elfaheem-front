@@ -122,7 +122,8 @@ class RecLayout {
 }
 
 /// The device recorder starts by itself when the room opens (D-306): only for a course session's teacher with the
-/// session's record switch on and a client-mode run. A meeting (a "Meet now" or a calendar meeting, never tied to a
+/// session's record switch on and a client-mode run. Since D-1503 the switch is on only when the host set
+/// `record_enabled: true` (the payload parsers read a missing flag as off). A meeting (a "Meet now" or a calendar meeting, never tied to a
 /// course session) ALWAYS opens with the recording stopped — its creator presses Record — whoever opens it, a
 /// teacher included.
 bool liveRecordsAtStart({
@@ -132,6 +133,23 @@ bool liveRecordsAtStart({
   required bool deviceRecorder,
 }) =>
     !isMeeting && isTeacher && recordingEnabled && deviceRecorder;
+
+/// D-1503: the top row offers "Not recording · ● Record" while nothing records on this device and this person may
+/// start it — a meeting's creator ([canRecordMeeting]), or a course session's teacher in a client-mode run (the
+/// session started with its switch off). Guests never record.
+bool liveRecordOffer({
+  required bool isMeeting,
+  required bool canRecordMeeting,
+  required bool isTeacher,
+  required bool isGuest,
+  required bool deviceRecorder,
+  required bool recorderRunning,
+  required bool ending,
+}) {
+  if (ending || recorderRunning || isGuest) return false;
+  if (isMeeting) return canRecordMeeting;
+  return isTeacher && deviceRecorder;
+}
 
 /// The canvas for [stage] (a shared screen or the board; null = nothing shared) and [cameras] (on, in order).
 RecLayout recordingLayout({RecSource? stage, List<RecSource> cameras = const [], bool rtl = false, Size canvas = kRecCanvas}) {
