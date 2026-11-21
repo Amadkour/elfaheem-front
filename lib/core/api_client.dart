@@ -1415,6 +1415,11 @@ class ApiClient {
 
   bool _redirecting = false;
 
+  /// A forced sign-out (the session expired, the refresh was refused, the account was blocked): the app's one
+  /// sign-out flow without the questions, set by MyAuthProvider (`logout(forced: true)`), so the outbox, the read
+  /// caches and the store files never stay for the next person. Never awaited by the redirect.
+  static Future<void> Function()? onSessionLost;
+
   Future<void> _redirectToLogin() async {
     if (GuestState.active) return; // a guest has no session to lose
     if (GuestLinkVisit.active) return; // a guest link's page is open: never throw the visitor out of it (D-840)
@@ -1426,6 +1431,8 @@ class ApiClient {
       await _storage.clear();
       _mfaDismissedAt = null;
       TeacherOnboardingToken.clear();
+      final lost = onSessionLost;
+      if (lost != null) unawaited(lost().catchError((Object e) => log('forced sign-out: $e', name: 'API')));
 
       if (AppConfig.testMode) log('redirect to login', name: 'API');
 

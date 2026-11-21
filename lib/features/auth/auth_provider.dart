@@ -354,6 +354,10 @@ class MyAuthProvider extends BaseProvider {
     // Restore the user from disk immediately so role/isTeacher are ready
     // before the first frame is drawn — no async gap, no null user.
     loadCachedUser();
+    // a forced sign-out (401 after the refresh, a refused refresh) runs the same flow, without asking
+    ApiClient.onSessionLost = () async {
+      if (_currentUser != null) await logout(forced: true);
+    };
     // the personal-account switch (settings, the enable_personal fix) keeps the cached user in step
     PersonalAccess.onChanged = (on) async {
       final u = _currentUser;
@@ -1180,11 +1184,15 @@ class MyAuthProvider extends BaseProvider {
         n = await waiting();
         if (n == 0) return true;
       }
-      return await (confirm ?? _confirmUnsentLoss)(n);
+      return await (confirm ?? confirmUnsentLoss ?? _confirmUnsentLoss)(n);
     } catch (_) {
       return true;
     }
   }
+
+  /// Replaces the "delete unsent work?" question in tests of a whole sign-out (null = the dialog).
+  @visibleForTesting
+  static Future<bool> Function(int n)? confirmUnsentLoss;
 
   static Future<bool> _confirmUnsentLoss(int n) async {
     final ctx = navigatorKey.currentContext;
@@ -1220,7 +1228,8 @@ class MyAuthProvider extends BaseProvider {
       await NotificationService.instance.unregisterFromBackend(_api);
     } catch (_) {}
     await _api.signOutServer(); // revoke the refresh family (S15); never blocks on a network failure
-    await _storage.clearAll(); // wipes tokens + user JSON
+    await _api.clearTokens(); // the access + refresh tokens: no sign-out path leaves a session behind
+    await _storage.clearAll(); // the cached user JSON
     try {                       // unsent exam answers kept for crash recovery never outlive the session (shared devices)
       final p = await SharedPreferences.getInstance();
       for (final k in p.getKeys().where((k) => k.startsWith('exam.pending.')).toList()) {
