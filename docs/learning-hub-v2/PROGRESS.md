@@ -40,6 +40,39 @@ Owner decisions (2026-11-21):
   - the two-device live checks;
   - the S4 entries in `app_features_guide.json` (back-core added 3; check that they cover discovery and packages).
 
+## Status 2026-11-21 (night)
+- **Back integration done** (Fable lead): back `feature/learning-hub-v2` tip a5487f99, merges cal a7eee060, learn 64e07c90, core 83741d22.
+  - 7 defects fixed with tests (7d90afb6, e8a9c039, a5487f99).
+  - Refund-due payments (D-1691) and once-a-day due reviews (D-1692).
+- **Front:** snapshots regenerated, the temporary placeholders dropped, 84 contract tests green (6cba6c70, a99cfd93).
+- **Migrations on PostgreSQL (nb-pg, throwaway db `lh2_mig`; script in the session scratchpad):**
+  - 0114 → 0120 with production code and seed first; down to 0114 and up again;
+  - the new seed loads twice with 0 rows the second time;
+  - 3 old Quran cards copied with values translated (m→male, published→approved, pending, draft), subject `quran`, the old table kept;
+  - `sessions.record_enabled` defaults to false.
+  - **Not done:** a run on a copy of the real production data. That needs the owner's OK to pull a dump, or it runs on the server as part of the deploy (the deploy takes `pg_dump` first).
+- **Running now:**
+  - the final Fable review (read-only);
+  - a walk through the real web app on an own stack (writes `QA_WALK.md`);
+  - the admin "Refunds due" screen (D-1640).
+- **Then:** one fix round from the review and the walk, the touched tests, and `FINAL_REPORT.md`.
+
+## Release plan (owner, 2026-11-21: "test your self in chrome then merge into production and deploy two project Alfaheem and nextbrain")
+1. Fix round from the final review and the walk; the touched tests; the analyzer.
+2. Lead's own Chrome check (playwright on an own local stack): the main flow of each feature, ar + en, phone + desktop.
+3. NextBrain:
+   - a backup tag `pre-learning-hub-v2-<date>` in both repos;
+   - fast-forward (or `--no-ff` merge) `feature/learning-hub-v2` into `production`; push both (never force);
+   - `D:/platform/nextbrain/back/.venv312/Scripts/python D:/platform/nextbrain/deploy/deploy.py backend --no-env-check`, then `... frontend` (in the background, >10 min).
+   - The deploy takes `pg_dump` first and runs core 0115–0120 plus every migration still pending on the server.
+4. Alfaheem (Fable, a complex merge):
+   - sync from NextBrain production in new worktrees (`git checkout -b sync/nextbrain-<date>` then `sync/sync.sh`, the gate "0 problem(s)", analyze, tests, web build, landing);
+   - this brings in teacher-org, onboarding, Learning Hub and student lifecycle too (the last sync was NB 6887fa00 / 3e97a14 on 2026-11-17);
+   - merge into Alfaheem production and push;
+   - deploy with the recipe in the memory `alfaheem-deploy`: back `git pull` + `compose up -d --build` after a `pg_dump`; web build to `www/app` with https defines.
+   - The local `elfaheem-front` production checkout has 10 uncommitted files (icons, splash, `Info.plist`): leave them alone.
+5. Smoke both sites; `FINAL_REPORT.md`.
+
 ## Integration (S7), still to do
 1. Back merge order: cal, core, learn.
    - Wire `create_series_for_package` (core stub → cal `calendar_series_api.py`).
