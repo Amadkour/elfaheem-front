@@ -35,6 +35,13 @@ class OutboxRow {
   /// (the op id makes that a `duplicate`, never a second row).
   static const sending = 'sending';
 
+  /// Failed [parkAt] times: left out of automatic runs, tried once on app start and on a manual "Sync now"
+  /// (SyncStatus counts it apart, "needs attention").
+  static const parked = 'parked';
+
+  /// The tries after which a row is [parked].
+  static const parkAt = 10;
+
   /// The op id = the entity's `client_id` (8–36 of `A-Za-z0-9_.:-`).
   final String id;
   final String kind;

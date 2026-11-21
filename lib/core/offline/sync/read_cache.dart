@@ -33,6 +33,11 @@ const identityFieldNames = {
   'passport_number',
   'civil_id',
   'iqama_number',
+  'nid',
+  'student_code',
+  'student_codes',
+  'identifier',
+  'identifiers',
 };
 
 /// [body] without the [identityFieldNames] keys (maps and lists are copied, other values kept).

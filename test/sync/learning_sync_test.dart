@@ -306,6 +306,36 @@ void main() {
     expect(await db.outboxRows(), isEmpty);
   });
 
+  test('two offline profile edits are one op with the first base; a stale answer overwrites nothing', () async {
+    final server = {
+      'profile': {'stage': 'secondary', 'grade': 2, 'school_name': 'Other device school'},
+      'complete': true,
+      'missing': [],
+      'settings': {},
+      'updated_at': '2026-11-21T09:00:00',
+    };
+    answer = (o) => {
+          'results': [for (final op in _ops(o)) {'id': op['id'], 'status': 'rejected', 'code': 'sync_stale', 'entity': server}],
+          'server_time': '2026-11-21T12:00:00',
+        };
+    StudyProfileSync.latest.value = null;
+    online.value = false;
+    expect(await StudyProfileSync.queue({'school_name': 'First'}, baseUpdatedAt: '2026-11-20T08:00:00'), isTrue);
+    // the second edit is made on the device's own (unsent) copy: its base would be newer, it must not count
+    expect(await StudyProfileSync.queue({'school_name': 'Second'}, baseUpdatedAt: '2026-11-21T11:00:00'), isTrue);
+    final waiting = await db.outboxRows();
+    expect(waiting, hasLength(1));
+    expect(waiting.single.baseUpdatedAt, '2026-11-20T08:00:00');
+    online.value = true;
+    await engine.run();
+    final op = _ops(pushes.single).single;
+    expect(op['payload'], {'school_name': 'Second'});
+    expect(op['base_updated_at'], '2026-11-20T08:00:00');
+    expect(StudyProfileSync.latest.value?.stale, isTrue);
+    expect(StudyProfileSync.latest.value?.view.profile.schoolName, 'Other device school');
+    expect(await db.outboxRows(), isEmpty);
+  });
+
   test('the games, nahw and Quran tabs read from the cache while offline', () async {
     var served = 0;
     route('/api/v1/games', (_) {

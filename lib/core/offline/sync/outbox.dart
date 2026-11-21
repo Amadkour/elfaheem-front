@@ -6,8 +6,12 @@
 // Four kinds only (SyncKinds); money is never an op. The op id IS the entity's `client_id`, so the same write
 // pushed twice, or posted to the route and then pushed, is one row on the server. Rows survive a restart (the
 // device database), carry the user who made them and are only ever sent under that user's token (SyncEngine reads
-// the signed-in user's rows only). The web, a sign-out, the kill switch `sync.offline` and a database that cannot
-// open all answer [EnqueueResult.postDirectly]: the caller then posts straight to the route, as Phase 6 does.
+// the signed-in user's rows only, and the push names that user: 409 `sync_wrong_user` otherwise). The web, a
+// sign-out, View-As, the kill switch `sync.offline` and a database that cannot open all answer
+// [EnqueueResult.postDirectly]: the caller then posts straight to the route, as Phase 6 does.
+//
+// A whole-object kind (the study profile) is queued with [Outbox.supersede] first: a later edit replaces the one
+// still waiting and keeps ITS base, so the stale check survives two offline edits and a restart (7.R).
 library;
 
 import 'dart:async';
@@ -18,6 +22,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../config/app_config.dart';
+import '../../../utils/widget/view_as_state.dart';
 import 'local_db.dart';
 import 'sync_status.dart';
 
@@ -44,7 +49,7 @@ enum EnqueueResult {
   /// The same op id is already waiting (a double tap): nothing new was kept.
   alreadyQueued,
 
-  /// No outbox here (web, signed out, `sync.offline` off, no database): post to the route yourself.
+  /// No outbox here (web, signed out, View-As, `sync.offline` off, no database): post to the route yourself.
   postDirectly,
 }
 
@@ -65,10 +70,16 @@ Future<int?> savedUserId() async {
 bool syncOfflineAvailable() => !kIsWeb && !AppConfig.disableList.contains(syncOfflineFeatureKey);
 
 class Outbox {
-  Outbox({Future<LocalDb> Function()? open, Future<int?> Function()? userId, bool Function()? available, SyncStatus? status})
-      : _open = open ?? openDeviceDb,
+  Outbox({
+    Future<LocalDb> Function()? open,
+    Future<int?> Function()? userId,
+    bool Function()? available,
+    bool Function()? viewingAs,
+    SyncStatus? status,
+  })  : _open = open ?? openDeviceDb,
         _userId = userId ?? savedUserId,
         _available = available ?? syncOfflineAvailable,
+        _viewingAs = viewingAs ?? (() => ViewAsState.active),
         _status = status ?? SyncStatus.instance;
 
   static Outbox instance = Outbox();
@@ -76,6 +87,7 @@ class Outbox {
   final Future<LocalDb> Function() _open;
   final Future<int?> Function() _userId;
   final bool Function() _available;
+  final bool Function() _viewingAs;
   final SyncStatus _status;
   Future<LocalDb?>? _db;
 
@@ -90,6 +102,9 @@ class Outbox {
 
   bool get available => _available();
 
+  /// A super admin is viewing as someone: nothing is queued and nothing is sent (the token is not that person's).
+  bool get viewingAs => _viewingAs();
+
   Future<int?> currentUserId() => _userId();
 
   Future<EnqueueResult> enqueue({
@@ -101,7 +116,7 @@ class Outbox {
   }) async {
     assert(SyncKinds.all.contains(kind), 'unknown sync kind $kind');
     assert(syncOpIdPattern.hasMatch(id), 'bad op id $id');
-    if (!_available()) return EnqueueResult.postDirectly;
+    if (!_available() || _viewingAs()) return EnqueueResult.postDirectly;
     final uid = await _userId();
     final d = await db;
     if (uid == null || d == null) return EnqueueResult.postDirectly;
@@ -122,6 +137,47 @@ class Outbox {
     await refreshCount();
     if (added) onEnqueued?.call();
     return added ? EnqueueResult.queued : EnqueueResult.alreadyQueued;
+  }
+
+  /// A whole-object op ([kind]'s new copy replaces the old one): when a row of [kind] of the signed-in user waits
+  /// (not `sending`), it is dropped and [payload] is kept under [id] with the OLD row's `baseUpdatedAt` and a
+  /// `clientTs` of now. True = one was replaced; false = none waits (or no outbox here): enqueue as usual.
+  Future<bool> supersede(String kind, {required String id, required Map<String, dynamic> payload}) async {
+    assert(SyncKinds.all.contains(kind), 'unknown sync kind $kind');
+    assert(syncOpIdPattern.hasMatch(id), 'bad op id $id');
+    if (!_available() || _viewingAs()) return false;
+    final uid = await _userId();
+    final d = await db;
+    if (uid == null || d == null) return false;
+    try {
+      final waiting = [
+        for (final r in await d.outboxRows(userId: uid))
+          if (r.kind == kind && r.state != OutboxRow.sending) r,
+      ];
+      if (waiting.isEmpty) return false;
+      await d.outboxDelete([for (final r in waiting) r.id]);
+      await d.outboxInsert(OutboxRow(
+        id: id,
+        kind: kind,
+        payload: jsonEncode(payload),
+        clientTs: clock.now().toUtc().toIso8601String(),
+        baseUpdatedAt: waiting.first.baseUpdatedAt,
+        userId: uid,
+      ));
+    } catch (e) {
+      debugPrint('outbox: could not replace $kind ($e)');
+      return false;
+    }
+    await refreshCount();
+    onEnqueued?.call();
+    return true;
+  }
+
+  /// True when a row of [kind] of the signed-in user is in the push under way.
+  Future<bool> inFlight(String kind) async {
+    final uid = await _userId();
+    if (uid == null) return false;
+    return (await rowsFor(uid)).any((r) => r.kind == kind && r.state == OutboxRow.sending);
   }
 
   /// The rows of [userId] in the order they were made.
@@ -151,12 +207,14 @@ class Outbox {
     } catch (_) {}
   }
 
-  /// Reports the signed-in user's waiting rows to [SyncStatus]; returns the count.
+  /// Reports the signed-in user's waiting rows to [SyncStatus] (parked ones apart); returns the count of all.
   Future<int> refreshCount() async {
     final uid = await _userId();
-    final n = uid == null ? 0 : (await rowsFor(uid)).length;
-    _status.report(SyncStatus.outbox, n);
-    return n;
+    final rows = uid == null ? const <OutboxRow>[] : await rowsFor(uid);
+    final parked = rows.where((r) => r.state == OutboxRow.parked).length;
+    _status.report(SyncStatus.outbox, rows.length - parked);
+    _status.report(SyncStatus.parked, parked);
+    return rows.length;
   }
 
   /// Sign-out: every row of every user, and the read caches with them (same database).
@@ -166,5 +224,6 @@ class Outbox {
       await d?.wipe();
     } catch (_) {}
     _status.report(SyncStatus.outbox, 0);
+    _status.report(SyncStatus.parked, 0);
   }
 }

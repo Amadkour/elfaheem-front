@@ -1,7 +1,9 @@
 // The sync engine over FakeApi (F12, D-1351 / D-1352): no request with an empty outbox, ops drained in order in
 // batches of ≤ 100, a 5xx keeps the op and books ONE retry on a growing backoff (a fake timer: no real waiting),
 // a rejected op dropped and told once, `duplicate` treated as applied, two users kept apart, the status
-// transitions, and the kill switch.
+// transitions, and the kill switch. 7.R: the push names its user and a 409 `sync_wrong_user` keeps the rows, View-As
+// queues and sends nothing, a 4xx batch is split to find the one bad op, a 429 backs off, ten failures park a row
+// (no timer left; tried again on a manual run), a `sync_error` answer keeps the row.
 import 'dart:async';
 import 'dart:convert';
 
@@ -43,7 +45,7 @@ class _FakeTimer implements Timer {
 
 class _Rig {
   _Rig({this.user = 7}) {
-    outbox = Outbox(open: () async => db, userId: () async => user, available: () => on, status: status);
+    outbox = Outbox(open: () async => db, userId: () async => user, available: () => on, viewingAs: () => viewing, status: status);
     engine = SyncEngine(
       api: ApiClient(),
       outbox: outbox,
@@ -60,6 +62,7 @@ class _Rig {
 
   int? user;
   bool on = true;
+  bool viewing = false;
   final db = MemoryLocalDb();
   final status = SyncStatus();
   final online = ValueNotifier<bool>(true);
@@ -309,5 +312,133 @@ void main() {
     expect(await r.outbox.enqueue(id: 'op-off-0001', kind: SyncKinds.gamePlay, payload: {}), EnqueueResult.postDirectly);
     await r.engine.run();
     expect(pushes, hasLength(1));
+  });
+
+  test('the push names its user; 409 sync_wrong_user keeps the rows, books no retry, is not a failure', () async {
+    final r = _Rig();
+    await r.add('op-whose-001');
+    await r.engine.run();
+    expect(_body(pushes.single)['user_id'], 7);
+
+    await r.add('op-whose-002');
+    answer = (_) => const FakeResponse(409, {'detail': {'code': 'sync_wrong_user', 'message': 'x'}});
+    await r.engine.run();
+    final row = (await r.outbox.rowsFor(7)).single;
+    expect(row.id, 'op-whose-002');
+    expect(row.state, OutboxRow.pending);
+    expect(row.tries, 0);
+    expect(r.engine.retryBooked, isFalse);
+    expect(r.engine.failures, 0);
+    expect(r.notices, isEmpty);
+  });
+
+  test('while View-As is on nothing is queued and nothing is sent', () async {
+    final r = _Rig();
+    await r.add('op-view-0001');
+    r.viewing = true;
+    expect(await r.outbox.enqueue(id: 'op-view-0002', kind: SyncKinds.gamePlay, payload: {}), EnqueueResult.postDirectly);
+    await r.engine.run();
+    expect(pushes, isEmpty);
+    r.viewing = false;
+    await r.engine.run();
+    expect(_ops(pushes.single).map((o) => o['id']), ['op-view-0001']);
+  });
+
+  test('a 422 on a batch of three: only the bad op is dropped (told once), the other two are sent', () async {
+    AppConfig.lang = 'en';
+    final r = _Rig();
+    final seen = <SyncResult>[];
+    r.engine.listen(SyncKinds.gamePlay, seen.add);
+    await r.add('op-four-001');
+    await r.add('op-four-bad');
+    await r.add('op-four-003');
+    answer = (o) => _ops(o).any((x) => x['id'] == 'op-four-bad')
+        ? const FakeResponse(422, {'detail': [{'msg': 'bad'}]})
+        : _answerAll(o);
+    await r.engine.run();
+    expect([for (final p in pushes) _ops(p).map((o) => o['id']).toList()], [
+      ['op-four-001', 'op-four-bad', 'op-four-003'],
+      ['op-four-001'],
+      ['op-four-bad'],
+      ['op-four-003'],
+    ]);
+    expect(await r.outbox.rowsFor(7), isEmpty);
+    expect([for (final x in seen) '${x.id} ${x.status}'], ['op-four-001 applied', 'op-four-bad rejected', 'op-four-003 applied']);
+    expect(seen[1].code, 'sync_bad_op');
+    expect(r.notices, [syncRejectedText('sync_bad_op')]);
+    expect(r.engine.retryBooked, isFalse);
+  });
+
+  test('a 429 backs off and keeps the op', () async {
+    final r = _Rig();
+    await r.add('op-slow-001');
+    answer = (_) => const FakeResponse(429, {'detail': 'slow down'});
+    await r.engine.run();
+    final row = (await r.outbox.rowsFor(7)).single;
+    expect(row.tries, 1);
+    expect(row.state, OutboxRow.pending);
+    expect(r.engine.retryBooked, isTrue);
+    expect(r.timers.single.duration, const Duration(seconds: 5));
+  });
+
+  test('a 500 ten times parks the row: no timer left, counted apart, tried again on a manual run', () async {
+    final r = _Rig();
+    await r.add('op-park-001');
+    answer = (_) => const FakeResponse(500, {'detail': 'boom'});
+    await r.engine.run();
+    for (var i = 1; i < OutboxRow.parkAt; i++) {
+      expect(r.engine.retryBooked, isTrue, reason: 'try $i');
+      r.timers.last.fire();
+      await pumpEventQueue();
+    }
+    expect(pushes, hasLength(OutboxRow.parkAt));
+    final row = (await r.outbox.rowsFor(7)).single;
+    expect(row.state, OutboxRow.parked);
+    expect(row.tries, OutboxRow.parkAt);
+    expect(r.engine.retryBooked, isFalse);
+    expect(r.timers.where((t) => t.isActive), isEmpty);
+    expect(r.status.value, const SyncSnapshot(phase: SyncPhase.online, pending: 0, attention: 1));
+
+    // automatic runs leave it out; a manual "Sync now" tries it once
+    r.engine.onReconnect();
+    await r.engine.run();
+    expect(pushes, hasLength(OutboxRow.parkAt));
+    answer = (o) => _answerAll(o);
+    await r.engine.run(withParked: true);
+    expect(pushes, hasLength(OutboxRow.parkAt + 1));
+    expect(await r.outbox.rowsFor(7), isEmpty);
+    expect(r.status.value, SyncSnapshot.idle);
+  });
+
+  test('a sync_error answer keeps the row (no notice), retries it, and parks it after ten', () async {
+    final r = _Rig();
+    final seen = <SyncResult>[];
+    r.engine.listen(SyncKinds.gamePlay, seen.add);
+    await r.add('op-flaky-01');
+    await r.add('op-fine-001');
+    answer = (o) => {
+          'results': [
+            for (final op in _ops(o))
+              op['id'] == 'op-flaky-01'
+                  ? {'id': op['id'], 'status': 'rejected', 'code': 'sync_error'}
+                  : {'id': op['id'], 'status': 'applied', 'entity': <String, dynamic>{}},
+          ],
+        };
+    await r.engine.run();
+    expect(pushes, hasLength(1));                  // not sent again in the same run
+    final row = (await r.outbox.rowsFor(7)).single;
+    expect(row.id, 'op-flaky-01');
+    expect(row.tries, 1);
+    expect(row.state, OutboxRow.pending);
+    expect(r.notices, isEmpty);
+    expect(seen.map((x) => x.id), ['op-fine-001']);
+    expect(r.engine.retryBooked, isTrue);
+    for (var i = 1; i < OutboxRow.parkAt; i++) {
+      r.timers.last.fire();
+      await pumpEventQueue();
+    }
+    expect((await r.outbox.rowsFor(7)).single.state, OutboxRow.parked);
+    expect(r.engine.retryBooked, isFalse);
+    expect(r.notices, isEmpty);
   });
 }

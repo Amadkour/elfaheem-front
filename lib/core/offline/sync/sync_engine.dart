@@ -4,17 +4,27 @@
 // (main.dart calls [onResume]) and right after an enqueue. One run at a time; a trigger during a run books one
 // more pass. An empty outbox makes no request, so a home's request budget never moves.
 //
-// One run: the signed-in user's rows, oldest first, in batches of ≤ 100.
+// One run: the signed-in user's rows, oldest first, in batches of ≤ 100, each row at most once per run. The push
+// names the user the rows belong to (`user_id`): under another user's token the server answers 409
+// `sync_wrong_user` and applies nothing. Nothing runs while View-As is on.
 //   applied / duplicate → the row goes and the kind's listeners get the server's `entity` (points, badges, …);
 //   rejected            → the row goes, the person is told ONCE (showAppNotice with apiErrorText of the code), and
 //                         the listeners get the result too (`sync_stale` → the profile screen refetches, D-1352);
-//   a transport error, a 5xx or a 429 → every row stays and ONE retry is booked after a growing backoff
-//                         (5 s, 10 s, … 5 min); a reconnect, a resume or a new enqueue runs it earlier.
-// No polling: the backoff timer is the only timer, and it exists only while a retry is owed.
+//   rejected sync_error → a transient server error: the row stays (tries + 1), no notice, a retry is booked;
+//   no answer for an op → the row stays (tries + 1), a retry is booked.
+// The whole push failed (7.R):
+//   no status (transport, timeout), 408, 429, 5xx → every row stays (tries + 1) and ONE retry is booked after a
+//                         growing backoff (5 s, 10 s, … 5 min); a reconnect, a resume or a new enqueue runs it earlier;
+//   401, any 403 (`feature_disabled`, a device or account block), 409 `sync_wrong_user` → the rows stay as they
+//                         were, no retry, not a failure (the next trigger tries again);
+//   any other 4xx        → a batch of several is sent again one op per request, once, in order; an op that alone
+//                         gets such an answer can never be taken: it goes, reported once as `sync_bad_op`.
+// A row whose tries reach [OutboxRow.parkAt] is parked: left out of automatic runs, tried once on app start
+// ([bind]) and on a manual "Sync now" (`run(withParked: true)`, the chip); SyncStatus counts it apart.
+// No polling: the backoff timer is the only timer, and it exists only while a retry is owed by an unparked row.
 //
 // `sync.offline` in the disable list (or the web): the engine does nothing and Outbox.enqueue answers
-// "post directly". A 403 `feature_disabled` from the server keeps the rows and stops the run (the next trigger
-// tries again).
+// "post directly".
 library;
 
 import 'dart:async';
@@ -94,8 +104,10 @@ class SyncEngine {
   static void _appNotice(String m) => showAppNotice(m, error: true);
 
   final _listeners = <String, Set<SyncListener>>{};
+  final _told = <String>{};
   Future<void>? _running;
   bool _again = false;
+  bool _wantParked = false;
   bool _bound = false;
   int _failures = 0;
   Timer? _retry;
@@ -115,7 +127,7 @@ class SyncEngine {
     outbox.onEnqueued = kick;
     if (!outbox.available) return;
     unawaited(outbox.refreshCount().then((n) {
-      if (n > 0) kick();
+      if (n > 0) kick(withParked: true);           // app start: the parked rows get their one try too
     }));
   }
 
@@ -128,11 +140,13 @@ class SyncEngine {
 
   void onResume() => kick();
 
-  /// Runs the engine now (or once more after the current run); fire and forget.
-  void kick() => unawaited(run());
+  /// Runs the engine now (or once more after the current run); fire and forget. [withParked]: the parked rows
+  /// are tried too (app start, a manual "Sync now").
+  void kick({bool withParked = false}) => unawaited(run(withParked: withParked));
 
   /// One run; resolves when it (and any pass a trigger booked meanwhile) is over.
-  Future<void> run() {
+  Future<void> run({bool withParked = false}) {
+    _wantParked |= withParked;
     final r = _running;
     if (r != null) {
       _again = true;
@@ -147,7 +161,9 @@ class SyncEngine {
     try {
       do {
         _again = false;
-        await _drain();
+        final parked = _wantParked;
+        _wantParked = false;
+        await _drain(withParked: parked);
       } while (_again);
     } finally {
       _running = null;
@@ -155,56 +171,105 @@ class SyncEngine {
     }
   }
 
-  Future<void> _drain() async {
-    if (!outbox.available || !online.value) return;
+  Future<void> _drain({bool withParked = false}) async {
+    if (!outbox.available || outbox.viewingAs || !online.value) return;
     final uid = await outbox.currentUserId();
     if (uid == null) return;
-    var rows = await outbox.rowsFor(uid);
+    final tried = <String>{};
+    Future<List<OutboxRow>> next() async => [
+          for (final r in await outbox.rowsFor(uid))
+            if (!tried.contains(r.id) && (withParked || r.state != OutboxRow.parked)) r,
+        ];
+    var rows = await next();
     if (rows.isEmpty) return;                      // nothing waits: no request
     _retry?.cancel();
     _retry = null;
+    _told.clear();
     status.setSyncing(true);
+    var owed = false;
     try {
       while (rows.isNotEmpty) {
         final batch = rows.length > batchMax ? rows.sublist(0, batchMax) : rows;
-        final settled = await _push(batch);
-        if (settled == null) return;               // kept for a retry
-        if (settled == 0) {                        // the server answered none of them: do not spin
-          _bookRetry();
-          return;
-        }
+        tried.addAll(batch.map((r) => r.id));
+        final o = await _push(uid, batch);
+        owed |= o.owed;
+        if (o.stop) break;
         if (!online.value || (await outbox.currentUserId()) != uid) return;
-        rows = await outbox.rowsFor(uid);
+        rows = await next();
       }
+      if (owed) _bookRetry();
     } finally {
       await outbox.refreshCount();
     }
   }
 
-  /// Sends [batch]; returns how many ops the answer settled, or null when the batch was kept.
-  Future<int?> _push(List<OutboxRow> batch) async {
+  /// A push that failed as a whole may succeed later: no status at all (transport, timeout), 408, 429, 5xx.
+  static bool _retryable(int s) => s <= 0 || s == 408 || s == 429 || s >= 500 || s < 400;
+
+  /// The push can not go now, but nothing is wrong with the ops: signed out under us, any 403 (the kill switch,
+  /// a device or account block), or rows of another user than the token's.
+  static bool _halt(ApiException e) =>
+      e.isUnauthorized || e.statusCode == 401 || e.statusCode == 403 || (e.statusCode == 409 && e.code == 'sync_wrong_user');
+
+  /// [r] stays for a later run: tries + 1 ([count]), parked at [OutboxRow.parkAt]. True = it still owes a retry.
+  Future<bool> _keep(OutboxRow r, {bool count = true}) async {
+    final tries = count ? r.tries + 1 : r.tries;
+    final parked = r.state == OutboxRow.parked || tries >= OutboxRow.parkAt;
+    await outbox.mark(r.id, tries: tries, state: parked ? OutboxRow.parked : OutboxRow.pending);
+    return !parked;
+  }
+
+  /// [r] as it was before this push (a halted push is not a failure).
+  Future<void> _restore(OutboxRow r) =>
+      outbox.mark(r.id, state: r.state == OutboxRow.parked ? OutboxRow.parked : OutboxRow.pending);
+
+  /// Sends [batch] as [uid]'s; `stop` = end the run now, `owed` = a kept row owes a retry.
+  Future<({bool stop, bool owed})> _push(int uid, List<OutboxRow> batch) async {
     for (final r in batch) {
       await outbox.mark(r.id, state: OutboxRow.sending);
     }
     final Object? res;
     try {
-      res = await api.post(pushPath, body: {'ops': [for (final r in batch) _op(r)]});
+      res = await api.post(pushPath, body: {'user_id': uid, 'ops': [for (final r in batch) _op(r)]});
     } catch (e) {
       final ex = ApiException.from(e);
-      for (final r in batch) {
-        await outbox.mark(r.id, tries: r.tries + 1, state: OutboxRow.pending);
+      if (_halt(ex)) {
+        debugPrint('sync: push halted (${ex.statusCode} ${ex.code}); ${batch.length} op(s) kept');
+        for (final r in batch) {
+          await _restore(r);
+        }
+        return (stop: true, owed: false);
       }
-      if (ex.code == 'feature_disabled' && ex.statusCode == 403) {
-        debugPrint('sync: switched off on the server; ${batch.length} op(s) kept');
-        return null;
+      if (_retryable(ex.statusCode)) {
+        var owed = false;
+        for (final r in batch) {
+          owed |= await _keep(r);
+        }
+        return (stop: true, owed: owed);
       }
-      if (ex.isUnauthorized) return null;          // signed out under us: the rows wait for their user
-      _bookRetry();
-      return null;
+      // a 4xx the server will answer every time: find the op it can not take
+      if (batch.length > 1) {
+        for (final r in batch) {
+          await _restore(r);
+        }
+        var owed = false;
+        for (var i = 0; i < batch.length; i++) {
+          final o = await _push(uid, [batch[i]]);
+          owed |= o.owed;
+          if (o.stop) return (stop: true, owed: owed);
+        }
+        return (stop: false, owed: owed);
+      }
+      final r = batch.single;
+      debugPrint('sync: ${r.kind} op ${r.id} refused (${ex.statusCode} ${ex.code}); dropped');
+      await outbox.remove([r.id]);
+      _report([SyncResult(id: r.id, kind: r.kind, status: 'rejected', code: 'sync_bad_op')]);
+      return (stop: false, owed: false);
     }
     _failures = 0;
     final byId = {for (final r in batch) r.id: r};
     final done = <String>[];
+    final again = <String>{};
     final results = <SyncResult>[];
     final list = res is Map ? res['results'] : null;
     for (final x in list is List ? list : const []) {
@@ -214,24 +279,38 @@ class SyncEngine {
       if (row == null) continue;
       final status = '${x['status'] ?? ''}';
       if (status != 'applied' && status != 'duplicate' && status != 'rejected') continue;
+      final code = x['code']?.toString();
+      if (status == 'rejected' && code == 'sync_error') {
+        again.add(id);                             // transient on the server: kept and sent again later
+        continue;
+      }
       final ent = x['entity'];
       results.add(SyncResult(
         id: id,
         kind: row.kind,
         status: status,
-        code: x['code']?.toString(),
+        code: code,
         entity: ent is Map ? ent.map((k, v) => MapEntry('$k', v)) : null,
       ));
       done.add(id);
     }
     await outbox.remove(done);
-    // the rows the answer left out go back to waiting
+    // a transient error and the rows the answer left out go back to waiting
+    var owed = false;
     for (final r in batch) {
-      if (!done.contains(r.id)) await outbox.mark(r.id, state: OutboxRow.pending);
+      if (!done.contains(r.id)) owed |= await _keep(r);
     }
-    // each refused op is told once; the same sentence twice in one answer is one notice
-    for (final t in {for (final r in results) if (r.rejected) syncRejectedText(r.code)}) {
-      _notify(t);
+    _report(results);
+    return (stop: false, owed: owed);
+  }
+
+  /// Each refused op is told once (the same sentence twice in one run is one notice); every result reaches its
+  /// kind's listeners.
+  void _report(List<SyncResult> results) {
+    for (final r in results) {
+      if (!r.rejected) continue;
+      final t = syncRejectedText(r.code);
+      if (_told.add(t)) _notify(t);
     }
     for (final r in results) {
       for (final l in List.of(_listeners[r.kind] ?? const <SyncListener>{})) {
@@ -242,7 +321,6 @@ class SyncEngine {
         }
       }
     }
-    return done.length;
   }
 
   Map<String, dynamic> _op(OutboxRow r) {

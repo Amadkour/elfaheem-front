@@ -13,7 +13,7 @@ enum SyncPhase { offline, online, syncing }
 
 @immutable
 class SyncSnapshot {
-  const SyncSnapshot({required this.phase, required this.pending});
+  const SyncSnapshot({required this.phase, required this.pending, this.attention = 0});
 
   static const idle = SyncSnapshot(phase: SyncPhase.online, pending: 0);
 
@@ -22,17 +22,21 @@ class SyncSnapshot {
   /// Writes still on this device (the outbox and every reported queue).
   final int pending;
 
+  /// Writes that failed again and again (parked): tried only on app start and on a manual "Sync now".
+  final int attention;
+
   /// Nothing to tell: online and nothing waiting (the chip draws nothing).
-  bool get quiet => phase == SyncPhase.online && pending == 0;
+  bool get quiet => phase == SyncPhase.online && pending == 0 && attention == 0;
 
   @override
-  bool operator ==(Object other) => other is SyncSnapshot && other.phase == phase && other.pending == pending;
+  bool operator ==(Object other) =>
+      other is SyncSnapshot && other.phase == phase && other.pending == pending && other.attention == attention;
 
   @override
-  int get hashCode => Object.hash(phase, pending);
+  int get hashCode => Object.hash(phase, pending, attention);
 
   @override
-  String toString() => 'SyncSnapshot(${phase.name}, $pending)';
+  String toString() => 'SyncSnapshot(${phase.name}, $pending${attention == 0 ? '' : ', $attention parked'})';
 }
 
 class SyncStatus extends ValueNotifier<SyncSnapshot> {
@@ -42,6 +46,9 @@ class SyncStatus extends ValueNotifier<SyncSnapshot> {
 
   /// The queue names [report] knows today; any other name works as well.
   static const outbox = 'outbox', attendance = 'attendance', exams = 'exams';
+
+  /// The outbox's parked rows: counted apart from [SyncSnapshot.pending] ("needs attention").
+  static const parked = 'outbox.parked';
 
   bool _online = true;
   bool _syncing = false;
@@ -89,8 +96,11 @@ class SyncStatus extends ValueNotifier<SyncSnapshot> {
   }
 
   void _publish() {
-    final pending = _counts.values.fold<int>(0, (s, n) => s + n);
+    var pending = 0;
+    _counts.forEach((k, n) {
+      if (k != parked) pending += n;
+    });
     final phase = !_online ? SyncPhase.offline : (_syncing ? SyncPhase.syncing : SyncPhase.online);
-    value = SyncSnapshot(phase: phase, pending: pending);
+    value = SyncSnapshot(phase: phase, pending: pending, attention: _counts[parked] ?? 0);
   }
 }

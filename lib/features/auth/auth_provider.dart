@@ -7,6 +7,10 @@ import 'package:flutter_education_app/features/messaging/chat/chat_store.dart' s
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_access.dart';
 import 'package:flutter_education_app/core/offline/sync/outbox.dart' show Outbox;
+import 'package:flutter_education_app/core/offline/app_connectivity.dart' show AppConnectivity;
+import 'package:flutter_education_app/core/plural.dart' show countText;
+import 'package:flutter_education_app/design/app_kit.dart' show appConfirm;
+import 'package:flutter_education_app/main.dart' show navigatorKey;
 import 'package:flutter_education_app/core/offline/sync/sync_engine.dart' show SyncEngine;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async' show unawaited;
@@ -1150,7 +1154,57 @@ class MyAuthProvider extends BaseProvider {
     } catch (_) {}
   }
 
-  Future<void> logout() async {
+  /// Before a sign-out the person chose (7.R): unsent offline work is sent first when online (at most [timeout]);
+  /// whatever still waits (offline, or the push failed) is only deleted once the person says so. False = stay
+  /// signed in. Never throws: a failure here never blocks a sign-out.
+  static Future<bool> settleUnsentWork({
+    Outbox? outbox,
+    Future<void> Function()? sync,
+    bool Function()? online,
+    Future<bool> Function(int n)? confirm,
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    try {
+      final box = outbox ?? Outbox.instance;
+      Future<int> waiting() async {
+        final uid = await box.currentUserId();
+        return uid == null ? 0 : (await box.rowsFor(uid)).length;
+      }
+
+      var n = await waiting();
+      if (n == 0) return true;
+      if ((online ?? () => AppConnectivity.instance.online.value)()) {
+        try {
+          await (sync ?? () => SyncEngine.instance.run(withParked: true))().timeout(timeout);
+        } catch (_) {}
+        n = await waiting();
+        if (n == 0) return true;
+      }
+      return await (confirm ?? _confirmUnsentLoss)(n);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static Future<bool> _confirmUnsentLoss(int n) async {
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return true;
+    return appConfirm(ctx, danger: true, message: unsentWorkLossText(n));
+  }
+
+  /// "3 changes made offline have not reached your account and will be deleted" in the open language.
+  static String unsentWorkLossText(int n) => countText(n,
+      ar1: 'تغيير واحد سجّلته دون اتصال لم يصل إلى حسابك بعد وسيُحذف',
+      ar2: 'تغييران سجّلتهما دون اتصال لم يصلا إلى حسابك بعد وسيُحذفان',
+      arFew: '{n} تغييرات سجّلتها دون اتصال لم تصل إلى حسابك بعد وستُحذف',
+      arMany: '{n} تغييراً سجّلتها دون اتصال لم تصل إلى حسابك بعد وستُحذف',
+      en1: '1 change made offline has not reached your account and will be deleted',
+      en: '{n} changes made offline have not reached your account and will be deleted');
+
+  /// Signs out. A sign-out the person chose first settles the unsent offline work ([settleUnsentWork]) and answers
+  /// false (still signed in) when they cancel; [forced] (a 401, a device block) wipes without asking.
+  Future<bool> logout({bool forced = false}) async {
+    if (!forced && !await settleUnsentWork()) return false;
     await clearGuestHandoff();
     await wipeStoreFiles();
     await wipeSyncData();
@@ -1181,6 +1235,7 @@ class MyAuthProvider extends BaseProvider {
     _currentUser = null;
     notifyListeners();
     unawaited(ThemeConfigProvider.accountChanged()); // signed out: the guest's country layer, not the last user's
+    return true;
   }
 
   // ── Dropdown helpers ──────────────────────────────────────────────────────────

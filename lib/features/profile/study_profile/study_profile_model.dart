@@ -502,9 +502,6 @@ abstract final class StudyProfileSync {
   /// The server's copy after an op was applied, or the one it sent back with `sync_stale`; the open page shows it.
   static final ValueNotifier<({StudyProfileView view, bool stale})?> latest = ValueNotifier(null);
 
-  /// This device's edits still waiting: a second edit on top of the first is not "stale" against the first one's
-  /// own save, so it goes without a base (the server then does not compare).
-  static final Set<String> _waiting = {};
   static bool _wired = false;
 
   static void wireSync([SyncEngine? engine]) {
@@ -515,7 +512,6 @@ abstract final class StudyProfileSync {
 
   /// One op's answer (the engine has already told the person about a refusal, `sync_stale` included).
   static void take(SyncResult r) {
-    _waiting.remove(r.id);
     final e = r.entity;
     if (e == null || !(r.accepted || r.stale)) return;
     final v = StudyProfileApi._seed(StudyProfileView.fromJson(e));
@@ -523,14 +519,18 @@ abstract final class StudyProfileSync {
     if (r.accepted) unawaited(ThemeConfigProvider.accountChanged(force: true));
   }
 
+  /// The PUT is the whole profile, so a later edit supersedes one still waiting and keeps ITS base (the row
+  /// holds it, so it survives a restart): two offline edits are one op with the first edit's base. Only while the
+  /// earlier edit is in the push under way does the new one go without a base (it would be "stale" against that
+  /// edit's own save).
   static Future<bool> queue(Map<String, dynamic> body, {String? baseUpdatedAt, Outbox? outbox}) async {
     wireSync();
+    final box = outbox ?? Outbox.instance;
     final id = const Uuid().v4();
-    final r = await (outbox ?? Outbox.instance).enqueue(
-        id: id, kind: SyncKinds.studyProfile, payload: body, baseUpdatedAt: _waiting.isEmpty ? baseUpdatedAt : null);
-    if (r == EnqueueResult.postDirectly) return false;
-    _waiting.add(id);
-    return true;
+    if (await box.supersede(SyncKinds.studyProfile, id: id, payload: body)) return true;
+    final base = await box.inFlight(SyncKinds.studyProfile) ? null : baseUpdatedAt;
+    final r = await box.enqueue(id: id, kind: SyncKinds.studyProfile, payload: body, baseUpdatedAt: base);
+    return r != EnqueueResult.postDirectly;
   }
 }
 

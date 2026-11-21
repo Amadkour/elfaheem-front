@@ -99,6 +99,22 @@ void main() {
     expect(syncOfflineAvailable(), isTrue);
   });
 
+  test('a whole-object op supersedes the waiting one and keeps its base; one in flight is left alone', () async {
+    final db = MemoryLocalDb();
+    final box = boxOver(db);
+    await box.enqueue(id: 'op-prof-0001', kind: SyncKinds.studyProfile, payload: {'grade': 1}, baseUpdatedAt: 'B1');
+    await box.enqueue(id: 'op-game-0001', kind: SyncKinds.gamePlay, payload: {'game_id': 1});
+    expect(await box.supersede(SyncKinds.studyProfile, id: 'op-prof-0002', payload: {'grade': 2}), isTrue);
+    final rows = await db.outboxRows();
+    expect(rows.map((r) => r.id), ['op-game-0001', 'op-prof-0002']);
+    expect(rows.last.baseUpdatedAt, 'B1');
+    expect(rows.last.payload, '{"grade":2}');
+    await db.outboxUpdate('op-prof-0002', state: OutboxRow.sending);
+    expect(await box.inFlight(SyncKinds.studyProfile), isTrue);
+    expect(await box.supersede(SyncKinds.studyProfile, id: 'op-prof-0003', payload: {'grade': 3}), isFalse);
+    expect(await boxOver(MemoryLocalDb()).supersede(SyncKinds.studyProfile, id: 'op-prof-0004', payload: {}), isFalse);
+  });
+
   test('the read cache is per user, strips identity numbers and goes with the wipe', () async {
     final db = MemoryLocalDb();
     var who = 7;
@@ -110,6 +126,8 @@ void main() {
       'children': [
         {'name': 'Ali', 'ID_Number': '123', 'passport_number': 'A1'},
       ],
+      // the server's own key names (7.R)
+      'nid': '1', 'student_code': 'S-1', 'student_codes': ['S-1'], 'identifier': 'x', 'identifiers': {'a': 1},
     }, etag: 'W/"1"');
     final got = await cache.get('me.home');
     expect(got, isNotNull);
@@ -117,6 +135,9 @@ void main() {
     final body = got.body as Map;
     expect(body['name'], 'Mona');
     expect(body.containsKey('national_id'), isFalse);
+    for (final k in ['nid', 'student_code', 'student_codes', 'identifier', 'identifiers']) {
+      expect(body.containsKey(k), isFalse, reason: k);
+    }
     expect((body['children'] as List).single, {'name': 'Ali'});
 
     who = 8;
