@@ -14,7 +14,6 @@ library;
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/engines/fill_blank_engine.dart' show kGameBlank;
-import 'package:flutter_education_app/features/games/engines/game_text.dart';
 import 'package:flutter_education_app/features/games/engines/word_puzzle_engine.dart';
 
 /// One field of a row: a line of text, a longer text, or (quiz) the options with the right one marked.
@@ -292,7 +291,7 @@ class GameConfigDraft {
         if (answer.isEmpty) bad('answer', 'اكتب الإجابة', 'write the answer');
         final opts = _optionLines(r);
         if (opts.length == 1) bad('options', 'خياران على الأقل أو اتركها فارغة', 'at least 2 options, or none');
-        if (opts.isNotEmpty && answer.isNotEmpty && !opts.any((o) => gameSameAnswer(o, answer))) {
+        if (opts.isNotEmpty && answer.isNotEmpty && !opts.contains(answer)) { // as written, as the server checks
           bad('options', 'الإجابة ليست بين الخيارات', 'the answer is not one of the options');
         }
       case 'word_puzzle':

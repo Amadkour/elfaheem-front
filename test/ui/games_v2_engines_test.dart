@@ -115,7 +115,7 @@ void main() {
     test('items: no answer skipped, the answer added to its options, repeats dropped', () {
       final items = FillBlankEngine.itemsOf({
         'items': [
-          {'text': 'The ___ is red', 'answer': 'apple', 'options': ['pear', 'Pear', '']},
+          {'text': 'The ___ is red', 'answer': 'apple', 'options': ['pear', 'pear ', '']},
           {'text': 'none', 'answer': ''},
           {'text': '___ typed', 'answer': 'x', 'options': null},
         ],
@@ -125,6 +125,18 @@ void main() {
       expect(items[1].options, isEmpty);
       expect(FillBlankEngine.show('The ___ is red'), 'The ______ is red');
       expect(FillBlankEngine.show('No blank here'), 'No blank here'); // the preview shows the author's mistake
+    });
+
+    test('options are compared as written: endings that differ only by tashkeel stay apart (D-1676)', () {
+      String w(int haraka) => String.fromCharCodes([0x0627, 0x0644, 0x0639, 0x0644, 0x0645, haraka]); // العلم + ending
+      final items = FillBlankEngine.itemsOf({
+        'items': [
+          {'text': '___', 'answer': w(0x064F), 'options': [w(0x064F), w(0x064E), w(0x0650)]},
+        ],
+      });
+      expect(items.single.options, hasLength(3));
+      expect(FillBlankEngine.isRight(items.single, w(0x064F)), isTrue);
+      expect(FillBlankEngine.isRight(items.single, w(0x064E)), isFalse);
     });
 
     test('a typed Arabic answer is right without its tashkeel and with any alef', () {
@@ -315,8 +327,11 @@ void main() {
       d.rows.first['options'] = ['b', 'c', ''];
       expect(d.problems().map((p) => p.field), contains('items[0].options'));
       d.rows.first['options'] = ['b', 'A'];
+      // the server checks `answer in options` as written, so "A" is not "a" (D-1676)
+      expect(d.problems().map((p) => p.field), contains('items[0].options'));
+      d.rows.first['options'] = ['b', 'a'];
       expect(d.problems(), isEmpty);
-      expect((d.toConfig()['items'] as List).first['options'], ['b', 'A']);
+      expect((d.toConfig()['items'] as List).first['options'], ['b', 'a']);
     });
 
     test('the admin body carries the new fields and status, never `enabled`', () {

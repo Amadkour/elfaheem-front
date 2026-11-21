@@ -27,7 +27,8 @@ class FillBlankEngine extends StatefulWidget {
   final Random? random;
 
   /// The playable items of [config]: an item without an answer is skipped; options are kept without blanks and
-  /// repeats, and the answer is added when the author left it out (empty = typed).
+  /// exact repeats, and the answer is added when the author left it out (empty = typed). Options are compared as
+  /// written, tashkeel included: a "pick the right ending" item offers العلمُ / العلمَ / العلمِ (D-1676).
   static List<FillBlankItem> itemsOf(Map<String, dynamic> config) {
     final raw = config['items'];
     final out = <FillBlankItem>[];
@@ -40,16 +41,18 @@ class FillBlankEngine extends StatefulWidget {
       final opts = <String>[
         if (it['options'] is List)
           for (final o in it['options'] as List)
-            if ('$o'.trim().isNotEmpty && seen.add(gameNormalize('$o'))) '$o'.trim(),
+            if ('$o'.trim().isNotEmpty && seen.add('$o'.trim())) '$o'.trim(),
       ];
-      if (opts.isNotEmpty && !seen.contains(gameNormalize(answer))) opts.add(answer);
+      if (opts.isNotEmpty && !seen.contains(answer)) opts.add(answer);
       out.add((text: '${it['text'] ?? ''}', answer: answer, options: opts));
     }
     return out;
   }
 
-  /// Whether [given] fills [item]'s blank.
-  static bool isRight(FillBlankItem item, String given) => gameSameAnswer(given, item.answer);
+  /// Whether [given] fills [item]'s blank: a picked option is the answer exactly (the server keeps the answer among
+  /// the options as written); a typed answer is compared after the Arabic normalization.
+  static bool isRight(FillBlankItem item, String given) =>
+      item.options.isNotEmpty ? given.trim() == item.answer : gameSameAnswer(given, item.answer);
 
   /// [text] with its blank drawn as a line, or as [filled] once answered. A text with no blank stays as written (the
   /// server never stores one; the editor's live preview then shows the mistake rather than a made-up blank, D-1672).
@@ -139,8 +142,8 @@ class _FillBlankEngineState extends State<FillBlankEngine> {
             for (final o in _options)
               given == null
                   ? LearnMark.idle
-                  : gameSameAnswer(o, item.answer)
-                      ? (gameSameAnswer(o, given) ? LearnMark.correct : LearnMark.missed)
+                  : o == item.answer
+                      ? (o == given ? LearnMark.correct : LearnMark.missed)
                       : (o == given ? LearnMark.wrong : LearnMark.idle),
           ],
           onSelect: given == null ? (k) => _answer(_options[k]) : null,
