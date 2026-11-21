@@ -94,6 +94,16 @@ String apiErrorText(ApiException e) {
       return _t('لا تملك صلاحية الوصول لهذه المؤسسة', 'You don\'t have access to this organization');
     case 'orgs_disabled':
       return _t('المؤسسات متوقفة حالياً على المنصة', 'Organizations are switched off on the platform right now');
+    // booking a Quran program (D-1347): every enrol path and checkout can answer these two
+    case 'quran_gender_rule':
+      return d['reason'] == 'gender_unknown'
+          ? _t('هذا البرنامج يشترط أن يكون المعلم من نفس جنس الطالب. أضف الجنس في ملفك الدراسي ثم احجز.',
+              'This program needs a teacher of the student\'s gender. Add your gender in your study profile, then book.')
+          : _t('هذا البرنامج يشترط أن يكون المعلم من نفس جنس الطالب. اختر معلماً آخر.',
+              'This program needs a teacher of the student\'s gender. Choose another teacher.');
+    case 'quran_teacher_unverified':
+      return _t('لم تتحقق المنصة من هذا المعلم بعد، فلا يمكن الحجز معه الآن.',
+          'The platform has not verified this teacher yet, so booking is not open now.');
     case 'WEAK_PASSWORD':
       return _t('كلمة المرور ضعيفة — 8 أحرف على الأقل', 'The password is too weak — at least 8 characters');
     case 'PHONE_TAKEN':

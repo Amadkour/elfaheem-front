@@ -61,6 +61,8 @@ import 'package:flutter_education_app/features/auth/reauth_sheet.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/store/manage/store_manage_api.dart' show kStoreManageFeatureKey;
 import 'package:flutter_education_app/features/store/manage/store_manage_pages.dart' show StoreManagePage;
+import 'package:flutter_education_app/features/quran/quran_api.dart' show kQuranTabKey;
+import 'package:flutter_education_app/features/quran/quran_teacher_hub.dart' show QuranTeacherHubPage;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/payments/points/points_api.dart' show kPointsFeatureKey;
 import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart' show PointsWalletPage;
@@ -233,6 +235,15 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           subtitle: t('كتب وملخصات تبيعها للطلاب', 'Books and summaries you sell to students'),
           keywords: 'store books summaries notes sell متجر كتب ملخصات مذكرات',
           onTap: () => _push(const StoreManagePage()),
+        ),
+        // the teacher's Quran card + record sheet (learning hub phase 6, D-1347; hidden with the Quran tab)
+        AppSettingsTile(
+          featureKey: kQuranTabKey,
+          icon: Icons.menu_book_rounded,
+          label: t('تعليم القرآن', 'My Quran teaching'),
+          subtitle: t('بطاقتك كمعلم وسجل التسميع', 'Your teacher card and the record sheet'),
+          keywords: 'quran memorization tajweed teacher قرآن تحفيظ تجويد حلقة',
+          onTap: () => _push(const QuranTeacherHubPage()),
         ),
         // https://nextbrain.site/@name — confirmed usernames only (D-074)
         if (PersonalAccess.enabled) const ShareMyProfileTile(),

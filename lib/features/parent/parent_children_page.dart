@@ -25,7 +25,9 @@ import 'package:flutter_education_app/design/master_detail/entity_panel_controll
 import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'package:flutter_education_app/features/games/games_api.dart' show gamesOff, gamesLabel;
 import 'package:flutter_education_app/features/games/games_progress.dart' show ParentChildGamesPage;
-import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry, t;
+import 'package:flutter_education_app/features/quran/quran_api.dart' show quranOff;
+import 'package:flutter_education_app/features/quran/quran_progress.dart' show QuranProgressPage;
 
 class ParentChildrenPage extends StatefulWidget {
   const ParentChildrenPage({super.key, required this.onOpenLinkTab});
@@ -214,6 +216,19 @@ class _ChildCard extends StatelessWidget {
           ],
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
             AppButton(label: 'pl_tab_reports'.tr, icon: Icons.insights_rounded, variant: AppButtonVariant.secondary, size: AppButtonSize.sm, onPressed: report),
+            // the child's Quran memorization by surah and juz (D-1347; hidden with the Quran tab)
+            if (!quranOff())
+              AppButton(
+                key: ValueKey('parent.quran.$id'),
+                label: t('القرآن', 'Quran'),
+                icon: Icons.menu_book_rounded,
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  settings: RouteSettings(name: '/parent/children/$id/quran'),
+                  builder: (_) => QuranProgressPage.child(childId: id, name: name),
+                )),
+              ),
             // the child's games: stars, badges, rounds (D-1346; hidden with the Games tab)
             if (!gamesOff())
               AppButton(
