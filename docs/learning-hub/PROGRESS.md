@@ -710,3 +710,96 @@ Contract: CONTRACT §7 (complete). Decisions: D-1351 – D-1353. Migration `0108
 5. Tests: a play made offline shows its stars at once and reaches the server once after reconnect; the same for a nahw attempt and a Quran entry; a stale profile edit refetches and tells the person; the three tabs open offline from the cache.
 
 **Review after 7B (7.R):** the planner reads `sync_engine.dart`, `outbox.dart` and `features/sync/sync_service.py`, and checks the points cap through `push`.
+
+### 7.R code review (planner, 2026-11-21) — back 0feb28f, front d0c879c9..48585c0d — verdict: needs fixes
+I read `features/sync/sync_service.py`, the `commit=False` changes in the three services, migration 0108, `outbox.dart`, `sync_engine.dart`, `read_cache.dart`, `offline_reads.dart`, the logout wipe and the study-profile and games wiring. I ran no tests; the PostgreSQL numbers (e2e_sync 89, e2e_games 105, e2e_quran_rules 211) are the lead's.
+
+**What holds:**
+- **No double application.** Each op runs in its own SAVEPOINT through the route's own function with `commit=False`; the entity's unique index is still the guard, and the insert that can clash sits in its own nested SAVEPOINT, so a clash no longer rolls back the caller's work. A resent op answers `duplicate` through the function's own duplicate path inside a SAVEPOINT that is rolled back. The same `client_id` through the route and then through push is one row.
+- **The points cap through push.** Ten plays in one push run in one transaction with the wallet row locked; each play's sum of today's awards sees the earlier plays of the same push, and the day is the server's `created_at`, so a backdated `played_at` cannot dodge the cap.
+- **No double counting on the device.** A queued play shows the device's own grading only; progress, points and badges come from the server's `entity`. A row left in `sending` by a killed app is sent again and answers `duplicate`.
+- **Reads.** A 4xx is never covered by an old copy; the cache is keyed by user and wiped at sign-out; the home makes no new request.
+
+**Deviations judged:**
+| Deviation | Verdict |
+|---|---|
+| B8: `quran_progress.updated_at` in 0108 as the pull cursor | accepted |
+| B8: a rejected op answers `rejected` again | accepted (the contract says a rejection is final) |
+| B8: `sync_stale` not stored | accepted |
+| B8: a profile op without `base_updated_at` is last-write-wins | accepted on the server; the app must not send one (must-fix 4) |
+| B8: pull answers `[]` for a kind whose tab is off; codes `sync_unknown_kind`, `sync_bad_since` | accepted |
+| F12: 403 `feature_disabled` and 401 keep the rows, no retry | accepted |
+| F12: every other 4xx is backed off like a 5xx | **not accepted** (must-fix 2) |
+| F12: `postDirectly` when signed out or the database fails | accepted |
+| F12: `sqlite3` 3.x native build hook untested on Linux | carried into Phase 8 (N2, N3 check it on a real build) |
+| F13: private retries kept where there is no outbox | accepted |
+| F13: the profile tries online first | accepted |
+| F13: a second offline profile edit goes without a base | **not accepted** (must-fix 4) |
+| F13: edu catalog untouched; some tests below page level | accepted |
+
+#### Must-fix — ONE brief for an Opus agent (both repos; don't `dart format`; commit per repo with `git commit --only`, don't push)
+Run `tests/learning_hub/e2e_sync.py` on SQLite and `flutter test test/sync/` plus the tests you add; the analyzer on the paths you touch.
+
+1. **An op can never be applied under another user's token — back + front.** The engine reads the user id from the saved user (`outbox.dart:52`) and the request goes out with whatever token `ApiClient` holds; between `currentUserId()` (`sync_engine.dart:160`) and the post (`:191`) an account switch, or View-As, sends one person's rows as another.
+   - Back `features/sync/api/sync_router.py` `PushIn`: add `user_id: Optional[int] = None`; `sync_service.push`: when it is set and differs from `user.id` → 409 `sync_wrong_user` for the whole push, nothing applied, nothing stored. Document it in the router header and `FLUTTER_API_CHANGES.md`.
+   - Front `sync_engine.dart:191`: send `'user_id': uid` (pass `uid` into `_push`). A 409 `sync_wrong_user` keeps the rows, books no retry and does not count as a failure.
+   - Front: while `ViewAsState.active`, `Outbox.enqueue` answers `postDirectly` and `_drain` returns.
+   - e2e: user B's token with `user_id` of A → 409 and no row. Test: the engine sends `user_id`; a 409 keeps the rows with no retry booked.
+2. **A 4xx is not retried for ever — front.** `sync_engine.dart:192–204` books a retry for every error but two, so a push the server can never accept (422, 413, 400, a route that is gone) is sent every 5 minutes for the life of the install.
+   - Retryable (keep the rows, `_bookRetry`): no status at all (transport, timeout), 408, 429, 5xx.
+   - Stop, keep the rows, no retry: 401, 403 `feature_disabled`, 409 `sync_wrong_user`.
+   - Any other 4xx: if the batch has more than one op, send its ops one per request, once, in order; an op that alone gets such a 4xx is removed and reported once as `sync_bad_op` (the listeners get a `rejected` result).
+   - A bound on the rest: a row whose `tries` reaches 10 goes to the state `parked`. Parked rows are left out of automatic runs and tried once on app start and on a manual "Sync now" from the chip; `SyncStatus` counts them apart ("needs attention").
+   - Tests (fake clock, `FakeApi`): a 422 on a batch of three with one bad op drops only that op and sends the other two; a 500 ten times parks the row and no timer is left; a 429 backs off.
+3. **A transient server error must not lose the op — back + front.** `sync_service._one` (`:235–242`) stores `sync_error` in `sync_ops` and the app then drops the row, so one deadlock or timeout deletes a student's play for good.
+   - Back: do not store `sync_error` (the same line that already skips `sync_stale`).
+   - Front: a `rejected` result with the code `sync_error` keeps the row (`tries + 1`, back to pending, no notice) and books a retry; rule 2's park at 10 bounds it.
+   - e2e: an op whose apply raises once answers `sync_error`, the resend applies. Test: the row stays and is parked after 10.
+4. **Two offline profile edits keep the stale check — front.** `StudyProfileSync.queue` (`study_profile_model.dart`, the `_waiting` set) sends the second edit with no base. If the first is refused as stale, the second is applied last-write-wins over the newer server copy.
+   - The profile PUT is the whole object, so a later edit supersedes an earlier one. Add `Outbox.supersede(kind, {required String id, required payload})`: when a row of that kind and user is waiting in the state `pending`, delete it and insert the new op with the OLD row's `baseUpdatedAt` and `clientTs` of now; return whether one was replaced. Only when the old row is `sending` does the new op go without a base.
+   - Drop the in-memory `_waiting` set: the base lives in the row, so it survives a restart.
+   - Test: two offline edits → one op with the first base; the server's `sync_stale` answer replaces the form and nothing is overwritten.
+5. **Identity fields the cache must drop — front.** `read_cache.dart:98` strips seven names, but the server's keys are `national_id`, `nid`, `student_code`, `student_codes`, `identifier`, `identifiers`. Add the missing five. Test: one case per name in the existing strip test.
+6. **Sign-out does not silently delete unsent work — front.** `MyAuthProvider.wipeSyncData` deletes every waiting row. Before it, in `logout`: when online and rows wait, `await SyncEngine.instance.run()` with a 5 s timeout; when rows still wait (offline, or the push failed), `appConfirm` with the count ("N changes made offline have not reached your account and will be deleted") and stay signed in on Cancel. A forced sign-out (401, device mismatch) wipes without asking. Test: both branches.
+
+#### Nice to have
+- `sync_service._study_profile` uses `sps._assert_student` / `sps._row`: give the service public names.
+- `Outbox.remove` deletes by id only; add `AND user_id = ?`.
+- `nahw_attempt.answers` is unbounded `Any`; cap the op's payload at 64 KB (`sync_bad_op`).
+- A change of `users.dob` alone does not bump the profile row's `updated_at`, so pull misses it.
+- `syncRejectedText` for `feature_disabled` should name the section that was switched off.
+- A page-level test per kind (play offline → reconnect → the server's stars) when the visual suite is next touched.
+
+### Phase 8 — run plan (planner, 2026-11-21): all Opus, one wave of three, after the 7.R fixes
+Scope is PLAN Phase 8. No migration, no API change, no tests beyond each script's own check. Output goes to `build/releases/<version>/` (gitignored); nothing is published in this phase (Phase 9 publishes).
+
+**Shared rules:**
+- Your own files only; commit with `git commit --only`; no push; no `dart format`.
+- **Secrets.** The Android keystore is `~/.nextbrain-keys/nextbrain-release.jks` with `~/.nextbrain-keys/key.properties`, OUTSIDE the repo. Never copy either into the repo, never print a password, an alias password or the file's contents, never create or replace a keystore (D-1360). Pass the path through `ANDROID_KEYSTORE_PATH` / the properties the Gradle script already reads (`android/app/build.gradle.kts:10–14`). Run `gitleaks` over your commit before you finish.
+- A build that cannot run on this PC is a logged gap with the exact reason, not a workaround.
+- Every build uses `scripts/build_release.sh`'s flags (obfuscation, `--split-debug-info=build/debug-info/<version>/`); keep the symbols.
+- Report: the files made, their sizes and SHA-256, and what the owner must do.
+
+#### N1 — Android: APK + AAB (this PC)
+**Owns:** `scripts/release/publish_release.py` (the `--aab` flag only), `docs/release/ANDROID.md`.
+1. Check the keystore opens with the values in `~/.nextbrain-keys/key.properties` (`keytool -list` with the password from the file passed by `-storepass:file` or the environment, never on the command line). Record the certificate's SHA-256 fingerprint in `docs/release/ANDROID.md` (a fingerprint is public). If it does not open, stop and report; do not make a new one.
+2. Build the three split APKs and the AAB with `scripts/build_release.sh apk` / `appbundle`. `apksigner verify --print-certs` on each APK and `jarsigner -verify` on the AAB: the fingerprint must equal step 1's and the one of the published APKs (compare with the live `releases.json` entry's file).
+3. `publish_release.py --aab`: copies the AAB into `build/releases/<version>/` with its SHA-256 and lists it in the manifest draft as kind `aab`, NOT published to the downloads page (the store upload stays on Codemagic).
+4. Install the arm64 APK on an emulator or a phone over the published one: it must upgrade in place (same signature) and open. Then check the Phase 7 database opens (`sqflite` on Android) by making one offline play.
+
+#### N2 — Windows installer (this PC)
+**Owns:** `windows/installer/nextbrain.iss`, `scripts/release/package_windows.ps1`, the `windows-website` workflow in `codemagic.yaml`, the runner's Windows step in `tools/runner/`, `docs/release/WINDOWS.md`.
+1. Inno Setup through `winget install JRSoftware.InnoSetup` (log the version). The installer is unsigned (D-1361): per-user install by default, no admin prompt, app id fixed for upgrades, Arabic + English, the product name and icon from the app, an uninstaller, a Start-menu entry.
+2. `package_windows.ps1`: `flutter build windows --release` with the release flags → the installer `NextBrain-<version>-windows-x64-setup.exe` and the existing zip, each with SHA-256, into `build/releases/<version>/`.
+3. **The native database.** `sqflite_common_ffi` loads `sqlite3` through its build hook: confirm `sqlite3.dll` is inside the release folder and inside the installed app, then run the INSTALLED app: sign in, play one game offline, reconnect, see it sync. Uninstall and confirm the app's data folder question is answered (keep or remove; say which in `WINDOWS.md`).
+4. `WINDOWS.md`: the SmartScreen steps for the person installing, and what a code-signing certificate would change.
+5. Keep the workflow free of Codemagic-only tools (D-146: the same workflow runs on the owner's runner).
+
+#### N3 — Linux AppImage; macOS + iOS workflows
+**Owns:** `scripts/release/package_linux.sh` (the AppImage part), `scripts/release/build_linux.sh` only if the hook needs it, the `macos-website` and `ios-testflight` workflows in `codemagic.yaml`, `docs/release/APPLE.md`, `docs/release/LINUX.md`.
+1. AppImage beside the existing `.deb` and `.tar.gz`, built where Linux builds run today (the server or WSL, `build_linux.sh`): `appimagetool`, the desktop file and icon the `.deb` already uses, `libsqlite3` bundled or the hook's library present (check with `ldd`), SHA-256. If no Linux build host is reachable from this PC, write the script, run what can run (shellcheck, a dry run) and log the gap.
+2. `macos-website`: a Codemagic workflow that builds the `.dmg` (D-1362). Signing and notarisation need the owner's Apple Developer account: the workflow reads them from Codemagic's encrypted groups, named in `APPLE.md`; without them it builds an unsigned `.dmg` and `APPLE.md` gives the Gatekeeper steps.
+3. `ios-testflight`: the workflow only; it stays disabled until the owner adds the App Store Connect key.
+4. `APPLE.md`: the exact list of what the owner provides (team id, certificates, the App Store Connect API key, bundle id `com.doubley.nextbrain`), where each goes in Codemagic, and nothing secret in the file.
+
+**Done when:** Android (3 APKs + AAB) and Windows (installer + zip) files exist in `build/releases/<version>/` with SHA-256 and were installed and opened once; Linux is built or logged; macOS / iOS are workflows + `APPLE.md`, logged as gaps that need the owner's account. **8.R:** the planner reads the three docs, `nextbrain.iss`, the `codemagic.yaml` diff, and checks that no key material entered either repo.
