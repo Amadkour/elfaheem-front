@@ -28,6 +28,11 @@ import 'package:flutter_education_app/features/teachers/teachers_parts.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
+/// The package's repeat rule after the start date changes to [day] (D-1642): the series follows the rule's
+/// `start_date`, so the two must agree. No rule (or an unreadable one) → [schedule] unchanged.
+Map<String, dynamic>? packageScheduleStartingOn(Map<String, dynamic>? schedule, DateTime day) =>
+    RecurrenceRule.fromJson(schedule)?.startingOn(day).toJson() ?? schedule;
+
 /// The schedule step's recurrence editor: (context, the rule or null, set it).
 typedef RecurrenceSlotBuilder = Widget Function(
     BuildContext context, Map<String, dynamic>? rule, ValueChanged<Map<String, dynamic>?> onChanged);
@@ -219,7 +224,12 @@ class _PackageWizardFormState extends State<PackageWizardForm> {
     final first = DateTime(now.year, now.month, now.day);
     final init = _d.startDate == null || _d.startDate!.isBefore(first) ? first : _d.startDate!;
     final picked = await showDatePicker(context: context, initialDate: init, firstDate: first, lastDate: DateTime(now.year + 2, 12, 31));
-    if (picked != null && mounted) _set(() => _d.startDate = picked);
+    if (picked != null && mounted) {
+      _set(() {
+        _d.startDate = picked;
+        _d.schedule = packageScheduleStartingOn(_d.schedule, picked);
+      });
+    }
   }
 
   Widget _gap() => const SizedBox(height: AppSpace.md);
@@ -676,7 +686,7 @@ class MyPackageCard extends StatelessWidget {
         const SizedBox(height: AppSpace.xs),
         Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
           PackagePriceText(price: p.price, finalPrice: p.finalPrice, currency: p.currency, discountPercent: p.discountPercent),
-          Text(t('${p.seatsTaken} من ${p.maxStudents} مقعد', '${p.seatsTaken} of ${p.maxStudents} seats'),
+          Text(seatsTakenText(p.seatsTaken, p.maxStudents),
               style: AppType.meta(context).copyWith(color: c.textMedium)),
           if (p.waitlistCount > 0) Text(waitingText(p.waitlistCount), style: AppType.meta(context).copyWith(color: c.textMedium)),
         ]),

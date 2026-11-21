@@ -81,6 +81,22 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => AppConfig.lang = 'en');
 
+  test('the final review codes have texts in both languages (D-1646)', () {
+    const codes = ['teacher_only', 'students_only', 'not_pending', 'not_enrolled', 'card_unavailable', 'gateway_error',
+      'quran_gender_rule', 'bad_rule', 'occurrence_cancelled', 'no_occurrences', 'series_ended', 'badge_key_taken',
+      'sl_bad_subject', 'reason_required', 'not_due'];
+    for (final c in codes) {
+      final e = ApiException(statusCode: 409, message: 'server', code: c);
+      AppConfig.lang = 'en';
+      final en = teachersErrorText(e);
+      AppConfig.lang = 'ar';
+      final ar = teachersErrorText(e);
+      expect(en, isNot('server'), reason: c);
+      expect(ar, isNot(en), reason: c);
+    }
+    AppConfig.lang = 'en';
+  });
+
   group('shapes', () {
     test('TeacherProfile reads the contract (C1: session_types + delivery)', () {
       final p = TeacherProfile.fromJson(profileJson());
@@ -161,9 +177,11 @@ void main() {
       expect(mine.single.activePackages.single.id, 11);
       expect(mine.single.nextSession, DateTime.utc(2026, 12, 1, 15));
       final roster = packageRosterFromJson({'items': [
-        {'student_id': 5, 'name': 'Ali', 'status': 'waitlisted', 'position': 1},
+        {'id': 9, 'student': {'user_id': 5, 'name': 'Ali', 'avatar_url': null}, 'status': 'waitlisted', 'position': 1},
       ]});
       expect(roster.single.position, 1);
+      expect(roster.single.studentId, 5);
+      expect(roster.single.name, 'Ali');
     });
 
     test('filters → the query', () {

@@ -76,23 +76,49 @@ void main() {
     expect(LiveSettingsInfo.fromJson(const {}).settings, LiveSettingsDraft.recommended);
   });
 
+  test('1080p and the host frame rate (D-1643): unset reads as Automatic, a stored one is kept', () {
+    final auto = LiveSettingsInfo.fromJson({
+      'settings': {'camera_max_host': '1080p', 'camera_fps': 15, 'camera_fps_host': 15},
+      'recommended': {...LiveSettingsDraft.recommended.toJson(), 'camera_fps_host': 30},
+      'stored': ['camera_max_host', 'camera_fps'],
+    });
+    expect(auto.settings.cameraMaxHost, '1080p', reason: 'saving must not turn 1080p into 720p');
+    expect(auto.settings.cameraFpsHost, isNull, reason: 'not stored: the 15 is only the derived value');
+    expect(auto.settings.effectiveHostFps, 15);
+    expect(auto.recommended.cameraFpsHost, isNull);
+    expect(auto.settings.changesFrom(auto.settings), isEmpty);
+    final set = auto.settings.copyWith(cameraFpsHost: 24);
+    expect(set.changesFrom(auto.settings), {'camera_fps_host': 24});
+    expect(set.copyWith(autoHostFps: true), auto.settings);
+    expect(set.copyWith(autoHostFps: true).changesFrom(set), isEmpty, reason: 'null is never sent');
+    final stored = LiveSettingsInfo.fromJson({
+      'settings': {'camera_fps_host': 24},
+      'stored': ['camera_fps_host'],
+    });
+    expect(stored.settings.cameraFpsHost, 24);
+    expect(derivedHostFps(24), 30);
+  });
+
   test('bandwidth: layers, codec and fps scale, the recommended set', () {
+    expect(simulcastLayers('1080p'), ['1080p', '540p', '180p']);
     expect(simulcastLayers('720p'), ['720p', '360p', '180p']);
     expect(simulcastLayers('540p'), ['540p', '360p', '180p']);
     expect(simulcastLayers('360p'), ['360p', '180p']);
     expect(simulcastLayers('180p'), ['180p']);
-    expect(layerKbps('720p', 30, 'vp8'), 1700);
-    expect(layerKbps('720p', 30, 'vp9'), 1190);
-    expect(layerKbps('720p', 15, 'vp8'), lessThan(1100));
+    expect(layerKbps('720p', 30, 'vp8'), 1800, reason: 'the room\'s real top layer (live_media_plan.dart)');
+    expect(layerKbps('1080p', 30, 'vp8'), 3000);
+    expect(layerKbps('720p', 30, 'vp9'), 1350);
+    expect(layerKbps('720p', 15, 'vp8'), lessThan(1200));
     const r = LiveSettingsDraft.recommended;
     final b = estimateBandwidth(r);
-    expect(b.teacherCameraKbps, layerKbps('720p', 24, 'vp8'));
+    expect(b.teacherCameraKbps, layerKbps('720p', 30, 'vp8'), reason: 'Automatic host rate: 30 over 24 fps');
     expect(b.screenKbps, 2500);
     expect(b.camerasOn, kPreviewCamerasWhenDefaultOff);
     expect(b.studentTiles, 2);
     expect(b.perViewerWithShareKbps, b.perViewerKbps + 2500);
     expect(b.teacherUploadKbps,
-        layerKbps('720p', 24, 'vp8') + layerKbps('360p', 24, 'vp8') + layerKbps('180p', 24, 'vp8') + 2500);
+        layerKbps('720p', 30, 'vp8') + layerKbps('360p', 30, 'vp8') + layerKbps('180p', 15, 'vp8') + 2500);
+    expect(estimateBandwidth(r.copyWith(cameraFpsHost: 15)).teacherCameraKbps, lessThan(b.teacherCameraKbps));
     expect(b.perViewerHourMb, (b.perViewerWithShareKbps * 3600 / 8 / 1000).round());
   });
 

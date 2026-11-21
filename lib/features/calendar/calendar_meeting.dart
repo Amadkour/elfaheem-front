@@ -453,7 +453,11 @@ class _MeetingFormState extends State<MeetingForm> {
         'course_id': ?widget.courseId,
       };
       // a rule set → the series (its first 8 dates are checked for clashes); the 409 / force flow is the same
-      final r = _repeatOn ? await widget.api.createSeries({...body, 'rule': _rule!.toJson()}) : await widget.api.create(body);
+      // a series takes `course_id`; a single meeting (`MeetingIn`) has no such field, so the course's students are
+      // invited through the audience (D-1641)
+      final r = _repeatOn
+          ? await widget.api.createSeries({...body, 'rule': _rule!.toJson()})
+          : await widget.api.create(calSingleCourseMeetingBody(body, widget.courseId));
       if (mounted) Navigator.pop(context, asMap(r));
     } catch (e) {
       final busy = calBusyOf(e);
@@ -973,6 +977,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
           Wrap(spacing: 8, runSpacing: 8, children: [
             AppPill(icon: Icons.edit_calendar_rounded, label: t('تغيير الموعد', 'Change time'), onTap: _busy ? null : () => _move()),
             AppPill(
+                key: const ValueKey('meeting.cancel'),
                 icon: Icons.event_busy_rounded,
                 label: t('إلغاء الاجتماع', 'Cancel meeting'),
                 color: c.danger,

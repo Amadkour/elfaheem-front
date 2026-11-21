@@ -127,6 +127,65 @@ String apiErrorText(ApiException e) {
       return _t('أُغلقت هذه الباقة', 'This package is closed');
     case 'already_enrolled':
       return _t('أنت مشترك في هذه الباقة بالفعل', 'You are already in this package');
+    // Learning Hub v2 final review (D-1646): the rest of the teachers / packages / games / self-learning / series codes
+    case 'teacher_only':
+      return _t('هذه الصفحة للمعلمين فقط', 'This page is for teachers only');
+    case 'students_only':
+      return _t('هذا متاح للطلاب فقط', 'This is for students only');
+    case 'not_owner':
+      return _t('يستطيع صاحبها فقط فعل ذلك', 'Only its owner can do this');
+    case 'not_pending':
+      return _t('رُوجع هذا الطلب بالفعل — حدّث الصفحة', 'This was already reviewed — refresh the page');
+    case 'reason_required':
+      return _t('اكتب السبب أولاً', 'Write the reason first');
+    case 'not_enrolled':
+      return _t('لست مسجلاً هنا', 'You are not enrolled here');
+    case 'card_unavailable':
+      return _t('بطاقة الدفع غير متاحة الآن — حاول بعد قليل', 'Card payment is not available right now — try again shortly');
+    case 'gateway_error':
+      return _t('تعذّر الاتصال ببوابة الدفع — لم يُخصم شيء، حاول مرة أخرى', 'The payment gateway could not be reached — nothing was charged, try again');
+    case 'not_due':
+      return _t('هذه الدفعة ليست بانتظار استرداد', 'This payment is not waiting for a refund');
+    case 'bad_rule':
+      return _t('قاعدة التكرار غير صالحة — راجع الأيام والوقت وتاريخ البدء', 'The repeat rule is not valid — check the days, the time and the start date');
+    case 'no_occurrences':
+      return _t('لا تنتج قاعدة التكرار أي موعد — غيّر الأيام أو تاريخ الانتهاء', 'The repeat rule gives no dates — change the days or the end date');
+    case 'series_ended':
+      return _t('انتهى هذا الاجتماع المتكرر، فلا يمكن تعديله', 'This repeating meeting has ended, so it cannot change');
+    case 'series_not_found':
+      return _t('هذا الاجتماع المتكرر غير موجود', 'This repeating meeting no longer exists');
+    case 'occurrence_cancelled':
+      return _t('أُلغي هذا الموعد بالفعل', 'This date was already cancelled');
+    case 'occurrence_not_found':
+      return _t('هذا الموعد ليس من مواعيد الاجتماع المتكرر', 'This date is not one of the repeating meeting\'s dates');
+    case 'bad_from_date':
+      return _t('لا يمكن تعديل مواعيد مضت — اختر اليوم أو بعده', 'Past dates cannot change — pick today or later');
+    case 'badge_key_taken':
+      return _t('هذا المعرّف مستخدم لشارة أخرى', 'Another badge already uses this key');
+    case 'badge_not_found':
+      return _t('هذه الشارة غير موجودة', 'This badge no longer exists');
+    case 'badge_bad_key' || 'badge_bad_name' || 'badge_bad_icon' || 'badge_bad_rule':
+      return _t('بيانات الشارة غير صالحة — راجع المعرّف والاسمين والأيقونة والقاعدة',
+          'The badge is not valid — check the key, both names, the icon and the rule');
+    case 'game_bad_engine':
+      return _t('نوع اللعبة غير معروف', 'Unknown game type');
+    case 'game_bad_status':
+      return _t('حالة اللعبة غير صالحة', 'Not a valid game status');
+    case 'game_bad_cover':
+      return _t('رابط الغلاف يجب أن يبدأ بـ https://', 'The cover link must start with https://');
+    case 'game_bad_order' || 'sl_bad_order':
+      return _t('تعذّر حفظ الترتيب — حدّث الصفحة وحاول مرة أخرى', 'The order could not be saved — refresh and try again');
+    case 'game_bad_period':
+      return _t('الفترة غير صالحة', 'Not a valid period');
+    case 'sl_bad_subject':
+      return _t('هذه المادة غير متاحة في الدروس اليومية', 'This subject is not offered in daily lessons');
+    case 'sl_bad_choice':
+      return _t('اختر إجابة من الخيارات', 'Pick one of the options');
+    case 'sl_bad_client_id':
+      return _t('تعذّر حفظ هذه الإجابة — أجب مرة أخرى', 'This answer could not be saved — answer again');
+    case 'sl_bad_item':
+      final f = '${d['field'] ?? ''}';
+      return _t('بيانات العنصر غير صالحة${f.isEmpty ? '' : ' ($f)'}', 'The item is not valid${f.isEmpty ? '' : ' ($f)'}');
     // the offline outbox (D-1351, D-1352): a write the server refused when it was synced
     case 'sync_stale':
       return _t('تغيّر ملفك الدراسي من جهاز آخر، فلم يُحفظ تعديلك. عرضنا أحدث نسخة — عدّل مرة أخرى.',

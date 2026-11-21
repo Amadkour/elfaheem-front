@@ -5,6 +5,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/calendar/recurrence/recurrence_picker.dart';
 import 'package:flutter_education_app/features/calendar/recurrence/recurrence_rule.dart';
 import 'package:flutter_education_app/features/calendar/recurrence/series_actions.dart';
+import 'package:flutter_education_app/features/teachers/package_wizard.dart' show packageScheduleStartingOn;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -24,6 +25,26 @@ RecurrenceRule daily({List<int> skip = const [], DateTime? end, List<DateTime> s
 
 void main() {
   setUp(() => AppConfig.lang = 'en');
+
+  group('start date and the rule zone', () {
+    test('a new start date moves the rule (D-1642)', () {
+      final weekly = RecurrenceRule(
+          freq: RecurrenceFreq.weekly, weekdays: const [0], startDate: DateTime(2026, 11, 30), startTime: 600, endTime: 660, tz: 'Africa/Cairo');
+      final moved = weekly.startingOn(DateTime(2026, 12, 2));
+      expect(moved.startDate, DateTime(2026, 12, 2));
+      expect(moved.weekdays, [2], reason: 'a weekly rule on the old first weekday follows the new one');
+      final m = packageScheduleStartingOn(weekly.toJson(), DateTime(2026, 12, 9))!;
+      expect(m['start_date'], '2026-12-09');
+      expect(packageScheduleStartingOn(null, DateTime(2026, 12, 9)), isNull);
+    });
+
+    test('This and following reads the new clock in the rule tz (D-1645)', () {
+      final r = daily().copyWith(tz: 'Asia/Riyadh'); // UTC+3 all year
+      final s = DateTime.utc(2026, 12, 7, 7), e = DateTime.utc(2026, 12, 7, 8, 30);
+      final out = seriesRuleAtClock(r, s, e);
+      expect((out.startTime, out.endTime, out.tz), (10 * 60, 11 * 60 + 30, 'Asia/Riyadh'));
+    });
+  });
 
   group('describeRule', () {
     test('every day except Fri and Sat, no end (the brief)', () {

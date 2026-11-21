@@ -648,14 +648,19 @@ class PackageEnrollResult {
 class PackageRosterRow {
   const PackageRosterRow({required this.studentId, required this.name, this.avatarUrl, required this.status, this.position, this.joinedAt});
 
-  factory PackageRosterRow.fromJson(Map<String, dynamic> j) => PackageRosterRow(
-        studentId: _int(j['student_id'] ?? j['user_id']),
-        name: _str(j['name'] ?? j['student_name']),
-        avatarUrl: _strOrNull(j['avatar_url'] ?? j['image_url']),
-        status: _str(j['status']),
-        position: _intOrNull(j['position']),
-        joinedAt: teachersParseUtc(j['created_at'] ?? j['joined_at']),
-      );
+  /// The server nests the person: `{id, student: {user_id, name, avatar_url}, status, position, …}`
+  /// (`package_service.py`); a flat row is still read for an older shape.
+  factory PackageRosterRow.fromJson(Map<String, dynamic> j) {
+    final st = _map(j['student']);
+    return PackageRosterRow(
+      studentId: _int(st['user_id'] ?? st['id'] ?? j['student_id'] ?? j['user_id']),
+      name: _str(st['name'] ?? j['name'] ?? j['student_name']),
+      avatarUrl: _strOrNull(st['avatar_url'] ?? st['image_url'] ?? j['avatar_url'] ?? j['image_url']),
+      status: _str(j['status']),
+      position: _intOrNull(j['position']),
+      joinedAt: teachersParseUtc(j['created_at'] ?? j['joined_at']),
+    );
+  }
 
   final int studentId;
   final String name;

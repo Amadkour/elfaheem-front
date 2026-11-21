@@ -157,6 +157,18 @@ class RecurrenceRule {
         tz: tz ?? this.tz,
       );
 
+  /// The rule starting on [day] instead (D-1642): a weekly rule that only held the old first weekday follows the
+  /// new one, and an end date before [day] is dropped. Times stay.
+  RecurrenceRule startingOn(DateTime day) {
+    final d = DateTime(day.year, day.month, day.day);
+    final oldDay = recurrenceWeekdayOf(startDate), newDay = recurrenceWeekdayOf(d);
+    return copyWith(
+      startDate: d,
+      weekdays: unit == RecurrenceUnit.weeks && weekdays.length == 1 && weekdays.first == oldDay ? [newDay] : null,
+      clearEnd: endDate != null && endDate!.isBefore(d),
+    );
+  }
+
   /// The rule in the contract's wire shape. A daily rule sends no weekdays; [allDay] sends null times.
   Map<String, dynamic> toJson() {
     final days = unit == RecurrenceUnit.weeks ? (weekdays.toSet().toList()..sort()) : const <int>[];

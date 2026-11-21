@@ -5780,3 +5780,48 @@ the package, the amount (`packagePriceLabel`), when it was paid and why it is ow
 one sentence; "Mark refunded" asks first, then calls `…/done` and drops the row. A 409 `not_due` (another admin did
 it) drops the row too, shown as a plain notice. The strings use `t(ar, en)` like the rest of `lib/features/teachers/`
 rather than `assets/translation.json`, so the module keeps one way of writing text.
+
+## D-1641 — A one-off course meeting invites the course through the audience · 2026-11-21 · accepted
+
+`POST /meetings` (`MeetingIn`) has no `course_id`, so a course meeting with Repeat off sent an empty audience and
+nobody was invited while the banner said the students were. `calSingleCourseMeetingBody` drops `course_id` and puts
+the course in `audience.course_ids` (its students and teacher). A series keeps sending `course_id`: `SeriesIn` takes
+it and adds later students too.
+
+## D-1642 — A package's start date moves its repeat rule · 2026-11-21 · accepted
+
+The series follows the rule's `start_date`, so picking a new start date in the package wizard writes it into the rule
+too (`RecurrenceRule.startingOn`): a weekly rule that held only the old first weekday follows the new one, and an end
+date before the new start is dropped.
+
+## D-1643 — Live settings: 1080p, the host frame rate, the room's bitrate table · 2026-11-21 · accepted
+
+The host camera offers 1080p / 720p / 540p / 360p, so a stored 1080p is no longer read as 720p and written back on
+the next save. The host frame rate (`camera_fps_host`) offers Automatic + 15 / 24 / 30. Automatic is shown while the
+field is not in the server's `stored` list (the value in `settings` is then only the server's derived one: 15 when
+`camera_fps` <= 15, else 30). The server refuses null and only Reset clears a stored value, so Automatic is offered
+only while the saved value is Automatic, the hint points to "Reset to recommended", and null is never sent. The
+bandwidth preview now uses the live room's own table (`cameraBitrateKbps`, 720p30 = 1800, 1080p30 = 3000) and the
+room's layers (540p under 1080p), and the teacher's camera uses the host frame rate.
+
+## D-1644 — The meeting detail asks "this one / this and following" for a series date · 2026-11-21 · accepted
+
+The meeting sheet reads `series_id` / `occurrence_date` from the meeting detail (back D-1696), and from the feed
+event when it was opened from the calendar. Move and cancel then go through `series_actions.dart` (`seriesMove` /
+`seriesCancel`), the same scope sheet as a date that has no meeting row yet.
+
+## D-1645 — "This and following" reads the clock in the rule's zone · 2026-11-21 · accepted
+
+A rule's wall times are in its own `tz`, which can differ from the viewer's AppTime zone. `seriesRuleAtClock`
+converts the new start and end with `AppTime.toZone(utc, zone: rule.tz)` (the `timezone` package; an unknown zone
+falls back to the effective one).
+
+## D-1646 — Texts for the Learning Hub v2 error codes · 2026-11-21 · accepted
+
+`apiErrorText` has Arabic and English texts for every teachers / packages / games / self-learning / series code
+in the back's `FLUTTER_API_CHANGES.md` that the app can show. Codes that other modules also send (`not_owner`,
+`not_pending`, `reason_required`, `not_enrolled`, `students_only`) get general wording. `calErrorText` now falls back
+to `apiErrorText` instead of the server's Arabic message, and has its own text for the shared `too_long` and
+`course_forbidden`. In the same round (review F5, F12): self-learning reads `per_subject.lessons` (`total` is still
+read), teacher and seat counts go through `countText`, and the game and learning-card motions use the `AppMotion`
+durations.

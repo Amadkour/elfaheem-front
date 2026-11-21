@@ -40,6 +40,13 @@ String packagesText(int n) =>
 String yearsText(int n) =>
     countText(n, ar1: 'سنة واحدة', ar2: 'سنتان', arFew: '{n} سنوات', arMany: '{n} سنة', en1: '1 year', en: '{n} years');
 
+String teachersText(int n) =>
+    countText(n, ar1: 'معلم واحد', ar2: 'معلمان', arFew: '{n} معلمين', arMany: '{n} معلماً', en1: '1 teacher', en: '{n} teachers');
+
+/// "3 of 10 seats": the noun follows the total.
+String seatsTakenText(int taken, int max) => countText(max,
+    ar1: '$taken من مقعد واحد', ar2: '$taken من مقعدين', arFew: '$taken من {n} مقاعد', arMany: '$taken من {n} مقعداً', en1: '$taken of 1 seat', en: '$taken of {n} seats');
+
 String waitingText(int n) => countText(n,
     ar1: 'طالب واحد في الانتظار', ar2: 'طالبان في الانتظار', arFew: '{n} طلاب في الانتظار', arMany: '{n} طالباً في الانتظار', en1: '1 waiting', en: '{n} waiting');
 

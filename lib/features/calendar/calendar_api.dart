@@ -13,6 +13,8 @@ library;
 import 'dart:async';
 
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 
 import 'package:flutter_education_app/features/payments/points/points_api.dart' show pointsCodeText, pointsErrorCode;
 
@@ -148,7 +150,14 @@ String calErrorText(Object e) {
   if (e is TimeoutException) return ApiMessages.timeout;
   final code = pointsErrorCode(e);
   if (_meetingCodes.contains(code)) return pointsCodeText(code) ?? ApiException.from(e).message;
-  return ApiException.from(e).message;
+  // the calendar's own wording for two shared codes; every other code (the series ones too) in apiErrorText (D-1646)
+  switch (code) {
+    case 'too_long':
+      return t('الاجتماع أطول من المسموح', 'The meeting is longer than allowed');
+    case 'course_forbidden':
+      return t('يستطيع مدرّس المقرر فقط فعل ذلك', 'Only the course teacher can do this');
+  }
+  return apiErrorText(ApiException.from(e));
 }
 
 /// Meeting codes of live-rooms-spec §7 – §8 with app texts (points_api.dart).

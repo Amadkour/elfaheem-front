@@ -542,3 +542,17 @@ Map<String, dynamic> calMeetingBody({
     'force': force,
   };
 }
+
+/// A one-off course meeting: `POST /meetings` (`MeetingIn`) ignores `course_id`, so the course goes into
+/// `audience.course_ids` (its students + teacher) and `course_id` is dropped (D-1641). No course → [body] unchanged.
+Map<String, dynamic> calSingleCourseMeetingBody(Map<String, dynamic> body, int? courseId) {
+  if (courseId == null) return body;
+  final aud = Map<String, dynamic>.from(body['audience'] is Map ? body['audience'] as Map : const {});
+  final ids = [for (final v in (aud['course_ids'] is List ? aud['course_ids'] as List : const [])) v];
+  if (!ids.contains(courseId)) ids.add(courseId);
+  return {
+    for (final e in body.entries)
+      if (e.key != 'course_id') e.key: e.value,
+    'audience': {...aud, 'course_ids': ids},
+  };
+}

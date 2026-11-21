@@ -197,7 +197,7 @@ class SlSubjectProgress {
   static SlSubjectProgress from(dynamic v) {
     if (v is num) return SlSubjectProgress(learned: v.toInt());
     final m = _map(v);
-    return SlSubjectProgress(learned: _int(m['learned']), due: _int(m['due']), total: _int(m['total']));
+    return SlSubjectProgress(learned: _int(m['learned']), due: _int(m['due']), total: _int(m['total'] ?? m['lessons'])); // the server sends `lessons`
   }
 }
 

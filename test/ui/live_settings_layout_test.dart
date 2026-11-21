@@ -80,14 +80,20 @@ void main() {
         await tester.pump();
         await tester.tap(find.text('H.264').first);
         await tester.pump();
-        await tester.scrollUntilVisible(find.text('30 fps'), 200, scrollable: list);
-        await tester.ensureVisible(find.text('30 fps'));
+        await tester.scrollUntilVisible(find.text('1080p'), 200, scrollable: list);
+        await tester.ensureVisible(find.text('30 fps').first);
         await tester.pump();
-        await tester.tap(find.text('30 fps'));
+        await tester.tap(find.text('30 fps').first);
+        await tester.pump();
+        // the host's own rate (D-1643): the second row of rates
+        await tester.ensureVisible(find.text('24 fps').last);
+        await tester.pump();
+        await tester.tap(find.text('24 fps').last);
         await tester.pump();
       },
     );
     expect(draft.videoCodec, 'h264');
     expect(draft.cameraFps, 30);
+    expect(draft.cameraFpsHost, 24);
   });
 }

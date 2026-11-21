@@ -69,7 +69,7 @@ final _meJson = {
     'due': 3,
     'streak_days': 5,
     'per_subject': {
-      'quran': {'learned': 9, 'due': 2, 'total': 40},
+      'quran': {'learned': 9, 'due': 2, 'lessons': 40}, // the server's key
       'nahw': {'learned': 5, 'due': 1},
     },
   },
@@ -94,6 +94,7 @@ void main() {
       expect(s.reviews.first.lessonId, 11);
       expect(s.progress.streakDays, 5);
       expect(s.progress.perSubject['quran']!.fraction, closeTo(9 / 40, 1e-9));
+      expect(SlSubjectProgress.from({'learned': 1, 'total': 4}).total, 4, reason: 'an older `total` is still read');
       expect(s.progress.perSubject['nahw']!.fraction, closeTo(5 / 6, 1e-9), reason: 'no total: learned / (learned + due)');
       expect(s.forSubjects(kSlQuranSubjects).reviews.map((r) => r.id), [21]);
       expect(s.forSubjects({'nahw'}).lessons.map((r) => r.id), [11]);

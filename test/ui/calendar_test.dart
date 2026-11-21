@@ -159,6 +159,14 @@ class FakeCalendarApi implements CalendarApi {
 
 void main() {
   group('pure logic', () {
+    test('a one-off course meeting invites the course through the audience (D-1641)', () {
+      final b = calSingleCourseMeetingBody({'title': 'x', 'course_id': 7, 'audience': CalAudience().toJson()}, 7);
+      expect(b.containsKey('course_id'), isFalse);
+      expect((b['audience'] as Map)['course_ids'], [7]);
+      final same = {'title': 'y', 'audience': CalAudience().toJson()};
+      expect(identical(calSingleCourseMeetingBody(same, null), same), isTrue);
+    });
+
     test('visible days and ranges', () {
       final a = DateTime(2026, 10, 21); // Wednesday
       expect(calVisibleDays(CalView.day, a), [a]);
@@ -326,6 +334,27 @@ void main() {
           act: (t) async => expect(
               find.byKey(const ValueKey('calendar.meet_now')).evaluate().length + find.byKey(const ValueKey('meetings.meet_now')).evaluate().length,
               1));
+    });
+
+    testWidgets('meeting details of a series date: cancel asks this one / this and following (D-1644)', (tester) async {
+      final api = FakeCalendarApi();
+      await expectNoLayoutErrors(
+          tester,
+          () => MeetingSheet(api: api, meetingId: 5, initial: {
+                ...api.meetingDetail(5),
+                'is_owner': true,
+                'series_id': 9,
+                'occurrence_date': '2026-11-23',
+              }),
+          act: (t) async {
+            await t.ensureVisible(find.byKey(const ValueKey('meeting.cancel')));
+            await t.pump();
+            await t.tap(find.byKey(const ValueKey('meeting.cancel')));
+            await t.pumpAndSettle();
+            expect(find.byKey(const ValueKey('series_scope.following')), findsOneWidget);
+            Navigator.of(t.element(find.byKey(const ValueKey('series_scope.one')))).pop();
+            await t.pumpAndSettle();
+          });
     });
 
     testWidgets('meeting details (invitee)', (tester) async {

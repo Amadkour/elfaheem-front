@@ -279,7 +279,7 @@ class TeachersBrowseView extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpace.sm),
               child: Text(
-                t(total == 1 ? 'معلم واحد' : '$total معلم', total == 1 ? '1 teacher' : '$total teachers'),
+                teachersText(total),
                 style: AppType.meta(context).copyWith(color: c.textMedium),
               ),
             ),

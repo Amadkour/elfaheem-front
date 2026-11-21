@@ -287,7 +287,7 @@ class GameShellHeader extends StatelessWidget {
               height: AppSpace.xs,
               child: AppFill(
                 value: value,
-                duration: const Duration(milliseconds: 360),
+                duration: AppMotion.of(context).slow,
                 builder: (context, v) => Stack(fit: StackFit.expand, children: [
                   ColoredBox(color: b.ink.withValues(alpha: 0.14)),
                   FractionallySizedBox(
@@ -341,7 +341,7 @@ class GameBurst extends StatefulWidget {
 }
 
 class _GameBurstState extends State<GameBurst> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 560));
+  late final AnimationController _c = AnimationController(vsync: this);
 
   @override
   void initState() {
@@ -360,7 +360,9 @@ class _GameBurstState extends State<GameBurst> with SingleTickerProviderStateMix
 
   void _onFeedback() {
     if (!mounted || widget.controller.lastCorrect != true || appMotionOff(context)) return;
-    _c.forward(from: 0);
+    _c
+      ..duration = AppMotion.of(context).slow * 2 // the burst: two slow beats
+      ..forward(from: 0);
   }
 
   @override

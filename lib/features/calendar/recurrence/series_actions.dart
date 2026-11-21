@@ -94,13 +94,7 @@ Future<bool> seriesMove(BuildContext context, CalendarApi api,
     }
     final rule = RecurrenceRule.fromJson(asMap(await api.series(seriesId))['rule']);
     if (rule == null) throw StateError('no rule');
-    final s = AppTime.toZone(startUtc), e = AppTime.toZone(endUtc);
-    return api.updateSeries(
-        seriesId,
-        {
-          'rule': rule.copyWith(allDay: false, startTime: s.hour * 60 + s.minute, endTime: e.hour * 60 + e.minute).toJson(),
-          'force': force,
-        },
+    return api.updateSeries(seriesId, {'rule': seriesRuleAtClock(rule, startUtc, endUtc).toJson(), 'force': force},
         fromDate: date);
   }
 
@@ -125,6 +119,13 @@ Future<bool> seriesMove(BuildContext context, CalendarApi api,
   }
   showAppNotice(scope == SeriesScope.one ? 'cal_series_moved_one'.tr : 'cal_series_moved_following'.tr);
   return true;
+}
+
+/// [rule] with its clock set to [startUtc]–[endUtc] read in the RULE's zone (its `tz`, D-1645): the wall times are
+/// in that zone, which may differ from the viewer's AppTime zone.
+RecurrenceRule seriesRuleAtClock(RecurrenceRule rule, DateTime startUtc, DateTime endUtc) {
+  final s = AppTime.toZone(startUtc, zone: rule.tz), e = AppTime.toZone(endUtc, zone: rule.tz);
+  return rule.copyWith(allDay: false, startTime: s.hour * 60 + s.minute, endTime: e.hour * 60 + e.minute);
 }
 
 /// Cancels the [date] of series [seriesId], or ends the series, after asking the scope. True when done.

@@ -1,8 +1,8 @@
 // lib/features/self_learning/sl_motion.dart — the two small motions of the learning cards (D-1604), one-shot only
 // (nothing loops), both still under Reduce motion (appMotionOff: the person's, the system's or `app.animations`):
 //
-//   SlFeedbackIn(child:)     a feedback panel fades in and rises 8 px once (240 ms, ease-out)
-//   SlCelebration(play:)     a light burst of dots around a right answer, once (900 ms); nothing under Reduce motion
+//   SlFeedbackIn(child:)     a feedback panel fades in and rises 8 px once (AppMotion base, ease-out)
+//   SlCelebration(play:)     a light burst of dots around a right answer, once (3 x AppMotion slow); nothing under Reduce motion
 //
 // Used by the self-learning review card and the nahw round (the same feedback motion in both).
 library;
@@ -28,7 +28,7 @@ class SlFeedbackIn extends StatelessWidget {
     return RepaintBoundary(
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 240),
+        duration: AppMotion.of(context).base,
         curve: AppEase.out,
         child: child,
         builder: (_, v, child) => Opacity(
@@ -61,7 +61,7 @@ class _SlCelebrationState extends State<SlCelebration> with SingleTickerProvider
     if (_decided) return;
     _decided = true;
     if (!widget.play || appMotionOff(context)) return;
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..forward();
+    _c = AnimationController(vsync: this, duration: AppMotion.of(context).slow * 3)..forward(); // three slow beats
   }
 
   @override
