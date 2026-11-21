@@ -5,9 +5,16 @@
 #
 #   scripts/build_release.sh apk | appbundle | ipa | web
 #
+#   apk        the three direct-download APKs (D-137), each built with --target-platform and the SAME versionCode:
+#              arm64-v8a, armeabi-v7a, universal -> build/releases/<name>-<build>/NextBrain-<name>-<build>-<arch>.apk,
+#              symbols in build/debug-info/<version>/android-<arch>/ (the same files publish_release.py --android makes)
+#   appbundle  build/app/outputs/bundle/release/app-release.aab (publish_release.py --aab copies it into build/releases/)
+#
 # Android signing: android/key.properties or ANDROID_KEYSTORE_PATH / _PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD;
-# without them this script refuses the apk / appbundle (S13: a release is never signed with the debug key), and so does
-# gradle (android/app/build.gradle.kts).
+# with neither, the release key's own key.properties OUTSIDE the repo (NEXTBRAIN_KEY_PROPERTIES, default
+# ~/.nextbrain-keys/key.properties) is read into those variables (never printed, never copied). Without any of them
+# this script refuses the apk / appbundle (S13: a release is never signed with the debug key), and so does gradle
+# (android/app/build.gradle.kts).
 set -euo pipefail
 target="${1:-appbundle}"
 version="$(grep -E '^version:' pubspec.yaml | awk '{print $2}')"
@@ -23,8 +30,19 @@ android_keystore() {
   [[ -z "$store" ]] && store="${ANDROID_KEYSTORE_PATH:-}"
   printf '%s' "$store"
 }
+android_key_from_home() {
+  # only when neither android/key.properties nor ANDROID_KEYSTORE_PATH is set: the values stay in this process's env
+  [[ -f android/key.properties || -n "${ANDROID_KEYSTORE_PATH:-}" ]] && return 0
+  local props="${NEXTBRAIN_KEY_PROPERTIES:-$HOME/.nextbrain-keys/key.properties}"
+  [[ -f "$props" ]] || return 0
+  prop() { grep -E "^[[:space:]]*$1[[:space:]]*=" "$props" | head -n1 | cut -d= -f2- | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'; }
+  export ANDROID_KEYSTORE_PATH="$(prop storeFile)" ANDROID_KEYSTORE_PASSWORD="$(prop storePassword)" \
+    ANDROID_KEY_ALIAS="$(prop keyAlias)" ANDROID_KEY_PASSWORD="$(prop keyPassword)"
+  echo "signing with the release key from $props"
+}
 case "$target" in
   apk|appbundle)
+    android_key_from_home
     store="$(android_keystore)"
     if [[ -z "$store" ]]; then
       echo "refusing: no release keystore (android/key.properties or ANDROID_KEYSTORE_PATH) — a release must never be signed with the debug key" >&2
@@ -34,7 +52,22 @@ case "$target" in
       echo "refusing: the release keystore '$store' does not exist" >&2
       exit 3
     fi
-    flutter build "$target" --release --obfuscate --split-debug-info="$symbols"
+    if [[ "$target" == apk ]]; then
+      name="${version%%+*}"; build="${version##*+}"
+      out="build/releases/${name}-${build}"
+      mkdir -p "$out"
+      # -P disable-abi-filtering=true: the plugins' native libraries follow --target-platform (build.gradle.kts)
+      for variant in arm64-v8a:android-arm64 armeabi-v7a:android-arm universal:android-arm,android-arm64,android-x64; do
+        abi="${variant%%:*}"; platforms="${variant#*:}"
+        echo "==> apk $abi"
+        flutter build apk --release --obfuscate --split-debug-info="$symbols/android-$abi" \
+          --target-platform="$platforms" -P disable-abi-filtering=true
+        cp build/app/outputs/flutter-apk/app-release.apk "$out/NextBrain-${name}-${build}-${abi}.apk"
+      done
+      ls -l "$out"
+    else
+      flutter build "$target" --release --obfuscate --split-debug-info="$symbols"
+    fi
     ;;
   ipa)
     flutter build "$target" --release --obfuscate --split-debug-info="$symbols"

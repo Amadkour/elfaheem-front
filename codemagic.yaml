@@ -267,6 +267,149 @@ workflows:
         submit_to_app_store: true
         release_type: AFTER_APPROVAL
 
+  # ── iOS → TestFlight only (Learning Hub Phase 8, docs/release/APPLE.md). OFF until the owner adds the App Store
+  # Connect API key: `integrations` fails the build at once without the `app_store` key, and the first step stops it
+  # unless the group `app_store` sets NB_TESTFLIGHT_ENABLED=1. Testers get the build; nothing goes to App Review. ────
+  ios-testflight:
+    name: iOS → TestFlight
+    labels:
+      - ios
+      - testflight
+      - nb-release-$NB_RELEASE_ID
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    integrations:
+      app_store_connect: app_store
+    environment:
+      flutter: *flutter_version
+      xcode: latest
+      cocoapods: default
+      groups:
+        - app_store
+      vars:
+        NB_PLATFORM: ios
+        NB_NOTES_AR_LOCALE: ar-SA
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.doubley.nextbrain # the app; its extension com.doubley.nextbrain.BroadcastUploadExtension needs a profile too
+    scripts:
+      - name: TestFlight switched on (NB_TESTFLIGHT_ENABLED)
+        script: |
+          set -euo pipefail
+          [ "${NB_TESTFLIGHT_ENABLED:-}" = "1" ] || { echo "ios-testflight is off: set NB_TESTFLIGHT_ENABLED=1 in the app_store group (docs/release/APPLE.md)"; exit 1; }
+      - *check_vars
+      - name: Code signing settings on the Xcode project
+        script: xcode-project use-profiles
+      - *pub_get
+      - *gate
+      - name: flutter build ipa
+        script: |
+          set -euo pipefail
+          flutter build ipa --release --obfuscate --split-debug-info="$NB_SYMBOLS/ios" \
+            --build-name="$NB_BUILD_NAME" --build-number="$NB_BUILD_NUMBER" \
+            --export-options-plist=/Users/builder/export_options.plist
+      - *store_release_notes
+      - *zip_symbols
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - build/debug-info-*.zip
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
+
+  # ── macOS desktop → our website (.dmg, D-1362) ──────────────────────────────────────────────────────────────────
+  # Signed + notarised when the group `macos_signing` holds the Developer ID certificate and an App Store Connect API
+  # key (docs/release/APPLE.md); without them an UNSIGNED .dmg (Gatekeeper asks once: Control-click → Open). Only
+  # standard macOS tools (security, codesign, notarytool, hdiutil): the owner's runner can run it on a Mac (D-146).
+  macos-website:
+    name: macOS → website (.dmg)
+    labels:
+      - macos
+      - website
+      - nb-release-$NB_RELEASE_ID
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    environment:
+      flutter: *flutter_version
+      xcode: latest
+      cocoapods: default
+      groups:
+        - macos_signing # may be empty: then the .dmg is unsigned
+      vars:
+        NB_PLATFORM: macos
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+    scripts:
+      - *check_vars
+      - *pub_get
+      - *gate
+      - name: flutter build macos
+        script: |
+          set -euo pipefail
+          flutter config --enable-macos-desktop
+          flutter build macos --release --obfuscate --split-debug-info="$NB_SYMBOLS/macos" \
+            --build-name="$NB_BUILD_NAME" --build-number="$NB_BUILD_NUMBER"
+          ls -d build/macos/Build/Products/Release/NextBrain.app
+      - name: Sign, package and notarise the .dmg
+        script: |
+          set -euo pipefail
+          app="build/macos/Build/Products/Release/NextBrain.app"
+          dmg="build/nb-upload/NextBrain-${NB_BUILD_NAME}-${NB_BUILD_NUMBER}-macos.dmg"
+          mkdir -p build/nb-upload
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"; [ -n "${kc:-}" ] && security delete-keychain "$kc" >/dev/null 2>&1 || true' EXIT
+          identity=""
+          if [ -n "${MACOS_DEVELOPER_ID_P12_BASE64:-}" ]; then
+            # a throw-away keychain holding only the Developer ID Application certificate; nothing is printed
+            kc="$work/nb-signing.keychain-db"
+            kc_pass="$(openssl rand -hex 16)"
+            security create-keychain -p "$kc_pass" "$kc"
+            security set-keychain-settings -lut 3600 "$kc"
+            security unlock-keychain -p "$kc_pass" "$kc"
+            printf '%s' "$MACOS_DEVELOPER_ID_P12_BASE64" | base64 --decode > "$work/id.p12"
+            security import "$work/id.p12" -k "$kc" -P "${MACOS_DEVELOPER_ID_P12_PASSWORD:-}" -T /usr/bin/codesign >/dev/null
+            rm -f "$work/id.p12"
+            security set-key-partition-list -S apple-tool:,apple: -s -k "$kc_pass" "$kc" >/dev/null
+            # shellcheck disable=SC2046 # one word per keychain already in the search list
+            security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+            identity="$(security find-identity -v -p codesigning "$kc" | awk -F'"' '/Developer ID Application/{print $2; exit}')"
+            [ -n "$identity" ] || { echo "no 'Developer ID Application' identity in MACOS_DEVELOPER_ID_P12_BASE64"; exit 1; }
+            echo "signing as: $identity"
+            # hardened runtime (notarisation needs it) with the app's own sandbox entitlements
+            codesign --force --deep --timestamp --options runtime \
+              --entitlements macos/Runner/Release.entitlements --sign "$identity" "$app"
+            codesign --verify --deep --strict --verbose=2 "$app"
+          else
+            echo "no Developer ID certificate in macos_signing: building an UNSIGNED .dmg (docs/release/APPLE.md, Gatekeeper)"
+          fi
+          mkdir -p "$work/dmg"
+          cp -R "$app" "$work/dmg/"
+          ln -s /Applications "$work/dmg/Applications"
+          hdiutil create -volname NextBrain -srcfolder "$work/dmg" -ov -format UDZO "$dmg"
+          if [ -n "$identity" ]; then
+            codesign --force --timestamp --sign "$identity" "$dmg"
+            if [ -n "${APP_STORE_CONNECT_PRIVATE_KEY:-}" ]; then
+              printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$work/AuthKey.p8"
+              xcrun notarytool submit "$dmg" --key "$work/AuthKey.p8" \
+                --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" --issuer "$APP_STORE_CONNECT_ISSUER_ID" --wait
+              rm -f "$work/AuthKey.p8"
+              xcrun stapler staple "$dmg"
+              spctl --assess --type open --context context:primary-signature --verbose=2 "$dmg"
+            else
+              echo "signed but NOT notarised: APP_STORE_CONNECT_PRIVATE_KEY is not in macos_signing"
+            fi
+          fi
+          shasum -a 256 "$dmg"
+          ls -la build/nb-upload
+      - *zip_symbols
+      - *upload
+    artifacts:
+      - build/nb-upload/*.dmg
+      - build/debug-info-*.zip
+
   # ── Web → our server (the site itself: the server unpacks the zip and switches `current`, D-143) ─────────────────
   web-website:
     name: Web → website
