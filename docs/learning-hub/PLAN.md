@@ -112,6 +112,12 @@ Model per agent in brackets. Review checkpoint = the lead calls the planner with
 - Wave A: **B8 [sonnet]** `features/sync/` + migration 0108 + `e2e_sync.py` (same op twice = duplicate; stale profile rejected; a foreign user's op rejected). · **F12 [sonnet]** `lib/core/offline/sync/` + `SyncStatusChip` in `AppShell` + logout wipe + tests with a fake clock and a fake API (queue survives restart, drains in order, retries, status transitions).
 - Wave B: **F13 [sonnet]** wires games, nahw, quran progress, study profile and the read caches; offline library files.
 - Review: the planner reads `sync_engine.dart` and `features/sync/service.py`.
+- Added at the Phase 6 review (2026-11-21):
+  - All three agents run on Opus (as Phase 6 did). Phase 7 starts after 6.R must-fix 1–7.
+  - CONTRACT §7 is the full contract: the op id is the entity's `client_id`, the sync service calls the routes' own service functions, a rejected op is final.
+  - B8 also: `quran_service.record` keeps the device's time (clamped) as `recorded_at`; `updated_at` on `game_progress` and `nahw_progress`; the new key `sync.offline` in the feature catalog + the snapshot export.
+  - F12: `SyncStatusChip` sits in the top bar and the Home header, never in the phone's bottom bar (D-1340 keeps it at five slots). The logout wipe clears the outbox and the local tables.
+  - F13: the Quran record sheet's in-memory "kept for later" entry, the game play's `GamePlaySubmission` and the nahw attempt all move to the outbox with the `client_id` they already carry; none keeps a private retry.
 
 ### Phase 8 — native builds · 3 agents
 - **N1 [haiku]** Android: verify `~/.nextbrain-keys` works, do NOT create a keystore (D-1360), add `--aab` to `publish_release.py`, build APK + AAB, print `apksigner verify`. · **N2 [sonnet]** Windows: `windows/installer/nextbrain.iss`, Inno Setup install (winget), `scripts/release/package_windows.ps1`, the runner + `codemagic.yaml` `windows-website` step, `sqflite_common_ffi` check on a real run. · **N3 [sonnet]** Linux AppImage in `package_linux.sh`; `macos-website` + `ios-testflight` workflows in `codemagic.yaml`; `docs/release/APPLE.md` (what the owner provides).
@@ -133,7 +139,7 @@ Reserve **D-1300 – D-1399**: 1300–1309 job + Phase 1 · 1310–1319 levels �
 - **Windows signing**: no certificate → unsigned installer + documented SmartScreen steps.
 - **SQLite hides PostgreSQL errors** (Phase 1's cause). From now on the lead runs each phase's e2e once on the PostgreSQL container before merging.
 - **New packages** (`sqflite_common_ffi`): check `pubspec.lock` gains only that; if it downgrades anything, fall back to a JSON-file store behind the same `LocalDb` interface.
-- **Nine student tabs on a phone**: decided at the Phase 6 review (D-1340).
+- **Nine student tabs on a phone**: decided (front D-1340, PROGRESS "6.R code review"): the phone bar draws at most five slots, Home · My courses · Learn · Schedule · Profile; Learn opens a sheet with Store, Games, Quran, Grammar and Analysis. The tab list itself does not change.
 - **Store teacher payouts** are out of v1 (D-1334). **Legal**: VAT rates and book exemption come from RESEARCH.md's sources and stay editable.
 - **Old apps**: every changed route keeps its old fields; the contract test snapshots are regenerated per phase.
 - **Scope**: if a phase overruns, cut in this order: badges, AppImage, store review queue, nahw `classify` exercises.

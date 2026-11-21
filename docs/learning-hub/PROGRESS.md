@@ -35,7 +35,7 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | 6.4 | Front: learn kit + games tab | F9 | todo | |
 | 6.5 | Front: Quran tab | F10 | todo | |
 | 6.6 | Front: nahw tab + admin switches page | F11 | todo | |
-| 6.R | Review: switch model, phone layout of the tabs, §7 contract detail | planner | todo | |
+| 6.R | Review: switch model, phone layout of the tabs, §7 contract detail | planner | done | needs fixes: "6.R code review" at the end (9 must-fix, D-1340 decided) |
 | 7.1 | Back: sync push / pull (0108) | B8 | todo | |
 | 7.2 | Front: LocalDb, Outbox, SyncEngine, status chip | F12 | todo | |
 | 7.3 | Front: wire entities + caches + offline library | F13 | todo | |
@@ -557,3 +557,67 @@ Also add the `app_features_guide.json` entries for games and module switches.
 - The switch model.
 - The phone layout with every student tab: home, courses, store, games, Quran, nahw, … (decision D-1340, store counted).
 - The planner reads `module_settings.py` against the store's reader.
+
+### 6.R code review (planner, 2026-11-21) — back ad2be80..f3555bc, front 0ee45c62..9330b459 — verdict: needs fixes
+The code half only; the real-app walk is `QA_PHASE6.md`. I read the diffs; I ran no tests (the store e2e numbers are the lead's).
+
+**What holds:**
+- **Switch model.** `module_settings.resolve` = registry defaults ← platform ← country ← org, never raises, drops unknown keys, reads the table through the inspector and a SAVEPOINT on PostgreSQL, 30 s cache cleared on every PUT. Only the super admin writes any scope (`_super` + `admin.modules`), so an org row that relaxes a platform value is still the super admin's choice. The kill-switch layers only add keys (`effective_disable_list` = platform ∪ country ∪ org), so a super-admin OFF wins.
+- **Games cap.** The play, the progress bump, the credit and the badges commit together (`record_play`, one `db.commit()`; `points_service.credit` does not commit). On PostgreSQL the wallet row is locked before today's sum is read, so two plays at once cannot both pass `points_daily_cap`. Points need the flag AND `games.rewards` AND a student AND at least one star.
+- **Idempotency.** Games `(user_id, client_id)`, nahw `(user_id, client_id)`, Quran `(recorded_by, client_id)`: each answers the first row again, and the race on the unique index is caught. The front keeps the `client_id` until a definite answer in all three.
+- **Progress permission.** A student logs only for himself and only with `self_log`; a teacher only for a student actively enrolled in one of his courses; anyone else 403. Ranges are checked against the surah's ayah count.
+- **Parent routes.** All three (`/parent/children/{id}/games`, `/quran/progress`, `/nahw`) need the parent role AND an active `ParentStudentLink`, else 404.
+- **No Quran text.** `quran_meta.json` (back seed and the front fixture) holds names, ayah counts and juz starts only; `nahw.json` and `games.json` quote no ayah. Source and licence are in the file.
+- **Literals.** Every new path is a literal `/api/v1/…`; the snapshots gained the 40 routes and 6 keys.
+- **Home budget.** The three tabs are lazy; nothing was added to the home's requests and `test/perf` budgets are unchanged.
+
+**What does not hold (the must-fix list below):** the gender rule has three holes (staff add paths, the list's `?country=`, an editable gender on a verified card); the country layer reaches the app only after a restart and never for a guest; two flags can be switched on with no screen to act on them (verify / review); a Quran program cannot be created; nine tabs do not fit a phone.
+
+#### D-1340 (front) — nine student tabs on a phone: a "Learn" slot, decided
+The tab list does not change: all nine stay real `DashboardItem`s with their own navigators, URLs, deep links and lazy bodies. Only the phone bar (`_BottomNav`) draws **slots** instead of items.
+- **Rule 1.** At most `BottomNavMetrics.maxSlots = 5` slots. Five items or fewer: one slot per item, as today.
+- **Rule 2.** More than five: items that share a `DashboardItem.mobileGroup` fold into ONE slot at the first member's place. A group with one visible member draws that tab itself (its own icon and label); a group with none draws nothing.
+- **Rule 3 (fallback, every role).** Still more than five slots: slots 5… fold into a built-in group `more` (`Icons.more_horiz_rounded`, key `more`).
+- **Student.** `store`, `games`, `quran`, `nahw` and `analysis` carry the group `learn` (key `learn_hub`: «التعلّم» / "Learn", `Icons.school_outlined` / `Icons.school_rounded`). The bar reads **Home · My courses · Learn · Schedule · Profile**. To make that order, move the `analysis` item before `my_schedule` in `dashboard_screen.dart`.
+- **A group slot.** Active (the gradient pill, heavier label) while any member is the open tab. Its badge is the sum of its members' `ShellBadge` counts. A tap ALWAYS opens the group sheet; a long press is Customize tabs, as on any tab.
+- **The sheet.** `showAppSheet`, title = the group label. One row per visible member, in the items' order: the tab's icon pill (its colour box when it has one), the label, a one-line hint (`DashboardItem.hint`, a translation key, `maxLines: 1`), the `ShellBadge`, a mirrored chevron; the open tab's row is marked selected. Rows are at least `AppTouch.min` high. A tap closes the sheet and calls `onTap(index)`.
+- **Unchanged.** `WideShell` and `RailShell` list all nine. `LazyTabStack`, `AppNavigator.requestedTab`, pins, and the system back are untouched because the indexes are.
+- **Phase 7.** `SyncStatusChip` goes in the top bar / the Home header, never in the bottom bar.
+
+#### Must-fix — ONE brief for an Opus agent (both repos; don't `dart format`; commit per repo with `git commit --only`, don't push)
+Run only the tests named in each item, plus the analyzer on the paths you touch. Back e2e on SQLite (`DATABASE_URL=sqlite:///…`, `PYTHONUTF8=1`, `.venv312`).
+
+1. **A Quran program can be created (gap 1) — back + front.**
+   - Back `data/schemas.py:298` (`CourseCreate`) add `program_kind: Literal["course", "quran"] = "course"`; `:338` (`CourseUpdate`) add `program_kind: Optional[Literal["course", "quran"]] = None`; the course response (`:468`) add `program_kind: str = "course"`.
+   - `features/courses/course_service.py`: on create set `course.program_kind`; in `update_course` (`:313`) pop `program_kind`; `None` = no change; a CHANGE on a course that has any `Enrollment` row is 409 `program_kind_locked` (otherwise a teacher flips the kind to step around the booking rules). While `quran.teacher_apply` is off, setting `quran` is 403 `feature_disabled`.
+   - e2e in `tests/learning_hub/e2e_quran_rules.py`: create with `quran` → listed under `GET /quran/teachers`; the change with an enrolment → 409. Add the line to `FLUTTER_API_CHANGES.md`; regenerate the snapshots only if a route changed (none should).
+   - Front `lib/features/courses/teacher/course_form_provider.dart:169` add `String programKind = 'course'`, send it next to `delivery_mode` (`:239`), read it in the edit load (`:264`), reset it (`:413`); parse it in `course_setup.dart:88`. The form shows ONE `AppDropdown` "Program type" (Course / Quran program) only while `!quranOff()`, disabled with a hint when the course has students. `lib/features/quran/quran_teacher_hub.dart:175–189`: a primary "Add a Quran program" button opens the course form with `programKind: 'quran'` preset, and the empty text says so. Add `program_kind_locked` to `apiErrorText`. Test: the provider's payload carries `program_kind`.
+2. **The gender / verification rule covers staff-made enrolments — back.** `features/quran/quran_service.py:87`: split out `booking_block(db, student: User, course_id) -> Optional[HTTPException]` (the same checks, keyed on the STUDENT, not the caller); `require_booking_allowed` raises it. Call it wherever staff create an enrolment:
+   - single adds → raise the 403: `features/courses/admin_course_students_service.py:570`, `features/org/core/api/org_admin_router.py:1310`, `features/platform/api/admin_panel.py:964`;
+   - bulk paths → skip the row and report it with the code: `features/org/academic/registrar/service.py:556`, `features/org/academic/api/org_academic_router.py:562`, `features/org/services/org_excel_service.py:432`, `features/datalab/data_lab_import.py:281`.
+   Also read `features/courses/course_access.py`: if a platform subscription opens a course with no enrolment row, a quran course must still pass `booking_block`. e2e: with `gender_matching: same`, a teacher adding a student of the other gender is 403 `quran_gender_rule`.
+3. **A verified card cannot change its gender silently — back.** `quran_service.save_profile` (`:194–214`): when `p.verified_at` is set and `gender` or `ijazah` changes, clear `verified_at` / `verified_by` and answer `verified: false` (the admin verifies again). e2e: verify, change the gender, book under `same` + `teacher_verification_required` → 403 `quran_teacher_unverified`. Front `quran_teacher_hub.dart`: a line under the gender field says a change needs a new verification.
+4. **`GET /quran/teachers` takes its flags from the signed-in user — back.** `quran_service.py:146`: `f = flags_for(db, user, country=None if user is not None else code)`; `?country=` stays the teacher filter only (`:150`). Today a signed-in student in a country with verification on passes another country and sees unverified teachers. e2e: one check.
+5. **The super admin can verify and review Quran teachers — front.** The routes exist (`GET /admin/quran/teachers?status=`, `POST …/{id}/verify {verified}`, `POST …/{id}/review {approve}`) and no screen calls them, so switching `teacher_verification_required` or `content_review_required` on hides every teacher for good. New `lib/features/quran/admin/quran_admin_page.dart`: status filter (pending / published / draft) through `AppTabs` or the filter bar, one card per teacher (name, gender, ijazah, goals, status, verified), actions Verify / Remove verification / Approve / Return to draft with `appConfirm`. Entry: a tile in `admin_services_hub.dart` next to "Module switches" (super admin only, hidden with `student_tab_quran`), and a link on the module switches page under the two Quran flags. Help id + `help_seed.json` entry + regenerate `help_index.json`; `expectNoLayoutErrors`; literal paths.
+6. **The country layer reaches the app — front + one back line.** The theme is fetched at start-up and on resume only, and never with a country.
+   - `lib/config/theme/theme_config_provider.dart:1409` and `:1420`: for a guest send `queryParams: {'country': <the guest's remembered country>}` (the code `CourseFilters` / `EduCatalog` already remember; send nothing when there is none).
+   - Call `silentRefresh()` after sign-in, after sign-out and after the study profile's country is saved (`MyAuthProvider` and the study-profile save), so a tab switched off for the student's country goes without a restart.
+   - Back: `PUT /admin/edu/countries/{code}/features` (`features/edu/edu_service.py:236`) accepts only keys of the feature catalog (422 `feature_unknown`), so a typo cannot sit in the list.
+   - Test: `test/admin/admin_modules_test.dart` or a provider test: the guest request carries `country`; one e2e check for the 422.
+7. **D-1340: the phone bar (the section above) — front.** `lib/design/app_shell.dart`: `DashboardItem` (`:86`) gains `mobileGroup` (a `const ShellMobileGroup(id, icon, selectedIcon, label)`) and `hint`; `_BottomNav` (`:1844`) builds the slots by rules 1–3; a `_GroupSlot` + the sheet. `dashboard_screen.dart:112–160`: the five members get the `learn` group and a hint each, `analysis` moves before `my_schedule`. Keys `learn_hub`, the five hints (ar + en). Tests: `test/ui/app_shell_layout_test.dart` with nine items at 320×640, ar / en, `textScaler` 1.3 (five slots, no overflow); a tap on Learn opens the sheet, a row tap switches the tab and marks the slot active; one visible member draws the tab itself; four items draw no group. `a11y_guidelines_test` targets on the sheet rows. Write D-1340 into the front `docs/DECISIONS.md`.
+8. **Nahw content editor (gap 2) — front.** No later phase adds it, and without it a typo in a lesson needs the loader script. New `lib/features/nahw/admin/nahw_admin_page.dart` on the existing `/admin/nahw/…` routes: levels (title ar / en, stage, grade, active, sort) → lessons (titles, `body_ar`, active) → exercises with one typed form per kind (`choose`: prompt, options, the right one; `fill`: prompt, accepted answers; `classify`: items and their classes), each with the explanation, and a preview through `learn_kit`'s question widget. `order` is not offered (the app skips it). New kill switch `admin.nahw` in `features/platform/feature_catalog.py` + the snapshot export; a tile in `admin_services_hub.dart`; `app_features_guide.json`; help id. Back: `nahw_service.create_exercise` / `update_exercise` validate `data` / `answer` against the kind (422 `nahw_bad_exercise`), since the app trusts them. `expectNoLayoutErrors`.
+9. **Decisions written (gap 4).** Back `docs/DECISIONS.md` has D-1340 – D-1342 only; add D-1343 – D-1345 as mapped in `DECISIONS_DRAFT.md`. Front `docs/DECISIONS.md` has none of D-1340, D-1346 – D-1349: add them. The two files number separately; the draft now tags each entry with its repo.
+
+#### Nice to have
+- `nahw_service.attempt` (`:140–149`): two first attempts at once with different `client_id`s collide on the `nahw_progress` key and answer 500; insert the row with `ON CONFLICT DO NOTHING` as `games_service._bump_progress` does.
+- The kill switches are enforced on the server only when off on every platform (`feature_on`); a country's or an organization's OFF only hides the tab. Add `country_offs(db, user_country)` to the three `require_*` helpers.
+- `/api/v1/games` is open to an unsubscribed student and `/api/v1/nahw/` and `/api/v1/quran/` are not (`_OPEN_PREFIXES`). Pick one rule for free practice; I would open nahw and `/me/quran/` and leave booking to the course.
+- `gender_matching: same` trusts a self-declared gender unless `teacher_verification_required` is on too: say so under the field on the module switches page.
+- A self-logged Quran entry accepts a `grade`; drop it when `teacher_id` is null, and mark self-logs in the parent's view.
+- The games module's org scope is offered on the switches page but `games_service.settings` never passes `org_id`; hide the org scope for `games` or pass the student's organization.
+- Games have no admin screen (the seed loader is the only way in). A list with publish / hide and `points_reward` is enough for v1; Phase 10 can carry it.
+- `game_dict` for `GET /games/{id}` ignores the game's country; the list filters it.
+- Module-setting and Quran verify / review writes: audit rows are Phase 10 (CONTRACT §8) — `module_settings.admin_put` already writes one.
+
+#### Phase 7: changes made to the plan and the contract
+CONTRACT §7 is now complete (payload per kind, the op id IS the entity's `client_id`, `client_ts` handling, reject codes, what `pull` returns). PLAN Phase 7 gained the chip's place under D-1340, the Quran sheet's in-memory "kept for later" moving to the outbox, and the Opus model line. Phase 7 can start once must-fix 1–7 are in; 8 and 9 can run beside it.

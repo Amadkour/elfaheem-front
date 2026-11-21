@@ -67,26 +67,32 @@ One order call carries the item ids. No cart table; nothing to sync.
 ## D-1334 — Store v1 sells platform and organization items; teacher payouts for store sales come later
 The owner id is stored and `teacher_items` is a flag (off). Earnings need the ledger and payout rules: out of this job's scope, listed in FINAL_REPORT.
 
-## D-1340 — The four new tabs are kill-switch keys; the phone layout is decided at the Phase 6 review
-`student_tab_store|games|quran|nahw`, organization-manageable. Nine destinations do not fit a phone's bottom bar: the planner picks between a "Learn" hub tab and the shell's overflow after seeing `AppShell` on a phone.
+## D-1340 – D-1349 — numbering fixed at the Phase 6 review (2026-11-21)
+The two repositories keep separate `docs/DECISIONS.md` files, and a number may be a back half and a front half (as D-1339 is). B6 wrote back D-1340 – D-1342 with their own subjects, so the entries below follow what is committed and what the code comments cite. `[back]` goes in `back/docs/DECISIONS.md`, `[front]` in the front's.
 
-## D-1341 — Per-country switches: one more layer of the disable list
-`edu_countries.disabled_features` joins platform + organization. A super-admin OFF still wins everywhere.
+## D-1340 [front] — Nine student tabs: the phone bar draws five slots, with a "Learn" slot
+`student_tab_store|games|quran|nahw` are kill-switch keys, organization-manageable. The tab list does not change; only the phone bar folds tabs that share a `mobileGroup` into one slot when there are more than five. The student's bar is Home · My courses · Learn · Schedule · Profile; Learn opens a sheet with Store, Games, Quran, Grammar and Analysis. A group with one visible member draws that tab; any role with more than five slots gets a built-in "More". The sidebar and the rail still list every tab. The exact rules are in PROGRESS "6.R code review".
 
-## D-1342 — Rule flags are `module_settings`, resolved defaults ← platform ← country ← organization
-Kill switches hide; flags change rules. Every Quran constraint is a flag and all are off or relaxed by default, as the brief asks.
+## D-1340 [back] — Module rule flags: one registry, platform ← country ← organization rows, one resolver (written by B6)
+Kill switches hide; flags change rules. Every Quran constraint is a flag and all are off or relaxed by default, as the brief asks. Only the super admin writes any scope.
 
-## D-1343 — A Quran offering is a course (`program_kind = 'quran'`)
-Enrollment, payment, sessions, calendar and live are reused. Only the teacher's Quran profile and the progress log are new.
+## D-1341 [back] — Per-country switches: one more layer of the disable list (written by B6)
+`edu_countries.disabled_features` joins platform + organization. Every layer only adds keys, so a super-admin OFF still wins everywhere.
 
-## D-1344 — Game point rewards are off by default
-Points buy services (the live plan), so free points are a cost. Stars and badges are always on; points have a daily cap when switched on.
+## D-1342 [back] — Games: content as data, idempotent plays, server-side stars, capped point rewards (written by B6)
+Point rewards are off by default: points buy services (the live plan), so free points are a cost. Stars and badges are always on; points have a daily cap when switched on, checked in the play's own transaction.
 
-## D-1345 — No Quran text in the app
-Only surah names, ayah counts and juz boundaries, from the Tanzil project's metadata (tanzil.net, checked by the seed agent, which records the file version here). Progress is numbers.
+## D-1343 [back] — A Quran offering is a course (`program_kind = 'quran'`); its rules are checked on every enrolment (TO WRITE)
+Enrollment, payment, sessions, calendar and live are reused. Only the teacher's Quran profile and the progress log are new. The gender and verification rules apply to whoever creates the enrolment, the student or staff; `program_kind` is locked once a course has students.
 
-## D-1346 — Nahw and game answers ship to the device
+## D-1344 [back] — Nahw and game answers ship to the device; attempts are idempotent on `client_id` (TO WRITE)
 Low stakes; it gives instant feedback and works offline. Exams keep their server-side checking.
+
+## D-1345 [back] — No Quran text in the app (TO WRITE)
+Only surah names, ayah counts and juz boundaries, from Tanzil Quran Metadata v1.0 (CC BY 3.0, recorded in `data/learn_seed/quran_meta.json` and its README). Progress is numbers.
+
+## D-1346 – D-1349 [front] — learn kit + games (1346), Quran (1347), module switches page (1348), nahw (1349) (TO WRITE)
+One entry each, as the commit messages and the code comments already cite them.
 
 ## D-1350 — Offline-first v1: a generic outbox for four kinds; money is never offline
 `game_play`, `nahw_attempt`, `quran_progress`, `study_profile`. The attendance and exam queues stay as they are and report into the same status.

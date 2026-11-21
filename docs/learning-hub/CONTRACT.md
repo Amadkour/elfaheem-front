@@ -110,11 +110,31 @@ Kill switches: `student_tab_store`, `store.buy`, `store.points`, `store.manage`,
 
 Kill switches: `student_tab_games`, `student_tab_quran`, `student_tab_nahw`, `games.rewards`, `quran.teacher_apply`, `admin.modules`. All four tab keys are organization-manageable.
 
-## 7. Phase 7 — sync (migration 0108) — outline, detailed at the Phase 6 review
+## 7. Phase 7 — sync (migration 0108) — detailed at the Phase 6 review (2026-11-21)
 `sync_ops`: `id`, `user_id`, `op_id String(36)`, `kind String(30)`, `status String(12)`, `code String(40) NULL`, `applied_at`; unique `(user_id, op_id)`.
-- `POST /sync/push {ops: [{id, kind, payload, client_ts, base_updated_at?}]}` (≤ 100) → `{results: [{id, status: applied|duplicate|rejected, code?}], server_time}`. Kinds: `game_play`, `nahw_attempt`, `quran_progress`, `study_profile`.
+- `POST /sync/push {ops: [{id, kind, payload, client_ts, base_updated_at?}]}` (≤ 100) → `{results: [{id, status: applied|duplicate|rejected, code?, entity?}], server_time}`. Kinds: `game_play`, `nahw_attempt`, `quran_progress`, `study_profile`.
 - `GET /sync/pull?since=<iso>&kinds=` → `{changes: {<kind>: [rows with updated_at]}, deleted: {<kind>: [ids]}, cursor}`.
 Every cached GET keeps answering `updated_at` / `ETag`.
+
+**Rules for `push`:**
+- An op's `id` IS the entity's `client_id` (8–36 of `A-Za-z0-9_.:-`). The sync service calls the SAME service functions as the routes (`games_service.record_play`, `nahw_service.attempt`, `quran_service.record`), so an op pushed and the same `client_id` posted to the route give one row. `sync_ops` records the answer; the entity's own unique index stays the guard.
+- Ops are applied in the order sent, each in its own transaction (a SAVEPOINT per op on PostgreSQL): one rejected op never undoes the others. The answer keeps the order.
+- `duplicate` = the op id was applied before; it answers the first `entity` again.
+- `rejected` carries the route's own code (`feature_disabled`, `quran_self_log_off`, `quran_not_your_student`, `quran_bad_range`, `game_not_found`, `nahw_lesson_not_found`, `game_bad_score`, …) or `sync_bad_op` / `sync_unknown_kind` / `sync_stale`. A rejected op is final: the app drops it from the outbox and shows it once. Only a transport failure or a 5xx is retried.
+- `client_ts` is the device's time of the action. `game_play` stores it as `played_at` (already clamped: not in the future, not older than 60 days). `quran_progress` stores it as `recorded_at` under the same clamp (today the route drops the device's time: B8 changes `quran_service.record` to take it). `nahw_attempt` ignores it.
+- The user is the token's. A payload naming another user is `rejected` `sync_bad_op`, except `quran_progress.student_id` from a teacher, which `record` checks.
+
+**Payloads:**
+| Kind | Payload | Applies through |
+|---|---|---|
+| `game_play` | `{game_id, score, max_score, duration_s?}` | `record_play` (points and badges as on the route; `entity` = the route's answer) |
+| `nahw_attempt` | `{lesson_id, score, max_score, answers?}` | `attempt` |
+| `quran_progress` | `{student_id?, course_id?, surah, from_ayah, to_ayah, kind, grade?, note?}` | `record` |
+| `study_profile` | the fields of the study-profile PUT (CONTRACT §3) + the op's `base_updated_at` | the profile service; `base_updated_at` older than the row's `updated_at` → `rejected` `sync_stale` with `entity` = the server's row (D-1351) |
+
+**`pull`:** kinds `game_progress`, `user_badges`, `nahw_progress`, `quran_progress`, `study_profile`, each row with `updated_at`; `since` absent = everything of the caller; `cursor` = the `server_time` to send as the next `since`. `deleted` stays empty for these kinds in v1 (none is deleted by another device). `game_progress` and `nahw_progress` need an `updated_at` column (0108).
+
+Money is never an op (D-1350): store orders, course checkout and points stay online. Kill switch `sync.offline` (off = the app posts straight to the routes, as Phase 6 does).
 
 ## 8. Phases 8–10 — outline
 - Releases: `releases.json` gains per-platform file kinds `exe`, `appimage`, `dmg` (same entry shape: `url, size, sha256, min_os`); `GET /app/downloads` unchanged.
