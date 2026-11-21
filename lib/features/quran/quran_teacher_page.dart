@@ -15,9 +15,16 @@ import 'package:flutter_education_app/features/courses/course_price_tag.dart' sh
 import 'package:flutter_education_app/features/home/student/models.dart' show AppCurrencyX;
 import 'package:flutter_education_app/features/quran/quran_api.dart';
 import 'package:flutter_education_app/features/quran/quran_models.dart';
+import 'package:flutter_education_app/features/teachers/teacher_discovery.dart' show TeacherProfilePage;
+import 'package:flutter_education_app/features/teachers/teachers_api.dart' show teacherDiscoveryOff;
+import 'package:flutter_education_app/features/teachers/teachers_parts.dart' show packagesText;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+
+/// One teacher identity (D-1664): a Quran teacher's Learning Hub v2 packages are shown and linked from the Quran
+/// card and page while teacher discovery is on and some are published.
+bool quranShowsPackages(QuranTeacher t) => t.packagesCount > 0 && !teacherDiscoveryOff();
 
 class QuranTeacherPage extends StatefulWidget {
   const QuranTeacherPage({super.key, required this.teacherId, this.initial, this.api});
@@ -81,6 +88,10 @@ class _QuranTeacherPageState extends State<QuranTeacherPage> {
                 // the single card carries no `gender_ok`: the list's answer stands
                 genderOk: widget.initial?.genderOk ?? tr.genderOk,
                 onBook: (c) => AppNavigator.openCourse(c.id),
+                onPackages: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  settings: RouteSettings(name: '/teachers/${tr.userId}'),
+                  builder: (_) => TeacherProfilePage(teacherId: tr.userId),
+                )),
                 onRefresh: _load,
               ),
       ),
@@ -89,11 +100,14 @@ class _QuranTeacherPageState extends State<QuranTeacherPage> {
 }
 
 class QuranTeacherView extends StatelessWidget {
-  const QuranTeacherView({super.key, required this.teacher, this.genderOk, this.onBook, this.onRefresh});
+  const QuranTeacherView({super.key, required this.teacher, this.genderOk, this.onBook, this.onPackages, this.onRefresh});
 
   final QuranTeacher teacher;
   final bool? genderOk;
   final ValueChanged<QuranCourse>? onBook;
+
+  /// Opens the teacher's profile with the packages (D-1664).
+  final VoidCallback? onPackages;
   final Future<void> Function()? onRefresh;
 
   @override
@@ -152,6 +166,19 @@ class QuranTeacherView extends StatelessWidget {
           ]),
         ]),
       ),
+      if (quranShowsPackages(tr))
+        AppSection(
+          title: t('الباقات', 'Packages'),
+          child: AppActionCard(
+            key: const ValueKey('quran.teacher.see_packages'),
+            icon: Icons.inventory_2_outlined,
+            title: '${t('اعرض الباقات', 'See the packages')} · ${packagesText(tr.packagesCount)}',
+            subtitle: t('جلسات بمواعيد ومقاعد وسعر: انضم من صفحة المعلم.',
+                "Sessions with set times, seats and a price: join from the teacher's page."),
+            onTap: onPackages,
+          ),
+        ),
+      if (tr.courses.isNotEmpty || !quranShowsPackages(tr))
       AppSection(
         title: t('البرامج', 'Programs'),
         subtitle: t('كل برنامج دورة: احجزه من صفحتها.', 'Each program is a course: book it from its page.'),

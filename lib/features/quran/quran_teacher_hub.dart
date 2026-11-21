@@ -168,6 +168,15 @@ class _QuranTeacherHubPageState extends State<QuranTeacherHubPage> {
   @override
   Widget build(BuildContext context) {
     final c = _card;
+    final Widget form = c == null
+        ? const SizedBox.shrink()
+        : QuranCardForm(
+            initial: c,
+            countries: _countries,
+            saving: _saving,
+            locked: quranTeacherApplyOff(),
+            onSave: _save,
+          );
     return BasePage(
       width: AppWidth.form,
       appBar: ScreenAppBar(title: t('تعليم القرآن', 'My Quran teaching')),
@@ -177,16 +186,11 @@ class _QuranTeacherHubPageState extends State<QuranTeacherHubPage> {
             : AppRefresh(
                 onRefresh: _load,
                 child: ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
-                  QuranCardForm(
-                    initial: c,
-                    countries: _countries,
-                    saving: _saving,
-                    locked: quranTeacherApplyOff(),
-                    onSave: _save,
-                  ),
-                  // Learning Hub v2 (D-1620): one teacher profile for every subject, its documents and packages
-                  if (!teacherOnboardingOff()) ...[
-                    const SizedBox(height: AppSpace.md),
+                  // one teacher identity (D-1665): with the teacher profile on, the name, photo, documents and the
+                  // review live there; this page keeps the record sheet, the programs and the Quran-only details
+                  if (teacherOnboardingOff())
+                    form
+                  else ...[
                     AppActionCard(
                       key: const ValueKey('quran.hub.teacher_profile'),
                       icon: Icons.co_present_rounded,
@@ -233,6 +237,32 @@ class _QuranTeacherHubPageState extends State<QuranTeacherHubPage> {
                             ],
                           ]),
                   ),
+                  if (!teacherOnboardingOff()) ...[
+                    const SizedBox(height: AppSpace.md),
+                    AppExpandCard(
+                      key: const ValueKey('quran.hub.card_details'),
+                      header: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: AppTouch.min),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+                          child: Row(children: [
+                            Icon(Icons.tune_rounded, size: AppIconSize.md, color: context.colors.primary),
+                            const SizedBox(width: AppSpace.sm),
+                            Expanded(
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                                Text(t('تفاصيل القرآن في بطاقتك', 'Quran details on your card'),
+                                    style: AppType.row(context).copyWith(color: context.colors.textDark)),
+                                Text(t('الإجازة والأهداف ونوع الجلسات والدولة: يصفّي بها الطلاب في تبويب القرآن',
+                                        'Ijazah, goals, session types and country: students filter by them in the Quran tab'),
+                                    style: AppType.meta(context).copyWith(color: context.colors.textMedium)),
+                              ]),
+                            ),
+                          ]),
+                        ),
+                      ),
+                      child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: form),
+                    ),
+                  ],
                   const SizedBox(height: AppSpace.lg),
                 ]),
               ),

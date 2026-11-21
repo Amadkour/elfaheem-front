@@ -24,6 +24,8 @@ import 'package:flutter_education_app/features/admin/admin_page.dart';
 import 'package:flutter_education_app/features/quran/quran_api.dart' show quranErrorText;
 import 'package:flutter_education_app/features/quran/quran_models.dart';
 import 'package:flutter_education_app/features/quran/quran_teacher_hub.dart' show quranStatusLabel;
+import 'package:flutter_education_app/features/teachers/teacher_review_admin.dart' show TeacherReviewPage;
+import 'package:flutter_education_app/features/teachers/teachers_api.dart' show teacherOnboardingOff;
 
 /// The three admin calls (a fake one in tests).
 class QuranAdminApi {
@@ -164,6 +166,19 @@ class _QuranAdminPageState extends State<QuranAdminPage> {
       onRefresh: _load,
       updatedAt: _loadedAt,
       body: ListView(padding: AdminPage.bodyPadding(context), children: [
+        // one review for every teacher (D-1665): documents, approve and reject are on Teacher review; a card approved
+        // there shows here as published, and this page adds the Quran "verified" badge
+        if (!teacherOnboardingOff()) ...[
+          AppActionCard(
+            key: const ValueKey('quran.admin.teacher_review'),
+            icon: Icons.fact_check_rounded,
+            title: t('مراجعة المعلمين', 'Teacher review'),
+            subtitle: t('المستندات والقبول والرفض لكل المواد هناك. هنا توثيق معلمي القرآن فقط.',
+                'Documents, approval and rejection for every subject are there. This page only verifies Quran teachers.'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TeacherReviewPage())),
+          ),
+          const SizedBox(height: AppSpace.md),
+        ],
         AppTabs(
           expand: true,
           index: _tab,

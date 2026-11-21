@@ -5829,3 +5829,11 @@ durations.
 ## D-1660 — A course's repeating meetings sit above its lessons · 2026-11-22 · accepted
 
 The course Sessions tab (teacher and student) draws `CourseSeriesSection` (`lib/features/courses/course_space/course_series_block.dart`) over `GET /me/calendar/series?course_id=` (back D-1699): one card per active series with `describeRule` and the next three dates (`AppTime`, a cancelled one struck through), tapping a date opens the calendar's own date sheet (`showSeriesOccurrenceSheet`). A series is a meeting, not a lesson, so its dates are not merged into the reorderable lessons timeline; the block shows before the first lesson too, and the teacher's block reloads after "Repeating meeting" makes one (QA S17). Nothing is drawn while there is none, on an older server, or with `calendar.recurring` off.
+
+## D-1664 — The Quran tab shows a teacher's packages · 2026-11-22 · accepted
+
+A Quran teacher and a Learning Hub v2 teacher are the same `TeacherCard`, so the Quran tab no longer contradicts the Teachers tab: the list and the one-teacher answer carry the card's public name and `packages_count` (back D-1702). `QuranTeacherCard` shows "n packages" (and drops "No programs open now" when packages exist), and `QuranTeacherView` has a Packages section (`quran.teacher.see_packages`) that opens `TeacherProfilePage`. Hidden with `teacher_discovery`; an older server sends no count, which reads as 0 and changes nothing.
+
+## D-1665 — One way in for a teacher, one review for the admin · 2026-11-22 · accepted
+
+With `teacher_onboarding` on, Profile has one entry, "My teacher profile and packages"; the old "My Quran teaching" tile shows only while onboarding is off. `TeacherHubPage` opens the Quran record sheet and programs (`teacher.hub.quran`, hidden with `student_tab_quran`). `QuranTeacherHubPage` keeps its route; with onboarding on it leads with the teacher-profile card, then the programs, and folds the Quran-only card fields (ijazah, goals, session types, country: the Quran tab's filters) into an expand card instead of a competing editor. The super admin's Quran teachers page links to Teacher review (`quran.admin.teacher_review`) and says it only verifies. The admin hub's grouping is not changed here.

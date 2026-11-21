@@ -63,7 +63,7 @@ import 'package:flutter_education_app/features/store/manage/store_manage_api.dar
 import 'package:flutter_education_app/features/store/manage/store_manage_pages.dart' show StoreManagePage;
 import 'package:flutter_education_app/features/quran/quran_api.dart' show kQuranTabKey;
 import 'package:flutter_education_app/features/teachers/teacher_onboarding.dart' show TeacherHubPage;
-import 'package:flutter_education_app/features/teachers/teachers_api.dart' show kTeacherOnboardingFeature;
+import 'package:flutter_education_app/features/teachers/teachers_api.dart' show kTeacherOnboardingFeature, teacherOnboardingOff;
 import 'package:flutter_education_app/features/quran/quran_teacher_hub.dart' show QuranTeacherHubPage;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/payments/points/points_api.dart' show kPointsFeatureKey;
@@ -238,7 +238,9 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           keywords: 'store books summaries notes sell متجر كتب ملخصات مذكرات',
           onTap: () => _push(const StoreManagePage()),
         ),
-        // the teacher's Quran card + record sheet (learning hub phase 6, D-1347; hidden with the Quran tab)
+        // the teacher's Quran card + record sheet (learning hub phase 6, D-1347; hidden with the Quran tab). One way in
+        // (D-1665): while the teacher profile is on, the record sheet and programs open from its hub instead
+        if (teacherOnboardingOff())
         AppSettingsTile(
           featureKey: kQuranTabKey,
           icon: Icons.menu_book_rounded,

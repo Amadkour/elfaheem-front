@@ -204,6 +204,7 @@ class QuranTeacher {
     this.courses = const [],
     this.genderOk,
     this.status,
+    this.packagesCount = 0,
   });
 
   factory QuranTeacher.fromJson(Object? body) {
@@ -222,6 +223,7 @@ class QuranTeacher {
       courses: [for (final c in _maps(j['courses'])) QuranCourse.fromJson(c)],
       genderOk: j['gender_ok'] is bool ? j['gender_ok'] as bool : null,
       status: _strOrNull(j['status']),
+      packagesCount: _int(j['packages_count']) ?? 0,
     );
   }
 
@@ -240,6 +242,9 @@ class QuranTeacher {
 
   /// The teacher's own card only: null before the first save, then draft | pending | published.
   final String? status;
+
+  /// The teacher's published Learning Hub v2 packages (D-1664): the Quran tab links to them. 0 from an older server.
+  final int packagesCount;
 }
 
 class QuranTeacherList {

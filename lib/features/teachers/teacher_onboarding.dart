@@ -21,12 +21,15 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/quran/quran_api.dart' show kQuranTabKey;
+import 'package:flutter_education_app/features/quran/quran_teacher_hub.dart' show QuranTeacherHubPage;
 import 'package:flutter_education_app/features/teachers/package_wizard.dart';
 import 'package:flutter_education_app/features/teachers/teachers_api.dart';
 import 'package:flutter_education_app/features/teachers/teachers_models.dart';
 import 'package:flutter_education_app/features/teachers/teachers_parts.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 // ── the hub ──────────────────────────────────────────────────────────────────
 
@@ -138,6 +141,23 @@ class _TeacherHubPageState extends State<TeacherHubPage> {
                           'Packages open once the platform approves your profile: complete it and send it for review first.'),
                     ),
             ),
+          // one way in (D-1665): the Quran record sheet and programs open from here, not from a second Profile entry
+          ParentComponent(
+            featureKey: kQuranTabKey,
+            child: Padding(
+              padding: const EdgeInsets.only(top: AppSpace.md),
+              child: AppActionCard(
+                key: const ValueKey('teacher.hub.quran'),
+                icon: Icons.menu_book_rounded,
+                title: t('القرآن: سجل التسميع والبرامج', 'Quran: record sheet and programs'),
+                subtitle: t('سجّل تسميع طلابك وتابع برامج القرآن', "Log your students' recitation and follow your Quran programs"),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  settings: const RouteSettings(name: '/teacher/quran'),
+                  builder: (_) => const QuranTeacherHubPage(),
+                )),
+              ),
+            ),
+          ),
           const SizedBox(height: AppSpace.lg),
         ]),
       );

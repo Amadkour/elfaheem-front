@@ -20,6 +20,7 @@ import 'package:flutter_education_app/features/quran/quran_models.dart';
 import 'package:flutter_education_app/features/quran/quran_progress.dart';
 import 'package:flutter_education_app/features/quran/quran_teacher_page.dart';
 import 'package:flutter_education_app/features/self_learning/self_learning_page.dart' show SelfLearningSection;
+import 'package:flutter_education_app/features/teachers/teachers_parts.dart' show packagesText;
 import 'package:flutter_education_app/features/self_learning/sl_models.dart' show kSlQuranSubjects;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -505,6 +506,16 @@ class QuranTeacherCard extends StatelessWidget {
         const SizedBox(height: AppSpace.sm),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final g in tr.goals) AppStatusBadge(label: quranGoalLabel(g), tone: AppTone.brand, dense: true),
+          // the teacher's Learning Hub v2 packages (D-1664): one teacher, so the card says what is open in both
+          if (quranShowsPackages(tr))
+            AppStatusBadge(
+              key: ValueKey('quran.teacher.packages.${tr.userId}'),
+              label: packagesText(tr.packagesCount),
+              tone: AppTone.success,
+              icon: Icons.inventory_2_outlined,
+              dense: true,
+            ),
+          if (tr.courses.isNotEmpty || !quranShowsPackages(tr))
           AppStatusBadge(
             label: tr.courses.isEmpty
                 ? t('لا برامج متاحة الآن', 'No programs open now')
