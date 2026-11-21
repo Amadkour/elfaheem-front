@@ -248,7 +248,7 @@ class TeacherStatusCard extends StatelessWidget {
       highlight: true,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
-          AppAvatar(name: p.name.isEmpty ? '?' : p.name, url: p.avatarUrl, size: AppTouch.min),
+          AppAvatar(name: teacherInitialName(p.name), url: p.avatarUrl, size: AppTouch.min),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
@@ -563,7 +563,7 @@ class _TeacherOnboardingWizardState extends State<TeacherOnboardingWizard> {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       Row(children: [
-        AppAvatar(name: _name.text.isEmpty ? '?' : _name.text, url: _d.avatarUrl, size: AppTouch.primary + AppSpace.md),
+        AppAvatar(name: teacherInitialName(_name.text), url: _d.avatarUrl, size: AppTouch.primary + AppSpace.md),
         const SizedBox(width: AppSpace.md),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [

@@ -20,7 +20,7 @@ import 'package:flutter_education_app/features/quran/quran_models.dart';
 import 'package:flutter_education_app/features/quran/quran_progress.dart';
 import 'package:flutter_education_app/features/quran/quran_teacher_page.dart';
 import 'package:flutter_education_app/features/self_learning/self_learning_page.dart' show SelfLearningSection;
-import 'package:flutter_education_app/features/teachers/teachers_parts.dart' show packagesText;
+import 'package:flutter_education_app/features/teachers/teachers_parts.dart' show packagesText, teacherInitialName;
 import 'package:flutter_education_app/features/self_learning/sl_models.dart' show kSlQuranSubjects;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -471,7 +471,7 @@ class QuranTeacherCard extends StatelessWidget {
       onTap: onTap,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
-          AppAvatar(name: tr.name, url: tr.avatarUrl, size: AppTouch.min),
+          AppAvatar(name: teacherInitialName(tr.name), url: tr.avatarUrl, size: AppTouch.min),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [

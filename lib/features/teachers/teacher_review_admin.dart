@@ -259,7 +259,7 @@ class TeacherReviewCard extends StatelessWidget {
             // the name and, at the line's trailing edge, the status (inside the column, so the badges below keep
             // the column's whole width on a phone)
             TitleWithStatus(
-              title: UserText(p.name.isEmpty ? '—' : p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark)),
+              title: UserText(block: false, p.name.isEmpty ? '—' : p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark)),
               status: AppStatusBadge(label: teacherStatusLabel(p.status), tone: teacherStatusTone(p.status), dense: true),
             ),
             const SizedBox(height: AppSpace.xxs),
@@ -485,7 +485,7 @@ class TeacherReviewDetail extends StatelessWidget {
                 // the status at the name line's trailing edge (a Flexible beside the column split the row in half and
                 // left the chip mid-card, D-1650)
                 TitleWithStatus(
-                  title: UserText(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
+                  title: UserText(block: false, p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
                   status: AppStatusBadge(label: teacherStatusLabel(p.status), tone: teacherStatusTone(p.status), dense: true),
                 ),
                 Text(teacherGenderLabel(p.gender), style: AppType.meta(context).copyWith(color: c.textMedium)),

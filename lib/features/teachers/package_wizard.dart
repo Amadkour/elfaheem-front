@@ -51,6 +51,9 @@ Map<String, dynamic>? packageScheduleSynced(Map<String, dynamic>? schedule, {req
       .toJson();
 }
 
+/// How far a locked field fades (the disabled buttons' look, as the Repeat section's).
+const double kPackageLockedOpacity = 0.45;
+
 /// The schedule step's recurrence editor: (context, the rule or null, set it).
 typedef RecurrenceSlotBuilder = Widget Function(
     BuildContext context, Map<String, dynamic>? rule, ValueChanged<Map<String, dynamic>?> onChanged);
@@ -366,35 +369,41 @@ class _PackageWizardFormState extends State<PackageWizardForm> {
         ),
         _gap(),
       ],
-      AppNumberField(
-        key: const ValueKey('package.sessions'),
-        initialValue: _d.sessionsCount,
-        label: t('عدد الجلسات', 'Number of sessions'),
-        min: 1,
-        max: 200,
-        required: true,
-        enabled: !widget.locked,
-        helper: _errs['sessions_count'],
-        onChanged: (v) => _set(() {
-          _d.sessionsCount = (v ?? 0).toInt();
-          _syncSchedule();
-        }),
-      ),
-      _gap(),
-      AppNumberField(
-        key: const ValueKey('package.minutes'),
-        initialValue: _d.sessionMinutes,
-        label: t('مدة الجلسة بالدقائق', 'Minutes per session'),
-        min: 15,
-        max: 240,
-        step: 15,
-        required: true,
-        enabled: !widget.locked,
-        helper: _errs['session_minutes'],
-        onChanged: (v) => _set(() {
-          _d.sessionMinutes = (v ?? 0).toInt();
-          _syncSchedule();
-        }),
+      // locked: the numbers fade like the Repeat section below, matching the banner (QA S5)
+      Opacity(
+        opacity: widget.locked ? kPackageLockedOpacity : 1,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+          AppNumberField(
+            key: const ValueKey('package.sessions'),
+            initialValue: _d.sessionsCount,
+            label: t('عدد الجلسات', 'Number of sessions'),
+            min: 1,
+            max: 200,
+            required: true,
+            enabled: !widget.locked,
+            helper: _errs['sessions_count'],
+            onChanged: (v) => _set(() {
+              _d.sessionsCount = (v ?? 0).toInt();
+              _syncSchedule();
+            }),
+          ),
+          _gap(),
+          AppNumberField(
+            key: const ValueKey('package.minutes'),
+            initialValue: _d.sessionMinutes,
+            label: t('مدة الجلسة بالدقائق', 'Minutes per session'),
+            min: 15,
+            max: 240,
+            step: 15,
+            required: true,
+            enabled: !widget.locked,
+            helper: _errs['session_minutes'],
+            onChanged: (v) => _set(() {
+              _d.sessionMinutes = (v ?? 0).toInt();
+              _syncSchedule();
+            }),
+          ),
+        ]),
       ),
       _gap(),
       AppFieldLabel(t('تاريخ البدء', 'Start date'), required: true),
@@ -711,7 +720,7 @@ class MyPackageCard extends StatelessWidget {
       key: ValueKey('mypackage.${p.id}'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         TitleWithStatus(
-          title: UserText(p.title.isEmpty ? t('بلا عنوان', 'Untitled') : p.title,
+          title: UserText(block: false, p.title.isEmpty ? t('بلا عنوان', 'Untitled') : p.title,
               maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
           status: AppStatusBadge(label: packageStatusLabel(p.status), tone: packageStatusTone(p.status), dense: true),
         ),

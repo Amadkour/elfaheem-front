@@ -124,20 +124,29 @@ TextDirection? userTextDirection(String text) {
   return null;
 }
 
-/// A [Text] of user-typed content laid out in its own direction and aligned to its own start (D-1651).
+/// A [Text] of user-typed content laid out in its own direction and, as a paragraph, aligned to its own start
+/// (D-1651). [block] false (a name, a title): only the direction; the line keeps its place in the page's layout, next
+/// to its avatar.
 class UserText extends StatelessWidget {
-  const UserText(this.text, {super.key, this.style, this.maxLines, this.overflow});
+  const UserText(this.text, {super.key, this.style, this.maxLines, this.overflow, this.block = true});
 
   final String text;
   final TextStyle? style;
   final int? maxLines;
   final TextOverflow? overflow;
+  final bool block;
 
   @override
   Widget build(BuildContext context) {
     final dir = userTextDirection(text);
+    final page = Directionality.of(context);
+    if (!block && dir != null && dir != page) {
+      // a name keeps the page's side (next to its avatar) and reads in its own direction
+      return Text(text, style: style, maxLines: maxLines, overflow: overflow, textDirection: dir,
+          textAlign: page == TextDirection.ltr ? TextAlign.left : TextAlign.right);
+    }
     final own = Text(text, style: style, maxLines: maxLines, overflow: overflow, textDirection: dir, textAlign: TextAlign.start);
-    if (dir == null || dir == Directionality.of(context)) return own;
+    if (!block || dir == null || dir == page) return own;
     // the other direction from the page's: its start is the other side, so the block sits there too
     return Directionality(textDirection: dir, child: Align(alignment: AlignmentDirectional.centerStart, child: own));
   }
@@ -311,7 +320,7 @@ class PackageCard extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              UserText(p.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
+              UserText(p.title, block: false, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
               const SizedBox(height: AppSpace.xxs),
               Text(
                 [

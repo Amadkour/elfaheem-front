@@ -415,7 +415,7 @@ class TeacherListCard extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              UserText(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
+              UserText(block: false, p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
               const SizedBox(height: AppSpace.xxs),
               TeacherRatingLine(rating: p.rating, count: p.reviewsCount),
             ]),
@@ -547,7 +547,7 @@ class TeacherProfileView extends StatelessWidget {
             const SizedBox(width: AppSpace.md),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                UserText(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
+                UserText(block: false, p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
                 const SizedBox(height: AppSpace.xxs),
                 Text(
                   [teacherGenderLabel(p.gender), if (p.yearsExperience > 0) yearsText(p.yearsExperience)].join(' · '),
@@ -614,7 +614,7 @@ class TeacherProfileView extends StatelessWidget {
                 AppCard(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
                     Row(children: [
-                      Expanded(child: UserText(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark))),
+                      Expanded(child: UserText(block: false, r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark))),
                       Icon(Icons.star_rounded, size: AppIconSize.sm, color: c.accent2),
                       Text(r.rating.toStringAsFixed(1), style: AppType.meta(context).copyWith(color: c.textMedium)),
                     ]),
@@ -851,7 +851,7 @@ class _PackageViewState extends State<PackageView> {
       child: Builder(builder: (context) {
         final b = AppBlock.colorsOf(context);
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-          UserText(p.title, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
+          UserText(block: false, p.title, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
           const SizedBox(height: AppSpace.xxs),
           Text(
             [
@@ -1057,7 +1057,7 @@ class MyTeachersView extends StatelessWidget {
                 const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    UserText(m.teacher.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
+                    UserText(block: false, m.teacher.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
                     Text(
                       m.nextSession == null ? t('لا جلسة قادمة محددة', 'No next session set') : '${t('الجلسة القادمة', 'Next session')}: ${AppTime.dateTime(m.nextSession!)}',
                       maxLines: 2,

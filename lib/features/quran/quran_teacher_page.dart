@@ -17,7 +17,7 @@ import 'package:flutter_education_app/features/quran/quran_api.dart';
 import 'package:flutter_education_app/features/quran/quran_models.dart';
 import 'package:flutter_education_app/features/teachers/teacher_discovery.dart' show TeacherProfilePage;
 import 'package:flutter_education_app/features/teachers/teachers_api.dart' show teacherDiscoveryOff;
-import 'package:flutter_education_app/features/teachers/teachers_parts.dart' show packagesText;
+import 'package:flutter_education_app/features/teachers/teachers_parts.dart' show packagesText, teacherInitialName;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -122,7 +122,7 @@ class QuranTeacherView extends StatelessWidget {
         child: Builder(builder: (context) {
           final b = AppBlock.colorsOf(context);
           return Row(children: [
-            AppAvatar(name: tr.name, url: tr.avatarUrl, size: AppTouch.primary),
+            AppAvatar(name: teacherInitialName(tr.name), url: tr.avatarUrl, size: AppTouch.primary),
             const SizedBox(width: AppSpace.md),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
