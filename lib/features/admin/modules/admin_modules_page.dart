@@ -3,7 +3,7 @@
 // SUPER ADMIN: module switches (learning hub phase 6, D-1348), kill switch `admin.modules`.
 //
 //   AdminModulesPage     scope picker (platform · a country · an organization) → one card per module (store, games,
-//                        quran) built from the server's `fields`, each value with where it comes from (set here ·
+//                        quran, self_learning) built from the server's `fields`, each value with where it comes from (set here ·
 //                        from the platform · the default) and "use inherited"; on a country, the student tab
 //                        switches of that country. ONE Save writes every changed card.
 //   ModuleSettingsCard   one module's fields over plain values (tested by the layout harness).
@@ -16,6 +16,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/self_learning/admin/sl_admin_page.dart' show SlAdminPage;
 
 import '../admin_common.dart' show ErrorRetry, t;
 import '../admin_page.dart';
@@ -30,6 +31,8 @@ import 'package:flutter_education_app/features/quran/admin/quran_admin_page.dart
       'games' => (t('الألعاب التعليمية', 'Learning games'), t('نقاط مكافأة اللعب وحدّها اليومي', 'Points for playing and their daily cap')),
       'quran' => (t('تحفيظ القرآن', 'Quran memorization'),
           t('قواعد المعلمين والحجز وتسجيل الحفظ', 'Rules for teachers, booking and logging memorization')),
+      'self_learning' => (t('التعلّم الذاتي اليومي', 'Daily self-learning'),
+          t('دروس قصيرة وأسئلة مراجعة تصل الطالب خلال اليوم', 'Short lessons and review questions delivered to students through the day')),
       _ => (module, ''),
     };
 
@@ -37,6 +40,7 @@ IconData moduleIcon(String module) => switch (module) {
       'store' => Icons.storefront_rounded,
       'games' => Icons.sports_esports_rounded,
       'quran' => Icons.menu_book_rounded,
+      'self_learning' => Icons.auto_stories_rounded,
       _ => Icons.tune_rounded,
     };
 
@@ -64,8 +68,45 @@ IconData moduleIcon(String module) => switch (module) {
           t('هل يشترط أن يكون المعلم من جنس الطالب نفسه عند الحجز.', 'Whether a booking needs the teacher and the student to be of the same gender.')),
       'quran.self_log' => (t('الطالب يسجل حفظه بنفسه', 'Students log their own progress'),
           t('يسجل الطالب ما حفظه بنفسه. عند الإيقاف يسجله معلمه فقط.', 'Students record what they memorized themselves. Off: only their teacher records it.')),
+      'self_learning.enabled' => (t('تشغيل التعلّم الذاتي', 'Self-learning on'),
+          t('يصل الطلاب درس قصير أو سؤال مراجعة عدة مرات في اليوم.', 'Students get a short lesson or a review question a few times a day.')),
+      'self_learning.subject_quran' => (t('مادة القرآن', 'Subject: Quran'), ''),
+      'self_learning.subject_tajweed' => (t('مادة التجويد', 'Subject: Tajweed'), ''),
+      'self_learning.subject_fiqh' => (t('مادة الفقه', 'Subject: Fiqh'), ''),
+      'self_learning.subject_nahw' => (t('مادة النحو', 'Subject: Grammar'),
+          t('المواد المفعّلة فقط تصل منها الدروس والأسئلة.', 'Lessons and questions come only from the subjects switched on.')),
+      'self_learning.interval_minutes' => (t('الفاصل بين رسالتين', 'Time between two deliveries'),
+          t('أقل وقت بين درس وآخر للطالب الواحد.', 'The shortest time between two deliveries to one student.')),
+      'self_learning.daily_limit' => (t('الحد اليومي', 'Daily limit'),
+          t('أقصى عدد دروس وأسئلة تصل الطالب في اليوم.', 'The most lessons and questions one student gets in a day.')),
+      'self_learning.active_from_min' => (t('بداية أوقات النشاط', 'Active hours start'), t('بتوقيت الطالب.', "In the student's time zone.")),
+      'self_learning.active_to_min' => (t('نهاية أوقات النشاط', 'Active hours end'), ''),
+      'self_learning.quiet_from_min' => (t('بداية وقت الهدوء', 'Quiet hours start'),
+          t('لا يصل شيء في وقت الهدوء، حتى داخل أوقات النشاط.', 'Nothing is delivered in quiet hours, even inside active hours.')),
+      'self_learning.quiet_to_min' => (t('نهاية وقت الهدوء', 'Quiet hours end'), ''),
+      'self_learning.student_can_toggle' => (t('الطالب يشغّلها ويوقفها', 'Students can switch it on and off'),
+          t('يختار الطالب تشغيل الدروس اليومية وموادها. عند الإيقاف تديرها أنت فقط.',
+              'Students choose whether they get daily lessons and from which subjects. Off: only you decide.')),
+      'self_learning.notify' => (t('إشعار عند الوصول', 'Notify on delivery'),
+          t('يصل الطالب إشعار مع كل درس أو سؤال.', 'Students get a notification with each lesson or question.')),
       _ => (key, ''),
     };
+
+/// The self-learning interval choices (minutes).
+const kSlIntervalChoices = [30, 60, 120, 180, 240, 360, 480, 720, 1440];
+
+String slIntervalText(int m) => m % 60 == 0
+    ? (m == 60 ? t('كل ساعة', 'Every hour') : t('كل ${m ~/ 60} ساعات', 'Every ${m ~/ 60} hours'))
+    : t('كل $m دقيقة', 'Every $m minutes');
+
+/// The self-learning fields drawn as a time of day: minutes after midnight in the student's zone (CONTRACT C7).
+const _slTimeKeys = {'active_from_min', 'active_to_min', 'quiet_from_min', 'quiet_to_min'};
+
+TimeOfDay? _timeOfMinutes(dynamic v) {
+  final m = v is num ? v.toInt() : int.tryParse('${v ?? ''}');
+  if (m == null || m < 0 || m >= 1440) return null;
+  return TimeOfDay(hour: m ~/ 60, minute: m % 60);
+}
 
 String moduleChoiceText(String module, String key, String choice) => switch ('$module.$key.$choice') {
       'quran.gender_matching.off' => t('بلا شرط', 'No rule'),
@@ -79,6 +120,7 @@ String countryTabText(String key) => switch (key) {
       'student_tab_games' => t('الألعاب', 'Games'),
       'student_tab_quran' => t('القرآن', 'Quran'),
       'student_tab_nahw' => t('النحو', 'Grammar (nahw)'),
+      'student_tab_self_learning' => t('التعلّم الذاتي اليومي', 'Daily self-learning'),
       _ => key,
     };
 
@@ -87,6 +129,8 @@ const _fieldOrder = {
   'store': ['points_enabled', 'teacher_items', 'review_required', 'download_daily_limit'],
   'games': ['points_rewards', 'points_daily_cap'],
   'quran': ['teacher_verification_required', 'content_review_required', 'gender_matching', 'self_log'],
+  'self_learning': ['enabled', 'subject_quran', 'subject_tajweed', 'subject_fiqh', 'subject_nahw', 'interval_minutes', 'daily_limit',
+    'active_from_min', 'active_to_min', 'quiet_from_min', 'quiet_to_min', 'student_can_toggle', 'notify'],
 };
 
 List<ModuleField> orderedFields(ModuleView v) {
@@ -105,6 +149,8 @@ bool sameValues(Map<String, dynamic> a, Map<String, dynamic> b) =>
 
 String _valueText(String module, ModuleField f, dynamic v) {
   if (v is bool) return v ? t('مفعّل', 'On') : t('متوقف', 'Off');
+  if (module == 'self_learning' && _slTimeKeys.contains(f.key) && v is num) return AppTime.clockMinutes(v.toInt());
+  if (module == 'self_learning' && f.key == 'interval_minutes' && v is num) return slIntervalText(v.toInt());
   if (f.type == 'str') return moduleChoiceText(module, f.key, '$v');
   return '$v';
 }
@@ -353,6 +399,15 @@ class _AdminModulesPageState extends State<AdminModulesPage> {
         onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const QuranAdminPage())),
       );
 
+  /// Under the self-learning switch: the lessons and questions it delivers.
+  Widget _slAdminLink(BuildContext context) => AppActionCard(
+        key: const ValueKey('modules.sl_admin'),
+        icon: Icons.auto_stories_rounded,
+        title: t('محتوى التعلّم الذاتي', 'Self-learning content'),
+        subtitle: t('الدروس القصيرة وأسئلة المراجعة', 'The short lessons and review questions'),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SlAdminPage())),
+      );
+
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[_scopeCard(context)];
@@ -394,7 +449,11 @@ class _AdminModulesPageState extends State<AdminModulesPage> {
             draft: _drafts[m] ?? const {},
             revision: _rev,
             onChanged: (d) => setState(() => _drafts[m] = d),
-            after: m == 'quran' ? {'content_review_required': _quranAdminLink(context)} : const {},
+            after: switch (m) {
+              'quran' => {'content_review_required': _quranAdminLink(context)},
+              'self_learning' => {'enabled': _slAdminLink(context)},
+              _ => const <String, Widget>{},
+            },
           ));
         }
       }
@@ -402,7 +461,7 @@ class _AdminModulesPageState extends State<AdminModulesPage> {
     return AdminPage(
       width: AppWidth.reading,
       title: t('مفاتيح الوحدات', 'Module switches'),
-      subtitle: t('قواعد المتجر والألعاب والقرآن · $_scopeLabel', 'Store, games and Quran rules · $_scopeLabel'),
+      subtitle: t('قواعد المتجر والألعاب والقرآن والتعلّم الذاتي · $_scopeLabel', 'Store, games, Quran and self-learning rules · $_scopeLabel'),
       icon: Icons.tune_rounded,
       onRefresh: _saving ? null : _load,
       updatedAt: _loadedAt,
@@ -496,7 +555,12 @@ class ModuleSettingsCard extends StatelessWidget {
     final source = view.sourceOf(f.key, draft);
     final id = '${view.module}.${f.key}';
     final Widget input;
-    if (f.type == 'bool') {
+    final sl = view.module == 'self_learning';
+    if (sl && _slTimeKeys.contains(f.key)) {
+      input = _timeField(context, f, title, help, shown);
+    } else if (sl && f.key == 'interval_minutes') {
+      input = _intervalField(context, f, title, help, shown);
+    } else if (f.type == 'bool') {
       input = AppSwitchTile(
         key: ValueKey('modules.$id'),
         title: title,
@@ -549,6 +613,58 @@ class ModuleSettingsCard extends StatelessWidget {
         inheritedText: _valueText(view.module, f, view.inherited(f.key)),
         onInherit: source == ModuleSource.here ? () => _inherit(f.key) : null,
       ),
+    ]);
+  }
+}
+
+extension on ModuleSettingsCard {
+  Widget _help(BuildContext context, String help) =>
+      help.isEmpty ? const SizedBox.shrink() : Padding(padding: const EdgeInsets.only(top: AppSpace.xxs), child: Text(help, style: AppType.meta(context)));
+
+  /// A time of day (minutes after midnight), shown with AppTime (12 / 24 h) and picked with the clock picker.
+  Widget _timeField(BuildContext context, ModuleField f, String title, String help, dynamic shown) {
+    final v = _timeOfMinutes(shown);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Expanded(child: Text(title, style: AppType.bodyStrong(context))),
+        const SizedBox(width: AppSpace.xs),
+        AppButton.secondary(
+          key: ValueKey('modules.${view.module}.${f.key}'),
+          label: v == null ? t('اختر الوقت', 'Pick a time') : AppTime.clockMinutes(v.hour * 60 + v.minute),
+          icon: Icons.schedule_rounded,
+          size: AppButtonSize.sm,
+          onPressed: () async {
+            final picked = await showTimePicker(
+              context: context,
+              initialTime: v ?? const TimeOfDay(hour: 8, minute: 0),
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: AppTime.use24h),
+                child: child!,
+              ),
+            );
+            if (picked != null) _set(f.key, picked.hour * 60 + picked.minute);
+          },
+        ),
+      ]),
+      _help(context, help),
+    ]);
+  }
+
+  /// The interval between two deliveries: a list of sensible choices (the current value kept when it is not one).
+  Widget _intervalField(BuildContext context, ModuleField f, String title, String help, dynamic shown) {
+    final cur = shown is num ? shown.toInt() : null;
+    final choices = [...kSlIntervalChoices, if (cur != null && !kSlIntervalChoices.contains(cur)) cur]..sort();
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppDropdown<int>(
+        key: ValueKey('modules.${view.module}.${f.key}'),
+        value: cur,
+        decoration: InputDecoration(labelText: title),
+        items: [for (final m in choices) DropdownMenuItem(value: m, child: Text(slIntervalText(m)))],
+        onChanged: (v) {
+          if (v != null) _set(f.key, v);
+        },
+      ),
+      _help(context, help),
     ]);
   }
 }

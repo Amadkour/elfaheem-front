@@ -50,6 +50,8 @@ import 'package:flutter_education_app/features/payments/points/points_api.dart' 
 import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart' show PointsWalletPage;
 import 'package:flutter_education_app/features/records/records_api.dart' show kRecordsFeatureKey;
 import 'package:flutter_education_app/features/records/records_page.dart' show RecordsPage;
+import 'package:flutter_education_app/features/self_learning/sl_api.dart' show slOff;
+import 'package:flutter_education_app/features/self_learning/self_learning_page.dart' show SelfLearningPage;
 import 'package:flutter_education_app/features/records/records_share.dart' show SharedRecordPage;
 import 'package:flutter_education_app/features/records/records_share_api.dart' show kRecordsShareFeatureKey;
 import 'package:flutter_education_app/features/rag/rag_admin_links.dart' deferred as rag_admin_links;
@@ -435,6 +437,15 @@ class AppNavigator {
         await nav.push(MaterialPageRoute(
             settings: const RouteSettings(name: '/records/shared'),
             builder: (_) => token.isEmpty || token == 'null' ? const RecordsPage(shared: true) : SharedRecordPage(token: token)));
+        return;
+      case 'self_learning': // a daily lesson or a review question was delivered (Learning Hub v2 §5, D-1610) → My daily learning
+      case 'sl_lesson':
+      case 'sl_review':
+        if (slOff()) {
+          await nav.pushNamed('/notifications');
+          return;
+        }
+        await nav.push(MaterialPageRoute(settings: const RouteSettings(name: '/learn/daily'), builder: (_) => const SelfLearningPage()));
         return;
       case 'live_lobby': // someone waits at the door of a room I host → the meeting / session with its lobby sheet
         await openLiveLobby(LiveRoomRef.parse(kind, targetId));

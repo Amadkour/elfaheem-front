@@ -36,7 +36,11 @@ abstract final class SyncKinds {
   static const quranProgress = 'quran_progress';
   static const studyProfile = 'study_profile';
 
-  static const all = {gamePlay, nahwAttempt, quranProgress, studyProfile};
+  /// A self-learning review answer (Learning Hub v2 §5, D-1606): `{item_id, choice}`, the op id is its `client_id`.
+  /// Queued only when the direct post got no answer (offline); the server's push takes it with feature/lh2-learn.
+  static const slReview = 'sl_review';
+
+  static const all = {gamePlay, nahwAttempt, quranProgress, studyProfile, slReview};
 }
 
 /// A valid op id / `client_id`: 8–36 of `A-Za-z0-9_.:-`.

@@ -38,6 +38,17 @@ const knownMissing = <String, String>{
   'POST /api/v1/admin/games/reorder': 'lands with feature/lh2-learn',
   'GET /api/v1/admin/games/engines': 'lands with feature/lh2-learn',
   'POST /api/v1/admin/games/{}/cover': 'lands with feature/lh2-learn (cover upload, asked under the contract\'s Requests)',
+
+  // self-learning (Learning Hub v2 CONTRACT §5, D-1600): the server routes land with the back's branch
+  'DELETE /api/v1/admin/self-learning/items/{}': 'lands with feature/lh2-learn',
+  'GET /api/v1/admin/self-learning/items': 'lands with feature/lh2-learn',
+  'GET /api/v1/me/self-learning': 'lands with feature/lh2-learn',
+  'POST /api/v1/admin/self-learning/items': 'lands with feature/lh2-learn',
+  'POST /api/v1/admin/self-learning/items/reorder': 'lands with feature/lh2-learn',
+  'POST /api/v1/me/self-learning/lessons/{}/seen': 'lands with feature/lh2-learn',
+  'POST /api/v1/me/self-learning/reviews/{}': 'lands with feature/lh2-learn',
+  'PUT /api/v1/admin/self-learning/items/{}': 'lands with feature/lh2-learn',
+  'PUT /api/v1/me/self-learning': 'lands with feature/lh2-learn',
 };
 
 void main() {

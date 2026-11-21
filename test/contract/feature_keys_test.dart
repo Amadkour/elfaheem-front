@@ -20,6 +20,9 @@ const notInCatalog = <String, String>{
   // Learning Hub v2 games (CONTRACT §3 + C9): the catalog entries land with the server half
   'admin.games': 'lands with feature/lh2-learn',
   'games.leaderboard': 'lands with feature/lh2-learn',
+  // self-learning (Learning Hub v2 §5): the catalog entries come with the back's branch
+  'admin.self_learning': 'lands with feature/lh2-learn',
+  'student_tab_self_learning': 'lands with feature/lh2-learn',
 };
 
 final _patterns = [

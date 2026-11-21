@@ -5613,3 +5613,76 @@ server) the app's own list.
 
 The preview is `GameRound` (the shell + `spec.build`) on the draft's config, refreshed 400 ms after the last
 keystroke so typing does not restart a round on every letter; a finished preview round starts again.
+## D-1600 — Self-learning lives in `lib/features/self_learning/`, built on the learn kit · 2026-11-21 · accepted
+
+Models, API, the review round, the store, the widgets, the page and the admin page are one folder; questions,
+options, feedback and the progress strip are the learn kit's own widgets, so a review looks like a nahw exercise or a
+game question. Readers are tolerant (CONTRACT §5 shapes, a missing field reads as empty).
+
+## D-1601 — The tabs show a calm section; the page holds everything · 2026-11-21 · accepted
+
+The Quran tab (quran / tajweed / fiqh) and the Nahw tab (nahw) get a section at the top: a small ring, today's first
+lesson (short) and the review round, "See all" → My daily learning (`/learn/daily`). The section draws nothing for a
+guest, on an error, or while the admin has it off; while the student has it off (and may toggle) it is one invitation
+row. The page has the control, progress per subject, every lesson and the round.
+
+## D-1602 — One copy of `GET /me/self-learning` (SlStore) · 2026-11-21 · accepted
+
+Both tabs and the page read one store; a read within 2 minutes is reused unless forced (the page forces on open, a
+pull refreshes). "Got it" and an answered review update the copy at once so the other tab never shows them again.
+
+## D-1603 — "Switched off" is the server's 403 `feature_disabled` or `available: false` · 2026-11-21 · accepted
+
+The contract's GET has no admin flag; the app reads 403 `feature_disabled` (and an optional `available: false`) as
+the admin's off and shows "Daily lessons are switched off". `enabled` is the student's own choice; the control is
+hidden when `can_toggle` is false. At least one subject stays chosen (switching the lessons off stops them all).
+
+## D-1604 — Motion: one entrance, a feedback rise, a light one-shot celebration · 2026-11-21 · accepted
+
+Lesson cards enter once per route (AppReveal); the feedback panel rises 8 px once; a right answer gets a 900 ms
+burst of dots (`SlCelebration`). Nothing loops, so `syncMotionLoop` is not needed; all three are still under Reduce
+motion (`appMotionOff`). The ring and the bars fill with AppFill.
+
+## D-1605 — A review is graded on the device, then sent once · 2026-11-21 · accepted
+
+The item carries the right option, so the feedback is instant and works offline; the server's explanation replaces
+the item's when it answers. A refusal keeps the verdict and shows the error under it (the Leitner card is the
+server's business).
+
+## D-1606 — Offline review answers go to the outbox as `sl_review` · 2026-11-21 · accepted
+
+The answer is posted directly first; only when there is no answer at all (offline, timeout) it is queued as op kind
+`sl_review` `{item_id, choice}` under the answer's `client_id` (idempotent on the server). The back's
+`sync_service.PUSH_KINDS` needs the `sl_review` handler (request to back-learn); until then such an op is refused once.
+
+## D-1607 — Admin content page `SlAdminPage` (`admin.self_learning`) · 2026-11-21 · accepted
+
+Opened from the services hub next to the grammar content and from the self-learning card of the module switches.
+Filters subject + kind, server pages of 20, drag to reorder inside a page (POST reorder with that page's ids),
+publish / unpublish from the menu, delete with a confirm.
+
+## D-1608 — The item form checks the server's rules first · 2026-11-21 · accepted
+
+`slItemProblem`: subject, title, a lesson's text, a question's prompt, 2–6 non-empty options and a marked right
+answer. Save is offered only when nothing is missing; a server refusal keeps the sheet open with its text.
+
+## D-1609 — Question → lesson link and nahw source are optional pickers · 2026-11-21 · accepted
+
+A question can name the lesson it reviews (lessons of the same subject); a nahw item can name the nahw lesson it was
+taken from (`source {type: nahw_lesson, id}`), picked from the nahw admin levels.
+
+## D-1610 — Push target `self_learning` (also `sl_lesson`, `sl_review`) → My daily learning · 2026-11-21 · accepted
+
+AppNavigator opens the page (the notifications list when `student_tab_self_learning` is off); `/learn/daily` is a
+registry route that a URL or a reload opens too.
+
+## D-1611 — The nahw lesson and round get the new cards' look; grading untouched · 2026-11-21 · accepted
+
+Reading view: title + a best-score bar in one card, the text in paragraphs in its own card, one entrance. Round: the
+feedback rises in, a right answer gets the celebration. `nahwGrade`, the keys and the attempt flow are unchanged.
+
+## D-1612 — Module settings for `self_learning` are flat (CONTRACT C7) · 2026-11-21 · accepted
+
+The modules page draws the four `subject_*` flags as switches, `interval_minutes` as a dropdown of sensible steps
+(the current value kept), `daily_limit` as a number, and the four `*_min` fields (minutes after midnight) as time
+pickers shown and picked with AppTime's 12 h / 24 h. `student_tab_self_learning` joins the country tab switches.

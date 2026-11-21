@@ -9,6 +9,11 @@ Map<String, dynamic> _payload(String module, String scope, {String key = '', Map
   final defaults = switch (module) {
     'store' => {'download_daily_limit': 10, 'points_enabled': false, 'teacher_items': false, 'review_required': false},
     'games' => {'points_rewards': false, 'points_daily_cap': 20},
+    'self_learning' => {
+        'enabled': false, 'subject_quran': true, 'subject_tajweed': true, 'subject_fiqh': true, 'subject_nahw': true,
+        'interval_minutes': 240, 'daily_limit': 3, 'active_from_min': 480, 'active_to_min': 1260, 'quiet_from_min': 1320,
+        'quiet_to_min': 420, 'student_can_toggle': true, 'notify': true,
+      },
     _ => {'teacher_verification_required': false, 'content_review_required': false, 'gender_matching': 'off', 'self_log': true},
   };
   return {
