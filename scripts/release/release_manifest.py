@@ -15,6 +15,12 @@ the Linux build script on the server calls it too.
       replaces that platform's entry (other platforms untouched); --latest moves a "NextBrain-latest…" symlink
   release_manifest.py show  --root R
 
+File kinds (KINDS below, mirrored by kInstallerKinds in lib/core/get_app/releases_manifest.dart): android apk + aab,
+windows exe (the Inno Setup installer NextBrain-<version>-windows-x64-setup.exe) + msix + zip, macos dmg + zip, linux
+AppImage + deb + tar.gz. A kind outside that list, or on the wrong platform, stops the write. An `aab` (the Play
+upload) is recorded with "listed": false: the site and the apps never offer it for download, and it can be neither
+--primary nor a --latest target.
+
 Every write: the previous manifest is copied to releases.json.bak-<UTC time> (the newest 10 are kept), the new one is
 written to a temporary file and renamed over the old (a reader never sees half a file). A file that is missing, is
 outside the root, or whose SHA-256 differs from --expect-sha stops everything before the manifest changes.
@@ -31,6 +37,19 @@ import sys
 from pathlib import Path
 
 PLATFORMS = ("android", "ios", "windows", "macos", "linux")
+# kind -> platforms it may be published for; installer order per platform lives in the Dart reader
+KINDS = {
+    "apk": ("android",),
+    "aab": ("android",),
+    "exe": ("windows",),
+    "msix": ("windows",),
+    "zip": ("windows", "macos"),
+    "dmg": ("macos",),
+    "AppImage": ("linux",),
+    "deb": ("linux",),
+    "tar.gz": ("linux",),
+}
+UNLISTED_KINDS = ("aab",)  # published next to the others, never shown for download
 MANIFEST = "releases.json"
 KEEP_BACKUPS = 10
 
@@ -110,6 +129,10 @@ def cmd_set(a) -> None:
         if len(parts) != 3:
             raise SystemExit(f"--file wants ARCH:KIND:REL_PATH, got {spec}")
         arch, kind, rel = parts
+        if kind not in KINDS:
+            raise SystemExit(f"{spec}: unknown kind {kind} (one of {', '.join(KINDS)})")
+        if a.platform not in KINDS[kind]:
+            raise SystemExit(f"{spec}: a {kind} is not a {a.platform} file")
         p = _inside(root, rel)
         if not p.is_file():
             raise SystemExit(f"{rel}: no such file under {root}")
@@ -117,21 +140,29 @@ def cmd_set(a) -> None:
         if rel in expect and expect[rel] != sha:
             raise SystemExit(f"{rel}: SHA-256 here {sha} differs from the built file's {expect[rel]} (damaged upload?)")
         os.chmod(p, 0o644)
-        files.append({
+        item = {
             "arch": arch,
             "kind": kind,
             "url": f"{a.base_url.rstrip('/')}/{rel}",
             "size": p.stat().st_size,
             "sha256": sha,
-        })
+        }
+        if kind in UNLISTED_KINDS:
+            item["listed"] = False
+        files.append(item)
+    listed = [f for f in files if f.get("listed", True)]
+    if a.primary and a.primary != "pwa" and files and not any(f["arch"] == a.primary for f in listed):
+        raise SystemExit(f"--primary {a.primary}: no downloadable file has that arch")
     links = []
     for spec in a.latest or []:
         link, _, target = spec.partition("=")
         lp, tp = _inside(root, link), _inside(root, target)
         if not tp.is_file():
             raise SystemExit(f"--latest target {target} is missing")
+        if any(target.endswith("." + k) for k in UNLISTED_KINDS):
+            raise SystemExit(f"--latest {target}: an unlisted file never gets a public 'latest' link")
         links.append((lp, tp))
-    if not files and not a.pwa:
+    if not listed and not a.pwa:
         raise SystemExit("nothing to publish: give --file and/or --pwa")
     data = _load(root)
     entry = {
