@@ -93,7 +93,7 @@ if [ "${NB_APPIMAGE:-}" = "1" ]; then
   # system's libsqlite3.so.0 by name, which a minimal distribution may lack, so it is then bundled from the build host
   hook_sqlite="$(find "$L" -maxdepth 1 -name 'libsqlite3*' -printf '%f ' 2>/dev/null || true)"
   if [ -n "$hook_sqlite" ]; then
-    echo "libsqlite3: from the build hook ($hook_sqlite)"
+    echo "libsqlite3: from the build hook (${hook_sqlite% })"
   else
     sys_sqlite="$(ldconfig -p 2>/dev/null | awk '/libsqlite3\.so\.0 .*x86-64/{print $NF; exit}')"
     if [ -z "$sys_sqlite" ] || [ ! -f "$sys_sqlite" ]; then
