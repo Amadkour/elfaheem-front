@@ -25,7 +25,7 @@ import '../../admin/admin_common.dart' show t, asMapList;
 import '../advising/adv_student_page.dart' show AdvStudentPage;
 import '../governance/gov_items_page.dart' show GovItemsPage;
 import '../onboarding/onboarding_review.dart' show OnbReviewPage;
-import '../org_page_header.dart' show OrgPushedPage;
+import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage;
 import '../org_providers.dart' show OrgSession;
 import '../org_registrar_member.dart' show OrgRecordScreen;
 import '../org_services_pages.dart' show OrgComplaintsPage;
@@ -38,7 +38,7 @@ import 'student_timeline.dart';
 import 'students_api.dart';
 import 'students_missing_sheet.dart' show showMissingDataSheet;
 import 'students_models.dart';
-import 'students_parts.dart' show MissingBadge, StudentAvatar, StudentFlagChips, StudentStatusChip;
+import 'students_parts.dart' show MissingBadge, StudentAvatar, StudentFlagChips, StudentStandingChip, StudentStatusChip, studentExtraStanding;
 
 /// Pushes [page] with the organization session of [context] carried over (a pushed route sits outside the
 /// dashboard's providers).
@@ -88,7 +88,8 @@ class OrgStudentFilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => OrgPushedPage(
         title: name ?? t('ملف الطالب', 'Student file'),
-        subtitle: name == null ? null : t('ملف الطالب', 'Student file'),
+        // a phone's header has room for one short line: "Updated …" alone (the name already says whose file it is)
+        subtitle: name == null || MediaQuery.sizeOf(context).width < AppRoadmap.wideFrom ? null : t('ملف الطالب', 'Student file'),
         helpPageId: 'org.students.file',
         width: AppWidth.content,
         child: _StudentFileBody(orgId: orgId, uid: uid, api: api ?? StudentsApi(orgId)),
@@ -118,14 +119,19 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
     undoneFetch: studentUndoneFetch(widget.api, widget.uid),
   );
 
+  /// The header's Refresh and its "Updated …" line (the pushed page's own scope).
+  OrgPageRefresh? _refresh;
+
   @override
   void initState() {
     super.initState();
+    _refresh = OrgPageRefresh.register(context, _load);
     _load();
   }
 
   @override
   void dispose() {
+    _refresh?.unregister(_load);
     _timeline.dispose();
     super.dispose();
   }
@@ -150,6 +156,8 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
       }
       if (!studentFileTabs(_file!.can).contains(_tab)) _tab = StudentFileTab.overview;
     });
+    // "Updated …" in the header starts again from this load
+    if (r.ok) _refresh?.markUpdated();
     if (_timeline.loaded) _timeline.load();
   }
 
@@ -169,7 +177,11 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
     if (r != null && mounted) _load();
   }
 
-  void _openMissing() => showMissingDataSheet(context, widget.orgId, widget.uid, name: _file?.displayName, api: widget.api);
+  /// The missing-data sheet; each completed item reloads the file, so its count and badge follow at once.
+  void _openMissing() => showMissingDataSheet(context, widget.orgId, widget.uid, name: _file?.displayName, api: widget.api,
+      onChanged: () {
+        if (mounted) _load();
+      });
 
   Widget _body(BuildContext context, StudentFileTab tab) {
     final f = _file!;
@@ -276,7 +288,7 @@ class StudentFileView extends StatelessWidget {
     final c = context.colors;
     final tabs = studentFileTabs(file.can);
     final index = tabs.indexOf(tab).clamp(0, tabs.length - 1);
-    final journey = [for (final n in file.journey) n.toRoadmapNode()];
+    final journey = studentJourney(file.journey, file.row.enrolStatus);
     return ListView(
       padding: const EdgeInsets.all(AppSpace.md),
       children: [
@@ -294,22 +306,37 @@ class StudentFileView extends StatelessWidget {
             ),
           ]),
         ],
-        if (journey.isNotEmpty) ...[
+        if (journey.nodes.isNotEmpty) ...[
           AppSpace.gapMd,
-          AppCard(
-            child: AppRoadmap(
-              nodes: journey,
-              dense: true,
-              quietAfterNext: false,
-              label: t('مسار الطالب', "The student's journey"),
+          // a wide window draws the whole journey in one row (any length), so the tabs stay above the fold
+          LayoutBuilder(
+            builder: (context, box) => AppCard(
+              child: AppRoadmap(
+                nodes: journey.nodes,
+                next: journey.next,
+                axis: box.maxWidth >= AppRoadmap.wideFrom ? Axis.horizontal : null,
+                dense: true,
+                quietAfterNext: false,
+                label: t('مسار الطالب', "The student's journey"),
+              ),
             ),
           ),
         ],
         AppSpace.gapLg,
-        AppUnderlineTabs(
-          items: [for (final x in tabs) AppTabItem(studentFileTabText(x), icon: studentFileTabIcon(x))],
-          index: index,
-          onChanged: (i) => onTab(tabs[i]),
+        // the strip scrolls with a mouse drag / shift+wheel on the web too (AppHScroll), never wider than the page
+        LayoutBuilder(
+          builder: (context, box) => AppHScroll(
+            padding: EdgeInsets.zero,
+            thumbVisibility: false,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: box.maxWidth),
+              child: AppUnderlineTabs(
+                items: [for (final x in tabs) AppTabItem(studentFileTabText(x), icon: studentFileTabIcon(x))],
+                index: index,
+                onChanged: (i) => onTab(tabs[i]),
+              ),
+            ),
+          ),
         ),
         AppSpace.gapMd,
         KeyedSubtree(key: ValueKey('student-file-tab-${tabs[index].name}'), child: bodyFor?.call(context, tabs[index]) ?? const SizedBox.shrink()),
@@ -358,6 +385,7 @@ class StudentFileHeader extends StatelessWidget {
             const SizedBox(height: AppSpace.xs),
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
               StudentStatusChip(r.chip),
+              if (studentExtraStanding(r.chip, r.acadStanding) != null) StudentStandingChip(chip: r.chip, acadStanding: r.acadStanding),
               if (missingOn && r.hasMissing) MissingBadge(count: r.missingCount!, onTap: onMissing),
             ]),
             if (r.flags.isNotEmpty) ...[

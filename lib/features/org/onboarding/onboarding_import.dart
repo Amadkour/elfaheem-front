@@ -24,13 +24,20 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show ltrIsolate;
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
 import '../org_page_header.dart' show OrgPushedPage;
 import '../org_v3.dart' show OrgCall, orgErrorText;
+import '../../rag/app_assistant.dart' show appAssistantTabFace;
 import 'onboarding_api.dart';
 import 'onboarding_models.dart';
+import 'onboarding_wizard.dart' show OnbPlaces;
+
+/// A server message with the figures it quotes ("2005-03-15", "+20 100 …") held left to right: spliced into an
+/// Arabic sentence, a date would otherwise read back to front ("15-03-2005").
+String onbBidiText(String s) => s.replaceAllMapped(RegExp(r'[+]?\d[\d\-/.:]*\d'), (m) => ltrIsolate(m[0]!));
 
 /// The kill switches of the entry methods (`feature_catalog.py`).
 const onboardingImportKey = 'org.onboarding.import';
@@ -251,11 +258,26 @@ class _OnbImportPageState extends State<OnbImportPage> {
     });
   }
 
+  /// The organization's programmes / departments, loaded once for the "fix everywhere" picker.
+  OnbPlaces? _places;
+
+  /// What a cell of [f] may hold, by name (the file holds names, the server matches them): a programme or department
+  /// field picks from the organization's list; other kinds use their own options (empty: free text).
+  Future<Map<String, String>> _choicesOf(OnbField? f) async {
+    if (f == null || (f.kind != 'program' && f.kind != 'department')) return const {};
+    final p = _places ??= await OnbPlaces.load(widget.orgId);
+    final names = f.kind == 'program' ? p.programs.values : p.departments.values;
+    return {for (final n in names) if (n.isNotEmpty) n: n};
+  }
+
   /// "Fix the same value in N rows" from the strip above the list.
   Future<void> _fixEverywhere(OnbRepeatedFix fix) async {
     final b = _batch;
     if (b == null) return;
-    final to = await showOnbFixEverywhereDialog(context, fix: fix, field: _type?.field(fix.field));
+    final field = _type?.field(fix.field);
+    final choices = await _choicesOf(field);
+    if (!mounted) return;
+    final to = await showOnbFixEverywhereDialog(context, fix: fix, field: field, choices: choices);
     if (to == null || !mounted) return;
     setState(() => _fixing = true);
     final r = await _api.fixImportRows(widget.orgId, b.id, field: fix.field, from: fix.value, to: to);
@@ -328,7 +350,8 @@ class _OnbImportPageState extends State<OnbImportPage> {
     final b = _batch;
     return OrgPushedPage(
       title: t('استيراد من Excel', 'Import from Excel'),
-      subtitle: t('الالتحاق والتعيين', 'Admissions & appointments'),
+      // a phone's header keeps one short line ("Updated …"); the section name shows from tablet width
+      subtitle: MediaQuery.sizeOf(context).width < AppRoadmap.wideFrom ? null : t('الالتحاق والتعيين', 'Admissions & appointments'),
       helpPageId: 'org.onboarding.import',
       width: AppWidth.content,
       child: switch (_phase) {
@@ -415,13 +438,13 @@ class OnbImportSetupView extends StatelessWidget {
     final c = context.colors;
     final modes = ['draft', 'submit', if (canInvite) 'invite'];
     return ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxxl), children: [
-      AppSectionTitle(t('١ · النوع', '1 · Type')),
+      AppSectionTitle(t('1 · النوع', '1 · Type')),
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
         for (final ty in types)
           AppChoiceChip(key: ValueKey('onb.import.type.${ty.key}'), label: ty.label.isEmpty ? ty.key : ty.label, selected: type?.key == ty.key, onTap: () => onType?.call(ty)),
       ]),
       AppSpace.gapMd,
-      AppSectionTitle(t('٢ · القالب', '2 · Template')),
+      AppSectionTitle(t('2 · القالب', '2 · Template')),
       Text(t('نزّل القالب واملأه، فكل نوع له أعمدته الخاصة.', 'Download the template and fill it in: every type has its own columns.'), style: AppType.meta(context)),
       AppSpace.gapXs,
       Align(
@@ -429,7 +452,7 @@ class OnbImportSetupView extends StatelessWidget {
         child: AppButton.secondary(key: const ValueKey('onb.import.template'), label: t('تنزيل القالب', 'Download the template'), icon: Icons.download_rounded, busy: busy && fileName.isEmpty, onPressed: type == null || busy ? null : onTemplate),
       ),
       AppSpace.gapMd,
-      AppSectionTitle(t('٣ · الملف والوضع', '3 · File and mode')),
+      AppSectionTitle(t('3 · الملف والوضع', '3 · File and mode')),
       AppCard(
         key: const ValueKey('onb.import.file'),
         onTap: busy ? null : onPick,
@@ -538,6 +561,12 @@ class OnbImportPreviewView extends StatelessWidget {
 
   bool get _editable => batch.staged && !expired && onSaveRow != null;
 
+  /// On a phone the assistant's docked tab sits on the END edge low on the screen, right where these switches are:
+  /// keep their trailing switch clear of the tab's drawn face (wide windows have no edge tab).
+  static Widget _clearOfTab(bool wide, Widget child) => wide
+      ? child
+      : Padding(padding: const EdgeInsetsDirectional.only(end: appAssistantTabFace - AppSpace.md + AppSpace.xs), child: child);
+
   List<OnbImportRow> get _rows {
     if (focus.isNotEmpty) return [for (final no in focus) ?batch.rowNo(no)];
     if (filter.isEmpty) return batch.rows;
@@ -638,22 +667,22 @@ class OnbImportPreviewView extends StatelessWidget {
           sliver: SliverList.list(children: [
             if (batch.warning > 0) ...[
               AppSpace.gapSm,
-              AppSwitchTile(
+              _clearOfTab(wide, AppSwitchTile(
                 key: const ValueKey('onb.import.warnings'),
                 title: t('إدراج الصفوف ذات التحذيرات', 'Include rows with warnings'),
                 subtitle: t('التحذيرات لا تمنع الحفظ، لكن راجعها أولاً.', 'Warnings do not block saving, but review them first.'),
                 value: includeWarnings,
                 onChanged: onIncludeWarnings,
-              ),
+              )),
             ],
             if (batch.error > 0)
-              AppSwitchTile(
+              _clearOfTab(wide, AppSwitchTile(
                 key: const ValueKey('onb.import.skip_errors'),
                 title: t('تخطي الصفوف ذات الأخطاء (${batch.error})', 'Skip the rows with errors (${batch.error})'),
                 subtitle: t('صحّحها أعلاه، أو تخطَّها صراحةً لحفظ الباقي.', 'Fix them above, or skip them on purpose to save the rest.'),
                 value: skipErrors,
                 onChanged: onSkipErrors,
-              ),
+              )),
             if (error != null) ...[
               AppSpace.gapSm,
               AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!),
@@ -731,9 +760,12 @@ class OnbRepeatedFixesCard extends StatelessWidget {
 }
 
 /// The new value for a repeated one (null: cancelled).
-Future<String?> showOnbFixEverywhereDialog(BuildContext context, {required OnbRepeatedFix fix, OnbField? field}) {
+/// [choices] (value → label) turn the free text into a picker: a choice field's options, or the organization's
+/// programmes / departments for those kinds; empty: the field's own options, else free text.
+Future<String?> showOnbFixEverywhereDialog(BuildContext context, {required OnbRepeatedFix fix, OnbField? field, Map<String, String> choices = const {}}) {
   final ctl = TextEditingController(text: fix.value);
-  String? pick = field?.options.any((o) => o.value == fix.value) == true ? fix.value : null;
+  final opts = choices.isNotEmpty ? choices : {for (final o in field?.options ?? const <OnbOption>[]) o.value: o.label.isEmpty ? o.value : o.label};
+  String? pick = opts.containsKey(fix.value) ? fix.value : null;
   final label = field == null || field.label.isEmpty ? fix.field : field.label;
   return showAppDialog<String>(
     context,
@@ -743,12 +775,12 @@ Future<String?> showOnbFixEverywhereDialog(BuildContext context, {required OnbRe
       builder: (ctx, set) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(t('«${fix.value}» في ${onbRowsText(fix.count)}. اكتب القيمة الصحيحة مرة واحدة.', '“${fix.value}” in ${onbRowsText(fix.count)}. Enter the right value once.'), style: AppType.body(ctx)),
         AppSpace.gapSm,
-        if (field != null && field.options.isNotEmpty)
+        if (opts.isNotEmpty)
           AppDropdown<String>(
             key: const ValueKey('onb.import.fixall.pick'),
             value: pick,
             decoration: InputDecoration(labelText: label),
-            items: [for (final o in field.options) DropdownMenuItem(value: o.value, child: Text(o.label.isEmpty ? o.value : o.label))],
+            items: [for (final e in opts.entries) DropdownMenuItem(value: e.key, child: Text(e.value, overflow: TextOverflow.ellipsis))],
             onChanged: (v) => set(() => pick = v),
           )
         else
@@ -756,15 +788,18 @@ Future<String?> showOnbFixEverywhereDialog(BuildContext context, {required OnbRe
       ]),
     ),
     actions: [
-      AppButton.ghost(label: t('إلغاء', 'Cancel'), onPressed: () => Navigator.of(context).pop()),
-      AppButton.primary(
-        key: const ValueKey('onb.import.fixall.save'),
-        label: t('تصحيح', 'Fix'),
-        onPressed: () {
-          final v = (field != null && field.options.isNotEmpty) ? (pick ?? '') : ctl.text.trim();
-          if (v.isEmpty || v == fix.value) return;
-          Navigator.of(context).pop(v);
-        },
+      // The dialog's own context: the page's would pop the page under it and orphan the dialog.
+      Builder(builder: (ctx) => AppButton.ghost(label: t('إلغاء', 'Cancel'), onPressed: () => Navigator.of(ctx).pop())),
+      Builder(
+        builder: (ctx) => AppButton.primary(
+          key: const ValueKey('onb.import.fixall.save'),
+          label: t('تصحيح', 'Fix'),
+          onPressed: () {
+            final v = opts.isNotEmpty ? (pick ?? '') : ctl.text.trim();
+            if (v.isEmpty || v == fix.value) return;
+            Navigator.of(ctx).pop(v);
+          },
+        ),
       ),
     ],
   ).whenComplete(ctl.dispose);
@@ -874,7 +909,7 @@ class OnbRowMessageLine extends StatelessWidget {
           child: Text.rich(
             TextSpan(children: [
               if (m.field.isNotEmpty) TextSpan(text: '${onbColumnLabel(type, m.field)}: ', style: AppType.meta(context).copyWith(fontWeight: FontWeight.w700, color: m.isError ? c.danger : c.textDark)),
-              TextSpan(text: m.text.isEmpty ? m.code : m.text),
+              TextSpan(text: onbBidiText(m.text.isEmpty ? m.code : m.text)),
             ]),
             style: AppType.meta(context),
           ),
@@ -966,7 +1001,7 @@ class _OnbImportRowEditorState extends State<OnbImportRowEditor> {
   Widget _input(String k) {
     final f = _field(k);
     final label = onbColumnLabel(widget.type, k);
-    final msgs = _row.messagesFor(k).where((m) => m.isError).map((m) => m.text.isEmpty ? m.code : m.text).toList();
+    final msgs = _row.messagesFor(k).where((m) => m.isError).map((m) => onbBidiText(m.text.isEmpty ? m.code : m.text)).toList();
     final err = msgs.isEmpty ? null : msgs.join(' · ');
     if (_isPick(k)) {
       final cur = _picked[k] ?? _row.cell(k);

@@ -2,6 +2,8 @@
 //
 //   StudentStatusChip(chip)        THE one chip of a student (§3.2): label + tone, a glyph for danger / gold
 //   StudentFlagChips(flags)        the active flags as quiet chips (wraps, never overflows)
+//   StudentStandingChip(row)       the academic standing beside THE chip when another dimension speaks and the
+//                                  standing is not `regular` (a warning must not hide behind "missing data")
 //   MissingBadge(count, onTap)     "3 missing" — amber, tappable; hidden at 0 / null and under `org.students.missing`
 //   StudentAvatar(user)            photo or the first letter on the primary tint
 //   StudentRowCard(row, onTap)     the phone card of the list: avatar · name · code / program / level · chip · badge
@@ -31,6 +33,32 @@ class StudentStatusChip extends StatelessWidget {
         dot: true,
         dense: dense,
       );
+}
+
+/// The standing to show beside [chip] ([acadStanding]); null when the chip already is the standing, or it is regular.
+String? studentExtraStanding(StudentChip chip, String? acadStanding) {
+  final s = acadStanding;
+  if (s == null || s.isEmpty || s == 'regular' || chip.dimension == 'standing') return null;
+  return s;
+}
+
+/// "Academic warning" / "Final chance" … next to the main chip (nothing when [studentExtraStanding] is null).
+class StudentStandingChip extends StatelessWidget {
+  const StudentStandingChip({super.key, required this.chip, this.acadStanding});
+  final StudentChip chip;
+  final String? acadStanding;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = studentExtraStanding(chip, acadStanding);
+    if (s == null) return const SizedBox.shrink();
+    return AppStatusBadge(
+      key: ValueKey('students.standing.$s'),
+      label: standingLabel(s),
+      tone: chipTone(StudentChip('standing', s)),
+      dense: true,
+    );
+  }
 }
 
 class StudentFlagChips extends StatelessWidget {
@@ -184,6 +212,7 @@ class StudentRowCard extends StatelessWidget {
             AppSpace.gapXs,
             Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
               StudentStatusChip(row.chip),
+              if (studentExtraStanding(row.chip, row.acadStanding) != null) StudentStandingChip(chip: row.chip, acadStanding: row.acadStanding),
               if (row.flags.isNotEmpty) StudentFlagChips(row.flags, max: 2),
               if (row.hasMissing) MissingBadge(count: row.missingCount, onTap: onMissing),
             ]),

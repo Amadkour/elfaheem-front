@@ -77,6 +77,13 @@ MissingItem _item(String key, {String? status, bool long = false}) => MissingIte
     );
 
 void main() {
+  test('the standing shows beside another chip only when it is not regular', () {
+    expect(studentExtraStanding(const StudentChip('intake', 'missing'), 'warning'), 'warning');
+    expect(studentExtraStanding(const StudentChip('intake', 'missing'), 'regular'), isNull);
+    expect(studentExtraStanding(const StudentChip('standing', 'warning'), 'warning'), isNull);
+    expect(studentExtraStanding(const StudentChip('enrolment', 'suspended'), null), isNull);
+  });
+
   setUp(() => AppConfig.lang = 'ar');
 
   testWidgets('StudentsPageView: 0 rows', (t) => expectNoLayoutErrors(t, () => _view(_data(0))));

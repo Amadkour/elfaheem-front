@@ -19,7 +19,7 @@ import 'package:flutter_education_app/design/app_roadmap.dart';
 
 import '../../admin/admin_common.dart' show t;
 import '../org_v3.dart' show orgParseUtc;
-import 'students_models.dart' show StudentRow;
+import 'students_models.dart' show StudentRow, enrolFinal, enrolLabel, enrolPaused;
 
 Map<String, dynamic> _map(dynamic v) => v is Map ? v.cast<String, dynamic>() : <String, dynamic>{};
 List<dynamic> _list(dynamic v) => v is List ? v : const [];
@@ -108,6 +108,29 @@ class JourneyNode {
         state: state,
         caption: at == null || state == AppRoadmapState.todo ? null : AppTime.date(at!.toUtc()),
       );
+}
+
+/// The journey as the rail draws it, told by the enrolment: a student who LEFT (withdrawn, dismissed, graduated …)
+/// has no "in progress" stop and no "next" one — the stop they reached reads the final state (graduated: done,
+/// otherwise stopped there, `warn`); a PAUSED student (suspended, postponed) keeps the stop but reads the pause and
+/// has no "next" either. [next] is AppRoadmap's `next` (-1: none; null: the rail's own pick).
+({List<AppRoadmapNode> nodes, int? next}) studentJourney(List<JourneyNode> journey, String enrolStatus) {
+  final nodes = [for (final n in journey) n.toRoadmapNode()];
+  final ended = enrolFinal.contains(enrolStatus), paused = enrolPaused.contains(enrolStatus);
+  if (!ended && !paused) return (nodes: nodes, next: null);
+  var at = nodes.indexWhere((n) => n.state == AppRoadmapState.current || n.state == AppRoadmapState.warn);
+  // a graduate's last stop is the graduation itself when the server left nothing in progress
+  if (at < 0 && enrolStatus == 'graduated' && nodes.isNotEmpty) at = nodes.lastIndexWhere((n) => n.state != AppRoadmapState.done);
+  if (at >= 0) {
+    final n = nodes[at];
+    final state = !ended
+        ? n.state
+        : enrolStatus == 'graduated'
+            ? AppRoadmapState.done
+            : AppRoadmapState.warn;
+    nodes[at] = AppRoadmapNode(id: n.id, title: n.title, state: state, caption: enrolLabel(enrolStatus));
+  }
+  return (nodes: nodes, next: -1);
 }
 
 /// `done | current | todo | warn` → the roadmap state (an unknown word reads as "to do").
@@ -242,6 +265,8 @@ class StudentFile {
     this.birthDate,
     this.gender,
     this.nationality,
+    this.nationalityLabelAr,
+    this.nationalityLabelEn,
     this.academic,
     this.intake,
     this.journey = const [],
@@ -261,6 +286,8 @@ class StudentFile {
       birthDate: orgParseUtc(s['birth_date']),
       gender: _str(s['gender']),
       nationality: _str(s['nationality']),
+      nationalityLabelAr: _str(s['nationality_label_ar']),
+      nationalityLabelEn: _str(s['nationality_label_en']),
       academic: j['academic'] is Map ? StudentAcademic.fromJson(j['academic']) : null,
       intake: intake is Map ? FileIntake.fromJson(intake) : null,
       journey: [for (final n in _list(j['journey'])) JourneyNode.fromJson(n)],
@@ -274,6 +301,17 @@ class StudentFile {
 
   /// null without the case type's `view` right (the line is hidden).
   final String? email, phone, gender, nationality;
+
+  /// The nationality's name from the server (`nationality_label_ar` / `_en`); null on an older server.
+  final String? nationalityLabelAr, nationalityLabelEn;
+
+  /// The nationality in the app language: its name (the other language's when this one is missing), else the code.
+  String? get nationalityText {
+    if (nationality == null) return null;
+    final ar = nationalityLabelAr, en = nationalityLabelEn;
+    final pick = AppConfig.lang == 'ar' ? (ar ?? en) : (en ?? ar);
+    return pick ?? nationality;
+  }
   final DateTime? joinedAt, birthDate;
   final StudentAcademic? academic;
   final FileIntake? intake;

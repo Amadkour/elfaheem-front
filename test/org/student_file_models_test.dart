@@ -2,6 +2,7 @@
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_roadmap.dart';
 import 'package:flutter_education_app/features/org/students/student_file_models.dart';
+import 'package:flutter_education_app/features/org/students/students_models.dart' show enrolLabel;
 import 'package:flutter_test/flutter_test.dart';
 
 /// The §4.2 example payload (a full right set unless [can] replaces it).
@@ -143,6 +144,55 @@ void main() {
       expect(r.title, 'Graduation');
       expect(r.id, 'graduated');
       expect(r.caption, isNull);
+    });
+  });
+
+  test('the nationality reads its name in the app language, else the code', () {
+    final j = sampleFileJson();
+    final s = Map<String, dynamic>.from(j['student'] as Map)
+      ..['nationality'] = 'EG'
+      ..['nationality_label_ar'] = 'مصر'
+      ..['nationality_label_en'] = 'Egypt';
+    AppConfig.lang = 'ar';
+    expect(StudentFile.fromJson({...j, 'student': s}).nationalityText, 'مصر');
+    AppConfig.lang = 'en';
+    expect(StudentFile.fromJson({...j, 'student': s}).nationalityText, 'Egypt');
+    s.remove('nationality_label_ar');
+    s.remove('nationality_label_en');
+    expect(StudentFile.fromJson({...j, 'student': s}).nationalityText, 'EG');
+  });
+
+  group('journey by enrolment', () {
+    List<JourneyNode> nodes() => [
+          for (final e in const [('applied', 'done'), ('year1', 'current'), ('graduated', 'todo')])
+            JourneyNode.fromJson({'key': e.$1, 'label_ar': e.$1, 'label_en': e.$1, 'state': e.$2}),
+        ];
+
+    test('enrolled: the rail picks its own next stop', () {
+      final j = studentJourney(nodes(), 'enrolled');
+      expect(j.next, isNull);
+      expect(j.nodes[1].state, AppRoadmapState.current);
+    });
+
+    test('a student who left: no "in progress", no next, the stop reads the final state', () {
+      final j = studentJourney(nodes(), 'withdrawn');
+      expect(j.next, -1);
+      expect(j.nodes.where((n) => n.state == AppRoadmapState.current), isEmpty);
+      expect(j.nodes[1].state, AppRoadmapState.warn);
+      expect(j.nodes[1].caption, enrolLabel('withdrawn'));
+    });
+
+    test('a graduate: the stop is done', () {
+      final j = studentJourney(nodes(), 'graduated');
+      expect(j.next, -1);
+      expect(j.nodes[1].state, AppRoadmapState.done);
+    });
+
+    test('paused: the stop stays, reads the pause, no next', () {
+      final j = studentJourney(nodes(), 'suspended');
+      expect(j.next, -1);
+      expect(j.nodes[1].state, AppRoadmapState.current);
+      expect(j.nodes[1].caption, enrolLabel('suspended'));
     });
   });
 

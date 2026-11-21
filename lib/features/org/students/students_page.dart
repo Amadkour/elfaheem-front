@@ -23,7 +23,7 @@ import 'package:provider/provider.dart';
 import '../../admin/admin_common.dart' show t;
 import '../onboarding/onboarding_entry.dart' show onboardingEntryOn, openOnboardingImport;
 import '../onboarding/onboarding_page.dart' show OnboardingPage;
-import '../org_page_header.dart' show OrgPushedPage;
+import '../org_page_header.dart' show OrgPageRefresh, OrgPushedPage;
 import '../org_page_kit.dart' show OrgFilterButton, OrgMenuItem, OrgPageBody, OrgPrimaryAction, OrgSearchField, orgPageWideFrom;
 import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgErrorText;
@@ -60,11 +60,30 @@ class _OrgStudentsPageState extends State<OrgStudentsPage> {
   bool _loading = true;
   int _seq = 0;
 
+  /// The page's refresh scope (the hub's, or OrgPushedPage's own below this state): the header's Refresh runs
+  /// [_load] and its "Updated …" line restarts after each load.
+  OrgPageRefresh? _refresh;
+
   @override
   void initState() {
     super.initState();
     _load();
   }
+
+  @override
+  void dispose() {
+    _refresh?.unregister(_load);
+    super.dispose();
+  }
+
+  Widget _withRefresh(Widget child) => Builder(builder: (ctx) {
+        final r = OrgPageRefresh.maybeOf(ctx, listen: false);
+        if (r != _refresh) {
+          _refresh?.unregister(_load);
+          _refresh = r?..attach(_load);
+        }
+        return child;
+      });
 
   Future<void> _load() async {
     final seq = ++_seq;
@@ -82,6 +101,7 @@ class _OrgStudentsPageState extends State<OrgStudentsPage> {
         _error = orgErrorText(r.error!);
       }
     });
+    if (r.ok) _refresh?.markUpdated();
   }
 
   void _set(StudentsQuery q) {
@@ -125,8 +145,11 @@ class _OrgStudentsPageState extends State<OrgStudentsPage> {
     if (mounted) _load();
   }
 
+  /// The missing-data sheet; the list (its badge count) reloads once it closes if an item was completed.
   Future<void> _missing(StudentRow row) async {
-    await showMissingDataSheet(context, widget.orgId, row.id, name: row.name, api: _api);
+    var changed = false;
+    await showMissingDataSheet(context, widget.orgId, row.id, name: row.name, api: _api, onChanged: () => changed = true);
+    if (changed && mounted) _load();
   }
 
   @override
@@ -152,8 +175,8 @@ class _OrgStudentsPageState extends State<OrgStudentsPage> {
       onImport: can.import ? _import : null,
       onSettings: can.settings ? () => showStudentSettingsChooser(context, widget.orgId) : null,
     );
-    if (!widget.pushed) return view;
-    return OrgPushedPage(title: t('الطلاب', 'Students'), helpPageId: 'org.students', child: view);
+    if (!widget.pushed) return _withRefresh(view);
+    return OrgPushedPage(title: t('الطلاب', 'Students'), helpPageId: 'org.students', child: _withRefresh(view));
   }
 }
 

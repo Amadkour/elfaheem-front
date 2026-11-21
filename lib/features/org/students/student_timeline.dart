@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
+import 'package:flutter_education_app/design/app_bidi.dart' show bidiIsolate;
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
@@ -378,7 +379,8 @@ class StudentTimelineRow extends StatelessWidget {
                     if (item.undone) AppStatusBadge(label: t('تم التراجع عنه', 'Undone'), tone: AppTone.neutral, dense: true),
                     if (item.decisionNo != null)
                       AppStatusBadge(
-                          label: t('قرار رقم ${item.decisionNo}', 'Decision no. ${item.decisionNo}'),
+                          // the number keeps its own order ("12/2026", never scrambled by the Arabic around it)
+                          label: t('قرار رقم ${bidiIsolate(item.decisionNo!)}', 'Decision no. ${bidiIsolate(item.decisionNo!)}'),
                           icon: Icons.gavel_rounded,
                           tone: AppTone.info,
                           dense: true),
@@ -400,7 +402,8 @@ class StudentTimelineRow extends StatelessWidget {
                 ],
                 const SizedBox(height: AppSpace.xxs),
                 Text(
-                  [timelineKindText(item.kind), item.actor, ?when].join(' · '),
+                  // each run isolated: a Latin name next to the time must not pull "م" / "ص" away from its clock
+                  [timelineKindText(item.kind), if (item.actor.isNotEmpty) bidiIsolate(item.actor), if (when != null) bidiIsolate(when)].join(' · '),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: meta,
@@ -437,11 +440,11 @@ String undoneText(UndoneBy u) {
   final at = u.at == null ? null : AppTime.dateTime(u.at!.toUtc());
   final String? head;
   if (u.who != null && at != null) {
-    head = t('تراجع عنه ${u.who} في $at', 'Undone by ${u.who} on $at');
+    head = t('تراجع عنه ${bidiIsolate(u.who!)} في ${bidiIsolate(at)}', 'Undone by ${bidiIsolate(u.who!)} on ${bidiIsolate(at)}');
   } else if (u.who != null) {
-    head = t('تراجع عنه ${u.who}', 'Undone by ${u.who}');
+    head = t('تراجع عنه ${bidiIsolate(u.who!)}', 'Undone by ${bidiIsolate(u.who!)}');
   } else if (at != null) {
-    head = t('تم التراجع عنه في $at', 'Undone on $at');
+    head = t('تم التراجع عنه في ${bidiIsolate(at)}', 'Undone on ${bidiIsolate(at)}');
   } else {
     head = null;
   }

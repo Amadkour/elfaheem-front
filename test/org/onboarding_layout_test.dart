@@ -121,6 +121,40 @@ void main() {
     await expectNoLayoutErrors(tester, () => OnbCaseList(items: [item, item], loading: false, total: 5, onOpen: (_) {}, selectedId: 41));
   });
 
+  test('figures in a server message read left to right', () {
+    final s = onbBidiText('اكتبه بالشكل 2005-03-15');
+    expect(s, contains(String.fromCharCode(0x2066)));
+    expect(s.replaceAll(String.fromCharCode(0x2066), '').replaceAll(String.fromCharCode(0x2069), ''), 'اكتبه بالشكل 2005-03-15');
+  });
+
+  testWidgets('fix everywhere: a choice field picks, and the dialog closes itself (not the page)', (tester) async {
+    String? got;
+    await tester.pumpWidget(layoutHost(Builder(
+      builder: (c) => TextButton(
+        onPressed: () async => got = await showOnbFixEverywhereDialog(c,
+            fix: const OnbRepeatedFix(field: 'program', value: 'هندسة', rows: [2, 3, 4]),
+            choices: const {'Engineering': 'Engineering', 'Medicine': 'Medicine'}),
+        child: const Text('go'),
+      ),
+    )));
+    Future<void> settle() => tester.pump(const Duration(milliseconds: 400)).then((_) => tester.pump(const Duration(milliseconds: 400)));
+    for (var round = 0; round < 2; round++) {
+      await tester.tap(find.text('go'));
+      await settle();
+      expect(find.byKey(const ValueKey('onb.import.fixall.pick')), findsOneWidget);
+      expect(find.byKey(const ValueKey('onb.import.fixall.value')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('onb.import.fixall.pick')));
+      await settle();
+      await tester.tap(find.text('Medicine').last);
+      await settle();
+      await tester.tap(find.byKey(const ValueKey('onb.import.fixall.save')));
+      await settle();
+      expect(got, 'Medicine');
+      expect(find.text('go'), findsOneWidget);
+      got = null;
+    }
+  });
+
   testWidgets('the Add dialog: one person, Excel and invite', (tester) async {
     await expectNoLayoutErrors(
       tester,

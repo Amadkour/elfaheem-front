@@ -141,7 +141,7 @@ class StudentOverviewTab extends StatelessWidget {
       if (file.phone != null) (Icons.phone_outlined, t('الهاتف', 'Phone'), file.phone!, true),
       if (file.birthDate != null) (Icons.cake_outlined, t('تاريخ الميلاد', 'Date of birth'), AppTime.wall(file.birthDate!), false),
       if (file.gender != null) (Icons.wc_rounded, t('النوع', 'Gender'), genderText(file.gender!), false),
-      if (file.nationality != null) (Icons.flag_outlined, t('الجنسية', 'Nationality'), file.nationality!, false),
+      if (file.nationality != null) (Icons.flag_outlined, t('الجنسية', 'Nationality'), file.nationalityText!, false),
       if (r.nidLast4 != null) (Icons.fingerprint_rounded, t('آخر 4 أرقام من الهوية', 'ID, last 4 digits'), '•••• ${r.nidLast4}', true),
     ];
     final open = file.open;
