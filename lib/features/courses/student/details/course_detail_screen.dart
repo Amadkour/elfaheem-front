@@ -15,6 +15,8 @@ library;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/design/app_states.dart' show AppNeedsConnection;
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart' show offlineBlocked;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
@@ -70,6 +72,7 @@ Future<void> _openEnrollment(BuildContext context, CourseModel course) async {
       reasonKey: 'guest_reason_enroll', intent: PendingIntent(kind: PendingIntentKind.bookCourse, id: course.id))) {
     return;
   }
+  if (offlineBlocked()) return; // enrolment and checkout are never queued on the device (D-1351)
   await Navigator.of(context).push(MaterialPageRoute(builder: (_) => EnrollmentScreen(course: course)));
   if (context.mounted) {
     await context.read<CourseDetailProvider>().refresh();
@@ -163,6 +166,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       width: AppWidth.wide,
       child: loading
           ? const CourseDetailSkeleton()
+          : provider.offline && provider.sessions.isEmpty
+          // the course could not be fetched: offline (QA_PHASE7 W-4)
+          ? AppNeedsConnection(onRetry: () => provider.init(provider.course))
           : block != null
           // 404 (draft / unknown) or 403 course_locked: a calm page instead of an empty course
           ? CourseBlockedView(

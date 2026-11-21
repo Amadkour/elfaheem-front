@@ -33,6 +33,17 @@ bool isTransportFailure(Object e) {
   return false;
 }
 
+/// No answer at all (no response, a timeout, a refused connection, a gateway's 502 / 504), or the app is offline and
+/// the call failed: the page shows "needs a connection" (AppNeedsConnection), not an error (QA_PHASE7 W-4).
+bool isConnectionFailure(Object e) {
+  if (e is TimeoutException) return true;
+  if (e is ApiException) {
+    if (e.statusCode == 0) return e.code == null && (e.type == ApiErrorType.network || e.type == ApiErrorType.timeout || !offlineReadsOnline().value);
+    if (e.statusCode == 502 || e.statusCode == 504) return true;
+  }
+  return false;
+}
+
 /// [fetch] when online, keeping its answer under [key]; the last kept answer when offline or when [fetch] fails on
 /// the connection. Rethrows when nothing was ever kept.
 Future<Object?> readThrough(String key, Future<Object?> Function() fetch, {ReadCache? cache}) async {

@@ -28,6 +28,8 @@ import 'app_focus_mode.dart';
 import 'app_responsive.dart';
 import 'app_shell_nav.dart' show ShellChrome;
 import 'shell_pins.dart' show ShellPinButton;
+import 'sync_status_chip.dart' show SyncStatusChip;
+import '../features/guest/guest_state.dart' show GuestState;
 import 'app_tokens.dart';
 
 /// Drives a header's collapse from the enclosing Scaffold's scrolling: [builder] gets 0 (open) … 1 (compact).
@@ -386,6 +388,9 @@ class _Tools extends StatelessWidget {
       ],
       // the app-wide tools (calendar, messages, assistant, bell) draw as paper chips on the canvas, like the rest
       if (global != null) global(context),
+      // no app-wide tools here (a phone, a page above the shell): the offline / waiting-writes chip still shows on
+      // every header while it has something to say (QA_PHASE7 W-7); it draws nothing while online and quiet
+      if (global == null && !GuestState.active) const SyncStatusChip(),
       // pins this page to the dashboard's tabs (only on a page opened inside a tab, D-1170)
       ShellPinButton(title: title),
       const AppFocusToggle(),

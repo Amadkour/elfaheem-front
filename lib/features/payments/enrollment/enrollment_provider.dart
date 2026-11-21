@@ -58,6 +58,13 @@ class EnrollmentProvider extends PaymentFlowProvider {
 
   @override
   String get currencySymbol => _priceCurrency == null ? super.currencySymbol : currencySymbolFor(_priceCurrency);
+
+  /// The ISO code the card / Apple Pay form charges in (QA_PHASE7 W-8): the course's own currency, else the
+  /// gateway's (the country's); never the SDK's SAR default under an EGP total.
+  String get _chargeCurrency {
+    final c = (_priceCurrency ?? gateway?.currency ?? 'EGP').trim().toUpperCase();
+    return c.isEmpty ? 'EGP' : c;
+  }
   String _plan = PlanKeys.yearly;
   int? _pendingPaymentId;
   String? _pendingTransactionId;
@@ -490,6 +497,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
       publishableApiKey: publishableKey,
       amount: fees.amountMinor,
       description: '${'course'.tr} : ${ (AppConfig.lang=='ar'? course.titleAr:course.titleEn)??''}',
+      currency: _chargeCurrency,
       metadata: {'course_id': course.id.toString(), 'plan': _plan},
       creditCard: CreditCardConfig(saveCard: false, manual: false),
     );
@@ -580,6 +588,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
       publishableApiKey: key,
       amount: fees.amountMinor,
       description: '${'course'.tr} : ${(AppConfig.lang == 'ar' ? course.titleAr : course.titleEn) ?? ''}',
+      currency: _chargeCurrency,
       metadata: {'course_id': course.id.toString(), 'plan': _plan},
       applePay: ApplePayConfig(merchantId: merchantId, label: _kWalletAppName, manual: false, saveCard: false),
     );

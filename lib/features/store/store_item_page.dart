@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/routing/pending_intent.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/guest/guest_state.dart';
@@ -70,6 +71,7 @@ class _StoreItemPageState extends State<StoreItemPage> {
   StoreItem? _item;
   bool _loading = true;
   String? _error;
+  bool _offline = false;
   bool _resumed = false;
 
   @override
@@ -94,6 +96,7 @@ class _StoreItemPageState extends State<StoreItemPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _offline = false;
     });
     try {
       final it = await _api.item(widget.itemId);
@@ -114,6 +117,7 @@ class _StoreItemPageState extends State<StoreItemPage> {
       if (!mounted) return;
       setState(() {
         _error = storeErrorText(e);
+        _offline = isConnectionFailure(e);
         _loading = false;
       });
     }
@@ -121,7 +125,7 @@ class _StoreItemPageState extends State<StoreItemPage> {
 
   Future<void> _buy() async {
     final it = _item;
-    if (it == null) return;
+    if (it == null || offlineBlocked()) return; // money is never queued on the device (D-1351)
     final paid = await showStoreCheckout(context, [it], api: _api);
     if (!paid || !mounted) return;
     _load();
@@ -172,7 +176,9 @@ class _StoreItemPageState extends State<StoreItemPage> {
         child: it == null
             ? (_loading
                 ? const AppListSkeleton(items: 4)
-                : AppErrorState(message: _error, onRetry: _load))
+                : _offline
+                    ? AppNeedsConnection(onRetry: _load)
+                    : AppErrorState(message: _error, onRetry: _load))
             : StoreItemView(
                 item: it,
                 inCart: StoreCart.instance.contains(it.id),

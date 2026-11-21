@@ -529,12 +529,18 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
       if (!mounted) return;
       context.read<ThemeConfigProvider>().load();
 
-      // When the network link returns, AppConnectivity asks the server before it says "online".
+      // When the network link returns, and while the server does not answer (5 s doubling to 60 s, on resume too:
+      // QA_PHASE7 W-2), AppConnectivity asks the server before it says "online". The probe is the public theme
+      // route: an answer also clears the offline banner. Never booked while the server answers.
+      final theme = context.read<ThemeConfigProvider>();
       AppConnectivity.instance.serverProbe = () async {
-        final t = context.read<ThemeConfigProvider>();
-        await t.reload();
-        return !t.serverUnreachable;
+        await theme.reload();
+        return !theme.serverUnreachable;
       };
+      // Another request's answer brought the app back online first: the banner follows (one theme reload).
+      AppConnectivity.instance.online.addListener(() {
+        if (AppConnectivity.instance.isOnline && theme.serverUnreachable && !theme.isRetrying) theme.reload();
+      });
 
       // ── Version check – blocks launch if a force-update is required ──────────
       try {
@@ -619,7 +625,10 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
-    if (s == AppLifecycleState.resumed) SyncEngine.instance.onResume(); // the offline outbox (D-1351); no request when empty
+    if (s == AppLifecycleState.resumed) {
+      AppConnectivity.instance.onResume(); // an unreachable server is asked again at once (W-2); nothing when it answers
+      SyncEngine.instance.onResume(); // the offline outbox (D-1351); no request when empty
+    }
     if (s == AppLifecycleState.resumed &&
         context.read<MyAuthProvider>().isAuthenticated &&
         !ViewAsState.active) {

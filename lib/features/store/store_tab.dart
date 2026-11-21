@@ -10,6 +10,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
@@ -64,6 +65,7 @@ class _StoreTabState extends State<StoreTab> {
   bool _hasMore = false;
   bool _loading = true, _loadingMore = false;
   String? _error;
+  bool _offline = false;
   int _seq = 0;
 
   @override
@@ -139,6 +141,7 @@ class _StoreTabState extends State<StoreTab> {
       } else {
         _loading = true;
         _error = null;
+        _offline = false;
       }
     });
     try {
@@ -158,6 +161,7 @@ class _StoreTabState extends State<StoreTab> {
           showAppNotice(storeErrorText(e), error: true);
         } else {
           _error = storeErrorText(e);
+          _offline = isConnectionFailure(e);
         }
       });
     }
@@ -256,6 +260,7 @@ class _StoreTabState extends State<StoreTab> {
           loadingMore: _loadingMore,
           hasMore: _hasMore,
           error: _error,
+          offline: _offline,
           cartIds: {for (final e in StoreCart.instance.value) e.id},
           onOpen: _open,
           onRetry: _load,
@@ -285,6 +290,7 @@ class StoreBrowseView extends StatelessWidget {
     this.loadingMore = false,
     this.hasMore = false,
     this.error,
+    this.offline = false,
     this.cartIds = const {},
     this.onOpen,
     this.onRetry,
@@ -304,6 +310,9 @@ class StoreBrowseView extends StatelessWidget {
   final int? total;
   final bool loading, loadingMore, hasMore;
   final String? error;
+
+  /// [error] is the connection's (QA_PHASE7 W-4): with nothing on screen, "needs a connection" instead of the error.
+  final bool offline;
   final Set<int> cartIds;
   final ValueChanged<StoreItem>? onOpen;
   final VoidCallback? onRetry, onLoadMore;
@@ -356,6 +365,8 @@ class StoreBrowseView extends StatelessWidget {
     final Widget body;
     if (loading && items.isEmpty) {
       body = const AppListSkeleton(items: 4, padding: EdgeInsets.zero);
+    } else if (error != null && offline && items.isEmpty) {
+      body = AppNeedsConnection(onRetry: onRetry);
     } else if (error != null) {
       body = AppErrorState(message: error, onRetry: onRetry);
     } else if (items.isEmpty) {

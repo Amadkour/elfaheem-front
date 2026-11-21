@@ -43,6 +43,7 @@ class _PointsWalletPageState extends State<PointsWalletPage> {
   PointsWallet? _wallet;
   LivePlan? _plan;
   String? _error;
+  bool _offline = false;
 
   @override
   void initState() {
@@ -54,14 +55,14 @@ class _PointsWalletPageState extends State<PointsWalletPage> {
   }
 
   Future<void> _load() async {
-    setState(() => _error = null);
+    setState(() { _error = null; _offline = false; });
     final plan = widget.api.livePlan().then<LivePlan?>((p) => p, onError: (_) => null); // a plan error never hides the wallet
     try {
       final w = await widget.api.wallet();
       final p = await plan;
       if (mounted) setState(() { _wallet = w; _plan = p; });
     } catch (e) {
-      if (mounted) setState(() => _error = pointsErrorText(e));
+      if (mounted) setState(() { _error = pointsErrorText(e); _offline = isConnectionFailure(e); });
     }
   }
 
@@ -101,6 +102,7 @@ class _PointsWalletPageState extends State<PointsWalletPage> {
             plan: _plan,
             nowUtc: DateTime.now().toUtc(),
             error: _error,
+            offline: _offline,
             onRetry: _load,
             onBuy: _buy,
             onOpenPlan: _openPlan,
@@ -117,6 +119,7 @@ class PointsWalletView extends StatelessWidget {
     required this.nowUtc,
     this.plan,
     this.error,
+    this.offline = false,
     this.onRetry,
     this.onBuy,
     this.onOpenPlan,
@@ -126,6 +129,9 @@ class PointsWalletView extends StatelessWidget {
   final LivePlan? plan;
   final DateTime nowUtc;
   final String? error;
+
+  /// [error] is the connection's (QA_PHASE7 W-4): with no wallet yet, "needs a connection" instead of the error.
+  final bool offline;
   final VoidCallback? onRetry, onBuy, onOpenPlan;
 
   @override
@@ -145,6 +151,8 @@ class PointsWalletView extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               if (w == null && error == null)
                 const AppListSkeleton(items: 5, withAvatar: false)
+              else if (w == null && offline)
+                AppNeedsConnection(onRetry: onRetry)
               else if (w == null)
                 AppBanner(
                     icon: Icons.error_outline_rounded,

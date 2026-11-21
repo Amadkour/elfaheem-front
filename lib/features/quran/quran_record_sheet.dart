@@ -145,6 +145,7 @@ class _QuranRecordFormState extends State<QuranRecordForm> {
   QuranStudentRef? _student;
   List<QuranStudentRef> _students = const [];
   bool _loadingStudents = false;
+  bool _studentsFailed = false;
 
   bool _busy = false;
   String? _error;
@@ -173,6 +174,7 @@ class _QuranRecordFormState extends State<QuranRecordForm> {
       _student = null;
       _students = const [];
       _loadingStudents = id != null;
+      _studentsFailed = false;
     });
     if (id == null || widget.loadStudents == null) return;
     try {
@@ -186,6 +188,7 @@ class _QuranRecordFormState extends State<QuranRecordForm> {
       if (!mounted) return;
       setState(() {
         _loadingStudents = false;
+        _studentsFailed = true;
         _error = quranErrorText(e);
       });
     }
@@ -273,7 +276,9 @@ class _QuranRecordFormState extends State<QuranRecordForm> {
           hint: Text(
               _loadingStudents
                   ? t('جارٍ التحميل…', 'Loading…')
-                  : _courseId != null && _students.isEmpty
+                  : _studentsFailed
+                      ? t('تعذّر تحميل الطلاب', 'The students could not be loaded')
+                      : _courseId != null && _students.isEmpty
                       ? t('لا طلاب في هذا البرنامج', 'No students in this program')
                       : t('اختر الطالب', 'Choose the student'),
               overflow: TextOverflow.ellipsis),
@@ -282,6 +287,19 @@ class _QuranRecordFormState extends State<QuranRecordForm> {
           ],
           onChanged: (id) => setState(() => _student = _students.where((s) => s.id == id).firstOrNull),
         ),
+        if (_studentsFailed)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: AppButton.ghost(
+              key: const ValueKey('quran.record.students.retry'),
+              label: t('أعد المحاولة', 'Try again'),
+              size: AppButtonSize.sm,
+              onPressed: () {
+                setState(() => _error = null);
+                _pickCourse(_courseId);
+              },
+            ),
+          ),
         const SizedBox(height: AppSpace.sm),
       ],
       AppDropdown<int>(

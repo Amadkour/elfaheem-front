@@ -17,6 +17,7 @@ import 'package:path/path.dart' as p;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/token_storage.dart';
 import 'package:flutter_education_app/core/cert_pin.dart';
+import 'package:flutter_education_app/core/offline/app_connectivity.dart' show ReachabilityInterceptor;
 import 'package:flutter_education_app/core/attention/decision_refresh.dart';
 import 'package:flutter_education_app/main.dart';
 import 'package:flutter/material.dart' show MaterialPageRoute, RouteSettings;
@@ -36,8 +37,13 @@ import '../utils/widget/view_as_state.dart';
 class ApiMessages {
   ApiMessages._();
 
-  static const network = 'No internet connection. Please check your network and try again.';
-  static const timeout = 'The request took too long. Please try again.';
+  // the two connection texts follow the app language (QA_PHASE7 W-6): they are read when the error is made
+  static String get network => AppConfig.lang == 'ar'
+      ? 'لا يوجد اتصال بالإنترنت. تحقّق من الشبكة ثم حاول مرة أخرى.'
+      : 'No internet connection. Please check your network and try again.';
+  static String get timeout => AppConfig.lang == 'ar'
+      ? 'استغرق الطلب وقتاً أطول من اللازم. حاول مرة أخرى.'
+      : 'The request took too long. Please try again.';
   static const cancelled = 'The request was cancelled.';
   static const badCertificate = 'Could not establish a secure connection.';
   static const badRequest = 'The request could not be processed.';
@@ -295,7 +301,7 @@ class ApiException implements Exception {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return const ApiException(
+        return ApiException(
           statusCode: 0,
           type: ApiErrorType.timeout,
           message: ApiMessages.timeout,
@@ -316,7 +322,7 @@ class ApiException implements Exception {
         );
 
       case DioExceptionType.connectionError:
-        return const ApiException(
+        return ApiException(
           statusCode: 0,
           type: ApiErrorType.network,
           message: ApiMessages.network,
@@ -327,7 +333,7 @@ class ApiException implements Exception {
 
       case DioExceptionType.unknown:
         if (nested is SocketException) {
-          return const ApiException(
+          return ApiException(
             statusCode: 0,
             type: ApiErrorType.network,
             message: ApiMessages.network,
@@ -344,7 +350,7 @@ class ApiException implements Exception {
         }
         return ApiException.fromResponse(e.response);
       case DioExceptionType.transformTimeout:
-        return const ApiException(
+        return ApiException(
           statusCode: 0,
           type: ApiErrorType.network,
           message: ApiMessages.network,
@@ -1099,6 +1105,10 @@ class ApiClient {
     // were never detected, so the "switch device" dialog never opened.)
     // Auth headers (Authorization, X-Device-*) are not part of the encrypted
     // body, so attaching them after encryption is fine.
+    // Reachability first (QA_PHASE7 W-1): it sees every request's raw outcome, so a request that got no answer marks
+    // the server unreachable (the app goes offline) and any answer marks it reachable again (app_connectivity.dart).
+    d.interceptors.add(ReachabilityInterceptor());
+
     d.interceptors.add(_EncryptionInterceptor(bare: () => _bareDio, owner: () => d));
 
     // Logger next: it sees every request, response and error (including the

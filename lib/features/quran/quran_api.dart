@@ -10,7 +10,8 @@
 //   GET  /api/v1/parent/children/{id}/quran/progress         a linked child (parent)
 //   POST /api/v1/quran/progress                              one entry, idempotent by `client_id`
 //   GET  /api/v1/module-settings/quran                       self_log, gender_matching, …
-//   GET  /api/v1/courses/{id}/enrolled-students              the record sheet's student picker (the course's staff)
+//   GET  /api/v1/courses/{id}/enrolled-students              the record sheet's student picker (the course's staff;
+//                                                            kept offline as id + name + picture only)
 //
 // Booking a teacher = the course page and its existing checkout (a quran program IS a course); the two booking
 // refusals (403 `quran_gender_rule`, `quran_teacher_unverified`) are in apiErrorText, so the checkout shows them too.
@@ -166,8 +167,10 @@ class QuranApi {
     return (entry: QuranEntry.fromJson(m['entry']), duplicate: m['duplicate'] == true);
   }
 
+  /// The record sheet's picker. Kept in ReadCache (QA_PHASE7 W-3), so a teacher records offline too: ONLY the id, the
+  /// name and the picture are kept — never the rest of the row (identity numbers, phones, e-mails).
   Future<List<QuranStudentRef>> courseStudents(int courseId) async {
-    final r = await _api.get('/api/v1/courses/$courseId/enrolled-students');
+    final r = await readThrough('quran.students.$courseId', () async => quranStudentRows(await _api.get('/api/v1/courses/$courseId/enrolled-students')));
     if (r is! List) return const [];
     return [
       for (final e in r)
@@ -191,6 +194,14 @@ class QuranApi {
     }
   }
 }
+
+/// The enrolled-students rows cut to what the picker shows (`student_id`, `name`, `image_url`): what ReadCache keeps.
+List<Map<String, Object?>> quranStudentRows(Object? r) => [
+      if (r is List)
+        for (final e in r)
+          if (e is Map && e['student_id'] is num)
+            {'student_id': (e['student_id'] as num).toInt(), 'name': '${e['name'] ?? ''}', if (e['image_url'] is String) 'image_url': e['image_url']},
+    ];
 
 /// Entries the network lost, per user, sent again with the same `client_id`.
 class QuranOutbox {

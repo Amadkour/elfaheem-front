@@ -8,7 +8,8 @@ library;
 import 'package:flutter_education_app/design/app_badges.dart' show AppStatusBadge, AppTone, appInkOn, appTintOn;
 import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppNeedsConnection;
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart' show offlineReadsOnline;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppPressScale;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/courses/course_list_card.dart' show CourseCoverArt, coursePrimaryInk;
@@ -56,9 +57,17 @@ class _EnrollView extends StatelessWidget {
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
 
-    return EnrollScaffold(
+    return ValueListenableBuilder<bool>(
+      valueListenable: offlineReadsOnline(),
+      builder: (context, online, _) => EnrollScaffold(
       child: enroll.isLoading
           ? const AppListSkeleton(items: 4)
+          // the checkout could not load its methods and the app is offline (QA_PHASE7 W-4): say so, never skeletons
+          : !online && enroll.gateway == null && enroll.step == EnrollStep.method
+          ? Column(children: [
+              enrollAppBar('complete_payment_title'.tr),
+              Expanded(child: AppNeedsConnection(onRetry: enroll.prepareMethodStep)),
+            ])
           : switch (enroll.step) {
               EnrollStep.method => const _MethodStep(key: ValueKey('method')),
               EnrollStep.verifying => const PaymentVerifyingView(
@@ -116,6 +125,7 @@ class _EnrollView extends StatelessWidget {
                 onSecondary: () => popToHome(context),
               ),
             },
+      ),
     );
   }
 }

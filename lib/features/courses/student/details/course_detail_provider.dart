@@ -2,6 +2,7 @@
 library;
 
 
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart' show isConnectionFailure;
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -86,6 +87,10 @@ class CourseDetailProvider extends BaseProvider {
   /// Null while the course is reachable.
   CourseBlock? block;
 
+  /// The last course fetch got no answer (QA_PHASE7 W-4): the page says "needs a connection" instead of an empty
+  /// course and an English error.
+  bool offline = false;
+
   /// Remembers a 404 / 403 course_locked on the way through [run] (which turns every ApiException into null).
   Future<dynamic> _guarded(Future<dynamic> Function() call) async {
     try {
@@ -93,12 +98,14 @@ class CourseDetailProvider extends BaseProvider {
     } on ApiException catch (e) {
       final b = courseBlockOf(e);
       if (b != null) block = b;
+      offline = isConnectionFailure(e);
       rethrow;
     }
   }
 
   Future<void> fetchFull(String courseId) async {
     block = null;
+    offline = false;
     final r = await run(
           () => _guarded(() => _api.get('/api/v1/courses/$courseId', auth: true)),
     );
@@ -107,6 +114,11 @@ class CourseDetailProvider extends BaseProvider {
       final reel = (r['reel_url'] as String?)?.trim();
       reelUrl = (reel == null || reel.isEmpty) ? null : reel;
       pageState = CoursePageState.fromJson(r);
+    }
+    if (r is Map<String, dynamic>) offline = false;
+    if (offline) {
+      notifyListeners(); // no session list behind it: the same lost connection would only say so twice
+      return;
     }
     if (block == CourseBlock.unavailable) {
       sessions = [];
