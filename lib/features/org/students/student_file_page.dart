@@ -4,7 +4,11 @@
 //   StudentFileView(…)                 plain values: the header card, the "opening is recorded" line, the journey
 //                                       rail, the tab strip and the chosen tab's body (from [bodyFor])
 //   StudentFileHeader(file:)           photo, name ar / en, student number, programme · level, the one chip, flags,
-//                                       the missing-data badge
+//                                       the missing-data badge, and "Change status" when `can.status_change` (phase 2)
+//
+// Phase 2: "Change status" opens showStudentStatusSheet; a status row of the timeline with `can_undo` offers "Undo"
+// (confirmUndoStatus). Both reload the file and the timeline when they change something. Who undid an undone change
+// comes from GET …/status/events (studentUndoneFetch), only when the timeline shows one.
 //
 // Tabs are lazy: a tab's body is built when it is first chosen, and the timeline keeps its pages when the tab is
 // left and opened again. A tab the caller has no right to is not in the strip (studentFileTabs). Open it through
@@ -17,7 +21,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:provider/provider.dart';
 
-import '../../admin/admin_common.dart' show t;
+import '../../admin/admin_common.dart' show t, asMapList;
 import '../advising/adv_student_page.dart' show AdvStudentPage;
 import '../governance/gov_items_page.dart' show GovItemsPage;
 import '../onboarding/onboarding_review.dart' show OnbReviewPage;
@@ -28,6 +32,8 @@ import '../org_services_pages.dart' show OrgComplaintsPage;
 import '../org_v3.dart' show OrgCall, orgErrorText;
 import 'student_file_models.dart';
 import 'student_file_tabs.dart';
+import 'student_status_models.dart' show StatusEvent;
+import 'student_status_sheet.dart' show confirmUndoStatus, showStudentStatusSheet;
 import 'student_timeline.dart';
 import 'students_api.dart';
 import 'students_missing_sheet.dart' show showMissingDataSheet;
@@ -50,6 +56,24 @@ StudentTimelineFetch studentTimelineFetch(StudentsApi api, int uid) => ({List<St
       final OrgCall r = await api.timeline(uid, kinds: kinds, before: before, limit: limit);
       if (!r.ok) throw r.error!;
       return TimelinePage.fromJson(r.map);
+    };
+
+/// Who undid which status change: the undo events (`reverts_id`) of the newest pages of GET …/status/events.
+UndoneByFetch studentUndoneFetch(StudentsApi api, int uid, {int maxPages = 3}) => () async {
+      final out = <String, UndoneBy>{};
+      for (var page = 1; page <= maxPages; page++) {
+        final OrgCall r = await api.statusEvents(uid, page: page);
+        if (!r.ok) break;
+        for (final j in asMapList(r.map['items'])) {
+          final e = StatusEvent.fromJson(j);
+          final rid = e.revertsId;
+          if (rid == null) continue;
+          final who = e.actor?.name.trim();
+          out['status:$rid'] = UndoneBy(who: who == null || who.isEmpty ? null : who, at: e.createdAt, reason: e.reason);
+        }
+        if (r.map['has_more'] != true) break;
+      }
+      return out;
     };
 
 class OrgStudentFilePage extends StatelessWidget {
@@ -89,8 +113,10 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
   bool _loading = true;
   StudentFileTab _tab = StudentFileTab.overview;
   bool _showNotice = false;
-  late final StudentTimelineController _timeline =
-      StudentTimelineController(studentTimelineFetch(widget.api, widget.uid));
+  late final StudentTimelineController _timeline = StudentTimelineController(
+    studentTimelineFetch(widget.api, widget.uid),
+    undoneFetch: studentUndoneFetch(widget.api, widget.uid),
+  );
 
   @override
   void initState() {
@@ -129,6 +155,20 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
 
   bool get _missingOn => !AppConfig.disableList.contains(kStudentsMissingKey);
 
+  /// "Change status": the sheet saves or sends for approval and says so itself; the file reloads after a change.
+  Future<void> _changeStatus() async {
+    final r = await showStudentStatusSheet(context, widget.orgId, widget.uid, name: _file?.displayName, api: widget.api);
+    if (r != null && mounted) _load();
+  }
+
+  /// "Undo this change" on a timeline row (a new compensating event on the server).
+  Future<void> _undo(TimelineItem item) async {
+    final eid = statusEventIdOf(item);
+    if (eid == null) return;
+    final r = await confirmUndoStatus(context, widget.orgId, eid, title: item.title, api: widget.api);
+    if (r != null && mounted) _load();
+  }
+
   void _openMissing() => showMissingDataSheet(context, widget.orgId, widget.uid, name: _file?.displayName, api: widget.api);
 
   Widget _body(BuildContext context, StudentFileTab tab) {
@@ -143,7 +183,7 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
           onOpenTab: (t) => setState(() => _tab = t),
         );
       case StudentFileTab.timeline:
-        return StudentTimeline(controller: _timeline);
+        return StudentTimeline(controller: _timeline, onUndo: f.can.statusChange ? _undo : null);
       case StudentFileTab.academic:
         return StudentAcademicTab(
           academic: f.academic,
@@ -200,6 +240,7 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
         showRecordedNotice: _showNotice,
         onMissing: f.can.kase && _missingOn ? _openMissing : null,
         missingOn: _missingOn,
+        onChangeStatus: f.can.statusChange ? _changeStatus : null,
       ),
     );
   }
@@ -216,6 +257,7 @@ class StudentFileView extends StatelessWidget {
     this.showRecordedNotice = false,
     this.onMissing,
     this.missingOn = true,
+    this.onChangeStatus,
   });
 
   final StudentFile file;
@@ -226,6 +268,9 @@ class StudentFileView extends StatelessWidget {
   final VoidCallback? onMissing;
   final bool missingOn;
 
+  /// "Change status" in the header; null = the caller may not change it.
+  final VoidCallback? onChangeStatus;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -235,7 +280,7 @@ class StudentFileView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(AppSpace.md),
       children: [
-        StudentFileHeader(file: file, onMissing: onMissing, missingOn: missingOn),
+        StudentFileHeader(file: file, onMissing: onMissing, missingOn: missingOn, onChangeStatus: onChangeStatus),
         if (showRecordedNotice) ...[
           AppSpace.gapXs,
           Row(children: [
@@ -275,11 +320,12 @@ class StudentFileView extends StatelessWidget {
 
 /// The top of the file: photo, names, student number, programme · level, the one chip, flags and the missing badge.
 class StudentFileHeader extends StatelessWidget {
-  const StudentFileHeader({super.key, required this.file, this.onMissing, this.missingOn = true});
+  const StudentFileHeader({super.key, required this.file, this.onMissing, this.missingOn = true, this.onChangeStatus});
 
   final StudentFile file;
   final VoidCallback? onMissing;
   final bool missingOn;
+  final VoidCallback? onChangeStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -317,6 +363,16 @@ class StudentFileHeader extends StatelessWidget {
             if (r.flags.isNotEmpty) ...[
               const SizedBox(height: AppSpace.xs),
               StudentFlagChips(r.flags),
+            ],
+            if (onChangeStatus != null) ...[
+              const SizedBox(height: AppSpace.sm),
+              AppButton.tonal(
+                key: const ValueKey('student-file-change-status'),
+                label: t('تغيير الحالة', 'Change status'),
+                icon: Icons.swap_horiz_rounded,
+                size: AppButtonSize.sm,
+                onPressed: onChangeStatus,
+              ),
             ],
           ]),
         ),
