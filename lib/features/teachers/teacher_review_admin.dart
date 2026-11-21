@@ -5,10 +5,13 @@
 //   GET  /api/v1/admin/teachers/{uid}/documents/{id}/url       a 60 s signed link (audited), opened at once
 //   POST /api/v1/admin/teachers/{uid}/approve                  asks first
 //   POST /api/v1/admin/teachers/{uid}/reject {reason}          a required reason (≤ 500), shown to the teacher
+//   GET  /api/v1/admin/packages/refunds-due                    the last tab: paid package money with no seat (D-1640)
+//   POST /api/v1/admin/packages/refunds-due/{id}/done          asks first; 409 `not_due` drops the row too
 //
 //   TeacherReviewPage    the queue
 //   TeacherReviewCard    one profile in the queue (plain values)
 //   TeacherReviewDetail  the opened profile with its documents and the two decisions (plain values)
+//   PackageRefundsList   the refunds-due tab's body; PackageRefundCard one payment (plain values)
 //
 // Entry: the admin services hub, beside the older Quran teachers page (kill switch `teacher_onboarding`).
 library;
@@ -57,6 +60,12 @@ class _TeacherReviewPageState extends State<TeacherReviewPage> {
   int _page = 1, _total = 0;
   bool _loading = true, _more = false;
   String? _error;
+  // the refunds-due tab (D-1640)
+  List<PackageRefundDue>? _refunds;
+  String? _refundsError;
+  int? _refunding;
+
+  bool get _onRefunds => _tab == kTeacherReviewStatuses.length;
 
   @override
   void initState() {
@@ -64,7 +73,48 @@ class _TeacherReviewPageState extends State<TeacherReviewPage> {
     unawaited(_load());
   }
 
+  Future<void> _loadRefunds() async {
+    setState(() {
+      _refunds = null;
+      _refundsError = null;
+    });
+    try {
+      final r = await _api.refundsDue();
+      if (mounted) setState(() => _refunds = r);
+    } catch (e) {
+      if (mounted) setState(() => _refundsError = teachersErrorText(e));
+    }
+  }
+
+  Future<void> _markRefunded(PackageRefundDue r) async {
+    final amount = packagePriceLabel(r.amount, r.currency);
+    final ok = await appConfirm(context,
+        message: t('هل رددت $amount إلى ${r.studentName} عند مزوّد الدفع؟ تُزال الدفعة من القائمة ويُسجَّل ذلك.',
+            'Did you refund $amount to ${r.studentName} at the payment provider? The payment leaves the list and this is logged.'),
+        confirmLabel: t('تمّ الردّ', 'Mark refunded'));
+    if (!ok || !mounted) return;
+    setState(() => _refunding = r.paymentId);
+    try {
+      await _api.refundDone(r.paymentId);
+      if (!mounted) return;
+      setState(() {
+        _refunds?.removeWhere((x) => x.paymentId == r.paymentId);
+        _refunding = null;
+      });
+      showAppNotice(t('سُجّل الردّ', 'The refund is recorded'));
+    } catch (e) {
+      if (!mounted) return;
+      final gone = teachersErrorCode(e) == 'not_due'; // another admin did it already
+      setState(() {
+        if (gone) _refunds?.removeWhere((x) => x.paymentId == r.paymentId);
+        _refunding = null;
+      });
+      showAppNotice(teachersErrorText(e), error: !gone);
+    }
+  }
+
   Future<void> _load({bool next = false}) async {
+    if (_onRefunds) return _loadRefunds();
     final status = kTeacherReviewStatuses[_tab], subject = _subject;
     final page = next ? _page + 1 : 1;
     setState(() {
@@ -77,7 +127,7 @@ class _TeacherReviewPageState extends State<TeacherReviewPage> {
     });
     try {
       final r = await _api.reviewQueue(status: status, subject: subject, page: page);
-      if (!mounted || status != kTeacherReviewStatuses[_tab] || subject != _subject) return;
+      if (!mounted || _onRefunds || status != kTeacherReviewStatuses[_tab] || subject != _subject) return;
       setState(() {
         if (!next) _items.clear();
         _items.addAll(r.items);
@@ -113,7 +163,10 @@ class _TeacherReviewPageState extends State<TeacherReviewPage> {
     final filters = Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       AppTabs(
         key: const ValueKey('teacher.review.tabs'),
-        items: [for (final s in kTeacherReviewStatuses) AppTabItem(teacherStatusLabel(s))],
+        items: [
+          for (final s in kTeacherReviewStatuses) AppTabItem(teacherStatusLabel(s)),
+          AppTabItem(t('مبالغ للردّ', 'Refunds due')),
+        ],
         index: _tab,
         onChanged: (i) {
           setState(() => _tab = i);
@@ -121,7 +174,7 @@ class _TeacherReviewPageState extends State<TeacherReviewPage> {
         },
       ),
       const SizedBox(height: AppSpace.sm),
-      AppDropdown<String>(
+      if (!_onRefunds) AppDropdown<String>(
         key: const ValueKey('teacher.review.subject'),
         decoration: InputDecoration(labelText: t('المادة', 'Subject')),
         value: _subject ?? '',
@@ -137,7 +190,11 @@ class _TeacherReviewPageState extends State<TeacherReviewPage> {
       const SizedBox(height: AppSpace.md),
     ]);
     final Widget list;
-    if (_loading && _items.isEmpty) {
+    if (_onRefunds) {
+      list = _refundsError != null
+          ? AppErrorState(message: _refundsError, onRetry: _loadRefunds)
+          : PackageRefundsList(items: _refunds, busyId: _refunding, onDone: _markRefunded);
+    } else if (_loading && _items.isEmpty) {
       list = const AppListSkeleton(items: 4, padding: EdgeInsets.zero);
     } else if (_error != null) {
       list = AppErrorState(message: _error, onRetry: _load);
@@ -221,6 +278,90 @@ class TeacherReviewCard extends StatelessWidget {
   }
 
   static String countText(int n) => t(n == 1 ? 'مستند واحد' : '$n مستندات', n == 1 ? '1 document' : '$n documents');
+}
+
+/// The refunds-due tab's body: a skeleton while [items] is null, the calm empty state, or one card per payment.
+class PackageRefundsList extends StatelessWidget {
+  const PackageRefundsList({super.key, required this.items, this.busyId, this.onDone});
+
+  final List<PackageRefundDue>? items;
+  final int? busyId;
+  final ValueChanged<PackageRefundDue>? onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = items;
+    if (l == null) return const AppListSkeleton(items: 3, padding: EdgeInsets.zero);
+    if (l.isEmpty) {
+      return AppEmpty(
+        icon: Icons.verified_outlined,
+        title: t('لا مبالغ بانتظار الردّ', 'No refunds are waiting'),
+        message: t('تظهر هنا كل دفعة باقة وصلت ولا مقعد لها.', 'A package payment that arrives with no seat to give shows here.'),
+      );
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      for (final r in l) ...[
+        PackageRefundCard(item: r, busy: busyId == r.paymentId, onDone: onDone == null || busyId != null ? null : () => onDone!(r)),
+        const SizedBox(height: AppSpace.sm),
+      ],
+    ]);
+  }
+}
+
+class PackageRefundCard extends StatelessWidget {
+  const PackageRefundCard({super.key, required this.item, this.busy = false, this.onDone});
+
+  final PackageRefundDue item;
+  final bool busy;
+  final VoidCallback? onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final r = item;
+    return AppCard(
+      key: ValueKey('package.refund.${r.paymentId}'),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          AppAvatar(name: r.studentName.isEmpty ? '?' : r.studentName, size: AppTouch.min),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text(r.studentName.isEmpty ? '—' : r.studentName,
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark)),
+              const SizedBox(height: AppSpace.xxs),
+              Text(r.packageTitle.isEmpty ? '—' : r.packageTitle,
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
+            ]),
+          ),
+          const SizedBox(width: AppSpace.xs),
+          Flexible(
+            child: Text(packagePriceLabel(r.amount, r.currency),
+                maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end, style: AppType.row(context).copyWith(color: c.textDark)),
+          ),
+        ]),
+        const SizedBox(height: AppSpace.sm),
+        Text(packageRefundReasonText(r.reason), style: AppType.body(context).copyWith(color: c.textDark)),
+        if (r.paidAt != null) ...[
+          const SizedBox(height: AppSpace.xxs),
+          Text('${t('دُفعت', 'Paid')} ${AppTime.dateTime(r.paidAt!)}',
+              maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
+        ],
+        const SizedBox(height: AppSpace.sm),
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: AppButton.tonal(
+            key: ValueKey('package.refund.done.${r.paymentId}'),
+            label: t('تمّ الردّ', 'Mark refunded'),
+            icon: Icons.undo_rounded,
+            size: AppButtonSize.sm,
+            busy: busy,
+            onPressed: onDone,
+          ),
+        ),
+      ]),
+    );
+  }
 }
 
 class _ReviewDetailPage extends StatefulWidget {

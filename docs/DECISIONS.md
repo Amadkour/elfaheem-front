@@ -5771,3 +5771,12 @@ enrolment's `expires_at` and a "Pay now" button; the timer runs only while one i
 ## D-1634 — Leaving a paid seat warns there is no automatic refund · 2026-11-21 · accepted
 
 The confirm says so and points to support (C3); a free seat or the waiting list says the seat goes to the next one.
+
+## D-1640 — Refunds due is a tab of the teacher review page · 2026-11-21 · accepted
+
+Package payments that arrived with no seat (`GET /admin/packages/refunds-due`) show as the last tab of the admin
+teacher review page, not a new hub tile: the same admins, the same Learning Hub area. Each card shows the student,
+the package, the amount (`packagePriceLabel`), when it was paid and why it is owed (left / closed / already paid) in
+one sentence; "Mark refunded" asks first, then calls `…/done` and drops the row. A 409 `not_due` (another admin did
+it) drops the row too, shown as a plain notice. The strings use `t(ar, en)` like the rest of `lib/features/teachers/`
+rather than `assets/translation.json`, so the module keeps one way of writing text.

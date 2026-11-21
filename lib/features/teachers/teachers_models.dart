@@ -670,6 +670,60 @@ List<PackageRosterRow> packageRosterFromJson(Object? raw) {
   return [for (final m in _maps(items)) PackageRosterRow.fromJson(m)];
 }
 
+/// A package payment that arrived with no seat to give, so the money goes back (GET /admin/packages/refunds-due;
+/// D-1640). [reason] is `left` | `closed` | `duplicate`.
+class PackageRefundDue {
+  const PackageRefundDue({
+    required this.paymentId,
+    required this.packageId,
+    required this.packageTitle,
+    required this.studentId,
+    required this.studentName,
+    required this.amount,
+    required this.currency,
+    this.provider = '',
+    this.gatewayId,
+    required this.reason,
+    this.paidAt,
+  });
+
+  factory PackageRefundDue.fromJson(Map<String, dynamic> j) {
+    final pkg = _map(j['package']), st = _map(j['student']);
+    return PackageRefundDue(
+      paymentId: _int(j['payment_id'] ?? j['id']),
+      packageId: _int(pkg['id']),
+      packageTitle: _str(pkg['title']),
+      studentId: _int(st['user_id'] ?? st['id']),
+      studentName: _str(st['name']),
+      amount: _dbl(j['amount']),
+      currency: _str(j['currency']),
+      provider: _str(j['provider']),
+      gatewayId: _strOrNull(j['gateway_id']),
+      reason: _str(j['reason']),
+      paidAt: teachersParseUtc(j['paid_at']),
+    );
+  }
+
+  final int paymentId, packageId, studentId;
+  final String packageTitle, studentName, currency, provider, reason;
+  final double amount;
+  final String? gatewayId;
+  final DateTime? paidAt;
+}
+
+List<PackageRefundDue> packageRefundsFromJson(Object? raw) {
+  final items = raw is Map ? raw['items'] : raw;
+  return [for (final m in _maps(items)) PackageRefundDue.fromJson(m)];
+}
+
+/// Why the payment is owed back, as one plain sentence.
+String packageRefundReasonText(String reason) => switch (reason) {
+      'left' => _t('ترك الطالب الباقة قبل وصول الدفعة.', 'The student left the package before the payment arrived.'),
+      'closed' => _t('أُغلقت الباقة قبل وصول الدفعة.', 'The package was closed before the payment arrived.'),
+      'duplicate' => _t('دفع الطالب لمقعد مدفوع من قبل.', 'The student paid for a seat that was already paid.'),
+      _ => _t('لم تمنح هذه الدفعة مقعداً.', 'This payment gave no seat.'),
+    };
+
 List<TeacherPackage> packagesFromJson(Object? raw) {
   final items = raw is Map ? raw['items'] : raw;
   return [for (final m in _maps(items)) TeacherPackage.fromJson(m)];

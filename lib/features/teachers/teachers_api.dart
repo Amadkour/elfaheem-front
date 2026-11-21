@@ -13,6 +13,7 @@
 //   GET     /api/v1/packages?…  /packages/{id}  /me/packages
 //   POST    /api/v1/packages · PUT /packages/{id} · POST /packages/{id}/duplicate · /status {status}
 //   POST    /api/v1/packages/{id}/enroll | /leave · GET /packages/{id}/enrollments
+//   GET     /api/v1/admin/packages/refunds-due · POST …/refunds-due/{payment_id}/done   (D-1640)
 //
 // Kill switches: `teacher_onboarding` (the teacher's flow and the admin queue), `teacher_discovery` (the student's
 // list), `packages` (the package wizard and Join).
@@ -137,4 +138,11 @@ class TeachersApi {
   Future<void> leave(int id) => _api.post('/api/v1/packages/$id/leave');
 
   Future<List<PackageRosterRow>> roster(int id) async => packageRosterFromJson(await _api.get('/api/v1/packages/$id/enrollments'));
+
+  // ── refunds due (admin; D-1640) ────────────────────────────────────────────
+
+  Future<List<PackageRefundDue>> refundsDue() async => packageRefundsFromJson(await _api.get('/api/v1/admin/packages/refunds-due'));
+
+  /// Refunded at the provider (audited). 409 `not_due` when another admin already did it.
+  Future<void> refundDone(int paymentId) => _api.post('/api/v1/admin/packages/refunds-due/$paymentId/done');
 }
