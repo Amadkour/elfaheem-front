@@ -106,6 +106,8 @@ class FakeCalendarApi implements CalendarApi {
   @override
   Future series(int id) async => {'id': id};
   @override
+  Future courseSeries(int courseId) async => {'items': const []};
+  @override
   Future updateSeries(int id, Map<String, dynamic> body, {String? fromDate}) async => {'id': id};
   @override
   Future endSeries(int id, {String? fromDate}) async => {'ended': true};

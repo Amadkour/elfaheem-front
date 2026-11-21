@@ -42,6 +42,9 @@ abstract class CalendarApi {
   Future<dynamic> createSeries(Map<String, dynamic> body);
   Future<dynamic> series(int id);
 
+  /// The course's active series with their coming dates → `{items: [...]}` (the course page's Sessions tab, D-1660).
+  Future<dynamic> courseSeries(int courseId);
+
   /// The series from [fromDate] ("YYYY-MM-DD", local; null = today) on: the server splits it, past dates keep the
   /// old one (contract C6).
   Future<dynamic> updateSeries(int id, Map<String, dynamic> body, {String? fromDate});
@@ -114,6 +117,10 @@ class RemoteCalendarApi implements CalendarApi {
 
   @override
   Future<dynamic> series(int id) => _api.get('$_base/series/$id').timeout(calTimeout);
+
+  @override
+  Future<dynamic> courseSeries(int courseId) =>
+      _api.get('$_base/series', queryParams: {'course_id': courseId}).timeout(calTimeout);
 
   @override
   Future<dynamic> updateSeries(int id, Map<String, dynamic> body, {String? fromDate}) =>

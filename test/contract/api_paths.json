@@ -449,6 +449,7 @@
   "GET /api/v1/me/calendar/depts/{dept_id:int}",
   "GET /api/v1/me/calendar/meetings/{mid:int}",
   "GET /api/v1/me/calendar/people",
+  "GET /api/v1/me/calendar/series",
   "GET /api/v1/me/calendar/series/{sid:int}",
   "GET /api/v1/me/cloud",
   "GET /api/v1/me/cloud/google_drive/forms/pick/{session}",

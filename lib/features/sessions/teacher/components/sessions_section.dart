@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
+import 'package:flutter_education_app/features/courses/course_space/course_series_block.dart' show CourseSeriesSection;
 import 'package:flutter_education_app/features/sessions/material/session_material_widget.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:flutter_education_app/features/sessions/session_track_tabs.dart';
@@ -24,21 +25,35 @@ import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' s
 import 'package:flutter_education_app/features/calendar/recurrence/recurrence_rule.dart' show kRecurringFeatureKey;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
-/// The meeting form with [courseId] preset and a weekly repeat on, from the next full hour.
-Future<void> openCourseRepeatingMeeting(BuildContext context, int courseId) async {
+/// The meeting form with [courseId] preset and a weekly repeat on, from the next full hour. True when one was made.
+Future<bool> openCourseRepeatingMeeting(BuildContext context, int courseId) async {
   final n = AppTime.toZone(DateTime.now().toUtc());
   final start = DateTime(n.year, n.month, n.day, n.hour + 1);
   final r = await showMeetingForm(context, api: const RemoteCalendarApi(), start: start, courseId: courseId);
   if (r != null) showAppNotice('cal_recur_course_created'.tr);
+  return r != null;
 }
 
-class TeacherSessionsBody extends StatelessWidget {
+class TeacherSessionsBody extends StatefulWidget {
   const TeacherSessionsBody({super.key, required this.onAdd});
 
   final VoidCallback onAdd;
 
   @override
+  State<TeacherSessionsBody> createState() => _TeacherSessionsBodyState();
+}
+
+class _TeacherSessionsBodyState extends State<TeacherSessionsBody> {
+  /// Bumped after a repeating meeting is made, so the series block reads the course's series again.
+  int _seriesReload = 0;
+
+  Future<void> _repeat(int courseId) async {
+    if (await openCourseRepeatingMeeting(context, courseId) && mounted) setState(() => _seriesReload++);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final onAdd = widget.onAdd;
     final provider = context.watch<TeacherCourseScreenProvider>();
     final sessions = provider.sessions;
     final loading = sessions.isEmpty && (provider.isLoading || provider.loadingAllPage);
@@ -56,8 +71,16 @@ class TeacherSessionsBody extends StatelessWidget {
           featureKey: kRecurringFeatureKey,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, AppSpace.sm),
-            child: CourseRepeatingMeetingEntry(onTap: () => openCourseRepeatingMeeting(context, provider.course.id)),
+            child: CourseRepeatingMeetingEntry(onTap: () => _repeat(provider.course.id)),
           ),
+        ),
+        // its series with their coming dates (D-1660): meetings, not lessons, so above the timeline and shown even
+        // while the course has no lesson yet
+        CourseSeriesSection(
+          key: const ValueKey('teacher_sessions.series'),
+          courseId: provider.course.id,
+          reload: _seriesReload,
+          padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, AppSpace.sm),
         ),
         if (loading)
           const AppListSkeleton(items: 3, padding: EdgeInsetsDirectional.fromSTEB(kCourseGutter, 0, kCourseGutter, 0))

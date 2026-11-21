@@ -5825,3 +5825,7 @@ to `apiErrorText` instead of the server's Arabic message, and has its own text f
 `course_forbidden`. In the same round (review F5, F12): self-learning reads `per_subject.lessons` (`total` is still
 read), teacher and seat counts go through `countText`, and the game and learning-card motions use the `AppMotion`
 durations.
+
+## D-1660 — A course's repeating meetings sit above its lessons · 2026-11-22 · accepted
+
+The course Sessions tab (teacher and student) draws `CourseSeriesSection` (`lib/features/courses/course_space/course_series_block.dart`) over `GET /me/calendar/series?course_id=` (back D-1699): one card per active series with `describeRule` and the next three dates (`AppTime`, a cancelled one struck through), tapping a date opens the calendar's own date sheet (`showSeriesOccurrenceSheet`). A series is a meeting, not a lesson, so its dates are not merged into the reorderable lessons timeline; the block shows before the first lesson too, and the teacher's block reloads after "Repeating meeting" makes one (QA S17). Nothing is drawn while there is none, on an older server, or with `calendar.recurring` off.

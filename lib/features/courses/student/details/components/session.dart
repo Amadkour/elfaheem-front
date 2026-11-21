@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty, AppSpace;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +10,7 @@ import 'package:flutter_education_app/features/exams/legacy/student/student_exam
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
+import 'package:flutter_education_app/features/courses/course_space/course_series_block.dart' show CourseSeriesSection;
 import 'package:flutter_education_app/features/sessions/material/session_material_widget.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_provider.dart';
@@ -94,10 +95,20 @@ class SessionsTab extends StatelessWidget {
     final fold = live ? 0 : courseSessionFoldCount(states);
     final groups = live ? List<String?>.filled(shown.length, null) : courseSessionGroups([for (final s in shown) sessionUtc(s.scheduledAt)]);
     final header = CourseSectionHeader(title: title ?? gt('الجلسات', 'Sessions'), count: count);
+    // the course's repeating meetings (D-1660), above the lessons and shown before the first lesson too
+    final courseId = int.tryParse('${provider.course.id}');
+    final series = live || courseId == null
+        ? null
+        : CourseSeriesSection(
+            key: const ValueKey('student_sessions.series'),
+            courseId: courseId,
+            padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, AppSpace.sm),
+          );
     if (presented.isEmpty) {
       return Column(
         children: [
           header,
+          ?series,
           AppEmpty(
             icon: live ? Icons.sensors_off_rounded : Icons.video_library_outlined,
             title: live ? gt('لا يوجد بث مباشر الآن', 'Nothing is live right now') : 'sessions_empty'.tr,
@@ -113,6 +124,7 @@ class SessionsTab extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         header,
+        ?series,
         if (hasSections)
           Padding(
             padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, 6),
