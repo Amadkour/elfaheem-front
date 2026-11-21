@@ -48,6 +48,8 @@ import 'package:flutter_education_app/design/calendar_entry.dart' show ChatEntry
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/design/home_a2.dart';
+import 'package:flutter_education_app/design/sync_status_chip.dart' show SyncStatusChip;
+import 'package:flutter_education_app/core/offline/sync/sync_status.dart' show SyncStatus;
 import 'package:flutter_education_app/features/help/help_info_button.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/org/home_org_mix.dart';
@@ -344,13 +346,15 @@ class StudentGreeting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phone = !HomeHeader.shellTopBar(context);
-    return ValueListenableBuilder<int>(
-      valueListenable: AppTime.version,
-      builder: (context, _, _) => HomeGreetingRow(
+    return ListenableBuilder(
+      // the offline chip (D-1351) joins the row only while it has something to say: a hidden one would leave a gap
+      listenable: Listenable.merge([AppTime.version, SyncStatus.instance]),
+      builder: (context, _) => HomeGreetingRow(
         name: name,
         subline: subline,
         trailing: [
           ?switcher,
+          if (phone && !SyncStatus.instance.value.quiet) const SyncStatusChip(),
           ...actions,
           if (phone) ...[...shellActions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!), ?leading],
           ?primary,

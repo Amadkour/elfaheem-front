@@ -7,6 +7,7 @@ import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/features/profile/about/about_and_terms_screen.dart' show TermsScreen;
 import 'package:flutter_education_app/core/offline/downloads_availability.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
+import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
 import 'package:flutter_education_app/features/downloads/downloads_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -618,6 +619,7 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
+    if (s == AppLifecycleState.resumed) SyncEngine.instance.onResume(); // the offline outbox (D-1351); no request when empty
     if (s == AppLifecycleState.resumed &&
         context.read<MyAuthProvider>().isAuthenticated &&
         !ViewAsState.active) {

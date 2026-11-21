@@ -104,6 +104,17 @@ String apiErrorText(ApiException e) {
     case 'quran_teacher_unverified':
       return _t('لم تتحقق المنصة من هذا المعلم بعد، فلا يمكن الحجز معه الآن.',
           'The platform has not verified this teacher yet, so booking is not open now.');
+    // the offline outbox (D-1351, D-1352): a write the server refused when it was synced
+    case 'sync_stale':
+      return _t('تغيّر ملفك الدراسي من جهاز آخر، فلم يُحفظ تعديلك. عرضنا أحدث نسخة — عدّل مرة أخرى.',
+          'Your study profile changed on another device, so your edit was not saved. The latest copy is shown — edit it again.');
+    case 'sync_too_many':
+      return _t('تغييرات كثيرة في دفعة واحدة — ستُرسل على دفعات', 'Too many changes at once — they will be sent in batches');
+    case 'sync_bad_since':
+      return _t('تعذّرت مزامنة آخر التغييرات — حاول مرة أخرى', 'The latest changes could not be synced — try again');
+    case 'sync_bad_op' || 'sync_unknown_kind' || 'sync_error':
+      return _t('تعذّر حفظ أمر سجّلته دون اتصال، فحُذف من الانتظار.',
+          'Something you did offline could not be saved, so it was dropped from the queue.');
     case 'program_kind_locked':
       return _t('لا يمكن تغيير نوع البرنامج بعد تسجيل طلاب فيه', 'The program type cannot change once the course has students');
     case 'WEAK_PASSWORD':

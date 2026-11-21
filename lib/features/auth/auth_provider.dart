@@ -6,6 +6,8 @@ import 'package:flutter_education_app/features/auth/register_levels_step.dart' s
 import 'package:flutter_education_app/features/messaging/chat/chat_store.dart' show ChatHub;
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_access.dart';
+import 'package:flutter_education_app/core/offline/sync/outbox.dart' show Outbox;
+import 'package:flutter_education_app/core/offline/sync/sync_engine.dart' show SyncEngine;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async' show unawaited;
 import 'dart:developer';
@@ -1139,9 +1141,19 @@ class MyAuthProvider extends BaseProvider {
     } catch (_) {}
   }
 
+  /// The offline outbox, the read caches and the device tables they live in (D-1351, D-1353): unsent offline work
+  /// and cached answers never outlive the session on a shared phone. Never fails the sign-out.
+  static Future<void> wipeSyncData({Future<void> Function()? wipe}) async {
+    try {
+      SyncEngine.instance.reset();
+      await (wipe ?? Outbox.instance.wipe)();
+    } catch (_) {}
+  }
+
   Future<void> logout() async {
     await clearGuestHandoff();
     await wipeStoreFiles();
+    await wipeSyncData();
     ViewAsState.instance.stop(); // never carry view-as into the next session
     AppModeController.instance.reset(); // Organization/Individual mode belongs to the user who chose it
     EntitiesApi.instance.invalidate(); // a cached detail or access answer is this user's, never the next one's (D-290)

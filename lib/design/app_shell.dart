@@ -77,6 +77,7 @@ import 'shell_pins.dart';
 import 'calendar_entry.dart';
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant, appAssistantFeatureKey;
 import 'chrome_button.dart';
+import 'sync_status_chip.dart' show SyncStatusChip;
 import 'app_settings.dart' show appRoleLabel;
 import 'app_kit.dart' show showAppSheet;
 import 'app_sheet_header.dart' show AppSheetHeader;
@@ -1558,6 +1559,8 @@ class _GlobalTools extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+        // offline / syncing / waiting writes (D-1351); draws nothing while online with nothing waiting
+        if (!GuestState.active) const SyncStatusChip(),
         if (!GuestState.active) const CalendarIcon(),
         if (!GuestState.active) const ChatEntryIcon(),
         if (!GuestState.active && !AppConfig.disableList.contains(appAssistantFeatureKey))

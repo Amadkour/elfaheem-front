@@ -12,6 +12,7 @@ import 'dart:io';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/offline/sync/sync_status.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -143,6 +144,16 @@ class OfflineExamStore {
     final box = await _aes.encrypt(utf8.encode(jsonEncode(s.toJson())), secretKey: await _localKey(), nonce: _aes.newNonce());
     final f = await _file('sit_${s.examId}_${s.studentId}.bin');
     await f.writeAsString(jsonEncode({'n': base64Encode(box.nonce), 'd': base64Encode([...box.cipherText, ...box.mac.bytes])}), flush: true);
+    unawaited(reportPending());
+  }
+
+  /// Reports the sittings waiting to sync and the bundles carried for others into the one offline status (D-1351).
+  Future<void> reportPending() async {
+    if (!offlineExamsSupported) return;
+    try {
+      final own = (await sittings()).where((s) => s.stage == OfflineStage.waitingToSync).length;
+      SyncStatus.instance.report(SyncStatus.exams, own + (await held()).length);
+    } catch (_) {}
   }
 
   Future<OfflineSitting?> _readSitting(File f) async {
@@ -175,8 +186,10 @@ class OfflineExamStore {
   }
 
   // ── bundles carried for other students ──
-  Future<void> hold(Map<String, dynamic> bundle) async =>
-      (await _file('held_${'${bundle['bundle_id']}'.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '')}.json')).writeAsString(jsonEncode(bundle), flush: true);
+  Future<void> hold(Map<String, dynamic> bundle) async {
+    await (await _file('held_${'${bundle['bundle_id']}'.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '')}.json')).writeAsString(jsonEncode(bundle), flush: true);
+    unawaited(reportPending());
+  }
 
   Future<List<Map<String, dynamic>>> held() async {
     final out = <Map<String, dynamic>>[];
@@ -195,6 +208,7 @@ class OfflineExamStore {
   Future<void> release(String bundleId) async {
     final f = await _file('held_${bundleId.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '')}.json');
     if (await f.exists()) await f.delete();
+    unawaited(reportPending());
   }
 }
 

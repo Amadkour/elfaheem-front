@@ -5274,3 +5274,41 @@ the device for instant feedback (back D-1344), attempts posted with a kept `clie
 `lib/features/nahw/admin/` (`NahwAdminPage`, kill switch `admin.nahw`, help id `admin.nahw`) edits levels, lessons and
 exercises with one typed form per kind and a preview through the student's own exercise view; the server validates
 `data` / `answer` against the kind (422 `nahw_bad_exercise`). `/nahw/lessons/<id>` is a deep route.
+
+## D-1350 — Phase 6 review and QA fixes: learning-hub URLs, a refused booking says why, the theme follows the country · 2026-11-21 · accepted
+
+The fix round after the Phase 6 review (front d88aba13). The learning hub pages have deep routes (`/games/progress`,
+`/games/<id>`, `/nahw/lessons/<id>`, `/quran/progress`, `/quran/teachers/<id>`). A refused Quran booking shows its
+reason instead of Join on the course page, and a 403 at checkout or enrolment (`quran_gender_rule`,
+`quran_teacher_unverified`) shows `apiErrorText`'s bilingual reason with "Back to the course" and no retry
+(`EnrollmentProvider.refused`, `test/ui/quran_refused_checkout_test.dart`). The theme request carries a guest's
+remembered country and is fetched again after sign-in, sign-out and a study-profile save.
+
+## D-1351 — Offline-first v1: a generic outbox for four kinds; money is never offline · 2026-11-21 · accepted
+
+`lib/core/offline/sync/`: `Outbox` keeps `game_play`, `nahw_attempt`, `quran_progress` and `study_profile` ops on the
+device (the op id IS the entity's `client_id`, so a write pushed twice, or posted and then pushed, is one row);
+`SyncEngine` sends them through `POST /api/v1/sync/push` in batches of at most 100, oldest first, on reconnect
+(`topRouteObserver`), on resume and after an enqueue, one run at a time. An empty outbox makes no request. Applied
+and duplicate ops are dropped and their `entity` goes to the kind's listeners; a rejected op is dropped and told once
+(`showAppNotice` with `apiErrorText` of the code); a transport error, 5xx or 429 keeps the rows and books ONE retry on
+a growing backoff (5 s doubling, at most 5 min) — no polling. Rows carry the user who made them and only go out under
+that user's token. `SyncStatus` (offline | online | syncing + the waiting count) is the one status: the offline
+attendance and exam queues keep their own code and only report their counts into it; `SyncStatusChip` draws it in
+the shell's top bar and the student Home header on phones, never in the bottom bar (D-1340), hidden while online with
+nothing waiting. `ReadCache` keeps the last answer of a GET per user. Store orders, checkout, enrolment and points are
+never ops. Kill switch `sync.offline`: off (and on the web) `Outbox.enqueue` answers `postDirectly` and the caller
+posts to the route as before. A 403 `feature_disabled` from the server keeps the rows and ends the run.
+
+## D-1352 — Conflicts: append-only kinds dedupe by client id; the profile is last-write-wins with a stale check · 2026-11-21 · accepted
+
+Simple and predictable. A `study_profile` op carries `base_updated_at`; an older one than the server's row is
+rejected `sync_stale` with the server's profile as `entity`, the person is told, and the listener refetches.
+
+## D-1353 — `sqflite` (+ `sqflite_common_ffi` on Windows / Linux), no encrypted database · 2026-11-21 · accepted
+
+Drift and SQLCipher add build weight on six platforms. One file in the app's support folder, two tables (`outbox`,
+`read_cache`). Nothing sensitive is kept: tokens stay in secure storage, `ReadCache` strips identity numbers at any
+depth, paid files are AES-CTR encrypted already, and `MyAuthProvider.logout` wipes both tables (`wipeSyncData`, next
+to `wipeStoreFiles`). The web has no device database: an in-memory stub, online-only. `sqflite_common_ffi` brings
+`sqlite3` 3.x, whose build hook bundles a SQLite library into native builds.

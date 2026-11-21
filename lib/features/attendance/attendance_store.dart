@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_education_app/core/offline/sync/sync_status.dart';
 import 'package:flutter_education_app/features/attendance/attendance_models.dart';
 
 class AttendanceStore {
@@ -149,6 +150,7 @@ class AttendanceStore {
       ..add(e);
     final p = await SharedPreferences.getInstance();
     await p.setString(_kPending, PendingAttendance.encodeList(l));
+    SyncStatus.instance.report(SyncStatus.attendance, l.length); // the one offline status (D-1351)
   }
 
   Future<void> removePending(String requestId) async {
@@ -156,6 +158,7 @@ class AttendanceStore {
       ..removeWhere((x) => x.requestId == requestId);
     final p = await SharedPreferences.getInstance();
     await p.setString(_kPending, PendingAttendance.encodeList(l));
+    SyncStatus.instance.report(SyncStatus.attendance, l.length);
   }
 
   // ── relay statistics (for the "You helped N classmates" badge) ────────
