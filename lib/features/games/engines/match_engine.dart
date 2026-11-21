@@ -9,6 +9,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/games/shell/game_shell.dart';
 import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
 
 class MatchEngine extends StatefulWidget {
@@ -79,6 +80,8 @@ class _MatchEngineState extends State<MatchEngine> {
       }
       _left = _rightPick = null;
     });
+    GameShellScope.maybeOf(context)
+        ?.report(done: _matched.length, score: _matched.difference(_missedOnce).length, correct: _right[r] == l);
   }
 
   LearnMark _leftMark(int i) {
@@ -100,13 +103,16 @@ class _MatchEngineState extends State<MatchEngine> {
     }
     final prompt = learnText('${widget.config['prompt_ar'] ?? ''}', '${widget.config['prompt_en'] ?? ''}');
     final score = _pairs.length - _missedOnce.length;
+    final inShell = GameShellScope.maybeOf(context) != null;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      LearnProgressHeader(
-        current: _matched.length,
-        total: _pairs.length,
-        label: t('وصّلت ${_matched.length} من ${_pairs.length}', 'Matched ${_matched.length} of ${_pairs.length}'),
-      ),
-      const SizedBox(height: AppSpace.md),
+      if (!inShell) ...[
+        LearnProgressHeader(
+          current: _matched.length,
+          total: _pairs.length,
+          label: t('وصّلت ${_matched.length} من ${_pairs.length}', 'Matched ${_matched.length} of ${_pairs.length}'),
+        ),
+        const SizedBox(height: AppSpace.md),
+      ],
       LearnPrompt(text: prompt.isEmpty ? t('صِل كل عنصر بما يناسبه.', 'Match each item to its partner.') : prompt),
       const SizedBox(height: AppSpace.sm),
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -8,6 +8,9 @@
 //                 engine brings it; replaying is allowed meanwhile. Without one (the web, `sync.offline` off) it is
 //                 POST /api/v1/games/{id}/plays, kept until the server answers (a retry sends the same id). A guest
 //                 plays without saving.
+//                 Since Learning Hub v2 (D-1580) the round is played in the GameShell (shell/), the end is the
+//                 shell's GameFinishView, and the game's leaderboard (game_leaderboard.dart) sits under it and in the
+//                 app bar's sheet; it is loaded only when shown.
 //   GamePlayView  the body with plain values (test/ui/games_layout_test.dart)
 //   GamesBus      `revision` bumps after a saved play (also one the outbox saved after the page closed), so the tab and
 //                 the progress page reload
@@ -22,10 +25,12 @@ import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/engines/game_engine.dart';
+import 'package:flutter_education_app/features/games/game_leaderboard.dart';
 import 'package:flutter_education_app/features/games/games_api.dart';
 import 'package:flutter_education_app/features/games/games_models.dart';
+import 'package:flutter_education_app/features/games/shell/game_round.dart';
+import 'package:flutter_education_app/features/games/shell/game_shell.dart';
 import 'package:flutter_education_app/features/guest/guest_state.dart';
-import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -67,6 +72,9 @@ class _GamePlayPageState extends State<GamePlayPage> {
   GamePlaySubmission? _sub;
   bool _saving = false;
 
+  /// Bumps when a play is saved, so the leaderboard loads again.
+  int _saved = 0;
+
   @override
   void initState() {
     super.initState();
@@ -92,7 +100,10 @@ class _GamePlayPageState extends State<GamePlayPage> {
     setState(() {
       sub.settle(r);
       final res = sub.result;
-      if (res != null) _game = _game.withProgress(res.progress ?? _game.progress);
+      if (res != null) {
+        _game = _game.withProgress(res.progress ?? _game.progress);
+        _saved++;
+      }
     });
   }
 
@@ -122,7 +133,11 @@ class _GamePlayPageState extends State<GamePlayPage> {
 
   void _finished(int score, int max) {
     _clock.stop();
-    final sub = GamePlaySubmission(gameId: _game.id, score: score, maxScore: max, durationS: _clock.elapsed.inSeconds);
+    final sub = GamePlaySubmission(
+        gameId: _game.id,
+        score: score,
+        maxScore: max,
+        durationS: _clock.elapsed.inSeconds);
     setState(() => _sub = sub);
     if (!GuestState.active) _send();
   }
@@ -140,7 +155,10 @@ class _GamePlayPageState extends State<GamePlayPage> {
     if (!mounted) return;
     setState(() {
       _saving = false;
-      if (r != null) _game = _game.withProgress(r.progress ?? _game.progress);
+      if (r != null) {
+        _game = _game.withProgress(r.progress ?? _game.progress);
+        _saved++;
+      }
     });
     if (r != null) GamesBus.revision.value++;
   }
@@ -157,13 +175,33 @@ class _GamePlayPageState extends State<GamePlayPage> {
       ..start();
   }
 
+  void _openBoard() => showAppSheet<void>(
+        context,
+        (ctx) => AppSheetContent(
+          title: t('لوحة المتصدرين', 'Leaderboard'),
+          children: [GameLeaderboardSection(gameId: _game.id, api: _api, refresh: _saved)],
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final sub = _sub;
     final waiting = sub != null && !GuestState.active && !sub.done && !sub.queued;
     final kept = sub != null && sub.queued && !sub.done;
+    final board = !GuestState.active && !gamesLeaderboardOff();
     return BasePage(
-      appBar: ScreenAppBar(title: _game.title),
+      appBar: ScreenAppBar(
+        title: _game.title,
+        actions: [
+          if (board)
+            IconButton(
+              key: const ValueKey('games.board.open'),
+              tooltip: t('لوحة المتصدرين', 'Leaderboard'),
+              icon: const Icon(Icons.leaderboard_rounded),
+              onPressed: _openBoard,
+            ),
+        ],
+      ),
       child: SafeArea(
         child: GamePlayView(
           game: _game,
@@ -188,6 +226,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
           kept: kept,
           onReplay: waiting ? null : _replay,
           onDone: () => Navigator.of(context).maybePop(),
+          leaderboard: board && sub != null ? GameLeaderboardSection(gameId: _game.id, api: _api, refresh: _saved) : null,
         ),
       ),
     );
@@ -216,6 +255,7 @@ class GamePlayView extends StatelessWidget {
     this.onReplay,
     this.onDone,
     this.random,
+    this.leaderboard,
   });
 
   final GameSummary game;
@@ -236,6 +276,9 @@ class GamePlayView extends StatelessWidget {
   /// The engines' shuffle (tests pass a seeded one).
   final Random? random;
 
+  /// Drawn under the result (the game's leaderboard).
+  final Widget? leaderboard;
+
   @override
   Widget build(BuildContext context) {
     final Widget body;
@@ -252,28 +295,35 @@ class GamePlayView extends StatelessWidget {
       );
     } else if (finished != null) {
       final f = finished!;
-      body = LearnResultView(
-        key: const ValueKey('games.result'),
-        score: f.score,
-        max: f.max,
-        stars: f.stars,
-        badges: [for (final b in f.badges) LearnEarned(icon: b.iconData, label: b.name)],
-        pointsAwarded: f.points,
-        saving: saving,
-        saveError: saveError,
-        onRetrySave: onRetrySave,
-        note: guest
-            ? t('سجّل الدخول لتحفظ نجومك وشاراتك.', 'Sign in to keep your stars and badges.')
-            : kept
-                ? keptOnDeviceText()
-                : null,
-        onReplay: onReplay,
-        onDone: onDone,
-      );
+      body = Column(key: const ValueKey('games.result'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        GameFinishView(
+          score: f.score,
+          max: f.max,
+          stars: f.stars,
+          theme: game.theme,
+          badges: [for (final b in f.badges) (icon: b.iconData, label: b.name)],
+          points: f.points,
+          saving: saving,
+          saveError: saveError,
+          onRetrySave: onRetrySave,
+          note: guest
+              ? t('سجّل الدخول لتحفظ نجومك وشاراتك.', 'Sign in to keep your stars and badges.')
+              : kept
+                  ? keptOnDeviceText()
+                  : null,
+          onReplay: onReplay,
+          onDone: onDone,
+        ),
+        if (leaderboard != null) ...[const SizedBox(height: AppSpace.lg), leaderboard!],
+      ]);
     } else {
-      body = KeyedSubtree(
+      body = GameRound(
         key: ValueKey('games.round.$round'),
-        child: spec.build(game.config, onFinished ?? (_, _) {}, random),
+        spec: spec,
+        config: game.config,
+        theme: game.theme,
+        onFinished: onFinished ?? (_, _) {},
+        random: random,
       );
     }
     return AppWidthBox(

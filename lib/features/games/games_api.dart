@@ -1,10 +1,15 @@
 // lib/features/games/games_api.dart — the educational games' calls (Learning Hub Phase 6, D-1346; server D-1342).
 // Every path is a literal `/api/v1/…` (test/contract/ checks each against the server's routes).
 //
-//   GET  /api/v1/games                          the list (optional auth): country · stage_id · grade_id · subject_id
+//   GET  /api/v1/games                          the list (optional auth): country · stage_id · grade_id · subject_id ·
+//                                               category · difficulty (Learning Hub v2 §3)
 //   GET  /api/v1/games/{id}                     one game with its `config`
 //   POST /api/v1/games/{id}/plays               {client_id, score, max_score, duration_s, played_at} → the play,
 //                                               progress, new badges, points (same client_id = the first answer)
+//   GET  /api/v1/games/{id}/leaderboard         ?period=week|all&page → {items: [{rank, first_name (+ last initial),
+//                                               best_score, stars, duration_s}], me, visible} (CONTRACT C9: no avatar)
+//   PUT  /api/v1/me/games/leaderboard           {visible} "Show me on leaderboards" (default visible; a hidden
+//                                               student still sees their own rank). Kill switch `games.leaderboard`.
 //   GET  /api/v1/me/games/progress              my games, every badge, totals
 //   GET  /api/v1/parent/children/{id}/games     the same for a linked child (404 LINK_NOT_FOUND otherwise)
 //
@@ -35,6 +40,11 @@ const String kGamesTabKey = 'student_tab_games';
 
 bool gamesOff() => AppConfig.disableList.contains(kGamesTabKey);
 
+/// The leaderboards' kill switch (CONTRACT C9): hides the section and the app bar's button.
+const String kGamesLeaderboardFeatureKey = 'games.leaderboard';
+
+bool gamesLeaderboardOff() => AppConfig.disableList.contains(kGamesLeaderboardFeatureKey);
+
 /// A games code's bilingual text (null = not a games code).
 String? gamesCodeText(String? code) => switch (code) {
       'game_not_found' => t('هذه اللعبة غير متاحة', 'This game is not available'),
@@ -60,12 +70,15 @@ class GamesApi {
 
   final ApiClient _api;
 
-  Future<GameList> games({String? country, int? stageId, int? gradeId, int? subjectId}) async {
+  Future<GameList> games(
+      {String? country, int? stageId, int? gradeId, int? subjectId, String? category, String? difficulty}) async {
     final q = <String, dynamic>{
       if (country != null && country.isNotEmpty) 'country': country,
       'stage_id': ?stageId,
       'grade_id': ?gradeId,
       'subject_id': ?subjectId,
+      'category': ?category,
+      'difficulty': ?difficulty,
     };
     return GameList.fromJson(
         await readThrough('games.list?${Uri(queryParameters: {for (final e in q.entries) e.key: '${e.value}'}).query}',
@@ -78,7 +91,11 @@ class GamesApi {
   }
 
   Future<GamePlayResult> play(int gameId,
-          {required String clientId, required int score, required int maxScore, int? durationS, DateTime? playedAt}) async =>
+          {required String clientId,
+          required int score,
+          required int maxScore,
+          int? durationS,
+          DateTime? playedAt}) async =>
       GamePlayResult.fromJson(await _api.post('/api/v1/games/$gameId/plays', body: {
         'client_id': clientId,
         'score': score,
@@ -86,6 +103,15 @@ class GamesApi {
         'duration_s': ?durationS,
         'played_at': (playedAt ?? DateTime.now()).toUtc().toIso8601String(),
       }));
+
+  /// [period] `week` or `all`.
+  Future<GameLeaderboard> leaderboard(int gameId, {String period = 'week', int page = 1}) async =>
+      GameLeaderboard.fromJson(
+          await _api.get('/api/v1/games/$gameId/leaderboard', queryParams: {'period': period, 'page': page}));
+
+  /// "Show me on leaderboards" (CONTRACT C9).
+  Future<void> setLeaderboardVisible(bool visible) async =>
+      _api.put('/api/v1/me/games/leaderboard', body: {'visible': visible});
 
   Future<GamesReport> myProgress() async => GamesReport.fromJson(await _api.get('/api/v1/me/games/progress'));
 

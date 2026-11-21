@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/games/shell/game_shell.dart';
 import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
 
 class OrderEngine extends StatefulWidget {
@@ -56,11 +57,18 @@ class _OrderEngineState extends State<OrderEngine> {
 
   void _place(int item) {
     setState(() => _placed.add(item));
+    GameShellScope.maybeOf(context)?.report(done: _placed.length);
     if (_left.isEmpty) _revealEnd();
+  }
+
+  void _unplace(int pos) {
+    setState(() => _placed.removeAt(pos));
+    GameShellScope.maybeOf(context)?.report(done: _placed.length);
   }
 
   void _check() {
     setState(() => _checked = true);
+    GameShellScope.maybeOf(context)?.report(done: _items.length, score: _score, correct: _score == _items.length);
     _revealEnd();
   }
 
@@ -86,13 +94,16 @@ class _OrderEngineState extends State<OrderEngine> {
     }
     final prompt = learnText('${widget.config['prompt_ar'] ?? ''}', '${widget.config['prompt_en'] ?? ''}');
     final left = _left;
+    final inShell = GameShellScope.maybeOf(context) != null;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      LearnProgressHeader(
-        current: _placed.length,
-        total: _items.length,
-        label: t('رتّبت ${_placed.length} من ${_items.length}', 'Placed ${_placed.length} of ${_items.length}'),
-      ),
-      const SizedBox(height: AppSpace.md),
+      if (!inShell) ...[
+        LearnProgressHeader(
+          current: _placed.length,
+          total: _items.length,
+          label: t('رتّبت ${_placed.length} من ${_items.length}', 'Placed ${_placed.length} of ${_items.length}'),
+        ),
+        const SizedBox(height: AppSpace.md),
+      ],
       LearnPrompt(text: prompt.isEmpty ? t('رتّب العناصر بالترتيب الصحيح.', 'Put the items in the right order.') : prompt),
       const SizedBox(height: AppSpace.sm),
       // the answer so far: numbered rows; tap one to send it back
@@ -102,7 +113,7 @@ class _OrderEngineState extends State<OrderEngine> {
           key: ValueKey('order.placed.$p'),
           label: '${p + 1}. ${_items[_placed[p]]}',
           mark: !_checked ? LearnMark.selected : (_rightAt(p) ? LearnMark.correct : LearnMark.wrong),
-          onTap: _checked ? null : () => setState(() => _placed.removeAt(p)),
+          onTap: _checked ? null : () => _unplace(p),
         ),
       ],
       if (left.isNotEmpty) ...[

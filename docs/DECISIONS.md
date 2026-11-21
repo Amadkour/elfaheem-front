@@ -5462,3 +5462,79 @@ Postgraduate thesis states (registered, struck, defended; RESEARCH §1.4) wait f
 as status events and a flag only, with no investigation workflow (RESEARCH §5 arts. 123–129); fees stay a field and
 never block a status change (D-1204); a national ID enrolled in a sister faculty warns and does not block
 (RESEARCH §1.1 [S6]); incomplete files are reminded every 7 days, four times, then become a staff task.
+
+
+## D-1580 — Every game is played in one GameShell · 2026-11-21 · accepted
+
+`lib/features/games/shell/`: a calm header on the game's theme tint (steps bar, "3 of 8", the score with the stars it
+is worth, the sound toggle), the engine under it, and the finish view (stars filling in, points, new badges, Play
+again / Back). Engines report each step through `GameShellScope.maybeOf(context)?.report(done:, score:, correct:)`;
+the header listens to the controller, so a report never rebuilds the engine or the page. Outside a shell (tests, the
+nahw exercises) an engine still draws its own progress header. The quiz / match / order scoring is unchanged.
+
+## D-1581 — Right / wrong feedback is one-shot and parks under Reduce motion · 2026-11-21 · accepted
+
+The feedback chip pops through `AppBump`; a right answer throws 16 particles drawn by ONE `CustomPainter` over the
+header (560 ms, `RepaintBoundary`). Nothing loops, so no `syncMotionLoop`; under Reduce motion the burst is skipped
+and the stars appear at once. Themes `sand | sea | night | garden` are block tones of the live theme (peach, sage,
+the forest hero with its cream ink, emerald), never fixed colours.
+
+## D-1582 — No game sounds yet: the cue is a light vibration · 2026-11-21 · accepted
+
+The app has no audio package (no `audioplayers` / `just_audio`) and the brief allows one only if it is already
+there, so no WAV assets were added. The cue is `HapticFeedback` (selection click when right, light impact when
+wrong); the per-device toggle (`SharedPreferences` `games.muted`) is labelled "Sound and vibration", so sound files
+later need no new switch.
+
+## D-1583 — Typed answers are compared after Arabic normalization · 2026-11-21 · accepted
+
+`game_text.dart`: tashkeel (harakat, tanween, shadda, sukun, dagger alef, Quranic marks) and tatweel are dropped,
+أ إ آ ٱ become ا, Latin is lower-cased, spaces collapse. Taa marbuta / haa and yaa / alef maqsura are NOT folded
+(they make different words). Used by `fill_blank` (typed and option answers) and `word_puzzle`.
+
+## D-1584 — The three new engines and how they score · 2026-11-21 · accepted
+
+`memory`: score = pairs, less one per wrong try beyond the first `pairs` tries (a first look is free), never below 0.
+`fill_blank`: one item per step, options when given (the answer is added if the author left it out), typed
+otherwise; score = right items. `word_puzzle`: the clue on top, letters (each keeps its tashkeel) shuffled; the word
+is checked when every tile is placed; Hint places the next right letter; a word solved with a hint or after a wrong
+try scores nothing (as a pair matched after a slip in `match`). All grade on the device, like the others.
+
+## D-1586 — The game fields of CONTRACT §3 + C10 · 2026-11-21 · accepted
+
+`GameSummary` reads `category`, `difficulty`, `level`, `cover_url`, `theme`, `status`, `sort`. There is no `enabled`:
+the admin's on/off is `status` published ↔ hidden. The play time stays `duration_s` (`time_ms` dropped by C10).
+
+## D-1587 — The leaderboard is loaded only when shown, and shows no avatar · 2026-11-21 · accepted
+
+Under the finish view and in the play page's app-bar sheet, never with the game. Week / All time, one load per
+period, again after a saved play; the caller's own row is pinned on top when it is not on the page. Rows show the
+name the server sends (first name + last initial, C9) and no avatar. "Show me on leaderboards" is
+`PUT /me/games/leaderboard {visible}`, its current value read from the board's `visible` (true when absent). Kill
+switch `games.leaderboard` hides both entries; guests see neither.
+
+## D-1588 — Category and difficulty filter on the server · 2026-11-21 · accepted
+
+Two `AppDropdown`s under the course filter bar send `?category&difficulty`; the engine chips still filter on the
+device. A card shows the cover decoded at the well's size (`cacheWidth`), the engine glyph while it loads or fails.
+
+## D-1589 — The super admin's game editor · 2026-11-21 · accepted
+
+`lib/features/games/admin/`, services hub tile next to the grammar content, kill switch `admin.games`. List: drag
+handle reorder (`POST /admin/games/reorder`), `AppSwitch` = published ↔ hidden, Edit / Delete. Editor: titles, key
+(only on create; generated when empty), type (fixed after create), category, difficulty, level, theme, points,
+cover (the app cropper, wide, then `POST /admin/games/{id}/cover` — not in the contract yet, asked under Requests;
+a new game is saved first), Save as draft / Publish.
+
+## D-1590 — The editor's forms are local knowledge filtered by the server's registry · 2026-11-21 · accepted
+
+`kGameEngineForms` says what each engine's form asks for; `GameConfigDraft.toConfig()` produces exactly the
+contract's shapes (blank rows dropped, texts trimmed, the quiz answer index moved with dropped options) and
+`problems()` makes the server's checks first, naming the same field path, so Save is offered only for a playable
+game. The engines offered are those `/admin/games/engines` lists that the app can edit; without that route (an older
+server) the app's own list.
+
+## D-1591 — The editor's live preview is the engine itself · 2026-11-21 · accepted
+
+The preview is `GameRound` (the shell + `spec.build`) on the draft's config, refreshed 400 ms after the last
+keystroke so typing does not restart a round on every letter; a finished preview round starts again.

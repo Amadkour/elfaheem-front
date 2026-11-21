@@ -8,6 +8,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/games/shell/game_shell.dart';
 import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
 
 typedef QuizQuestion = ({String prompt, List<String> options, int answer});
@@ -56,6 +57,7 @@ class _QuizEngineState extends State<QuizEngine> {
       _picked = i;
       if (i == _qs[_i].answer) _score++;
     });
+    GameShellScope.maybeOf(context)?.report(done: _i + 1, score: _score, correct: i == _qs[_i].answer);
   }
 
   void _next() {
@@ -84,9 +86,13 @@ class _QuizEngineState extends State<QuizEngine> {
                 ? (k == _picked ? LearnMark.correct : LearnMark.missed)
                 : (k == _picked ? LearnMark.wrong : LearnMark.idle),
     ];
+    // inside a GameShell the shell draws the progress and the score
+    final inShell = GameShellScope.maybeOf(context) != null;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      LearnProgressHeader(current: _i + 1, total: _qs.length, score: _score),
-      const SizedBox(height: AppSpace.md),
+      if (!inShell) ...[
+        LearnProgressHeader(current: _i + 1, total: _qs.length, score: _score),
+        const SizedBox(height: AppSpace.md),
+      ],
       LearnPrompt(key: ValueKey('quiz.q.$_i'), text: q.prompt),
       const SizedBox(height: AppSpace.sm),
       LearnOptionList(options: q.options, marks: marks, onSelect: _picked == null ? _pick : null),

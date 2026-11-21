@@ -1,5 +1,6 @@
 // lib/features/games/games_models.dart — the educational games' payloads (D-1346, server CONTRACT §6, D-1342):
-// the list, one game with its `config`, a play's answer, the progress report (student and parent).
+// the list, one game with its `config`, a play's answer, the progress report (student and parent), and since
+// Learning Hub v2 (CONTRACT §3, D-1586) a game's category / difficulty / level / cover / theme and its leaderboard.
 library;
 
 import 'package:flutter/material.dart';
@@ -50,6 +51,13 @@ class GameSummary {
     this.subjectId,
     this.progress,
     this.config = const {},
+    this.category = '',
+    this.difficulty = '',
+    this.level,
+    this.coverUrl,
+    this.theme = 'sand',
+    this.status = 'published',
+    this.sort = 0,
   });
 
   final int id;
@@ -60,6 +68,20 @@ class GameSummary {
 
   /// The engine's content (empty in the list).
   final Map<String, dynamic> config;
+
+  /// `quran | tajweed | fiqh | nahw | general` and `easy | medium | hard` ('' from an older server).
+  final String category, difficulty;
+  final String? level, coverUrl;
+
+  /// `sand | sea | night | garden`.
+  final String theme;
+
+  /// `draft | published | hidden` (the admin list; the student list holds published games only). The editor's
+  /// on / off is published ↔ hidden (CONTRACT C10: there is no `enabled` field).
+  final String status;
+  final int sort;
+
+  bool get published => status == 'published';
 
   String get title => learnText(titleAr, titleEn);
 
@@ -75,6 +97,13 @@ class GameSummary {
         subjectId: _io(j['subject_id']),
         progress: GameProgress.maybe(j['progress']),
         config: _m(j['config']),
+        category: _s(j['category']),
+        difficulty: _s(j['difficulty']),
+        level: _s(j['level']).isEmpty ? null : _s(j['level']),
+        coverUrl: _s(j['cover_url']).isEmpty ? null : _s(j['cover_url']),
+        theme: _s(j['theme']).isEmpty ? 'sand' : _s(j['theme']),
+        status: _s(j['status']).isEmpty ? 'published' : _s(j['status']),
+        sort: _i(j['sort']),
       );
 
   GameSummary withProgress(GameProgress? p) => GameSummary(
@@ -89,7 +118,80 @@ class GameSummary {
         subjectId: subjectId,
         progress: p,
         config: config,
+        category: category,
+        difficulty: difficulty,
+        level: level,
+        coverUrl: coverUrl,
+        theme: theme,
+        status: status,
+        sort: sort,
       );
+}
+
+/// The game categories (server enum).
+const List<String> kGameCategories = ['quran', 'tajweed', 'fiqh', 'nahw', 'general'];
+
+/// The difficulties (server enum).
+const List<String> kGameDifficulties = ['easy', 'medium', 'hard'];
+
+String gameCategoryName(String key) => switch (key) {
+      'quran' => learnText('القرآن', 'Quran'),
+      'tajweed' => learnText('التجويد', 'Tajweed'),
+      'fiqh' => learnText('الفقه', 'Fiqh'),
+      'nahw' => learnText('النحو', 'Grammar'),
+      'general' => learnText('عام', 'General'),
+      _ => key,
+    };
+
+String gameDifficultyName(String key) => switch (key) {
+      'easy' => learnText('سهل', 'Easy'),
+      'medium' => learnText('متوسط', 'Medium'),
+      'hard' => learnText('صعب', 'Hard'),
+      _ => key,
+    };
+
+/// One row of a game's leaderboard: the first name with the last initial, as the server sends it, and no avatar
+/// (CONTRACT C9).
+class GameLeaderRow {
+  const GameLeaderRow({required this.rank, required this.name, this.bestScore = 0, this.stars = 0, this.durationS});
+
+  final int rank, bestScore, stars;
+  final String name;
+  final int? durationS;
+
+  static GameLeaderRow? maybe(Object? j) {
+    if (j is! Map) return null;
+    final m = Map<String, dynamic>.from(j);
+    return GameLeaderRow(
+      rank: _i(m['rank']),
+      name: _s(m['name'] ?? m['first_name']),
+      bestScore: _i(m['best_score']),
+      stars: _i(m['stars']),
+      durationS: _io(m['duration_s']),
+    );
+  }
+}
+
+/// `GET /games/{id}/leaderboard?period=week|all&page` → `{items, me, visible}` (me = null when the caller has not
+/// played; visible = the caller's "Show me on leaderboards", true when the server does not say).
+class GameLeaderboard {
+  const GameLeaderboard({this.items = const [], this.me, this.visible = true});
+
+  final List<GameLeaderRow> items;
+  final GameLeaderRow? me;
+  final bool visible;
+
+  /// Whether [me] is already one of [items] (then it is marked there, not pinned again).
+  bool get meListed => me != null && items.any((r) => r.rank == me!.rank && r.name == me!.name);
+
+  factory GameLeaderboard.fromJson(Object? r) {
+    final m = _m(r);
+    return GameLeaderboard(
+      items: [for (final e in _l(m['items'])) GameLeaderRow.maybe(e)!],
+      me: GameLeaderRow.maybe(m['me']),
+      visible: m['visible'] != false,
+    );
+  }
 }
 
 class GameList {
