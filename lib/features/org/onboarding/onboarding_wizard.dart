@@ -5,6 +5,10 @@
 //                   and gender and shows the governorate. Fields are drawn by kind; a field with a `when` appears and
 //                   disappears while the person types. Every step change saves the changed keys (POST for the first
 //                   save, PATCH after), with a small "Saved" mark. `mode` is staff or applicant, so Phase C reuses it.
+//                   Staff with the invite right get "Save and invite" on the last step (the draft is saved, then
+//                   `POST cases/invite`: the student completes the rest); `basicsOnly` stops after identity and
+//                   contact (the Add student sheet's "Enter the basics and invite"). The last step says in one sentence
+//                   what happens next, read from the type's approval steps (a named person, a council, the confirm).
 //   OnbWizardPage   the wizard in an OrgPushedPage
 //   OnbPlaces       departments and programs for the `department` / `program` kinds
 //
@@ -102,11 +106,20 @@ class OnbWizard extends StatefulWidget {
     this.canApproveNow = false,
     this.initialStep = 0,
     this.onDone,
+    this.canInvite = false,
+    this.basicsOnly = false,
   });
 
   final int orgId;
   final OnbType type;
   final OnbMode mode;
+
+  /// Staff only: the last step offers "Save and invite" (kill switch `org.onboarding.invite` + the module's update
+  /// right, checked by the caller).
+  final bool canInvite;
+
+  /// Only identity and contact, then the last step (with "Save and invite" as its main button).
+  final bool basicsOnly;
 
   /// An existing case to continue (a draft, or one that needs correction).
   final OnbCase? initial;
@@ -143,6 +156,14 @@ class _OnbWizardState extends State<OnbWizard> {
   String? _banner;
 
   OnbType get _type => widget.type;
+
+  bool get _staff => widget.mode == OnbMode.staff;
+  bool get _basics => _staff && widget.basicsOnly;
+
+  /// An invitation goes to a draft only (the server skips the rest as `not_draft`).
+  bool get _canInvite => _staff && (widget.canInvite || widget.basicsOnly) && (_case == null || _case!.status == 'draft');
+
+  static const _basicGroups = {'identity', 'personal'};
 
   @override
   void initState() {
@@ -181,9 +202,10 @@ class _OnbWizardState extends State<OnbWizard> {
   List<_WStep> get _steps {
     final out = <_WStep>[];
     for (final e in _stepGroups.entries) {
+      if (_basics && !_basicGroups.contains(e.key)) continue;
       if (_hasVisible(e.value)) out.add(_WStep(e.key, e.value));
     }
-    if (_type.documents.any((d) => docVisible(d, _values))) out.add(const _WStep('documents', []));
+    if (!_basics && _type.documents.any((d) => docVisible(d, _values))) out.add(const _WStep('documents', []));
     out.add(const _WStep('review', []));
     return out;
   }
@@ -379,6 +401,57 @@ class _OnbWizardState extends State<OnbWizard> {
     showAppNotice(approve ? t('قُدِّم الطلب وفُعِّل', 'Approved and activated') : t('قُدِّم الطلب', 'Submitted'));
     if (c.generatedPassword != null) await showGeneratedPassword(context, c.generatedPassword!, name: c.fullName);
     if (mounted) widget.onDone?.call(c);
+  }
+
+  /// "Save and invite": checks identity and contact only (the student completes the rest), saves the draft and sends
+  /// the invitation. A skipped invitation (no contact, …) stays on the page with its reason.
+  Future<void> _saveAndInvite() async {
+    final basics = _type.fields.where((f) => _basicGroups.contains(f.group) && fieldVisible(f, _values)).toList();
+    if (!_validate(basics)) {
+      setState(() => _banner = t('أكمل بيانات الهوية والتواصل أولاً', 'Complete the identity and contact details first'));
+      return;
+    }
+    if (!hasValue(_values['email']) && !hasValue(_values['phone'])) {
+      setState(() => _banner = t('أضف بريداً إلكترونياً أو هاتفاً لتصل الدعوة إلى الطالب.', 'Add an e-mail or a phone so the invitation reaches the student.'));
+      return;
+    }
+    setState(() => _busy = true);
+    if (!await _save()) {
+      if (mounted) setState(() => _busy = false);
+      return;
+    }
+    final r = await _api.inviteCases(widget.orgId, [_case!.id]);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!r.ok) {
+      setState(() => _banner = orgErrorText(r.error!));
+      return;
+    }
+    final res = OnbInviteResult.fromJson(r.map);
+    if (res.invited < 1) {
+      final why = res.skipped.isEmpty ? '' : res.skipped.first.reason;
+      setState(() => _banner = '${t('حُفظت المسودة ولم تُرسل الدعوة', 'The draft was saved but the invitation was not sent')}: ${onbSkipReason(why)}');
+      return;
+    }
+    showAppNotice(t('حُفظ الملف وأُرسلت الدعوة إلى الطالب', 'Saved, and the invitation was sent to the student'));
+    widget.onDone?.call(_case);
+  }
+
+  /// What happens after this step, in one sentence, from the type's approval steps.
+  String _nextText() {
+    if (_basics) return t('يصل الطالب رابط ليكمل ملفه بنفسه، ثم يمر الملف بخطوة الاعتماد.', 'The student gets a link to complete the file, then it goes through approval.');
+    final body = _type.chain.where((s) => s.kind == 'council').firstOrNull;
+    if (body != null) {
+      final name = body.label.isEmpty ? t('المجلس', 'the council') : body.label;
+      return t('ينتهي دورك هنا: يذهب الملف إلى $name لاعتماده بقرار مرقّم.', 'Your part ends here: the file goes to $name for a numbered decision.');
+    }
+    final people = _type.chain.where((s) => s.kind == 'people').firstOrNull;
+    if (people != null) {
+      final name = people.label.isEmpty ? t('المراجِع المحدد', 'the named reviewer') : people.label;
+      return t('ينتهي دورك هنا: يذهب الملف إلى $name ليراجعه.', 'Your part ends here: the file goes to $name for review.');
+    }
+    if (widget.canApproveNow) return t('يصبح الطالب نشطاً عندما تختار "اعتماد وتفعيل الآن".', 'The student becomes active when you choose "Approve and activate now".');
+    return t('ينتهي دورك هنا: يذهب الملف إلى المراجعة.', 'Your part ends here: the file goes to review.');
   }
 
   // ── documents ──────────────────────────────────────────────────────────────
@@ -673,7 +746,11 @@ class _OnbWizardState extends State<OnbWizard> {
         key: const ValueKey('onb.review.status'),
         icon: ok ? Icons.check_circle_outline_rounded : Icons.report_gmailerrorred_rounded,
         color: ok ? c.success : c.warning,
-        text: ok ? t('كل البيانات المطلوبة مكتملة.', 'Everything required is complete.') : t('ما زال ينقص بعض البيانات.', 'Some required items are still missing.'),
+        text: ok
+            ? t('كل البيانات المطلوبة مكتملة.', 'Everything required is complete.')
+            : (_basics
+                ? t('يكمل الطالب ما ينقص بعد وصول الدعوة.', 'The student completes what is missing after the invitation.')
+                : t('ما زال ينقص بعض البيانات.', 'Some required items are still missing.')),
       ),
       AppSpace.gapSm,
       if (!ok)
@@ -702,12 +779,35 @@ class _OnbWizardState extends State<OnbWizard> {
         ]),
       ),
       AppSpace.gapMd,
+      if (_staff)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.sm),
+          child: Row(key: const ValueKey('onb.review.next'), crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(Icons.route_outlined, size: AppIconSize.sm, color: c.primary),
+            AppSpace.gapXs,
+            Expanded(child: Text(_nextText(), style: AppType.body(context))),
+          ]),
+        ),
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: [
         AppButton.secondary(key: const ValueKey('onb.review.draft'), label: t('حفظ كمسودة', 'Save as draft'), busy: _busy, onPressed: _busy ? null : _saveAndClose),
-        if (widget.mode == OnbMode.staff && widget.canApproveNow)
+        if (_canInvite && !_basics)
+          AppButton.tonal(
+              key: const ValueKey('onb.review.invite'),
+              label: t('حفظ ودعوة الطالب', 'Save and invite'),
+              icon: Icons.forward_to_inbox_outlined,
+              onPressed: _busy ? null : _saveAndInvite),
+        if (!_basics && _staff && widget.canApproveNow)
           AppButton.tonal(key: const ValueKey('onb.review.approve'), label: t('اعتماد وتفعيل الآن', 'Approve and activate now'), onPressed: ok && !_busy ? () => _submit(approve: true) : null),
-        AppButton.primary(
-            key: const ValueKey('onb.review.submit'), label: t('تقديم', 'Submit'), busy: _busy, onPressed: ok && !_busy ? _submit : null),
+        if (_basics)
+          AppButton.primary(
+              key: const ValueKey('onb.review.invite'),
+              label: t('حفظ ودعوة الطالب', 'Save and invite'),
+              icon: Icons.forward_to_inbox_outlined,
+              busy: _busy,
+              onPressed: _busy || !_canInvite ? null : _saveAndInvite)
+        else
+          AppButton.primary(
+              key: const ValueKey('onb.review.submit'), label: t('تقديم', 'Submit'), busy: _busy, onPressed: ok && !_busy ? _submit : null),
       ]),
     ];
   }
@@ -849,13 +949,24 @@ class OnbDocTile extends StatelessWidget {
 
 /// The wizard in a pushed org page (`/org/<o>/onboarding/new`). Pops with the saved case.
 class OnbWizardPage extends StatelessWidget {
-  const OnbWizardPage({super.key, required this.orgId, required this.type, this.initial, this.api, this.places, this.canApproveNow = false, this.mode = OnbMode.staff});
+  const OnbWizardPage({
+    super.key,
+    required this.orgId,
+    required this.type,
+    this.initial,
+    this.api,
+    this.places,
+    this.canApproveNow = false,
+    this.mode = OnbMode.staff,
+    this.canInvite = false,
+    this.basicsOnly = false,
+  });
   final int orgId;
   final OnbType type;
   final OnbCase? initial;
   final OnboardingApi? api;
   final OnbPlaces? places;
-  final bool canApproveNow;
+  final bool canApproveNow, canInvite, basicsOnly;
   final OnbMode mode;
 
   @override
@@ -872,6 +983,8 @@ class OnbWizardPage extends StatelessWidget {
         api: api,
         places: places,
         canApproveNow: canApproveNow,
+        canInvite: canInvite,
+        basicsOnly: basicsOnly,
         mode: mode,
         onDone: (c) => Navigator.of(context).maybePop(c),
       ),

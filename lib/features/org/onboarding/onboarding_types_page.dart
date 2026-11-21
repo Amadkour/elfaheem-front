@@ -3,9 +3,16 @@
 //
 //   OnbTypesPage    every type with its active switch; tap → the editor; "Apply a preset" (apply or replace, with a
 //                   confirm: replacing drops the custom types)
-//   OnbTypeEditor   one type: name, auto-activation, the fields (label and level), the documents (level, accepted
-//                   types, size, "can be brought later") and the chain of approval steps. Saving sends the WHOLE type
-//                   (the server replaces the object). Plain values + callbacks, so the layout harness pumps it.
+//   OnbTypeEditor   one type: name, the entry policy, auto-activation, the fields (label and level), the documents
+//                   (level, accepted types, size, "can be brought later") and the chain of approval steps. Saving
+//                   sends the WHOLE type (the server replaces the object). Plain values + callbacks, so the layout
+//                   harness pumps it.
+//   OnbEntryPolicyPicker  the plain "How do students join?" picker (contract §7.2, plan 4.2a): direct · after review
+//                   · by invitation · by a link or code, and for the reviewed ones "Who decides?": whoever holds the
+//                   approve right · a named person (`need.user_ids`) · a council or committee (`need.council_id`; its
+//                   approval records a decision number and date). Choosing a person or a body makes the chain that
+//                   one step; it writes `settings.entry_policy` and the chain, nothing else.
+//   OnbChoiceCard   the selectable card both pickers (and the Add student sheet) draw.
 //
 // Fields that map to case columns (`system`) can change label and level but are never removed.
 library;
@@ -18,6 +25,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../admin/admin_common.dart' show t, asMapList;
+import '../governance/gov_api.dart' show GovApi;
+import '../governance/gov_council_ui.dart' show pickOrgMember;
 import '../org_page_header.dart' show OrgPushedPage;
 import '../org_v3.dart' show orgErrorText;
 import 'onboarding_api.dart';
@@ -146,6 +155,7 @@ class OnbTypesList extends StatelessWidget {
                       AppSpace.gapXs,
                       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
                         AppStatusBadge(label: onbModuleLabel(ty.module), tone: AppTone.brand, dense: true),
+                        AppStatusBadge(label: onbEntryPolicyLabel(ty.settings.entryPolicy), tone: AppTone.info, dense: true),
                         AppStatusBadge(label: t('${ty.fields.length} حقل', '${ty.fields.length} fields'), tone: AppTone.neutral, dense: true),
                         AppStatusBadge(label: t('${ty.documents.length} مستند', '${ty.documents.length} documents'), tone: AppTone.neutral, dense: true),
                         AppStatusBadge(label: t('${ty.chain.length} مرحلة', '${ty.chain.length} steps'), tone: AppTone.neutral, dense: true),
@@ -193,6 +203,41 @@ class _OnbTypeEditorPageState extends State<OnbTypeEditorPage> {
     Navigator.of(context).pop(true);
   }
 
+  Future<OnbPick?> _pickPerson(Set<int> exclude) async {
+    final u = await pickOrgMember(context, widget.orgId, title: t('من يراجع الملفات؟', 'Who reviews the files?'), exclude: exclude);
+    return u == null ? null : OnbPick(u.id, u.name);
+  }
+
+  Future<OnbPick?> _pickCouncil() async {
+    List<OnbPick> bodies;
+    try {
+      bodies = [for (final c in await GovApi(widget.orgId).councils()) OnbPick(c.id, c.name.isEmpty ? '#${c.id}' : c.name)];
+    } catch (e) {
+      if (mounted) showAppNotice(ApiException.from(e).message, error: true);
+      return null;
+    }
+    if (!mounted) return null;
+    if (bodies.isEmpty) {
+      showAppNotice(t('لا توجد مجالس بعد. أنشئ المجلس من صفحة الحوكمة أولاً.', 'There are no councils yet. Create one on the Governance page first.'), error: true);
+      return null;
+    }
+    return showAppSheet<OnbPick>(
+      context,
+      (ctx) => AppSheetContent(title: t('أي مجلس يعتمد؟', 'Which council approves?'), icon: Icons.groups_2_outlined, children: [
+        for (final b in bodies)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+            child: OnbChoiceCard(
+              key: ValueKey('onb.council.${b.id}'),
+              icon: Icons.groups_2_outlined,
+              title: b.name,
+              onTap: () => Navigator.of(ctx).pop(b),
+            ),
+          ),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return OrgPushedPage(
@@ -204,6 +249,8 @@ class _OnbTypeEditorPageState extends State<OnbTypeEditorPage> {
         type: widget.type,
         busy: _busy,
         onSave: _save,
+        onPickPerson: _pickPerson,
+        onPickCouncil: _pickCouncil,
         footer: AppConfig.disableList.contains(onboardingIntakeKey) ? null : OnbIntakePanel(orgId: widget.orgId, type: widget.type, api: _api),
       ),
     );
@@ -211,13 +258,19 @@ class _OnbTypeEditorPageState extends State<OnbTypeEditorPage> {
 }
 
 class OnbTypeEditor extends StatefulWidget {
-  const OnbTypeEditor({super.key, required this.type, required this.onSave, this.busy = false, this.footer});
+  const OnbTypeEditor({super.key, required this.type, required this.onSave, this.busy = false, this.footer, this.onPickPerson, this.onPickCouncil});
   final OnbType type;
   final bool busy;
   final void Function(OnbType) onSave;
 
   /// Extra panels after the approval steps (the intake link).
   final Widget? footer;
+
+  /// Picks a member of the organization (not one of the given ids) for a named-person step; null = the option is off.
+  final Future<OnbPick?> Function(Set<int> exclude)? onPickPerson;
+
+  /// Picks a council for a body step; null = the option is off.
+  final Future<OnbPick?> Function()? onPickCouncil;
 
   @override
   State<OnbTypeEditor> createState() => _OnbTypeEditorState();
@@ -247,6 +300,42 @@ class _OnbTypeEditorState extends State<OnbTypeEditor> {
     if (d != null) _doc(i, d);
   }
 
+  // ── entry policy ───────────────────────────────────────────────────────────
+
+  void _setPolicy(String p) => setState(() =>
+      _type = _type.copyWith(settings: _type.settings.copyWith(entryPolicy: p, autoActivate: p == 'direct' ? true : null)));
+
+  void _setChain(List<OnbChainStep> chain) => setState(() => _type = _type.copyWith(chain: chain));
+
+  Future<void> _setDecider(OnbDecider d) async {
+    switch (d) {
+      case OnbDecider.right:
+        if (onbDeciderOf(_type.chain) != OnbDecider.right) {
+          _setChain([OnbChainStep(key: 'approve', labelAr: 'الاعتماد', labelEn: 'Approval', need: {'module': _type.module, 'action': 'approve'})]);
+        }
+      case OnbDecider.people:
+        final p = await widget.onPickPerson?.call(const {});
+        if (p == null || !mounted) return;
+        _setChain([OnbChainStep(key: 'person', labelAr: p.name, labelEn: p.name, need: {'user_ids': [p.id]})]);
+      case OnbDecider.council:
+        final b = await widget.onPickCouncil?.call();
+        if (b == null || !mounted) return;
+        _setChain([OnbChainStep(key: 'council', labelAr: b.name, labelEn: b.name, need: {'council_id': b.id})]);
+    }
+  }
+
+  /// Adds one more named person to the people step.
+  Future<void> _addPerson() async {
+    final i = _type.chain.indexWhere((s) => s.kind == 'people');
+    if (i < 0) return;
+    final s = _type.chain[i];
+    final p = await widget.onPickPerson?.call(s.userIds.toSet());
+    if (p == null || !mounted) return;
+    final names = [s.labelAr, p.name].where((x) => x.isNotEmpty).join('، ');
+    final namesEn = [s.labelEn, p.name].where((x) => x.isNotEmpty).join(', ');
+    _setChain([..._type.chain]..[i] = s.copyWith(labelAr: names, labelEn: namesEn, need: {'user_ids': [...s.userIds, p.id]}));
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -262,6 +351,18 @@ class _OnbTypeEditorState extends State<OnbTypeEditor> {
             value: _type.active,
             onChanged: (v) => setState(() => _type = _type.copyWith(active: v)),
           ),
+          AppSpace.gapSm,
+          OnbEntryPolicyPicker(
+            key: const ValueKey('onb.editor.policy'),
+            policy: _type.settings.entryPolicy,
+            chain: _type.chain,
+            onPolicy: _setPolicy,
+            onDecider: _setDecider,
+            peopleOn: widget.onPickPerson != null,
+            councilOn: widget.onPickCouncil != null,
+            onAddPerson: widget.onPickPerson == null ? null : _addPerson,
+          ),
+          AppSpace.gapSm,
           AppSwitchTile(
             key: const ValueKey('onb.editor.auto'),
             title: t('تفعيل العضوية فور القبول', 'Activate the membership on approval'),
@@ -482,4 +583,238 @@ Future<OnbPresetPick?> showOnbPresetSheet(BuildContext context, List<OnbPreset> 
       ]);
     });
   });
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Entry policy
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// A picked person or council: its id and the name shown.
+class OnbPick {
+  const OnbPick(this.id, this.name);
+  final int id;
+  final String name;
+}
+
+/// Who decides a reviewed file.
+enum OnbDecider { right, people, council }
+
+/// The decider a chain stands for: a body step wins, then named people, else the approve right (or a role).
+OnbDecider onbDeciderOf(List<OnbChainStep> chain) {
+  if (chain.any((s) => s.kind == 'council')) return OnbDecider.council;
+  if (chain.any((s) => s.kind == 'people')) return OnbDecider.people;
+  return OnbDecider.right;
+}
+
+IconData onbEntryPolicyIcon(String p) => switch (p) {
+      'direct' => Icons.bolt_rounded,
+      'invitation' => Icons.forward_to_inbox_outlined,
+      'code' => Icons.qr_code_2_rounded,
+      _ => Icons.fact_check_outlined,
+    };
+
+/// "How do students join?" over plain values: four policy cards, then (except for a direct entry) "Who decides?".
+class OnbEntryPolicyPicker extends StatelessWidget {
+  const OnbEntryPolicyPicker({
+    super.key,
+    required this.policy,
+    required this.chain,
+    required this.onPolicy,
+    this.onDecider,
+    this.onAddPerson,
+    this.peopleOn = true,
+    this.councilOn = true,
+  });
+
+  final String policy;
+  final List<OnbChainStep> chain;
+  final ValueChanged<String> onPolicy;
+  final ValueChanged<OnbDecider>? onDecider;
+
+  /// "Add another person" under a named-person step; null = hidden.
+  final VoidCallback? onAddPerson;
+  final bool peopleOn, councilOn;
+
+  String _note(String p) => switch (p) {
+        'direct' => t('يكفي أن يؤكد الموظف الذي يملك صلاحية القبول، فيصبح الطالب مقيداً فوراً.',
+            'A staff member who may approve confirms, and the student is enrolled at once.'),
+        'invitation' => t('أدخل البيانات الأساسية واختر "حفظ ودعوة": يكمل الطالب ملفه بنفسه.',
+            'Enter the basics and choose "Save and invite": the student completes the file.'),
+        'code' => t('فعّل رابط التقديم في أسفل الصفحة وشاركه أو اطبع رمز QR.',
+            'Turn on the intake link at the bottom of this page and share it or print its QR code.'),
+        _ => t('يدخل الموظف الملف كاملاً ثم يمر بخطوة الاعتماد.', 'Staff enter the full file, then it goes through approval.'),
+      };
+
+  String _deciderTitle(OnbDecider d) => switch (d) {
+        OnbDecider.right => t('من يملك صلاحية القبول', 'Whoever holds the approve right'),
+        OnbDecider.people => t('شخص محدد بالاسم', 'A named person'),
+        OnbDecider.council => t('مجلس أو لجنة', 'A council or committee'),
+      };
+
+  IconData _deciderIcon(OnbDecider d) => switch (d) {
+        OnbDecider.right => Icons.verified_user_outlined,
+        OnbDecider.people => Icons.person_search_outlined,
+        OnbDecider.council => Icons.groups_2_outlined,
+      };
+
+  String _deciderText(OnbDecider d, OnbDecider current, OnbChainStep? people, OnbChainStep? body) {
+    switch (d) {
+      case OnbDecider.right:
+        return t('أي موظف لديه الصلاحية يراجع ويقبل.', 'Any staff member with the right reviews and approves.');
+      case OnbDecider.people:
+        if (current == d && people != null && people.label.isNotEmpty) return people.label;
+        return t('تصل الملفات إليه وحده ليراجعها.', 'Files go to that person alone for review.');
+      case OnbDecider.council:
+        if (current == d && body != null && body.label.isNotEmpty) {
+          return '${body.label} · ${t('يُسجَّل رقم القرار وتاريخه', 'the decision number and date are recorded')}';
+        }
+        return t('يُعتمد الملف بقرار له رقم وتاريخ.', 'A file is approved by a decision with a number and a date.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final decider = onbDeciderOf(chain);
+    final people = chain.where((s) => s.kind == 'people').firstOrNull;
+    final body = chain.where((s) => s.kind == 'council').firstOrNull;
+    bool off(OnbDecider d) => onDecider == null || (d == OnbDecider.people && !peopleOn) || (d == OnbDecider.council && !councilOn);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppSectionTitle(t('كيف يلتحق الطلاب؟', 'How do students join?')),
+      Text(t('اختر طريقة واحدة، ويمكن تغييرها في أي وقت.', 'Pick one way. You can change it at any time.'),
+          style: AppType.meta(context).copyWith(color: c.textMedium)),
+      AppSpace.gapXs,
+      for (final p in onbEntryPolicies)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
+          child: OnbChoiceCard(
+            key: ValueKey('onb.policy.$p'),
+            icon: onbEntryPolicyIcon(p),
+            title: onbEntryPolicyLabel(p),
+            subtitle: onbEntryPolicyHint(p),
+            selected: policy == p,
+            onTap: () => onPolicy(p),
+          ),
+        ),
+      AppBanner(icon: Icons.lightbulb_outline_rounded, color: c.primary, text: _note(policy)),
+      if (policy != 'direct') ...[
+        AppSpace.gapSm,
+        AppFieldLabel(t('من يقرر قبول الملف؟', 'Who decides on a file?')),
+        for (final d in OnbDecider.values)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+            child: OnbChoiceCard(
+              key: ValueKey('onb.decider.${d.name}'),
+              dense: true,
+              icon: _deciderIcon(d),
+              title: _deciderTitle(d),
+              subtitle: _deciderText(d, decider, people, body),
+              selected: decider == d,
+              onTap: off(d) ? null : () => onDecider!(d),
+            ),
+          ),
+        if (decider == OnbDecider.people && onAddPerson != null)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: AppButton.ghost(
+              key: const ValueKey('onb.decider.add'),
+              label: t('إضافة شخص آخر', 'Add another person'),
+              icon: Icons.person_add_alt_rounded,
+              size: AppButtonSize.sm,
+              onPressed: onAddPerson,
+            ),
+          ),
+      ],
+    ]);
+  }
+}
+
+/// A selectable card: a tinted icon, a title that wraps, one or two sentences and (when [selected] is not null) a
+/// round mark. The selected one wears the primary edge and tint; a card without [onTap] is dimmed.
+class OnbChoiceCard extends StatelessWidget {
+  const OnbChoiceCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.selected,
+    this.onTap,
+    this.badge,
+    this.dense = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+
+  /// null = not a choice (a chevron instead of the mark).
+  final bool? selected;
+  final VoidCallback? onTap;
+
+  /// A short pill after the title ("Recommended").
+  final String? badge;
+  final bool dense;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final on = selected == true;
+    final motion = AppMotion.of(context);
+    final enabled = onTap != null;
+    final box = dense ? AppIconSize.xl : AppTouch.min - AppSpace.xxs;
+    final sub = subtitle;
+    return Semantics(
+      button: true,
+      selected: selected,
+      enabled: enabled,
+      child: Opacity(
+        opacity: enabled || on ? 1 : 0.55,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: AppRadius.cardAll,
+            child: AnimatedContainer(
+              duration: motion.fast,
+              curve: AppMotion.curve,
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              padding: EdgeInsets.all(dense ? AppSpace.xs : AppSpace.sm),
+              decoration: BoxDecoration(
+                color: on ? Color.alphaBlend(c.primaryTint, c.cardBg) : c.cardBg,
+                borderRadius: AppRadius.cardAll,
+                border: Border.all(color: on ? c.primary : c.cardEdge, width: on ? AppBorder.strong : AppBorder.hairline),
+              ),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(
+                  width: box,
+                  height: box,
+                  decoration: BoxDecoration(color: appTintOn(context, c.primary), borderRadius: AppRadius.chipAll),
+                  child: Icon(icon, size: dense ? AppIconSize.sm : AppIconSize.md, color: c.primary),
+                ),
+                AppSpace.gapSm,
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                      Text(title, style: AppType.bodyStrong(context)),
+                      if (badge != null) AppStatusBadge(label: badge!, tone: AppTone.success, dense: true),
+                    ]),
+                    if (sub != null && sub.isNotEmpty) ...[
+                      const SizedBox(height: AppSpace.xxs / 2),
+                      Text(sub, style: AppType.meta(context).copyWith(color: c.textMedium)),
+                    ],
+                  ]),
+                ),
+                AppSpace.gapXs,
+                if (selected == null)
+                  Icon(Icons.chevron_right_rounded, color: c.textMedium, size: AppIconSize.md)
+                else
+                  Icon(on ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                      color: on ? c.primary : c.textMedium, size: AppIconSize.md),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
