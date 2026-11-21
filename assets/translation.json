@@ -24755,6 +24755,8 @@
   "learn_hint_games": {"en": "Educational games and badges", "ar": "ألعاب تعليمية وشارات"},
   "learn_hint_quran": {"en": "Quran teachers and your memorization", "ar": "معلمو القرآن ومتابعة حفظك"},
   "learn_hint_nahw": {"en": "Arabic grammar lessons and exercises", "ar": "دروس النحو وتمارينه"},
+  "learn_hint_teachers": {"en": "Teachers of Quran, tajweed, fiqh and grammar", "ar": "معلمو القرآن والتجويد والفقه والنحو"},
+  "guest_locked_teachers": {"en": "Sign in to browse teachers and join their packages", "ar": "سجّل الدخول لتتصفح المعلمين وتنضم لباقاتهم"},
   "learn_hint_analysis": {"en": "Your grades, attendance and progress", "ar": "درجاتك وحضورك وتقدّمك"},
   "enroll_refused_title": {"en": "Booking is not available", "ar": "الحجز غير متاح"},
   "enroll_refused_back": {"en": "Back to the course", "ar": "العودة إلى الكورس"},

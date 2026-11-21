@@ -15,7 +15,12 @@ import 'dart:io';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const notInCatalog = <String, String>{};
+const notInCatalog = <String, String>{
+  // Learning Hub v2 teachers and packages (CONTRACT.md §1 / §2): the back stream adds them to feature_catalog.py
+  'teacher_onboarding': 'lands with feature/lh2-core',
+  'teacher_discovery': 'lands with feature/lh2-core',
+  'packages': 'lands with feature/lh2-core',
+};
 
 final _patterns = [
   RegExp(r"featureKey:\s*'([^'$]+)'"),

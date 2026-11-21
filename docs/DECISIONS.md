@@ -5462,3 +5462,89 @@ Postgraduate thesis states (registered, struck, defended; RESEARCH §1.4) wait f
 as status events and a flag only, with no investigation workflow (RESEARCH §5 arts. 123–129); fees stay a field and
 never block a status change (D-1204); a national ID enrolled in a sister faculty warns and does not block
 (RESEARCH §1.1 [S6]); incomplete files are reminded every 7 days, four times, then become a staff task.
+
+## D-1620 — One teacher flow for every subject, beside the Quran card · 2026-11-21 · accepted
+
+Learning Hub v2 (CONTRACT.md §1) gives every subject (quran, tajweed, fiqh, nahw) one teacher profile, built in
+`lib/features/teachers/`. The Quran card (`lib/features/quran/`) stays: the server's old routes read the same table
+(Corrections v2 C1), so installed apps keep working, and the Quran hub links to the new hub. Entries: Profile ›
+"My teacher profile and packages" and the Quran hub card (kill switch `teacher_onboarding`).
+
+## D-1621 — The onboarding wizard saves each step · 2026-11-21 · accepted
+
+Profile → subjects + qualifications → documents → review. "Next" sends the whole profile (PUT), so a document always
+has a profile to hang on and a closed app loses nothing; "Send for review" saves, then submits. Both `session_types`
+(individual / group) and `delivery` (online / offline) are asked (C1). An approved teacher who changes gender,
+subjects or qualifications is warned first that the profile goes back to review. The photo is the account picture
+(`POST /auth/me/image`, cropped with `showAppImageCropper`); a document is checked on the device (image / PDF,
+≤ 10 MB) before it is sent and shows its size; Remove is offered until approval.
+
+## D-1622 — The hub shows one next step per state · 2026-11-21 · accepted
+
+None → "Start my profile"; draft → "Continue"; pending → the date it was sent, nothing to press; rejected → the
+platform's reason and "Fix and resubmit" (opens the wizard at the first step); approved → "Edit" and My packages.
+Packages are explained, not hidden, before approval (`not_approved`).
+
+## D-1623 — The admin queue lives in the services hub for admins too · 2026-11-21 · accepted
+
+The contract opens the queue to admins and super admins, so the entry has no `isSuper` gate (the older Quran page
+keeps its own). Documents open through the 60 s signed link right after it is fetched; nothing is cached.
+
+## D-1624 — A rejection needs a reason of 5 to 500 characters · 2026-11-21 · accepted
+
+The server requires a reason ≤ 500; the app also refuses fewer than 5 characters so the teacher always learns what to
+change. Approve asks once (appConfirm).
+
+## D-1625 — The package wizard: three steps, defaults that already pass · 2026-11-21 · accepted
+
+The teacher's first subject, 8 sessions of 60 minutes from a week today, 10 seats with a waiting list, free until a
+price is typed. The live summary sits beside the form from the desktop width and under it on phones. "Save and
+publish" is the primary action on the last step; "Save as draft" is always one tap away.
+
+## D-1626 — The recurrence editor is a slot · 2026-11-21 · accepted
+
+`PackageWizardPage(recurrenceSlot:)` takes a `RecurrenceSlotBuilder`; the default slot explains and edits nothing.
+The shared `RecurrencePicker` of the calendar stream is wired at merge, with no change to the wizard.
+
+## D-1627 — Overbooking in one line each, with an optional limit · 2026-11-21 · accepted
+
+None / allow / waiting list, each with one sentence under it. Allow shows "Extra seats (blank = no limit)" and sends
+`overbook_limit` only then (C3).
+
+## D-1628 — Once anyone joined, the locked fields are read only · 2026-11-21 · accepted
+
+When `seats_taken > 0` the sessions, the schedule and the start date are disabled with a banner, rather than sent
+and refused (`package_locked`); the past start date of a locked package is not an error.
+
+## D-1629 — "Teachers" is a Learn tab under its own switch · 2026-11-21 · accepted
+
+The student's Learn group gains Teachers (beside Quran and Grammar). It hides with `teacher_discovery` (the
+contract's key) as well as the generic `student_tab_teachers`. A guest sees the sign-in gate: the list needs an
+account.
+
+## D-1630 — Paging by scroll, filters in one sheet · 2026-11-21 · accepted
+
+The subject chips sit on the page; gender, delivery, price range, lowest rating and "Available now" are one sheet
+with a count on its chip. 20 a page, the next page loaded 600 px before the end; a stale answer (filters changed)
+is dropped.
+
+## D-1631 — One mapping from a package to its button · 2026-11-21 · accepted
+
+`packageJoinState` decides every label and state: my enrolment first (pending_payment, offered, active,
+waitlisted), then closed / not open, then full by `overbook` (allow counts `overbook_limit`, null = none), then free
+or paid. Expired and cancelled enrolments may join again.
+
+## D-1632 — A paid seat pays through the store's path · 2026-11-21 · accepted
+
+The enrol answer's `checkout` has the store's shape (C2), so it is read as a `StoreCheckout` and opened with the
+store's `openPointsPaymentPage`, never the course checkout. Afterwards the package is read again every 5 s for up to
+30 s until it leaves `pending_payment`.
+
+## D-1633 — Holds and offers count down · 2026-11-21 · accepted
+
+A pending payment (30 min) and an offer from the waiting list (24 h, a gold block) show the time left from the
+enrolment's `expires_at` and a "Pay now" button; the timer runs only while one is open.
+
+## D-1634 — Leaving a paid seat warns there is no automatic refund · 2026-11-21 · accepted
+
+The confirm says so and points to support (C3); a free seat or the waiting list says the seat goes to the next one.

@@ -104,6 +104,29 @@ String apiErrorText(ApiException e) {
     case 'quran_teacher_unverified':
       return _t('لم تتحقق المنصة من هذا المعلم بعد، فلا يمكن الحجز معه الآن.',
           'The platform has not verified this teacher yet, so booking is not open now.');
+    // Learning Hub v2 teachers and packages (D-1620 .., CONTRACT.md §1 / §2)
+    case 'no_profile':
+      return _t('لم تنشئ ملفك كمعلم بعد', 'You have not created your teacher profile yet');
+    case 'profile_incomplete':
+      return _t('أكمل ملفك قبل الإرسال: الاسم والجنس ومادة واحدة ونبذة ومستند واحد على الأقل.',
+          'Complete your profile before sending it: name, gender, one subject, an introduction and at least one document.');
+    case 'profile_locked':
+      return _t('ملفك قيد المراجعة الآن، فلا يمكن تعديله حتى يُراجع.', 'Your profile is being reviewed, so it cannot be changed until the review ends.');
+    case 'bad_document':
+      return _t('الملف ليس صورة ولا PDF صالحاً. اختر ملفاً آخر.', 'The file is not a valid image or PDF. Choose another file.');
+    case 'file_too_large':
+      return _t('الملف أكبر من 10 ميجابايت', 'The file is larger than 10 MB');
+    case 'not_approved':
+      return _t('تُفتح الباقات بعد اعتماد ملفك كمعلم من المنصة.', 'Packages open once the platform approves your teacher profile.');
+    case 'package_full':
+      return _t('اكتملت مقاعد هذه الباقة', 'This package is full');
+    case 'package_locked':
+      return _t('انضم طلاب لهذه الباقة، فلا يتغير عدد الجلسات ولا الجدول ولا تاريخ البدء.',
+          'Students have joined this package, so the sessions, the schedule and the start date can no longer change.');
+    case 'package_closed':
+      return _t('أُغلقت هذه الباقة', 'This package is closed');
+    case 'already_enrolled':
+      return _t('أنت مشترك في هذه الباقة بالفعل', 'You are already in this package');
     // the offline outbox (D-1351, D-1352): a write the server refused when it was synced
     case 'sync_stale':
       return _t('تغيّر ملفك الدراسي من جهاز آخر، فلم يُحفظ تعديلك. عرضنا أحدث نسخة — عدّل مرة أخرى.',

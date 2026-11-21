@@ -17,6 +17,8 @@ import 'package:flutter_education_app/features/quran/quran_api.dart';
 import 'package:flutter_education_app/features/quran/quran_models.dart';
 import 'package:flutter_education_app/features/quran/quran_progress.dart';
 import 'package:flutter_education_app/features/quran/quran_record_sheet.dart';
+import 'package:flutter_education_app/features/teachers/teacher_onboarding.dart' show TeacherHubPage;
+import 'package:flutter_education_app/features/teachers/teachers_api.dart' show teacherOnboardingOff;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -182,6 +184,18 @@ class _QuranTeacherHubPageState extends State<QuranTeacherHubPage> {
                     locked: quranTeacherApplyOff(),
                     onSave: _save,
                   ),
+                  // Learning Hub v2 (D-1620): one teacher profile for every subject, its documents and packages
+                  if (!teacherOnboardingOff()) ...[
+                    const SizedBox(height: AppSpace.md),
+                    AppActionCard(
+                      key: const ValueKey('quran.hub.teacher_profile'),
+                      icon: Icons.co_present_rounded,
+                      title: t('ملفي كمعلم وباقاتي', 'My teacher profile and packages'),
+                      subtitle: t('القرآن والتجويد والفقه والنحو: وثّق مؤهلاتك وافتح باقات بمقاعد وسعر',
+                          'Quran, tajweed, fiqh and grammar: prove your qualifications and open packages with seats and a price'),
+                      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TeacherHubPage())),
+                    ),
+                  ],
                   AppSection(
                     title: t('برامجي', 'My programs'),
                     subtitle: t('برامج القرآن دورات: الحجز والدفع والجلسات من صفحة الدورة.',

@@ -62,6 +62,8 @@ import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/store/manage/store_manage_api.dart' show kStoreManageFeatureKey;
 import 'package:flutter_education_app/features/store/manage/store_manage_pages.dart' show StoreManagePage;
 import 'package:flutter_education_app/features/quran/quran_api.dart' show kQuranTabKey;
+import 'package:flutter_education_app/features/teachers/teacher_onboarding.dart' show TeacherHubPage;
+import 'package:flutter_education_app/features/teachers/teachers_api.dart' show kTeacherOnboardingFeature;
 import 'package:flutter_education_app/features/quran/quran_teacher_hub.dart' show QuranTeacherHubPage;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/payments/points/points_api.dart' show kPointsFeatureKey;
@@ -244,6 +246,15 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           subtitle: t('بطاقتك كمعلم وسجل التسميع', 'Your teacher card and the record sheet'),
           keywords: 'quran memorization tajweed teacher قرآن تحفيظ تجويد حلقة',
           onTap: () => _push(const QuranTeacherHubPage()),
+        ),
+        // every subject's teacher profile + packages (Learning Hub v2, D-1620; kill switch teacher_onboarding)
+        AppSettingsTile(
+          featureKey: kTeacherOnboardingFeature,
+          icon: Icons.co_present_rounded,
+          label: t('ملفي كمعلم وباقاتي', 'My teacher profile and packages'),
+          subtitle: t('القرآن والتجويد والفقه والنحو: ملفك ومستنداتك وباقاتك', 'Quran, tajweed, fiqh and grammar: your profile, documents and packages'),
+          keywords: 'teacher profile packages ijazah tajweed fiqh nahw معلم باقات إجازة تجويد فقه نحو',
+          onTap: () => _push(const TeacherHubPage()),
         ),
         // https://nextbrain.site/@name — confirmed usernames only (D-074)
         if (PersonalAccess.enabled) const ShareMyProfileTile(),

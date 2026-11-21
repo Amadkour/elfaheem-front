@@ -24,6 +24,29 @@ const knownMissing = <String, String>{
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
   // the paper exam flow (D-697 over the back's OFFLINE_FLOW_CONTRACT.md §2 / §3, branch of/b)
   // org_inst_notify.dart: the phone-push setting and "Message this department"
+  // Learning Hub v2 teachers and packages (CONTRACT.md §1 / §2, lib/features/teachers/teachers_api.dart)
+  'DELETE /api/v1/me/teacher-profile/documents/{}': 'lands with feature/lh2-core',
+  'GET /api/v1/admin/teachers': 'lands with feature/lh2-core',
+  'GET /api/v1/admin/teachers/{}/documents/{}/url': 'lands with feature/lh2-core',
+  'GET /api/v1/me/packages': 'lands with feature/lh2-core',
+  'GET /api/v1/me/teacher-profile': 'lands with feature/lh2-core',
+  'GET /api/v1/me/teachers': 'lands with feature/lh2-core',
+  'GET /api/v1/packages': 'lands with feature/lh2-core',
+  'GET /api/v1/packages/{}': 'lands with feature/lh2-core',
+  'GET /api/v1/packages/{}/enrollments': 'lands with feature/lh2-core',
+  'GET /api/v1/teachers': 'lands with feature/lh2-core',
+  'GET /api/v1/teachers/{}': 'lands with feature/lh2-core',
+  'POST /api/v1/admin/teachers/{}/approve': 'lands with feature/lh2-core',
+  'POST /api/v1/admin/teachers/{}/reject': 'lands with feature/lh2-core',
+  'POST /api/v1/me/teacher-profile/documents': 'lands with feature/lh2-core',
+  'POST /api/v1/me/teacher-profile/submit': 'lands with feature/lh2-core',
+  'POST /api/v1/packages': 'lands with feature/lh2-core',
+  'POST /api/v1/packages/{}/duplicate': 'lands with feature/lh2-core',
+  'POST /api/v1/packages/{}/enroll': 'lands with feature/lh2-core',
+  'POST /api/v1/packages/{}/leave': 'lands with feature/lh2-core',
+  'POST /api/v1/packages/{}/status': 'lands with feature/lh2-core',
+  'PUT /api/v1/me/teacher-profile': 'lands with feature/lh2-core',
+  'PUT /api/v1/packages/{}': 'lands with feature/lh2-core',
 };
 
 void main() {
