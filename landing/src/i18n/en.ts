@@ -11,7 +11,7 @@ export const en: Dict = {
     'Learn with NextBrain: live and recorded courses with protected video, exams with instant results and an AI study assistant. For students, teachers and institutions.',
   ogAlt: 'NextBrain logo',
   skip: 'Skip to content',
-  nav: { how: 'How it works', features: 'Features', entry: 'Get started', faq: 'FAQ' },
+  nav: { how: 'How it works', features: 'Features', entry: 'Get started', faq: 'FAQ', download: 'Download' },
   menuLabel: 'Main navigation',
   login: 'Log in',
   switchTo: { label: 'العربية', title: 'التبديل إلى العربية', lang: 'ar' },
