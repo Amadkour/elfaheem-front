@@ -353,6 +353,13 @@ class AppNavigator {
             () => nav.push(MaterialPageRoute(settings: const RouteSettings(name: '/needs-my-action'), builder: (_) => needs_action.NeedsMyActionPage())));
         return;
       case 'org_work':
+        // student lifecycle (D-1400): a lifecycle request keeps `org_work` + id and adds lifecycle_request_id / role
+        final lifecycleId = int.tryParse('${data['lifecycle_request_id'] ?? ''}');
+        if (orgId != null && lifecycleId != null &&
+            await _deferred('students_wiring', students_wiring.loadLibrary,
+                () => students_wiring.openLifecycleRequestFromLink(nav, orgId: orgId, id: lifecycleId, role: data['role']?.toString()))) {
+          return;
+        }
         if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenItemLink(nav, ctx, targetId, orgId: orgId, link: link));
         return;
       case 'org_department': // Institutions v2 phase 2: e.g. "you are now the acting head" → that department's dashboard (staff)

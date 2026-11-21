@@ -70,6 +70,7 @@ import 'org_services_pages.dart' show OrgAnnouncementsPage, OrgComplaintsPage, O
 import 'org_ui.dart' show memberRoleLabels, orgNameOf;
 import 'advising/adv_wiring.dart' show AdvMemberHubEntry;
 import 'students/my_requests.dart' show openMyRequests;
+import 'students/my_status_card.dart' show MyStatusCard;
 import 'students/student_status_models.dart' show kStudentsStatusKey;
 import 'governance/gov_wiring.dart' show govMemberPills;
 import 'org_messages_models.dart' show orgMessagesEnabled;
@@ -438,6 +439,8 @@ class OrgMemberHome extends StatelessWidget {
             entry: data,
             showHero: showHero,
             journey: journey == null ? null : OrgMyJourney(orgId: orgId, journey: journey),
+            // student lifecycle (D-1400): my study status from the home payload, no request of its own
+            myStatus: student ? me?.myStatusOf(orgId) : null,
             showPicker: showPickerInHero && ctl.liveEntries.length > 1,
             today: me?.todayOf(orgId),
             inbox: me?.inboxPreviewOf(orgId),
@@ -548,6 +551,7 @@ class OrgMemberHomeBody extends StatelessWidget {
     this.liveNow = const [],
     this.showHero = true,
     this.journey,
+    this.myStatus,
   });
 
   /// The organization banner (name + my role + the switch). The standalone page's header says it already: false there.
@@ -580,6 +584,9 @@ class OrgMemberHomeBody extends StatelessWidget {
   /// Institutions v2 phase 5 (D-995): the student's "My journey" (OrgMyJourney); set → it leads the home and the
   /// other sections fold under "More". Null = the home as before.
   final Widget? journey;
+
+  /// A student's `my_status[]` entry of this organization (MeHome.myStatusOf): MyStatusCard.fromHome; null = no card.
+  final Map<String, dynamic>? myStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -674,6 +681,11 @@ class OrgMemberHomeBody extends StatelessWidget {
       // academic advising (D-289 Phase 5): a student with an active advisor gets the hub row (draws nothing otherwise);
       // Phase 9: the overview's `advising` block feeds it without a request
       if (roles.contains('student')) AdvMemberHubEntry(orgId: orgId, overview: entry['advising']),
+
+      // student lifecycle (D-1400): my study status, from the home payload (draws nothing without an entry)
+      if (myStatus != null)
+        MyStatusCard.fromHome(
+            key: ValueKey('my-status-$orgId'), orgId: orgId, data: myStatus, padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md)),
 
       // ── the numbers, once: one card of small tiles (the same strip as the personal homes) — only while one counts
       if (stats.any((x) => x.$1 > 0)) ...[

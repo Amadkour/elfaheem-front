@@ -7,7 +7,8 @@
 //       summary cards       the whole organization's counts; a tap filters the list (`chip=`), a second tap clears it;
 //                           "Awaiting acceptance" opens the Admissions page instead (§4.1)
 //       toolbar             ONE search (name · student code · last 4 digits of the national ID), ONE filter
-//                           (enrolment status), More (Import), the primary action "Add student" (the onboarding entry)
+//                           (enrolment status), More (Import · Student requests · Report · Export · Settings, each
+//                           only with its right and switch), the primary action "Add student" (the onboarding entry)
 //       list                AppDataTable: a table on wide screens, StudentRowCard on phones; AppPagination
 //       states              AppListSkeleton · AppErrorState · AppEmpty
 //
@@ -15,6 +16,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
@@ -28,6 +30,11 @@ import '../org_page_kit.dart' show OrgFilterButton, OrgMenuItem, OrgPageBody, Or
 import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgErrorText;
 import 'add_student_sheet.dart' show showAddStudentSheet;
+import 'my_ask_page.dart' show myAsksEnabled;
+import 'student_file_page.dart' show pushStudentPage;
+import 'student_report_page.dart' show exportStudents, openStudentReport;
+import 'student_requests_page.dart' show OrgStudentRequestsPage;
+import 'student_status_models.dart' show kStudentsStatusKey;
 import 'student_rules_pages.dart' show showStudentSettingsChooser;
 import 'students_api.dart';
 import 'students_missing_sheet.dart';
@@ -152,10 +159,29 @@ class _OrgStudentsPageState extends State<OrgStudentsPage> {
     if (changed && mounted) _load();
   }
 
+  /// The open organization's session (null outside the dashboard, e.g. in tests).
+  OrgSession? get _session {
+    try {
+      return context.read<OrgSession>();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _requests() async {
+    final s = _session;
+    await pushStudentPage<void>(
+        context, OrgStudentRequestsPage(orgId: widget.orgId, pushed: true, canFullscreen: s?.can('student_status', 'update') ?? false));
+    if (mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final open = widget.onOpenStudent;
     final can = _data?.can ?? const StudentsCan();
+    final s = _session;
+    final requestsOn = s != null && (s.can('students') || s.can('student_status')) && myAsksEnabled();
+    final reportOn = s != null && s.can('student_status', 'export') && !AppConfig.disableList.contains(kStudentsStatusKey);
     final view = StudentsPageView(
       data: _data,
       loading: _loading,
@@ -174,6 +200,11 @@ class _OrgStudentsPageState extends State<OrgStudentsPage> {
       onAdd: can.add ? _add : null,
       onImport: can.import ? _import : null,
       onSettings: can.settings ? () => showStudentSettingsChooser(context, widget.orgId) : null,
+      onRequests: requestsOn ? _requests : null,
+      onReport: reportOn ? () => openStudentReport(context, widget.orgId) : null,
+      onExport: can.export || (s?.can('students', 'export') ?? false)
+          ? () => exportStudents(context, widget.orgId, filters: _query, api: _api)
+          : null,
     );
     if (!widget.pushed) return _withRefresh(view);
     return OrgPushedPage(title: t('الطلاب', 'Students'), helpPageId: 'org.students', child: _withRefresh(view));
@@ -202,6 +233,9 @@ class StudentsPageView extends StatelessWidget {
     this.onAdd,
     this.onImport,
     this.onSettings,
+    this.onRequests,
+    this.onReport,
+    this.onExport,
   });
 
   /// null = nothing loaded yet.
@@ -218,6 +252,9 @@ class StudentsPageView extends StatelessWidget {
 
   /// The More menu's "Settings" (study rules · statuses and reminders · who decides what); null = hidden.
   final VoidCallback? onSettings;
+
+  /// More: "Student requests" (pushed inbox), "Report" (student_status:export), "Export" (students:export); null = hidden.
+  final VoidCallback? onRequests, onReport, onExport;
   final ValueChanged<String>? onSearch;
 
   /// A summary card was tapped: the `chip=` filter, null = clear it.
@@ -251,6 +288,9 @@ class StudentsPageView extends StatelessWidget {
               ),
         more: [
           if (onImport != null) OrgMenuItem(icon: Icons.upload_file_rounded, label: t('استيراد من Excel', 'Import from Excel'), onTap: onImport!),
+          if (onRequests != null) OrgMenuItem(icon: Icons.assignment_turned_in_rounded, label: t('طلبات الطلاب', 'Student requests'), onTap: onRequests!),
+          if (onReport != null) OrgMenuItem(icon: Icons.insights_rounded, label: t('التقرير', 'Report'), onTap: onReport!),
+          if (onExport != null) OrgMenuItem(icon: Icons.ios_share_rounded, label: t('تصدير', 'Export'), onTap: onExport!),
           if (onSettings != null) OrgMenuItem(icon: Icons.tune_rounded, label: t('الإعدادات', 'Settings'), onTap: onSettings!),
         ],
         top: d == null ? null : StudentsSummaryBar(summary: d.summary, selected: query.chip, onChip: onChip, onAwaiting: onAwaiting),

@@ -11,6 +11,8 @@
 //   studentRequestsSub(OrgSession s)               the People sub-page "Student requests" (kill switch org.students.asks)
 //   openStudentRequestsFromLink(nav, orgId:)       the deep link `org_student` with focus `asks` → the requests inbox
 //   openStudentAskFromLink(nav, askId)             the student's deep link `student_ask` {id} → their ask page
+//   openLifecycleRequestFromLink(nav, orgId:, id:, role:)   a lifecycle request notice (`org_work` + lifecycle_request_id):
+//                                                  staff → the request sheet, the student → My requests
 library;
 
 import 'package:flutter/material.dart';
@@ -19,6 +21,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import '../../admin/admin_common.dart' show t;
 import '../org_providers.dart' show OrgSession;
 import 'my_ask_page.dart' show myAsksEnabled, openMyAsk;
+import 'my_requests.dart' show openMyRequests;
+import 'student_request_detail.dart' show openStudentRequest;
 import 'student_file_page.dart';
 import 'student_requests_page.dart' show OrgStudentRequestsPage;
 import 'students_models.dart' show StudentRow, kStudentsFeatureKey;
@@ -68,6 +72,19 @@ Future<bool> openStudentFromLink(NavigatorState nav, {required int orgId, requir
 Future<bool> openStudentRequestsFromLink(NavigatorState nav, {required int orgId}) async {
   if (!studentsEnabled() || !myAsksEnabled()) return false;
   await nav.push(MaterialPageRoute<void>(builder: (_) => OrgStudentRequestsPage(orgId: orgId, pushed: true)));
+  return true;
+}
+
+/// A lifecycle request notice: `org_work` + `lifecycle_request_id` [id] + `role`. Staff get the request sheet, the
+/// request's own student ([role] `student`) My requests. False with the switch off (the caller opens the Governance
+/// item, as an older app does).
+Future<bool> openLifecycleRequestFromLink(NavigatorState nav, {required int orgId, required int id, String? role}) async {
+  if (!studentsEnabled()) return false;
+  if (role == 'student') {
+    await openMyRequests(nav.context, orgId);
+  } else {
+    await openStudentRequest(nav.context, orgId, id);
+  }
   return true;
 }
 

@@ -410,9 +410,9 @@ const kTimelineKinds = <String>[
   'record',
 ];
 
-/// The kinds offered as filter chips: `asks` and `requests` join with phases 4 and 6.
+/// The kinds offered as filter chips (`asks` is also where the file's "asks waiting" line lands).
 const kTimelineFilterKinds = <String>[
-  'status', 'results', 'registration', 'level', 'meetings', 'complaints', 'intake', 'documents', 'record',
+  'status', 'asks', 'requests', 'results', 'registration', 'level', 'meetings', 'complaints', 'intake', 'documents', 'record',
 ];
 
 /// One line of the student's history (§3.4). Read only: nothing on it can be edited.

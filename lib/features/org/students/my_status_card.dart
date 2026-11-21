@@ -4,6 +4,8 @@
 //   MyStatusCard(orgId:, api:)   loads GET /api/v1/org/public/{org}/my-status and draws MyStatusView; draws nothing
 //                                while loading, on any error, with the kill switch `org.students.status` off, or when
 //                                the institution shows the student nothing (`student_sees`)
+//   MyStatusCard.fromHome(orgId:, data:)   the same card from the `my_status[]` entry of GET /me/home
+//                                (MeHome.myStatusOf): never a request of its own; null data = nothing drawn
 //   MyStatusView(status:, onRequests:)   plain values (onRequests: the "My requests" pill → MyRequestsPage): enrolment · standing · the flags the student may see · the last change
 //                                with its reason and decision number. Staff-only flags never reach it (MyStatus drops
 //                                them again), and nothing here names a staff-only flag.
@@ -24,8 +26,19 @@ import 'students_models.dart';
 const kMyStatusHelpId = 'me.status';
 
 class MyStatusCard extends StatefulWidget {
-  const MyStatusCard({super.key, required this.orgId, this.api, this.padding = EdgeInsets.zero});
+  const MyStatusCard({super.key, required this.orgId, this.api, this.padding = EdgeInsets.zero})
+      : fromHome = false,
+        data = null;
+
+  /// From the home payload ([data] = `MeHome.myStatusOf(orgId)`): no request at all.
+  const MyStatusCard.fromHome({super.key, required this.orgId, required this.data, this.padding = EdgeInsets.zero})
+      : fromHome = true,
+        api = null;
   final int orgId;
+
+  /// The card reads [data] and never loads.
+  final bool fromHome;
+  final Map<String, dynamic>? data;
 
   /// Around the card only while it is drawn (no empty gap when there is nothing to show).
   final EdgeInsetsGeometry padding;
@@ -49,6 +62,10 @@ class _MyStatusCardState extends State<MyStatusCard> {
   @override
   void didUpdateWidget(covariant MyStatusCard old) {
     super.didUpdateWidget(old);
+    if (widget.fromHome) {
+      if (old.data != widget.data) _load();
+      return;
+    }
     if (old.orgId != widget.orgId) {
       _status = null;
       _load();
@@ -57,6 +74,11 @@ class _MyStatusCardState extends State<MyStatusCard> {
 
   Future<void> _load() async {
     if (AppConfig.disableList.contains(kStudentsStatusKey)) return;
+    if (widget.fromHome) {
+      final d = widget.data;
+      if (mounted) setState(() => _status = d == null ? null : MyStatus.fromJson(d));
+      return;
+    }
     final r = await (widget.api ?? StudentsApi(widget.orgId)).myStatus();
     if (!mounted || !r.ok) return;
     setState(() => _status = MyStatus.fromJson(r.map));

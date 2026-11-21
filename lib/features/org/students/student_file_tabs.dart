@@ -113,7 +113,7 @@ class _LinkRow extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class StudentOverviewTab extends StatelessWidget {
-  const StudentOverviewTab({super.key, required this.file, this.onMissing, this.onOpenTab, this.missingOn = true});
+  const StudentOverviewTab({super.key, required this.file, this.onMissing, this.onOpenTab, this.onShowAsks, this.missingOn = true});
 
   final StudentFile file;
 
@@ -122,6 +122,9 @@ class StudentOverviewTab extends StatelessWidget {
 
   /// Jumps to another tab (the open items link to theirs).
   final ValueChanged<StudentFileTab>? onOpenTab;
+
+  /// The "asks waiting" line: the timeline on its `asks` kind; null = the line opens nothing.
+  final VoidCallback? onShowAsks;
 
   /// The kill switch `org.students.missing` is on.
   final bool missingOn;
@@ -174,6 +177,7 @@ class StudentOverviewTab extends StatelessWidget {
           text: countText(open.asks,
               ar1: 'طلب واحد بانتظار الطالب', ar2: 'طلبان بانتظار الطالب', arFew: '{n} طلبات بانتظار الطالب',
               arMany: '{n} طلباً بانتظار الطالب', en1: '1 ask waiting for the student', en: '{n} asks waiting for the student'),
+          onTap: onShowAsks,
         ),
       if (meeting != null)
         _LinkRow(

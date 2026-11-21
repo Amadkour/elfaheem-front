@@ -10,6 +10,11 @@
 // (confirmUndoStatus). Both reload the file and the timeline when they change something. Who undid an undone change
 // comes from GET …/status/events (studentUndoneFetch), only when the timeline shows one.
 //
+// Actions under the header (each only with its right and switch): "Change status" (the status sheet, which also sends
+// to a council when the rules say so), "Ask the student" (showStudentAskSheet: students:update + org.students.asks; the
+// asks then show in the timeline's `asks` kind, where the overview's "asks waiting" line lands) and "Transfer credits"
+// (showTransferCreditsSheet, for a student flagged `transferred_in`).
+//
 // Tabs are lazy: a tab's body is built when it is first chosen, and the timeline keeps its pages when the tab is
 // left and opened again. A tab the caller has no right to is not in the strip (studentFileTabs). Open it through
 // students_wiring.dart (openStudentFile), never directly. Tests: test/ui/student_file_layout_test.dart.
@@ -31,6 +36,8 @@ import '../org_registrar_member.dart' show OrgRecordScreen;
 import '../org_services_pages.dart' show OrgComplaintsPage;
 import '../org_v3.dart' show OrgCall, orgErrorText;
 import 'student_file_models.dart';
+import 'my_ask_page.dart' show myAsksEnabled;
+import 'student_ask_sheet.dart' show showStudentAskSheet;
 import 'student_file_tabs.dart';
 import 'student_status_models.dart' show StatusEvent;
 import 'student_status_sheet.dart' show confirmUndoStatus, showStudentStatusSheet;
@@ -39,6 +46,7 @@ import 'students_api.dart';
 import 'students_missing_sheet.dart' show showMissingDataSheet;
 import 'students_models.dart';
 import 'students_parts.dart' show MissingBadge, StudentAvatar, StudentFlagChips, StudentStandingChip, StudentStatusChip, studentExtraStanding;
+import 'transfer_credits_sheet.dart' show showTransferCreditsSheet;
 
 /// Pushes [page] with the organization session of [context] carried over (a pushed route sits outside the
 /// dashboard's providers).
@@ -177,6 +185,34 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
     if (r != null && mounted) _load();
   }
 
+  /// The open organization's session (null outside the dashboard, e.g. in tests).
+  OrgSession? get _session {
+    try {
+      return context.read<OrgSession>();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// "Ask the student": the sheet posts the ask; the file and the timeline reload once one is created.
+  Future<void> _ask() async {
+    final f = _file;
+    if (f == null) return;
+    final r = await showStudentAskSheet(context, widget.orgId, widget.uid,
+        kind: 'data', name: f.displayName, canFullscreen: _session?.can('student_status', 'update') ?? false, api: widget.api);
+    if (r != null && mounted) _load();
+  }
+
+  /// The overview's "asks waiting" line: the timeline on its `asks` kind.
+  void _showAsks() {
+    if (!studentFileTabs(_file!.can).contains(StudentFileTab.timeline)) return;
+    if (_timeline.kind != 'asks') {
+      _timeline.kind = 'asks';
+      if (_timeline.loaded) _timeline.load();
+    }
+    setState(() => _tab = StudentFileTab.timeline);
+  }
+
   /// The missing-data sheet; each completed item reloads the file, so its count and badge follow at once.
   void _openMissing() => showMissingDataSheet(context, widget.orgId, widget.uid, name: _file?.displayName, api: widget.api,
       onChanged: () {
@@ -193,6 +229,7 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
           missingOn: _missingOn,
           onMissing: f.can.kase ? _openMissing : null,
           onOpenTab: (t) => setState(() => _tab = t),
+          onShowAsks: _showAsks,
         );
       case StudentFileTab.timeline:
         return StudentTimeline(controller: _timeline, onUndo: f.can.statusChange ? _undo : null);
@@ -242,6 +279,9 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
       if (_loading) return const AppListSkeleton(items: 5);
       return AppErrorState(message: _error, onRetry: _load);
     }
+    final s = _session;
+    final canAsk = myAsksEnabled() && (f.can.ask || (s?.can('students', 'update') ?? false));
+    final canCredits = f.row.flags.contains('transferred_in') && (s?.can('students') ?? false);
     return AppRefresh(
       onRefresh: _load,
       child: StudentFileView(
@@ -253,6 +293,8 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
         onMissing: f.can.kase && _missingOn ? _openMissing : null,
         missingOn: _missingOn,
         onChangeStatus: f.can.statusChange ? _changeStatus : null,
+        onAsk: canAsk ? _ask : null,
+        onTransferCredits: canCredits ? () => showTransferCreditsSheet(context, widget.orgId, widget.uid, name: f.displayName) : null,
       ),
     );
   }
@@ -270,6 +312,8 @@ class StudentFileView extends StatelessWidget {
     this.onMissing,
     this.missingOn = true,
     this.onChangeStatus,
+    this.onAsk,
+    this.onTransferCredits,
   });
 
   final StudentFile file;
@@ -283,6 +327,9 @@ class StudentFileView extends StatelessWidget {
   /// "Change status" in the header; null = the caller may not change it.
   final VoidCallback? onChangeStatus;
 
+  /// "Ask the student" / "Transfer credits" in the header; null = hidden.
+  final VoidCallback? onAsk, onTransferCredits;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -292,7 +339,8 @@ class StudentFileView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(AppSpace.md),
       children: [
-        StudentFileHeader(file: file, onMissing: onMissing, missingOn: missingOn, onChangeStatus: onChangeStatus),
+        StudentFileHeader(
+            file: file, onMissing: onMissing, missingOn: missingOn, onChangeStatus: onChangeStatus, onAsk: onAsk, onTransferCredits: onTransferCredits),
         if (showRecordedNotice) ...[
           AppSpace.gapXs,
           Row(children: [
@@ -347,12 +395,13 @@ class StudentFileView extends StatelessWidget {
 
 /// The top of the file: photo, names, student number, programme · level, the one chip, flags and the missing badge.
 class StudentFileHeader extends StatelessWidget {
-  const StudentFileHeader({super.key, required this.file, this.onMissing, this.missingOn = true, this.onChangeStatus});
+  const StudentFileHeader(
+      {super.key, required this.file, this.onMissing, this.missingOn = true, this.onChangeStatus, this.onAsk, this.onTransferCredits});
 
   final StudentFile file;
   final VoidCallback? onMissing;
   final bool missingOn;
-  final VoidCallback? onChangeStatus;
+  final VoidCallback? onChangeStatus, onAsk, onTransferCredits;
 
   @override
   Widget build(BuildContext context) {
@@ -392,15 +441,36 @@ class StudentFileHeader extends StatelessWidget {
               const SizedBox(height: AppSpace.xs),
               StudentFlagChips(r.flags),
             ],
-            if (onChangeStatus != null) ...[
+            if (onChangeStatus != null || onAsk != null || onTransferCredits != null) ...[
               const SizedBox(height: AppSpace.sm),
-              AppButton.tonal(
-                key: const ValueKey('student-file-change-status'),
-                label: t('تغيير الحالة', 'Change status'),
-                icon: Icons.swap_horiz_rounded,
-                size: AppButtonSize.sm,
-                onPressed: onChangeStatus,
-              ),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                if (onChangeStatus != null)
+                  AppButton.tonal(
+                    key: const ValueKey('student-file-change-status'),
+                    label: t('تغيير الحالة', 'Change status'),
+                    icon: Icons.swap_horiz_rounded,
+                    size: AppButtonSize.sm,
+                    onPressed: onChangeStatus,
+                  ),
+                if (onAsk != null)
+                  AppButton(
+                    key: const ValueKey('student-file-ask'),
+                    label: t('اطلب من الطالب', 'Ask the student'),
+                    icon: Icons.help_outline_rounded,
+                    size: AppButtonSize.sm,
+                    variant: AppButtonVariant.ghost,
+                    onPressed: onAsk,
+                  ),
+                if (onTransferCredits != null)
+                  AppButton(
+                    key: const ValueKey('student-file-transfer-credits'),
+                    label: t('المقاصة', 'Transfer credits'),
+                    icon: Icons.compare_arrows_rounded,
+                    size: AppButtonSize.sm,
+                    variant: AppButtonVariant.ghost,
+                    onPressed: onTransferCredits,
+                  ),
+              ]),
             ],
           ]),
         ),
