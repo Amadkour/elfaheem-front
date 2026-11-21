@@ -115,6 +115,10 @@ String apiErrorText(ApiException e) {
     case 'sync_bad_op' || 'sync_unknown_kind' || 'sync_error':
       return _t('تعذّر حفظ أمر سجّلته دون اتصال، فحُذف من الانتظار.',
           'Something you did offline could not be saved, so it was dropped from the queue.');
+    // a parent's view of a minor's games / Quran / grammar, or a link redeem (D-1311, D-1371)
+    case 'consent_required':
+      return _t('هذا الطالب دون السن القانونية: يلزم موافقتك كولي أمر أولاً. افتح "أبنائي" واضغط "إعطاء الموافقة".',
+          'This student is under the legal age: your consent as their parent is needed first. Open My children and tap Give consent.');
     case 'program_kind_locked':
       return _t('لا يمكن تغيير نوع البرنامج بعد تسجيل طلاب فيه', 'The program type cannot change once the course has students');
     case 'WEAK_PASSWORD':

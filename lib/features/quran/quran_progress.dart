@@ -14,6 +14,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/features/parent/parent_consent.dart' show ParentConsentRequired, isConsentRequired;
 import 'package:flutter_education_app/features/quran/quran_api.dart';
 import 'package:flutter_education_app/features/quran/quran_models.dart';
 import 'package:flutter_education_app/features/quran/quran_record_sheet.dart';
@@ -55,6 +56,9 @@ class _QuranProgressPageState extends State<QuranProgressPage> {
   bool _loading = true;
   String? _error;
 
+  /// A parent's 403 `consent_required`: a minor whose parent has not consented yet (D-1371).
+  bool _consent = false;
+
   @override
   void initState() {
     super.initState();
@@ -80,6 +84,7 @@ class _QuranProgressPageState extends State<QuranProgressPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _consent = false;
     });
     try {
       if (widget._source == _Source.mine) {
@@ -101,6 +106,7 @@ class _QuranProgressPageState extends State<QuranProgressPage> {
       if (!mounted) return;
       setState(() {
         _loading = false;
+        _consent = widget._source == _Source.child && isConsentRequired(e);
         _error = quranErrorText(e);
       });
     }
@@ -133,7 +139,9 @@ class _QuranProgressPageState extends State<QuranProgressPage> {
       width: AppWidth.content,
       appBar: ScreenAppBar(title: _title),
       child: SafeArea(
-        child: m == null || p == null
+        child: _consent
+            ? ParentConsentRequired(studentId: widget.personId!, childName: widget.personName, onGranted: _load)
+            : m == null || p == null
             ? (_loading ? const AppListSkeleton(items: 5) : AppErrorState(message: _error, onRetry: _load))
             : QuranProgressView(
                 meta: m,

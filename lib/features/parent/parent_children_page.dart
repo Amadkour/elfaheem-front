@@ -166,6 +166,14 @@ class _ChildCard extends StatelessWidget {
     final pr = profile;
     final attention = pr?.courses.where((b) => _needsAttention(b.attendance, b.examAvg)).length ?? 0;
     void report() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ParentChildReportScreen(studentId: id, studentName: name)));
+    final needsConsent = data['needs_consent'] == true;
+    // a child tab can ask for the consent itself (403 consent_required, D-1371): the card follows on the way back
+    void openTab(Route<void> route) {
+      final p = context.read<ParentLinkProvider>();
+      Navigator.of(context).push(route).then((_) {
+        if (needsConsent) p.refreshChildrenAndRequests();
+      });
+    }
     // The child's own tone (the same one their report hero wears): a parent learns each child's colour.
     return AppBlock(
       tone: parentChildTone(id),
@@ -212,7 +220,7 @@ class _ChildCard extends StatelessWidget {
             )
           else
             const SizedBox(height: AppSpace.md),
-          if (data['needs_consent'] == true) ...[
+          if (needsConsent) ...[
             ConsentNeededNotice(onGive: () => _giveConsent(context, id, name)),
             const SizedBox(height: AppSpace.sm),
           ],
@@ -226,7 +234,7 @@ class _ChildCard extends StatelessWidget {
                 icon: Icons.extension_rounded,
                 variant: AppButtonVariant.secondary,
                 size: AppButtonSize.sm,
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                onPressed: () => openTab(MaterialPageRoute<void>(
                   settings: RouteSettings(name: '/parent/children/$id/games'),
                   builder: (_) => ParentChildGamesPage(studentId: id, studentName: name),
                 )),
@@ -239,7 +247,7 @@ class _ChildCard extends StatelessWidget {
                 icon: Icons.menu_book_rounded,
                 variant: AppButtonVariant.secondary,
                 size: AppButtonSize.sm,
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                onPressed: () => openTab(MaterialPageRoute<void>(
                   settings: RouteSettings(name: '/parent/children/$id/quran'),
                   builder: (_) => QuranProgressPage.child(childId: id, name: name),
                 )),
@@ -252,7 +260,7 @@ class _ChildCard extends StatelessWidget {
                 icon: Icons.translate_rounded,
                 variant: AppButtonVariant.secondary,
                 size: AppButtonSize.sm,
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                onPressed: () => openTab(MaterialPageRoute<void>(
                   settings: RouteSettings(name: '/parent/children/$id/nahw'),
                   builder: (_) => ParentChildNahwPage(studentId: id, studentName: name),
                 )),
@@ -270,6 +278,16 @@ class _ChildCard extends StatelessWidget {
                 tone: AppTone.danger,
                 icon: Icons.notifications_active_rounded,
               ),
+            // withdraw this parent's consent (D-1371): the server says first whether there is one to withdraw
+            if (!needsConsent && !(gamesOff() && quranOff() && nahwOff()))
+              AppButton(
+                key: ValueKey('consent.revoke.$id'),
+                label: t('سحب الموافقة', 'Revoke consent'),
+                icon: Icons.remove_moderator_outlined,
+                variant: AppButtonVariant.ghost,
+                size: AppButtonSize.sm,
+                onPressed: () => _revokeConsent(context, id, name),
+              ),
           ]),
         ]);
       }),
@@ -282,6 +300,11 @@ Future<void> _giveConsent(BuildContext context, int id, String name) async {
   if (!await showParentConsentDialog(context, childName: name)) return;
   final ok = await p.giveConsent(id);
   if (!ok) plToast(p.errorMessage);
+}
+
+Future<void> _revokeConsent(BuildContext context, int id, String name) async {
+  final p = context.read<ParentLinkProvider>();
+  if (await revokeParentConsentFlow(context, id, name)) await p.refreshChildrenAndRequests();
 }
 
 bool _needsAttention(double? attendance, double? exams) =>

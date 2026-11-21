@@ -16,6 +16,7 @@ import 'package:flutter_education_app/features/games/game_play_page.dart';
 import 'package:flutter_education_app/features/games/games_api.dart';
 import 'package:flutter_education_app/features/games/games_models.dart';
 import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
+import 'package:flutter_education_app/features/parent/parent_consent.dart' show ParentConsentRequired, isConsentRequired;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -114,6 +115,9 @@ class _ParentChildGamesPageState extends State<ParentChildGamesPage> {
   String? _error;
   bool _loading = true;
 
+  /// 403 `consent_required`: a minor whose parent has not consented yet (D-1371).
+  bool _consent = false;
+
   @override
   void initState() {
     super.initState();
@@ -124,6 +128,7 @@ class _ParentChildGamesPageState extends State<ParentChildGamesPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _consent = false;
     });
     try {
       final r = await _api.childProgress(widget.studentId);
@@ -135,6 +140,7 @@ class _ParentChildGamesPageState extends State<ParentChildGamesPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
+        _consent = isConsentRequired(e);
         _error = gamesErrorText(e);
         _loading = false;
       });
@@ -150,7 +156,9 @@ class _ParentChildGamesPageState extends State<ParentChildGamesPage> {
           subtitle: widget.studentName.isEmpty ? null : widget.studentName,
         ),
         child: SafeArea(
-          child: GamesProgressView(
+          child: _consent
+              ? ParentConsentRequired(studentId: widget.studentId, childName: widget.studentName, onGranted: _load)
+              : GamesProgressView(
             report: _report,
             loading: _loading,
             error: _error,

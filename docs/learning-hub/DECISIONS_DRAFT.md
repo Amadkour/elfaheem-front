@@ -121,5 +121,11 @@ Workflows and `docs/release/APPLE.md` are written; the builds wait for the owner
 ## D-1370 — Parent consent is a row with the text version, IP and time
 Required for a student under the country's `minor_age` (data, default 18). Captured in Phase 3, enforced in Phase 10.
 
+## D-1371 — Consent per parent-student pair, revocable, every view audited
+A consent row belongs to one parent and one student: a second parent gives their own (no riding on the first one's). The child's games, Quran and grammar routes go through one gate (`consent_service.child_for_parent`: link, else 404 `LINK_NOT_FOUND`; minor without this parent's consent, else 403 `consent_required`), and every allowed read writes one `parent.child_viewed` audit row per child and area a day. The parent revokes with `DELETE /parent/children/{id}/consent` (front: "Revoke consent" on the child card, behind `appConfirm`; the button reads `GET .../consent` first, so an adult child says "nothing to revoke"); a student unlinking a parent revokes that parent's consent too, so a relink asks again. Grant and revoke write `parent.consent_granted` / `parent.consent_revoked`. On the front a 403 `consent_required` turns the child tab into one state with "Give consent" (the same dialog and text version as the card). Also: an admin gets a course's private address only on the single course page (audited `course.address_viewed`), never in a list.
+
 ## D-1380 — Demo data is marked three ways and removed by one command
 `is_demo` on new tables, `@demo.nextbrain.invalid` e-mails, a `demo` course tag. `seed_learning_hub_demo.py --remove` deletes only those.
+
+## D-1381 — Demo nahw levels are marked by the `demo_` key prefix
+`nahw_levels` has no `is_demo` column and Phase 10 adds no migration, so the seed names every demo level `demo_…` (its lessons and exercises hang from it). `--remove` deletes the levels whose key starts with `demo_` and their children, nothing else; a real level must never use that prefix.

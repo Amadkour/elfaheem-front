@@ -13,6 +13,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/courses/course_filters.dart' show CourseFilterStore;
 import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/features/parent/parent_consent.dart' show ParentConsentRequired, isConsentRequired;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -293,6 +294,9 @@ class _ParentChildNahwPageState extends State<ParentChildNahwPage> {
   List<NahwLevel>? _levels;
   String? _error;
 
+  /// 403 `consent_required`: a minor whose parent has not consented yet (D-1371).
+  bool _consent = false;
+
   @override
   void initState() {
     super.initState();
@@ -300,12 +304,20 @@ class _ParentChildNahwPageState extends State<ParentChildNahwPage> {
   }
 
   Future<void> _load() async {
-    setState(() => _error = null);
+    setState(() {
+      _error = null;
+      _consent = false;
+    });
     try {
       final l = await _api.child(widget.studentId);
       if (mounted) setState(() => _levels = l);
     } catch (e) {
-      if (mounted) setState(() => _error = nahwErrorText(e));
+      if (mounted) {
+        setState(() {
+          _consent = isConsentRequired(e);
+          _error = nahwErrorText(e);
+        });
+      }
     }
   }
 
@@ -315,7 +327,11 @@ class _ParentChildNahwPageState extends State<ParentChildNahwPage> {
     return BasePage(
       width: AppWidth.reading,
       appBar: ScreenAppBar(title: t('النحو', 'Arabic grammar'), subtitle: name.isEmpty ? null : name),
-      child: SafeArea(child: NahwLevelsView(levels: _levels, error: _error, onRetry: _load)),
+      child: SafeArea(
+        child: _consent
+            ? ParentConsentRequired(studentId: widget.studentId, childName: name, onGranted: _load)
+            : NahwLevelsView(levels: _levels, error: _error, onRetry: _load),
+      ),
     );
   }
 }

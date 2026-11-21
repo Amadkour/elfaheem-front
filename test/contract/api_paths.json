@@ -115,6 +115,7 @@
   "DELETE /api/v1/org/public/{org_id:int}/leave",
   "DELETE /api/v1/org/public/{org_id:int}/schedule/occurrences/{oid:int}",
   "DELETE /api/v1/org/public/{org_id:int}/units/{unit_type:dept|program}/{unit_id:int}/leave",
+  "DELETE /api/v1/parent/children/{student_id:int}/consent",
   "DELETE /api/v1/payment-methods/{method_id:int}",
   "DELETE /api/v1/prerequisites/{prereq_id:int}",
   "DELETE /api/v1/questions/{question_id:int}",
