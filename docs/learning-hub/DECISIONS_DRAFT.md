@@ -82,25 +82,25 @@ Kill switches hide; flags change rules. Every Quran constraint is a flag and all
 ## D-1342 [back] — Games: content as data, idempotent plays, server-side stars, capped point rewards (written by B6)
 Point rewards are off by default: points buy services (the live plan), so free points are a cost. Stars and badges are always on; points have a daily cap when switched on, checked in the play's own transaction.
 
-## D-1343 [back] — A Quran offering is a course (`program_kind = 'quran'`); its rules are checked on every enrolment (TO WRITE)
+## D-1343 [back] — A Quran offering is a course (`program_kind = 'quran'`); its rules are checked on every enrolment
 Enrollment, payment, sessions, calendar and live are reused. Only the teacher's Quran profile and the progress log are new. The gender and verification rules apply to whoever creates the enrolment, the student or staff; `program_kind` is locked once a course has students.
 
-## D-1344 [back] — Nahw and game answers ship to the device; attempts are idempotent on `client_id` (TO WRITE)
+## D-1344 [back] — Nahw and game answers ship to the device; attempts are idempotent on `client_id`
 Low stakes; it gives instant feedback and works offline. Exams keep their server-side checking.
 
-## D-1345 [back] — No Quran text in the app (TO WRITE)
+## D-1345 [back] — No Quran text in the app
 Only surah names, ayah counts and juz boundaries, from Tanzil Quran Metadata v1.0 (CC BY 3.0, recorded in `data/learn_seed/quran_meta.json` and its README). Progress is numbers.
 
-## D-1346 – D-1349 [front] — learn kit + games (1346), Quran (1347), module switches page (1348), nahw (1349) (TO WRITE)
+## D-1346 – D-1349 [front] — learn kit + games (1346), Quran (1347), module switches page (1348), nahw (1349)
 One entry each, as the commit messages and the code comments already cite them.
 
-## D-1350 — Offline-first v1: a generic outbox for four kinds; money is never offline
+## D-1351 — Offline-first v1: a generic outbox for four kinds; money is never offline
 `game_play`, `nahw_attempt`, `quran_progress`, `study_profile`. The attendance and exam queues stay as they are and report into the same status.
 
-## D-1351 — Conflicts: append-only kinds dedupe by client id; the profile is last-write-wins with a stale check
+## D-1352 — Conflicts: append-only kinds dedupe by client id; the profile is last-write-wins with a stale check
 Simple and predictable. A rejected op is dropped and the screen refetches.
 
-## D-1352 — `sqflite` (+ `sqflite_common_ffi` on desktop), no encrypted database
+## D-1353 — `sqflite` (+ `sqflite_common_ffi` on desktop), no encrypted database
 `sqflite` is already in the lock file. Drift and SQLCipher add build weight on six platforms. Instead: nothing sensitive is cached (no identity numbers, no addresses of others), paid files are AES-CTR encrypted, tokens stay in secure storage, logout wipes the database. The web build stays online-only.
 
 ## D-1360 — The Android release keystore already exists and is NOT regenerated

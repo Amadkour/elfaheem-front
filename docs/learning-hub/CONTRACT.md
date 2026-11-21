@@ -130,11 +130,11 @@ Every cached GET keeps answering `updated_at` / `ETag`.
 | `game_play` | `{game_id, score, max_score, duration_s?}` | `record_play` (points and badges as on the route; `entity` = the route's answer) |
 | `nahw_attempt` | `{lesson_id, score, max_score, answers?}` | `attempt` |
 | `quran_progress` | `{student_id?, course_id?, surah, from_ayah, to_ayah, kind, grade?, note?}` | `record` |
-| `study_profile` | the fields of the study-profile PUT (CONTRACT §3) + the op's `base_updated_at` | the profile service; `base_updated_at` older than the row's `updated_at` → `rejected` `sync_stale` with `entity` = the server's row (D-1351) |
+| `study_profile` | the fields of the study-profile PUT (CONTRACT §3) + the op's `base_updated_at` | the profile service; `base_updated_at` older than the row's `updated_at` → `rejected` `sync_stale` with `entity` = the server's row (D-1352) |
 
 **`pull`:** kinds `game_progress`, `user_badges`, `nahw_progress`, `quran_progress`, `study_profile`, each row with `updated_at`; `since` absent = everything of the caller; `cursor` = the `server_time` to send as the next `since`. `deleted` stays empty for these kinds in v1 (none is deleted by another device). `game_progress` and `nahw_progress` need an `updated_at` column (0108).
 
-Money is never an op (D-1350): store orders, course checkout and points stay online. Kill switch `sync.offline` (off = the app posts straight to the routes, as Phase 6 does).
+Money is never an op (D-1351): store orders, course checkout and points stay online. Kill switch `sync.offline` (off = the app posts straight to the routes, as Phase 6 does).
 
 ## 8. Phases 8–10 — outline
 - Releases: `releases.json` gains per-platform file kinds `exe`, `appimage`, `dmg` (same entry shape: `url, size, sha256, min_os`); `GET /app/downloads` unchanged.

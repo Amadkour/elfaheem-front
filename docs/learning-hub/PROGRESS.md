@@ -35,7 +35,7 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | 6.4 | Front: learn kit + games tab | F9 | todo | |
 | 6.5 | Front: Quran tab | F10 | todo | |
 | 6.6 | Front: nahw tab + admin switches page | F11 | todo | |
-| 6.R | Review: switch model, phone layout of the tabs, §7 contract detail | planner | done | needs fixes: "6.R code review" at the end (9 must-fix, D-1340 decided) |
+| 6.R | Review: switch model, phone layout of the tabs, §7 contract detail | planner | verified | re-check 2026-11-21: 9 of 9 fixed; R1 (one front test) and R2 (D-1350 entry) owed, not blocking Phase 7 |
 | 6.F | Phase 6 review + QA fixes (D-1350) | F/B fix | done | the 9 must-fix items + the QA highs / mediums, see "6.F fixes" at the end; e2e_quran_rules 205 checks, e2e_nahw 118, e2e_module_settings 104, e2e_games 105, e2e_registration 106; QA re-walk in QA_PHASE6.md |
 | 7.1 | Back: sync push / pull (0108) | B8 | todo | |
 | 7.2 | Front: LocalDb, Outbox, SyncEngine, status chip | F12 | todo | |
@@ -641,3 +641,72 @@ QA (QA_PHASE6.md), highs and mediums:
 - **fixed** deep routes `/games/progress`, `/games/<id>`, `/nahw/lessons/<id>`, `/quran/progress`, `/quran/teachers/<id>`; "all pairs matched" in a calm tone; the order game scrolls Check and the result into view; a juz's surahs open in a sheet; parent pushed-page titles short with the child's name as a subtitle (`ScreenAppBar.subtitle`).
 - Minor done on the way: the games 404 has `message_en`, feminine teacher count, nahw "Practise again".
 - Not done (nice-to-have list of 6.R and the other minors): unchanged.
+
+### 6.R re-check (planner, 2026-11-21): verified, one test owed — back a5a45ae, front d88aba13
+I read the diffs of all nine must-fixes. I ran no tests; the results are the fix agent's.
+
+| # | Must-fix | Verdict |
+|---|---|---|
+| 1 | `program_kind` on the course API and the form | fixed |
+| 2 | The booking rule on staff-made enrolments | fixed (all seven paths; single adds raise, bulk paths skip with the code) |
+| 3 | A verified card that changes gender / ijazah loses its verification | fixed |
+| 4 | `GET /quran/teachers` flags from the signed-in user | fixed |
+| 5 | Quran teachers admin page | fixed |
+| 6 | The country layer reaches the app | fixed (guest `?country=`, refetch on sign-in / sign-out / profile save, the dashboard rebuilds its tabs on a new list, 422 `feature_unknown`) |
+| 7 | D-1340 phone bar | fixed (`shellNavSlots` follows rules 1–3) |
+| 8 | Nahw content editor + `admin.nahw` + exercise validation | fixed |
+| 9 | Decisions written | fixed for D-1340 – D-1349; D-1350 is still to write (below) |
+
+Small notes, not blocking: in #3 an ijazah sent as `""` against a stored `null` counts as a change and clears the verification (compare the trimmed values); `EnrollmentProvider.onCheckoutError` treats every 403 as final, which is right for the Quran codes and acceptable for the others.
+
+**D-numbers.** The fix round cites D-1350 in both commit messages and four code comments, and the draft used D-1350 for "Offline-first v1". The fix round keeps D-1350; the offline decisions are now D-1351 (outbox, money never offline), D-1352 (conflicts) and D-1353 (`sqflite`). DECISIONS_DRAFT, CONTRACT §7 and PLAN §3.6 are updated. D-1343 – D-1349 need no new ids: they are written and match the code.
+
+**The 403 checkout path.** Not walking it is acceptable, because the page no longer offers Join. But the path still runs (a flag switched on after the page loaded, the organization join, a stale tab), and no front test covers it. It needs one test, not a walk:
+
+#### Remaining must-fix (one small brief, Opus, front only; can run beside Phase 7)
+- **R1.** `test/ui/quran_refused_checkout_test.dart` over `FakeApi`: `POST /api/v1/courses/{id}/enroll` answers 403 `quran_gender_rule` (and once `quran_teacher_unverified`; once from `POST /api/v1/payments/create-web-session`) → `EnrollmentProvider.refused` is true, the step is `failed`, the page shows `apiErrorText`'s text in ar and en with "Back to the course" and NO retry button; `expectNoLayoutErrors` on that page.
+- **R2.** Write the D-1350 entry into both `docs/DECISIONS.md` files from DECISIONS_DRAFT. Back: in `quran_service.save_profile` compare `(body.get("ijazah") or "").strip()` with `(p.ijazah or "").strip()`.
+
+### Phase 7 — run plan (planner, 2026-11-21): all Opus, two waves
+Contract: CONTRACT §7 (complete). Decisions: D-1351 – D-1353. Migration `0108` (`down_revision = "0107"`; the student-lifecycle job owns 0110+).
+
+| Wave | Agents (Opus) | Starts when |
+|---|---|---|
+| **7A** | B8 (back sync), F12 (front sync core) | now |
+| **7B** | F13 (wire the entities + caches) | 7A is merged and the snapshots are exported |
+
+**Shared rules:** your own files only; plain `def` routes; back e2e on SQLite (the lead runs PostgreSQL once); front: the analyzer on your paths and your own tests only; no `dart format`; commit per repo with `git commit --only`, no push; literal `/api/v1/…` paths.
+
+#### B8 — `features/sync/` (migration 0108)
+**Owns:** `features/sync/` (`sync_service.py`, `api/sync_router.py`), `data/sync_models.py`, migration `0108`, `tests/learning_hub/e2e_sync.py`, the key `sync.offline` in `feature_catalog.py`, the snapshot export, `FLUTTER_API_CHANGES.md`, back D-1351 / D-1352.
+1. **Table `sync_ops`** as in CONTRACT §7; unique `(user_id, op_id)`. Add `updated_at` to `game_progress` (and to `nahw_progress` if it lacks one), set on every bump (`games_service._bump_progress` is raw SQL: set it there).
+2. **`POST /api/v1/sync/push`** (≤ 100 ops, else 422 `sync_too_many`). For each op, in order, in its own SAVEPOINT:
+   - a `sync_ops` row for `(user, op.id)` exists → `duplicate` with the stored `entity`;
+   - else call the route's own function with `client_id = op.id`: `games_service.record_play`, `nahw_service.attempt`, `quran_service.record`, the study-profile save. These commit themselves today: give each a `commit: bool = True` parameter (or split out a `_no_commit` core) so the sync service owns the transaction; the routes keep their behaviour;
+   - an `HTTPException` → `rejected` with its `code`; store the row either way.
+   Never a 500 for one bad op: an unexpected error is `rejected` `sync_error`, logged with the traceback.
+3. **`client_ts`:** `game_play` → `played_at`; `quran_progress` → `recorded_at` (add the parameter to `quran_service.record`, the same clamp as games: not in the future, not older than 60 days); the route passes `body.recorded_at` too.
+4. **`study_profile`:** `base_updated_at` older than the row's `updated_at` → `rejected` `sync_stale` with `entity` = the server's profile.
+5. **`GET /api/v1/sync/pull?since=&kinds=`** as in §7; only the caller's rows; `cursor` = the server time read BEFORE the queries.
+6. **Guards:** the kill switches of each kind apply (`feature_disabled` → `rejected`); `sync.offline` off → both routes 403 `feature_disabled`. Add `/api/v1/sync/` to the two `_OPEN_PREFIXES` lists only if games stay there (they do today).
+7. **e2e:** the same op twice = `duplicate` and one row; the same `client_id` through the route then through push = `duplicate`; a rejected op between two good ones leaves both applied; a stale profile; another user's `student_id` from a student = rejected; 101 ops = 422; points still capped when ten plays arrive in one push; pull returns only what changed since the cursor.
+
+#### F12 — `lib/core/offline/sync/`
+**Owns:** `local_db.dart` (+ `local_db_io.dart` / `local_db_web.dart` behind a conditional import), `outbox.dart`, `read_cache.dart`, `sync_engine.dart`, `sync_status.dart`, `lib/design/sync_status_chip.dart`, the logout wipe, `test/perf`-untouched tests under `test/org/` or a new `test/sync/` (tell the lead to add it to the gate), front D-1351 – D-1353.
+1. **Packages:** `sqflite` and `sqflite_common_ffi` only. Check `pubspec.lock` gains only those and their own dependencies, nothing downgraded. Web gets the in-memory stub and stays online-only.
+2. **`Outbox`:** rows `{id (the client_id), kind, payload, client_ts, base_updated_at?, user_id, tries, state}`; survives a restart; one user's rows never go out under another's token.
+3. **`SyncEngine`:** runs on reconnect (hook `topRouteObserver`'s connectivity listener, not a screen), on resume and after an enqueue; one run at a time; batches of ≤ 100 in order through `POST /api/v1/sync/push`; `applied` / `duplicate` → delete the row and hand `entity` to the kind's listener; `rejected` → delete the row and report it once (`showAppNotice` with `apiErrorText` of the code; `sync_stale` → refetch the profile); a transport error or 5xx → keep, backoff (no timer polling beyond the backoff: use the `EventOrPoll` style). `sync.offline` in the disable list → the engine is off and `Outbox.enqueue` answers "post directly".
+4. **`SyncStatus`** (offline | online | syncing + pending count), a `ValueListenable`; the attendance and exam queues only REPORT their counts into it (do not rewrite them).
+5. **`SyncStatusChip`:** in the top bar (`_TopBar` tools) and the student Home header; never in the phone's bottom bar (D-1340). Hidden when online with nothing pending. `syncMotionLoop` for its spinner; a label for screen readers; `expectNoLayoutErrors`.
+6. **Logout:** `MyAuthProvider.logout` wipes the outbox, the caches and the local tables next to `wipeStoreFiles`. No identity numbers are ever cached.
+7. **Tests** (fake clock, `FakeApi`): the queue survives a restart; drains in order; a 5xx keeps the op and backs off; a rejected op is dropped and reported once; `duplicate` is treated as applied; two users on one device; the status transitions. The student home's request budget does not move (the engine makes no request when the outbox is empty).
+
+#### F13 — wire the entities (after 7A)
+**Owns:** the write paths of `lib/features/games/game_play_page.dart` (`GamePlaySubmission`), `lib/features/nahw/nahw_lesson_page.dart`, `lib/features/quran/quran_record_sheet.dart`, the study-profile save, and `ReadCache` use in the listed readers.
+1. Each write enqueues an op whose id is the `client_id` it already makes, then shows the result at once from the device's own grading; the server's `entity` (points, new badges, progress) replaces it when it arrives. The private retries go: the Quran sheet's in-memory "kept for later", the game's and the nahw page's kept `client_id`.
+2. `ReadCache` snapshots (shown when offline, refreshed when online): the edu catalog, `/me/home`, my courses, the store library list, the games list + each opened game's `config`, nahw levels + opened lessons, Quran meta + my progress. No new request on the home.
+3. Offline library files: an owned store file already downloaded opens offline (it is encrypted on the device already); a download itself stays online.
+4. Never offline: store orders, course checkout, enrolment, points. Those buttons explain "needs a connection" when offline.
+5. Tests: a play made offline shows its stars at once and reaches the server once after reconnect; the same for a nahw attempt and a Quran entry; a stale profile edit refetches and tells the person; the three tabs open offline from the cache.
+
+**Review after 7B (7.R):** the planner reads `sync_engine.dart`, `outbox.dart` and `features/sync/sync_service.py`, and checks the points cap through `push`.
