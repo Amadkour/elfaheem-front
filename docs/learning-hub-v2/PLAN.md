@@ -29,7 +29,7 @@ The following do not exist yet: self-learning / spaced repetition, packages, wai
 ## Working setup
 - Branch `feature/learning-hub-v2` from origin/production in both repos, with one worktree per stream (`_wt/lh2-<stream>-front|back`).
 - Migrations start at 0115, chained in merge order; decisions start at D-1500.
-- Execution agents run on Opus. Fable writes the contract up front, then does one final review.
+- Execution agents run on Opus. Fable does the planning and the complex pieces (owner, 2026-11-21): the contract review, the back merge with the package ↔ series wiring, and the final review. The contract itself was first written on Opus.
 - Commits use `--only`. Push and deploy only when the owner says so.
 - Tests cover the changed code only.
 

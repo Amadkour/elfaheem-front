@@ -208,5 +208,74 @@ after the last delivery: deliver the next lesson (or a due review first), claim
 
 Switch: `student_tab_self_learning`, `admin.self_learning`.
 
+## Corrections v2 (Fable review, 2026-11-21) — these override the sections above
+
+**C1 Teachers (back-core, S4).**
+- `teacher_profiles` already exists (registration step 2, `data/models.py:338`). The new table is named **`teacher_cards`**; the routes and JSON shape stay as in section 1.
+- Attachments stay `TeacherDocument` rows, linked through the existing `teacher_profile_id`. Migration 0116 adds a `doc_type` column to it.
+- Old Quran apps:
+  - The old routes translate both ways: gender `m|f` ↔ `male|female`; status `published` ↔ `approved`, and `rejected` shows as `draft`.
+  - `publish: true` on the old PUT means submit.
+  - `session_types` (`individual|group`) stays as is. Delivery is a separate field, `delivery: ["online","offline"]`. The `session_types` line in section 1 is replaced by both fields.
+  - Copied `published` rows count as approved with no documents required (grandfathered).
+  - The old `/quran/teachers` filter is subject `quran` only.
+- `/teachers` applies the existing `quran.gender_matching` rule.
+- `available` means the teacher has a published package with a free seat or an open waiting list. `next_free` is the next occurrence start of such a package, within 14 days.
+
+**C2 Package payment (back-core).**
+- `payments.course_id` is NOT NULL and the checkout is keyed by course. Use the store / points pattern instead: the package's own payment token, plus a `package` branch in `payment_webhook_service`.
+- The `checkout` field in the enrol reply is whatever that start call returns, in the same shape the store's checkout returns. S4 reuses the store's checkout widget path, not the course one.
+
+**C3 Enrolment states (back-core, S4).**
+- Statuses: `pending_payment | active | waitlisted | offered | expired | cancelled`.
+- `pending_payment` holds the seat for 30 min. After that it is `expired` and the seat is free again.
+- `offered` is a waitlisted student promoted on a leave. It holds the seat 24 h, then the offer passes to the next student. Both expiries run as an idempotent scheduler job.
+- `overbook="allow"` adds the field `overbook_limit` (int or null, where null means no limit) of extra seats above `max_students`.
+- Leaving after paying gives no automatic refund. The app says so before confirming, and refunds stay with the existing admin process.
+- Teacher approval is checked again on publish and on enrol.
+
+**C4 Series and packages (back-cal, back-core).**
+- `cal_meeting_series.package_id` is nullable.
+- For a package series, attendees are derived from the package's active enrolments on read. They are copied into attendee rows when an occurrence becomes a `cal_meetings` row.
+- `create_series_for_package` therefore takes no attendee list.
+
+**C5 Joining an occurrence (back-cal, S5).**
+- New route `POST /me/calendar/series/{id}/occurrences/{date}/open` → `{meeting_id}`. It is idempotent and race-safe, open to the owner and attendees, and is what the join button calls.
+- The feed event id for a virtual occurrence is `s<series_id>:<YYYY-MM-DD>`.
+
+**C6 Recurrence semantics (back-cal, S5, back-core).**
+- `RecurrenceRule` gains `count: int|null` (a package sets `sessions_count`). Skipped dates and cancelled occurrences do not count.
+- `custom` means every `interval` days when `weekdays` is empty, or every `interval` weeks on `weekdays` otherwise.
+- `occurrence_date` is the LOCAL date in `tz`.
+- Weekdays: 0 = Monday (as in Python). Dart sends `DateTime.weekday - 1`.
+- Series PATCH and DELETE take `from_date` (default today, local). They split the series: past occurrences keep the old one. PATCH notifies attendees.
+
+**C7 Self-learning settings (back-learn, S3).**
+- `module_settings.validate` accepts only bool, int, or strings listed in `CHOICES`, so the settings are flat:
+  - `enabled`, `subject_quran`, `subject_tajweed`, `subject_fiqh`, `subject_nahw` (bools);
+  - `interval_minutes`, `daily_limit` (ints);
+  - `active_from_min`, `active_to_min`, `quiet_from_min`, `quiet_to_min` (minutes after midnight);
+  - `student_can_toggle`, `notify` (bools).
+- The student API stays as section 5.
+
+**C8 Self-learning tick (back-learn).**
+- Zone: the org zone for org students, else the platform zone (there is no per-user zone).
+- Quiet hours win over active hours.
+- The tick scans an indexed `sl_enrollments.next_due_at`, not every student, and uses `claim_many`.
+- Claim key: `sl:{user}:{slot}`, where `slot` is the delivery slot start (UTC ISO, floored to `interval_minutes`), so the 10-minute re-review of a missed question is not blocked.
+
+**C9 Leaderboard (back-learn, S6).**
+- Each row shows the first name plus last initial, and no avatar.
+- Opt-out: `PUT /me/games/leaderboard {visible: bool}`, default visible. A hidden student still sees their own rank.
+- Organization students rank only inside their organization. Scores are clamped to the config maximum.
+- Kill switch: `games.leaderboard`.
+
+**C10 Games fields (back-learn, S6).**
+- There is no `enabled` field: the admin's on/off is `status` `published` ↔ `hidden`.
+- Time is the existing `game_plays.duration_s`; `time_ms` is dropped.
+- `memory` is already a server engine. S6 builds its front engine, and back-learn adds its validator.
+
+Sections 3 and 5 are back-learn, not back-core (see the stream list).
+
 ## Requests
 (streams add here)
