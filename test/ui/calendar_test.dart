@@ -102,6 +102,20 @@ class FakeCalendarApi implements CalendarApi {
   @override
   Future cancel(int id) async => {'cancelled': true};
   @override
+  Future createSeries(Map<String, dynamic> body) async => {'id': 9, 'rule': body['rule']};
+  @override
+  Future series(int id) async => {'id': id};
+  @override
+  Future updateSeries(int id, Map<String, dynamic> body, {String? fromDate}) async => {'id': id};
+  @override
+  Future endSeries(int id, {String? fromDate}) async => {'ended': true};
+  @override
+  Future openOccurrence(int seriesId, String date) async => {'meeting_id': 7};
+  @override
+  Future updateOccurrence(int seriesId, String date, Map<String, dynamic> body) async => {'ok': true};
+  @override
+  Future cancelOccurrence(int seriesId, String date) async => {'cancelled': true};
+  @override
   Future respond(int id, Map<String, dynamic> body) async => meetingDetail(id);
   @override
   Future acceptProposal(int id, int attendeeId) async => meetingDetail(id);
@@ -259,7 +273,11 @@ void main() {
           tester, () => SingleChildScrollView(child: MeetingForm(api: FakeCalendarApi(), start: wall(0, 9), student: false)),
           act: (t) async {
         expect(find.byKey(const ValueKey('meeting_form.title_optional')), findsNothing); // in person by default
-        await t.tap(find.byIcon(Icons.videocam_rounded).first);
+        // the Repeat section and the reminder sit above the mode choice: scroll to it first
+        final online = find.descendant(of: find.byType(CalModeChoice), matching: find.byIcon(Icons.videocam_rounded));
+        await t.ensureVisible(online);
+        await t.pump();
+        await t.tap(online);
         await t.pump();
         expect(find.byKey(const ValueKey('meeting_form.title_optional')), findsOneWidget);
       });

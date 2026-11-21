@@ -5462,3 +5462,45 @@ Postgraduate thesis states (registered, struck, defended; RESEARCH §1.4) wait f
 as status events and a flag only, with no investigation workflow (RESEARCH §5 arts. 123–129); fees stay a field and
 never block a status change (D-1204); a national ID enrolled in a sister faculty warns and does not block
 (RESEARCH §1.1 [S6]); incomplete files are reminded every 7 days, four times, then become a staff task.
+
+## D-1570 — One repeat rule model and one picker for meetings and packages · 2026-11-21 · accepted
+
+`lib/features/calendar/recurrence/`: `RecurrenceRule` is the plain wire model of Learning Hub v2 §4 + C6
+(`toJson` / `fromJson`, weekday 0 = Monday sent as `DateTime.weekday - 1`, dates `YYYY-MM-DD`, wall times `HH:MM`
+in `tz` = `AppTime.zoneId`), `RecurrencePicker` is the controlled Repeat section (null = does not repeat) and
+`describeRule(rule, lang)` writes the summary sentence; the server sends no `rule_summary`. The packages wizard
+reuses all three. The meeting form shows the picker with `withDateTime: false`: its own day and from–to are the
+rule's first date and clock, so the form never holds two clocks.
+
+## D-1571 — "Custom" is every n days, or every n weeks on chosen weekdays · 2026-11-21 · accepted
+
+The picker's Custom choice has a step (1..30) and a unit; the unit is not on the wire. Per C6 a custom rule with
+no weekdays is "every n days" and one with weekdays is "every n weeks on them". Skipped weekdays are offered only
+in the day unit (in the week unit you untick the day). The end is never / a date / after N times (`count`, C6).
+
+## D-1572 — Series dates in the schedule: a repeat mark, cancelled ones struck through · 2026-11-21 · accepted
+
+`CalEvent` reads `series_id` (or the virtual id `s<series>:<date>`, C5) and `occurrence_date`; `recurring` draws
+`Icons.repeat_rounded` as the grid block's marker and a "Repeats" tag on the agenda row. Cancelled dates use the
+existing struck-through look. A virtual date (no `meeting_id`) opens `SeriesOccurrenceSheet`; Join calls
+`POST …/occurrences/{date}/open` first, then the normal meeting join.
+
+## D-1573 — Moving or cancelling a date asks "This meeting only / This and following" · 2026-11-21 · accepted
+
+Every move (sheet, drag in the grid) and cancel of a series date asks the scope. "This meeting only" →
+PATCH / DELETE the occurrence; "This and following" → PATCH / DELETE the series with `from_date` = the date (C6).
+"Following" changes the rule's clock only (a different day is a one-date move). The 409 `attendees_busy` asks once
+and sends `force`, as for single meetings.
+
+## D-1574 — `calendar.recurring` hides the Repeat section and the course entry · 2026-11-21 · accepted
+
+The picker wraps itself in `ParentComponent(featureKey: 'calendar.recurring')`; the form treats a set rule as off
+when the key is disabled, so a hidden picker never creates a series. The reminder field (default 15 min) stays:
+single meetings send `reminder_minutes` too.
+
+## D-1575 — A course's repeating meeting invites the course, not a picked audience · 2026-11-21 · accepted
+
+The teacher's Sessions tab (`TeacherSessionsBody`, the course teacher's page only) carries "Repeating meeting"
+(`CourseRepeatingMeetingEntry` in `course_sessions.dart`). It opens the same form with `course_id` preset and a
+weekly rule on. The audience pickers hide and the body sends an empty audience + `course_id`: the server, which
+knows the course's students, decides who is invited.

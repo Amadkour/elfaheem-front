@@ -2,7 +2,9 @@
 // complaint into a meeting. Calls: calendar_api.dart.
 //
 //   showMeetingForm     quick-add sheet: title · day & time · online/offline · private or with people / departments /
-//                       the person responsible / a course group; a live "who is busy then" check before sending
+//                       the person responsible / a course group; a live "who is busy then" check before sending;
+//                       Repeat (RecurrencePicker, kill switch `calendar.recurring`) → POST …/series (D-1570);
+//                       [courseId] → a course's repeating meeting (its students, D-1575)
 //   showMeetingSheet    details: time, place, join (online, the live-session room), invitees with their answer;
 //                       invitee: accept · decline · propose another time; organizer: accept a proposal, move, cancel
 //   showComplaintMeetingSheet   one tap from a complaint: a meeting with its sender (both calendars + notification)
@@ -39,6 +41,9 @@ import 'package:flutter_education_app/features/calendar/calendar_api.dart';
 import 'package:flutter_education_app/features/calendar/calendar_models.dart';
 import 'package:flutter_education_app/design/app_username.dart';
 import 'package:flutter_education_app/design/app_mentions.dart';
+import 'package:flutter_education_app/features/calendar/recurrence/recurrence_picker.dart';
+import 'package:flutter_education_app/features/calendar/recurrence/recurrence_rule.dart';
+import 'package:flutter_education_app/features/calendar/recurrence/series_actions.dart';
 
 String _utcIso(DateTime wall) => AppTime.fromZone(wall).toUtc().toIso8601String();
 
@@ -295,10 +300,15 @@ class _AudiencePickerState extends State<_AudiencePicker> {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// Quick-add sheet. Returns the created meeting (detail map) or null.
+/// [repeat] opens with a weekly rule on; [courseId] makes it a course's meeting (its students are invited, the
+/// audience pickers hide) and turns the repeat on.
 Future<Map<String, dynamic>?> showMeetingForm(BuildContext context,
-        {required CalendarApi api, required DateTime start, int? orgId, int? deptId}) =>
+        {required CalendarApi api, required DateTime start, int? orgId, int? deptId, int? courseId, bool repeat = false}) =>
     showAppSheet<Map<String, dynamic>>(
-        context, mode: AppSheetMode.side, (ctx) => MeetingForm(api: api, start: start, orgId: orgId, deptId: deptId));
+        context,
+        mode: AppSheetMode.side,
+        (ctx) => MeetingForm(
+            api: api, start: start, orgId: orgId, deptId: deptId, courseId: courseId, repeat: repeat || courseId != null));
 
 /// Is the signed-in person a "student" for meetings (online + private only, free time without the plan)?
 bool calIsStudent(BuildContext context) {
@@ -310,10 +320,17 @@ bool calIsStudent(BuildContext context) {
 }
 
 class MeetingForm extends StatefulWidget {
-  const MeetingForm({super.key, required this.api, required this.start, this.orgId, this.deptId, this.student});
+  const MeetingForm(
+      {super.key, required this.api, required this.start, this.orgId, this.deptId, this.student, this.courseId, this.repeat = false});
   final CalendarApi api;
   final DateTime start; // wall
   final int? orgId, deptId;
+
+  /// A course's meeting: sent as `course_id`, the course's students are the invitees (D-1575).
+  final int? courseId;
+
+  /// Open with a weekly repeat on.
+  final bool repeat;
 
   /// Online + "Only me" forced, the mode and audience pickers hidden. Null → from the signed-in role.
   final bool? student;
@@ -336,13 +353,41 @@ class _MeetingFormState extends State<MeetingForm> {
   Timer? _debounce;
   int _check = 0;
 
+  /// The repeat rule (null = a single meeting) and the reminder lead time (contract §4).
+  RecurrenceRule? _rule;
+  int _reminder = kRecurrenceReminderDefault;
+
+  bool get _course => widget.courseId != null;
+  bool get _repeatOn => _rule != null && !AppConfig.disableList.contains(kRecurringFeatureKey);
+
   @override
   void initState() {
     super.initState();
     _student = widget.student ?? calIsStudent(context);
     if (_student) _mode = 'online';
+    if (_course) _private = false;
+    if (widget.repeat) _rule = RecurrenceRule.from(_s, end: _e);
     _scheduleCheck();
   }
+
+  /// The form's day and from–to are the rule's first date and clock.
+  void _syncRule() {
+    final r = _rule;
+    if (r == null) return;
+    final day = DateTime(_s.year, _s.month, _s.day);
+    final oldDay = recurrenceWeekdayOf(r.startDate), newDay = recurrenceWeekdayOf(day);
+    _rule = r.copyWith(
+      startDate: day,
+      startTime: _s.hour * 60 + _s.minute,
+      endTime: _e.hour * 60 + _e.minute,
+      allDay: false,
+      // a weekly rule that only held the old first day follows the new one
+      weekdays: r.unit == RecurrenceUnit.weeks && r.weekdays.length == 1 && r.weekdays.first == oldDay ? [newDay] : null,
+      clearEnd: r.endDate != null && r.endDate!.isBefore(day),
+    );
+  }
+
+  Map<String, dynamic> get _audienceJson => _private || _course ? CalAudience().toJson() : _aud.toJson();
 
   @override
   void dispose() {
@@ -365,7 +410,7 @@ class _MeetingFormState extends State<MeetingForm> {
       final r = await widget.api.busy({
         'starts_at': _utcIso(_s),
         'ends_at': _utcIso(_e),
-        'audience': _private ? CalAudience().toJson() : _aud.toJson(),
+        'audience': _audienceJson,
         'org_id': ?widget.orgId,
       });
       if (!mounted || n != _check) return;
@@ -381,28 +426,34 @@ class _MeetingFormState extends State<MeetingForm> {
       setState(() => _error = titleError);
       return;
     }
-    if (!_student && !_private && _aud.isEmpty) {
+    if (!_student && !_private && !_course && _aud.isEmpty) {
       setState(() => _error = t('اختر المدعوين أو اجعله خاصاً', 'Pick who is invited, or make it private'));
       return;
     }
     setState(() { _saving = true; _error = null; });
     final othersBusy = _busy.where((b) => asInt(asMap(b['user'])['id']) != _me).isNotEmpty;
     try {
-      final r = await widget.api.create(calMeetingBody(
-        title: _title.text, // blank + online → left out: the server names it after its start
-        notes: _notes.text,
-        startsAt: _utcIso(_s),
-        endsAt: _utcIso(_e),
-        mode: _mode,
-        location: _place.text,
-        recordQuality: _recordQuality.wire,
-        orgId: widget.orgId,
-        deptId: widget.deptId,
-        audience: _private ? CalAudience().toJson() : _aud.toJson(),
-        emptyAudience: CalAudience().toJson(),
-        student: _student,
-        force: othersBusy, // the warning was on screen: sending is a decision
-      ));
+      final body = {
+        ...calMeetingBody(
+          title: _title.text, // blank + online → left out: the server names it after its start
+          notes: _notes.text,
+          startsAt: _utcIso(_s),
+          endsAt: _utcIso(_e),
+          mode: _mode,
+          location: _place.text,
+          recordQuality: _recordQuality.wire,
+          orgId: widget.orgId,
+          deptId: widget.deptId,
+          audience: _audienceJson,
+          emptyAudience: CalAudience().toJson(),
+          student: _student,
+          force: othersBusy, // the warning was on screen: sending is a decision
+        ),
+        'reminder_minutes': _reminder,
+        'course_id': ?widget.courseId,
+      };
+      // a rule set → the series (its first 8 dates are checked for clashes); the 409 / force flow is the same
+      final r = _repeatOn ? await widget.api.createSeries({...body, 'rule': _rule!.toJson()}) : await widget.api.create(body);
       if (mounted) Navigator.pop(context, asMap(r));
     } catch (e) {
       final busy = calBusyOf(e);
@@ -447,7 +498,7 @@ class _MeetingFormState extends State<MeetingForm> {
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.viewInsetsOf(context).bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        AppSheetHeader(t('اجتماع جديد', 'New meeting')),
+        AppSheetHeader(_course ? 'cal_recur_course_meeting'.tr : t('اجتماع جديد', 'New meeting')),
         _mode == 'online'
             ? AppField(
                 key: const ValueKey('meeting_form.title_optional'),
@@ -460,9 +511,26 @@ class _MeetingFormState extends State<MeetingForm> {
             start: _s,
             end: _e,
             onChanged: (s, e) {
-              setState(() { _s = s; _e = e; });
+              setState(() {
+                _s = s;
+                _e = e;
+                _syncRule();
+              });
               _scheduleCheck();
             }),
+        const SizedBox(height: AppSpace.sm),
+        RecurrencePicker(
+          rule: _rule,
+          start: _s,
+          end: _e,
+          withDateTime: false, // the day and from–to above are the rule's first date and clock
+          onChanged: (r) => setState(() {
+            _rule = r;
+            _syncRule();
+          }),
+        ),
+        const SizedBox(height: AppSpace.sm),
+        RecurrenceReminderField(minutes: _reminder, onChanged: (m) => setState(() => _reminder = m)),
         const SizedBox(height: 14),
         if (_student) ...[
           AppBanner(
@@ -485,6 +553,13 @@ class _MeetingFormState extends State<MeetingForm> {
               color: c.primary),
         if (_mode == 'online') ...[const SizedBox(height: 10), _recordQualityField],
         const SizedBox(height: 14),
+        if (_course)
+          AppBanner(
+              key: const ValueKey('meeting_form.course_note'),
+              icon: Icons.school_rounded,
+              text: 'cal_recur_course_note'.tr,
+              color: c.primary)
+        else
         Wrap(spacing: 8, runSpacing: 8, children: [
           AppChoiceChip(
               label: t('خاص بي', 'Only me'),
@@ -505,7 +580,7 @@ class _MeetingFormState extends State<MeetingForm> {
                 _scheduleCheck();
               }),
         ]),
-        if (!_private) ...[
+        if (!_private && !_course) ...[
           const SizedBox(height: AppSpace.xs),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final (id, label, icon, map) in chips)
@@ -574,14 +649,21 @@ class _MeetingFormState extends State<MeetingForm> {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// Details + actions. Returns true when something changed (the calendar reloads).
-Future<bool> showMeetingSheet(BuildContext context, {required CalendarApi api, required int meetingId}) async =>
-    await showAppSheet<bool>(context, (ctx) => MeetingSheet(api: api, meetingId: meetingId)) ?? false;
+/// [seriesId] / [occurrenceDate]: the meeting is one date of a repeating meeting, so moving or cancelling it asks
+/// "This meeting only / This and following" (the detail's own `series_id` / `occurrence_date` win).
+Future<bool> showMeetingSheet(BuildContext context,
+        {required CalendarApi api, required int meetingId, int? seriesId, String? occurrenceDate}) async =>
+    await showAppSheet<bool>(
+        context, (ctx) => MeetingSheet(api: api, meetingId: meetingId, seriesId: seriesId, occurrenceDate: occurrenceDate)) ??
+    false;
 
 class MeetingSheet extends StatefulWidget {
-  const MeetingSheet({super.key, required this.api, required this.meetingId, this.initial});
+  const MeetingSheet({super.key, required this.api, required this.meetingId, this.initial, this.seriesId, this.occurrenceDate});
   final CalendarApi api;
   final int meetingId;
   final Map<String, dynamic>? initial;
+  final int? seriesId;
+  final String? occurrenceDate;
 
   @override
   State<MeetingSheet> createState() => _MeetingSheetState();
@@ -650,6 +732,15 @@ class _MeetingSheetState extends State<MeetingSheet> {
 
   DateTime? _pendingS, _pendingE;
 
+  /// The series of this meeting (a date of a repeating meeting), null for a single meeting.
+  int? get _seriesId => int.tryParse('${_m?['series_id'] ?? ''}') ?? widget.seriesId;
+  String? get _occurrenceDate {
+    final d = '${_m?['occurrence_date'] ?? widget.occurrenceDate ?? ''}';
+    if (d.length >= 10) return d.substring(0, 10);
+    final s = _parse(_m?['starts_at']);
+    return s == null ? null : recurrenceDateWire(AppTime.toZone(s));
+  }
+
   Future<void> _move({bool force = false}) async {
     if (!force) {
       final m = _m!;
@@ -659,6 +750,17 @@ class _MeetingSheetState extends State<MeetingSheet> {
       if (picked == null) return;
       _pendingS = picked.$1;
       _pendingE = picked.$2;
+      final series = _seriesId, date = _occurrenceDate;
+      if (series != null && date != null && mounted) {
+        // one date of a repeating meeting: this one only, or the series from today on (series_actions.dart)
+        final ok = await seriesMove(context, widget.api,
+            seriesId: series, date: date, startUtc: AppTime.fromZone(picked.$1).toUtc(), endUtc: AppTime.fromZone(picked.$2).toUtc());
+        if (ok && mounted) {
+          _changed = true;
+          unawaited(_load());
+        }
+        return;
+      }
     }
     if (_pendingS == null) return;
     await _act(() => widget.api.update(widget.meetingId,
@@ -768,6 +870,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
           AppTag(online ? t('عبر الإنترنت', 'Online') : t('حضوري', 'In person'), c.primary,
               icon: online ? Icons.videocam_rounded : Icons.place_rounded),
           if (m['visibility'] == 'private') AppTag(t('خاص', 'Private'), c.accent, icon: Icons.lock_rounded),
+          if (_seriesId != null) AppTag('cal_recur_tag'.tr, c.textMedium, icon: Icons.repeat_rounded),
           if (m['source_type'] == 'complaint') AppTag(t('من شكوى / طلب', 'From a request'), c.warning, icon: Icons.support_agent_rounded),
         ]),
         const SizedBox(height: AppSpace.sm),
@@ -876,6 +979,13 @@ class _MeetingSheetState extends State<MeetingSheet> {
                 onTap: _busy
                     ? null
                     : () async {
+                        final series = _seriesId, date = _occurrenceDate;
+                        if (series != null && date != null) {
+                          if (await seriesCancel(context, widget.api, seriesId: series, date: date) && context.mounted) {
+                            Navigator.pop(context, true);
+                          }
+                          return;
+                        }
                         if (await appConfirm(context,
                             message: t('إلغاء الاجتماع وإبلاغ المدعوين؟', 'Cancel the meeting and notify invitees?'), danger: true)) {
                           await _act(() => widget.api.cancel(widget.meetingId), ok: t('أُلغي الاجتماع', 'Meeting cancelled'), close: true);

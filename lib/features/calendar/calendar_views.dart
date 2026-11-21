@@ -36,7 +36,8 @@ class _Clip extends StatelessWidget {
 }
 
 Widget _draggable(CalEvent e, Size size, Widget child) {
-  if (!e.editable || e.meetingId == null || e.ended) return child; // a closed meeting stays where it happened
+  // a closed meeting stays where it happened; a cancelled date of a series is not moved
+  if (!e.editable || (e.meetingId == null && !e.recurring) || e.ended || e.cancelled) return child;
   final feedback = Material(
     color: Colors.transparent,
     child: Opacity(opacity: 0.85, child: SizedBox(width: size.width, height: size.height, child: child)),
@@ -81,7 +82,9 @@ class CalEventBlock extends StatelessWidget {
             ? Icons.videocam_rounded
             : (ch != null && ch.substitute)
                 ? Icons.person_pin_rounded
-                : null;
+                : e.recurring
+                    ? Icons.repeat_rounded // a date of a repeating meeting (D-1572)
+                    : null;
     final marker = live
         ? const CalLiveDot(size: AppSpace.xxs + 2)
         : markerIcon != null

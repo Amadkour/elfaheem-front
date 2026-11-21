@@ -16,6 +16,21 @@ import 'package:flutter_education_app/features/sessions/teacher/sessions_provide
 import 'package:flutter_education_app/features/sessions/session_track_tabs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppElevation, AppListSkeleton, AppRadius, AppSpace;
 import 'package:flutter_education_app/features/sessions/teacher/components/teacher_course_parts.dart';
+import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
+import 'package:flutter_education_app/features/calendar/calendar_api.dart';
+import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show showMeetingForm;
+import 'package:flutter_education_app/features/calendar/recurrence/recurrence_rule.dart' show kRecurringFeatureKey;
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
+
+/// The meeting form with [courseId] preset and a weekly repeat on, from the next full hour.
+Future<void> openCourseRepeatingMeeting(BuildContext context, int courseId) async {
+  final n = AppTime.toZone(DateTime.now().toUtc());
+  final start = DateTime(n.year, n.month, n.day, n.hour + 1);
+  final r = await showMeetingForm(context, api: const RemoteCalendarApi(), start: start, courseId: courseId);
+  if (r != null) showAppNotice('cal_recur_course_created'.tr);
+}
 
 class TeacherSessionsBody extends StatelessWidget {
   const TeacherSessionsBody({super.key, required this.onAdd});
@@ -35,6 +50,14 @@ class TeacherSessionsBody extends StatelessWidget {
           key: const ValueKey('teacher_sessions.header'),
           count: provider.sessionCount,
           // New session is the page header's (D-943); the empty state below keeps its own first-session button
+        ),
+        // the course's repeating meeting (D-1575): this body is the teacher's course page only
+        ParentComponent(
+          featureKey: kRecurringFeatureKey,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, AppSpace.sm),
+            child: CourseRepeatingMeetingEntry(onTap: () => openCourseRepeatingMeeting(context, provider.course.id)),
+          ),
         ),
         if (loading)
           const AppListSkeleton(items: 3, padding: EdgeInsetsDirectional.fromSTEB(kCourseGutter, 0, kCourseGutter, 0))

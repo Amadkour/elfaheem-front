@@ -15,7 +15,9 @@ import 'dart:io';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const notInCatalog = <String, String>{};
+const notInCatalog = <String, String>{
+  'calendar.recurring': 'lands with feature/lh2-cal',
+};
 
 final _patterns = [
   RegExp(r"featureKey:\s*'([^'$]+)'"),
