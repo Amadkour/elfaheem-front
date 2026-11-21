@@ -26,8 +26,10 @@ class LearnProgressHeader extends StatelessWidget {
     final ar = AppConfig.lang == 'ar';
     final text = label ?? (ar ? 'السؤال $current من $total' : 'Question $current of $total');
     final v = total <= 0 ? 0.0 : (current / total).clamp(0.0, 1.0);
+    // one leaf with the step AND the score (a label on a node with children is dropped by the browser on the web)
     return Semantics(
-      label: text,
+      container: true,
+      label: score == null ? text : '$text, ${ar ? 'النقاط $score' : 'Score $score'}',
       value: '${(v * 100).round()}%',
       excludeSemantics: true,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

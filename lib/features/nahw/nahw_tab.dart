@@ -314,7 +314,7 @@ class _ParentChildNahwPageState extends State<ParentChildNahwPage> {
     final name = widget.studentName.trim();
     return BasePage(
       width: AppWidth.reading,
-      appBar: ScreenAppBar(title: name.isEmpty ? t('النحو', 'Arabic grammar') : t('النحو · $name', 'Grammar · $name')),
+      appBar: ScreenAppBar(title: t('النحو', 'Arabic grammar'), subtitle: name.isEmpty ? null : name),
       child: SafeArea(child: NahwLevelsView(levels: _levels, error: _error, onRetry: _load)),
     );
   }

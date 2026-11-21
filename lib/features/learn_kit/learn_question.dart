@@ -66,10 +66,24 @@ class LearnPrompt extends StatelessWidget {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (caption != null && caption!.isNotEmpty) ...[
-              Text(caption!, style: AppType.overline(context).copyWith(color: c.textMedium)),
+              // each line its own leaf: on the web a label on a node that has children becomes an aria-label on a
+              // generic element, which the browser drops (the question was missing, QA Phase 6)
+              Semantics(
+                container: true,
+                label: caption,
+                excludeSemantics: true,
+                child: Text(caption!, style: AppType.overline(context).copyWith(color: c.textMedium)),
+              ),
               const SizedBox(height: AppSpace.xxs),
             ],
-            Semantics(header: true, child: Text(text, style: AppType.section(context))),
+            Semantics(
+              container: true,
+              header: true,
+              headingLevel: 2,
+              label: text,
+              excludeSemantics: true,
+              child: Text(text, style: AppType.section(context)),
+            ),
           ]),
         ),
       ]),
@@ -182,7 +196,14 @@ class LearnOptionList extends StatelessWidget {
 
 /// Small wrapping choices (a category for a word, the next step of an order): each a pill at least 48 px high.
 class LearnChoiceChips extends StatelessWidget {
-  const LearnChoiceChips({super.key, required this.options, this.marks = const [], this.onSelect, this.keyPrefix = 'learn.chip'});
+  const LearnChoiceChips({
+    super.key,
+    required this.options,
+    this.marks = const [],
+    this.onSelect,
+    this.keyPrefix = 'learn.chip',
+    this.semanticsPrefix,
+  });
 
   final List<String> options;
   final List<LearnMark> marks;
@@ -191,6 +212,9 @@ class LearnChoiceChips extends StatelessWidget {
   /// The chips' keys are `<keyPrefix>.<i>` (tests).
   final String keyPrefix;
 
+  /// Read before each chip's label ("كتاب: اسم"), for rows whose chips repeat the same names.
+  final String? semanticsPrefix;
+
   @override
   Widget build(BuildContext context) {
     return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
@@ -198,6 +222,7 @@ class LearnChoiceChips extends StatelessWidget {
         _Chip(
           key: ValueKey('$keyPrefix.$i'),
           label: options[i],
+          semanticsPrefix: semanticsPrefix,
           mark: i < marks.length ? marks[i] : LearnMark.idle,
           onTap: onSelect == null ? null : () => onSelect!(i),
         ),
@@ -206,9 +231,10 @@ class LearnChoiceChips extends StatelessWidget {
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip({super.key, required this.label, required this.mark, this.onTap});
+  const _Chip({super.key, required this.label, required this.mark, this.onTap, this.semanticsPrefix});
 
   final String label;
+  final String? semanticsPrefix;
   final LearnMark mark;
   final VoidCallback? onTap;
 
@@ -220,7 +246,10 @@ class _Chip extends StatelessWidget {
     return Semantics(
       button: onTap != null,
       selected: mark == LearnMark.selected,
-      label: [label, if (word.isNotEmpty) word].join(', '),
+      label: [
+        if (semanticsPrefix != null && semanticsPrefix!.isNotEmpty) '${semanticsPrefix!}: $label' else label,
+        if (word.isNotEmpty) word,
+      ].join(', '),
       excludeSemantics: true,
       child: AppPressScale(
         enabled: onTap != null,
@@ -263,9 +292,14 @@ class LearnFeedback extends StatelessWidget {
     this.explanation,
     this.actionLabel,
     this.onAction,
+    this.neutral = false,
   });
 
   final bool correct;
+
+  /// A finished round that is neither right nor wrong ("All pairs matched" after a slip): the calm primary tone and a
+  /// flag glyph, never the error style.
+  final bool neutral;
 
   /// Defaults to "Correct!" / "Not quite".
   final String? title;
@@ -276,7 +310,7 @@ class LearnFeedback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final tone = correct ? c.success : c.danger;
+    final tone = neutral ? c.primary : (correct ? c.success : c.danger);
     final tint = appTintOn(context, tone);
     final ink = appInkOn(context, tone, tint);
     final head = title ?? (AppConfig.lang == 'ar' ? (correct ? 'إجابة صحيحة!' : 'ليست صحيحة') : (correct ? 'Correct!' : 'Not quite'));
@@ -292,7 +326,7 @@ class LearnFeedback extends StatelessWidget {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(children: [
-            Icon(correct ? Icons.check_circle_rounded : Icons.error_outline_rounded, color: ink, size: AppIconSize.lg),
+            Icon(neutral ? Icons.flag_rounded : (correct ? Icons.check_circle_rounded : Icons.error_outline_rounded), color: ink, size: AppIconSize.lg),
             const SizedBox(width: AppSpace.xs),
             Expanded(child: Text(head, style: AppType.section(context).copyWith(color: ink))),
           ]),

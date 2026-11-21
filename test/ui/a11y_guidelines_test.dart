@@ -22,6 +22,7 @@ import 'package:flutter_education_app/core/app_locale.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/core/providers.dart';
+import 'package:flutter_education_app/design/app_shell.dart' show DashboardItem, ShellGroupSheet;
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_home_body.dart';
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
@@ -265,6 +266,22 @@ void main() {
                 ),
               ));
     });
+  });
+
+  // D-1340: the phone bar's group sheet (the student's Learn slot): 48 px rows, labelled, readable
+  testWidgets('phone bar group sheet (D-1340)', (tester) async {
+    DashboardItem it(String label, IconData icon, {int badge = 0}) =>
+        DashboardItem(icon, icon, label, null, const SizedBox(), badge: badge, hint: 'learn_hint_$label');
+    final tabs = [
+      it('store', Icons.local_mall_outlined, badge: 2),
+      it('games', Icons.extension_outlined),
+      it('quran', Icons.menu_book_outlined, badge: 120),
+      it('nahw', Icons.translate_outlined),
+      it('analysis', Icons.analytics_outlined),
+    ];
+    await expectA11y(tester, 'shell group sheet',
+        () => SingleChildScrollView(
+            child: ShellGroupSheet(title: 'learn_hub'.tr, items: tabs, members: const [0, 1, 2, 3, 4], current: 2, onPick: (_) {})));
   });
 
   // The organization dashboard of D-103 (docs/backend/org-dashboard-spec.md): the admin layout (tasks with one-tap

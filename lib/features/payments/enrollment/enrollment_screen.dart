@@ -99,14 +99,19 @@ class _EnrollView extends StatelessWidget {
               EnrollStep.failed => PaymentResultView(
                 key: const ValueKey('failed'),
                 kind: ResultKind.failed,
-                title: enroll.manualTransferRejected
-                    ? ResultCopy.rejectedTitle
-                    : ResultCopy.failedTitle,
+                title: enroll.refused
+                    ? 'enroll_refused_title'.tr
+                    : enroll.manualTransferRejected
+                        ? ResultCopy.rejectedTitle
+                        : ResultCopy.failedTitle,
                 message: enroll.failureReason ?? ResultCopy.failedFallback,
-                primaryLabel: enroll.manualTransferRejected
-                    ? 'resend_transfer_request'.tr
-                    : 'try_again_payment'.tr,
-                onPrimary: enroll.backToMethod,
+                // a refusal (403) can never succeed on retry: back to the course instead
+                primaryLabel: enroll.refused
+                    ? 'enroll_refused_back'.tr
+                    : enroll.manualTransferRejected
+                        ? 'resend_transfer_request'.tr
+                        : 'try_again_payment'.tr,
+                onPrimary: enroll.refused ? () => Navigator.of(context).maybePop() : enroll.backToMethod,
                 secondaryLabel: 'back_to_home'.tr,
                 onSecondary: () => popToHome(context),
               ),

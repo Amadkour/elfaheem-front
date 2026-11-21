@@ -36,6 +36,7 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | 6.5 | Front: Quran tab | F10 | todo | |
 | 6.6 | Front: nahw tab + admin switches page | F11 | todo | |
 | 6.R | Review: switch model, phone layout of the tabs, §7 contract detail | planner | done | needs fixes: "6.R code review" at the end (9 must-fix, D-1340 decided) |
+| 6.F | Phase 6 review + QA fixes (D-1350) | F/B fix | done | the 9 must-fix items + the QA highs / mediums, see "6.F fixes" at the end; e2e_quran_rules 205 checks, e2e_nahw 118, e2e_module_settings 104, e2e_games 105, e2e_registration 106; QA re-walk in QA_PHASE6.md |
 | 7.1 | Back: sync push / pull (0108) | B8 | todo | |
 | 7.2 | Front: LocalDb, Outbox, SyncEngine, status chip | F12 | todo | |
 | 7.3 | Front: wire entities + caches + offline library | F13 | todo | |
@@ -621,3 +622,22 @@ Run only the tests named in each item, plus the analyzer on the paths you touch.
 
 #### Phase 7: changes made to the plan and the contract
 CONTRACT §7 is now complete (payload per kind, the op id IS the entity's `client_id`, `client_ts` handling, reject codes, what `pull` returns). PLAN Phase 7 gained the chip's place under D-1340, the Quran sheet's in-memory "kept for later" moving to the outbox, and the Opus model line. Phase 7 can start once must-fix 1–7 are in; 8 and 9 can run beside it.
+
+### 6.F fixes (fix agent, 2026-11-21) — for the reviewer to verify
+Must-fix (6.R):
+1. **fixed** — `program_kind` on `CourseCreate` / `CourseUpdate` / the response; a change on a course with any enrolment is 409 `program_kind_locked`, `quran` while `quran.teacher_apply` is off is 403 `feature_disabled`. Front: "Program type" `AppDropdown` in the course form (only while the Quran tab is on, locked with a hint once the course has students), "Add a Quran program" in the teacher hub, `program_kind_locked` in `apiErrorText`, payload test in `test/ui/course_setup_test.dart`.
+2. **fixed** — `quran_service.booking_block` keyed on the student; the single staff adds (course students grant / reactivate, `admin_panel` enrol, the org admin router's approval) raise the 403, the bulk paths (org bulk add, registrar, org Excel, Data Lab) skip the row with the code. `course_access` grants nothing without an enrolment row, so no other path. `admin_panel` is not importable in the e2e harness: that path is covered by reading only.
+3. **fixed** — a gender or ijazah change on a verified card clears `verified_at` / `verified_by`; the hub's gender field says so.
+4. **fixed** — a signed-in caller's flags come from his own country; `?country=` is the teacher filter only.
+5. **fixed** — `lib/features/quran/admin/quran_admin_page.dart` (Pending / Published / Drafts; Verify, Remove verification, Approve, Return to draft, each through `appConfirm`), a tile in `admin_services_hub.dart` (super admin, hidden with `student_tab_quran`), a link under the two Quran flags on the module switches page, help id `admin.quran`, features-guide entry `quran_teacher_review`.
+6. **fixed** — a guest's theme request carries the remembered country; the theme is fetched again after sign-in, sign-out and a study-profile save (`test/admin/theme_country_test.dart`); back 422 `feature_unknown` on `PUT /admin/edu/countries/{code}/features`.
+7. **fixed** — D-1340 in `app_shell.dart` (`ShellMobileGroup`, `DashboardItem.mobileGroup` / `hint`, `shellNavSlots` rules 1–3 with the built-in `more`, `_GroupSlot` + `ShellGroupSheet`), the student's `learn` group, analysis before my_schedule; `test/ui/app_shell_layout_test.dart` D-1340 group, sheet rows in `a11y_guidelines_test`. The student dashboard also follows a live disable-list change (QA medium "two launches").
+8. **fixed** — `lib/features/nahw/admin/` (levels → lessons → choose / fill / classify forms, preview through `NahwExerciseView`), kill switch `admin.nahw` (back catalog + snapshot, the nahw admin routes check it), tile, help id `admin.nahw`, features-guide entry `nahw_content`; back 422 `nahw_bad_exercise`.
+9. **fixed** — back D-1343 – D-1345; front D-1340, D-1346 – D-1349.
+
+QA (QA_PHASE6.md), highs and mediums:
+- **fixed** mismatched Quran booking: the course page shows the refusal reason instead of Join (one call, only on a Quran course's page for a signed-in student who is not enrolled; the home's requests are unchanged), and a 403 at checkout / enrol shows the bilingual reason with "Back to the course", no retry.
+- **fixed** 360 px bar (D-1340); **fixed** semantics: the Quran teacher page body is its own container and Book has a label; the quiz question, step and score are leaf nodes; classify chips carry their word.
+- **fixed** deep routes `/games/progress`, `/games/<id>`, `/nahw/lessons/<id>`, `/quran/progress`, `/quran/teachers/<id>`; "all pairs matched" in a calm tone; the order game scrolls Check and the result into view; a juz's surahs open in a sheet; parent pushed-page titles short with the child's name as a subtitle (`ScreenAppBar.subtitle`).
+- Minor done on the way: the games 404 has `message_en`, feminine teacher count, nahw "Practise again".
+- Not done (nice-to-have list of 6.R and the other minors): unchanged.

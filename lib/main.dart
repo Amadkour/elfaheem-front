@@ -106,6 +106,13 @@ import 'package:flutter_education_app/features/records/record_guest_page.dart' s
 import 'package:flutter_education_app/features/records/records_guests_api.dart' show isGuestRecordToken;
 import 'package:flutter_education_app/features/live/meeting_links_page.dart';
 import 'package:flutter_education_app/features/store/store_item_page.dart';
+import 'package:flutter_education_app/features/games/game_play_page.dart' show GamePlayPage;
+import 'package:flutter_education_app/features/games/games_models.dart' show GameSummary;
+import 'package:flutter_education_app/features/games/games_progress.dart' show GamesProgressPage;
+import 'package:flutter_education_app/features/nahw/nahw_lesson_page.dart' show NahwLessonPage;
+import 'package:flutter_education_app/features/quran/quran_api.dart' show quranOff;
+import 'package:flutter_education_app/features/quran/quran_progress.dart' show QuranProgressPage;
+import 'package:flutter_education_app/features/quran/quran_teacher_page.dart' show QuranTeacherPage;
 import 'package:flutter_education_app/features/store/store_library.dart';
 import 'core/routing/deferred_screens.dart';
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
@@ -886,6 +893,25 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
       case 'store.item': // a store item by URL / a reload / a shared link (D-1339)
         final storeId = page!.intParam('itemId');
         if (storeId != null) return _fade(_Guard(child: StoreItemPage(itemId: storeId)), settings);
+      // learning hub pages by URL / a reload (D-1350): the tab's kill switch still hides each one
+      case 'games.progress':
+        if (!AppConfig.disableList.contains('student_tab_games')) return _fade(const _Guard(child: GamesProgressPage()), settings);
+      case 'games.play':
+        final gameId = page!.intParam('gameId');
+        if (gameId != null && !AppConfig.disableList.contains('student_tab_games')) {
+          return _fade(
+              _Guard(child: GamePlayPage(game: GameSummary(id: gameId, key: '', engine: '', titleAr: '', titleEn: ''))), settings);
+        }
+      case 'nahw.lesson':
+        final lessonId = page!.intParam('lessonId');
+        if (lessonId != null && !AppConfig.disableList.contains('student_tab_nahw')) {
+          return _fade(_Guard(child: NahwLessonPage(lessonId: lessonId)), settings);
+        }
+      case 'quran.progress':
+        if (!quranOff()) return _fade(const _Guard(child: QuranProgressPage.mine()), settings);
+      case 'quran.teacher':
+        final teacherId = page!.intParam('teacherId');
+        if (teacherId != null && !quranOff()) return _fade(_Guard(child: QuranTeacherPage(teacherId: teacherId)), settings);
       case 'course':
         final id = page!.intParam('courseId');
         if (id != null) return _fade(_Guard(child: CoursePageLoader(courseId: id)), settings); // the one course page (D-111)

@@ -129,6 +129,8 @@ class _ClassifyRow extends StatelessWidget {
           options: categories,
           marks: marks,
           onSelect: onSelect,
+          // a screen reader hears "كتاب: اسم", not the same three category names on every row
+          semanticsPrefix: text,
         ),
       ]),
     );

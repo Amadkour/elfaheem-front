@@ -152,9 +152,23 @@ class CourseIncludedList extends StatelessWidget {
 /// The hero's call to action for a visitor (a student not enrolled, a guest), D-941: the price beside Enroll (or
 /// Renew, with the plan's end under it), the payment status above them; a payment under review or a cancelled plan
 /// shows its note instead of the button.
-CourseSpaceCta courseBuyCta(CourseModel course, {required VoidCallback onEnroll, Widget? status, VoidCallback? onSupport}) {
+///
+/// [refusal] = the server would refuse this student's booking (a Quran program's gender rule, D-1347): the price
+/// stays, the button gives way to that bilingual reason.
+CourseSpaceCta courseBuyCta(CourseModel course,
+    {required VoidCallback onEnroll, Widget? status, VoidCallback? onSupport, String? refusal}) {
   final mode = enrollBarMode(enrolled: course.isEnrolled, access: course.access);
   if (mode == EnrollBarMode.hidden) return const CourseSpaceCta();
+  if (refusal != null && (mode == EnrollBarMode.subscribe || mode == EnrollBarMode.renew)) {
+    return CourseSpaceCta(
+      price: CoursePriceBlock(course: course),
+      note: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [?status, CourseBookingRefusal(text: refusal)],
+      ),
+    );
+  }
   if (mode == EnrollBarMode.pending || mode == EnrollBarMode.support) {
     return CourseSpaceCta(
       note: Column(
@@ -326,14 +340,44 @@ List<Widget> _accessActions(CourseModel course, VoidCallback onEnroll, VoidCallb
   return [_renewOrEnrollButton(course, onEnroll)];
 }
 
-/// Phones: the sticky price + enroll bar (the caller hides it once enrolled).
+/// Where Enroll stood when the server would refuse this student's booking ([courseBuyCta]'s `refusal`): the reason
+/// in one calm note, no button (a tap could only end on a refusal).
+class CourseBookingRefusal extends StatelessWidget {
+  const CourseBookingRefusal({super.key, required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      container: true,
+      child: Container(
+        key: const ValueKey('course.booking_refusal'),
+        padding: const EdgeInsets.all(AppSpace.sm),
+        decoration: BoxDecoration(
+          color: c.warning.withValues(alpha: 0.10),
+          borderRadius: AppRadius.cardAll,
+        ),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.info_outline_rounded, size: AppIconSize.md, color: c.warning),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(child: Text(text, style: AppType.body(context).copyWith(color: c.textDark))),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Phones: the sticky price + enroll bar (the caller hides it once enrolled). [refusal]: see [courseBuyCta].
 class CourseBuyBar extends StatelessWidget {
-  const CourseBuyBar({super.key, required this.course, required this.onEnroll, this.status, this.onSupport});
+  const CourseBuyBar({super.key, required this.course, required this.onEnroll, this.status, this.onSupport, this.refusal});
 
   final CourseModel course;
   final VoidCallback onEnroll;
   final VoidCallback? onSupport;
   final Widget? status;
+  final String? refusal;
 
   @override
   Widget build(BuildContext context) {
@@ -355,7 +399,11 @@ class CourseBuyBar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           ?status,
-          if (enrollBarMode(enrolled: course.isEnrolled, access: course.access) == EnrollBarMode.subscribe ||
+          if (refusal != null &&
+              (enrollBarMode(enrolled: course.isEnrolled, access: course.access) == EnrollBarMode.subscribe ||
+                  enrollBarMode(enrolled: course.isEnrolled, access: course.access) == EnrollBarMode.renew))
+            CourseBookingRefusal(text: refusal!)
+          else if (enrollBarMode(enrolled: course.isEnrolled, access: course.access) == EnrollBarMode.subscribe ||
               enrollBarMode(enrolled: course.isEnrolled, access: course.access) == EnrollBarMode.renew)
             Row(
               children: [

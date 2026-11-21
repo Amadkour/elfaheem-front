@@ -41,6 +41,7 @@ import 'package:flutter_education_app/design/app_errors.dart' show appSharedFix,
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart' show EduGeoLabels;
 import 'package:flutter_education_app/features/courses/course_setup_views.dart';
+import 'package:flutter_education_app/features/quran/quran_api.dart' show quranOff;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
@@ -54,12 +55,15 @@ class CourseFormScreen extends StatelessWidget {
   /// null → CREATE mode,  non-null → EDIT mode
   final TeacherCourse? course;
 
-  const CourseFormScreen({super.key, this.course});
+  /// The program type a NEW course starts with (`'quran'` from the Quran teacher hub, D-1343).
+  final String programKind;
+
+  const CourseFormScreen({super.key, this.course, this.programKind = 'course'});
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
     create: (_) => CourseFormProvider(api: ApiClient()),
-    child: _CourseFormInner(course: course),
+    child: _CourseFormInner(course: course, programKind: programKind),
   );
 }
 
@@ -69,8 +73,9 @@ class CourseFormScreen extends StatelessWidget {
 
 class _CourseFormInner extends StatefulWidget {
   final TeacherCourse? course;
+  final String programKind;
 
-  const _CourseFormInner({required this.course});
+  const _CourseFormInner({required this.course, this.programKind = 'course'});
 
   @override
   State<_CourseFormInner> createState() => _CourseFormInnerState();
@@ -230,7 +235,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         p.nextCoursesInPath = widget.course!.org == null && roadmapAllowedHere(context) && !roadmapOff(kRoadmapPathKey);
         await p.initUpdate(context, widget.course!);
       } else {
-        await p.initCreate(context);
+        await p.initCreate(context, programKind: widget.programKind);
       }
       _addressCtrl.text = p.address;
       _addressCtrl.addListener(() => p.setAddress(_addressCtrl.text));
@@ -733,6 +738,15 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                             icon: Icons.groups_2_outlined,
                             title: AppConfig.lang == 'ar' ? 'لمن هذا الكورس وأين' : "Who it's for / Where",
                             children: [
+                              // the program type (D-1343), only while the Quran tab is on
+                              if (!quranOff() && !provider.setupLoadFailed) ...[
+                                CourseProgramKindField(
+                                  value: provider.programKind,
+                                  locked: provider.programKindLocked,
+                                  onChanged: provider.setProgramKind,
+                                ),
+                                const SizedBox(height: AppSpace.lg),
+                              ],
                               if (provider.setupLoadFailed)
                                 CourseSetupLoadError(onRetry: () async {
                                   await provider.retrySetup();

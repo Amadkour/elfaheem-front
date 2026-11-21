@@ -144,7 +144,11 @@ class _ParentChildGamesPageState extends State<ParentChildGamesPage> {
   @override
   Widget build(BuildContext context) => BasePage(
         width: AppWidth.content,
-        appBar: ScreenAppBar(title: t('ألعاب ${widget.studentName}', '${widget.studentName}\'s games')),
+        // the short tab name as the title, the child under it: "ألعاب <a long name>" wrapped and was clipped at 360
+        appBar: ScreenAppBar(
+          title: gamesLabel(),
+          subtitle: widget.studentName.isEmpty ? null : widget.studentName,
+        ),
         child: SafeArea(
           child: GamesProgressView(
             report: _report,

@@ -4,12 +4,14 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/games/engines/match_engine.dart';
 import 'package:flutter_education_app/features/games/engines/order_engine.dart';
 import 'package:flutter_education_app/features/games/engines/quiz_engine.dart';
 import 'package:flutter_education_app/features/games/games_api.dart';
 import 'package:flutter_education_app/features/games/games_models.dart';
+import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -97,8 +99,55 @@ void main() {
     await _tap(tester, 'match.b.$cat');
     await _tap(tester, 'match.a.1');
     await _tap(tester, 'match.b.$dog');
+    // every pair matched after a slip: a finish in the calm tone, never the error style (QA Phase 6)
+    expect(tester.widget<LearnFeedback>(find.byType(LearnFeedback)).neutral, isTrue);
     await _tap(tester, 'learn.feedback.action');
     expect(done, (1, 2));
+  });
+
+  testWidgets('quiz: the question, the step and the score reach a screen reader', (tester) async {
+    final h = tester.ensureSemantics();
+    AppConfig.lang = 'en';
+    addTearDown(() => AppConfig.lang = 'ar');
+    await _pump(
+      tester,
+      QuizEngine(
+        config: const {
+          'questions': [
+            {'prompt_en': 'How much is 3 × 9?', 'options': ['27', '18'], 'answer': 0},
+            {'prompt_en': 'b', 'options': ['x', 'y'], 'answer': 0},
+          ],
+        },
+        onFinished: (_, _) {},
+      ),
+    );
+    expect(tester.getSemantics(find.bySemanticsLabel('How much is 3 × 9?')),
+        containsSemantics(label: 'How much is 3 × 9?', isHeader: true));
+    expect(find.bySemanticsLabel(RegExp(r'^Question 1 of 2, Score 0$')), findsOneWidget);
+    h.dispose();
+  });
+
+  testWidgets('order: Check and the result scroll into view on a short phone', (tester) async {
+    tester.view.physicalSize = const Size(360, 480);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    const items = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
+    await tester.pumpWidget(layoutHost(
+      ListView(children: [OrderEngine(config: const {'items': items}, random: Random(3), onFinished: (_, _) {})]),
+      scale: 1,
+    ));
+    await tester.pump();
+    for (final want in items) {
+      await tester.ensureVisible(find.text(want).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(want).last);
+      await tester.pumpAndSettle();
+    }
+    final view = tester.getRect(find.byType(ListView));
+    expect(tester.getRect(find.byKey(const ValueKey('order.check'))).bottom, lessThanOrEqualTo(view.bottom));
+    await tester.tap(find.byKey(const ValueKey('order.check')));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.byKey(const ValueKey('learn.feedback.action'))).bottom, lessThanOrEqualTo(view.bottom));
   });
 
   testWidgets('order: placed in the right order → full score', (tester) async {

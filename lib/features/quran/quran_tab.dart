@@ -22,7 +22,18 @@ import 'package:flutter_education_app/features/quran/quran_teacher_page.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
-String quranTeacherCountText(int n) => countText(n,
+/// [gender] `f` = the list is filtered to women teachers: the Arabic counts them in the feminine.
+String quranTeacherCountText(int n, {String? gender}) => gender == 'f'
+    ? countText(n,
+        ar1: 'معلمة واحدة',
+        ar2: 'معلمتان',
+        arFew: '$n معلمات',
+        arMany: '$n معلمة',
+        en1: '1 teacher',
+        en: '$n teachers',
+        ar0: 'لا توجد معلمات',
+        en0: 'No teachers')
+    : countText(n,
     ar1: 'معلم واحد',
     ar2: 'معلمان',
     arFew: '$n معلمين',
@@ -262,7 +273,7 @@ class QuranFilterBar extends StatelessWidget {
         Flexible(
           child: Semantics(
             liveRegion: true,
-            child: Text(quranTeacherCountText(n),
+            child: Text(quranTeacherCountText(n, gender: value.gender),
                 maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textDark)),
           ),
         ),

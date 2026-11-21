@@ -105,6 +105,21 @@ class QuranApi {
 
   Future<QuranTeacher> teacher(int id) async => QuranTeacher.fromJson(await _api.get('/api/v1/quran/teachers/$id'));
 
+  /// The course page's check before Enroll on a Quran program (QA_PHASE6 4.5): the teacher list's `gender_ok` for
+  /// the signed-in student — the same flag the teacher page reads. The bilingual refusal when the booking would be
+  /// refused for the gender rule, else null (also on any failure: the server still answers the 403 at checkout).
+  Future<String?> bookingRefusal(int teacherId) async {
+    try {
+      final l = await teachers(QuranFilters.empty);
+      for (final t in l.items) {
+        if (t.userId == teacherId && t.genderOk == false) {
+          return apiErrorText(ApiException(statusCode: 403, message: '', code: 'quran_gender_rule', body: const {'detail': {'reason': 'gender_differs'}}));
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<QuranTeacher> myCard() async => QuranTeacher.fromJson(await _api.get('/api/v1/me/quran/teacher-profile'));
 
   /// Replaces the card. [publish] true → published (or pending while content review is on), false → draft.

@@ -71,6 +71,8 @@ import 'landing/admin_landing_page.dart' show AdminLandingPage, landingTitle;
 import 'landing/landing_admin_api.dart' show kLandingAdminFeatureKey;
 import 'modules/admin_modules_page.dart' show AdminModulesPage;
 import 'modules/module_settings_api.dart' show kAdminModulesFeatureKey;
+import 'package:flutter_education_app/features/quran/admin/quran_admin_page.dart' show QuranAdminPage;
+import 'package:flutter_education_app/features/nahw/admin/nahw_admin_page.dart' show NahwAdminPage;
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -347,6 +349,30 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           featureKey: kAdminModulesFeatureKey,
           visible: isSuper,
           onTap: () => push(const AdminModulesPage()),
+        ),
+        // Quran teachers: verify and review the cards (6.R #5, D-1347); super admin only, hidden with the Quran tab
+        AdminService(
+          labelKey: 'admin_quran',
+          descKey: 'admin_quran_d',
+          label: t('معلمو القرآن', 'Quran teachers'),
+          desc: t('توثيق معلمي القرآن ومراجعة بطاقاتهم قبل النشر', 'Verify Quran teachers and review their cards before they publish'),
+          icon: Icons.menu_book_rounded,
+          colors: AdminPalette.green,
+          featureKey: 'student_tab_quran',
+          visible: isSuper,
+          onTap: () => push(const QuranAdminPage()),
+        ),
+        // grammar (nahw) content editor (6.R #8, D-1349); super admin only, kill switch admin.nahw
+        AdminService(
+          labelKey: 'admin_nahw',
+          descKey: 'admin_nahw_d',
+          label: t('محتوى النحو', 'Grammar content'),
+          desc: t('مستويات النحو ودروسها وتمارينها', 'The grammar levels, lessons and exercises'),
+          icon: Icons.spellcheck_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: 'admin.nahw',
+          visible: isSuper,
+          onTap: () => push(const NahwAdminPage()),
         ),
         AdminService(
           labelKey: 'admin_points',

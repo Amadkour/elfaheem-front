@@ -20,6 +20,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import '../admin_common.dart' show ErrorRetry, t;
 import '../admin_page.dart';
 import 'module_settings_api.dart';
+import 'package:flutter_education_app/features/quran/admin/quran_admin_page.dart' show QuranAdminPage;
 
 // ── texts ────────────────────────────────────────────────────────────────────
 
@@ -342,6 +343,16 @@ class _AdminModulesPageState extends State<AdminModulesPage> {
     );
   }
 
+  /// Under the two Quran flags: the page that verifies and reviews the teachers (without it the flags would hide
+  /// every teacher for good).
+  Widget _quranAdminLink(BuildContext context) => AppActionCard(
+        key: const ValueKey('modules.quran_admin'),
+        icon: Icons.verified_user_rounded,
+        title: t('توثيق ومراجعة معلمي القرآن', 'Verify and review Quran teachers'),
+        subtitle: t('البطاقات بانتظار المراجعة والموثّقة', 'Cards waiting for review, and verified teachers'),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const QuranAdminPage())),
+      );
+
   @override
   Widget build(BuildContext context) {
     final children = <Widget>[_scopeCard(context)];
@@ -383,6 +394,7 @@ class _AdminModulesPageState extends State<AdminModulesPage> {
             draft: _drafts[m] ?? const {},
             revision: _rev,
             onChanged: (d) => setState(() => _drafts[m] = d),
+            after: m == 'quran' ? {'content_review_required': _quranAdminLink(context)} : const {},
           ));
         }
       }
@@ -417,9 +429,14 @@ class ModuleSettingsCard extends StatelessWidget {
     required this.draft,
     required this.onChanged,
     this.revision = 0,
+    this.after = const {},
   });
 
   final ModuleView view;
+
+  /// A widget drawn right under a field's row (by key), e.g. the link to the Quran teachers page under the
+  /// verification / review flags.
+  final Map<String, Widget> after;
 
   /// This scope's edited values (a key missing = inherited).
   final Map<String, dynamic> draft;
@@ -444,6 +461,8 @@ class ModuleSettingsCard extends StatelessWidget {
       rows.add(indented
           ? Padding(padding: const EdgeInsetsDirectional.only(start: AppSpace.lg), child: row)
           : row);
+      final extra = after[f.key];
+      if (extra != null) rows.addAll([AppSpace.gapSm, extra]);
     }
     return AppCard(
       padding: AppSpace.card,

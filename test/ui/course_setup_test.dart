@@ -9,6 +9,7 @@ import 'package:flutter_education_app/core/edu/edu_catalog.dart';
 import 'package:flutter_education_app/features/courses/course_setup.dart';
 import 'package:flutter_education_app/features/courses/course_setup_views.dart';
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
+import 'package:flutter_education_app/features/courses/teacher/course_form_provider.dart';
 import 'package:flutter_education_app/features/courses/teacher/course_form_screen.dart';
 import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
@@ -73,6 +74,23 @@ void main() {
     expect(s.isEmpty, isTrue);
     expect(s.deliveryMode, 'online');
     expect(CourseSetup.fromJson({'delivery_mode': 'bogus'}).deliveryMode, 'online');
+  });
+
+  test('program kind (D-1343): parsed, sent with the setup, reset on create', () {
+    expect(CourseSetup.fromJson(json).programKind, 'course');
+    expect(CourseSetup.fromJson({'program_kind': 'quran'}).programKind, 'quran');
+    expect(CourseSetup.fromJson({'program_kind': 'bogus'}).programKind, 'course');
+    final p = CourseFormProvider();
+    expect(p.setupBodyForTest()['program_kind'], 'course');
+    p.setProgramKind('quran');
+    expect(p.setupBodyForTest()['program_kind'], 'quran');
+    expect(p.setupBodyForTest(update: true)['program_kind'], 'quran');
+    expect(p.programKindLocked, isFalse);
+  });
+
+  testWidgets('program kind field: open and locked, no layout error', (tester) async {
+    await expectNoLayoutErrors(tester, () => CourseProgramKindField(value: 'quran', onChanged: (_) {}));
+    await expectNoLayoutErrors(tester, () => CourseProgramKindField(value: 'course', locked: true, onChanged: (_) {}));
   });
 
   test('the bilingual text of course_area_required', () {

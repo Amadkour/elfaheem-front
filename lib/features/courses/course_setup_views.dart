@@ -266,6 +266,45 @@ class _CourseSetupSectionState extends State<CourseSetupSection> {
   }
 }
 
+/// The program type (D-1343): a course or a Quran program. [locked] = the course has students, so the server refuses a
+/// change (409 `program_kind_locked`): the field is disabled and says why. The form shows it only while the Quran tab
+/// is on.
+class CourseProgramKindField extends StatelessWidget {
+  const CourseProgramKindField({super.key, required this.value, required this.onChanged, this.locked = false});
+
+  /// course | quran.
+  final String value;
+  final ValueChanged<String> onChanged;
+  final bool locked;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppDropdown<String>(
+          value: value == 'quran' ? 'quran' : 'course',
+          enabled: !locked,
+          decoration: InputDecoration(labelText: _t('نوع البرنامج', 'Program type')),
+          items: [
+            DropdownMenuItem(value: 'course', child: Text(_t('كورس', 'Course'))),
+            DropdownMenuItem(value: 'quran', child: Text(_t('برنامج تحفيظ قرآن', 'Quran program'))),
+          ],
+          onChanged: locked ? null : (v) => onChanged(v ?? 'course'),
+        ),
+        const SizedBox(height: AppSpace.xs),
+        Text(
+          locked
+              ? _t('لا يمكن تغيير النوع بعد تسجيل طلاب في الكورس', 'The type cannot change once the course has students')
+              : _t('برنامج القرآن يظهر في قائمة معلمي القرآن، وتنطبق عليه قواعد الحجز',
+                  'A Quran program is listed under the Quran teachers, and its booking rules apply'),
+          style: AppType.meta(context),
+        ),
+      ],
+    );
+  }
+}
+
 /// Shown instead of [CourseSetupSection] when the edit form could not load the course's detail: editing the section
 /// then would send nothing, so the teacher retries first (D-1315).
 class CourseSetupLoadError extends StatelessWidget {

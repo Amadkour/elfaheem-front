@@ -41,6 +41,11 @@
 // icons in the on-hero roles, the open tab a soft glass pill with a 3 px gold bar on its start edge and cream ink, the
 // person in a glass box; counts stay red. The top bar stays a white card (the intended contrast), its avatar ringed
 // in the brand gradient; the phone bar stays light, its open tab on a brand-gradient pill.
+// D-1340 (the phone bar's slots): the bar draws at most BottomNavMetrics.maxSlots (5) slots. More items than that:
+// items sharing a DashboardItem.mobileGroup fold into ONE slot at the first member's place (a group with one visible
+// member draws that tab itself); still too many, slots 5… fold into the built-in "More" group. A group slot is active
+// while a member is open, its count is the members' sum, and a tap opens a sheet of its members ([ShellGroupSheet]).
+// The items, their indexes, LazyTabStack and the wide shells do not change: only the phone bar draws slots.
 // Colours come from context.colors only. Layout test: test/ui/app_shell_layout_test.dart.
 library;
 
@@ -73,6 +78,8 @@ import 'calendar_entry.dart';
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant, appAssistantFeatureKey;
 import 'chrome_button.dart';
 import 'app_settings.dart' show appRoleLabel;
+import 'app_kit.dart' show showAppSheet;
+import 'app_sheet_header.dart' show AppSheetHeader;
 import '../core/display/app_fonts.dart' show AppFonts;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,6 +89,26 @@ import '../core/display/app_fonts.dart' show AppFonts;
 /// What a tab's count means, and so its colour (system.md §2): [attention] — things waiting on the person — is the
 /// danger red; [reward] — what they earned (a new badge, points) — is the gold tint. Gold is never an alarm.
 enum ShellBadgeTone { attention, reward }
+
+/// A group of tabs that share ONE slot on the phone bar when the bar would hold more than
+/// [BottomNavMetrics.maxSlots] (D-1340). [label] is a translation key. Groups are equal by [id].
+@immutable
+class ShellMobileGroup {
+  const ShellMobileGroup(this.id, this.icon, this.selectedIcon, this.label);
+
+  final String id;
+  final IconData icon, selectedIcon;
+  final String label;
+
+  /// The fallback every role gets (rule 3): the slots past the fourth.
+  static const more = ShellMobileGroup('more', Icons.more_horiz_rounded, Icons.more_horiz_rounded, 'more');
+
+  @override
+  bool operator ==(Object other) => other is ShellMobileGroup && other.id == id;
+
+  @override
+  int get hashCode => id.hashCode;
+}
 
 class DashboardItem {
   DashboardItem(
@@ -95,10 +122,18 @@ class DashboardItem {
     this.attentionKeys = const [],
     this.attentionOrgId,
     this.id,
+    this.mobileGroup,
+    this.hint,
   });
 
   final IconData icon, selectedIcon;
   final String label;
+
+  /// The phone bar's group this tab folds into when the bar is full (D-1340); null = a slot of its own.
+  final ShellMobileGroup? mobileGroup;
+
+  /// One line under the label in a group's sheet (a translation key); null = none.
+  final String? hint;
 
   /// The tab's identity in the shell (its back stack, its URL `<home>/<tab>`): [label] unless set (a pinned page's
   /// `pin_…`, D-1170).
@@ -1839,8 +1874,51 @@ class MobileShell extends StatelessWidget {
   }
 }
 
+/// One slot of the phone bar (D-1340): one tab ([group] null, [members] = its index) or a group of tabs.
+@immutable
+class ShellNavSlot {
+  const ShellNavSlot(this.members, [this.group]);
+
+  /// Indexes into the items, in their order.
+  final List<int> members;
+
+  /// Null: the slot is the tab `members.single` itself.
+  final ShellMobileGroup? group;
+
+  bool get isGroup => group != null;
+}
+
+/// The phone bar's slots for [items] (D-1340): rule 1 (at most [max] items: one slot each), rule 2 (items of one
+/// [DashboardItem.mobileGroup] fold into one slot at the first member's place; one member draws the tab itself),
+/// rule 3 (still more than [max]: slots [max]… and on fold into [ShellMobileGroup.more]).
+List<ShellNavSlot> shellNavSlots(List<DashboardItem> items, {int max = BottomNavMetrics.maxSlots}) {
+  if (items.length <= max) return [for (var i = 0; i < items.length; i++) ShellNavSlot([i])];
+  final slots = <ShellNavSlot>[];
+  final byGroup = <ShellMobileGroup, List<int>>{};
+  for (var i = 0; i < items.length; i++) {
+    final g = items[i].mobileGroup;
+    if (g == null) {
+      slots.add(ShellNavSlot([i]));
+      continue;
+    }
+    final members = byGroup[g];
+    if (members != null) {
+      members.add(i);
+      continue;
+    }
+    final list = byGroup[g] = [i];
+    slots.add(ShellNavSlot(list, g));
+  }
+  final folded = [for (final sl in slots) sl.isGroup && sl.members.length == 1 ? ShellNavSlot(sl.members) : sl];
+  if (folded.length <= max) return folded;
+  return [
+    ...folded.take(max - 1),
+    ShellNavSlot([for (final sl in folded.skip(max - 1)) ...sl.members], ShellMobileGroup.more),
+  ];
+}
+
 /// Paper with one hairline on top; no shadow — the bar is a surface the page scrolls under, not something afloat. The
-/// open tab's icon sits on a tinted pill and its label turns to the primary ink (D-631).
+/// open tab's icon sits on a tinted pill and its label turns to the primary ink (D-631). At most five slots (D-1340).
 class _BottomNav extends StatelessWidget {
   final int index;
   final ValueChanged<int> onSelect;
@@ -1852,6 +1930,7 @@ class _BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final slots = shellNavSlots(dashboardItems);
     return Container(
       decoration: BoxDecoration(
         color: c.cardBg,
@@ -1862,12 +1941,219 @@ class _BottomNav extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xs),
           child: Row(
             children: [
-              for (var i = 0; i < dashboardItems.length; i++)
+              for (final sl in slots)
                 Expanded(
-                  child: _BottomTab(
-                      item: dashboardItems[i], active: i == index, onTap: () => onSelect(i), onLongPress: onLongPress),
+                  child: sl.isGroup
+                      ? _GroupSlot(
+                          group: sl.group!,
+                          items: dashboardItems,
+                          members: sl.members,
+                          index: index,
+                          onSelect: onSelect,
+                          onLongPress: onLongPress)
+                      : _BottomTab(
+                          item: dashboardItems[sl.members.single],
+                          active: sl.members.single == index,
+                          onTap: () => onSelect(sl.members.single),
+                          onLongPress: onLongPress),
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A group's slot on the phone bar (D-1340): the group's icon and label, active while one of its members is the open
+/// tab, the members' counts summed. A tap ALWAYS opens the group's sheet; a long press is Customize tabs.
+class _GroupSlot extends StatelessWidget {
+  const _GroupSlot({
+    required this.group,
+    required this.items,
+    required this.members,
+    required this.index,
+    required this.onSelect,
+    this.onLongPress,
+  });
+
+  final ShellMobileGroup group;
+  final List<DashboardItem> items;
+  final List<int> members;
+  final int index;
+  final ValueChanged<int> onSelect;
+  final VoidCallback? onLongPress;
+
+  /// The slot drawn as a tab of its own: the group's glyphs, the members' summed count.
+  DashboardItem _asItem() {
+    final ms = [for (final i in members) items[i]];
+    final orgs = {for (final m in ms) m.attentionOrgId};
+    return DashboardItem(group.icon, group.selectedIcon, group.label, null, const SizedBox.shrink(),
+        id: 'group:${group.id}',
+        badge: ms.fold<int>(0, (n, m) => n + m.badge),
+        badgeTone: ms.every((m) => m.badgeTone == ShellBadgeTone.reward) ? ShellBadgeTone.reward : ShellBadgeTone.attention,
+        attentionKeys: [for (final m in ms) ...m.attentionKeys],
+        attentionOrgId: orgs.length == 1 ? orgs.first : null);
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final picked = await showAppSheet<int>(
+      context,
+      (ctx) => ShellGroupSheet(
+        title: group.label.tr,
+        items: items,
+        members: members,
+        current: index,
+        onPick: (i) => Navigator.of(ctx).pop(i),
+      ),
+    );
+    if (picked != null) onSelect(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) => _BottomTab(
+        key: ValueKey('shell.group.${group.id}'),
+        item: _asItem(),
+        active: members.contains(index),
+        onTap: () => _open(context),
+        onLongPress: onLongPress,
+      );
+}
+
+/// A phone-bar group's members as a sheet (D-1340), from plain values: the title, then one row per member in the
+/// items' order (its icon pill or colour box, the label, a one-line hint, its count, a mirrored chevron); the open
+/// tab's row is marked selected. Each row is at least [AppTouch.min] high; a tap calls [onPick] with the item's index.
+class ShellGroupSheet extends StatelessWidget {
+  const ShellGroupSheet({
+    super.key,
+    required this.title,
+    required this.items,
+    required this.members,
+    required this.current,
+    required this.onPick,
+  });
+
+  final String title;
+  final List<DashboardItem> items;
+  final List<int> members;
+  final int current;
+  final ValueChanged<int> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .8),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppSheetHeader(title),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpace.sm, 0, AppSpace.sm, AppSpace.md),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final i in members)
+                      _GroupRow(
+                          key: ValueKey('shell.group.row.${items[i].tabId}'),
+                          item: items[i],
+                          selected: i == current,
+                          onTap: () => onPick(i)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GroupRow extends StatelessWidget {
+  const _GroupRow({super.key, required this.item, required this.selected, required this.onTap});
+
+  final DashboardItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final hint = item.hint;
+    final ink = selected ? c.blockAccentInk(c.primary, c.primaryTint) : c.textDark;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+      child: Semantics(
+        button: true,
+        selected: selected,
+        child: Material(
+          color: selected ? c.primaryTint : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+                child: Row(
+                  children: [
+                    _ColorOr(
+                      item: item,
+                      selected: selected,
+                      box: _ShellMetrics.pillH + AppSpace.xxs,
+                      fallback: Container(
+                        width: _ShellMetrics.pillH + AppSpace.xxs,
+                        height: _ShellMetrics.pillH + AppSpace.xxs,
+                        decoration: BoxDecoration(
+                          color: selected ? c.cardBg : c.primaryTint,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(selected ? item.selectedIcon : item.icon,
+                            size: AppIconSize.md, color: c.blockAccentInk(c.primary, selected ? c.cardBg : c.primaryTint)),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item.label.tr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppType.row(context)
+                                  .copyWith(color: ink, fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
+                          if (hint != null)
+                            Text(hint.tr,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppType.meta(context)
+                                    .copyWith(color: selected ? c.blockAccentInk(c.textMedium, c.primaryTint) : c.textMedium)),
+                        ],
+                      ),
+                    ),
+                    ShellBadge(
+                      item: item,
+                      builder: (context, n) => n > 0
+                          ? Padding(
+                              padding: const EdgeInsetsDirectional.only(start: AppSpace.xs),
+                              child: _CountPill(n, tone: item.badgeTone),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    const SizedBox(width: AppSpace.xxs),
+                    Icon(Icons.chevron_right_rounded, size: AppIconSize.lg, color: c.textLight),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -1878,7 +2164,7 @@ class _BottomNav extends StatelessWidget {
 /// One phone tab: the icon on an emerald pill when open, its label under it. The label always shows; the open
 /// tab's is heavier and in the primary ink. The whole column is the target (≥ 48 px).
 class _BottomTab extends StatelessWidget {
-  const _BottomTab({required this.item, required this.active, required this.onTap, this.onLongPress});
+  const _BottomTab({super.key, required this.item, required this.active, required this.onTap, this.onLongPress});
 
   final DashboardItem item;
   final bool active;
@@ -1919,6 +2205,9 @@ class _BottomTab extends StatelessWidget {
 /// The phone bar's height (its rows + the safe area under it), for what floats above it (the app assistant).
 class BottomNavMetrics {
   BottomNavMetrics._();
+
+  /// The most slots the phone bar draws (D-1340); more tabs fold into groups.
+  static const int maxSlots = 5;
 
   /// The size and line of a tab's label (the overline role, tracking off: spaced Arabic loses its joins).
   static const double _labelSize = 11;

@@ -30,6 +30,8 @@ import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/checkout_pages.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/payment_flow_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
+import 'package:flutter_education_app/core/api_error_text.dart' show apiErrorText;
 
 export 'package:flutter_education_app/features/payments/enrollment/payment_flow_provider.dart' show EnrollStep;
 
@@ -91,6 +93,33 @@ class EnrollmentProvider extends PaymentFlowProvider {
 
   bool get pendingIsManualReview => _pendingIsManualReview;
   bool get manualTransferRejected => _manualTransferRejected;
+
+  /// The server refused the enrolment itself (a 403, e.g. a Quran program's `quran_gender_rule` /
+  /// `quran_teacher_unverified`): the failed page shows [failureReason] (the bilingual text) and offers no retry,
+  /// since a retry can never succeed.
+  bool get refused => _refused;
+  bool _refused = false;
+
+  /// A 403 of the enrol / checkout call: the failure page with the server's bilingual reason, no retry.
+  @override
+  void onCheckoutError(ApiException e) {
+    if (e.statusCode != 403) return;
+    _refused = true;
+    setStep(EnrollStep.failed, reason: apiErrorText(e));
+  }
+
+  @override
+  bool get handledCheckoutError => _refused;
+
+  /// [fn] with a 403 turned into the refusal page ([onCheckoutError]); null on any failure.
+  Future<T?> _refusable<T>(Future<T> Function() fn) => run(() async {
+        try {
+          return await fn();
+        } on ApiException catch (e) {
+          onCheckoutError(e);
+          rethrow;
+        }
+      });
 
   SavedPaymentMethod? get selectedCard => _selectedCard;
 
@@ -319,6 +348,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
   /// fresh attempt starts from a clean slate.
   @override
   void backToMethod() {
+    _refused = false;
     _pendingIsManualReview = false;
     _manualTransferRejected = false;
     super.backToMethod();
@@ -430,7 +460,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
   }
 
   Future<void> _enrollFree() async {
-    final r = await run(() => api.post('/api/v1/courses/${course.id}/enroll'));
+    final r = await _refusable(() => api.post('/api/v1/courses/${course.id}/enroll'));
     if (r != null) setStep(EnrollStep.success);
   }
 
@@ -565,10 +595,11 @@ class EnrollmentProvider extends PaymentFlowProvider {
   /// Paymob: the server opens an intention for this wallet and returns client_secret + public_key;
   /// Paymob's native SDK pays; Paymob's webhook completes the payment on the server, so we poll it.
   Future<void> _startPaymobWallet(BuildContext context, String wallet) async {
-    final session = asJsonMap(await run(() async => api.post(
+    final session = asJsonMap(await _refusable(() async => api.post(
       '/api/v1/payments/create-wallet-session',
       body: {'course_id': course.id, 'wallet': wallet, 'plan': _plan},
     )));
+    if (session == null && _refused) return;
     if (session == null) {
       setStep(EnrollStep.failed, reason: 'payment_session_create_failed'.tr);
       return;

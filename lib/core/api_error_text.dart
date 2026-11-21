@@ -104,6 +104,8 @@ String apiErrorText(ApiException e) {
     case 'quran_teacher_unverified':
       return _t('لم تتحقق المنصة من هذا المعلم بعد، فلا يمكن الحجز معه الآن.',
           'The platform has not verified this teacher yet, so booking is not open now.');
+    case 'program_kind_locked':
+      return _t('لا يمكن تغيير نوع البرنامج بعد تسجيل طلاب فيه', 'The program type cannot change once the course has students');
     case 'WEAK_PASSWORD':
       return _t('كلمة المرور ضعيفة — 8 أحرف على الأقل', 'The password is too weak — at least 8 characters');
     case 'PHONE_TAKEN':

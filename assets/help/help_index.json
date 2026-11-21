@@ -78,11 +78,19 @@
    "super_admin"
   ],
   [
+   "admin.nahw",
+   "super_admin"
+  ],
+  [
    "admin.organizations",
    "super_admin"
   ],
   [
    "admin.payments",
+   "super_admin"
+  ],
+  [
+   "admin.quran",
    "super_admin"
   ],
   [

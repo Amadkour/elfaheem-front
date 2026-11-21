@@ -7,7 +7,9 @@ import 'package:flutter_education_app/features/messaging/chat/chat_store.dart' s
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_access.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async' show unawaited;
 import 'dart:developer';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart' show ThemeConfigProvider;
 
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -467,6 +469,8 @@ class MyAuthProvider extends BaseProvider {
     }
     await NotificationService.instance.registerWithBackend(_api);
     notifyListeners();
+    // a sign-in (password, Google, MFA): the country layer of the disable list is this account's (D-1341)
+    unawaited(ThemeConfigProvider.accountChanged());
   }
 
   void _resetMfa() {
@@ -1012,6 +1016,8 @@ class MyAuthProvider extends BaseProvider {
     // the admin's cached profile, so after exiting (or restarting) the admin became a "student".
     if (!ViewAsState.active) await _storage.saveUser(user.toJson());
     notifyListeners();
+    // a sign-in: the country layer of the disable list is this account's (no request when the account is the same)
+    if (!ViewAsState.active) unawaited(ThemeConfigProvider.accountChanged());
   }
 
   /// Called when view-as ends: forget the viewed user and bring back the admin's own cached profile.
@@ -1162,6 +1168,7 @@ class MyAuthProvider extends BaseProvider {
     await ChatHub.instance.signedOut(); // unsent messages and drafts are plain text on this device
     _currentUser = null;
     notifyListeners();
+    unawaited(ThemeConfigProvider.accountChanged()); // signed out: the guest's country layer, not the last user's
   }
 
   // ── Dropdown helpers ──────────────────────────────────────────────────────────

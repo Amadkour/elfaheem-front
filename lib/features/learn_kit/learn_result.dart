@@ -41,6 +41,7 @@ class LearnResultView extends StatelessWidget {
     this.badges = const [],
     this.pointsAwarded = 0,
     this.onReplay,
+    this.replayLabel,
     this.onDone,
     this.saving = false,
     this.saveError,
@@ -56,6 +57,9 @@ class LearnResultView extends StatelessWidget {
   final List<LearnEarned> badges;
   final int pointsAwarded;
   final VoidCallback? onReplay, onDone;
+
+  /// The replay button's text; defaults to "Play again" (a lesson says "Practise again").
+  final String? replayLabel;
   final bool saving;
   final String? saveError;
   final VoidCallback? onRetrySave;
@@ -77,7 +81,11 @@ class LearnResultView extends StatelessWidget {
             LearnStars(stars: s, size: AppIconSize.hero),
             const SizedBox(height: AppSpace.sm),
             Semantics(
+              container: true,
               header: true,
+              headingLevel: 2,
+              label: title ?? learnResultTitle(s),
+              excludeSemantics: true,
               child: Text(title ?? learnResultTitle(s), textAlign: TextAlign.center, style: AppType.headline(context)),
             ),
             const SizedBox(height: AppSpace.xs),
@@ -139,7 +147,7 @@ class LearnResultView extends StatelessWidget {
         if (onReplay != null)
           AppButton.primary(
             key: const ValueKey('learn.result.replay'),
-            label: _t('العب مرة أخرى', 'Play again'),
+            label: replayLabel ?? _t('العب مرة أخرى', 'Play again'),
             icon: Icons.replay_rounded,
             onPressed: onReplay,
           ),

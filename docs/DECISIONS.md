@@ -5222,3 +5222,55 @@ above the shell's bottom nav; the store header's icons take the header's own col
 white tray). A download refused for the device (`DEVICE_MISMATCH` / `DEVICE_ID_MISSING` on `/store/library/…`) says
 the purchase is safe and opens the device-switch dialog; paying is not tied to the device. Help ids `store.browse`,
 `store.item`, `store.library`, `store.manage`, `admin.store`.
+
+## D-1340 — Nine student tabs on a phone: the bar draws at most five slots, with a "Learn" slot · 2026-11-21 · accepted
+
+Front half (back D-1340 is the module-flag resolver). The student shell keeps every tab as a real `DashboardItem` with
+its own navigator, URL, deep link and lazy body; only the phone bar (`_BottomNav` in `lib/design/app_shell.dart`) draws
+**slots**: at most `BottomNavMetrics.maxSlots = 5`. Items that share a `DashboardItem.mobileGroup` fold into one slot at
+the first member's place; a group with one visible member draws that tab itself; when there are still more than five
+slots, slot 5 onwards folds into the built-in `more` group (any role). The student's store, games, Quran, nahw and
+analysis tabs carry the `learn` group, so the bar reads Home · My courses · Learn · Schedule · Profile. A group slot is
+active while a member is open, its badge is the sum of its members', and a tap opens a sheet (`showAppSheet`) with one
+row per member (icon, label, `hint`, badge). `WideShell` / `RailShell`, `LazyTabStack`, `AppNavigator.requestedTab`
+and pins are untouched because the indexes are. The student dashboard also follows a live disable-list change, so a
+tab switched off for the student's country goes without a restart. Phase 7's sync chip goes in the top bar, never in
+the bottom bar.
+
+## D-1346 — Learn kit + games: a game is data, one engine per kind, plays idempotent on `client_id` · 2026-11-20 · accepted
+
+`lib/features/learn_kit/` holds the shared question, feedback, progress and result widgets that games and nahw draw.
+`lib/features/games/` (tab `student_tab_games`): `game_engine.dart` maps a game's `engine` (`quiz`, `match`, `order`)
+to its widget; the content comes from `GET /games` as data. A finished play is posted with a `client_id` kept until a
+definite answer, so a retry never counts twice; stars, points and badges come back from the server (back D-1342).
+Progress and badges have their own page, and a parent sees a linked child's games. "All pairs matched" is a calm
+result, never the error style; the question, its step and the score are their own semantics nodes.
+
+## D-1347 — Quran: teachers by gender / goal / session, booking through the course, progress by surah and juz · 2026-11-20 · accepted
+
+`lib/features/quran/` (tab `student_tab_quran`): a Quran program is a course with `program_kind = 'quran'` (back
+D-1343), set in the course form's "Program type" (shown while the Quran tab is on, locked once the course has students)
+or from the teacher hub's "Add a Quran program". Students filter teachers; a teacher the rules refuse is marked "not
+available to you" and Book is disabled, and the course page of such a program shows the reason instead of Join. A 403
+`quran_gender_rule` / `quran_teacher_unverified` at checkout shows the bilingual reason with "Back to the course", no
+retry. Progress is numbers only (no Quran text, back D-1345); a juz's surahs open in a sheet. The teacher's card warns
+that a change of gender or ijazah needs a new verification. The super admin verifies and reviews cards on
+`QuranAdminPage` (help id `admin.quran`). `/quran/progress` and `/quran/teachers/<id>` are deep routes.
+
+## D-1348 — Module switches page: typed fields per module and scope, each value's source shown · 2026-11-20 · accepted
+
+`lib/features/admin/modules/` (kill switch `admin.modules`, super admin only): a scope picker (platform / country /
+organization), one section per registry module (`store`, `games`, `quran`), each field typed from the GET answer
+(`AppSwitchTile`, a number field, `AppDropdown`), a source tag per value with "use the default / the platform" to drop
+it, and each country's student tabs through `PUT /admin/edu/countries/{code}/features`. The Quran section links to
+the Quran teachers page under the verification and review flags. The theme request carries a guest's remembered
+country, and the theme is fetched again after sign-in, sign-out and a study-profile save, so the country layer reaches
+the app without a restart.
+
+## D-1349 — Nahw: levels, lessons and exercises checked on the device; a content editor for the super admin · 2026-11-20 · accepted
+
+`lib/features/nahw/` (tab `student_tab_nahw`): levels → lessons → `choose` / `fill` / `classify` exercises, checked on
+the device for instant feedback (back D-1344), attempts posted with a kept `client_id`. `order` is not offered.
+`lib/features/nahw/admin/` (`NahwAdminPage`, kill switch `admin.nahw`, help id `admin.nahw`) edits levels, lessons and
+exercises with one typed form per kind and a preview through the student's own exercise view; the server validates
+`data` / `answer` against the kind (422 `nahw_bad_exercise`). `/nahw/lessons/<id>` is a deep route.

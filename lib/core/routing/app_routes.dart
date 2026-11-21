@@ -103,6 +103,12 @@ class AppRoutes {
       description: "The store's My Library: what the person bought, and the purchases (D-1339)");
   static const storeItem = AppRouteDef('store.item', '/store/:itemId',
       description: 'One item of the digital store: its price and Buy (D-1339)');
+  // learning hub pages opened from a tab (D-1350): a reload, a URL or a shared link opens the same page again
+  static const gamesProgress = AppRouteDef('games.progress', '/games/progress', description: 'My games progress and badges');
+  static const gamePlay = AppRouteDef('games.play', '/games/:gameId', description: 'One learning game');
+  static const nahwLesson = AppRouteDef('nahw.lesson', '/nahw/lessons/:lessonId', description: 'One Arabic grammar (nahw) lesson');
+  static const quranProgress = AppRouteDef('quran.progress', '/quran/progress', description: 'My Quran memorization progress');
+  static const quranTeacher = AppRouteDef('quran.teacher', '/quran/teachers/:teacherId', description: "A Quran teacher's card and programs");
   static const entityView = AppRouteDef('entity.view', '/view/:kind/:id',
       description: 'A student, course, teacher or category on a page of its own (D-290), every role');
 
@@ -130,6 +136,7 @@ class AppRoutes {
     studentHome, teacherHome, adminHome, parentHome, orgHome,
     course, orgMember, orgOnboardingCase, orgMemberships, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
     downloads, exports, exportLog, exportSchedules, exportLinks, entityView, meetingLinks, storeLibrary, storeItem,
+    gamesProgress, gamePlay, nahwLesson, quranProgress, quranTeacher,
     courseLink, profileLink, liveLink, verifyHome, verifyLink, exportLink, orgJoinLink, orgInvitationLink, onboardIntakeLink, shareLink,
     privacy, terms,
   ];

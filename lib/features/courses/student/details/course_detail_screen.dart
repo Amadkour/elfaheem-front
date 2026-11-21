@@ -53,6 +53,7 @@ import 'package:flutter_education_app/features/courses/course_profile/course_pro
 import 'package:flutter_education_app/features/courses/course_profile/course_page_sheets.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_parts.dart' show CpTrackTab;
 import 'package:flutter_education_app/features/courses/student/details/growth_tr.dart';
+import 'package:flutter_education_app/features/quran/quran_api.dart' show QuranApi, quranOff;
 
 void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
   Navigator.of(context).push(
@@ -283,6 +284,21 @@ class _CoursePageState extends State<_CoursePage> {
     await Future.wait([p.refresh(), _hub.refresh()]);
   }
 
+  /// A Quran program the student would be refused (gender rule): the bilingual reason replaces Enroll (QA_PHASE6
+  /// 4.5). One teacher-list call, only on a Quran program's page for a signed-in student who is not enrolled.
+  String? _quranRefusal;
+  String? _quranCheckedFor;
+
+  void _checkQuranBooking(CourseModel c) {
+    if (_quranCheckedFor == c.id) return;
+    _quranCheckedFor = c.id;
+    final teacherId = c.teacher?.id;
+    if (c.setup.programKind != 'quran' || c.isEnrolled || teacherId == null || GuestState.active || quranOff()) return;
+    QuranApi().bookingRefusal(teacherId).then((r) {
+      if (mounted && r != _quranRefusal) setState(() => _quranRefusal = r);
+    });
+  }
+
   void _loadDataLabConfig(CourseModel c) {
     if (!c.isEnrolled || _configFor == c.id) return;
     _configFor = c.id;
@@ -362,6 +378,7 @@ class _CoursePageState extends State<_CoursePage> {
     final title = (ar ? c.titleAr : c.titleEn) ?? '';
     final courseId = int.tryParse(c.id);
     _loadDataLabConfig(c);
+    _checkQuranBooking(c);
 
     final live = p.liveSessions;
     final showLiveTab = c.type == 'live' || live.isNotEmpty;
@@ -435,7 +452,7 @@ class _CoursePageState extends State<_CoursePage> {
                     ),
                     caption: gt('التالي: ${next.name}', 'Up next: ${next.name}'),
                   ))
-          : courseBuyCta(c, onEnroll: () => _openEnrollment(context, c), status: status),
+          : courseBuyCta(c, onEnroll: () => _openEnrollment(context, c), status: status, refusal: _quranRefusal),
     );
 
     // ── spotlight ──────────────────────────────────────────────────────────
@@ -639,7 +656,7 @@ class _CoursePageState extends State<_CoursePage> {
             : CourseBuyCard(course: c, purchase: false, onEnroll: () => _openEnrollment(context, c)),
         bottomBar: c.isEnrolled || archived
             ? null
-            : CourseBuyBar(course: c, status: status, onEnroll: () => _openEnrollment(context, c)),
+            : CourseBuyBar(course: c, status: status, refusal: _quranRefusal, onEnroll: () => _openEnrollment(context, c)),
       ),
     );
   }

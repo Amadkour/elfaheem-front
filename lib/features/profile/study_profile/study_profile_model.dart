@@ -12,6 +12,9 @@
 //   POST /api/v1/auth/register  `study_profile`  the sign-up step's values (stage + grade required)
 library;
 
+import 'dart:async' show unawaited;
+
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart' show ThemeConfigProvider;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart' show EduStage;
 
@@ -451,8 +454,12 @@ class StudyProfileApi {
 
   Future<StudyProfileView> load() async => _seed(StudyProfileView.fromJson(_map(await _api.get(_me))));
 
-  Future<StudyProfileView> save(StudyProfile p) async =>
-      _seed(StudyProfileView.fromJson(_map(await _api.put(_me, body: p.toJson()))));
+  Future<StudyProfileView> save(StudyProfile p) async {
+    final v = _seed(StudyProfileView.fromJson(_map(await _api.put(_me, body: p.toJson()))));
+    // the country may have changed: a tab switched off for the new country goes now, not after a restart (D-1341)
+    unawaited(ThemeConfigProvider.accountChanged(force: true));
+    return v;
+  }
 
   /// The course filter bar's start (D-1325): the level is kept per user, so the student home never asks for it.
   static StudyProfileView _seed(StudyProfileView v) {

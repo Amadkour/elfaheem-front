@@ -105,7 +105,6 @@ class QuranTeacherView extends StatelessWidget {
       AppBlock(
         tone: AppBlockTone.emerald,
         hero: true,
-        semanticLabel: tr.name,
         child: Builder(builder: (context) {
           final b = AppBlock.colorsOf(context);
           return Row(children: [
@@ -171,7 +170,13 @@ class QuranTeacherView extends StatelessWidget {
       ),
       const SizedBox(height: AppSpace.lg),
     ];
-    final list = ListView(padding: const EdgeInsets.all(AppSpace.md), children: children);
+    // The body is its own semantics container with explicit child nodes, so a screen reader reaches every row and
+    // the Book buttons (QA_PHASE6 4.4: on the web the body was missing from the tree).
+    final list = Semantics(
+      container: true,
+      explicitChildNodes: true,
+      child: ListView(padding: const EdgeInsets.all(AppSpace.md), children: children),
+    );
     return onRefresh == null ? list : AppRefresh(onRefresh: onRefresh!, child: list);
   }
 }
@@ -210,10 +215,10 @@ class _ProgramRow extends StatelessWidget {
           ),
           AppButton(
             key: ValueKey('quran.book.${course.id}'),
+            tooltip: blocked ? t('غير متاح لك', 'Not open to you') : '${t('احجز', 'Book')}: ${course.name}',
             label: t('احجز', 'Book'),
             icon: Icons.event_available_rounded,
             size: AppButtonSize.sm,
-            tooltip: blocked ? t('غير متاح لك', 'Not open to you') : null,
             onPressed: blocked ? null : onBook,
           ),
         ],

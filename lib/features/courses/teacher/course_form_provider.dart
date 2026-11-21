@@ -167,6 +167,21 @@ class CourseFormProvider extends BaseProvider {
 
   /// online | in_person | both.
   String deliveryMode = 'online';
+
+  /// course | quran (D-1343). Sent with every create / update; the server refuses a CHANGE once the course has
+  /// students (409 `program_kind_locked`), so the form locks the picker then ([programKindLocked]).
+  String programKind = 'course';
+
+  /// An edit of a course that already has students: the program type cannot change.
+  bool get programKindLocked => (_setupCourse?.studentsCount ?? 0) > 0;
+
+  void setProgramKind(String kind) {
+    final k = kind == 'quran' ? 'quran' : 'course';
+    if (programKindLocked || k == programKind) return;
+    programKind = k;
+    _setupTouch();
+  }
+
   EduArea? area1, area2;
   String address = '';
   String? countryCode;
@@ -227,6 +242,9 @@ class CourseFormProvider extends BaseProvider {
     notifyListeners();
   }
 
+  @visibleForTesting
+  Map<String, dynamic> setupBodyForTest({bool update = false}) => _setupBody(update: update);
+
   /// The setup fields of a create / update body. An edit session that has not loaded the course's detail yet sends
   /// nothing (see [_setupReady]). An update always sends every field, so a cleared one really clears.
   Map<String, dynamic> _setupBody({required bool update}) {
@@ -237,6 +255,7 @@ class CourseFormProvider extends BaseProvider {
     return {
       'country_code': ?countryCode,
       'delivery_mode': deliveryMode,
+      'program_kind': programKind,
       if (update || subjectId != null) 'subject_id': subjectId,
       if (update || area != null) 'area_id': area?.id,
       if (update || addr != null) 'address': addr,
@@ -262,6 +281,7 @@ class CourseFormProvider extends BaseProvider {
     targets = [...s.targets];
     subjectId = s.subject?.id;
     deliveryMode = s.deliveryMode;
+    programKind = s.programKind;
     countryCode = s.countryCode ?? countryCode;
     final a = s.area;
     if (a == null) {
@@ -395,7 +415,8 @@ class CourseFormProvider extends BaseProvider {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Call once from initState when opening in CREATE mode.
-  Future<void> initCreate(BuildContext context) async {
+  /// [programKind] presets the program type (the Quran teacher hub opens the form with `'quran'`).
+  Future<void> initCreate(BuildContext context, {String programKind = 'course'}) async {
     _form = const CourseFormState();
     selectedSpecialization = null;
     selectedTeachingType = teachingTypes[1]; // recorded
@@ -411,6 +432,7 @@ class CourseFormProvider extends BaseProvider {
     targets = [];
     subjectId = null;
     deliveryMode = 'online';
+    this.programKind = programKind == 'quran' ? 'quran' : 'course';
     area1 = area2 = null;
     address = '';
     _setupReady = true;

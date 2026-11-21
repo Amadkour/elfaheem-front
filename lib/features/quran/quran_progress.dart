@@ -162,16 +162,35 @@ class QuranProgressView extends StatefulWidget {
 }
 
 class _QuranProgressViewState extends State<QuranProgressView> {
-  int? _juz;
   bool _all = false;
+
+  /// A juz's surahs open in a sheet right where the person tapped (QA_PHASE6 4.7: below the 30 tiles they were out
+  /// of sight on a phone).
+  void _openJuz(int juz) {
+    final m = widget.meta, p = widget.progress;
+    final surahs = m.surahsInJuz(juz);
+    showAppSheet<void>(
+      context,
+      (ctx) => AppSheetContent(
+        key: ValueKey('quran.juz_sheet.$juz'),
+        icon: Icons.menu_book_rounded,
+        title: '${t('سور الجزء', 'Surahs of juz')} $juz',
+        subtitle: '${(p.juz[juz] ?? 0).toStringAsFixed(1)}%',
+        children: [
+          for (var i = 0; i < surahs.length; i++) ...[
+            if (i > 0) Divider(height: AppBorder.hairline, color: ctx.colors.divider),
+            _SurahRow(surah: surahs[i], progress: p.surahs[surahs[i].number]),
+          ],
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final m = widget.meta, p = widget.progress;
-    final surahs = _juz != null
-        ? m.surahsInJuz(_juz!)
-        : _all
+    final surahs = _all
             ? m.surahs
             : [for (final s in m.surahs) if ((p.surahs[s.number]?.memorized ?? 0) > 0) s];
     final children = <Widget>[
@@ -188,41 +207,28 @@ class _QuranProgressViewState extends State<QuranProgressView> {
               _JuzTile(
                 juz: j,
                 percent: p.juz[j] ?? 0,
-                selected: _juz == j,
-                onTap: () => setState(() => _juz = _juz == j ? null : j),
+                selected: false,
+                onTap: () => _openJuz(j),
               ),
           ],
         ),
       ),
       AppSection(
-        title: _juz != null ? '${t('سور الجزء', 'Surahs of juz')} $_juz' : t('السور', 'Surahs'),
+        title: t('السور', 'Surahs'),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             AppChoiceChip(
               key: const ValueKey('quran.surahs.progress'),
               label: t('قيد الحفظ', 'In progress'),
-              selected: _juz == null && !_all,
-              onTap: () => setState(() {
-                _juz = null;
-                _all = false;
-              }),
+              selected: !_all,
+              onTap: () => setState(() => _all = false),
             ),
             AppChoiceChip(
               key: const ValueKey('quran.surahs.all'),
               label: t('كل السور', 'All surahs'),
-              selected: _juz == null && _all,
-              onTap: () => setState(() {
-                _juz = null;
-                _all = true;
-              }),
+              selected: _all,
+              onTap: () => setState(() => _all = true),
             ),
-            if (_juz != null)
-              AppChoiceChip(
-                label: '${t('الجزء', 'Juz')} $_juz',
-                selected: true,
-                icon: Icons.close_rounded,
-                onTap: () => setState(() => _juz = null),
-              ),
           ]),
           const SizedBox(height: AppSpace.sm),
           if (surahs.isEmpty)

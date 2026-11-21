@@ -183,6 +183,7 @@ class _NahwLessonPageState extends State<NahwLessonPage> {
                   ? t('أتممت الدرس · أفضل نتيجة ${best.percent}%', 'Lesson complete · best ${best.percent}%')
                   : t('يكتمل الدرس عند 60% · أفضل نتيجة ${best.percent}%', 'The lesson completes at 60% · best ${best.percent}%'),
           onReplay: _saving ? null : _start,
+          replayLabel: t('تدرّب مرة أخرى', 'Practise again'),
           onDone: _saving ? null : () => Navigator.of(context).maybePop(),
         ),
       ]);

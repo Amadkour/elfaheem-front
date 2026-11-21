@@ -142,6 +142,12 @@ class _MatchEngineState extends State<MatchEngine> {
         const SizedBox(height: AppSpace.md),
         LearnFeedback(
           correct: _missedOnce.isEmpty,
+          // every pair is matched: a finish, not a failure, even after a slip (the score says how many were first try)
+          neutral: _missedOnce.isNotEmpty,
+          explanation: _missedOnce.isEmpty
+              ? null
+              : t('${_pairs.length - _missedOnce.length} من ${_pairs.length} من أول محاولة',
+                  '${_pairs.length - _missedOnce.length} of ${_pairs.length} on the first try'),
           title: _missedOnce.isEmpty ? t('وصّلت كل الأزواج من أول مرة!', 'Every pair on the first try!') : t('اكتملت الأزواج', 'All pairs matched'),
           actionLabel: t('النتيجة', 'See result'),
           onAction: () => widget.onFinished(score, _pairs.length),

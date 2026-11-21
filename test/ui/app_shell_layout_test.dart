@@ -1,7 +1,8 @@
 // The role shells (lib/design/app_shell.dart): WideShell · RailShell · MobileShell at 320x640 and 1400x900,
 // Arabic + English, textScaler 1.3; AppShell picks by width; a tab's count = badge + the attention feed, drawn at
 // the leaf (the feed's tick repaints the badge without rebuilding the shell); tabs are built on their first visit
-// and kept afterwards (LazyTabStack, D-077), and an unbuilt tab still shows its count.
+// and kept afterwards (LazyTabStack, D-077), and an unbuilt tab still shows its count. D-1340: the phone bar draws
+// at most five slots (groups, then "More"), a group slot opens its sheet and a row switches the tab.
 import 'dart:convert';
 import 'dart:io';
 
@@ -260,7 +261,9 @@ void main() {
     ];
 
     tester.view.physicalSize = const Size(320, 640);
-    await tester.pumpWidget(layoutHost(host(MobileShell(currentIndex: 0, onTap: (_) {}, dashboardItems: tabs)), scaffold: false));
+    // five tabs: one slot each (six would fold the last two into More, D-1340)
+    final phoneTabs = [for (final t in tabs) if (t.label != 'analysis') t];
+    await tester.pumpWidget(layoutHost(host(MobileShell(currentIndex: 0, onTap: (_) {}, dashboardItems: phoneTabs)), scaffold: false));
     await tester.pump();
     for (final label in ['my_courses', 'points']) {
       final tab = find.ancestor(of: find.text(label.tr), matching: find.byType(ConstrainedBox)).first;
@@ -283,6 +286,129 @@ void main() {
     final tile = find.ancestor(of: find.text('points'.tr), matching: find.byType(AnimatedContainer)).first;
     expect(tester.getSize(tile).height, greaterThanOrEqualTo(48), reason: 'a sidebar tab is a 48 px row');
     await tester.pumpWidget(const SizedBox());
+  });
+
+  d1340Tests(host);
+}
+
+const _learn = ShellMobileGroup('learn', Icons.school_outlined, Icons.school_rounded, 'learn_hub');
+
+/// The student's nine tabs (D-1340): five carry the Learn group.
+List<DashboardItem> studentTabs({Set<String> off = const {}}) {
+  DashboardItem it(String label, IconData icon, {bool learn = false, int badge = 0}) => DashboardItem(
+      icon, icon, label, null, Text('$label page'),
+      badge: badge, mobileGroup: learn ? _learn : null, hint: learn ? 'learn_hint_$label' : null);
+  return [
+    it('home', Icons.home_outlined),
+    it('my_courses', Icons.book_outlined),
+    it('store', Icons.local_mall_outlined, learn: true, badge: 2),
+    it('games', Icons.extension_outlined, learn: true),
+    it('quran', Icons.menu_book_outlined, learn: true, badge: 3),
+    it('nahw', Icons.translate_outlined, learn: true),
+    it('analysis', Icons.analytics_outlined, learn: true),
+    it('my_schedule', Icons.calendar_month_outlined),
+    it('my_profile', Icons.person_outline),
+  ].where((e) => !off.contains(e.label)).toList();
+}
+
+class _Bar extends StatefulWidget {
+  const _Bar({required this.items});
+
+  final List<DashboardItem> items;
+
+  @override
+  State<_Bar> createState() => _BarState();
+}
+
+class _BarState extends State<_Bar> {
+  int index = 0;
+
+  @override
+  Widget build(BuildContext context) =>
+      MobileShell(currentIndex: index, onTap: (i) => setState(() => index = i), dashboardItems: widget.items);
+}
+
+void d1340Tests(Widget Function(Widget) host) {
+  group('D-1340 phone bar', () {
+    test('slots: nine student tabs → Home · My courses · Learn · Schedule · Profile', () {
+      final slots = shellNavSlots(studentTabs());
+      expect(slots.length, 5);
+      expect(slots[2].group, _learn);
+      expect(slots[2].members, [2, 3, 4, 5, 6]);
+      expect([for (final s in slots) if (!s.isGroup) s.members.single], [0, 1, 7, 8]);
+    });
+
+    test('slots: four items draw no group; one visible member draws the tab itself; the More fallback', () {
+      final four = studentTabs(off: {'store', 'games', 'quran', 'nahw', 'analysis'});
+      expect(four.length, 4);
+      expect(shellNavSlots(four).any((s) => s.isGroup), isFalse);
+
+      final one = studentTabs(off: {'store', 'games', 'quran', 'nahw'});
+      final slots = shellNavSlots(one);
+      expect(slots.length, 5);
+      expect(slots.any((s) => s.isGroup), isFalse, reason: 'analysis alone draws its own tab');
+
+      final plain = [
+        for (var i = 0; i < 8; i++) DashboardItem(Icons.circle_outlined, Icons.circle, 't$i', null, const SizedBox()),
+      ];
+      final more = shellNavSlots(plain);
+      expect(more.length, 5);
+      expect(more.last.group, ShellMobileGroup.more);
+      expect(more.last.members, [4, 5, 6, 7]);
+    });
+
+    testWidgets('nine items at 320×640 (ar/en, text 1.3): five slots, no overflow', (tester) async {
+      await expectNoLayoutErrors(tester, () => host(MobileShell(currentIndex: 4, onTap: (_) {}, dashboardItems: studentTabs())),
+          scaffold: false);
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 640);
+      addTearDown(tester.view.resetPhysicalSize);
+      await tester.pumpWidget(layoutHost(host(MobileShell(currentIndex: 0, onTap: (_) {}, dashboardItems: studentTabs())), scaffold: false));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('shell.group.learn')), findsOneWidget);
+      expect(find.text('store'.tr), findsNothing, reason: 'the store folds into Learn');
+      expect(find.text('5'), findsOneWidget, reason: 'the Learn slot sums its members (2 + 3)');
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a tap on Learn opens the sheet; a row switches the tab and marks the slot active', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(360, 780);
+      addTearDown(tester.view.resetPhysicalSize);
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(layoutHost(host(_Bar(items: studentTabs())), scaffold: false));
+      await tester.pump();
+      final slot = find.byKey(const ValueKey('shell.group.learn'));
+      expect(tester.getSemantics(slot), isNot(containsSemantics(isSelected: true)));
+      await tester.tap(slot);
+      await tester.pumpAndSettle();
+      expect(find.byType(ShellGroupSheet), findsOneWidget);
+      for (final l in ['store', 'games', 'quran', 'nahw', 'analysis']) {
+        final row = find.byKey(ValueKey('shell.group.row.$l'));
+        expect(row, findsOneWidget);
+        expect(tester.getSize(row).height, greaterThanOrEqualTo(48));
+      }
+      await tester.tap(find.byKey(const ValueKey('shell.group.row.quran')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ShellGroupSheet), findsNothing);
+      expect(tester.state<_BarState>(find.byType(_Bar)).index, 4);
+      expect(tester.getSemantics(slot), containsSemantics(isSelected: true));
+      // the sheet marks the open tab
+      await tester.tap(slot);
+      await tester.pumpAndSettle();
+      expect(tester.getSemantics(find.descendant(of: find.byKey(const ValueKey('shell.group.row.quran')), matching: find.byType(Semantics)).first),
+          containsSemantics(isSelected: true));
+      handle.dispose();
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('the group sheet: no overflow at 320×640 and 1400×900, ar/en, text 1.3', (tester) async {
+      final tabs = studentTabs();
+      await expectNoLayoutErrors(
+          tester,
+          () => host(SingleChildScrollView(
+              child: ShellGroupSheet(title: 'learn_hub'.tr, items: tabs, members: const [2, 3, 4, 5, 6], current: 4, onPick: (_) {}))));
+    });
   });
 }
 

@@ -10,6 +10,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredCourseForm;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/quran/quran_api.dart';
@@ -149,6 +150,19 @@ class _QuranTeacherHubPageState extends State<QuranTeacherHubPage> {
     ));
   }
 
+  /// Opens the course form with the program type preset to a Quran program (D-1343).
+  Widget _addProgramButton() => AppButton(
+        key: const ValueKey('quran.hub.add_program'),
+        label: t('أضف برنامج قرآن', 'Add a Quran program'),
+        icon: Icons.add_rounded,
+        onPressed: _addProgram,
+      );
+
+  Future<void> _addProgram() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCourseForm(programKind: 'quran')));
+    if (mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = _card;
@@ -185,10 +199,14 @@ class _QuranTeacherHubPageState extends State<QuranTeacherHubPage> {
                         ? AppEmpty(
                             icon: Icons.event_note_rounded,
                             title: t('لا برامج قرآن منشورة بعد', 'No published Quran programs yet'),
-                            message: t('برامجك المنشورة كبرامج قرآن تظهر هنا مع طلابها.',
-                                'Your courses published as Quran programs show here with their students.'),
+                            message: t('أضف برنامج قرآن: هو كورس نوعه "برنامج تحفيظ قرآن"، وبعد نشره يظهر هنا مع طلابه.',
+                                'Add a Quran program: a course of the type "Quran program". Once published it shows here with its students.'),
+                            actionLabel: t('أضف برنامج قرآن', 'Add a Quran program'),
+                            onAction: _addProgram,
                           )
                         : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                            _addProgramButton(),
+                            const SizedBox(height: AppSpace.sm),
                             for (final p in c.courses) ...[
                               AppActionCard(
                                 key: ValueKey('quran.hub.program.${p.id}'),
@@ -357,6 +375,14 @@ class _QuranCardFormState extends State<QuranCardForm> {
         ],
         const SizedBox(height: AppSpace.md),
         _chips(t('أنا', 'I am'), quranGenders, (v) => _gender == v, quranGenderLabel, (v) => _gender = v),
+        if (card.verified) ...[
+          Text(
+            key: const ValueKey('quran.card.reverify'),
+            t('تغيير الجنس أو الإجازة يحتاج توثيقاً جديداً من المنصة', 'Changing the gender or the ijazah needs a new verification by the platform'),
+            style: AppType.meta(context).copyWith(color: c.textMedium),
+          ),
+          const SizedBox(height: AppSpace.md),
+        ],
         _chips(t('الأهداف', 'Goals'), quranGoals, _goals.contains, quranGoalLabel,
             (v) => _goals = _goals.contains(v) ? ({..._goals}..remove(v)) : {..._goals, v}),
         _chips(t('أنواع الجلسات', 'Session types'), quranSessionTypes, _sessions.contains, quranSessionLabel,

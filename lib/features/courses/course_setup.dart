@@ -80,6 +80,7 @@ class CourseSetup {
     this.area,
     this.address,
     this.targets = const [],
+    this.programKind = 'course',
   });
 
   factory CourseSetup.fromJson(Map<String, dynamic> j) {
@@ -94,8 +95,12 @@ class CourseSetup {
         for (final t in (j['targets'] as List? ?? const []))
           if (t is Map) CourseTarget.fromJson(Map<String, dynamic>.from(t)),
       ],
+      programKind: j['program_kind'] == 'quran' ? 'quran' : 'course',
     );
   }
+
+  /// course | quran (D-1343: a Quran program is a course with `program_kind = 'quran'`).
+  final String programKind;
 
   /// online | in_person | both.
   final String deliveryMode;

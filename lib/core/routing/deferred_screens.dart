@@ -363,8 +363,10 @@ Widget deferredAdminEntityManage(EntitySummary summary, {VoidCallback? onChanged
     load: admin_entity_manage.loadLibrary,
     builder: (_) => admin_entity_manage.adminEntityManage(summary, onChanged: onChanged, onRemoved: onRemoved));
 
-Widget deferredCourseForm({TeacherCourse? course}) =>
-    DeferredPage(id: 'course_form', load: course_form.loadLibrary, builder: (_) => course_form.CourseFormScreen(course: course));
+Widget deferredCourseForm({TeacherCourse? course, String programKind = 'course'}) => DeferredPage(
+    id: 'course_form',
+    load: course_form.loadLibrary,
+    builder: (_) => course_form.CourseFormScreen(course: course, programKind: programKind));
 
 Widget deferredTeacherExamHub({
   required int courseId,

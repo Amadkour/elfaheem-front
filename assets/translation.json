@@ -24749,5 +24749,13 @@
   "shell_color_amber": {"en": "Amber", "ar": "كهرماني"},
   "shell_color_plum": {"en": "Plum", "ar": "بنفسجي"},
   "shell_color_indigo": {"en": "Indigo", "ar": "نيلي"},
-  "shell_color_slate": {"en": "Slate", "ar": "رمادي داكن"}
+  "shell_color_slate": {"en": "Slate", "ar": "رمادي داكن"},
+  "learn_hub": {"en": "Learn", "ar": "التعلّم"},
+  "learn_hint_store": {"en": "Books, notes and files to buy", "ar": "كتب ومذكرات وملفات للشراء"},
+  "learn_hint_games": {"en": "Educational games and badges", "ar": "ألعاب تعليمية وشارات"},
+  "learn_hint_quran": {"en": "Quran teachers and your memorization", "ar": "معلمو القرآن ومتابعة حفظك"},
+  "learn_hint_nahw": {"en": "Arabic grammar lessons and exercises", "ar": "دروس النحو وتمارينه"},
+  "learn_hint_analysis": {"en": "Your grades, attendance and progress", "ar": "درجاتك وحضورك وتقدّمك"},
+  "enroll_refused_title": {"en": "Booking is not available", "ar": "الحجز غير متاح"},
+  "enroll_refused_back": {"en": "Back to the course", "ar": "العودة إلى الكورس"}
 }

@@ -36,6 +36,34 @@ class _OrderEngineState extends State<OrderEngine> {
   final List<int> _placed = [];
   bool _checked = false;
 
+  /// The Check button / the result card: scrolled into view when it appears, so on a phone it never waits below the
+  /// fold under the bottom bar (QA Phase 6).
+  final GlobalKey _endKey = GlobalKey();
+
+  void _revealEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _endKey.currentContext;
+      if (!mounted || ctx == null) return;
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 1,
+        duration: AppMotion.of(context).base,
+        curve: AppMotion.curve,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
+  }
+
+  void _place(int item) {
+    setState(() => _placed.add(item));
+    if (_left.isEmpty) _revealEnd();
+  }
+
+  void _check() {
+    setState(() => _checked = true);
+    _revealEnd();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -85,22 +113,24 @@ class _OrderEngineState extends State<OrderEngine> {
         LearnChoiceChips(
           keyPrefix: 'order.pool',
           options: [for (final i in left) _items[i]],
-          onSelect: (k) => setState(() => _placed.add(left[k])),
+          onSelect: (k) => _place(left[k]),
         ),
       ],
       const SizedBox(height: AppSpace.md),
       if (!_checked && left.isEmpty)
         Align(
+          key: _endKey,
           alignment: AlignmentDirectional.centerEnd,
           child: AppButton.primary(
             key: const ValueKey('order.check'),
             label: t('تحقّق', 'Check'),
             icon: Icons.check_rounded,
-            onPressed: () => setState(() => _checked = true),
+            onPressed: _check,
           ),
         ),
       if (_checked)
         LearnFeedback(
+          key: _endKey,
           correct: _score == _items.length,
           title: _score == _items.length
               ? null
