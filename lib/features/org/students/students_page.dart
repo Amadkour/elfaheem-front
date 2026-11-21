@@ -28,6 +28,7 @@ import '../org_page_kit.dart' show OrgFilterButton, OrgMenuItem, OrgPageBody, Or
 import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgErrorText;
 import 'add_student_sheet.dart' show showAddStudentSheet;
+import 'student_rules_pages.dart' show showStudentSettingsChooser;
 import 'students_api.dart';
 import 'students_missing_sheet.dart';
 import 'students_models.dart';
@@ -149,6 +150,7 @@ class _OrgStudentsPageState extends State<OrgStudentsPage> {
       onMissing: _missing,
       onAdd: can.add ? _add : null,
       onImport: can.import ? _import : null,
+      onSettings: can.settings ? () => showStudentSettingsChooser(context, widget.orgId) : null,
     );
     if (!widget.pushed) return view;
     return OrgPushedPage(title: t('الطلاب', 'Students'), helpPageId: 'org.students', child: view);
@@ -176,6 +178,7 @@ class StudentsPageView extends StatelessWidget {
     this.onMissing,
     this.onAdd,
     this.onImport,
+    this.onSettings,
   });
 
   /// null = nothing loaded yet.
@@ -189,6 +192,9 @@ class StudentsPageView extends StatelessWidget {
   /// The open student (a detail panel); null = none.
   final int? selectedId;
   final VoidCallback? onRetry, onClearFilters, onAwaiting, onAdd, onImport;
+
+  /// The More menu's "Settings" (study rules · statuses and reminders · who decides what); null = hidden.
+  final VoidCallback? onSettings;
   final ValueChanged<String>? onSearch;
 
   /// A summary card was tapped: the `chip=` filter, null = clear it.
@@ -222,6 +228,7 @@ class StudentsPageView extends StatelessWidget {
               ),
         more: [
           if (onImport != null) OrgMenuItem(icon: Icons.upload_file_rounded, label: t('استيراد من Excel', 'Import from Excel'), onTap: onImport!),
+          if (onSettings != null) OrgMenuItem(icon: Icons.tune_rounded, label: t('الإعدادات', 'Settings'), onTap: onSettings!),
         ],
         top: d == null ? null : StudentsSummaryBar(summary: d.summary, selected: query.chip, onChip: onChip, onAwaiting: onAwaiting),
         child: Padding(
