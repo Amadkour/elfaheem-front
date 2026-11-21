@@ -19,6 +19,9 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 /// The Repeat section. [start] is the first date and the default clock when a repeat is switched on (wall clock).
 /// [withDateTime] false: the host form owns the first date and the from–to (the meeting form), so the section
 /// shows neither.
+/// [fixedCount] (a package: its number of sessions, D-1647): the rule always ends after that many dates, so "Ends"
+/// is a read-only line ("After 8 sessions") instead of a choice, and the summary says "for 8 sessions".
+/// [enabled] false (a package someone joined): every control is drawn disabled and nothing can be changed.
 class RecurrencePicker extends StatefulWidget {
   const RecurrencePicker({
     super.key,
@@ -27,6 +30,9 @@ class RecurrencePicker extends StatefulWidget {
     required this.start,
     this.end,
     this.withDateTime = true,
+    this.fixedCount,
+    this.enabled = true,
+    this.label,
   });
 
   final RecurrenceRule? rule;
@@ -34,6 +40,11 @@ class RecurrencePicker extends StatefulWidget {
   final DateTime start;
   final DateTime? end;
   final bool withDateTime;
+  final int? fixedCount;
+  final bool enabled;
+
+  /// The Repeat field's label (default "Repeat"); the host never labels the section a second time.
+  final String? label;
 
   @override
   State<RecurrencePicker> createState() => _RecurrencePickerState();
@@ -45,8 +56,18 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
 
   RecurrenceRule? get _r => widget.rule;
 
+  /// A fixed count wins over whatever the rule carried (an end date is dropped: the sessions end it).
+  RecurrenceRule _fixed(RecurrenceRule r) {
+    final n = widget.fixedCount;
+    return n == null || (r.count == n && r.endDate == null) ? r : r.copyWith(count: n, clearEnd: true);
+  }
+
   void _set(RecurrenceRule? r) {
-    if (r != null) _last = r;
+    if (!widget.enabled) return;
+    if (r != null) {
+      r = _fixed(r);
+      _last = r;
+    }
     widget.onChanged(r);
   }
 
@@ -85,12 +106,26 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
     return tod == null ? null : tod.hour * 60 + tod.minute;
   }
 
+  /// How far a locked section fades (the disabled buttons' look).
+  static const double _lockedOpacity = 0.45;
+
   @override
-  Widget build(BuildContext context) => ParentComponent(featureKey: kRecurringFeatureKey, child: _section(context));
+  Widget build(BuildContext context) {
+    final section = _section(context);
+    return ParentComponent(
+      featureKey: kRecurringFeatureKey,
+      child: widget.enabled
+          ? section
+          : Semantics(
+              enabled: false,
+              child: IgnorePointer(child: Opacity(opacity: _lockedOpacity, child: section)),
+            ),
+    );
+  }
 
   Widget _section(BuildContext context) {
     final c = context.colors;
-    final r = _r;
+    final r = _r == null ? null : _fixed(_r!);
     return Column(
       key: const ValueKey('recurrence.picker'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -99,7 +134,8 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
         AppDropdown<String>(
           key: const ValueKey('recurrence.freq'),
           value: _choice,
-          decoration: InputDecoration(labelText: 'cal_recur_repeat'.tr, prefixIcon: const Icon(Icons.repeat_rounded)),
+          enabled: widget.enabled,
+          decoration: InputDecoration(labelText: widget.label ?? 'cal_recur_repeat'.tr, prefixIcon: const Icon(Icons.repeat_rounded)),
           items: [
             DropdownMenuItem(value: 'none', child: Text('cal_recur_none'.tr)),
             DropdownMenuItem(value: 'daily', child: Text('cal_recur_daily'.tr)),
@@ -152,6 +188,16 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
             ),
           ],
           const SizedBox(height: AppSpace.sm),
+          if (widget.fixedCount != null)
+            _Box(
+              key: const ValueKey('recurrence.ends.fixed'),
+              icon: Icons.flag_rounded,
+              label: 'cal_recur_ends'.tr,
+              value: countText(widget.fixedCount!,
+                  ar1: 'بعد جلسة واحدة', ar2: 'بعد جلستين', arFew: 'بعد {n} جلسات', arMany: 'بعد {n} جلسة',
+                  en1: 'After 1 session', en: 'After {n} sessions'),
+            )
+          else
           AppDropdown<String>(
             key: const ValueKey('recurrence.ends'),
             value: r.endDate != null ? 'date' : (r.count != null ? 'count' : 'never'),
@@ -169,7 +215,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
               if (d != null) _set(r.copyWith(endDate: d, clearCount: true));
             },
           ),
-          if (r.count != null && r.endDate == null) ...[
+          if (widget.fixedCount == null && r.count != null && r.endDate == null) ...[
             const SizedBox(height: AppSpace.xs),
             _countRow(context, r),
           ],
@@ -258,7 +304,7 @@ class _RecurrencePickerState extends State<RecurrencePicker> {
             key: const ValueKey('recurrence.summary'),
             icon: Icons.repeat_rounded,
             color: c.primary,
-            text: describeRule(r, AppConfig.lang),
+            text: describeRule(r, AppConfig.lang, sessions: widget.fixedCount != null),
           ),
         ],
       ],
@@ -355,10 +401,12 @@ class _WeekdayChips extends StatelessWidget {
 
 /// A tappable value well (a date, a clock) in the field look.
 class _Box extends StatelessWidget {
-  const _Box({super.key, required this.icon, required this.label, required this.value, required this.onTap});
+  const _Box({super.key, required this.icon, required this.label, required this.value, this.onTap});
   final IconData icon;
   final String label, value;
-  final VoidCallback onTap;
+
+  /// Null: a read-only value (no ink, no button semantics).
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

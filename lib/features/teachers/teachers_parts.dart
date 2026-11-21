@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/calendar/recurrence/recurrence_rule.dart' show RecurrenceRule, describeRule;
 import 'package:flutter_education_app/features/teachers/teachers_models.dart';
 
 // ── counts ───────────────────────────────────────────────────────────────────
@@ -86,6 +88,92 @@ IconData teacherSubjectIcon(String s) => switch (s) {
 
 /// A calendar day ("YYYY-MM-DD" on the wire) in the reader's words; drawn at noon UTC so no zone moves the day.
 String packageDayLabel(DateTime day) => AppTime.date(DateTime.utc(day.year, day.month, day.day, 12));
+
+/// The package's days and times in one sentence ("Every day except Fri and Sat, 10:00 AM to 11:00 AM, for 8
+/// sessions"), the wizard's own words (describeRule, D-1648). The rule always ends after [sessionsCount] dates, and
+/// the clock is the teacher's zone, named when it is not the reader's. Null: no schedule (times agreed with the
+/// teacher).
+String? packageScheduleText(Map<String, dynamic>? schedule, int sessionsCount) {
+  final r = RecurrenceRule.fromJson(schedule);
+  if (r == null) return null;
+  final fixed = sessionsCount > 0 ? r.copyWith(count: sessionsCount, clearEnd: true) : r;
+  return describeRule(fixed, AppConfig.lang, sessions: true, withZone: true);
+}
+
+/// The first session's day: the rule's first REAL date (a skipped start date moves on, D-1649), else [startDate].
+DateTime? packageFirstDay(Map<String, dynamic>? schedule, DateTime? startDate) =>
+    RecurrenceRule.fromJson(schedule)?.firstDate() ?? startDate;
+
+/// "Starts Sun 29 Nov 2026" with the weekday, so the first day reads at a glance.
+String packageStartsText(DateTime day) =>
+    '${t('تبدأ', 'Starts')} ${AppTime.date(DateTime.utc(day.year, day.month, day.day, 12), pattern: 'EEE d MMM y')}';
+
+/// A list in the reader's language: "Arabic, English" / "العربية، الإنجليزية" (D-1650).
+String teachersJoin(Iterable<String> items) => items.join(t('، ', ', '));
+
+/// The Arabic form for the teacher's gender (a woman reads "المعلمة"); English has one form.
+String teacherG(String? gender, String ar, String arFemale, String en) => t(gender == 'female' ? arFemale : ar, en);
+
+/// The text direction of text a person typed (a name, a bio): from its first strong letter, so Arabic reads right to
+/// left in the English app and the other way round (D-1651). Null: no letters, the page's own direction.
+TextDirection? userTextDirection(String text) {
+  for (final r in text.runes) {
+    if ((r >= 0x0590 && r <= 0x08FF) || (r >= 0xFB1D && r <= 0xFDFF) || (r >= 0xFE70 && r <= 0xFEFF)) return TextDirection.rtl;
+    if ((r >= 0x41 && r <= 0x5A) || (r >= 0x61 && r <= 0x7A) || (r >= 0xC0 && r <= 0x24F)) return TextDirection.ltr;
+  }
+  return null;
+}
+
+/// A [Text] of user-typed content laid out in its own direction and aligned to its own start (D-1651).
+class UserText extends StatelessWidget {
+  const UserText(this.text, {super.key, this.style, this.maxLines, this.overflow});
+
+  final String text;
+  final TextStyle? style;
+  final int? maxLines;
+  final TextOverflow? overflow;
+
+  @override
+  Widget build(BuildContext context) {
+    final dir = userTextDirection(text);
+    final own = Text(text, style: style, maxLines: maxLines, overflow: overflow, textDirection: dir, textAlign: TextAlign.start);
+    if (dir == null || dir == Directionality.of(context)) return own;
+    // the other direction from the page's: its start is the other side, so the block sits there too
+    return Directionality(textDirection: dir, child: Align(alignment: AlignmentDirectional.centerStart, child: own));
+  }
+}
+
+/// A title with a status chip at the line's trailing edge (D-1650): the chip keeps its own width (up to half the
+/// line, then it ellipsizes) and the title takes the rest. A `Flexible` chip beside an `Expanded` title split the
+/// line in half and left the chip floating mid-card on a wide window.
+class TitleWithStatus extends StatelessWidget {
+  const TitleWithStatus({super.key, required this.title, required this.status});
+
+  final Widget title, status;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, box) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: title),
+          const SizedBox(width: AppSpace.xs),
+          ConstrainedBox(constraints: BoxConstraints(maxWidth: box.maxWidth / 2), child: status),
+        ]),
+      );
+}
+
+/// The name a person's avatar takes its letter from: without the titles ("الشيخ", "الأستاذة", "د.") and the article
+/// "ال", so "الأستاذة منى" shows "م", not "ا" (D-1652).
+String teacherInitialName(String name) {
+  const titles = {
+    'الشيخ', 'الشيخة', 'الأستاذ', 'الأستاذة', 'الاستاذ', 'الاستاذة', 'أ.', 'د.', 'دكتور', 'دكتورة', 'الدكتور',
+    'الدكتورة', 'المعلم', 'المعلمة', 'Sheikh', 'Dr.', 'Mr.', 'Mrs.', 'Ms.',
+  };
+  final words = name.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+  final rest = words.where((w) => !titles.contains(w)).toList();
+  var w = rest.isNotEmpty ? rest.first : (words.isNotEmpty ? words.first : '');
+  if (w.startsWith('ال') && w.length > 3) w = w.substring(2);
+  return w.isEmpty ? (name.trim().isEmpty ? '?' : name) : w;
+}
 
 // ── chips ────────────────────────────────────────────────────────────────────
 
@@ -223,7 +311,7 @@ class PackageCard extends StatelessWidget {
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(p.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
+              UserText(p.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
               const SizedBox(height: AppSpace.xxs),
               Text(
                 [
@@ -241,7 +329,9 @@ class PackageCard extends StatelessWidget {
         ]),
         const SizedBox(height: AppSpace.sm),
         AppInfoRow(Icons.event_repeat_rounded, '${sessionsText(p.sessionsCount)} × ${minutesText(p.sessionMinutes)}'),
-        if (p.startDate != null) AppInfoRow(Icons.event_rounded, '${t('تبدأ', 'Starts')} ${packageDayLabel(p.startDate!)}'),
+        if (packageScheduleText(p.schedule, p.sessionsCount) case final sched?)
+          KeyedSubtree(key: ValueKey('package.card.schedule.${p.id}'), child: AppInfoRow(Icons.schedule_rounded, sched)),
+        if (packageFirstDay(p.schedule, p.startDate) case final first?) AppInfoRow(Icons.event_rounded, packageStartsText(first)),
         const SizedBox(height: AppSpace.sm),
         Wrap(
           spacing: AppSpace.sm,
@@ -251,16 +341,23 @@ class PackageCard extends StatelessWidget {
           children: [
             PackagePriceText(price: p.price, finalPrice: p.finalPrice, currency: p.currency, discountPercent: p.discountPercent),
             AppStatusBadge(
-              label: mine ? packageJoinLabel(state, position: p.myEnrollment?.position) : seatsLeftText(p.seatsLeft),
+              label: mine
+                  ? packageJoinLabel(state, position: p.myEnrollment?.position)
+                  // full with an open waiting list is still a way in, not a dead end (D-1653)
+                  : state == PackageJoinState.joinWaitlist
+                      ? t('قائمة انتظار مفتوحة', 'Waiting list open')
+                      : seatsLeftText(p.seatsLeft),
               tone: mine
                   ? switch (state) {
                       PackageJoinState.active => AppTone.success,
                       PackageJoinState.offered => AppTone.gold,
                       _ => AppTone.warning,
                     }
-                  : p.isFull
-                      ? AppTone.danger
-                      : AppTone.info,
+                  : state == PackageJoinState.joinWaitlist
+                      ? AppTone.warning
+                      : p.isFull
+                          ? AppTone.danger
+                          : AppTone.info,
               dense: true,
             ),
           ],
@@ -300,9 +397,9 @@ class PackageSummaryCard extends StatelessWidget {
         line(Icons.place_rounded,
             d.needsLocation && d.location.trim().isNotEmpty ? '${packageDeliveryLabel(d.delivery)} · ${d.location.trim()}' : packageDeliveryLabel(d.delivery)),
         line(Icons.event_repeat_rounded, '${sessionsText(d.sessionsCount)} × ${minutesText(d.sessionMinutes)}'),
-        if (d.startDate != null)
-          line(Icons.event_rounded,
-              '${t('تبدأ', 'Starts')} ${packageDayLabel(d.startDate!)}'),
+        line(Icons.schedule_rounded,
+            packageScheduleText(d.schedule, d.sessionsCount) ?? t('بلا جدول: تتفق على المواعيد مع طلابك', 'No schedule: you agree the times with your students')),
+        if (packageFirstDay(d.schedule, d.startDate) case final first?) line(Icons.event_rounded, packageStartsText(first)),
         line(Icons.groups_rounded, [
           studentsText(d.maxStudents),
           packageOverbookLabel(d.overbook),

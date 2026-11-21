@@ -546,8 +546,8 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     var start = wall;
     if (start == null) {
       final n = _nowWall;
-      final base = _anchor == calDay(n) ? n : DateTime(_anchor.year, _anchor.month, _anchor.day, 9);
-      start = DateTime(base.year, base.month, base.day, base.hour + (base == n ? 1 : 0));
+      // today: the next sensible slot (never midnight, D-1661); another day: its 09:00
+      start = _anchor == calDay(n) ? calNextSensibleSlot(n) : DateTime(_anchor.year, _anchor.month, _anchor.day, 9);
     }
     final r = await showMeetingForm(context, api: widget.api, start: start, orgId: widget.orgId, deptId: widget.deptId);
     if (r != null) {

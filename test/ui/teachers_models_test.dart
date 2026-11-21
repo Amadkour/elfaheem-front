@@ -5,7 +5,9 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/teachers/teacher_review_admin.dart' show teacherRejectReasonError;
 import 'package:flutter_education_app/features/teachers/teachers_api.dart';
+import 'package:flutter/material.dart' show TextDirection;
 import 'package:flutter_education_app/features/teachers/teachers_models.dart';
+import 'package:flutter_education_app/features/teachers/teachers_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -386,6 +388,43 @@ void main() {
       expect(bodies['queue'], {'status': 'pending', 'subject': 'fiqh', 'page': 1});
       await TeachersApi().reject(7, '  Blurry  ');
       expect(bodies['reject'], isNotNull);
+    });
+  });
+
+  group('QA fixes (D-1648 .. D-1659)', () {
+    test('the schedule sentence, the first real day, the waiting list chip state', () {
+      AppConfig.lang = 'en';
+      final sched = {
+        'freq': 'daily', 'interval': 1, 'weekdays': [], 'skip_weekdays': [4, 5], 'skip_dates': [], 'start_date': '2026-11-28',
+        'end_date': null, 'count': 8, 'all_day': false, 'start_time': '10:00', 'end_time': '11:00', 'tz': 'Africa/Cairo',
+      };
+      expect(packageScheduleText(sched, 8), startsWith('Every day except Fri and Sat, '));
+      expect(packageScheduleText(sched, 8), endsWith('for 8 sessions'));
+      expect(packageScheduleText(null, 8), isNull);
+      expect(packageFirstDay(sched, DateTime(2026, 11, 28)), DateTime(2026, 11, 29));
+      expect(packageFirstDay(null, DateTime(2026, 11, 28)), DateTime(2026, 11, 28));
+      final full = TeacherPackage.fromJson({'id': 1, 'status': 'published', 'max_students': 1, 'seats_taken': 1, 'overbook': 'waitlist'});
+      expect(packageJoinState(full), PackageJoinState.joinWaitlist);
+    });
+
+    test('next opening as a day, avatar letters, user text direction, joins', () {
+      expect(TeacherProfile.fromJson({'user_id': 1, 'next_free': '2026-11-28T00:00:00', 'next_free_kind': 'day'}).nextFreeIsDay, isTrue);
+      expect(TeacherProfile.fromJson({'user_id': 1, 'next_free': '2026-11-29T08:00:00', 'next_free_kind': 'session'}).nextFreeIsDay, isFalse);
+      expect(teacherInitialName('الأستاذة منى'), 'منى');
+      expect(teacherInitialName('الشيخ محمود (تجريبي)'), 'محمود');
+      expect(teacherInitialName('Mona Ali'), 'Mona');
+      expect(teacherInitialName(''), '?');
+      expect(userTextDirection('الشيخ محمود (تجريبي)'), TextDirection.rtl);
+      expect(userTextDirection('  (12) Mona'), TextDirection.ltr);
+      expect(userTextDirection('123'), isNull);
+      AppConfig.lang = 'en';
+      expect(teachersJoin(['Arabic', 'English']), 'Arabic, English');
+      AppConfig.lang = 'ar';
+      expect(teachersJoin(['العربية', 'الإنجليزية']), 'العربية، الإنجليزية');
+      expect(teacherG('female', 'عن المعلم', 'عن المعلمة', 'About'), 'عن المعلمة');
+      expect(seatsTakenText(1, 1), '1 من مقعد واحد');
+      AppConfig.lang = 'en';
+      expect(seatsTakenText(1, 1), '1 of 1 seat');
     });
   });
 }

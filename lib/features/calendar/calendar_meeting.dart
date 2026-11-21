@@ -302,13 +302,24 @@ class _AudiencePickerState extends State<_AudiencePicker> {
 /// Quick-add sheet. Returns the created meeting (detail map) or null.
 /// [repeat] opens with a weekly rule on; [courseId] makes it a course's meeting (its students are invited, the
 /// audience pickers hide) and turns the repeat on.
+/// [title] starts the title field (a course's meeting: the course name).
 Future<Map<String, dynamic>?> showMeetingForm(BuildContext context,
-        {required CalendarApi api, required DateTime start, int? orgId, int? deptId, int? courseId, bool repeat = false}) =>
+        {required CalendarApi api, required DateTime start, int? orgId, int? deptId, int? courseId, bool repeat = false, String? title}) =>
     showAppSheet<Map<String, dynamic>>(
         context,
         mode: AppSheetMode.side,
         (ctx) => MeetingForm(
-            api: api, start: start, orgId: orgId, deptId: deptId, courseId: courseId, repeat: repeat || courseId != null));
+            api: api, start: start, orgId: orgId, deptId: deptId, courseId: courseId, repeat: repeat || courseId != null, title: title));
+
+/// The first sensible start for a new meeting from [nowWall] (D-1661): the next full hour while it falls in the
+/// working day (08:00 – 21:00), else 10:00 the same morning (before 08:00) or the next one. A meeting made at
+/// 23:30 no longer starts at midnight.
+DateTime calNextSensibleSlot(DateTime nowWall) {
+  final next = DateTime(nowWall.year, nowWall.month, nowWall.day, nowWall.hour + 1);
+  if (next.day == nowWall.day && next.hour >= 8 && next.hour <= 21) return next;
+  final day = nowWall.hour < 8 ? nowWall : DateTime(nowWall.year, nowWall.month, nowWall.day + 1);
+  return DateTime(day.year, day.month, day.day, 10);
+}
 
 /// Is the signed-in person a "student" for meetings (online + private only, free time without the plan)?
 bool calIsStudent(BuildContext context) {
@@ -321,8 +332,11 @@ bool calIsStudent(BuildContext context) {
 
 class MeetingForm extends StatefulWidget {
   const MeetingForm(
-      {super.key, required this.api, required this.start, this.orgId, this.deptId, this.student, this.courseId, this.repeat = false});
+      {super.key, required this.api, required this.start, this.orgId, this.deptId, this.student, this.courseId, this.repeat = false, this.title});
   final CalendarApi api;
+
+  /// The title field's first text (null = empty).
+  final String? title;
   final DateTime start; // wall
   final int? orgId, deptId;
 
@@ -340,7 +354,7 @@ class MeetingForm extends StatefulWidget {
 }
 
 class _MeetingFormState extends State<MeetingForm> {
-  final _title = TextEditingController();
+  late final _title = TextEditingController(text: widget.title?.trim() ?? '');
   final _place = TextEditingController();
   final _notes = TextEditingController();
   final _aud = CalAudience();

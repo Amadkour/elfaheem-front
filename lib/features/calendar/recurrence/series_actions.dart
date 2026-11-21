@@ -15,7 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/features/admin/admin_common.dart' show asMap;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show asMap, t;
 import 'package:flutter_education_app/features/calendar/calendar_api.dart';
 import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show openMeetingRoom;
 import 'package:flutter_education_app/features/calendar/calendar_models.dart';
@@ -132,6 +132,19 @@ RecurrenceRule seriesRuleAtClock(RecurrenceRule rule, DateTime startUtc, DateTim
 Future<bool> seriesCancel(BuildContext context, CalendarApi api, {required int seriesId, required String date}) async {
   final scope = await askSeriesScope(context, cancel: true);
   if (scope == null || !context.mounted) return false;
+  // the scope says WHAT; a second, named step says it really happens and who hears of it (D-1662): one tap on a
+  // scope row used to cancel at once and notify every attendee
+  final day = recurrenceDateParse(date);
+  final when = day == null ? date : AppTime.wall(day, pattern: 'EEE d MMM');
+  final sure = await appConfirm(context,
+      danger: true,
+      message: scope == SeriesScope.one
+          ? t('إلغاء اجتماع $when؟ يُبلَّغ المدعوون، وتبقى بقية المواعيد كما هي.',
+              'Cancel the meeting on $when? The invitees are told; the other dates stay as they are.')
+          : t('إنهاء السلسلة من $when؟ تختفي المواعيد القادمة ويُبلَّغ المدعوون، وتبقى السابقة.',
+              'End the series from $when? The coming dates disappear and the invitees are told; earlier ones stay.'),
+      confirmLabel: scope == SeriesScope.one ? t('ألغِ هذا الموعد', 'Cancel this date') : t('أنهِ السلسلة', 'End the series'));
+  if (!sure || !context.mounted) return false;
   try {
     if (scope == SeriesScope.one) {
       await api.cancelOccurrence(seriesId, date);

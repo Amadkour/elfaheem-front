@@ -192,6 +192,7 @@ class TeacherProfile {
     this.reviewsCount = 0,
     this.packagesCount = 0,
     this.nextFree,
+    this.nextFreeIsDay = false,
     this.packages = const [],
     this.reviews = const [],
   });
@@ -224,6 +225,7 @@ class TeacherProfile {
       reviewsCount: _int(j['reviews_count']),
       packagesCount: _int(j['packages_count']),
       nextFree: teachersParseUtc(j['next_free']),
+      nextFreeIsDay: _str(j['next_free_kind']) == 'day',
       packages: [for (final p in _maps(j['packages'])) TeacherPackage.fromJson(p)],
       reviews: [for (final r in _maps(j['reviews'])) TeacherReview.fromJson(r)],
     );
@@ -250,6 +252,9 @@ class TeacherProfile {
   final double? rating;
   final int reviewsCount, packagesCount;
   final DateTime? nextFree;
+
+  /// [nextFree] is only a package's start date (no schedule yet, `next_free_kind: day`, D-1703): a day, not a time.
+  final bool nextFreeIsDay;
   final List<TeacherPackage> packages;
   final List<TeacherReview> reviews;
 

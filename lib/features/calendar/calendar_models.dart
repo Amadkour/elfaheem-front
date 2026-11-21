@@ -438,6 +438,10 @@ String calSourceLabel(String s) => switch (s) {
       _ => s,
     };
 
+/// The icon of one event: a private meeting (only me) is a person, not a group (D-1663); else its source's.
+IconData calEventIcon(CalEvent e) =>
+    e.source == 'meeting' && e.kind == 'private' ? Icons.person_rounded : calSourceIcon(e.source);
+
 IconData calSourceIcon(String s) => switch (s) {
       'meeting' => Icons.groups_2_rounded,
       'timetable' => Icons.class_rounded,

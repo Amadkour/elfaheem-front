@@ -5838,6 +5838,70 @@ A Quran teacher and a Learning Hub v2 teacher are the same `TeacherCard`, so the
 
 With `teacher_onboarding` on, Profile has one entry, "My teacher profile and packages"; the old "My Quran teaching" tile shows only while onboarding is off. `TeacherHubPage` opens the Quran record sheet and programs (`teacher.hub.quran`, hidden with `student_tab_quran`). `QuranTeacherHubPage` keeps its route; with onboarding on it leads with the teacher-profile card, then the programs, and folds the Quran-only card fields (ijazah, goals, session types, country: the Quran tab's filters) into an expand card instead of a competing editor. The super admin's Quran teachers page links to Teacher review (`quran.admin.teacher_review`) and says it only verifies. The admin hub's grouping is not changed here.
 
+## D-1647 — A package's repeat rule ends after its sessions · 2026-11-22 · accepted
+
+The server sets a package rule's `count` to `sessions_count` (contract C6), so the wizard says so: `RecurrencePicker` takes `fixedCount` (the "Ends" field becomes the read-only line "After 8 sessions" and the summary says "for 8 sessions", `describeRule(sessions: true)`), `enabled: false` (a package someone joined: every control drawn disabled, matching the lock banner) and `label` (the wizard no longer labels the slot a second time). `packageScheduleSynced` keeps the rule's count and end time in step with the sessions and minutes fields (not once locked: any schedule change is refused then), and a new rule's window is one session long (QA S1, S2, S3, S5).
+
+## D-1648 — A student sees a package's days and times before joining · 2026-11-22 · accepted
+
+`packageScheduleText` writes the rule with `describeRule` (the wizard's own sentence) on the package card, the package page, My teachers, My packages and the wizard's live summary. The clock is the rule's `tz`; `describeRule(withZone: true)` names that zone when it is not the reader's AppTime zone, rather than converting (a converted time can move the weekdays across midnight). A package with no schedule says the times are agreed with the teacher (QA M2, S4).
+
+## D-1649 — "Starts" is the first real session · 2026-11-22 · accepted
+
+`RecurrenceRule.matches` ports the server's `calendar_series._matches` (step from the start date, weeks counted Monday-based from the start's week, skipped weekdays and dates) and `firstDate()` scans from the start date, so "Starts" shows Sun 29 Nov, not the skipped Saturday. No rule: the package's start date (QA S9).
+
+## D-1650 — Status chips at the trailing edge; lists in the reader's language · 2026-11-22 · accepted
+
+`TitleWithStatus` (teachers_parts) puts a status chip at the title line's trailing edge, at its own width up to half the line; a `Flexible` chip beside an `Expanded` title split the row in half. Used by My packages, the review queue card and the review detail (QA S15). Language lists join with `teachersJoin` ("Arabic, English" / "العربية، الإنجليزية", S14). `fileSizeLabel` says "< 1 KB" under 1 KB (N1).
+
+## D-1651 — Typed text keeps its own direction · 2026-11-22 · accepted
+
+`UserText` lays out text a person typed (teacher names, bios, qualifications, package titles, goals, descriptions, review comments) in the direction of its first strong letter (`userTextDirection`) and aligns it to that direction's start, so "الشيخ محمود (تجريبي)" reads correctly in the English app (QA S13, teachers and packages pages).
+
+## D-1652 — An avatar's letter skips titles · 2026-11-22 · accepted
+
+`teacherInitialName` drops titles (الشيخ, الأستاذة, د., …) and the article "ال" before the avatar takes its first letter ("الأستاذة منى" → "م"). The profile hero's avatar sits on a paper ring, because its sky circle vanished on the sky hero (QA N3).
+
+## D-1653 — A full package with a waiting list says so · 2026-11-22 · accepted
+
+The package card's chip reads "Waiting list open" (warning tone) when the join state is `joinWaitlist`, not the red "No seats left" (QA S10).
+
+## D-1654 — The teacher filter button sits beside the search · 2026-11-22 · accepted
+
+It was the last item of the scrolling subject chips, off-screen in RTL on a phone (QA S23).
+
+## D-1655 — One price per row in the teacher filter · 2026-11-22 · accepted
+
+The lowest and highest price fields stack, each the sheet's full width, step 50 (QA S26).
+
+## D-1656 — A next opening with no time shows a date · 2026-11-22 · accepted
+
+The teachers list sends `next_free_kind` (back D-1703): `day` when the opening is only a package's start date (no series yet). The card then says "Starts: 28 Nov 2026" instead of a midnight-UTC time read as 2:00 AM (QA S8).
+
+## D-1657 — A free package never talks about paying · 2026-11-22 · accepted
+
+The waiting-list toast and banner of a free package leave out the payment words, and "the sessions are in your schedule" shows only when the package has a series (QA S11, N10).
+
+## D-1658 — The teacher wizard starts from the account · 2026-11-22 · accepted
+
+A new profile's "name students see" starts with the account name, and the review step lists the session types and delivery picked in step 2 (QA N5, N6).
+
+## D-1659 — The teacher hub says why packages are closed · 2026-11-22 · accepted
+
+`teacherPackagesLockedText`: under review → "your packages open as soon as it is approved"; rejected → "change it and send it again"; otherwise the old "complete it and send it first" (QA S6). Arabic text about a woman teacher takes the feminine (`teacherG`: "عن المعلمة", the approve dialog, QA N2).
+
+## D-1661 — A new meeting starts at a sensible time · 2026-11-22 · accepted
+
+`calNextSensibleSlot`: the next full hour while it falls in 08:00 – 21:00, else 10:00 the same morning or the next day (the schedule page's New meeting and the course's Repeating meeting). A course's repeating meeting starts with the course name as its title (QA S18).
+
+## D-1662 — Cancelling a series date asks first · 2026-11-22 · accepted
+
+After the scope ("this date" / "this and following"), `seriesCancel` asks `appConfirm` naming the date and that the invitees are told. The server has no "restore a date" call, so an undo toast would have promised something it can't do (QA S24).
+
+## D-1663 — A private meeting wears a person · 2026-11-22 · accepted
+
+`calEventIcon`: a meeting of kind `private` shows a person icon in the calendar's next card, rows and detail, not the group icon (QA N19).
+
 ## D-1670 — The word puzzle: square tiles, and the built word is one Text · 2026-11-22 · accepted
 
 `WordPuzzleEngine` draws one small square slot per letter (`WordPuzzleSlot.size` = `AppTouch.min`) and the pool as square tiles (`WordPuzzleTile.size` = `AppTouch.primary`), both in wrapping rows, so a word of any length fits a 320 px phone. Above them, `WordPuzzleAnswer` draws the word built so far as ONE `Text` (`WordPuzzleEngine.builtText`: the placed letters joined, the word's own spaces put back), so Arabic letters connect as they do in the word; once checked only that joined word stays, in the check's colour. The slots and tiles keep their taps (a slot gives its letter back). The rows and the word take the WORD's direction (`contentDirection`), so an Arabic word runs right to left in the English interface too. The hint "a word of n letters" goes through `countText`. The admin's live preview is the same engine.

@@ -189,12 +189,26 @@ class TeachersBrowseView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final extra = filters.count - (filters.subject == null ? 0 : 1);
     final head = <Widget>[
-      AppSearchField(
-        key: const ValueKey('teachers.search'),
-        hint: t('ابحث باسم المعلم أو المادة', 'Search a teacher or a subject'),
-        onChanged: (q) => onFilters(filters.copyWith(q: q)),
-      ),
+      // the filter button sits beside the search, never at the end of the scrolling chips (off-screen in RTL, D-1654)
+      Row(children: [
+        Expanded(
+          child: AppSearchField(
+            key: const ValueKey('teachers.search'),
+            hint: t('ابحث باسم المعلم أو المادة', 'Search a teacher or a subject'),
+            onChanged: (q) => onFilters(filters.copyWith(q: q)),
+          ),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        AppChoiceChip(
+          key: const ValueKey('teachers.filters'),
+          label: extra > 0 ? '${t('تصفية', 'Filters')} · $extra' : t('تصفية', 'Filters'),
+          icon: Icons.tune_rounded,
+          selected: extra > 0,
+          onTap: () => _more(context),
+        ),
+      ]),
       const SizedBox(height: AppSpace.sm),
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -215,16 +229,6 @@ class TeachersBrowseView extends StatelessWidget {
               onTap: () => onFilters(filters.copyWith(subject: filters.subject == s ? null : s)),
             ),
           ],
-          const SizedBox(width: AppSpace.xs),
-          AppChoiceChip(
-            key: const ValueKey('teachers.filters'),
-            label: filters.count - (filters.subject == null ? 0 : 1) > 0
-                ? '${t('تصفية', 'Filters')} · ${filters.count - (filters.subject == null ? 0 : 1)}'
-                : t('تصفية', 'Filters'),
-            icon: Icons.tune_rounded,
-            selected: filters.count - (filters.subject == null ? 0 : 1) > 0,
-            onTap: () => _more(context),
-          ),
         ]),
       ),
       const SizedBox(height: AppSpace.md),
@@ -336,27 +340,24 @@ class _TeacherFiltersFormState extends State<TeacherFiltersForm> {
         onTap: (v) => setState(() => _f = _f.copyWith(delivery: _f.delivery == v ? null : v)),
       ),
       const SizedBox(height: AppSpace.md),
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(
-          child: AppNumberField(
-            key: const ValueKey('teachers.f.pmin'),
-            initialValue: _f.priceMin,
-            label: t('أقل سعر', 'Lowest price'),
-            min: 0,
-            onChanged: (v) => _f = _f.copyWith(priceMin: v?.toDouble()),
-          ),
-        ),
-        const SizedBox(width: AppSpace.sm),
-        Expanded(
-          child: AppNumberField(
-            key: const ValueKey('teachers.f.pmax'),
-            initialValue: _f.priceMax,
-            label: t('أعلى سعر', 'Highest price'),
-            min: 0,
-            onChanged: (v) => _f = _f.copyWith(priceMax: v?.toDouble()),
-          ),
-        ),
-      ]),
+      // one price per row: each field is wide enough to type a real price (D-1655)
+      AppNumberField(
+        key: const ValueKey('teachers.f.pmin'),
+        initialValue: _f.priceMin,
+        label: t('أقل سعر', 'Lowest price'),
+        min: 0,
+        step: 50,
+        onChanged: (v) => _f = _f.copyWith(priceMin: v?.toDouble()),
+      ),
+      const SizedBox(height: AppSpace.sm),
+      AppNumberField(
+        key: const ValueKey('teachers.f.pmax'),
+        initialValue: _f.priceMax,
+        label: t('أعلى سعر', 'Highest price'),
+        min: 0,
+        step: 50,
+        onChanged: (v) => _f = _f.copyWith(priceMax: v?.toDouble()),
+      ),
       const SizedBox(height: AppSpace.md),
       TeachersChoiceRow(
         label: t('أقل تقييم', 'Lowest rating'),
@@ -410,11 +411,11 @@ class TeacherListCard extends StatelessWidget {
       onTap: onTap,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
-          AppAvatar(name: p.name.isEmpty ? '?' : p.name, url: p.avatarUrl, size: AppTouch.primary),
+          AppAvatar(name: teacherInitialName(p.name), url: p.avatarUrl, size: AppTouch.primary),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
+              UserText(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
               const SizedBox(height: AppSpace.xxs),
               TeacherRatingLine(rating: p.rating, count: p.reviewsCount),
             ]),
@@ -424,14 +425,20 @@ class TeacherListCard extends StatelessWidget {
         TeacherSubjectBadges(subjects: p.subjects),
         if (p.bio.trim().isNotEmpty) ...[
           const SizedBox(height: AppSpace.xs),
-          Text(p.bio.trim(), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
+          UserText(p.bio.trim(), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
         ],
         const SizedBox(height: AppSpace.xs),
         AppInfoRow(Icons.inventory_2_outlined, [
           packagesText(p.packagesCount),
           if (p.yearsExperience > 0) yearsText(p.yearsExperience),
         ].join(' · ')),
-        if (p.nextFree != null) AppInfoRow(Icons.event_available_rounded, '${t('أقرب موعد', 'Next opening')}: ${AppTime.dateTime(p.nextFree!)}'),
+        // a bare start date (no schedule yet) has no time of day: midnight UTC would read as 2:00 AM (D-1656)
+        if (p.nextFree != null)
+          AppInfoRow(
+              Icons.event_available_rounded,
+              p.nextFreeIsDay
+                  ? '${t('تبدأ', 'Starts')}: ${packageDayLabel(p.nextFree!)}'
+                  : '${t('أقرب موعد', 'Next opening')}: ${AppTime.dateTime(p.nextFree!)}'),
       ]),
     );
   }
@@ -529,11 +536,18 @@ class TeacherProfileView extends StatelessWidget {
         final b = AppBlock.colorsOf(context);
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           Row(children: [
-            AppAvatar(name: p.name.isEmpty ? '?' : p.name, url: p.avatarUrl, size: AppTouch.primary + AppSpace.md),
+            // a paper ring: the avatar's own sky circle would vanish on the sky hero
+            DecoratedBox(
+              decoration: BoxDecoration(shape: BoxShape.circle, color: c.cardBg),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpace.xxs),
+                child: AppAvatar(name: teacherInitialName(p.name), url: p.avatarUrl, size: AppTouch.primary + AppSpace.md),
+              ),
+            ),
             const SizedBox(width: AppSpace.md),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
+                UserText(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
                 const SizedBox(height: AppSpace.xxs),
                 Text(
                   [teacherGenderLabel(p.gender), if (p.yearsExperience > 0) yearsText(p.yearsExperience)].join(' · '),
@@ -552,12 +566,15 @@ class TeacherProfileView extends StatelessWidget {
       }),
     );
     final about = AppSection(
-      title: t('عن المعلم', 'About'),
+      title: teacherG(p.gender, 'عن المعلم', 'عن المعلمة', 'About'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(p.bio.trim().isEmpty ? t('لم يكتب المعلم نبذة بعد.', 'The teacher has not written an introduction yet.') : p.bio.trim(),
-            style: AppType.body(context).copyWith(color: p.bio.trim().isEmpty ? c.textMedium : c.textDark)),
+        if (p.bio.trim().isEmpty)
+          Text(teacherG(p.gender, 'لم يكتب المعلم نبذة بعد.', 'لم تكتب المعلمة نبذة بعد.', 'The teacher has not written an introduction yet.'),
+              style: AppType.body(context).copyWith(color: c.textMedium))
+        else
+          UserText(p.bio.trim(), style: AppType.body(context).copyWith(color: c.textDark)),
         const SizedBox(height: AppSpace.sm),
-        if (p.languages.isNotEmpty) AppInfoRow(Icons.translate_rounded, p.languages.map(teacherLanguageLabel).join('، ')),
+        if (p.languages.isNotEmpty) AppInfoRow(Icons.translate_rounded, teachersJoin(p.languages.map(teacherLanguageLabel))),
         if (p.sessionTypes.isNotEmpty || p.delivery.isNotEmpty)
           AppInfoRow(Icons.groups_rounded, [...p.sessionTypes.map(teacherSessionTypeLabel), ...p.delivery.map(packageDeliveryLabel)].join(' · ')),
       ]),
@@ -566,7 +583,7 @@ class TeacherProfileView extends StatelessWidget {
         ? null
         : AppSection(
             title: t('المؤهلات', 'Qualifications'),
-            child: Text(p.qualifications.trim(), style: AppType.body(context).copyWith(color: c.textDark)),
+            child: UserText(p.qualifications.trim(), style: AppType.body(context).copyWith(color: c.textDark)),
           );
     final packages = AppSection(
       title: t('الباقات', 'Packages'),
@@ -597,13 +614,13 @@ class TeacherProfileView extends StatelessWidget {
                 AppCard(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
                     Row(children: [
-                      Expanded(child: Text(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark))),
+                      Expanded(child: UserText(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark))),
                       Icon(Icons.star_rounded, size: AppIconSize.sm, color: c.accent2),
                       Text(r.rating.toStringAsFixed(1), style: AppType.meta(context).copyWith(color: c.textMedium)),
                     ]),
                     if ((r.comment ?? '').isNotEmpty) ...[
                       const SizedBox(height: AppSpace.xxs),
-                      Text(r.comment!, style: AppType.body(context).copyWith(color: c.textMedium)),
+                      UserText(r.comment!, style: AppType.body(context).copyWith(color: c.textMedium)),
                     ],
                   ]),
                 ),
@@ -710,9 +727,12 @@ class _PackagePageState extends State<PackagePage> {
       if (r.needsPayment) {
         await _pay(r);
       } else {
+        final pos = r.position == null ? '' : t(': رقم ${r.position}', ': number ${r.position}');
         showAppNotice(r.waitlisted
-            ? t('انضممت لقائمة الانتظار${r.position == null ? '' : ': رقم ${r.position}'}. لن تدفع إلا إذا عُرض عليك مقعد.',
-                'You joined the waiting list${r.position == null ? '' : ': number ${r.position}'}. You only pay if a seat is offered.')
+            // a free package has nothing to pay: no payment words at all (D-1657)
+            ? (p.isFree
+                ? t('انضممت لقائمة الانتظار$pos. سنخبرك عندما يتوفر مقعد.', 'You joined the waiting list$pos. We will tell you when a seat frees.')
+                : t('انضممت لقائمة الانتظار$pos. لن تدفع إلا إذا عُرض عليك مقعد.', 'You joined the waiting list$pos. You only pay if a seat is offered.'))
             : t('انضممت إلى الباقة', 'You joined the package'));
         await _load();
       }
@@ -831,7 +851,7 @@ class _PackageViewState extends State<PackageView> {
       child: Builder(builder: (context) {
         final b = AppBlock.colorsOf(context);
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-          Text(p.title, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
+          UserText(p.title, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
           const SizedBox(height: AppSpace.xxs),
           Text(
             [
@@ -851,7 +871,13 @@ class _PackageViewState extends State<PackageView> {
     final facts = AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppInfoRow(Icons.event_repeat_rounded, '${sessionsText(p.sessionsCount)} × ${minutesText(p.sessionMinutes)}'),
-        if (p.startDate != null) AppInfoRow(Icons.event_rounded, '${t('تبدأ', 'Starts')} ${packageDayLabel(p.startDate!)}'),
+        // the days and times before joining (D-1648), and the first REAL session day (D-1649)
+        KeyedSubtree(
+          key: const ValueKey('package.schedule'),
+          child: AppInfoRow(Icons.schedule_rounded,
+              packageScheduleText(p.schedule, p.sessionsCount) ?? t('المواعيد يتفق عليها المعلم مع الطلاب', 'The teacher agrees the times with the students')),
+        ),
+        if (packageFirstDay(p.schedule, p.startDate) case final first?) AppInfoRow(Icons.event_rounded, packageStartsText(first)),
         AppInfoRow(Icons.place_rounded,
             p.location == null || p.delivery == 'online' ? packageDeliveryLabel(p.delivery) : '${packageDeliveryLabel(p.delivery)} · ${p.location}'),
         AppInfoRow(Icons.event_seat_rounded, '${seatsLeftText(p.seatsLeft)} · ${t('من ${p.maxStudents}', 'of ${p.maxStudents}')}'),
@@ -878,7 +904,7 @@ class _PackageViewState extends State<PackageView> {
       PackageJoinState.waitlisted => AppBanner(
           key: const ValueKey('package.state.waitlisted'),
           icon: Icons.hourglass_top_rounded,
-          text: '${packageJoinLabel(state, position: p.myEnrollment?.position)}. ${t('سنخبرك عندما يتوفر مقعد، ولن تدفع قبل ذلك.', 'We will tell you when a seat frees; you pay nothing before that.')}',
+          text: '${packageJoinLabel(state, position: p.myEnrollment?.position)}. ${p.isFree ? t('سنخبرك عندما يتوفر مقعد.', 'We will tell you when a seat frees.') : t('سنخبرك عندما يتوفر مقعد، ولن تدفع قبل ذلك.', 'We will tell you when a seat frees; you pay nothing before that.')}',
         ),
       PackageJoinState.full => AppBanner(
           key: const ValueKey('package.state.full'),
@@ -890,7 +916,9 @@ class _PackageViewState extends State<PackageView> {
           key: const ValueKey('package.state.active'),
           icon: Icons.check_circle_rounded,
           color: c.success,
-          text: t('أنت مشترك. تجد الجلسات في جدولك.', 'You are in. The sessions are in your schedule.'),
+          text: p.seriesId != null
+              ? t('أنت مشترك. تجد الجلسات في جدولك.', 'You are in. The sessions are in your schedule.')
+              : t('أنت مشترك. يتفق معك المعلم على مواعيد الجلسات.', 'You are in. The teacher agrees the session times with you.'),
         ),
       PackageJoinState.closed || PackageJoinState.notOpen => AppBanner(
           icon: Icons.block_rounded,
@@ -907,9 +935,9 @@ class _PackageViewState extends State<PackageView> {
       const SizedBox(height: AppSpace.md),
       facts,
       if (p.goal.trim().isNotEmpty)
-        AppSection(title: t('الهدف', 'Goal'), child: Text(p.goal.trim(), style: AppType.body(context).copyWith(color: c.textDark))),
+        AppSection(title: t('الهدف', 'Goal'), child: UserText(p.goal.trim(), style: AppType.body(context).copyWith(color: c.textDark))),
       if (p.description.trim().isNotEmpty)
-        AppSection(title: t('عن الباقة', 'About the package'), child: Text(p.description.trim(), style: AppType.body(context).copyWith(color: c.textDark))),
+        AppSection(title: t('عن الباقة', 'About the package'), child: UserText(p.description.trim(), style: AppType.body(context).copyWith(color: c.textDark))),
       const SizedBox(height: AppSpace.lg),
       if (widget.joinOff && !mine)
         AppBanner(icon: Icons.lock_outline_rounded, color: c.warning, text: t('الانضمام للباقات متوقف الآن من إدارة المنصة.', 'Joining packages is switched off by the platform right now.'))
@@ -1025,11 +1053,11 @@ class MyTeachersView extends StatelessWidget {
             onTap: onTeacher == null ? null : () => onTeacher!(m),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
               Row(children: [
-                AppAvatar(name: m.teacher.name.isEmpty ? '?' : m.teacher.name, url: m.teacher.avatarUrl, size: AppTouch.min),
+                AppAvatar(name: teacherInitialName(m.teacher.name), url: m.teacher.avatarUrl, size: AppTouch.min),
                 const SizedBox(width: AppSpace.sm),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    Text(m.teacher.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
+                    UserText(m.teacher.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
                     Text(
                       m.nextSession == null ? t('لا جلسة قادمة محددة', 'No next session set') : '${t('الجلسة القادمة', 'Next session')}: ${AppTime.dateTime(m.nextSession!)}',
                       maxLines: 2,
@@ -1045,7 +1073,7 @@ class MyTeachersView extends StatelessWidget {
                   key: ValueKey('myteacher.package.${pk.id}'),
                   icon: teacherSubjectIcon(pk.subject),
                   title: pk.title,
-                  subtitle: '${teacherSubjectLabel(pk.subject)} · ${sessionsText(pk.sessionsCount)}',
+                  subtitle: packageScheduleText(pk.schedule, pk.sessionsCount) ?? '${teacherSubjectLabel(pk.subject)} · ${sessionsText(pk.sessionsCount)}',
                   onTap: onPackage == null ? null : () => onPackage!(pk),
                 ),
               ],

@@ -4,7 +4,10 @@
 //   RecurrenceRule      freq · interval · weekdays · skip_weekdays · skip_dates · start / end date · time · tz;
 //                       toJson / fromJson in the contract's wire shape (weekday 0 = Monday, dates "YYYY-MM-DD",
 //                       times "HH:MM" wall clock in [tz])
-//   describeRule        "Every day except Fri and Sat, 10:00 to 11:00, until further notice" (ar / en)
+//   describeRule        "Every day except Fri and Sat, 10:00 to 11:00, until further notice" (ar / en); a package's
+//                       rule says "for 8 sessions" ([sessions]) and, read in another zone, names the rule's zone
+//   RecurrenceRule.matches / firstDate   the server's occurrence test (calendar_series._matches), so a page can show
+//                       the first REAL date ("Starts Sun 29 Nov", not a skipped Saturday)
 //   recurrenceWeekOrder the weekday chips' order (Saturday first in Arabic, Monday first in English)
 //
 // Pure Dart (no widget), so the packages wizard and the tests use it without a screen.
@@ -169,6 +172,38 @@ class RecurrenceRule {
     );
   }
 
+  /// True when [day] is one of the rule's dates by its step alone (the server's `calendar_series._matches`): on or
+  /// after the start, not a skipped weekday or date, on the step (days from the start, or weeks counted
+  /// Monday-based from the start's week). [count] and [endDate] are not checked here.
+  bool matches(DateTime day) {
+    final d = DateTime(day.year, day.month, day.day);
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    if (d.isBefore(start) || skipWeekdays.contains(recurrenceWeekdayOf(d))) return false;
+    final wire = recurrenceDateWire(d);
+    if (skipDates.any((x) => recurrenceDateWire(x) == wire)) return false;
+    final n = interval.clamp(1, 30);
+    // whole calendar days between two dates (UTC noon: no DST hour moves the count)
+    int days(DateTime a, DateTime b) =>
+        DateTime.utc(b.year, b.month, b.day, 12).difference(DateTime.utc(a.year, a.month, a.day, 12)).inDays;
+    if (unit == RecurrenceUnit.days) return days(start, d) % n == 0;
+    final on = weekdays.isEmpty ? [recurrenceWeekdayOf(start)] : weekdays;
+    if (!on.contains(recurrenceWeekdayOf(d))) return false;
+    final week = days(start.subtract(Duration(days: start.weekday - 1)), d.subtract(Duration(days: d.weekday - 1))) ~/ 7;
+    return week % n == 0;
+  }
+
+  /// The first real date of the rule (a skipped start date moves to the next one that matches), null when none
+  /// falls before [endDate] within a year.
+  DateTime? firstDate() {
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    for (var i = 0; i < 400; i++) {
+      final d = DateTime(start.year, start.month, start.day + i);
+      if (endDate != null && d.isAfter(endDate!)) return null;
+      if (matches(d)) return d;
+    }
+    return null;
+  }
+
   /// The rule in the contract's wire shape. A daily rule sends no weekdays; [allDay] sends null times.
   Map<String, dynamic> toJson() {
     final days = unit == RecurrenceUnit.weeks ? (weekdays.toSet().toList()..sort()) : const <int>[];
@@ -250,17 +285,21 @@ List<String> _days(List<int> wire, String lang) {
 /// The rule in one sentence, in [lang] ('ar' / 'en'): step, skipped weekdays, time, end, skipped dates — e.g.
 /// "Every day except Fri and Sat, 10:00 AM to 11:00 AM, until further notice". Times follow AppTime's 12h / 24h
 /// setting unless [h24] says; dates are AppTime wall dates.
-String describeRule(RecurrenceRule rule, String lang, {bool? h24}) {
+///
+/// [sessions]: the count is a package's sessions ("for 8 sessions" / "لـ8 جلسات", D-1647) rather than "8 times".
+/// [withZone]: the wall times are the rule's own `tz`; when it is not the reader's AppTime zone the sentence names
+/// it ("Egypt (Cairo) time"), so a student elsewhere does not read the teacher's clock as theirs.
+String describeRule(RecurrenceRule rule, String lang, {bool? h24, bool sessions = false, bool withZone = false}) {
   final prev = AppConfig.lang;
   AppConfig.lang = lang; // AppTime and countText read the open language; the sentence is built in [lang]
   try {
-    return _describe(rule, lang == 'ar', h24);
+    return _describe(rule, lang == 'ar', h24, sessions: sessions, withZone: withZone);
   } finally {
     AppConfig.lang = prev;
   }
 }
 
-String _describe(RecurrenceRule r, bool ar, bool? h24) {
+String _describe(RecurrenceRule r, bool ar, bool? h24, {bool sessions = false, bool withZone = false}) {
   final lang = ar ? 'ar' : 'en';
   final n = r.interval.clamp(1, 30);
   final parts = <String>[];
@@ -275,7 +314,9 @@ String _describe(RecurrenceRule r, bool ar, bool? h24) {
         ar1: 'كل أسبوع', ar2: 'كل أسبوعين', arFew: 'كل {n} أسابيع', arMany: 'كل {n} أسبوعًا',
         en1: 'Every week', en: 'Every {n} weeks');
     final days = _days(r.weekdays.isEmpty ? [recurrenceWeekdayOf(r.startDate)] : r.weekdays, lang);
-    step = ar ? '$every يوم ${_join(days, ar)}' : '$every on ${_join(days, ar)}';
+    // one day "يوم الأحد", two "يومَي الأحد والثلاثاء" (the dual in construct), more "أيام الأحد والثلاثاء والخميس"
+    final dayWord = days.length == 1 ? 'يوم' : (days.length == 2 ? 'يومَي' : 'أيام');
+    step = ar ? '$every $dayWord ${_join(days, ar)}' : '$every on ${_join(days, ar)}';
   }
   final skipDays = _days(r.skipWeekdays, lang);
   if (skipDays.isNotEmpty) step = ar ? '$step ما عدا ${_join(skipDays, ar)}' : '$step except ${_join(skipDays, ar)}';
@@ -288,12 +329,19 @@ String _describe(RecurrenceRule r, bool ar, bool? h24) {
     final a = AppTime.clockMinutes(r.startTime!, h24: h24);
     final b = r.endTime == null ? null : AppTime.clockMinutes(r.endTime!, h24: h24);
     parts.add(b == null ? (ar ? 'الساعة $a' : 'at $a') : (ar ? 'من $a إلى $b' : '$a to $b'));
+    if (withZone && r.tz.isNotEmpty && r.tz != AppTime.zoneId) {
+      final z = AppTime.zoneInfo(r.tz);
+      parts.add(ar ? 'بتوقيت ${z.ar}' : '${z.en} time');
+    }
   }
 
   // the end
   if (r.count != null && r.count! > 0) {
-    parts.add(countText(r.count!,
-        ar1: 'لمرة واحدة', ar2: 'لمرتين', arFew: 'لـ{n} مرات', arMany: 'لـ{n} مرة', en1: 'once', en: '{n} times'));
+    parts.add(sessions
+        ? countText(r.count!,
+            ar1: 'لجلسة واحدة', ar2: 'لجلستين', arFew: 'لـ{n} جلسات', arMany: 'لـ{n} جلسة', en1: 'for 1 session', en: 'for {n} sessions')
+        : countText(r.count!,
+            ar1: 'لمرة واحدة', ar2: 'لمرتين', arFew: 'لـ{n} مرات', arMany: 'لـ{n} مرة', en1: 'once', en: '{n} times'));
   }
   if (r.endDate != null) {
     parts.add('${ar ? 'حتى' : 'until'} ${AppTime.wall(r.endDate!, pattern: 'd MMM y')}');

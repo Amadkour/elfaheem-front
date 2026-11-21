@@ -889,7 +889,7 @@ class CalTodayHero extends StatelessWidget {
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
                       child: Row(children: [
-                        Icon(calSourceIcon(n.source), size: AppIconSize.md, color: calEventColor(c, n)),
+                        Icon(calEventIcon(n), size: AppIconSize.md, color: calEventColor(c, n)),
                         const SizedBox(width: AppSpace.sm - 2),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
@@ -1232,7 +1232,7 @@ class CalAgendaTile extends StatelessWidget {
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Padding(
                   padding: const EdgeInsetsDirectional.only(top: AppSpace.xxs / 2, end: AppSpace.xxs),
-                  child: Icon(calSourceIcon(e.source), size: AppIconSize.xs - 1, color: muted ? c.textLight : appInk(context, color)),
+                  child: Icon(calEventIcon(e), size: AppIconSize.xs - 1, color: muted ? c.textLight : appInk(context, color)),
                 ),
                 Expanded(child: Text(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
               ]),
@@ -1411,7 +1411,7 @@ class CalEventSheet extends StatelessWidget {
             width: AppTouch.min - 2,
             height: AppTouch.min - 2,
             decoration: BoxDecoration(color: calTint(c, color, 0.14), borderRadius: AppRadius.controlAll),
-            child: Icon(calSourceIcon(e.source), color: appInk(context, color), size: AppIconSize.lg),
+            child: Icon(calEventIcon(e), color: appInk(context, color), size: AppIconSize.lg),
           ),
           const SizedBox(width: AppSpace.md - 2),
           Expanded(

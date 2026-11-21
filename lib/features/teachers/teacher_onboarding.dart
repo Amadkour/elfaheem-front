@@ -17,10 +17,12 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/features/quran/quran_api.dart' show kQuranTabKey;
 import 'package:flutter_education_app/features/quran/quran_teacher_hub.dart' show QuranTeacherHubPage;
 import 'package:flutter_education_app/features/teachers/package_wizard.dart';
@@ -90,9 +92,16 @@ class _TeacherHubPageState extends State<TeacherHubPage> {
 
   Future<void> _openWizard({TeacherStep? at}) async {
     final p = _profile ?? TeacherProfile.empty;
+    // the account's name starts the "name students see" field of a new profile (D-1658); no provider (a test) = none
+    String? account;
+    try {
+      account = context.read<MyAuthProvider>().currentUser?.name;
+    } on ProviderNotFoundException {
+      account = null;
+    }
     final changed = await Navigator.of(context).push<bool>(MaterialPageRoute(
       settings: const RouteSettings(name: '/teacher/onboarding'),
-      builder: (_) => TeacherOnboardingWizard(initial: p, api: _api, startAt: at),
+      builder: (_) => TeacherOnboardingWizard(initial: p, api: _api, startAt: at, accountName: account),
     ));
     if (changed == true && mounted) unawaited(_load());
   }
@@ -136,9 +145,9 @@ class _TeacherHubPageState extends State<TeacherHubPage> {
                       onChanged: _load,
                     )
                   : AppBanner(
-                      icon: Icons.info_outline_rounded,
-                      text: t('تُفتح الباقات بعد اعتماد ملفك من المنصة: أكمل ملفك وأرسله للمراجعة أولاً.',
-                          'Packages open once the platform approves your profile: complete it and send it for review first.'),
+                      key: ValueKey('teacher.hub.packages_locked.${p.status}'),
+                      icon: p.status == 'pending' ? Icons.hourglass_top_rounded : Icons.info_outline_rounded,
+                      text: teacherPackagesLockedText(p.status),
                     ),
             ),
           // one way in (D-1665): the Quran record sheet and programs open from here, not from a second Profile entry
@@ -169,6 +178,17 @@ class _TeacherHubPageState extends State<TeacherHubPage> {
     );
   }
 }
+
+/// Why the packages are not open yet, in the profile's own state (D-1659): a profile under review is not told to
+/// send it again.
+String teacherPackagesLockedText(String status) => switch (status) {
+      'pending' => t('ملفك قيد المراجعة الآن. تُفتح باقاتك فور اعتماده، ونرسل لك إشعاراً.',
+          'Your profile is under review now. Your packages open as soon as it is approved, and we will let you know.'),
+      'rejected' => t('عدّل ملفك حسب ملاحظة المراجعة وأرسله من جديد: تُفتح الباقات بعد اعتماده.',
+          'Change your profile as the review asks and send it again: packages open once it is approved.'),
+      _ => t('تُفتح الباقات بعد اعتماد ملفك من المنصة: أكمل ملفك وأرسله للمراجعة أولاً.',
+          'Packages open once the platform approves your profile: complete it and send it for review first.'),
+    };
 
 /// The profile's state and its one next step.
 class TeacherStatusCard extends StatelessWidget {
@@ -280,11 +300,14 @@ String teacherStepTitle(TeacherStep s) => switch (s) {
     };
 
 class TeacherOnboardingWizard extends StatefulWidget {
-  const TeacherOnboardingWizard({super.key, required this.initial, this.api, this.startAt});
+  const TeacherOnboardingWizard({super.key, required this.initial, this.api, this.startAt, this.accountName});
 
   final TeacherProfile initial;
   final TeachersApi? api;
   final TeacherStep? startAt;
+
+  /// The account's name: the "name students see" starts with it while the profile has none.
+  final String? accountName;
 
   @override
   State<TeacherOnboardingWizard> createState() => _TeacherOnboardingWizardState();
@@ -293,7 +316,8 @@ class TeacherOnboardingWizard extends StatefulWidget {
 class _TeacherOnboardingWizardState extends State<TeacherOnboardingWizard> {
   late final TeachersApi _api = widget.api ?? TeachersApi();
   late TeacherProfile _saved = widget.initial;
-  late final TeacherProfileDraft _d = TeacherProfileDraft.of(widget.initial);
+  late final TeacherProfileDraft _d = TeacherProfileDraft.of(widget.initial)
+    ..name = widget.initial.name.trim().isEmpty ? (widget.accountName ?? '').trim() : widget.initial.name;
   late List<TeacherDoc> _docs = [...widget.initial.documents];
   late TeacherStep _step = widget.startAt ?? TeacherStep.profile;
   late final _name = TextEditingController(text: _d.name);
@@ -866,7 +890,7 @@ class TeacherReviewSummary extends StatelessWidget {
       ],
       part(TeacherStep.profile, [
         AppInfoRow(Icons.person_rounded, '${or(d.name)} · ${teacherGenderLabel(d.gender)}'),
-        AppInfoRow(Icons.translate_rounded, d.languages.isEmpty ? '—' : d.languages.map(teacherLanguageLabel).join('، ')),
+        AppInfoRow(Icons.translate_rounded, d.languages.isEmpty ? '—' : teachersJoin(d.languages.map(teacherLanguageLabel))),
         AppInfoRow(Icons.workspace_premium_rounded, yearsText(d.yearsExperience)),
         const SizedBox(height: AppSpace.xxs),
         Text(or(d.bio), maxLines: 6, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: c.textMedium)),
@@ -875,6 +899,12 @@ class TeacherReviewSummary extends StatelessWidget {
         if (d.subjects.isEmpty) Text('—', style: AppType.body(context).copyWith(color: c.textMedium)) else TeacherSubjectBadges(subjects: d.subjects),
         const SizedBox(height: AppSpace.xs),
         Text(or(d.qualifications), maxLines: 6, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: c.textMedium)),
+        // what step 2 also asked: how and where the sessions are held
+        if (d.sessionTypes.isNotEmpty || d.delivery.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xs),
+          AppInfoRow(Icons.groups_rounded,
+              [...d.sessionTypes.map(teacherSessionTypeLabel), ...d.delivery.map(packageDeliveryLabel)].join(' · ')),
+        ],
       ]),
       part(TeacherStep.documents, [
         if (documents.isEmpty)

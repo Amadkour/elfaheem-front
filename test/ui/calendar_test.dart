@@ -161,6 +161,20 @@ class FakeCalendarApi implements CalendarApi {
 
 void main() {
   group('pure logic', () {
+    test('a new meeting starts at a sensible slot, never midnight (D-1661)', () {
+      expect(calNextSensibleSlot(DateTime(2026, 11, 21, 14, 20)), DateTime(2026, 11, 21, 15));
+      expect(calNextSensibleSlot(DateTime(2026, 11, 21, 23, 30)), DateTime(2026, 11, 22, 10));
+      expect(calNextSensibleSlot(DateTime(2026, 11, 21, 21, 10)), DateTime(2026, 11, 22, 10));
+      expect(calNextSensibleSlot(DateTime(2026, 11, 21, 5, 0)), DateTime(2026, 11, 21, 10));
+      expect(calNextSensibleSlot(DateTime(2026, 11, 30, 23, 0)), DateTime(2026, 12, 1, 10));
+    });
+
+    test('a private meeting wears a person, not a group (N19)', () {
+      final e = CalEvent.fromJson({'id': 'm1', 'source': 'meeting', 'kind': 'private', 'title': 'x',
+        'starts_at': '2026-11-21T10:00:00', 'ends_at': '2026-11-21T11:00:00'})!;
+      expect(calEventIcon(e), Icons.person_rounded);
+    });
+
     test('a one-off course meeting invites the course through the audience (D-1641)', () {
       final b = calSingleCourseMeetingBody({'title': 'x', 'course_id': 7, 'audience': CalAudience().toJson()}, 7);
       expect(b.containsKey('course_id'), isFalse);

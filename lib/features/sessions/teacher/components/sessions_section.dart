@@ -19,17 +19,18 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppElevation, Ap
 import 'package:flutter_education_app/features/sessions/teacher/components/teacher_course_parts.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
-import 'package:flutter_education_app/config/app_config.dart' show Trans;
+import 'package:flutter_education_app/config/app_config.dart' show AppConfig, Trans;
 import 'package:flutter_education_app/features/calendar/calendar_api.dart';
-import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show showMeetingForm;
+import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show calNextSensibleSlot, showMeetingForm;
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart' show TeacherCourse;
 import 'package:flutter_education_app/features/calendar/recurrence/recurrence_rule.dart' show kRecurringFeatureKey;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 /// The meeting form with [courseId] preset and a weekly repeat on, from the next full hour. True when one was made.
-Future<bool> openCourseRepeatingMeeting(BuildContext context, int courseId) async {
-  final n = AppTime.toZone(DateTime.now().toUtc());
-  final start = DateTime(n.year, n.month, n.day, n.hour + 1);
-  final r = await showMeetingForm(context, api: const RemoteCalendarApi(), start: start, courseId: courseId);
+/// [title]: the course's name, the series' first title (D-1661).
+Future<bool> openCourseRepeatingMeeting(BuildContext context, int courseId, {String? title}) async {
+  final start = calNextSensibleSlot(AppTime.toZone(DateTime.now().toUtc()));
+  final r = await showMeetingForm(context, api: const RemoteCalendarApi(), start: start, courseId: courseId, title: title);
   if (r != null) showAppNotice('cal_recur_course_created'.tr);
   return r != null;
 }
@@ -47,8 +48,10 @@ class _TeacherSessionsBodyState extends State<TeacherSessionsBody> {
   /// Bumped after a repeating meeting is made, so the series block reads the course's series again.
   int _seriesReload = 0;
 
-  Future<void> _repeat(int courseId) async {
-    if (await openCourseRepeatingMeeting(context, courseId) && mounted) setState(() => _seriesReload++);
+  Future<void> _repeat(TeacherCourse course) async {
+    final ar = AppConfig.lang == 'ar';
+    final name = (ar ? course.titleAr : course.titleEn) ?? course.titleEn ?? course.titleAr;
+    if (await openCourseRepeatingMeeting(context, course.id, title: name) && mounted) setState(() => _seriesReload++);
   }
 
   @override
@@ -71,7 +74,7 @@ class _TeacherSessionsBodyState extends State<TeacherSessionsBody> {
           featureKey: kRecurringFeatureKey,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, AppSpace.sm),
-            child: CourseRepeatingMeetingEntry(onTap: () => _repeat(provider.course.id)),
+            child: CourseRepeatingMeetingEntry(onTap: () => _repeat(provider.course)),
           ),
         ),
         // its series with their coming dates (D-1660): meetings, not lessons, so above the timeline and shown even

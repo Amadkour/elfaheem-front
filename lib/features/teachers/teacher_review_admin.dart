@@ -21,6 +21,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/share/external_link.dart' show openExternalLink;
+import 'package:flutter_education_app/core/plural.dart' as plural;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/teachers/teacher_onboarding.dart' show TeacherDocRow;
@@ -251,17 +252,23 @@ class TeacherReviewCard extends StatelessWidget {
       key: ValueKey('teacher.review.${p.userId}'),
       onTap: onTap,
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        AppAvatar(name: p.name.isEmpty ? '?' : p.name, url: p.avatarUrl, size: AppTouch.min),
+        AppAvatar(name: teacherInitialName(p.name), url: p.avatarUrl, size: AppTouch.min),
         const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(p.name.isEmpty ? '—' : p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark)),
+            // the name and, at the line's trailing edge, the status (inside the column, so the badges below keep
+            // the column's whole width on a phone)
+            TitleWithStatus(
+              title: UserText(p.name.isEmpty ? '—' : p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark)),
+              status: AppStatusBadge(label: teacherStatusLabel(p.status), tone: teacherStatusTone(p.status), dense: true),
+            ),
             const SizedBox(height: AppSpace.xxs),
             Text(
               [
                 teacherGenderLabel(p.gender),
                 if (p.documents.isNotEmpty) countText(p.documents.length),
-                if (p.submittedAt != null) AppTime.date(p.submittedAt!),
+                // the date never breaks inside itself ("21 / نوفمبر 2026")
+                if (p.submittedAt != null) AppTime.date(p.submittedAt!).replaceAll(' ', '\u00A0'),
               ].join(' · '),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -271,13 +278,12 @@ class TeacherReviewCard extends StatelessWidget {
             TeacherSubjectBadges(subjects: p.subjects),
           ]),
         ),
-        const SizedBox(width: AppSpace.xs),
-        Flexible(child: AppStatusBadge(label: teacherStatusLabel(p.status), tone: teacherStatusTone(p.status), dense: true)),
       ]),
     );
   }
 
-  static String countText(int n) => t(n == 1 ? 'مستند واحد' : '$n مستندات', n == 1 ? '1 document' : '$n documents');
+  static String countText(int n) => plural.countText(n,
+      ar1: 'مستند واحد', ar2: 'مستندان', arFew: '{n} مستندات', arMany: '{n} مستنداً', en1: '1 document', en: '{n} documents');
 }
 
 /// The refunds-due tab's body: a skeleton while [items] is null, the calm empty state, or one card per payment.
@@ -403,7 +409,8 @@ class _ReviewDetailPageState extends State<_ReviewDetailPage> {
 
   Future<void> _approve() async {
     final ok = await appConfirm(context,
-        message: t('اعتماد ${_p.name}؟ يظهر للطلاب ويفتح باقاته، ويصله إشعار.', 'Approve ${_p.name}? They appear to students, can open packages and get a notification.'),
+        message: teacherG(_p.gender, 'اعتماد ${_p.name}؟ يظهر للطلاب ويفتح باقاته، ويصله إشعار.', 'اعتماد ${_p.name}؟ تظهر للطلاب وتفتح باقاتها، ويصلها إشعار.',
+            'Approve ${_p.name}? They appear to students, can open packages and get a notification.'),
         confirmLabel: t('اعتمد', 'Approve'));
     if (ok != true || !mounted) return;
     await _decide(() => widget.api.approve(_p.userId), t('اعتُمد المعلم', 'The teacher is approved'));
@@ -471,15 +478,19 @@ class TeacherReviewDetail extends StatelessWidget {
         highlight: true,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           Row(children: [
-            AppAvatar(name: p.name.isEmpty ? '?' : p.name, url: p.avatarUrl, size: AppTouch.primary),
+            AppAvatar(name: teacherInitialName(p.name), url: p.avatarUrl, size: AppTouch.primary),
             const SizedBox(width: AppSpace.md),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
+                // the status at the name line's trailing edge (a Flexible beside the column split the row in half and
+                // left the chip mid-card, D-1650)
+                TitleWithStatus(
+                  title: UserText(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
+                  status: AppStatusBadge(label: teacherStatusLabel(p.status), tone: teacherStatusTone(p.status), dense: true),
+                ),
                 Text(teacherGenderLabel(p.gender), style: AppType.meta(context).copyWith(color: c.textMedium)),
               ]),
             ),
-            Flexible(child: AppStatusBadge(label: teacherStatusLabel(p.status), tone: teacherStatusTone(p.status), dense: true)),
           ]),
           const SizedBox(height: AppSpace.sm),
           TeacherSubjectBadges(subjects: p.subjects),
@@ -490,19 +501,19 @@ class TeacherReviewDetail extends StatelessWidget {
         ]),
       ),
       AppSection(
-        title: t('عن المعلم', 'About'),
+        title: teacherG(p.gender, 'عن المعلم', 'عن المعلمة', 'About'),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           AppInfoRow(Icons.workspace_premium_rounded, yearsText(p.yearsExperience)),
-          if (p.languages.isNotEmpty) AppInfoRow(Icons.translate_rounded, p.languages.map(teacherLanguageLabel).join('، ')),
+          if (p.languages.isNotEmpty) AppInfoRow(Icons.translate_rounded, teachersJoin(p.languages.map(teacherLanguageLabel))),
           if (p.sessionTypes.isNotEmpty || p.delivery.isNotEmpty)
             AppInfoRow(Icons.groups_rounded, [...p.sessionTypes.map(teacherSessionTypeLabel), ...p.delivery.map(packageDeliveryLabel)].join(' · ')),
           const SizedBox(height: AppSpace.xs),
-          Text(p.bio.isEmpty ? '—' : p.bio, style: AppType.body(context).copyWith(color: c.textDark)),
+          UserText(p.bio.isEmpty ? '—' : p.bio, style: AppType.body(context).copyWith(color: c.textDark)),
         ]),
       ),
       AppSection(
         title: t('المؤهلات', 'Qualifications'),
-        child: Text(p.qualifications.isEmpty ? '—' : p.qualifications, style: AppType.body(context).copyWith(color: c.textDark)),
+        child: UserText(p.qualifications.isEmpty ? '—' : p.qualifications, style: AppType.body(context).copyWith(color: c.textDark)),
       ),
       AppSection(
         title: t('المستندات', 'Documents'),

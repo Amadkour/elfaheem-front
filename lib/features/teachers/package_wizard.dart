@@ -33,6 +33,24 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 Map<String, dynamic>? packageScheduleStartingOn(Map<String, dynamic>? schedule, DateTime day) =>
     RecurrenceRule.fromJson(schedule)?.startingOn(day).toJson() ?? schedule;
 
+/// The package's repeat rule kept in step with its numbers (D-1647): it ends after [sessionsCount] dates (the
+/// server sets `count` the same way, contract C6), and each date lasts [sessionMinutes] from its start time, so a
+/// changed length moves the end. An any-time rule keeps no clock. No rule (or an unreadable one) → unchanged.
+Map<String, dynamic>? packageScheduleSynced(Map<String, dynamic>? schedule, {required int sessionsCount, required int sessionMinutes}) {
+  final r = RecurrenceRule.fromJson(schedule);
+  if (r == null) return schedule;
+  final start = r.startTime;
+  final timed = !r.allDay && start != null && sessionMinutes > 0;
+  return r
+      .copyWith(
+        count: sessionsCount > 0 ? sessionsCount : null,
+        clearCount: sessionsCount <= 0,
+        clearEnd: true,
+        endTime: timed ? (start + sessionMinutes) % 1440 : null,
+      )
+      .toJson();
+}
+
 /// The schedule step's recurrence editor: (context, the rule or null, set it).
 typedef RecurrenceSlotBuilder = Widget Function(
     BuildContext context, Map<String, dynamic>? rule, ValueChanged<Map<String, dynamic>?> onChanged);
@@ -308,18 +326,31 @@ class _PackageWizardFormState extends State<PackageWizardForm> {
       ]);
 
   /// The shared Repeat section (D-1570). Its first date is the package's start date, and picking a first date in
-  /// it moves the start date with it, so the two never disagree. The server stops the series after
-  /// `sessions_count` (contract C6).
+  /// it moves the start date with it, so the two never disagree. The rule ends after `sessions_count` dates (the
+  /// server's contract C6), so "Ends" reads "After 8 sessions", and a new rule's window is one session long
+  /// (D-1647). Locked (someone joined): drawn disabled.
   Widget _pickerSlot(BuildContext context, Map<String, dynamic>? rule, ValueChanged<Map<String, dynamic>?> onChanged) {
     final s = _d.startDate ?? DateTime.now();
+    final start = DateTime(s.year, s.month, s.day, 17);
     return RecurrencePicker(
       rule: RecurrenceRule.fromJson(rule),
-      start: DateTime(s.year, s.month, s.day, 17),
+      start: start,
+      end: start.add(Duration(minutes: _d.sessionMinutes > 0 ? _d.sessionMinutes : 60)),
+      fixedCount: _d.sessionsCount > 0 ? _d.sessionsCount : null,
+      enabled: !widget.locked,
+      label: t('التكرار', 'Repeat'),
       onChanged: (r) {
         if (r != null) _d.startDate = r.startDate;
         onChanged(r?.toJson());
       },
     );
+  }
+
+  /// The numbers changed: the rule follows them, unless it is locked (any schedule change is refused then).
+  void _syncSchedule() {
+    if (!widget.locked) {
+      _d.schedule = packageScheduleSynced(_d.schedule, sessionsCount: _d.sessionsCount, sessionMinutes: _d.sessionMinutes);
+    }
   }
 
   Widget _schedule(BuildContext context) {
@@ -344,7 +375,10 @@ class _PackageWizardFormState extends State<PackageWizardForm> {
         required: true,
         enabled: !widget.locked,
         helper: _errs['sessions_count'],
-        onChanged: (v) => _set(() => _d.sessionsCount = (v ?? 0).toInt()),
+        onChanged: (v) => _set(() {
+          _d.sessionsCount = (v ?? 0).toInt();
+          _syncSchedule();
+        }),
       ),
       _gap(),
       AppNumberField(
@@ -355,8 +389,12 @@ class _PackageWizardFormState extends State<PackageWizardForm> {
         max: 240,
         step: 15,
         required: true,
+        enabled: !widget.locked,
         helper: _errs['session_minutes'],
-        onChanged: (v) => _set(() => _d.sessionMinutes = (v ?? 0).toInt()),
+        onChanged: (v) => _set(() {
+          _d.sessionMinutes = (v ?? 0).toInt();
+          _syncSchedule();
+        }),
       ),
       _gap(),
       AppFieldLabel(t('تاريخ البدء', 'Start date'), required: true),
@@ -371,7 +409,7 @@ class _PackageWizardFormState extends State<PackageWizardForm> {
         Text(_errs['start_date']!, style: AppType.meta(context).copyWith(color: c.danger)),
       ],
       _gap(),
-      AppFieldLabel(t('التكرار', 'Repeat')),
+      // the slot labels itself ("Repeat"): no second label here
       IgnorePointer(
         ignoring: widget.locked,
         child: slot(context, _d.schedule, (r) => _set(() => _d.schedule = r)),
@@ -672,17 +710,18 @@ class MyPackageCard extends StatelessWidget {
     return AppCard(
       key: ValueKey('mypackage.${p.id}'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(
-            child: Text(p.title.isEmpty ? t('بلا عنوان', 'Untitled') : p.title,
-                maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
-          ),
-          const SizedBox(width: AppSpace.xs),
-          Flexible(child: AppStatusBadge(label: packageStatusLabel(p.status), tone: packageStatusTone(p.status), dense: true)),
-        ]),
+        TitleWithStatus(
+          title: UserText(p.title.isEmpty ? t('بلا عنوان', 'Untitled') : p.title,
+              maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
+          status: AppStatusBadge(label: packageStatusLabel(p.status), tone: packageStatusTone(p.status), dense: true),
+        ),
         const SizedBox(height: AppSpace.xxs),
         Text('${teacherSubjectLabel(p.subject)} · ${packageDeliveryLabel(p.delivery)} · ${sessionsText(p.sessionsCount)}',
             maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
+        if (packageScheduleText(p.schedule, p.sessionsCount) case final sched?) ...[
+          const SizedBox(height: AppSpace.xxs),
+          AppInfoRow(Icons.event_repeat_rounded, sched),
+        ],
         const SizedBox(height: AppSpace.xs),
         Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
           PackagePriceText(price: p.price, finalPrice: p.finalPrice, currency: p.currency, discountPercent: p.discountPercent),
