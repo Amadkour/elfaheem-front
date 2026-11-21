@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppButton;
 import 'package:flutter_education_app/features/org/onboarding/onboarding_api.dart';
 import 'package:flutter_education_app/features/org/onboarding/onboarding_applicant.dart';
 import 'package:flutter_education_app/features/org/onboarding/onboarding_import.dart';
@@ -326,6 +327,124 @@ void main() {
         await t.tap(find.byKey(const ValueKey('onb.import.warnings')));
         await t.pump();
         expect(find.descendant(of: find.byKey(const ValueKey('onb.import.confirm')), matching: find.textContaining(' 2')), findsOneWidget);
+      },
+    );
+  });
+
+  // ── Student lifecycle phase 3: the inline import fix ─────────────────────────
+
+  OnbBatch batch2() => OnbBatch.fromJson({
+        'id': 11,
+        'type_key': 'student_new',
+        'mode': 'draft',
+        'status': 'staged',
+        'counts': {'ok': 1, 'warning': 1, 'error': 3},
+        'rows': [
+          {'id': 101, 'row_no': 2, 'state': 'ok', 'data': {'full_name': 'سارة علي'}, 'messages': <dynamic>[], 'edited': true},
+          {
+            'id': 102,
+            'row_no': 3,
+            'state': 'error',
+            'data': {'full_name': 'فاطمة عبد الرحمن إبراهيم محمد السيد الشاذلي', 'national_id': '**********1234'},
+            'raw': {'gender': 'ذكرر'},
+            'dup_of_row': 5,
+            'messages': [
+              {'field': 'national_id', 'code': 'duplicate_in_file', 'ar': 'رقم الهوية مكرر مع الصف 5', 'en': 'The ID number repeats row 5', 'level': 'error'},
+              {'field': 'gender', 'code': 'invalid_value', 'ar': 'قيمة غير معروفة في النوع، اختر من القائمة', 'en': 'Unknown value for gender; pick one from the list', 'level': 'error'},
+              {'field': null, 'code': 'enrolled_in_sibling_org', 'ar': 'الطالب مقيد في كلية أخرى بنفس الجامعة: كلية الهندسة', 'en': 'Enrolled in another faculty of the same university: Faculty of Engineering', 'level': 'warning'},
+            ],
+          },
+          {'id': 103, 'row_no': 4, 'state': 'warning', 'data': {'full_name': 'عمر'}, 'messages': [{'field': null, 'code': 'same_phone_in_file', 'ar': 'الهاتف مكرر في الملف (الصف 2)', 'en': 'The phone is repeated in the file (row 2)', 'level': 'warning'}]},
+          {
+            'id': 104,
+            'row_no': 5,
+            'state': 'error',
+            'data': {'full_name': 'منى', 'national_id': '**********1234'},
+            'raw': {'gender': 'ذكرر'},
+            'dup_of_row': 3,
+            'messages': [
+              {'field': 'gender', 'code': 'invalid_value', 'ar': 'قيمة غير معروفة', 'en': 'Unknown value', 'level': 'error'},
+            ],
+          },
+          {'id': 105, 'row_no': 6, 'state': 'error', 'data': {'phone': '010'}, 'messages': [{'field': 'phone', 'code': 'phone_invalid', 'ar': 'هاتف غير صالح', 'en': 'Invalid phone', 'level': 'error'}]},
+        ],
+      });
+
+  testWidgets('import review: errors and warnings per row, repeated errors, a duplicate pair, an open editor', (tester) async {
+    for (final f in ['', 'error', 'warning', 'ok']) {
+      await expectNoLayoutErrors(tester, () => OnbImportPreviewView(batch: batch2(), type: type, filter: f, onSaveRow: (r, f, {everywhere}) async {}, onEdit: (_) {}, onShowRows: (_) {}));
+    }
+    // The editor of row 3 open (with the "fix everywhere" switch), and row 5 saving.
+    await expectNoLayoutErrors(
+      tester,
+      () => OnbImportPreviewView(batch: batch2(), type: type, editingRowId: 102, savingRowId: 104, onSaveRow: (r, f, {everywhere}) async {}, onEdit: (_) {}, onShowRows: (_) {}),
+      act: (t) async {
+        expect(find.byKey(const ValueKey('onb.import.repeated')), findsOneWidget);
+        await t.scrollUntilVisible(find.byKey(const ValueKey('onb.import.editor.102')), 200, scrollable: find.byType(Scrollable).first);
+        expect(find.byKey(const ValueKey('onb.import.editor.102')), findsOneWidget);
+        expect(find.byKey(const ValueKey('onb.import.row.3.everywhere')), findsOneWidget);
+        await t.scrollUntilVisible(find.byKey(const ValueKey('onb.import.row.3.dup')), -200, scrollable: find.byType(Scrollable).first);
+      },
+    );
+    // A duplicate shown with its twin only.
+    await expectNoLayoutErrors(tester, () => OnbImportPreviewView(batch: batch2(), type: type, focus: const [3, 5], onShowRows: (_) {}));
+    await expectNoLayoutErrors(tester, () => OnbImportPreviewView(batch: batch2(), type: type, skipErrors: true, includeWarnings: true, error: 'x'));
+  });
+
+  testWidgets('import review: only the failing cells open, save waits for a change, sends only it', (tester) async {
+    Map<String, dynamic>? sent;
+    OnbRepeatedFix? every;
+    final row = batch2().rows[4]; // row 6: the phone is wrong
+    await expectNoLayoutErrors(
+      tester,
+      () {
+        sent = null;
+        return SingleChildScrollView(
+          child: OnbImportRowEditor(row: row, type: type, onSave: (f, {everywhere}) async {
+            sent = f;
+            every = everywhere;
+          }),
+        );
+      },
+      act: (t) async {
+        expect(find.byKey(const ValueKey('onb.import.cell.6.phone')), findsOneWidget);
+        expect(find.byKey(const ValueKey('onb.import.cell.6.full_name')), findsNothing);
+        final save = find.byKey(const ValueKey('onb.import.row.6.save'));
+        await t.tap(save);
+        await t.pump();
+        expect(sent, isNull);
+        await t.enterText(find.descendant(of: find.byKey(const ValueKey('onb.import.cell.6.phone')), matching: find.byType(TextField)), '01012345678');
+        await t.pump();
+        await t.tap(save);
+        await t.pump();
+        expect(sent, {'phone': '01012345678'});
+        expect(every, isNull);
+        // "Show the other columns" reveals the rest.
+        await t.tap(find.byKey(const ValueKey('onb.import.row.6.all')));
+        await t.pump();
+        expect(find.byKey(const ValueKey('onb.import.cell.6.full_name')), findsOneWidget);
+      },
+    );
+  });
+
+  testWidgets('import review: confirm is off while errors remain, until they are skipped', (tester) async {
+    var skip = false;
+    await expectNoLayoutErrors(
+      tester,
+      () {
+        skip = false;
+        return StatefulBuilder(builder: (c, set) => OnbImportPreviewView(batch: batch2(), skipErrors: skip, onSkipErrors: (v) => set(() => skip = v), onConfirm: () {}));
+      },
+      act: (t) async {
+        final confirm = find.byKey(const ValueKey('onb.import.confirm'));
+        await t.scrollUntilVisible(confirm, 200, scrollable: find.byType(Scrollable).first);
+        AppButton btn() => t.widget<AppButton>(confirm);
+        expect(btn().onPressed, isNull);
+        expect(btn().label, contains('4'));
+        await t.ensureVisible(find.byKey(const ValueKey('onb.import.skip_errors')));
+        await t.tap(find.byKey(const ValueKey('onb.import.skip_errors')));
+        await t.pump();
+        expect(btn().onPressed, isNotNull);
       },
     );
   });
