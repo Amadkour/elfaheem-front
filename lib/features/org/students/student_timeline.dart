@@ -73,6 +73,7 @@ class StudentTimelineController extends ChangeNotifier {
   Future<void> load() async {
     final gen = ++_generation;
     loading = true;
+    loadingMore = false; // an older page still in flight belongs to the previous generation and returns early
     error = null;
     _notify();
     try {
