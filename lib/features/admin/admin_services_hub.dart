@@ -73,6 +73,7 @@ import 'modules/admin_modules_page.dart' show AdminModulesPage;
 import 'modules/module_settings_api.dart' show kAdminModulesFeatureKey;
 import 'package:flutter_education_app/features/quran/admin/quran_admin_page.dart' show QuranAdminPage;
 import 'package:flutter_education_app/features/nahw/admin/nahw_admin_page.dart' show NahwAdminPage;
+import 'package:flutter_education_app/features/games/admin/games_admin_page.dart' show GamesAdminPage;
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -373,6 +374,18 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           featureKey: 'admin.nahw',
           visible: isSuper,
           onTap: () => push(const NahwAdminPage()),
+        ),
+        // educational games editor (Learning Hub v2 §3, D-1589); super admin only, kill switch admin.games
+        AdminService(
+          labelKey: 'admin_games',
+          descKey: 'admin_games_d',
+          label: t('الألعاب التعليمية', 'Educational games'),
+          desc: t('محتوى الألعاب وترتيبها ونشرها، مع معاينة مباشرة', 'The games\' content, order and publishing, with a live preview'),
+          icon: Icons.extension_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: 'admin.games',
+          visible: isSuper,
+          onTap: () => push(const GamesAdminPage()),
         ),
         AdminService(
           labelKey: 'admin_points',

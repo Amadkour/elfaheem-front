@@ -17,6 +17,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 const notInCatalog = <String, String>{
   'calendar.recurring': 'lands with feature/lh2-cal',
+  // Learning Hub v2 games (CONTRACT §3 + C9): the catalog entries land with the server half
+  'admin.games': 'lands with feature/lh2-learn',
+  'games.leaderboard': 'lands with feature/lh2-learn',
 };
 
 final _patterns = [

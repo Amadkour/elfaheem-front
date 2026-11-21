@@ -7,7 +7,9 @@
 //                    (LazyTabStack), so the student home's requests do not change. GET /api/v1/module-settings/games
 //                    tells whether a play can earn points (shown on the cards only when it can).
 //   GamesBrowseView  the tab's body with plain values (test/ui/games_layout_test.dart)
-//   GameCard         one game: the engine's glyph, the title, the stars so far (or "New"), the points it can earn
+//                    Learning Hub v2 (D-1588): a category and a difficulty filter (server side, `?category&difficulty`)
+//   GameCard         one game: its cover (decoded small, only when drawn) or the engine's glyph, the title, the
+//                    difficulty, the stars so far (or "New"), the points it can earn
 library;
 
 import 'package:flutter/material.dart';
@@ -68,6 +70,7 @@ class _GamesTabState extends State<GamesTab> {
   CourseFilterEdu? _edu;
   String _user = 'guest';
   String? _engine;
+  String? _category, _difficulty;
   bool _rewards = false;
 
   List<GameSummary> _items = const [];
@@ -128,6 +131,8 @@ class _GamesTabState extends State<GamesTab> {
         stageId: off ? null : _filters.stageId,
         gradeId: off ? null : _filters.gradeId,
         subjectId: off ? null : _filters.subjectId,
+        category: _category,
+        difficulty: _difficulty,
       );
       if (!mounted || seq != _seq) return;
       setState(() {
@@ -197,6 +202,16 @@ class _GamesTabState extends State<GamesTab> {
           onFilters: _onFilters,
           engine: _engine,
           onEngine: (e) => setState(() => _engine = e),
+          category: _category,
+          difficulty: _difficulty,
+          onCategory: (v) {
+            setState(() => _category = v);
+            _load();
+          },
+          onDifficulty: (v) {
+            setState(() => _difficulty = v);
+            _load();
+          },
           items: _items,
           loading: _loading,
           error: _error,
@@ -221,6 +236,10 @@ class GamesBrowseView extends StatelessWidget {
     this.loadEdu,
     this.engine,
     this.onEngine,
+    this.category,
+    this.difficulty,
+    this.onCategory,
+    this.onDifficulty,
     this.loading = false,
     this.error,
     this.rewards = false,
@@ -235,6 +254,10 @@ class GamesBrowseView extends StatelessWidget {
   final Future<CourseFilterEdu?> Function()? loadEdu;
   final String? engine;
   final ValueChanged<String?>? onEngine;
+
+  /// The server-side filters (null = every category / difficulty).
+  final String? category, difficulty;
+  final ValueChanged<String?>? onCategory, onDifficulty;
   final List<GameSummary> items;
   final bool loading;
   final String? error;
@@ -262,6 +285,40 @@ class GamesBrowseView extends StatelessWidget {
           onChanged: onFilters,
         ),
       ),
+      if (onCategory != null || onDifficulty != null) ...[
+        const SizedBox(height: AppSpace.sm),
+        Row(key: const ValueKey('games.filters'), children: [
+          if (onCategory != null)
+            Expanded(
+              child: AppDropdown<String>(
+                key: const ValueKey('games.filter.category'),
+                decoration: InputDecoration(labelText: t('التصنيف', 'Category')),
+                value: category ?? '',
+                items: [
+                  DropdownMenuItem(value: '', child: Text(t('كل التصنيفات', 'Every category'), overflow: TextOverflow.ellipsis)),
+                  for (final k in kGameCategories)
+                    DropdownMenuItem(value: k, child: Text(gameCategoryName(k), overflow: TextOverflow.ellipsis)),
+                ],
+                onChanged: (v) => onCategory!(v == null || v.isEmpty ? null : v),
+              ),
+            ),
+          if (onCategory != null && onDifficulty != null) const SizedBox(width: AppSpace.sm),
+          if (onDifficulty != null)
+            Expanded(
+              child: AppDropdown<String>(
+                key: const ValueKey('games.filter.difficulty'),
+                decoration: InputDecoration(labelText: t('الصعوبة', 'Difficulty')),
+                value: difficulty ?? '',
+                items: [
+                  DropdownMenuItem(value: '', child: Text(t('كل المستويات', 'Any difficulty'), overflow: TextOverflow.ellipsis)),
+                  for (final k in kGameDifficulties)
+                    DropdownMenuItem(value: k, child: Text(gameDifficultyName(k), overflow: TextOverflow.ellipsis)),
+                ],
+                onChanged: (v) => onDifficulty!(v == null || v.isEmpty ? null : v),
+              ),
+            ),
+        ]),
+      ],
       if (engines.length > 1) ...[
         const SizedBox(height: AppSpace.sm),
         SingleChildScrollView(
@@ -341,12 +398,7 @@ class GameCard extends StatelessWidget {
         key: ValueKey('games.card.${game.id}'),
         onTap: onTap,
         child: Row(children: [
-          Container(
-            width: AppTouch.primary,
-            height: AppTouch.primary,
-            decoration: BoxDecoration(color: well.surface, borderRadius: AppRadius.cardAll),
-            child: Icon(gameEngineIcon(game.engine), color: well.ink, size: AppIconSize.lg),
-          ),
+          GameCover(game: game, well: well),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -354,6 +406,7 @@ class GameCard extends StatelessWidget {
               const SizedBox(height: AppSpace.xxs),
               Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 Text(gameEngineName(game.engine), style: AppType.meta(context)),
+                if (game.difficulty.isNotEmpty) Text('· ${gameDifficultyName(game.difficulty)}', style: AppType.meta(context)),
                 if (p == null || p.plays == 0)
                   AppStatusBadge(label: t('جديدة', 'New'), tone: AppTone.brand, dense: true)
                 else
@@ -366,6 +419,41 @@ class GameCard extends StatelessWidget {
           const SizedBox(width: AppSpace.xs),
           Icon(Icons.chevron_right_rounded, color: c.textLight),
         ]),
+      ),
+    );
+  }
+}
+
+/// A game's cover in the card's well: the image decoded at the well's size (lazy: only when the card is drawn), the
+/// engine's glyph while it loads, when it fails and when there is none.
+class GameCover extends StatelessWidget {
+  const GameCover({super.key, required this.game, required this.well});
+
+  final GameSummary game;
+  final AppBlockColors well;
+
+  @override
+  Widget build(BuildContext context) {
+    final glyph = Container(
+      width: AppTouch.primary,
+      height: AppTouch.primary,
+      decoration: BoxDecoration(color: well.surface, borderRadius: AppRadius.cardAll),
+      child: Icon(gameEngineIcon(game.engine), color: well.ink, size: AppIconSize.lg),
+    );
+    final url = game.coverUrl;
+    if (url == null) return glyph;
+    final px = (AppTouch.primary * MediaQuery.devicePixelRatioOf(context)).round();
+    return ClipRRect(
+      borderRadius: AppRadius.cardAll,
+      child: Image.network(
+        url,
+        width: AppTouch.primary,
+        height: AppTouch.primary,
+        fit: BoxFit.cover,
+        cacheWidth: px,
+        excludeFromSemantics: true,
+        frameBuilder: (context, child, frame, sync) => frame == null && !sync ? glyph : child,
+        errorBuilder: (context, error, stack) => glyph,
       ),
     );
   }

@@ -32,6 +32,12 @@ const knownMissing = <String, String>{
   'PATCH /api/v1/me/calendar/series/{}/occurrences/{}': 'lands with feature/lh2-cal',
   'POST /api/v1/me/calendar/series': 'lands with feature/lh2-cal',
   'POST /api/v1/me/calendar/series/{}/occurrences/{}/open': 'lands with feature/lh2-cal',
+  // Learning Hub v2 games (CONTRACT §3 + C9): the server half is built in parallel
+  'GET /api/v1/games/{}/leaderboard': 'lands with feature/lh2-learn',
+  'PUT /api/v1/me/games/leaderboard': 'lands with feature/lh2-learn',
+  'POST /api/v1/admin/games/reorder': 'lands with feature/lh2-learn',
+  'GET /api/v1/admin/games/engines': 'lands with feature/lh2-learn',
+  'POST /api/v1/admin/games/{}/cover': 'lands with feature/lh2-learn (cover upload, asked under the contract\'s Requests)',
 };
 
 void main() {
