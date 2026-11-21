@@ -67,6 +67,7 @@ import 'package:flutter_education_app/features/calendar/calendar_views.dart';
 import 'package:flutter_education_app/features/calendar/schedule_logic.dart';
 import 'package:flutter_education_app/features/calendar/schedule_parts.dart';
 import 'package:flutter_education_app/features/calendar/schedule_store.dart';
+import 'package:flutter_education_app/features/calendar/recurrence/series_actions.dart';
 
 /// The width from which the page shows its sidebar (mini month, filters, up next, invitations).
 const calWideBreakpoint = 1000.0;
@@ -392,8 +393,18 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   }
 
   // ── actions ──────────────────────────────────────────────────────────────
-  Future<void> _openMeeting(int id) async {
-    if (await showMeetingSheet(context, api: widget.api, meetingId: id)) {
+  Future<void> _openMeeting(int id, {CalEvent? event}) async {
+    final series = event?.seriesId;
+    if (await showMeetingSheet(context,
+        api: widget.api, meetingId: id, seriesId: series, occurrenceDate: series == null ? null : seriesDateOf(event!))) {
+      _store.invalidate();
+      unawaited(_refresh());
+    }
+  }
+
+  /// A date of a repeating meeting with no meeting row yet (D-1572).
+  Future<void> _openOccurrence(CalEvent e) async {
+    if (await showSeriesOccurrenceSheet(context, api: widget.api, event: e)) {
       _store.invalidate();
       unawaited(_refresh());
     }
@@ -413,7 +424,8 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   }
 
   Future<void> _tap(CalEvent e) async {
-    if (e.meetingId != null) return _openMeeting(e.meetingId!);
+    if (e.meetingId != null) return _openMeeting(e.meetingId!, event: e);
+    if (e.recurring) return _openOccurrence(e);
     final now = _nowUtc;
     final keys = _liveKeys;
     await showAppSheet<void>(
@@ -478,6 +490,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   }
 
   Future<void> _join(CalEvent e) async {
+    if (e.meetingId == null && e.recurring) return joinSeriesOccurrence(context, widget.api, e);
     if (e.meetingId != null) {
       await openMeetingRoom(
         context,
@@ -547,7 +560,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   Future<void> _move(CalEvent e, DateTime wallStart) async {
     final s = AppTime.fromZone(wallStart).toUtc();
     final en = s.add(e.duration);
-    if (s == e.start || e.meetingId == null) return;
+    if (s == e.start || (e.meetingId == null && !e.recurring)) return;
     final clash = calConflicts(_filters.apply(_all), e, s, en);
     if (clash.isNotEmpty) {
       final ok = await appConfirm(context,
@@ -555,6 +568,14 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
               '${clash.length > 3 ? ' +${clash.length - 3}' : ''}',
           confirmLabel: t('انقل رغم ذلك', 'Move anyway'));
       if (!ok || !mounted) return;
+    }
+    if (e.recurring) {
+      // a date of a repeating meeting: this one only, or the series' clock from today on (D-1573)
+      if (await seriesMove(context, widget.api, seriesId: e.seriesId!, date: seriesDateOf(e), startUtc: s, endUtc: en)) {
+        _store.invalidate();
+        if (mounted) unawaited(_refresh());
+      }
+      return;
     }
     _store.patch((x) => x.id == e.id ? x.moved(s, en) : x);
     setState(() => _chunk = _store.cached(_scope, _range.$1.toUtc(), _range.$2.toUtc()) ?? _chunk);
