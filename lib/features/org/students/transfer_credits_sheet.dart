@@ -16,10 +16,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show bidiIsolate, ltrIsolate;
 
 import '../../admin/admin_common.dart' show t;
 import '../org_v3.dart' show OrgCall;
 import 'student_requests_api.dart';
+
+/// "3 ساعات" / "3 h": a whole number takes the Arabic plural forms (countText); a fraction ("3.5") stays a figure.
+/// [credit]: "credit hours" wording for the summary line.
+String _hoursText(double? h, {bool credit = false}) {
+  final s = creditHoursText(h);
+  if (h == null || h != h.roundToDouble()) return credit ? t('$s ساعة معتمدة', '$s credit hours') : t('$s ساعة', '$s h');
+  final n = h.round();
+  return credit
+      ? countText(n,
+          ar0: 'لا ساعات معتمدة', ar1: 'ساعة معتمدة واحدة', ar2: 'ساعتان معتمدتان', arFew: '{n} ساعات معتمدة', arMany: '{n} ساعة معتمدة',
+          en0: 'No credit hours', en1: '1 credit hour', en: '{n} credit hours')
+      : countText(n, ar1: 'ساعة واحدة', ar2: 'ساعتان', arFew: '{n} ساعات', arMany: '{n} ساعة', en1: '1 h', en: '{n} h');
+}
 
 /// The transfer-credit panel of student [uid].
 Future<void> showTransferCreditsSheet(BuildContext context, int orgId, int uid, {String? name, StudentRequestsApi? api}) =>
@@ -201,8 +215,8 @@ class TransferCreditsView extends StatelessWidget {
     final d = data;
     final c = context.colors;
     final summary = [
-      countText(d.credited, ar1: 'مقرر محتسب', ar2: 'مقرران محتسبان', arFew: '{n} مقررات محتسبة', arMany: '{n} مقرراً محتسباً', en1: '1 course credited', en: '{n} courses credited'),
-      t('${creditHoursText(d.creditedHours)} ساعة معتمدة', '${creditHoursText(d.creditedHours)} credit hours'),
+      countText(d.credited, ar0: 'لا مقررات محتسبة بعد', en0: 'No courses credited yet', ar1: 'مقرر محتسب', ar2: 'مقرران محتسبان', arFew: '{n} مقررات محتسبة', arMany: '{n} مقرراً محتسباً', en1: '1 course credited', en: '{n} courses credited'),
+      _hoursText(d.creditedHours, credit: true),
       if (d.pending > 0)
         countText(d.pending, ar1: 'مقرر قيد الدراسة', ar2: 'مقرران قيد الدراسة', arFew: '{n} مقررات قيد الدراسة', arMany: '{n} مقرراً قيد الدراسة', en1: '1 pending', en: '{n} pending'),
     ].join(' · ');
@@ -217,7 +231,7 @@ class TransferCreditsView extends StatelessWidget {
           AppSpace.gapXs,
           Text(
             d.settings.countsInGpa
-                ? t('المقررات المحتسبة تدخل المعدل افتراضياً (${creditHoursText(d.gpaHours)} ساعة الآن).', 'Credited courses enter the GPA by default (${creditHoursText(d.gpaHours)} hours now).')
+                ? t('المقررات المحتسبة تدخل المعدل افتراضياً (${_hoursText(d.gpaHours)} الآن).', 'Credited courses enter the GPA by default (${creditHoursText(d.gpaHours)} hours now).')
                 : t('المقررات المحتسبة تُحسب ساعاتها فقط ولا تدخل المعدل افتراضياً.', 'Credited courses count for their hours only and stay out of the GPA by default.'),
             style: AppType.meta(context),
           ),
@@ -276,13 +290,13 @@ class TransferCreditCard extends StatelessWidget {
     final x = credit;
     final c = context.colors;
     final source = [
-      if (x.sourceCode != null) x.sourceCode!,
-      if (x.sourceGrade != null) t('التقدير ${x.sourceGrade}', 'Grade ${x.sourceGrade}'),
-      if (x.sourceCredits != null) t('${creditHoursText(x.sourceCredits)} ساعة', '${creditHoursText(x.sourceCredits)} h'),
-    ].join(' · ');
+      if (x.sourceCode != null) ltrIsolate(x.sourceCode!),
+      if (x.sourceGrade != null) t('التقدير ${ltrIsolate(x.sourceGrade!)}', 'Grade ${ltrIsolate(x.sourceGrade!)}'),
+      if (x.sourceCredits != null) _hoursText(x.sourceCredits),
+    ].map(bidiIsolate).join(' · ');
     final here = x.course == null
         ? t('لم يُحدَّد المقرر المعادل بعد', 'No equivalent course chosen yet')
-        : '${x.course!.label} · ${t('${creditHoursText(x.hoursHere)} ساعة', '${creditHoursText(x.hoursHere)} h')}';
+        : '${bidiIsolate(x.course!.label)} · ${bidiIsolate(_hoursText(x.hoursHere))}';
     final decide = onDecide;
     return AppCard(
       key: ValueKey('students.credits.row.${x.id}'),

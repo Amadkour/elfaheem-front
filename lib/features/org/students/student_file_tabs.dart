@@ -16,10 +16,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show bidiIsolate, ltrIsolate;
 
 import '../../admin/admin_common.dart' show t;
 import '../org_v3.dart' show orgErrorText;
 import 'student_file_models.dart';
+import 'student_requests_api.dart' show requestKindIcon, requestKindLabel, requestStageLabel;
 import 'students_api.dart';
 import 'students_models.dart';
 
@@ -62,7 +64,7 @@ class StudentFactsCard extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(label, style: AppType.meta(context).copyWith(color: c.textMedium)),
-                SelectableText(value, textDirection: ltr ? TextDirection.ltr : null, style: AppType.row(context)),
+                SelectableText(ltr ? ltrIsolate(value) : value, style: AppType.row(context)),
               ]),
             ),
           ]),
@@ -74,7 +76,7 @@ class StudentFactsCard extends StatelessWidget {
 
 /// One tappable line of a list card: icon, text, an optional count and a forward arrow.
 class _LinkRow extends StatelessWidget {
-  const _LinkRow({required this.icon, required this.text, this.meta, this.onTap, this.tone = AppTone.neutral});
+  const _LinkRow({super.key, required this.icon, required this.text, this.meta, this.onTap, this.tone = AppTone.neutral});
   final IconData icon;
   final String text;
   final String? meta;
@@ -108,12 +110,32 @@ class _LinkRow extends StatelessWidget {
   }
 }
 
+/// One row per open lifecycle request: the kind, then the reference (left to right), the status and the day it came in.
+List<Widget> openRequestRows(Iterable<StudentOpenRequest> items, ValueChanged<int>? onOpen) => [
+      for (final x in items)
+        _LinkRow(
+          key: ValueKey('students.file.request.${x.id}'),
+          icon: requestKindIcon(x.request),
+          tone: x.stage == 'council' ? AppTone.brand : AppTone.info,
+          text: x.label.isNotEmpty ? x.label : requestKindLabel(x.request),
+          meta: [
+            if (x.ref.isNotEmpty) ltrIsolate(x.ref),
+            if (x.statusLabel.isNotEmpty) x.statusLabel else if (x.stage.isNotEmpty) requestStageLabel(x.stage),
+            if (x.createdAt != null) AppTime.date(x.createdAt!.toUtc()),
+          ].map(bidiIsolate).join(' · '),
+          onTap: onOpen == null ? null : () => onOpen(x.id),
+        ),
+    ];
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  Overview
 // ═════════════════════════════════════════════════════════════════════════════
 
 class StudentOverviewTab extends StatelessWidget {
-  const StudentOverviewTab({super.key, required this.file, this.onMissing, this.onOpenTab, this.onShowAsks, this.missingOn = true});
+  const StudentOverviewTab({super.key, required this.file, this.onMissing, this.onOpenTab, this.onShowAsks, this.missingOn = true, this.onOpenRequest});
+
+  /// Opens one open lifecycle request (its Governance work item id); null = the rows open nothing.
+  final ValueChanged<int>? onOpenRequest;
 
   final StudentFile file;
 
@@ -136,7 +158,7 @@ class StudentOverviewTab extends StatelessWidget {
     final facts = <(IconData, String, String, bool)>[
       if (r.studentCode != null) (Icons.badge_outlined, t('رقم الطالب', 'Student number'), r.studentCode!, true),
       if (r.program != null && r.program!.label.isNotEmpty) (Icons.account_tree_outlined, t('البرنامج', 'Programme'), r.program!.label, false),
-      if (r.level != null) (Icons.stairs_outlined, t('الفرقة', 'Level'), studentLevelText(r.level!), false),
+      if (r.level != null) (Icons.stairs_outlined, t('المستوى', 'Level'), studentLevelText(r.level!), false),
       if (r.enrolStatus.isNotEmpty) (Icons.how_to_reg_outlined, t('حالة القيد', 'Enrolment'), enrolLabel(r.enrolStatus), false),
       if (r.acadStanding != null) (Icons.insights_outlined, t('الوضع الأكاديمي', 'Academic standing'), standingLabel(r.acadStanding!), false),
       if (file.joinedAt != null) (Icons.event_available_outlined, t('انضم في', 'Joined'), AppTime.date(file.joinedAt!.toUtc()), false),
@@ -161,11 +183,13 @@ class StudentOverviewTab extends StatelessWidget {
                   en1: '1 open complaint', en: '{n} open complaints'),
           onTap: tabs.contains(StudentFileTab.requests) ? () => onOpenTab?.call(StudentFileTab.requests) : null,
         ),
-      if (open.requests > 0)
+      // the open lifecycle requests one by one (newest first, at most 3); an older server sends only the count
+      ...openRequestRows(open.lifecycleRequests.take(3), onOpenRequest),
+      if (open.lifecycleRequests.length > 3 || (open.lifecycleRequests.isEmpty && open.requests > 0))
         _LinkRow(
           icon: Icons.assignment_outlined,
           tone: AppTone.info,
-          text: countText(open.requests,
+          text: countText(open.requests > 0 ? open.requests : open.lifecycleRequests.length,
               ar1: 'طلب مفتوح', ar2: 'طلبان مفتوحان', arFew: '{n} طلبات مفتوحة', arMany: '{n} طلباً مفتوحاً',
               en1: '1 open request', en: '{n} open requests'),
           onTap: tabs.contains(StudentFileTab.requests) ? () => onOpenTab?.call(StudentFileTab.requests) : null,
@@ -404,7 +428,10 @@ class StudentDocumentsTab extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class StudentRequestsTab extends StatelessWidget {
-  const StudentRequestsTab({super.key, required this.open, required this.can, this.onOpenComplaints, this.onOpenRequests});
+  const StudentRequestsTab({super.key, required this.open, required this.can, this.onOpenComplaints, this.onOpenRequests, this.onOpenRequest});
+
+  /// Opens one open lifecycle request (its Governance work item id).
+  final ValueChanged<int>? onOpenRequest;
 
   final StudentOpen open;
   final StudentCan can;
@@ -438,6 +465,7 @@ class StudentRequestsTab extends StatelessWidget {
                   en1: '1 open request', en: '{n} open requests'),
           onTap: onOpenRequests,
         ),
+      if (can.requests) ...openRequestRows(open.lifecycleRequests, onOpenRequest),
     ];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _TabHeading(t('الطلبات والشكاوى', 'Requests & complaints'),

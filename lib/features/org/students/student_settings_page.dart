@@ -15,6 +15,7 @@ library;
 import 'dart:convert' show jsonEncode;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
@@ -40,7 +41,7 @@ Future<void> openStudentSettings(BuildContext context, int orgId, {bool canEdit 
       context,
       OrgPushedPage(
         title: studentSettingsTitle(),
-        subtitle: t('حالات الطلاب ومن يقرر وما يراه الطالب', 'Student statuses, who decides, what the student sees'),
+        subtitle: t('الحالات والتذكيرات', 'Statuses and reminders'),
         helpPageId: kStudentSettingsHelpId,
         width: AppWidth.form,
         child: OrgStudentSettingsPage(orgId: orgId, canEdit: canEdit, api: api),
@@ -62,7 +63,7 @@ String siblingModeLabel(String m) => switch (m) {
       _ => t('نبّه ثم اسمح', 'Warn, then allow'),
     };
 
-String _dayText(int d) => d == 0 ? t('في اليوم نفسه', 'On the day') : t('قبل $d يوم', '$d days before');
+String _dayText(int d) => d == 0 ? t('في اليوم نفسه', 'On the day') : t('قبل ${daysText(d)}', '${daysText(d)} before');
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  The page
@@ -150,7 +151,7 @@ class _OrgStudentSettingsPageState extends State<OrgStudentSettingsPage> {
       context,
       OrgPushedPage(
         title: studentMatrixTitle(),
-        subtitle: studentSettingsTitle(),
+        subtitle: t('من يقترح ومن يعتمد', 'Who proposes, who approves'),
         helpPageId: kStudentSettingsHelpId,
         width: AppWidth.reading,
         child: StudentMatrixPage(orgId: widget.orgId, initial: d, defaults: _defaults, canEdit: widget.canEdit, api: _api),

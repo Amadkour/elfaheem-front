@@ -24,6 +24,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show AutoDirText, bidiIsolate, ltrIsolate;
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show t, asMapList;
@@ -39,6 +40,7 @@ import 'student_file_models.dart';
 import 'my_ask_page.dart' show myAsksEnabled;
 import 'student_ask_sheet.dart' show showStudentAskSheet;
 import 'student_file_tabs.dart';
+import 'student_request_detail.dart' show openStudentRequest;
 import 'student_status_models.dart' show StatusEvent;
 import 'student_status_sheet.dart' show confirmUndoStatus, showStudentStatusSheet;
 import 'student_timeline.dart';
@@ -214,6 +216,12 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
   }
 
   /// The missing-data sheet; each completed item reloads the file, so its count and badge follow at once.
+  /// One open lifecycle request: its detail (accept · reject · send to the council); reload the file when it changed.
+  Future<void> _openRequest(int id) async {
+    final changed = await openStudentRequest(context, widget.orgId, id);
+    if (changed == true && mounted) _load();
+  }
+
   void _openMissing() => showMissingDataSheet(context, widget.orgId, widget.uid, name: _file?.displayName, api: widget.api,
       onChanged: () {
         if (mounted) _load();
@@ -230,6 +238,7 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
           onMissing: f.can.kase ? _openMissing : null,
           onOpenTab: (t) => setState(() => _tab = t),
           onShowAsks: _showAsks,
+          onOpenRequest: f.can.requests ? _openRequest : null,
         );
       case StudentFileTab.timeline:
         return StudentTimeline(controller: _timeline, onUndo: f.can.statusChange ? _undo : null);
@@ -259,6 +268,7 @@ class _StudentFileBodyState extends State<_StudentFileBody> {
           onOpenComplaints: () => pushStudentPage<void>(
               context, OrgPushedPage(title: t('الشكاوى', 'Complaints'), child: const OrgComplaintsPage())),
           onOpenRequests: () => pushStudentPage<void>(context, GovItemsPage(orgId: oid)),
+          onOpenRequest: _openRequest,
         );
       case StudentFileTab.advising:
         return StudentAdvisingTab(
@@ -416,16 +426,16 @@ class StudentFileHeader extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Semantics(
               header: true,
-              child: Text(file.displayName, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
+              child: AutoDirText(file.displayName, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
             ),
-            if (file.otherName != null) Text(file.otherName!, maxLines: 1, overflow: TextOverflow.ellipsis, style: meta),
+            if (file.otherName != null) AutoDirText(file.otherName!, maxLines: 1, overflow: TextOverflow.ellipsis, style: meta),
             if (r.studentCode != null || file.programLine != null) ...[
               const SizedBox(height: AppSpace.xxs),
               Text(
                 [
-                  if (r.studentCode != null) t('رقم الطالب ${r.studentCode}', 'Student no. ${r.studentCode}'),
+                  if (r.studentCode != null) t('رقم الطالب ${ltrIsolate(r.studentCode!)}', 'Student no. ${ltrIsolate(r.studentCode!)}'),
                   ?file.programLine,
-                ].join(' · '),
+                ].map(bidiIsolate).join(' · '),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: meta,

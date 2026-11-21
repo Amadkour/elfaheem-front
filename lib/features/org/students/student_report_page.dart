@@ -250,7 +250,7 @@ class _OrgStudentReportPageState extends State<OrgStudentReportPage> {
   Widget build(BuildContext context) {
     return OrgPushedPage(
       title: t('تقرير الطلاب', 'Students report'),
-      subtitle: t('أين يقف الطلاب وما الذي تغيّر في الفترة', 'Where students stand and what changed in the period'),
+      subtitle: t('الوضع والتغييرات في الفترة', 'Standing and changes'),
       helpPageId: 'org.students',
       width: AppWidth.content,
       primaryAction: widget.canExport
@@ -388,7 +388,7 @@ class _PeriodPicker extends StatelessWidget {
       if (generatedAt != null)
         Padding(
           padding: const EdgeInsetsDirectional.only(top: AppSpace.xxs),
-          child: Text(t('أُعدّ في ${AppTime.dateTime(generatedAt!)}', 'Prepared on ${AppTime.dateTime(generatedAt!)}'), style: AppType.meta(context)),
+          child: Text(t('أُعدّ في ${AppTime.dateTime(generatedAt!.toUtc())}', 'Prepared on ${AppTime.dateTime(generatedAt!.toUtc())}'), style: AppType.meta(context)),
         ),
     ]);
   }
@@ -412,7 +412,7 @@ class _ReportBody extends StatelessWidget {
       final standing = reportBars(a.standing, standings, standingLabel);
       final flags = reportBars(a.flags, flagKeys, flagLabel);
       final decisions = [for (final d in r.byDecision) if (d.count > 0) (key: d.key, label: d.label, count: d.count)];
-      final reasons = [for (final x in r.topReasons) if (x.count > 0) (key: x.code, label: reportReasonLabel(x.code), count: x.count)];
+      final reasons = [for (final x in r.topReasons) if (x.count > 0) (key: x.code, label: x.label.isNotEmpty ? x.label : reportReasonLabel(x.code), count: x.count)];
       final pending = [for (final d in r.pendingByDecision) if (d.count > 0) (key: d.key, label: d.label, count: d.count)];
 
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

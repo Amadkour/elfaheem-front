@@ -43,6 +43,7 @@ import 'package:flutter_education_app/design/context_switcher.dart' show Context
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppButton, AppCard;
+import 'package:flutter_education_app/design/app_bidi.dart' show bidiIsolate, ltrIsolate;
 import 'org_v3.dart' show OrgCall, orgCall;
 import 'students/my_ask_page.dart' show myAsksEnabled;
 import 'students/student_ask_sheet.dart' show showStudentAskSheet;
@@ -963,7 +964,7 @@ class _ComplaintCard extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${row['subject']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
-              Text('${row['ref']} · ${asMap(row['user'])['name'] ?? ''} · ${relTime(row['created_at'])}',
+              Text([ltrIsolate('${row['ref'] ?? ''}'), bidiIsolate('${asMap(row['user'])['name'] ?? ''}'), relTime(row['created_at'])].where((x) => x.isNotEmpty).join(' · '),
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
               const SizedBox(height: AppSpace.xs),
               Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
@@ -1108,7 +1109,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
     final d = _d;
     final dept = d?['dept_id'] == null ? null : asInt(d?['dept_id']);
     final canAct = d != null && (widget.canAct ?? s.can('complaints', 'update', dept));
-    final title = d == null ? t('الشكوى', 'Complaint') : '${d['ref']}';
+    final title = d == null ? t('الشكوى', 'Complaint') : ltrIsolate('${d['ref']}');
     if (orgUsesDashboardHeader(context, widget.orgId)) {
       return OrgPushedPage(
         title: title,

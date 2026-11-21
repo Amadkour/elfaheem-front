@@ -167,12 +167,12 @@ class StudentAvatar extends StatelessWidget {
   }
 }
 
-/// "CS · Year 2 · 20261234": what identifies a student besides the name.
+/// "CS · Level 2": what identifies a student besides the name.
 String studentMetaLine(StudentRow r) {
   final level = r.level;
   return [
     if (r.program != null && r.program!.label.isNotEmpty) r.program!.label,
-    if (level != null) t('المستوى $level', 'Level $level'),
+    if (level != null) int.tryParse(level) == null ? level : t('المستوى $level', 'Level $level'),
   ].join(' · ');
 }
 

@@ -22,6 +22,7 @@ library;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_badges.dart' show AppTone;
 
 import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt, asStr, asBool;
@@ -91,7 +92,7 @@ String askPresentationLabel(String p) => switch (p) {
 String askPresentationHint(String p) => switch (p) {
       'notice' => t('يصله إشعار ويفتح الطلب متى شاء', 'A notification; the student opens it when ready'),
       'popup' => t('نافذة تظهر عند فتح التطبيق، ويمكنه تأجيلها', 'A window on the next app open; it can be put off'),
-      'fullscreen' => t('صفحة كاملة لا تُغلق حتى يرد، بموعد خلال ٧ أيام', 'A full page that stays until answered; due within 7 days'),
+      'fullscreen' => t('صفحة كاملة لا تُغلق حتى يرد، بموعد خلال 7 أيام', 'A full page that stays until answered; due within 7 days'),
       _ => '',
     };
 
@@ -675,7 +676,7 @@ class AskDraft {
         'doc_keys' => t('اختر مستنداً واحداً على الأقل', 'Pick at least one document'),
         'confirm_text' => t('اكتب العبارة التي يؤكدها الطالب', 'Write the sentence the student confirms'),
         'due_past' => t('موعد الاستحقاق يجب أن يكون في المستقبل', 'The due date must be in the future'),
-        'fullscreen_due' => t('العرض بملء الشاشة يحتاج موعد استحقاق خلال ٧ أيام', 'Full screen needs a due date within 7 days'),
+        'fullscreen_due' => t('العرض بملء الشاشة يحتاج موعد استحقاق خلال 7 أيام', 'Full screen needs a due date within 7 days'),
         final c => c,
       };
 
@@ -718,7 +719,7 @@ List<String> askPreviewLines(AskDraft d, {String? name}) {
     'meeting' => d.startsAt == null
         ? t('يختار: سأحضر، أو لا أستطيع مع السبب.', 'They choose: I will attend, or I cannot, with a reason.')
         : t(
-            'الاجتماع ${AppTime.dateTime(d.startsAt!.toUtc())} (${d.minutes} دقيقة) ${d.mode == 'online' ? 'عبر الإنترنت برابط في تقويمه' : (d.location.trim().isEmpty ? 'حضورياً' : 'حضورياً في ${d.location.trim()}')}، ويظهر في تقويمه وتقويمك.',
+            'الاجتماع ${AppTime.dateTime(d.startsAt!.toUtc())} (${countText(d.minutes, ar1: 'دقيقة واحدة', ar2: 'دقيقتان', arFew: '{n} دقائق', arMany: '{n} دقيقة', en1: '1 min', en: '{n} min')}) ${d.mode == 'online' ? 'عبر الإنترنت برابط في تقويمه' : (d.location.trim().isEmpty ? 'حضورياً' : 'حضورياً في ${d.location.trim()}')}، ويظهر في تقويمه وتقويمك.',
             'The meeting is on ${AppTime.dateTime(d.startsAt!.toUtc())} (${d.minutes} min), ${d.mode == 'online' ? 'online with a link in their calendar' : (d.location.trim().isEmpty ? 'in person' : 'in person at ${d.location.trim()}')}, in both calendars.'),
     'data' => d.fields.isEmpty
         ? t('يجيب عن الأسئلة التي تختارها.', 'They answer the questions you pick.')
@@ -732,8 +733,8 @@ List<String> askPreviewLines(AskDraft d, {String? name}) {
   final due = d.dueAt == null
       ? t('بلا موعد نهائي.', 'No due date.')
       : t(
-          'الموعد النهائي ${AppTime.dateTime(d.dueAt!.toUtc())}${d.remindDays.isEmpty ? '' : '، مع تذكير قبله بـ${d.remindDays.join(' و')} يوم'}.',
-          'Due ${AppTime.dateTime(d.dueAt!.toUtc())}${d.remindDays.isEmpty ? '' : ', reminded ${d.remindDays.join(' and ')} day(s) before'}.');
+          'الموعد النهائي ${AppTime.dateTime(d.dueAt!.toUtc())}${d.remindDays.isEmpty ? '' : '، مع تذكير قبله بـ${_remindDaysText(d.remindDays)}'}.',
+          'Due ${AppTime.dateTime(d.dueAt!.toUtc())}${d.remindDays.isEmpty ? '' : ', reminded ${_remindDaysText(d.remindDays)} before'}.');
   final review = d.kind == 'data' && d.fields.any((f) => f.caseField)
       ? t('إجاباته عن بيانات الملف لا تُحفظ فيه حتى تقبلها.', 'Answers about file data reach the file only when you accept them.')
       : null;
@@ -830,7 +831,7 @@ Map<String, String> askCodeTexts() => {
       'bad_ask': t('بعض بيانات الطلب غير صالحة، راجعها', 'Some of the request is not valid; check it'),
       'ask_not_found': t('الطلب غير موجود', 'This request was not found'),
       'ask_action_unknown': t('إجراء غير معروف', 'Unknown action'),
-      'fullscreen_needs_due': t('العرض بملء الشاشة يحتاج موعد استحقاق خلال ٧ أيام', 'Full screen needs a due date within 7 days'),
+      'fullscreen_needs_due': t('العرض بملء الشاشة يحتاج موعد استحقاق خلال 7 أيام', 'Full screen needs a due date within 7 days'),
       'asks_disabled': t('طلب البيانات أو الاجتماع من الطالب موقوف حالياً', 'Asking students for data or a meeting is switched off right now'),
       'ask_not_answered': t('لم يُجب الطالب على هذا الطلب بعد', 'The student has not answered yet'),
       'ask_closed': t('هذا الطلب مغلق', 'This request is closed'),
@@ -853,4 +854,12 @@ String askErrorText(ApiException e) {
     return AppConfig.lang == 'en' && en.isNotEmpty ? en : e.message;
   }
   return (c == null ? null : askCodeTexts()[c]) ?? orgErrorText(e);
+}
+
+/// "7 days" / "7 and 3 days" (the unit once, after the last number): the reminders before a due date.
+String _remindDaysText(List<int> days) {
+  final sorted = [...days]..sort((a, b) => b.compareTo(a));
+  if (sorted.length == 1) return daysText(sorted.first);
+  final last = sorted.removeLast();
+  return t('${sorted.join('، ')} و${daysText(last)}', '${sorted.join(', ')} and ${daysText(last)}');
 }

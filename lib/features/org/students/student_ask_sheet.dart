@@ -14,6 +14,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
@@ -289,14 +290,17 @@ class StudentAskView extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       // 1. what
       AppFieldLabel(t('ماذا تطلب؟', 'What do you need?')),
-      AppTabs(
-        key: const ValueKey('students.ask.kind'),
-        items: [
-          for (final k in askKinds) AppTabItem(askKindLabel(k), icon: _kindIcon(k)),
-        ],
-        index: kIndex < 0 ? 0 : kIndex,
-        onChanged: (i) => onKind?.call(askKinds[i]),
-      ),
+      // a Wrap, not a scrolling tab row: every kind stays in view on a 360 px phone
+      Wrap(key: const ValueKey('students.ask.kind'), spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        for (final (i, k) in askKinds.indexed)
+          AppChoiceChip(
+            key: ValueKey('students.ask.kind.$k'),
+            label: askKindLabel(k),
+            icon: _kindIcon(k),
+            selected: i == (kIndex < 0 ? 0 : kIndex),
+            onTap: () => onKind?.call(k),
+          ),
+      ]),
       const SizedBox(height: AppSpace.xxs),
       Text(askKindHint(d.kind), style: AppType.meta(context)),
       AppSpace.gapMd,
@@ -409,7 +413,7 @@ class StudentAskView extends StatelessWidget {
         decoration: InputDecoration(labelText: t('المدة', 'Length')),
         items: [
           for (final m in askMeetingLengths)
-            DropdownMenuItem(value: m, child: Text(m < 60 ? t('$m دقيقة', '$m min') : (m % 60 == 0 ? t('${m ~/ 60} ساعة', '${m ~/ 60} h') : t('ساعة ونصف', '1 h 30 min')))),
+            DropdownMenuItem(value: m, child: Text(m < 60 ? t('$m دقيقة', '$m min') : (m % 60 == 0 ? hoursText(m ~/ 60) : t('ساعة ونصف', '1 h 30 min')))),
         ],
         onChanged: onEdit == null
             ? null

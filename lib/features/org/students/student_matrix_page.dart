@@ -109,7 +109,7 @@ Future<void> openStudentMatrix(BuildContext context, int orgId, {bool canEdit = 
       context,
       OrgPushedPage(
         title: studentMatrixTitle(),
-        subtitle: t('الطلاب وقواعد الدراسة', 'Students & study rules'),
+        subtitle: t('من يقترح ومن يعتمد', 'Who proposes, who approves'),
         helpPageId: 'org.students.rules',
         width: AppWidth.reading,
         child: StudentMatrixPage(orgId: orgId, canEdit: canEdit, api: api),

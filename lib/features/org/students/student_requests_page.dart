@@ -27,6 +27,7 @@ import 'my_ask_page.dart' show myAsksEnabled;
 import 'student_ask_sheet.dart';
 import 'student_asks_models.dart';
 import 'student_file_page.dart' show pushStudentPage;
+import 'student_request_detail.dart' show openStudentRequest;
 import 'students_api.dart';
 import 'students_parts.dart' show StudentAvatar;
 
@@ -151,13 +152,24 @@ class _OrgStudentRequestsPageState extends State<OrgStudentRequestsPage> {
         if (a == null || !mounted) return;
         final changed = await showAppSheet<bool>(context, (ctx) => _AskReviewSheet(ask: a, api: _api));
         if (changed == true && mounted) _load(quiet: true);
+      case 'work_item':
+        // a lifecycle request: its own detail (accept with the decision number · reject · send to the council)
+        final changed = await openStudentRequest(context, widget.orgId, row.sourceId);
+        if (changed == true && mounted) _load(quiet: true);
       default:
-        if (row.can.accept || row.can.reject) await _decision(row, 'accept');
+        // a recommendation (or anything else): read it first; accepting is never the tap itself
+        final verb = await showAppSheet<String>(context, (ctx) => _InboxRowSheet(row: row, asksOn: myAsksEnabled()));
+        if (verb == null || !mounted) return;
+        if (verb == 'accept' || verb == 'reject') {
+          await _decision(row, verb);
+        } else {
+          await _sheet(row, verb == 'meeting' ? 'meeting' : 'data');
+        }
     }
   }
 
   Future<void> _accept(InboxRow row) async {
-    if (row.source == 'case') return _open1(row);
+    if (row.source == 'case' || row.source == 'work_item') return _open1(row);
     if (row.source == 'decision') return _decision(row, 'accept');
     await _run(row, () async {
       final r = await _api.acceptAsk(row.sourceId);
@@ -171,7 +183,7 @@ class _OrgStudentRequestsPageState extends State<OrgStudentRequestsPage> {
   }
 
   Future<void> _return(InboxRow row) async {
-    if (row.source == 'case') return _open1(row);
+    if (row.source == 'case' || row.source == 'work_item') return _open1(row);
     final note = await _askNote(context,
         title: t('أعِد للتصحيح', 'Return for a fix'),
         label: t('ما الذي يصححه الطالب؟', 'What should the student fix?'),
@@ -209,7 +221,7 @@ class _OrgStudentRequestsPageState extends State<OrgStudentRequestsPage> {
   }
 
   Future<void> _reject(InboxRow row) async {
-    if (row.source == 'case') return _open1(row);
+    if (row.source == 'case' || row.source == 'work_item') return _open1(row);
     return _decision(row, 'reject');
   }
 
@@ -252,6 +264,65 @@ class _OrgStudentRequestsPageState extends State<OrgStudentRequestsPage> {
       helpPageId: kStudentRequestsHelpId,
       width: AppWidth.content,
       child: view,
+    );
+  }
+}
+
+/// One inbox row read before any verb (a recommendation): who, what, since when, its status, and the verbs it
+/// allows. Pops the chosen verb (accept · reject · meeting · ask); the caller runs it (accept still asks for a note).
+class _InboxRowSheet extends StatelessWidget {
+  const _InboxRowSheet({required this.row, required this.asksOn});
+  final InboxRow row;
+  final bool asksOn;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = row;
+    final s = r.student;
+    void pick(String v) => Navigator.of(context).pop(v);
+    return AppSheetContent(
+      title: r.sourceLabel,
+      subtitle: s == null || s.displayName.trim().isEmpty ? null : s.displayName,
+      icon: Icons.description_outlined,
+      headerTrailing: const HelpInfoButton(pageId: kStudentRequestsHelpId, autoTour: false),
+      children: [
+        Text(r.title, style: AppType.body(context)),
+        if (r.at != null) ...[
+          const SizedBox(height: AppSpace.xxs),
+          Text(AppTime.dateTime(r.at!.toUtc()), style: AppType.meta(context)),
+        ],
+        AppSpace.gapSm,
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+          AppStatusBadge(label: r.statusLabel, tone: r.statusTone, dot: true, dense: true),
+        ]),
+        AppSpace.gapMd,
+        if (r.can.accept)
+          AppButton.primary(
+              key: ValueKey('students.requests.sheet.${r.id}.accept'),
+              label: t('اقبل…', 'Accept…'),
+              icon: Icons.check_rounded,
+              expand: true,
+              onPressed: () => pick('accept')),
+        if (r.can.reject) ...[
+          AppSpace.gapSm,
+          AppButton.ghost(
+              key: ValueKey('students.requests.sheet.${r.id}.reject'),
+              label: t('ارفض مع ذكر السبب', 'Reject with a reason'),
+              icon: Icons.block_rounded,
+              expand: true,
+              onPressed: () => pick('reject')),
+        ],
+        if (asksOn && r.can.meeting && s != null) ...[
+          AppSpace.gapSm,
+          AppButton.secondary(
+              label: t('اطلب اجتماعاً', 'Request a meeting'), icon: Icons.event_available_rounded, expand: true, onPressed: () => pick('meeting')),
+        ],
+        if (asksOn && r.can.ask && s != null) ...[
+          AppSpace.gapSm,
+          AppButton.secondary(label: t('اطلب من الطالب', 'Ask the student'), icon: Icons.forum_outlined, expand: true, onPressed: () => pick('ask')),
+        ],
+        if (!r.can.accept && !r.can.reject) Text(t('لا يحتاج هذا البند إجراءً منك الآن.', 'This needs nothing from you now.'), style: AppType.meta(context)),
+      ],
     );
   }
 }
@@ -633,7 +704,7 @@ class StudentRequestsView extends StatelessWidget {
         message: switch (tab) {
           'decide' => t('عندما يرد طالب أو يصل ملف إلى خطوتك يظهر هنا.', 'When a student answers or a file reaches your step, it shows here.'),
           'waiting' => t('ما تطلبه من الطلاب ولم يردوا عليه يظهر هنا.', 'What you ask students and they have not answered shows here.'),
-          _ => t('يظهر هنا ما أُنجز خلال آخر ٩٠ يوماً.', 'What was finished in the last 90 days shows here.'),
+          _ => t('يظهر هنا ما أُنجز خلال آخر 90 يوماً.', 'What was finished in the last 90 days shows here.'),
         },
       );
     } else {

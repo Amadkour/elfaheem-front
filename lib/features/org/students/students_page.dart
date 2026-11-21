@@ -368,6 +368,7 @@ class StudentsPageView extends StatelessWidget {
             flex: 3,
             cell: (context, r) => Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
               StudentStatusChip(r.chip),
+              if (studentExtraStanding(r.chip, r.acadStanding) != null) StudentStandingChip(chip: r.chip, acadStanding: r.acadStanding),
               if (r.flags.isNotEmpty) StudentFlagChips(r.flags, max: 1),
             ]),
           ),

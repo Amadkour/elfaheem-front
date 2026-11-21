@@ -230,7 +230,7 @@ class _MissingSheetState extends State<_MissingSheet> {
 String remindAgainText(DateTime? at) {
   final base = t('ذُكِّر الطالب خلال آخر 24 ساعة.', 'The student was reminded in the last 24 hours.');
   if (at == null) return base;
-  return '$base ${t('يمكن التذكير مرة أخرى في', 'You can remind again on')} ${AppTime.dateTime(at)}';
+  return '$base ${t('يمكن التذكير مرة أخرى في', 'You can remind again on')} ${AppTime.dateTime(at.toUtc())}';
 }
 
 /// The sheet's body over plain values (the layout harness pumps it). Every callback is optional: without them the
@@ -422,7 +422,7 @@ class _Intro extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(d == null ? n : '$n · ${t('آخر موعد', 'due by')} ${AppTime.date(d)}', style: AppType.bodyStrong(context)),
+        Text(d == null ? n : '$n · ${t('آخر موعد', 'due by')} ${AppTime.date(d.toUtc())}', style: AppType.bodyStrong(context)),
         if (editable)
           Text(
             t('أكمل كل بند هنا مباشرة، أو ذكّر الطالب ليكمله بنفسه.', 'Complete each item right here, or remind the student to do it.'),
@@ -503,7 +503,7 @@ class _ItemCard extends StatelessWidget {
                 tone: item.status == 'rejected' ? AppTone.danger : (item.status == 'deferred' ? AppTone.info : AppTone.warning),
                 dense: true,
               ),
-            if (due != null) AppStatusBadge(label: '${t('حتى', 'Due')} ${AppTime.date(due)}', icon: Icons.event_outlined, dense: true),
+            if (due != null) AppStatusBadge(label: '${t('حتى', 'Due')} ${AppTime.date(due.toUtc())}', icon: Icons.event_outlined, dense: true),
           ]),
         ],
         if (body != null) ...[AppSpace.gapXs, body!],

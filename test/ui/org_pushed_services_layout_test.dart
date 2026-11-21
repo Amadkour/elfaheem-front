@@ -19,6 +19,7 @@ import 'package:flutter_education_app/features/org/org_providers.dart';
 import 'package:flutter_education_app/features/org/org_reports/report_page.dart';
 import 'package:flutter_education_app/features/org/org_services_pages.dart';
 import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show ltrIsolate;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -188,7 +189,7 @@ void main() {
       () => _host(const OrgComplaintThreadScreen(id: 5), s),
       act: (tester) async {
         await _expectHeader(tester);
-        expect(find.text('CMP-2026-000123'), findsOneWidget);
+        expect(find.text(ltrIsolate('CMP-2026-000123')), findsOneWidget);
         expect(find.byKey(const ValueKey('org.page.more')), findsOneWidget);
         expect(find.byType(TextField), findsOneWidget);
       },
@@ -202,7 +203,7 @@ void main() {
       () => _host(const OrgComplaintThreadScreen(id: 5, orgId: 4, canAct: true), s),
       act: (tester) async {
         expect(find.byKey(const ValueKey('org.header.back')), findsNothing);
-        expect(find.text('CMP-2026-000123'), findsOneWidget);
+        expect(find.text(ltrIsolate('CMP-2026-000123')), findsOneWidget);
       },
     );
   });

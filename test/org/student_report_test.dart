@@ -94,6 +94,13 @@ void main() {
       expect([for (final x in r.topReasons) x.code], ['illness', 'gpa']);
       expect(reportReasonLabel('illness'), isNot('illness'));
       expect(reportReasonLabel('gpa'), isNot('gpa'));
+      expect(r.topReasons.first.label, ''); // an older server: no label_ar / label_en
+      final withLabel = StudentReport.fromJson({
+        'top_reasons': [
+          {'code': 'x_custom', 'count': 2, 'label_ar': 'سبب خاص', 'label_en': 'Custom reason'},
+        ],
+      });
+      expect(withLabel.topReasons.single.label, 'Custom reason');
     });
 
     test('groups: programme and level labels, the "none" rows', () {

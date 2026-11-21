@@ -168,7 +168,8 @@ class StudentReport {
   final List<ReportKeyCount> byDecision, pendingByDecision;
 
   /// `(code, count)`, most first.
-  final List<({String code, int count})> topReasons;
+  /// [label] is the server's text in the app's language ('' on an older server: [reportReasonLabel] of the code).
+  final List<({String code, int count, String label})> topReasons;
   final List<ReportGroup> byProgramme, byLevel;
 
   factory StudentReport.fromJson(dynamic j) {
@@ -187,7 +188,7 @@ class StudentReport {
       undone: asInt(m['undone']),
       topReasons: [
         for (final r in asMapList(m['top_reasons']))
-          if (asStr(r['code']).trim().isNotEmpty) (code: asStr(r['code']).trim(), count: asInt(r['count'])),
+          if (asStr(r['code']).trim().isNotEmpty) (code: asStr(r['code']).trim(), count: asInt(r['count']), label: _bilingual(r['label_ar'], r['label_en'])),
       ],
       pendingTotal: asInt(pd['total']),
       pendingByKind: _counts(pd['by_kind']),
@@ -211,6 +212,12 @@ class StudentReport {
 
 /// The label of a reason code (a dismissal reason or a status reason).
 String reportReasonLabel(String code) => anyReasonLabel(code);
+
+/// The server's two labels in the app's language, the other one when that is empty ('' when both are).
+String _bilingual(dynamic ar, dynamic en) {
+  final a = asStr(ar).trim(), e = asStr(en).trim();
+  return t(a.isNotEmpty ? a : e, e.isNotEmpty ? e : a);
+}
 
 /// One labelled bar.
 typedef ReportBar = ({String key, String label, int count});

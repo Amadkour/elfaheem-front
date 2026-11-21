@@ -238,7 +238,7 @@ Future<void> openStudentRules(BuildContext context, int orgId, {bool canEdit = t
       context,
       OrgPushedPage(
         title: studentRulesTitle(),
-        subtitle: t('كيف يدرس الطالب وينجح وينتقل', 'How students study, pass and move up'),
+        subtitle: t('النجاح والانتقال والتقديرات', 'Passing, moving up, grades'),
         helpPageId: kStudentSettingsHelpId,
         width: AppWidth.form,
         child: OrgStudentRulesPage(orgId: orgId, canEdit: canEdit, api: api),

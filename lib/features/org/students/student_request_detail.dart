@@ -10,6 +10,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show bidiIsolate, ltrIsolate;
 
 import '../../admin/admin_common.dart' show t;
 import '../../help/help_info_button.dart';
@@ -86,7 +87,7 @@ class _RequestSheetState extends State<_RequestSheet> {
     final r = _r;
     return AppSheetContent(
       title: r?.label ?? t('طلب طالب', 'A student request'),
-      subtitle: r == null ? null : [if (r.studentName.isNotEmpty) r.studentName, if (r.ref.isNotEmpty) r.ref].join(' · '),
+      subtitle: r == null ? null : [if (r.studentName.isNotEmpty) bidiIsolate(r.studentName), if (r.ref.isNotEmpty) ltrIsolate(r.ref)].join(' · '),
       icon: r == null ? Icons.description_outlined : requestKindIcon(r.request),
       headerTrailing: const HelpInfoButton(pageId: kStudentRequestsHelpId, autoTour: false),
       children: [
@@ -222,7 +223,7 @@ class _StudentRequestDetailViewState extends State<StudentRequestDetailView> {
       if (r.reasonCode != null) (t('السبب الرئيسي', 'Main reason'), reasonLabel(r.reasonCode!)),
       if (dates.isNotEmpty) (t('المدة', 'Dates'), dates),
       if (r.bodyKey != null) (t('جهة القرار', 'Decided by'), bodyLabel(r.bodyKey!)),
-      if (r.decisionNo != null) (t('رقم القرار', 'Decision number'), r.decisionNo!),
+      if (r.decisionNo != null) (t('رقم القرار', 'Decision number'), bidiIsolate(r.decisionNo!)),
       for (final e in r.changes.entries) (r.changeLabel(e.key), e.value),
     ];
 
@@ -235,7 +236,7 @@ class _StudentRequestDetailViewState extends State<StudentRequestDetailView> {
         AppSpace.gapSm,
         AppStatusPath.request(
           reached: requestPathReached(r.stage),
-          times: [created == null ? null : AppTime.date(created), null, decided == null ? null : AppTime.date(decided)],
+          times: [created == null ? null : AppTime.date(created.toUtc()), null, decided == null ? null : AppTime.date(decided.toUtc())],
         ),
       ],
       if ((r.reason ?? '').isNotEmpty) ...[

@@ -97,7 +97,7 @@ void main() {
       expect(f.hasMissing, isTrue);
       expect(f.displayName, 'Ahmed Mohamed Ali');
       expect(f.otherName, 'أحمد محمد علي');
-      expect(f.programLine, 'Computer Science · Year 2');
+      expect(f.programLine, 'Computer Science · Level 2');
       expect(f.email, 'a@example.com');
       expect(f.birthDate, DateTime(2008, 3, 11));
       expect(f.academic!.cgpa, 2.41);
@@ -114,7 +114,7 @@ void main() {
       AppConfig.lang = 'ar';
       expect(f.displayName, 'أحمد محمد علي');
       expect(f.otherName, 'Ahmed Mohamed Ali');
-      expect(f.programLine, 'علوم الحاسب · الفرقة 2');
+      expect(f.programLine, 'علوم الحاسب · المستوى 2');
     });
 
     test('a thin payload: sensitive values null, complaints hidden, no case', () {
@@ -277,5 +277,24 @@ void main() {
       expect(academicYearOf(DateTime(2026, 8, 31)), 2025);
       expect(academicYearOf(DateTime(2026, 9, 1)), 2026);
     });
+  });
+
+  test('open lifecycle requests: parsed newest first, labels by language, entries without an id dropped', () {
+    final o = StudentOpen.fromJson({
+      'requests': 2,
+      'lifecycle_requests': [
+        {'id': 9, 'ref': 'S-2026-0009', 'request': 'suspend', 'label_ar': 'إيقاف قيد', 'label_en': 'Suspension', 'status': 'under_review',
+          'status_label_ar': 'قيد المراجعة', 'status_label_en': 'Under review', 'stage': 'review', 'origin': 'student', 'created_at': '2026-11-20T10:00:00'},
+        {'ref': 'no id'},
+      ],
+    });
+    expect(o.requests, 2);
+    expect(o.lifecycleRequests.length, 1);
+    final x = o.lifecycleRequests.single;
+    expect((x.id, x.ref, x.label, x.statusLabel, x.stage), (9, 'S-2026-0009', 'Suspension', 'Under review', 'review'));
+    expect(x.createdAt!.toUtc(), DateTime.utc(2026, 11, 20, 10));
+    AppConfig.lang = 'ar';
+    expect(StudentOpen.fromJson({'lifecycle_requests': [{'id': 1, 'label_en': 'Only English'}]}).lifecycleRequests.single.label, 'Only English');
+    expect(StudentOpen.fromJson({'requests': 1}).lifecycleRequests, isEmpty); // an older server
   });
 }

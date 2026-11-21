@@ -237,8 +237,38 @@ class StudentMeeting {
 }
 
 /// What is still open around the student. [complaints] is null without the complaints right (the line is hidden).
+/// One open lifecycle request of the file (`open.lifecycle_requests[]`, newest first): [id] is the Governance work
+/// item id (the request detail opens it). The labels are the server's in the app's language ('' on an older server).
+class StudentOpenRequest {
+  const StudentOpenRequest({required this.id, this.ref = '', this.request = '', this.label = '', this.status = '', this.statusLabel = '', this.stage = '', this.origin = '', this.createdAt});
+
+  /// null when the entry has no id (nothing to open).
+  static StudentOpenRequest? fromJson(dynamic v) {
+    final m = _map(v);
+    final id = _int(m['id']);
+    if (id == null || id <= 0) return null;
+    String pick(String k) => _pick(_str(m['${k}_ar']), _str(m['${k}_en']));
+
+    return StudentOpenRequest(
+      id: id,
+      ref: _str(m['ref']) ?? '',
+      request: _str(m['request']) ?? '',
+      label: pick('label'),
+      status: _str(m['status']) ?? '',
+      statusLabel: pick('status_label'),
+      stage: _str(m['stage']) ?? '',
+      origin: _str(m['origin']) ?? '',
+      createdAt: orgParseUtc(m['created_at']),
+    );
+  }
+
+  final int id;
+  final String ref, request, label, status, statusLabel, stage, origin;
+  final DateTime? createdAt;
+}
+
 class StudentOpen {
-  const StudentOpen({this.asks = 0, this.requests = 0, this.complaints, this.nextMeeting});
+  const StudentOpen({this.asks = 0, this.requests = 0, this.complaints, this.nextMeeting, this.lifecycleRequests = const []});
 
   factory StudentOpen.fromJson(dynamic v) {
     final m = _map(v);
@@ -247,12 +277,18 @@ class StudentOpen {
       requests: _int(m['requests']) ?? 0,
       complaints: _int(m['complaints']),
       nextMeeting: StudentMeeting.fromJson(m['next_meeting']),
+      lifecycleRequests: [
+        for (final x in _list(m['lifecycle_requests'])) ?StudentOpenRequest.fromJson(x),
+      ],
     );
   }
 
   final int asks, requests;
   final int? complaints;
   final StudentMeeting? nextMeeting;
+
+  /// The open lifecycle requests, newest first (empty on an older server: only the [requests] count).
+  final List<StudentOpenRequest> lifecycleRequests;
 }
 
 /// `GET …/students/{uid}/file`: the student's row ([row], parsed by students_models.dart) plus the file's own parts.
@@ -341,11 +377,11 @@ class StudentFile {
   bool get hasMissing => row.hasMissing;
 }
 
-/// A level code as words: "1" → "Year 1"; any other code is shown as sent.
+/// A level code as words: "1" → "Level 1" (the list, the file and the report say the same word); any other code is shown as sent.
 String studentLevelText(String level) {
   final n = int.tryParse(level);
   if (n == null) return level;
-  return t('الفرقة $n', 'Year $n');
+  return t('المستوى $n', 'Level $n');
 }
 
 /// `m` / `f` as words; an unknown code as sent.
