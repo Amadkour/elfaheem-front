@@ -20,6 +20,7 @@ import 'package:flutter_education_app/features/courses/student/my_courses/my_cou
 import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/home/student/home_screen.dart';
 import 'package:flutter_education_app/features/store/store_tab.dart';
+import 'package:flutter_education_app/features/games/games_tab.dart';
 
 // The shells (WideShell / RailShell / MobileShell), DashboardItem and the top-bar icons live in the design layer
 // (D-062); re-exported here for the home screens that still import them from this file.
@@ -112,6 +113,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'store',
         null,
         const StoreTab(),
+      ),
+      // educational games (D-1346, kill switch student_tab_games): a guest plays without saving
+      DashboardItem(
+        Icons.extension_outlined,
+        Icons.extension_rounded,
+        'games',
+        null,
+        const GamesTab(),
       ),
       DashboardItem(
         Icons.calendar_month_outlined,

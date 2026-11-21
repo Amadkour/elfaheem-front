@@ -23,6 +23,8 @@ import 'package:flutter_education_app/design/master_detail/entity_detail_view.da
 import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
 import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
+import 'package:flutter_education_app/features/games/games_api.dart' show gamesOff, gamesLabel;
+import 'package:flutter_education_app/features/games/games_progress.dart' show ParentChildGamesPage;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 
 class ParentChildrenPage extends StatefulWidget {
@@ -212,6 +214,19 @@ class _ChildCard extends StatelessWidget {
           ],
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
             AppButton(label: 'pl_tab_reports'.tr, icon: Icons.insights_rounded, variant: AppButtonVariant.secondary, size: AppButtonSize.sm, onPressed: report),
+            // the child's games: stars, badges, rounds (D-1346; hidden with the Games tab)
+            if (!gamesOff())
+              AppButton(
+                key: ValueKey('parent.games.$id'),
+                label: gamesLabel(),
+                icon: Icons.extension_rounded,
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  settings: RouteSettings(name: '/parent/children/$id/games'),
+                  builder: (_) => ParentChildGamesPage(studentId: id, studentName: name),
+                )),
+              ),
             if (pr != null) AppStatusBadge(label: '${pr.courses.length} ${anTr('an_courses', 'Courses')}', icon: Icons.menu_book_rounded),
             if (attention > 0)
               AppStatusBadge(
