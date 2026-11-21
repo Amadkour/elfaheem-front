@@ -22,6 +22,7 @@ import 'package:flutter_education_app/features/home/student/home_screen.dart';
 import 'package:flutter_education_app/features/store/store_tab.dart';
 import 'package:flutter_education_app/features/games/games_tab.dart';
 import 'package:flutter_education_app/features/quran/quran_tab.dart';
+import 'package:flutter_education_app/features/nahw/nahw_tab.dart';
 
 // The shells (WideShell / RailShell / MobileShell), DashboardItem and the top-bar icons live in the design layer
 // (D-062); re-exported here for the home screens that still import them from this file.
@@ -130,6 +131,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'quran',
         null,
         const QuranTab(),
+      ),
+      // Arabic grammar (D-1349, kill switch student_tab_nahw): levels, lessons, exercises graded on the device
+      DashboardItem(
+        Icons.translate_outlined,
+        Icons.translate_rounded,
+        'nahw',
+        null,
+        const NahwTab(),
       ),
       DashboardItem(
         Icons.calendar_month_outlined,

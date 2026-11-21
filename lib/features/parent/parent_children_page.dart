@@ -28,6 +28,8 @@ import 'package:flutter_education_app/features/games/games_progress.dart' show P
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry, t;
 import 'package:flutter_education_app/features/quran/quran_api.dart' show quranOff;
 import 'package:flutter_education_app/features/quran/quran_progress.dart' show QuranProgressPage;
+import 'package:flutter_education_app/features/nahw/nahw_api.dart' show nahwOff, nahwLabel;
+import 'package:flutter_education_app/features/nahw/nahw_tab.dart' show ParentChildNahwPage;
 
 class ParentChildrenPage extends StatefulWidget {
   const ParentChildrenPage({super.key, required this.onOpenLinkTab});
@@ -240,6 +242,19 @@ class _ChildCard extends StatelessWidget {
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
                   settings: RouteSettings(name: '/parent/children/$id/quran'),
                   builder: (_) => QuranProgressPage.child(childId: id, name: name),
+                )),
+              ),
+            // the child's Arabic grammar progress per level and lesson (D-1349; hidden with the Grammar tab)
+            if (!nahwOff())
+              AppButton(
+                key: ValueKey('parent.nahw.$id'),
+                label: nahwLabel(),
+                icon: Icons.translate_rounded,
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  settings: RouteSettings(name: '/parent/children/$id/nahw'),
+                  builder: (_) => ParentChildNahwPage(studentId: id, studentName: name),
                 )),
               ),
             if (pr != null) AppStatusBadge(label: '${pr.courses.length} ${anTr('an_courses', 'Courses')}', icon: Icons.menu_book_rounded),
