@@ -23,6 +23,10 @@ const notInCatalog = <String, String>{
   // self-learning (Learning Hub v2 §5): the catalog entries come with the back's branch
   'admin.self_learning': 'lands with feature/lh2-learn',
   'student_tab_self_learning': 'lands with feature/lh2-learn',
+  // Learning Hub v2 teachers and packages (CONTRACT.md §1 / §2): the back stream adds them to feature_catalog.py
+  'teacher_onboarding': 'lands with feature/lh2-core',
+  'teacher_discovery': 'lands with feature/lh2-core',
+  'packages': 'lands with feature/lh2-core',
 };
 
 final _patterns = [

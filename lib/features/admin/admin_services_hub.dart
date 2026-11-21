@@ -72,6 +72,8 @@ import 'landing/landing_admin_api.dart' show kLandingAdminFeatureKey;
 import 'modules/admin_modules_page.dart' show AdminModulesPage;
 import 'modules/module_settings_api.dart' show kAdminModulesFeatureKey;
 import 'package:flutter_education_app/features/quran/admin/quran_admin_page.dart' show QuranAdminPage;
+import 'package:flutter_education_app/features/teachers/teacher_review_admin.dart' show TeacherReviewPage;
+import 'package:flutter_education_app/features/teachers/teachers_api.dart' show kTeacherOnboardingFeature;
 import 'package:flutter_education_app/features/nahw/admin/nahw_admin_page.dart' show NahwAdminPage;
 import 'package:flutter_education_app/features/games/admin/games_admin_page.dart' show GamesAdminPage;
 import 'package:flutter_education_app/features/self_learning/admin/sl_admin_page.dart' show SlAdminPage;
@@ -363,6 +365,18 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           featureKey: 'student_tab_quran',
           visible: isSuper,
           onTap: () => push(const QuranAdminPage()),
+        ),
+        // every subject's teacher profiles: the review queue (Learning Hub v2, D-1623); admins and super admins
+        AdminService(
+          labelKey: 'admin_teacher_review',
+          descKey: 'admin_teacher_review_d',
+          label: t('مراجعة المعلمين', 'Teacher review'),
+          desc: t('ملفات معلمي القرآن والتجويد والفقه والنحو ومستنداتهم: اعتماد أو رفض مع السبب',
+              'Quran, tajweed, fiqh and grammar teacher profiles and documents: approve, or reject with a reason'),
+          icon: Icons.fact_check_rounded,
+          colors: AdminPalette.green,
+          featureKey: kTeacherOnboardingFeature,
+          onTap: () => push(const TeacherReviewPage()),
         ),
         // grammar (nahw) content editor (6.R #8, D-1349); super admin only, kill switch admin.nahw
         AdminService(

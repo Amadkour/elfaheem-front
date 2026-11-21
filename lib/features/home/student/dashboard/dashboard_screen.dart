@@ -23,6 +23,8 @@ import 'package:flutter_education_app/features/store/store_tab.dart';
 import 'package:flutter_education_app/features/games/games_tab.dart';
 import 'package:flutter_education_app/features/quran/quran_tab.dart';
 import 'package:flutter_education_app/features/nahw/nahw_tab.dart';
+import 'package:flutter_education_app/features/teachers/teacher_discovery.dart' show TeachersTab;
+import 'package:flutter_education_app/features/teachers/teachers_api.dart' show kTeacherDiscoveryFeature;
 
 // The shells (WideShell / RailShell / MobileShell), DashboardItem and the top-bar icons live in the design layer
 // (D-062); re-exported here for the home screens that still import them from this file.
@@ -58,7 +60,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final open = dashboardItems.isEmpty ? null : dashboardItems[_currentIndex.clamp(0, dashboardItems.length - 1)].tabId;
     final next = [
       for (final e in _allItems)
-        if (!Helpers.AppConfig.disableList.contains('student_tab_${e.label}')) e,
+        if (!Helpers.AppConfig.disableList.contains('student_tab_${e.label}') &&
+            // Learning Hub v2 teachers (D-1629): the contract's own switch
+            !(e.label == 'teachers' && Helpers.AppConfig.disableList.contains(kTeacherDiscoveryFeature)))
+          e,
     ];
     dashboardItems = next;
     final i = open == null ? -1 : next.indexWhere((e) => e.tabId == open);
@@ -163,6 +168,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const QuranTab(),
         mobileGroup: _learn,
         hint: 'learn_hint_quran',
+      ),
+      // every subject's teachers and their packages (Learning Hub v2, D-1629; kill switch teacher_discovery)
+      DashboardItem(
+        Icons.person_search_outlined,
+        Icons.person_search_rounded,
+        'teachers',
+        null,
+        const GuestGate(
+          icon: Icons.person_search_rounded,
+          messageKey: 'guest_locked_teachers',
+          child: TeachersTab(),
+        ),
+        mobileGroup: _learn,
+        hint: 'learn_hint_teachers',
       ),
       // Arabic grammar (D-1349, kill switch student_tab_nahw): levels, lessons, exercises graded on the device
       DashboardItem(
