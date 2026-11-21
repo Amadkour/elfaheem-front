@@ -490,11 +490,12 @@ workflows:
       - build/nb-upload/*.tar.gz
       - build/debug-info-*.zip
 
-  # ── Windows desktop → our website (a zip of the release folder) ──────────────────────────────────────────────────
+  # ── Windows desktop → our website (the installer + a zip of the release folder, docs/release/WINDOWS.md) ────────
   # Windows steps run in PowerShell; the upload uses Git's bash (Git for Windows is on Codemagic's Windows image).
-  # Not signed: SmartScreen warns on first start until a code-signing certificate exists (D-137 "Not done").
+  # Not signed (D-1361): SmartScreen warns on the first run until a code-signing certificate exists (WINDOWS.md).
+  # Inno Setup comes from winget / Chocolatey inside package_windows.ps1, not a Codemagic tool (D-146).
   windows-website:
-    name: Windows → website (zip)
+    name: Windows → website (installer + zip)
     labels:
       - windows
       - website
@@ -523,16 +524,12 @@ workflows:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           flutter test test/perf -j 1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: flutter build windows + zip
+      - name: flutter build windows + installer + zip
         script: |
-          $symbols = "build/debug-info/$($env:NB_BUILD_NAME)+$($env:NB_BUILD_NUMBER)/windows"
-          flutter config --enable-windows-desktop
-          flutter build windows --release --obfuscate "--split-debug-info=$symbols" "--build-name=$env:NB_BUILD_NAME" "--build-number=$env:NB_BUILD_NUMBER"
+          # scripts/release/package_windows.ps1: the release build (obfuscated, symbols zipped to build/debug-info-*.zip),
+          # the Inno Setup installer (winget / Chocolatey install it when missing) and the zip, both into build/nb-upload
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts/release/package_windows.ps1 -BuildName $env:NB_BUILD_NAME -BuildNumber $env:NB_BUILD_NUMBER -UploadDir build/nb-upload
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          New-Item -ItemType Directory -Force build/nb-upload | Out-Null
-          $name = "NextBrain-$($env:NB_BUILD_NAME)-$($env:NB_BUILD_NUMBER)-windows-x64.zip"
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "build/nb-upload/$name" -Force
-          Compress-Archive -Path "$symbols/*" -DestinationPath "build/debug-info-$($env:NB_BUILD_NAME)+$($env:NB_BUILD_NUMBER)-windows.zip" -Force
           Get-ChildItem build/nb-upload
       - name: Upload the files to our server
         script: |
@@ -541,5 +538,6 @@ workflows:
           & $bash scripts/release/upload_artifacts.sh build/nb-upload
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     artifacts:
+      - build/nb-upload/*-setup.exe
       - build/nb-upload/*.zip
       - build/debug-info-*.zip
