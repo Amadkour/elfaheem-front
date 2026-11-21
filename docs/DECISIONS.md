@@ -5462,3 +5462,37 @@ Postgraduate thesis states (registered, struck, defended; RESEARCH §1.4) wait f
 as status events and a flag only, with no investigation workflow (RESEARCH §5 arts. 123–129); fees stay a field and
 never block a status change (D-1204); a national ID enrolled in a sister faculty warns and does not block
 (RESEARCH §1.1 [S6]); incomplete files are reminded every 7 days, four times, then become a staff task.
+
+## D-1501 — Drawing on a shared screen works in the app after the Android overlay is granted · 2026-11-21 · accepted
+
+Once "Display over other apps" was granted, the armed overlay put the annotation board in burned-in mode at once and
+closed the in-app toolbar, so the presenter could draw over other apps but no longer on the share inside NextBrain;
+full view also put the pen down (D-108 round 7 kept it for the board only). Now burned-in mode follows where the
+presenter is (`annotBurnedInNow`: overlay armed AND the app in the background, re-evaluated on every lifecycle
+change and role re-sort): in front, the in-app layer and toolbar draw as vectors that viewers see; outside the app,
+the overlay burns the strokes into the video as before. Full view keeps the pen on a share. While my camera is
+swapped onto the stage the share in the small box shows its drawings view only (`_swappedStageTile`) and the pen
+is not offered there (`liveCanAnnotateShare(shareInBox:)`). `canDraw`, sender checks and normalized coordinates are
+unchanged. Vector strokes drawn in the app stay on the board while the presenter is away in another app.
+
+## D-1503 — Live recording is off unless the host turns it on · 2026-11-21 · accepted
+
+Every parser read a missing `record_enabled` / `recording_enabled` as ON, and the Go live sheet, the session form
+and the course's "last session" fallback all started at on. Now a session records only when its flag is exactly
+`true`: payload parsers use `== true`, model / widget defaults are false, `goLiveDefaultRecord` falls back to off
+(a suggested session's or the course's latest live session's explicit choice still wins). In the room every host
+sees "⏸ Not recording · ● Record" while nothing records (`liveRecordOffer`): a meeting's creator as before (D-313),
+and now a course session's teacher in client mode too — their Record sets the session's switch
+(`PUT /sessions/{id} {record_enabled: true}`) and then starts the device recorder. Students and guests see the
+recording only while it runs (REC / the info sheet).
+
+## D-1504 — The teacher's camera: 720p at 30 fps, 1.8 Mbit/s, keeps its resolution; optional 1080p · 2026-11-21 · accepted
+
+The host camera was 720p at the shared `camera_fps` (24) with a 1.28 Mbit/s top layer: soft on a teacher's
+writing. `LiveConfig.cameraFpsHost` (from `camera_fps_host`; absent → 30, or 15 when the super admin set
+`camera_fps` 15 for every camera) drives the host's capture and layers; `cameraBitrateKbps` gives 720p 1800 and
+1080p 3000 at 30 fps (VP8; ×0.85 at 24, ×0.65 at 15, H.264 ×1.1, VP9 ×0.75). Layers stay 180p@≤15 · 360p · 720p
+(180p · 540p · 1080p under a 1080p cap, which `camera_max_host: "1080p"` turns on — participants stay ≤ 540p).
+The host's camera publishes with `degradationPreference: maintainResolution`; adaptive stream and dynacast stay
+on. `screen_fps_max` defaults to 15 (the server's recommended value) and only applies when the server sends none;
+screen-share presets are unchanged.

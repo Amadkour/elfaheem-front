@@ -17,7 +17,8 @@
 //
 // Burned-in mode (Android whole-screen share with the native overlay, android_overlay.dart): the presenter's
 // strokes are drawn into the shared video by the overlay, so local strokes here are never sent as vectors, and
-// students cannot draw.
+// students cannot draw. Since D-1501 it is on only while the overlay is armed AND the presenter's app is in the
+// background ([annotBurnedInNow]): back in the app, the in-app layer and toolbar draw as vectors again.
 library;
 
 import 'dart:async';
@@ -28,6 +29,24 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_education_app/features/live/room/annotation/annotation_protocol.dart';
 import 'package:flutter_education_app/features/live/room/annotation/live_presence.dart';
+
+/// D-1501: burned-in mode follows where the presenter is — the native overlay draws only over the other apps, so it
+/// is in force only while it is armed and NextBrain is in the background; in front, the in-app layer draws.
+bool annotBurnedInNow({required bool overlayArmed, required bool appInFront}) => overlayArmed && !appInFront;
+
+/// D-1501: the in-app pen is offered on a shared screen when annotation is on, the share fills the stage (the
+/// normal view, full view or a meeting's overlay — not while my camera is swapped onto the stage and the share sits
+/// in the small box) with no board over it, this person may draw ([AnnotationController.canDrawLocal]) and the
+/// strokes are not burned in by the native overlay ([burnedIn], [annotBurnedInNow]).
+bool liveCanAnnotateShare({
+  required bool enabled,
+  required bool shareOnStage,
+  required bool boardOnStage,
+  required bool canDrawLocal,
+  required bool burnedIn,
+  bool shareInBox = false,
+}) =>
+    enabled && shareOnStage && !boardOnStage && !shareInBox && canDrawLocal && !burnedIn;
 
 /// Publishes [bytes] on [topic]; [to] limits the receivers (null = everyone).
 typedef AnnotSend = Future<void> Function(String topic, List<int> bytes, bool reliable, {List<String>? to});

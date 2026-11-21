@@ -6,7 +6,8 @@
 // recommended default below, so the room never depends on the server knowing this contract.
 //
 //   {"v":1,"video_codec":"vp8"|"h264"|"vp9","weak_network":"adaptive"|"audio_first",
-//    "camera_max_host":"720p"|"540p"|"360p","camera_max_participant":"540p"|"360p"|"180p","camera_fps":15|24|30,
+//    "camera_max_host":"1080p"|"720p"|"540p"|"360p","camera_max_participant":"540p"|"360p"|"180p","camera_fps":15|24|30,
+//    "camera_fps_host":15|24|30 (D-1504; absent: 30, or 15 when camera_fps is 15),
 //    "screen_fps_max":5..30,"screen_bitrate_kbps":500..6000,"audio_dtx":bool,"audio_red":bool,
 //    "participants_camera_default_off":bool,"pause_hidden_video":bool,
 //    "recording_mode":"server"|"client","server_recording_engine":"composite"|"media"}
@@ -33,14 +34,17 @@ enum LiveCameraCap {
   p180(320, 180),
   p360(640, 360),
   p540(960, 540),
-  p720(1280, 720);
+  p720(1280, 720),
+
+  /// The host only, and only when the server's live config asks for it (D-1504).
+  p1080(1920, 1080);
 
   const LiveCameraCap(this.width, this.height);
 
   final int width;
   final int height;
 
-  /// "720p" / "720" / 720 → [p720]; null when not one of the four.
+  /// "720p" / "720" / 720 → [p720]; null when not one of the five.
   static LiveCameraCap? parse(Object? raw) {
     final s = '${raw ?? ''}'.trim().toLowerCase().replaceAll('p', '');
     final n = int.tryParse(s);
@@ -61,7 +65,8 @@ class LiveConfig {
     this.cameraMaxHost = LiveCameraCap.p720,
     this.cameraMaxParticipant = LiveCameraCap.p360,
     this.cameraFps = 24,
-    this.screenFpsMax = 30,
+    this.cameraFpsHost = 30,
+    this.screenFpsMax = 15,
     this.screenBitrateKbps = 2500,
     this.audioDtx = true,
     this.audioRed = true,
@@ -79,17 +84,21 @@ class LiveConfig {
   final LiveVideoCodec videoCodec;
   final LiveWeakNetwork weakNetwork;
 
-  /// The host's (teacher / meeting owner) camera cap: 720p, 540p or 360p.
+  /// The host's (teacher / meeting owner) camera cap: 720p (default), 540p or 360p; 1080p when the server sends it.
   final LiveCameraCap cameraMaxHost;
 
   /// Everyone else's camera cap: 540p, 360p or 180p.
   final LiveCameraCap cameraMaxParticipant;
 
-  /// 15, 24 or 30.
+  /// Everyone but the host: 15, 24 or 30.
   final int cameraFps;
 
+  /// The host's camera (D-1504): `camera_fps_host` when the server sends it, else 30 — or 15 when the super admin
+  /// chose 15 for every camera (`camera_fps`), the bandwidth-saving setting.
+  final int cameraFpsHost;
+
   /// The screen share's frame-rate ceiling (5–30); the presenter's mode stays under it (Detail is 15 at most
-  /// anyway, Motion 30): the default 30 leaves both modes as designed.
+  /// anyway, Motion 30). Default 15, the server's recommended value (D-1504): used only when the server sends none.
   final int screenFpsMax;
 
   /// The screen share's top bitrate in kbps (500–6000): Detail uses it, Motion 1.2× (capped at 6000).
@@ -118,6 +127,8 @@ class LiveConfig {
   bool get serverRecords => recordingMode == LiveRecordingMode.server;
 
   LiveCameraCap cameraCapFor({required bool host}) => host ? cameraMaxHost : cameraMaxParticipant;
+
+  int cameraFpsFor({required bool host}) => host ? cameraFpsHost : cameraFps;
 
   /// The camera a person starts with on the pre-join page when nothing else decided it (a Rejoin keeps theirs).
   bool cameraStartsOn({required bool host}) => host || !participantsCameraDefaultOff;
@@ -155,13 +166,16 @@ class LiveConfig {
       'adaptive' => LiveWeakNetwork.adaptive,
       _ => d.weakNetwork,
     };
-    // The host cap is 720p at most and 360p at least; a participant's 540p at most and 180p at least.
+    // The host cap is 1080p at most (D-1504, only when sent) and 360p at least; a participant's 540p at most and
+    // 180p at least.
     var host = LiveCameraCap.parse(j['camera_max_host']) ?? d.cameraMaxHost;
     if (host == LiveCameraCap.p180) host = LiveCameraCap.p360;
     var part = LiveCameraCap.parse(j['camera_max_participant']) ?? d.cameraMaxParticipant;
-    if (part == LiveCameraCap.p720) part = LiveCameraCap.p540;
+    if (part.height > LiveCameraCap.p540.height) part = LiveCameraCap.p540;
     final fpsRaw = n('camera_fps');
     final fps = fpsRaw == null ? d.cameraFps : snapCameraFps(fpsRaw);
+    final hostFpsRaw = n('camera_fps_host');
+    final hostFps = hostFpsRaw != null ? snapCameraFps(hostFpsRaw) : (fps == 15 ? 15 : d.cameraFpsHost);
     final screenFps = (n('screen_fps_max') ?? d.screenFpsMax).clamp(5, 30);
     final screenKbps = (n('screen_bitrate_kbps') ?? d.screenBitrateKbps).clamp(500, 6000);
     final rec = switch (s('recording_mode')) {
@@ -180,6 +194,7 @@ class LiveConfig {
       cameraMaxHost: host,
       cameraMaxParticipant: part,
       cameraFps: fps,
+      cameraFpsHost: hostFps,
       screenFpsMax: screenFps,
       screenBitrateKbps: screenKbps,
       audioDtx: b('audio_dtx', d.audioDtx),
@@ -222,6 +237,7 @@ class LiveConfig {
         'camera_max_host': cameraMaxHost.label,
         'camera_max_participant': cameraMaxParticipant.label,
         'camera_fps': cameraFps,
+        'camera_fps_host': cameraFpsHost,
         'screen_fps_max': screenFpsMax,
         'screen_bitrate_kbps': screenBitrateKbps,
         'audio_dtx': audioDtx,
@@ -241,6 +257,7 @@ class LiveConfig {
       other.cameraMaxHost == cameraMaxHost &&
       other.cameraMaxParticipant == cameraMaxParticipant &&
       other.cameraFps == cameraFps &&
+      other.cameraFpsHost == cameraFpsHost &&
       other.screenFpsMax == screenFpsMax &&
       other.screenBitrateKbps == screenBitrateKbps &&
       other.audioDtx == audioDtx &&
@@ -253,7 +270,7 @@ class LiveConfig {
 
   @override
   int get hashCode => Object.hash(version, videoCodec, weakNetwork, cameraMaxHost, cameraMaxParticipant, cameraFps,
-      screenFpsMax, screenBitrateKbps, audioDtx, audioRed, participantsCameraDefaultOff, pauseHiddenVideo,
+      cameraFpsHost, screenFpsMax, screenBitrateKbps, audioDtx, audioRed, participantsCameraDefaultOff, pauseHiddenVideo,
       recordingMode, serverRecordingEngine, fromServer);
 
   @override

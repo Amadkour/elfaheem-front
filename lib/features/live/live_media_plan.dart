@@ -3,9 +3,12 @@
 // What the room publishes and receives, from the super admin's LiveConfig (D-090). Pure: no Room, no channels —
 // LiveKit's option classes are plain values, so the plan is unit-tested (test/org/live_media_plan_test.dart).
 //
-//   camera      capture = the role's cap (host 720p / participant 360p by default) at camera_fps; simulcast layers
-//               180p @ ≤15 fps · 360p · the cap (the SDK keeps the layers that fit under the capture: 720p → 3,
-//               540p → 3, 360p → 2, 180p → 1), each with an explicit max bitrate (cameraBitrateKbps).
+//   camera      capture = the role's cap (host 720p @ 30 fps / participant 360p @ camera_fps by default, D-1504);
+//               simulcast layers 180p @ ≤15 fps · 360p (540p under a 1080p cap) · the cap (the SDK keeps the layers
+//               that fit under the capture: 1080p → 3, 720p → 3, 540p → 3, 360p → 2, 180p → 1), each with an
+//               explicit max bitrate (cameraBitrateKbps; the host's 720p top layer is 1.8 Mbit/s at 30 fps). The
+//               host camera keeps its resolution when the uplink or CPU is short (maintainResolution: a teacher's
+//               writing and slides stay sharp, the frame rate gives); everyone else keeps the SDK default.
 //   codec       video_codec, with VP8 as the backup codec for H.264 / VP9 (a subscriber that cannot decode the
 //               primary gets VP8; LiveKit encodes the backup only while someone needs it). VP9 is not used on
 //               Safari / iOS (no reliable SVC encoder there): VP8 instead.
@@ -51,14 +54,16 @@ class LiveCameraLayer {
 }
 
 /// The top bitrate (kbps) of a [height]p camera layer at [fps] for [codec]. VP8 at 30 fps: 180p 160 · 360p 450 ·
-/// 540p 800 · 720p 1500 (a talking head; LiveKit's own presets are 1700 for 720p); 24 fps × 0.85, 15 fps × 0.65;
-/// H.264 × 1.1 (phone hardware encoders need a little more for the same picture); VP9 × 0.75 (SVC, all layers).
+/// 540p 800 · 720p 1800 · 1080p 3000 (D-1504: 720p was 1500, soft on a teacher's board / page; LiveKit's own preset
+/// is 1700); 24 fps × 0.85, 15 fps × 0.65; H.264 × 1.1 (phone hardware encoders need a little more for the same
+/// picture); VP9 × 0.75 (SVC, all layers).
 int cameraBitrateKbps(int height, int fps, LiveVideoCodec codec) {
   final base30 = switch (height) {
     <= 180 => 160,
     <= 360 => 450,
     <= 540 => 800,
-    _ => 1500,
+    <= 720 => 1800,
+    _ => 3000,
   };
   final f = fps <= 15 ? 0.65 : (fps <= 24 ? 0.85 : 1.0);
   final c = switch (codec) {
@@ -70,12 +75,13 @@ int cameraBitrateKbps(int height, int fps, LiveVideoCodec codec) {
 }
 
 /// The layers a [cap] camera sends at [fps]: 180p at ≤ 15 fps always (what a weak downlink falls back to), 360p
-/// when the cap is above it, and the cap itself.
+/// when the cap is above it (540p under a 1080p cap: three layers is the most simulcast sends), and the cap itself.
 List<LiveCameraLayer> cameraLayersFor(LiveCameraCap cap, {required int fps, LiveVideoCodec codec = LiveVideoCodec.vp8}) {
   final lowFps = math.min(15, fps);
   final low = LiveCameraLayer(320, 180, lowFps, cameraBitrateKbps(180, lowFps, codec));
   if (cap == LiveCameraCap.p180) return [low];
-  final mid = LiveCameraLayer(640, 360, fps, cameraBitrateKbps(360, fps, codec));
+  final midCap = cap == LiveCameraCap.p1080 ? LiveCameraCap.p540 : LiveCameraCap.p360;
+  final mid = LiveCameraLayer(midCap.width, midCap.height, fps, cameraBitrateKbps(midCap.height, fps, codec));
   if (cap == LiveCameraCap.p360) return [low, mid];
   return [low, mid, LiveCameraLayer(cap.width, cap.height, fps, cameraBitrateKbps(cap.height, fps, codec))];
 }
@@ -84,15 +90,16 @@ List<LiveCameraLayer> cameraLayersFor(LiveCameraCap cap, {required int fps, Live
 int cameraUploadKbps(LiveCameraCap cap, {required int fps, LiveVideoCodec codec = LiveVideoCodec.vp8}) =>
     cameraLayersFor(cap, fps: fps, codec: codec).fold(0, (s, l) => s + l.kbps);
 
-/// The camera this role captures (the cap's frame at camera_fps): the pre-join preview, the room's default for a
+/// The camera this role captures (the cap's frame at the role's fps): the pre-join preview, the room's default for a
 /// camera turned on later, and therefore what a muted camera restarts with.
 CameraCaptureOptions cameraCaptureFor(LiveConfig c, {required bool host, String? deviceId}) {
   final cap = c.cameraCapFor(host: host);
-  final top = cameraLayersFor(cap, fps: c.cameraFps, codec: c.videoCodec).last;
+  final fps = c.cameraFpsFor(host: host);
+  final top = cameraLayersFor(cap, fps: fps, codec: c.videoCodec).last;
   return CameraCaptureOptions(
     deviceId: deviceId,
     cameraPosition: CameraPosition.front,
-    maxFrameRate: c.cameraFps.toDouble(),
+    maxFrameRate: fps.toDouble(),
     params: VideoParameters(dimensions: VideoDimensions(cap.width, cap.height), encoding: top.parameters.encoding),
   );
 }
@@ -152,20 +159,22 @@ BackupVideoCodec backupCodecFor(String codec) =>
 /// share's encoding (the screen-share paths that publish their own track pass their own options).
 VideoPublishOptions videoPublishFor(LiveConfig c, {required bool host, required String codec, VideoEncoding? screenEncoding}) {
   final cap = c.cameraCapFor(host: host);
-  final layers = cameraLayersFor(cap, fps: c.cameraFps, codec: c.videoCodec);
+  final fps = c.cameraFpsFor(host: host);
+  final layers = cameraLayersFor(cap, fps: fps, codec: c.videoCodec);
+  // The two lower layers of the cap's set (180p + 360p, 540p under 1080p); the SDK adds the capture's own frame on
+  // top (and drops what does not fit under it).
+  final lower = cameraLayersFor(cap == LiveCameraCap.p1080 ? cap : LiveCameraCap.p360, fps: fps, codec: c.videoCodec);
   return VideoPublishOptions(
     videoCodec: codec,
     simulcast: true,
     videoEncoding: layers.last.parameters.encoding,
-    // The two lower presets; the SDK adds the capture's own frame on top (and drops what does not fit under it).
-    videoSimulcastLayers: [
-      cameraLayersFor(LiveCameraCap.p360, fps: c.cameraFps, codec: c.videoCodec)[0].parameters,
-      cameraLayersFor(LiveCameraCap.p360, fps: c.cameraFps, codec: c.videoCodec)[1].parameters,
-    ],
+    videoSimulcastLayers: [lower[0].parameters, lower[1].parameters],
     screenShareEncoding: screenEncoding,
     backupVideoCodec: backupCodecFor(codec),
-    // null = the SDK's per-source default: camera keeps the frame rate (the layers carry resolution), a screen
-    // share keeps the resolution (text).
+    // D-1504: the host's camera keeps its resolution (its frame rate gives first); null for everyone else = the
+    // SDK's per-source default (a camera keeps the frame rate, a screen share the resolution). A share that goes
+    // through these defaults keeps its resolution either way.
+    degradationPreference: host ? DegradationPreference.maintainResolution : null,
   );
 }
 

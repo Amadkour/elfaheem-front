@@ -60,7 +60,7 @@ class GoLiveSession {
     this.startsAt,
     this.minutes = 0,
     this.live = false,
-    this.recordEnabled = true,
+    this.recordEnabled = false,
     this.held = false,
   });
 
@@ -93,7 +93,7 @@ class GoLiveSession {
       startsAt: parseNaiveUtc(raw['scheduled_at']),
       minutes: (raw['duration_minutes'] as num?)?.toInt() ?? 0,
       live: raw['is_live_active'] == true,
-      recordEnabled: raw['record_enabled'] != false,
+      recordEnabled: raw['record_enabled'] == true, // D-1503: off unless the host set it
       held: rec != null && '$rec'.isNotEmpty,
     );
   }
@@ -130,7 +130,7 @@ class GoLiveSuggestion {
     this.sessionId,
     this.minutes = 0,
     this.live = false,
-    this.recordEnabled = true,
+    this.recordEnabled = false,
   });
 
   /// Null → a timetable slot without a session yet: Go live creates it at the slot's start.
@@ -227,11 +227,11 @@ String goLiveDefaultTitle(DateTime nowUtc) =>
     '${t('حصة مباشرة', 'Live class')} · ${AppTime.date(nowUtc, pattern: 'EEE d MMM')} · ${AppTime.time(nowUtc)}';
 
 /// The Record switch's first position: the suggested session's own switch, else the course's latest live session
-/// (what the teacher chose last time for it), else on.
+/// (what the teacher chose last time for it), else off (D-1503: nothing records unless the host turns it on).
 bool goLiveDefaultRecord(GoLiveSuggestion? suggestion, List<GoLiveSession> sessions) {
   if (suggestion != null && suggestion.sessionId != null) return suggestion.recordEnabled;
   final live = [for (final s in sessions) if (s.isLiveType) s]..sort((a, b) => b.id.compareTo(a.id));
-  return live.isEmpty ? true : live.first.recordEnabled;
+  return live.isEmpty ? false : live.first.recordEnabled;
 }
 
 /// What the device remembers between two "Go live"s (per user): the course, the camera and the microphone.
@@ -345,7 +345,7 @@ class RemoteGoLiveApi implements GoLiveApi {
       sessionId: sessionId,
       url: m['ws_url'] as String? ?? '',
       token: m['token'] as String? ?? '',
-      recordingEnabled: m['recording_enabled'] as bool? ?? record ?? true,
+      recordingEnabled: m['recording_enabled'] as bool? ?? record ?? false,
       liveStartedAt: parseNaiveUtc(m['live_started_at']),
       liveConfig: LiveConfig.fromPayload(m), // D-090
     );

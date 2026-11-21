@@ -441,5 +441,45 @@ void main() {
     net.pump();
     expect(v.board.isEmpty && host.board.isEmpty, isTrue);
   });
+
+  group('D-1501: the in-app pen on a shared screen', () {
+    test('burned in only while the overlay is armed AND the app is in the background', () {
+      expect(annotBurnedInNow(overlayArmed: true, appInFront: true), isFalse, reason: 'in the app the layer draws');
+      expect(annotBurnedInNow(overlayArmed: true, appInFront: false), isTrue);
+      expect(annotBurnedInNow(overlayArmed: false, appInFront: false), isFalse);
+      expect(annotBurnedInNow(overlayArmed: false, appInFront: true), isFalse);
+    });
+
+    test('offered while a share fills the stage (full view too), not on a board, in the box or without the right', () {
+      bool can({bool on = true, bool share = true, bool board = false, bool draw = true, bool burned = false, bool box = false}) =>
+          liveCanAnnotateShare(
+              enabled: on, shareOnStage: share, boardOnStage: board, canDrawLocal: draw, burnedIn: burned, shareInBox: box);
+      expect(can(), isTrue);
+      expect(can(on: false), isFalse);
+      expect(can(share: false), isFalse);
+      expect(can(board: true), isFalse);
+      expect(can(draw: false), isFalse);
+      expect(can(box: true), isFalse);
+      expect(can(burned: true), isFalse);
+    });
+
+    test('back in the app after the overlay burned in: the presenter draws and the strokes are sent again', () {
+      final host = net.join('teacher_1', presenter: 'teacher_1');
+      final v = net.join('student_2', presenter: 'teacher_1');
+      host.setBurnedIn(annotBurnedInNow(overlayArmed: true, appInFront: false));
+      net.pump();
+      expect(v.burnedIn, isTrue);
+      host.setBurnedIn(annotBurnedInNow(overlayArmed: true, appInFront: true));
+      net.pump();
+      expect(host.burnedIn, isFalse);
+      expect(host.canDrawLocal, isTrue);
+      expect(v.burnedIn, isFalse);
+      final before = net.sent.length;
+      _draw(host, _line(0.1, 0.1, 0.9, 0.9));
+      expect(net.sent.length, greaterThan(before), reason: 'vectors again: viewers see the in-app strokes');
+      net.pump();
+      expect(v.board.strokeCount, 1);
+    });
+  });
 }
 
