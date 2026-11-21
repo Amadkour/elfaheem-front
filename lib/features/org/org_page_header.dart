@@ -70,6 +70,7 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarEntryIcon, ChatEntryIcon;
 import 'package:flutter_education_app/design/chrome_button.dart' show ChromeCard, ChromeIconButton;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextPill;
+import 'package:flutter_education_app/design/sync_status_chip.dart' show SyncStatusChip;
 import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant, appAssistantFeatureKey;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -482,6 +483,8 @@ class OrgPageHeader extends StatelessWidget {
               ),
               AppSpace.gapXs,
               Row(mainAxisSize: MainAxisSize.min, children: [
+                // offline / waiting writes (D-1351, QA_PHASE7 W-7); draws nothing while online and quiet
+                const SyncStatusChip(),
                 const CalendarEntryIcon(),
                 const ChatEntryIcon(),
                 NotificationIcon(unreadCount: unread),
@@ -495,6 +498,7 @@ class OrgPageHeader extends StatelessWidget {
           : Row(mainAxisSize: MainAxisSize.min, children: [
               if (search != null) _ChipButton(icon: Icons.search_rounded, label: _searchLabel, onTap: search, compact: !roomy),
               if (refresh != null) _RefreshIcon(refresh: refresh),
+              const SyncStatusChip(),
               const CalendarEntryIcon(),
               const ChatEntryIcon(),
               if (!AppConfig.disableList.contains(appAssistantFeatureKey))

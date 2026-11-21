@@ -24,7 +24,7 @@ import 'package:flutter_education_app/features/store/store_vault.dart';
 import 'package:flutter_education_app/features/store/store_widgets.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart' show openExternalLink;
 
 class StoreLibraryPage extends StatefulWidget {
   const StoreLibraryPage({super.key, this.api});
@@ -109,8 +109,7 @@ class _StoreLibraryPageState extends State<StoreLibraryPage> {
       final d = await _api.download(it.itemId);
       final url = d.absolute();
       if (!_vault.available || !it.isPdf) {
-        final ok = await launchUrl(url, mode: LaunchMode.externalApplication);
-        if (!ok) showAppNotice(t('تعذّر فتح الرابط', 'The link could not be opened'), error: true);
+        await openExternalLink(url.toString(), failText: t('تعذّر فتح الرابط', 'The link could not be opened'));
         return;
       }
       await _vault.save(it.itemId, url, sha256: d.sha256.isNotEmpty ? d.sha256 : it.sha256, onProgress: (p) {

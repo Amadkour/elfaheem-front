@@ -5312,3 +5312,39 @@ Drift and SQLCipher add build weight on six platforms. One file in the app's sup
 depth, paid files are AES-CTR encrypted already, and `MyAuthProvider.logout` wipes both tables (`wipeSyncData`, next
 to `wipeStoreFiles`). The web has no device database: an in-memory stub, online-only. `sqflite_common_ffi` brings
 `sqlite3` 3.x, whose build hook bundles a SQLite library into native builds.
+
+## D-1360 — The Android release keystore already exists and is NOT regenerated · 2026-11-21 · accepted
+
+`~/.nextbrain-keys/nextbrain-release.jks` signs the installed apps (D-137). A new key would block every update. The brief's "generate a keystore" is met by the existing one; FINAL_REPORT reminds the owner to back it up.
+
+## D-1361 — Windows ships an unsigned Inno Setup installer · 2026-11-21 · accepted
+
+MSIX needs a certificate to install at all. The Downloads page documents "More info → Run anyway".
+
+## D-1362 — macOS and iOS are built on Codemagic, not this PC · 2026-11-21 · accepted
+
+Workflows and `docs/release/APPLE.md` are written; the builds wait for the owner's Apple Developer account. Logged as a gap, never blocking.
+
+## D-1363 — No new update checker · 2026-11-21 · accepted
+
+`VersionCheckService` and `releases.json` already do it; Phase 9 only teaches them the new file kinds.
+
+## D-1370 — Parent consent is a row with the text version, IP and time · 2026-11-21 · accepted
+
+Required for a student under the country's `minor_age` (data, default 18). Captured in Phase 3, enforced in Phase 10.
+
+## D-1371 — Consent per parent-student pair, revocable, every view audited · 2026-11-21 · accepted
+
+A consent row belongs to one parent and one student: a second parent gives their own (no riding on the first one's). The child's games, Quran and grammar routes go through one gate (`consent_service.child_for_parent`: link, else 404 `LINK_NOT_FOUND`; minor without this parent's consent, else 403 `consent_required`), and every allowed read writes one `parent.child_viewed` audit row per child and area a day. The parent revokes with `DELETE /parent/children/{id}/consent` (front: "Revoke consent" on the child card, behind `appConfirm`; the button reads `GET .../consent` first, so an adult child says "nothing to revoke"); a student unlinking a parent revokes that parent's consent too, so a relink asks again. Grant and revoke write `parent.consent_granted` / `parent.consent_revoked`. On the front a 403 `consent_required` turns the child tab into one state with "Give consent" (the same dialog and text version as the card). Also: an admin gets a course's private address only on the single course page (audited `course.address_viewed`), never in a list.
+
+## D-1380 — Demo data is marked three ways and removed by one command · 2026-11-21 · accepted
+
+`is_demo` on new tables, `@demo.nextbrain.invalid` e-mails, a `demo` course tag. `seed_learning_hub_demo.py --remove` deletes only those.
+
+## D-1381 — Demo nahw levels are marked by the `demo_` key prefix · 2026-11-21 · accepted
+
+`nahw_levels` has no `is_demo` column and Phase 10 adds no migration, so the seed names every demo level `demo_…` (its lessons and exercises hang from it). `--remove` deletes the levels whose key starts with `demo_` and their children, nothing else; a real level must never use that prefix.
+
+## D-1364 — An Android build under the old app id is told to install the new app, never offered the APK · 2026-11-21 · accepted
+
+Every Android build up to 1.0.0 is signed under the old id `com.example.flutter_education_app`; the new APK (`com.doubley.nextbrain`, from 1.0.1+2) installs beside it, not over it. Once an active android version at 1.0.1 or above is published, `GET /app/version-check` answers a build below 1.0.1 with `should_update` (never `must_update`, whatever the minimum), the ar + en text "install the new app from the Downloads page, sign in, then remove this one" as `notes` / `release_notes`, `download_url` = `<PUBLIC_WEB_URL>/ar/download/` and `source: custom` (no "install over this app" hint), plus `legacy_app_id: true` (`app_update_policy.legacy_android_answer`, checked in `tests/org_v2/e2e_update_policy.py`). Limit: an old build older than D-143 ignores `download_url` and follows `releases.json`, whose prompt still offers the APK.

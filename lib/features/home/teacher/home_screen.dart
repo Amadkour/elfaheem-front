@@ -42,6 +42,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
+import 'package:flutter_education_app/design/sync_status_chip.dart' show SyncStatusChip;
+import 'package:flutter_education_app/core/offline/sync/sync_status.dart' show SyncStatus;
 import 'package:flutter_education_app/design/home_a2.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/org/home_org_mix.dart';
@@ -514,13 +516,16 @@ class TeacherGreeting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phone = !HomeHeader.shellTopBar(context);
-    return ValueListenableBuilder<int>(
-      valueListenable: AppTime.version, // the greeting follows the effective timezone
-      builder: (context, _, _) => HomeGreetingRow(
+    return ListenableBuilder(
+      // the greeting follows the effective timezone; the offline chip (D-1351, QA_PHASE7 W-7) joins the row only
+      // while it has something to say: a hidden one would leave a gap
+      listenable: Listenable.merge([AppTime.version, SyncStatus.instance]),
+      builder: (context, _) => HomeGreetingRow(
         name: name,
         subline: subtitle,
         trailing: [
           ?switcher,
+          if (phone && !SyncStatus.instance.value.quiet) const SyncStatusChip(),
           ...actions,
           if (phone) ...[...shellActions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!), ?leading],
           ?goLive,

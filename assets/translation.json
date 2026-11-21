@@ -24760,5 +24760,6 @@
   "enroll_refused_back": {"en": "Back to the course", "ar": "العودة إلى الكورس"},
   "sync_status_offline": {"en": "You are offline", "ar": "أنت غير متصل"},
   "sync_status_syncing": {"en": "Sending what you did offline…", "ar": "جارٍ إرسال ما سجّلته دون اتصال…"},
-  "sync_status_done": {"en": "Everything is saved", "ar": "كل شيء محفوظ"}
+  "sync_status_done": {"en": "Everything is saved", "ar": "كل شيء محفوظ"},
+  "store_file_corrupt": {"en": "The file arrived damaged. Download it again.", "ar": "وصل الملف تالفاً. نزّله من جديد."}
 }

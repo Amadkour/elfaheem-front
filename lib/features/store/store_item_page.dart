@@ -25,7 +25,7 @@ import 'package:flutter_education_app/features/store/store_widgets.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_education_app/core/share/external_link.dart' show openExternalLink;
 
 /// What a resumed "buy this item" may open.
 enum StoreResumeAction { none, page, checkout }
@@ -161,8 +161,7 @@ class _StoreItemPageState extends State<StoreItemPage> {
   Future<void> _preview() async {
     final u = Uri.tryParse(_item?.previewUrl ?? '');
     if (u == null) return;
-    final ok = await launchUrl(u, mode: LaunchMode.externalApplication);
-    if (!ok) showAppNotice(t('تعذّر فتح المعاينة', 'The preview could not be opened'), error: true);
+    await openExternalLink(u.toString(), failText: t('تعذّر فتح المعاينة', 'The preview could not be opened'));
   }
 
   @override

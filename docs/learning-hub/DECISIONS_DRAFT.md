@@ -1,5 +1,7 @@
 # Learning Hub — decisions to merge into `docs/DECISIONS.md`
 
+**Merged 2026-11-21** (final gate): every entry below is now in both repos' `docs/DECISIONS.md` (D-1353 front only: the back does not cite it), plus D-1364 (the old Android app id). Edit there, not here.
+
 Block reserved: D-1300 – D-1399. All entries · 2026-11-20 · proposed. Numbers not listed are free for the phase that owns the range (PLAN.md §5).
 
 ## D-1300 — Learning Hub job: file names follow the repo, not the brief's root names

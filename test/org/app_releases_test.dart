@@ -674,6 +674,29 @@ String stepText() => tester.widget<Text>(find.byKey(const ValueKey('release.step
       expect(serverUpdateOffer({'must_update': true, 'download_url': 'https://x.site/a.apk'}, lang: 'ar')!.force, isTrue);
     });
 
+    test('the old app id (D-145): a dismissible "install the new app" prompt that opens the Downloads page', () {
+      // what GET /app/version-check answers an Android 1.0.0 build (app_update_policy.legacy_android_answer)
+      final answer = {
+        'must_update': false,
+        'should_update': true,
+        'latest_version': '1.0.1',
+        'notes': {
+          'ar': 'تطبيق NextBrain الجديد متاح. ثبّته من صفحة التنزيلات، وسجّل الدخول بحسابك، ثم احذف هذا التطبيق.',
+          'en': 'The new NextBrain app is here. Install it from the Downloads page, sign in with your account, then remove this app.',
+        },
+        'download_url': 'https://nextbrain.site/ar/download/',
+        'source': 'custom',
+        'legacy_app_id': true,
+      };
+      for (final lang in ['ar', 'en']) {
+        final o = serverUpdateOffer(answer, lang: lang, platform: 'android')!;
+        expect(o.force, isFalse);
+        expect(o.source, 'custom', reason: 'a link to open, not a file to install over this app');
+        expect(o.url, 'https://nextbrain.site/ar/download/');
+        expect(o.notes, (answer['notes'] as Map)[lang]);
+      }
+    });
+
     test('an older answer (no download_url), no update, or a non-https link leaves the manifest in charge', () {
       expect(serverUpdateOffer({'must_update': true, 'should_update': true, 'latest_version': '2.0.0', 'release_notes': {'en': 'x'}}, lang: 'en'), isNull);
       expect(serverUpdateOffer({'must_update': false, 'should_update': false, 'download_url': 'https://x.site/a.apk'}, lang: 'en'), isNull);
