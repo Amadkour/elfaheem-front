@@ -21,12 +21,13 @@ import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoin
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show t;
-import '../onboarding/onboarding_entry.dart' show onboardingEntryOn, openOnboardingAdd, openOnboardingImport;
+import '../onboarding/onboarding_entry.dart' show onboardingEntryOn, openOnboardingImport;
 import '../onboarding/onboarding_page.dart' show OnboardingPage;
 import '../org_page_header.dart' show OrgPushedPage;
 import '../org_page_kit.dart' show OrgFilterButton, OrgMenuItem, OrgPageBody, OrgPrimaryAction, OrgSearchField, orgPageWideFrom;
 import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgErrorText;
+import 'add_student_sheet.dart' show showAddStudentSheet;
 import 'students_api.dart';
 import 'students_missing_sheet.dart';
 import 'students_models.dart';
@@ -97,13 +98,9 @@ class _OrgStudentsPageState extends State<OrgStudentsPage> {
   }
 
   Future<void> _add() async {
-    final r = await openOnboardingAdd(context, module: 'students');
-    if (!mounted) return;
-    if (r == null) {
-      showAppNotice(t('إضافة الطلاب تحتاج تفعيل الالتحاق وإعداد نوع للطلاب', 'Adding students needs Admissions switched on with a student type'), error: true);
-    } else if (r) {
-      _load();
-    }
+    // phase 3: pick the student type and the entry method first (full entry, basics + invite, link / QR, Excel)
+    final r = await showAddStudentSheet(context, widget.orgId);
+    if (mounted && r == true) _load();   // null: closed without opening anything
   }
 
   Future<void> _import() async {
