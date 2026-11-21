@@ -116,6 +116,8 @@ function init(root: HTMLElement) {
       if (Array.isArray(p.files)) {
         for (const f of p.files as Record<string, unknown>[]) {
           if (!f || typeof f !== 'object') continue;
+          // A store-only file (the Android App Bundle) is never offered for download.
+          if (f.listed === false || str(f.kind).toLowerCase() === 'aab') continue;
           const url = safeUrl(str(f.url), base);
           if (!url) continue;
           const sha = str(f.sha256).toLowerCase();
