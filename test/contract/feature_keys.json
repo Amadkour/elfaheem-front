@@ -399,6 +399,7 @@
  "subscription.receipt",
  "subscription.sender_info",
  "subscription.transfer_details",
+ "sync.offline",
  "teacher.quick_live",
  "teacher_attendance",
  "teacher_attendance.save_bar",
