@@ -205,20 +205,20 @@ class _OnboardingPageState extends State<OnboardingPage> {
   Future<void> _inviteGuided(List<OnbType> types, OnbType type) async {
     final how = await showAppSheet<String>(
       context,
-      (ctx) => AppSheetContent(title: t('Ø¯Ø¹ÙØ© Ø£Ø´Ø®Ø§Øµ', 'Invite people'), subtitle: type.label, children: [
+      (ctx) => AppSheetContent(title: t('دعوة أشخاص', 'Invite people'), subtitle: type.label, children: [
         _Choice(
             key: const ValueKey('onb.invite.drafts'),
             icon: Icons.drafts_outlined,
-            title: t('ÙÙ Ø§ÙÙØ³ÙØ¯Ø§Øª', 'From the drafts'),
-            text: t('Ø§Ø®ØªØ± ÙØ³ÙØ¯Ø§Øª ÙÙØ¬ÙØ¯Ø© ÙØ¯Ø¹ÙØ© Ø£ØµØ­Ø§Ø¨ÙØ§.', 'Pick existing drafts and invite their owners.'),
+            title: t('من المسودات', 'From the drafts'),
+            text: t('اختر مسودات موجودة لدعوة أصحابها.', 'Pick existing drafts and invite their owners.'),
             onTap: () => Navigator.of(ctx).pop('drafts')),
         AppSpace.gapXs,
         if (!AppConfig.disableList.contains(onboardingImportKey))
           _Choice(
               key: const ValueKey('onb.invite.import'),
               icon: Icons.upload_file_rounded,
-              title: t('Ø§Ø³ØªÙØ±Ø§Ø¯ ÙØ§Ø¦ÙØ©', 'Import a list'),
-              text: t('Ø§Ø±ÙØ¹ ÙÙÙ Excel ÙØ§Ø¯Ø¹Ù Ø£ØµØ­Ø§Ø¨Ù ÙØ¨Ø§Ø´Ø±Ø©.', 'Upload an Excel file and invite everyone in it.'),
+              title: t('استيراد قائمة', 'Import a list'),
+              text: t('ارفع ملف Excel وادعُ أصحابه مباشرة.', 'Upload an Excel file and invite everyone in it.'),
               onTap: () => Navigator.of(ctx).pop('import')),
       ]),
     );
@@ -477,28 +477,28 @@ class OnbAddChoice {
 Future<OnbAddChoice?> showOnbAddSheet(BuildContext context, {required List<OnbType> types, bool canImport = true, bool canInvite = true}) async {
   final way = await showAppSheet<OnbAddKind>(
     context,
-    (ctx) => AppSheetContent(title: t('Ø¥Ø¶Ø§ÙØ©', 'Add'), children: [
+    (ctx) => AppSheetContent(title: t('إضافة', 'Add'), children: [
       _Choice(
         key: const ValueKey('onb.add.one'),
         icon: Icons.person_add_alt_1_rounded,
-        title: t('Ø´Ø®Øµ ÙØ§Ø­Ø¯', 'One person'),
-        text: t('Ø£Ø¯Ø®Ù Ø¨ÙØ§ÙØ§ØªÙ Ø®Ø·ÙØ© Ø¨Ø®Ø·ÙØ©Ø Ø¨Ø¯Ø¡Ø§Ù Ø¨Ø§ÙØ±ÙÙ Ø§ÙÙÙÙÙ.', 'Enter the details step by step, starting with the national ID.'),
+        title: t('شخص واحد', 'One person'),
+        text: t('أدخل بياناته خطوة بخطوة، بدءاً بالرقم القومي.', 'Enter the details step by step, starting with the national ID.'),
         onTap: types.isEmpty ? null : () => Navigator.of(ctx).pop(OnbAddKind.one),
       ),
       AppSpace.gapXs,
       _Choice(
         key: const ValueKey('onb.add.excel'),
         icon: Icons.upload_file_rounded,
-        title: t('ÙÙ ÙÙÙ Excel', 'From Excel'),
-        text: t('Ø§Ø³ØªÙØ±Ø§Ø¯ ÙØ§Ø¦ÙØ© ÙØ§ÙÙØ© ÙØ¹ ÙØ±Ø§Ø¬Ø¹Ø© Ø§ÙØ£Ø®Ø·Ø§Ø¡ ÙØ¨Ù Ø§ÙØ­ÙØ¸.', 'Import a whole list, with the errors reviewed before saving.'),
+        title: t('من ملف Excel', 'From Excel'),
+        text: t('استيراد قائمة كاملة مع مراجعة الأخطاء قبل الحفظ.', 'Import a whole list, with the errors reviewed before saving.'),
         onTap: types.isEmpty || !canImport ? null : () => Navigator.of(ctx).pop(OnbAddKind.excel),
       ),
       AppSpace.gapXs,
       _Choice(
         key: const ValueKey('onb.add.invite'),
         icon: Icons.mail_outline_rounded,
-        title: t('Ø¯Ø¹ÙØ© Ø£Ø´Ø®Ø§Øµ', 'Invite people'),
-        text: t('Ø£Ø±Ø³Ù Ø±Ø§Ø¨Ø·Ø§Ù ÙÙÙÙÙÙ ÙÙ Ø´Ø®Øµ Ø¨ÙØ§ÙØ§ØªÙ Ø¨ÙÙØ³Ù.', 'Send a link so each person completes their own details.'),
+        title: t('دعوة أشخاص', 'Invite people'),
+        text: t('أرسل رابطاً ليُكمل كل شخص بياناته بنفسه.', 'Send a link so each person completes their own details.'),
         onTap: types.isEmpty || !canInvite ? null : () => Navigator.of(ctx).pop(OnbAddKind.invite),
       ),
     ]),
@@ -508,7 +508,7 @@ Future<OnbAddChoice?> showOnbAddSheet(BuildContext context, {required List<OnbTy
   if (types.length == 1) return OnbAddChoice(way, types.first);
   final ty = await showAppSheet<OnbType>(
     context,
-    (ctx) => AppSheetContent(title: t('Ø§Ø®ØªØ± Ø§ÙÙÙØ¹', 'Choose the type'), children: [
+    (ctx) => AppSheetContent(title: t('اختر النوع', 'Choose the type'), children: [
       for (final ty in types)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.xs),

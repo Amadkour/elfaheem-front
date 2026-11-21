@@ -44,6 +44,7 @@ import 'package:flutter_education_app/features/calendar/calendar_models.dart' sh
 import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart';
 import 'package:flutter_education_app/features/home/student/home_event_rows.dart' show homeAgendaItemOf, homeDaySummaryOf, openHomeEvent;
 import 'package:flutter_education_app/features/home/student/home_live.dart' show HomeLiveNow;
+import 'package:flutter_education_app/features/home/home_application_card.dart' show HomeAsksCard, MeAskItem, homeAsksOf;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/rag/rag_chat_screen.dart';
@@ -69,6 +70,9 @@ import 'org_registrar_member.dart' show openAdvising, openConsents, openMyWeek, 
 import 'org_services_pages.dart' show OrgAnnouncementsPage, OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
 import 'org_ui.dart' show memberRoleLabels, orgNameOf;
 import 'advising/adv_wiring.dart' show AdvMemberHubEntry;
+import 'students/my_requests.dart' show openMyRequests;
+import 'students/my_status_card.dart' show MyStatusCard;
+import 'students/students_models.dart' show kStudentsFeatureKey;
 import 'governance/gov_wiring.dart' show govMemberPills;
 import 'org_messages_models.dart' show orgMessagesEnabled;
 import 'org_my_journey.dart' show OrgJourneyStore, OrgMyJourney;
@@ -270,6 +274,10 @@ List<OrgQuickGroup> orgQuickGroups(BuildContext context, Map<String, dynamic> en
     OrgQuickGroup(t('الطلبات والنماذج', 'Requests & forms'), [
       if (isMember) ...[
         OrgQuickAction(icon: Icons.assignment_rounded, label: t('طلباتي', 'My requests'), onTap: () => space(2)),
+        // student lifecycle (D-1400): suspend · postpone · withdraw · re-enrol · an excuse · a detail of my file. Under
+        // org.students; with org.students.status off the page keeps the data update only (the server allows it)
+        if (student && !AppConfig.disableList.contains(kStudentsFeatureKey))
+          OrgQuickAction(icon: Icons.fact_check_rounded, label: t('طلبات الدراسة', 'Study requests'), onTap: () => openMyRequests(context, orgId)),
         // governance (D-057): submit to an entity · my items · my votes · forms I must answer
         for (final w in govMemberPills(context, orgId,
             ({required icon, required label, required onTap}) => _ActionCarrier(OrgQuickAction(icon: icon, label: label, onTap: onTap))))
@@ -423,6 +431,8 @@ class OrgMemberHome extends StatelessWidget {
         final student = [for (final r in (data['roles'] as List? ?? const [])) '$r'].contains('student');
         if (student) OrgJourneyStore.instance.ensure(orgId);
         final journey = student ? OrgJourneyStore.instance.of(orgId) : null;
+        // what this organization asks me (D-1400): the same `asks[]` of /me/home as the personal home, no request
+        final asks = me == null ? const <MeAskItem>[] : [for (final x in homeAsksOf(me.raw)) if (x.orgId == orgId) x];
         return AnimatedSwitcher(
           duration: AppMotion.of(context).base,
           switchInCurve: Curves.easeOutCubic,
@@ -432,7 +442,11 @@ class OrgMemberHome extends StatelessWidget {
             key: ValueKey('org-$orgId'),
             entry: data,
             showHero: showHero,
-            journey: journey == null ? null : OrgMyJourney(orgId: orgId, journey: journey),
+            journey: journey == null ? null : OrgMyJourney(orgId: orgId, journey: journey, asksWaiting: asks.isNotEmpty),
+            // student lifecycle (D-1400): my study status from the home payload, no request of its own
+            myStatus: student ? me?.myStatusOf(orgId) : null,
+            asks: asks,
+            onOpenAsk: (x) => AppNavigator.openModule('student_ask', targetId: x.id, orgId: x.orgId).then((_) => svc.refresh()),
             showPicker: showPickerInHero && ctl.liveEntries.length > 1,
             today: me?.todayOf(orgId),
             inbox: me?.inboxPreviewOf(orgId),
@@ -543,6 +557,9 @@ class OrgMemberHomeBody extends StatelessWidget {
     this.liveNow = const [],
     this.showHero = true,
     this.journey,
+    this.myStatus,
+    this.asks = const [],
+    this.onOpenAsk,
   });
 
   /// The organization banner (name + my role + the switch). The standalone page's header says it already: false there.
@@ -575,6 +592,14 @@ class OrgMemberHomeBody extends StatelessWidget {
   /// Institutions v2 phase 5 (D-995): the student's "My journey" (OrgMyJourney); set → it leads the home and the
   /// other sections fold under "More". Null = the home as before.
   final Widget? journey;
+
+  /// A student's `my_status[]` entry of this organization (MeHome.myStatusOf): MyStatusCard.fromHome; null = no card.
+  final Map<String, dynamic>? myStatus;
+
+  /// This organization's open asks to me (`asks[]` of /me/home, D-1400): they wait for MY answer, so they sit in the
+  /// head, above "My journey" (never folded under "More").
+  final List<MeAskItem> asks;
+  final ValueChanged<MeAskItem>? onOpenAsk;
 
   @override
   Widget build(BuildContext context) {
@@ -649,6 +674,7 @@ class OrgMemberHomeBody extends StatelessWidget {
       else
         AppSpace.gapSm,
       if (liveNow.isNotEmpty) HomeLiveNow(rooms: liveNow, now: now, padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md)),
+      if (asks.isNotEmpty) HomeAsksCard(items: asks, onOpen: onOpenAsk, padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md)),
       if ('${org['status']}' != 'approved')
         Padding(
           padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
@@ -669,6 +695,11 @@ class OrgMemberHomeBody extends StatelessWidget {
       // academic advising (D-289 Phase 5): a student with an active advisor gets the hub row (draws nothing otherwise);
       // Phase 9: the overview's `advising` block feeds it without a request
       if (roles.contains('student')) AdvMemberHubEntry(orgId: orgId, overview: entry['advising']),
+
+      // student lifecycle (D-1400): my study status, from the home payload (draws nothing without an entry)
+      if (myStatus != null)
+        MyStatusCard.fromHome(
+            key: ValueKey('my-status-$orgId'), orgId: orgId, data: myStatus, padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md)),
 
       // ── the numbers, once: one card of small tiles (the same strip as the personal homes) — only while one counts
       if (stats.any((x) => x.$1 > 0)) ...[

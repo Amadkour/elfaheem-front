@@ -414,6 +414,10 @@
    "teacher"
   ],
   [
+   "me.asks",
+   "student"
+  ],
+  [
    "me.onboarding",
    "org_member"
   ],
@@ -424,6 +428,14 @@
   [
    "me.onboarding",
    "teacher"
+  ],
+  [
+   "me.requests",
+   "student"
+  ],
+  [
+   "me.status",
+   "student"
   ],
   [
    "org.advising",
@@ -471,6 +483,42 @@
   ],
   [
    "org.onboarding",
+   "org_member"
+  ],
+  [
+   "org.students.file",
+   "org_admin"
+  ],
+  [
+   "org.students.file",
+   "org_member"
+  ],
+  [
+   "org.students.requests",
+   "org_admin"
+  ],
+  [
+   "org.students.requests",
+   "org_member"
+  ],
+  [
+   "org.students.rules",
+   "org_admin"
+  ],
+  [
+   "org.students.status",
+   "org_admin"
+  ],
+  [
+   "org.students.status",
+   "org_member"
+  ],
+  [
+   "org.students",
+   "org_admin"
+  ],
+  [
+   "org.students",
    "org_member"
   ],
   [

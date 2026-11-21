@@ -147,6 +147,10 @@ class LiveEvents {
   /// acknowledged, pending} → the sender's list / names sheet re-read.
   static const orgMessage = 'org_message';
   static const orgMustAck = 'org_must_ack';
+
+  /// Student lifecycle (D-1400): a status / ask / request of a student changed ({org_id, student_id, kind, ask_id?};
+  /// server: features/org/students/notify.py, stream only).
+  static const studentLifecycle = 'student_lifecycle';
   static const orgMessageAck = 'org_message_ack';
 
   /// Local (not from the server): fired by TopRouteObserver when the app goes online/offline.
@@ -196,6 +200,7 @@ class LiveEvents {
     orgMessage,
     orgMustAck,
     orgMessageAck,
+    studentLifecycle,
     accountApproval,
   };
 

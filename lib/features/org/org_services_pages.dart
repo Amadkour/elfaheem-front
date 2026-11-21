@@ -7,6 +7,9 @@
 //   OrgFormsPage           requests / surveys / applications → OrgFormBuilderScreen · OrgFormResponsesScreen
 //   OrgMaterialsPage       department library (files or links, team-only or for members)
 //   OrgComplaintsPage      inbox with SLA → OrgComplaintThreadScreen (reply · internal note · assign · transfer)
+//                          + the sender's student strip (GET /complaints/{id} `student`, student lifecycle §3.9):
+//                          Open file · Request a meeting · Change status / flag (POST /complaints/{id}/status, a flag
+//                          preselected, the reason names the complaint; ComplaintStudentStrip, ComplaintStatusApi)
 library;
 
 // Announcements moved to org_announcements.dart (point 17); re-exported so existing imports keep working.
@@ -38,6 +41,18 @@ import 'governance/gov_wiring.dart' show govEnabled;
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppButton, AppCard;
+import 'package:flutter_education_app/design/app_bidi.dart' show bidiIsolate, ltrIsolate;
+import 'org_v3.dart' show OrgCall, orgCall;
+import 'students/my_ask_page.dart' show myAsksEnabled;
+import 'students/student_ask_sheet.dart' show showStudentAskSheet;
+import 'students/student_status_models.dart' show StatusSource;
+import 'students/student_status_sheet.dart' show showStudentStatusSheet;
+import 'students/students_api.dart' show StudentsApi;
+import 'students/students_models.dart' show StudentChip, StudentUser;
+import 'students/students_parts.dart' show StudentAvatar, StudentStatusChip;
+import 'students/students_wiring.dart' show openStudentFile;
 
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -949,7 +964,7 @@ class _ComplaintCard extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${row['subject']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
-              Text('${row['ref']} · ${asMap(row['user'])['name'] ?? ''} · ${relTime(row['created_at'])}',
+              Text([ltrIsolate('${row['ref'] ?? ''}'), bidiIsolate('${asMap(row['user'])['name'] ?? ''}'), relTime(row['created_at'])].where((x) => x.isNotEmpty).join(' · '),
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
               const SizedBox(height: AppSpace.xs),
               Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
@@ -1038,6 +1053,38 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
     }
   }
 
+  /// "Request a meeting" from the student strip: a meeting ask to the sender (D-1400; source = this complaint, the
+  /// student accepts or declines it), or the calendar meeting with the sender when asks are switched off.
+  Future<void> _meeting(OrgSession s, Map<String, dynamic> d) async {
+    final orgId = widget.orgId ?? s.currentId!;
+    final st = asMap(d['student']);
+    if (myAsksEnabled() && asInt(st['id']) > 0) {
+      final a = await showStudentAskSheet(context, orgId, asInt(st['id']),
+          kind: 'meeting', source: StatusSource('complaint', widget.id), name: '${st['name'] ?? ''}', canFullscreen: s.can('student_status', 'update'));
+      if (a != null && mounted) _load();
+      return;
+    }
+    if (!mounted) return;
+    if (await showComplaintMeetingSheet(context, orgId: widget.orgId ?? s.currentId!, complaintId: widget.id, subject: '${d['subject']}')) _load();
+  }
+
+  /// "Change status / flag": the status sheet on the sender, a flag preselected, sent through the complaint's route
+  /// (source = this complaint; the thread gets an internal note).
+  Future<void> _status(OrgSession s, Map<String, dynamic> d, Map<String, dynamic> st) async {
+    final orgId = widget.orgId ?? s.currentId!;
+    final r = await showStudentStatusSheet(
+      context,
+      orgId,
+      asInt(st['id']),
+      name: '${st['name'] ?? ''}',
+      decision: 'flag.struggling',
+      reason: t('بخصوص الشكوى ${d['ref']}', 'About complaint ${d['ref']}'),
+      source: StatusSource('complaint', widget.id),
+      api: ComplaintStatusApi(orgId, _url),
+    );
+    if (r != null && mounted) _load();
+  }
+
   Future<void> _transfer() async {
     final r = await OrgApi.i.getMap('$_base/departments');
     if (r == null || !mounted) return;
@@ -1062,7 +1109,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
     final d = _d;
     final dept = d?['dept_id'] == null ? null : asInt(d?['dept_id']);
     final canAct = d != null && (widget.canAct ?? s.can('complaints', 'update', dept));
-    final title = d == null ? t('الشكوى', 'Complaint') : '${d['ref']}';
+    final title = d == null ? t('الشكوى', 'Complaint') : ltrIsolate('${d['ref']}');
     if (orgUsesDashboardHeader(context, widget.orgId)) {
       return OrgPushedPage(
         title: title,
@@ -1130,6 +1177,15 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                   child: AppRefresh(
                     onRefresh: _load,
                     child: ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.md), children: [
+                      if (d['student'] is Map && d['is_anonymous'] != true) ...[
+                        ComplaintStudentStrip(
+                          student: asMap(d['student']),
+                          onOpenFile: () => openStudentFile(context, widget.orgId ?? s.currentId!, asInt(asMap(d['student'])['id']), name: '${asMap(d['student'])['name'] ?? ''}'),
+                          onMeeting: canAct && d['status'] != 'closed' ? () => _meeting(s, d) : null,
+                          onStatus: canAct ? () => _status(s, d, asMap(d['student'])) : null,
+                        ),
+                        const SizedBox(height: AppSpace.sm),
+                      ],
                       Section(
                         title: '${d['subject']}',
                         icon: Icons.support_agent_rounded,
@@ -1220,6 +1276,72 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                     ]),
                   ),
               ]),
+    );
+  }
+}
+
+/// The status sheet's calls sent through POST /complaints/{cid}/status (source = the complaint; the server writes the
+/// thread's internal note). The answer `{mode, event, decision_id, messages}` reads as the sheet's StatusResult.
+class ComplaintStatusApi extends StudentsApi {
+  ComplaintStatusApi(int orgId, this.complaintUrl, [ApiClient? api]) : _client = api ?? ApiClient(), super(orgId, api);
+
+  /// `…/orgs/{o}/complaints/{cid}`.
+  final String complaintUrl;
+  final ApiClient _client;
+
+  Map<String, dynamic> _body(Map<String, dynamic> body, bool propose) => {...body, 'propose': propose}..remove('source');
+
+  @override
+  Future<OrgCall> changeStatus(int uid, Map<String, dynamic> body, {bool quiet = true}) =>
+      orgCall(() => _client.post('$complaintUrl/status', body: _body(body, false)), quiet: quiet);
+
+  @override
+  Future<OrgCall> proposeStatus(int uid, Map<String, dynamic> body, {bool quiet = true}) =>
+      orgCall(() => _client.post('$complaintUrl/status', body: _body(body, true)), quiet: quiet);
+}
+
+/// The complaint sender's strip: avatar, name, number, status chip and the three actions the server allows
+/// (`can: {open_file, status, ask}`). Plain values.
+class ComplaintStudentStrip extends StatelessWidget {
+  const ComplaintStudentStrip({super.key, required this.student, this.onOpenFile, this.onMeeting, this.onStatus});
+
+  final Map<String, dynamic> student;
+  final VoidCallback? onOpenFile, onMeeting, onStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final st = student;
+    final can = asMap(st['can']);
+    final code = '${st['student_code'] ?? ''}'.trim();
+    final user = StudentUser.fromJson({'id': st['id'], 'name': st['name'], 'image_url': st['image_url']});
+    return AppCard(
+      key: const ValueKey('complaint.student'),
+      padding: const EdgeInsets.all(AppSpace.sm),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          StudentAvatar(user: user),
+          AppSpace.gapSm,
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${st['name'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+              const SizedBox(height: AppSpace.xxs),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                if (st['chip'] is Map) StudentStatusChip(StudentChip.fromJson(st['chip'])),
+                if (code.isNotEmpty) Text(code, style: AppType.meta(context)),
+              ]),
+            ]),
+          ),
+        ]),
+        AppSpace.gapSm,
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          if (can['open_file'] == true && onOpenFile != null)
+            AppButton.secondary(key: const ValueKey('complaint.student.file'), label: t('فتح الملف', 'Open file'), icon: Icons.folder_shared_rounded, onPressed: onOpenFile),
+          if (can['ask'] == true && onMeeting != null)
+            AppButton.tonal(key: const ValueKey('complaint.student.meeting'), label: t('طلب اجتماع', 'Request a meeting'), icon: Icons.event_available_rounded, onPressed: onMeeting),
+          if (can['status'] == true && onStatus != null)
+            AppButton.tonal(key: const ValueKey('complaint.student.status'), label: t('تغيير الحالة / علامة', 'Change status / flag'), icon: Icons.flag_rounded, onPressed: onStatus),
+        ]),
+      ]),
     );
   }
 }

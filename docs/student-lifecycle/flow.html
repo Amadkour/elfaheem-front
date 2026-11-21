@@ -1,0 +1,221 @@
+<title>رحلة الطالب في NextBrain</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Readex+Pro:wght@500;700&display=swap">
+<style>
+/* Layout: one reading column, a numbered sequence of flow panels, each panel = a diagram + a short "what happens" list */
+:root {
+  --bg: #f6f7f5; --surface: #ffffff; --fg: #1d2420; --muted: #5d6862; --line: #dfe4e0;
+  --accent: #0f6e5f; --accent-soft: #e2f1ed; --warn: #a15c07; --warn-soft: #fbf0df; --bad: #b3261e; --bad-soft: #fbe7e5;
+  --display: "Readex Pro", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141917; --surface: #1c2320; --fg: #e6ebe8; --muted: #a2ada7; --line: #2f3833;
+  --accent: #5cc3ae; --accent-soft: #1d3a33; --warn: #e5a54b; --warn-soft: #3a2d18; --bad: #f08a80; --bad-soft: #3b2220; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141917; --surface: #1c2320; --fg: #e6ebe8; --muted: #a2ada7; --line: #2f3833;
+  --accent: #5cc3ae; --accent-soft: #1d3a33; --warn: #e5a54b; --warn-soft: #3a2d18; --bad: #f08a80; --bad-soft: #3b2220; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.75; }
+.wrap { max-width: 64rem; margin: 0 auto; padding-block: 2.5rem 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 2rem; }
+h1, h2 { font-family: var(--display); text-wrap: balance; line-height: 1.3; margin: 0; }
+h1 { font-size: clamp(1.7rem, 4vw, 2.4rem); }
+h2 { font-size: 1.3rem; display: flex; gap: .6rem; align-items: baseline; }
+h2 .n { color: var(--accent); font-size: 1rem; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 46rem; }
+section { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1.4rem; display: grid; gap: 1rem; min-width: 0; }
+.diagram { overflow-x: auto; background: var(--bg); border-radius: 10px; padding: 1rem; direction: ltr; }
+.diagram pre { margin: 0; min-width: 34rem; text-align: center; }
+ul { margin: 0; padding-inline-start: 1.2rem; display: grid; gap: .35rem; }
+li::marker { color: var(--accent); }
+.legend { display: flex; flex-wrap: wrap; gap: .5rem; }
+.chip { font-size: .85rem; padding: .15rem .7rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.chip.w { background: var(--warn-soft); color: var(--warn); }
+.chip.b { background: var(--bad-soft); color: var(--bad); }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
+.dim { border: 1px solid var(--line); border-radius: 10px; padding: 1rem; display: grid; gap: .5rem; align-content: start; }
+.dim b { font-family: var(--display); }
+.muted { color: var(--muted); font-size: .92rem; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+.tablebox { overflow-x: auto; }
+th, td { text-align: start; padding: .55rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: .85rem; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+.state { font-size: .8rem; padding: .1rem .55rem; border-radius: 999px; white-space: nowrap; }
+.s-now { background: var(--warn-soft); color: var(--warn); }
+.s-next { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+</style>
+
+<div class="wrap" dir="rtl" lang="ar">
+  <header style="display:grid;gap:.6rem">
+    <h1>رحلة الطالب في NextBrain: من الإضافة للتخرج</h1>
+    <p class="lede">الصفحة دي بترسم الفلو كله زي ما اتوافق عليه في الخطة: إزاي الطالب بيدخل، حالاته، إيه اللي بيتغير لوحده من النتايج وإيه اللي محتاج قرار، وإزاي الشكوى والاجتماع والحالة بيتربطوا ببعض. كل الأرقام والقواعد إعدادات بتختارها المؤسسة، مفيش حاجة مكتوبة ثابتة في الكود.</p>
+  </header>
+
+  <section>
+    <h2><span class="n">١</span>الصورة الكاملة</h2>
+    <div class="diagram"><pre class="mermaid">
+flowchart LR
+  A["إضافة الطالب<br/>موظف · دعوة · رابط/كود · تسجيل ذاتي · Excel"] --> B{"سياسة القبول<br/>في إعدادات المؤسسة"}
+  B -- "مباشر" --> D["مقيد ونشط"]
+  B -- "مراجعة واعتماد<br/>شخص أو جهة" --> C["ملف قبول<br/>ناقص بيانات ← في انتظار الاعتماد"]
+  C -- "اعتماد" --> D
+  C -- "رفض أو إرجاع للتصحيح" --> A
+  D --> E["الدراسة<br/>تسجيل مقررات ← نتايج"]
+  E --> F{"قواعد النجاح والانتقال"}
+  F -- "نجح" --> G["ينتقل للمستوى/الفرقة التالية<br/>وتفتح له المقررات"]
+  F -- "متعثر" --> H["حامل مواد · باقٍ للإعادة<br/>إنذار أكاديمي · فرصة أخيرة"]
+  G --> E
+  H --> E
+  E --> I{"تغييرات القيد<br/>بقرار"}
+  I --> J["إيقاف قيد · تأجيل · انسحاب<br/>فصل · تحويل · إعادة قيد"]
+  G -- "استوفى شروط التخرج" --> K["خريج"]
+</pre></div>
+    <ul>
+      <li>كل خطوة بتتسجل في <b>تايم لاين</b> ملف الطالب، وده سجل بيتضاف عليه بس وعمره ما بيتمسح منه حاجة.</li>
+      <li>أي تغيير في الحالة ممكن يترجع عنه: الرجوع بيتسجل كحدث جديد فيه مين رجّع وإمتى، والحدث القديم بيفضل زي ما هو.</li>
+      <li>كل مرة حد يفتح ملف طالب بتتسجل في «مين فتح الملف ده».</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="n">٢</span>إضافة طالب</h2>
+    <div class="diagram"><pre class="mermaid">
+flowchart TD
+  S["الموظف يدوس «إضافة طالب»"] --> T["يختار نوع الطالب<br/>تنسيق · شهادة معادلة · دبلوم فني · محوّل<br/>وافد · برنامج خاص · انتساب · دراسات عليا ..."]
+  T --> U["تظهر حقول ومستندات النوع ده بس<br/>المؤسسة هي اللي بتحددها"]
+  U --> V{"طريقة الإدخال"}
+  V -- "إدخال كامل" --> W["حفظ"]
+  V -- "بيانات أساسية + دعوة" --> X["الطالب يكمل بنفسه<br/>إيميل أو إشعار في التطبيق"]
+  V -- "Excel أو CSV" --> Y["قالب لكل نوع ← رفع الملف"]
+  Y --> Z["شاشة مراجعة قبل الحفظ<br/>الأخطاء ظاهرة وتتصلح في مكانها"]
+  Z --> W
+  X --> W
+  W --> R["فحص التكرار<br/>الرقم القومي أو الباسبور"]
+  R --> M["شارة «بيانات ناقصة» على الطالب<br/>بتوضح الناقص بالظبط وترفعه من مكانه"]
+  M --> N["تذكير تلقائي للطالب كل ٧ أيام<br/>٤ مرات وبعدين مهمة للموظف"]
+</pre></div>
+    <p class="muted">لو المؤسسة شارطة اعتماد جهة معينة، دور الموظف بيخلص بمجرد ما يرفع البيانات، والطالب مبيدخلش النظام إلا بعد الاعتماد. ولو مش شارطة، الموظف بيأكد والطالب بيبقى نشط على طول.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">٣</span>حالة الطالب: ثلاث طبقات في شارة واحدة</h2>
+    <div class="grid3">
+      <div class="dim"><b>حالة القيد</b><span class="muted">هل الطالب موجود في الكلية دلوقتي؟</span>
+        <div class="legend"><span class="chip">مقيد</span><span class="chip w">موقوف قيده</span><span class="chip w">مؤجل</span><span class="chip w">موقوف تأديبياً</span><span class="chip w">من الخارج</span><span class="chip b">منسحب</span><span class="chip b">ملغى قيده</span><span class="chip b">مفصول</span><span class="chip b">محوّل للخارج</span><span class="chip">خريج</span></div></div>
+      <div class="dim"><b>الوضع الأكاديمي</b><span class="muted">بيتحسب لوحده من النتايج</span>
+        <div class="legend"><span class="chip">منتظم</span><span class="chip w">حامل مواد</span><span class="chip w">باقٍ للإعادة</span><span class="chip w">إنذار أكاديمي</span><span class="chip b">فرصة أخيرة</span></div></div>
+      <div class="dim"><b>علامات</b><span class="muted">بتتضاف بقاعدة أو بإيد الموظف</span>
+        <div class="legend"><span class="chip w">متعثر*</span><span class="chip w">حالة خاصة*</span><span class="chip">محوّل إلينا</span><span class="chip">مجنّد</span><span class="chip">عذر مفتوح</span><span class="chip w">سجل تأديبي*</span><span class="chip">منتسب</span></div>
+        <span class="muted">* العلامات دي بيشوفها الموظفين بس، والطالب ميشوفهاش.</span></div>
+    </div>
+    <div class="diagram"><pre class="mermaid">
+stateDiagram-v2
+  direction LR
+  [*] --> مقيد: الاعتماد
+  مقيد --> موقوف_القيد: قرار مجلس الكلية
+  مقيد --> مؤجل: قرار
+  مقيد --> موقوف_تأديبيا: قرار العميد
+  موقوف_القيد --> مقيد: استئناف
+  مؤجل --> مقيد: استئناف
+  موقوف_تأديبيا --> مقيد: انتهاء المدة
+  مقيد --> من_الخارج: مجلس الكلية
+  من_الخارج --> مقيد: نجح
+  مقيد --> مفصول: توصية ثم قرار
+  مقيد --> منسحب: طلب الطالب
+  مقيد --> محول_للخارج: قرار رئيس الجامعة
+  مفصول --> مقيد: إعادة قيد
+  منسحب --> مقيد: إعادة قيد
+  مقيد --> خريج: استوفى الشروط
+</pre></div>
+  </section>
+
+  <section>
+    <h2><span class="n">٤</span>إيه اللي بيحصل لوحده وإيه اللي محتاج قرار</h2>
+    <div class="diagram"><pre class="mermaid">
+flowchart TD
+  R["نتايج الترم أو السنة اتعتمدت"] --> Q{"نظام الدراسة؟<br/>إعداد المؤسسة"}
+  Q -- "ساعات معتمدة" --> C1["المعدل التراكمي أقل من الحد<br/>مثلاً 2.0 من 4"]
+  C1 --> C2["إنذار أكاديمي — تلقائي"]
+  C2 --> C3["بعد عدد إنذارات تحدده المؤسسة<br/>أو معدل أقل من حد تاني"]
+  Q -- "سنوي تقليدي" --> T1["عدد المواد اللي سقط فيها"]
+  T1 -- "في حدود المسموح، مثلاً مادتين" --> T2["ينتقل حامل مواد — تلقائي"]
+  T1 -- "أكتر من المسموح" --> T3["باقٍ للإعادة — تلقائي"]
+  T3 --> T4["قضى سنتين في نفس الفرقة<br/>المادة ٨٠"]
+  C3 --> P["توصية بالفصل أو بالفرصة الأخيرة<br/>بتظهر في صندوق الطلبات"]
+  T4 --> P
+  P --> D{"الجهة المختصة<br/>مجلس الكلية مثلاً"}
+  D -- "توافق ورقم القرار" --> X["الحالة تتغير ويتبعت إشعار للطالب"]
+  D -- "ترفض" --> Y["الحالة زي ما هي، والتوصية بتتقفل بسبب"]
+</pre></div>
+    <ul>
+      <li><b>تلقائي:</b> الانتقال للمستوى أو الفرقة التالية، وحامل مواد، وباقٍ للإعادة، والإنذار الأكاديمي.</li>
+      <li><b>محتاج قرار:</b> أي حاجة بتطلّع الطالب برة النظام، زي الفصل وإلغاء القيد والتحويل. ده بيكون توصية لحد ما الجهة المختصة توافق، والمؤسسة تقدر تخلي قاعدة معينة تلقائية لو حبت.</li>
+      <li>قبل ما تتنفذ الترقية السنوية بتظهر <b>معاينة</b> فيها مين هينتقل ومين هيعيد.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="n">٥</span>الشكوى ← الاجتماع ← الحالة</h2>
+    <div class="diagram"><pre class="mermaid">
+sequenceDiagram
+  participant ط as الطالب
+  participant م as مسؤول الشكاوى
+  participant ن as النظام
+  ط->>ن: يقدم شكوى
+  ن->>م: الشكوى توصل صندوقه
+  م->>ن: «اطلب اجتماع»: الميعاد + حضوري أو أونلاين
+  ن-->>م: لو الطالب مشغول في الوقت ده يظهر تنبيه، ويقدر يكمل برضه
+  ن->>ط: إشعار بالاجتماع، ويظهر في جدوله
+  م->>ن: بعد الاجتماع: علامة «متعثر» أو «حالة خاصة»
+  ن->>ن: الحدث يتسجل ومصدره الشكوى دي
+  م->>ن: تراجع لو حصل غلط، بحدث جديد فيه مين وإمتى
+</pre></div>
+  </section>
+
+  <section>
+    <h2><span class="n">٦</span>طلب حاجة من الطالب</h2>
+    <div class="diagram"><pre class="mermaid">
+flowchart LR
+  A["المراجع يختار نوع الطلب<br/>اجتماع · بيانات · مستندات · تأكيد"] --> B["يختار طريقة الظهور للطالب"]
+  B --> B1["إشعار"]
+  B --> B2["نافذة منبثقة"]
+  B --> B3["صفحة كاملة"]
+  B1 & B2 & B3 --> C["الطالب يرد"]
+  C --> D{"المراجع"}
+  D -- "قبول" --> E["يتقفل ويتسجل في التايم لاين"]
+  D -- "إرجاع بسبب" --> C
+</pre></div>
+  </section>
+
+  <section>
+    <h2><span class="n">٧</span>مين يقدر يعمل إيه</h2>
+    <div class="tablebox"><table>
+      <thead><tr><th>الدور</th><th>يقدر</th><th>ميقدرش</th></tr></thead>
+      <tbody>
+        <tr><td>موظف شؤون الطلاب</td><td>يضيف ويستورد ويكمل البيانات الناقصة، ويقترح تغيير حالة</td><td>يعتمد أو يفصل</td></tr>
+        <tr><td>مسؤول القيد والتسجيل</td><td>يعتمد القيد، ويستأنف أو يسحب، ويدير التسجيل</td><td>القرارات اللي محتاجة جهة</td></tr>
+        <tr><td>مسؤول الشكاوى</td><td>الشكاوى والاجتماعات وعلامتي «متعثر» و«حالة خاصة»</td><td>يوقف القيد أو يفصل</td></tr>
+        <tr><td>مدير شؤون الطلاب، العميد، الوكيل</td><td>يعتمد القرارات ويصدّر ويشوف سجل الدخول</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2><span class="n">٨</span>مراحل التنفيذ</h2>
+    <div class="tablebox"><table>
+      <thead><tr><th>المرحلة</th><th>اللي بتسلّمه</th><th>الحالة</th></tr></thead>
+      <tbody>
+        <tr><td>١</td><td>قسم الطلاب، وملف الطالب الموحد، والتايم لاين، وتسجيل فتح الملف</td><td><span class="state s-now">شغالين فيها</span></td></tr>
+        <tr><td>٢</td><td>الحالات والقرارات والتراجع، ومين يقرر إيه</td><td><span class="state s-next">التالية</span></td></tr>
+        <tr><td>٣</td><td>إكمال «إضافة طالب»: الأنواع الجديدة، وسياسة القبول، وتصحيح الاستيراد في مكانه، والبيانات الناقصة، ورقم الطالب</td><td><span class="state s-next">لاحقاً</span></td></tr>
+        <tr><td>٤</td><td>الطلب من الطالب، والاجتماعات، وربط الشكوى بالحالة</td><td><span class="state s-next">لاحقاً</span></td></tr>
+        <tr><td>٥</td><td>قواعد الدراسة والانتقال التلقائي</td><td><span class="state s-next">لاحقاً</span></td></tr>
+        <tr><td>٦</td><td>الطلبات عبر الحوكمة، ومقاصة المواد للمحوّلين</td><td><span class="state s-next">لاحقاً</span></td></tr>
+        <tr><td>٧</td><td>التصدير والتقارير، واللائحة حسب سنة الالتحاق</td><td><span class="state s-next">لاحقاً</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>

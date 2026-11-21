@@ -5348,3 +5348,117 @@ A consent row belongs to one parent and one student: a second parent gives their
 ## D-1364 — An Android build under the old app id is told to install the new app, never offered the APK · 2026-11-21 · accepted
 
 Every Android build up to 1.0.0 is signed under the old id `com.example.flutter_education_app`; the new APK (`com.doubley.nextbrain`, from 1.0.1+2) installs beside it, not over it. Once an active android version at 1.0.1 or above is published, `GET /app/version-check` answers a build below 1.0.1 with `should_update` (never `must_update`, whatever the minimum), the ar + en text "install the new app from the Downloads page, sign in, then remove this one" as `notes` / `release_notes`, `download_url` = `<PUBLIC_WEB_URL>/ar/download/` and `source: custom` (no "install over this app" hint), plus `legacy_app_id: true` (`app_update_policy.legacy_android_answer`, checked in `tests/org_v2/e2e_update_policy.py`). Limit: an old build older than D-143 ignores `download_url` and follows `releases.json`, whose prompt still offers the APK.
+## D-1400 — A student has an enrolment status, an academic standing and flags, shown as one chip · 2026-11-21 · accepted
+
+Student lifecycle job (plan `docs/student-lifecycle/PLAN.md`, contract `CONTRACT.md`, research `RESEARCH.md`). The
+owner listed statuses in five groups; they are stored as independent dimensions, not one list. Intake stays the
+onboarding case status (D-1200). Enrolment (`org_student_academic.enrol_status`: enrolled, suspended, postponed,
+disc_suspended, outside, withdrawn, cancelled, dismissed, transferred_out, graduated, deceased; RESEARCH §5, §7) and
+academic standing (`acad_standing`: regular, carrying, repeating, warning, final_chance; RESEARCH §4.1, §4.2) are new,
+and flags are a table. Reason: real students hold several at once (repeating and suspended; regular, transferred in and
+owing documents), and a suspended student returns to the standing he left. Staff see one chip by precedence
+(enrolment, membership, intake, standing). The old `standing` (good / probation / honours) keeps being written for
+installed apps; honours stays a distinction, not a standing (RESEARCH §6).
+
+## D-1401 — "Struggling" is a flag with a configurable rule, not a legal status · 2026-11-21 · accepted
+
+RESEARCH §4.2 (last bullet) found no bylaw that defines متعثر; the operative states are academic warning, repeating
+and final chance. So `struggling` is a flag set by the institution's rule (default: standing warning or final chance,
+or repeating the same year twice) or by hand (the complaints flow), removable with a reason, and hidden from the
+student, as are `special_case` and `disciplinary_record`. "Transferred" is two things: `transferred_in` is a permanent
+origin flag, `transferred_out` a final enrolment status (RESEARCH §1.3).
+
+## D-1402 — The system recommends, a body decides, for anything that removes a student · 2026-11-21 · accepted
+
+Standing changes are automatic from approved results. Dismissal (exhausted chances, RESEARCH §4.1 art. 80 [S3]; GPA,
+duration, non-registration, §4.2 [S10, S11]), "outside" status and the final chance are opened as registrar decisions
+(`OrgDecision`) with the rule and the evidence, because every bylaw read gives them to a council (RESEARCH §7) and a
+dismissal on a wrong grade is not reversible in practice. The decision matrix lets an institution switch
+`dismiss_academic` and `final_chance` to automatic. `dismiss_after_probations`, defined and never read, becomes
+`dismissal.consecutive_warnings`.
+
+## D-1403 — No fourth request system · 2026-11-21 · accepted
+
+Intake stays in onboarding cases; students' lifecycle requests (suspension, withdrawal, re-enrolment, transfer,
+excuse; RESEARCH §5) are governance work items of `lifecycle.*` categories whose final approval applies the status;
+rule findings are registrar decisions. The "Student requests" inbox merges the three and the asks on read.
+
+## D-1404 — Status history is append-only; undo is a compensating event · 2026-11-21 · accepted
+
+`org_student_status_events` is never edited (PostgreSQL trigger; only `reverted_by_id` may be set once). Undo writes a
+new event (`via = undo`, `reverts_id`) that restores the previous value and reverses the recorded side effects. Only
+the newest event of a dimension can be undone (409 `not_latest`), with the original decision's right and a reason.
+Undoing an automatic event holds the rule until the next approved results so the job does not re-apply it.
+
+## D-1405 — A status change never silently drops courses or ends access · 2026-11-21 · accepted
+
+Any enrolment status other than `enrolled` blocks new course registration (`enrolment_not_active`). Dropping current
+courses and the access end date are asked in the decision sheet and recorded in the event's `effects`. A student who
+left keeps read-only access for 90 days by default (owner, Q7), an institution setting.
+
+## D-1406 — Student types are admission routes; study mode and fee class are fields · 2026-11-21 · accepted
+
+The presets gain `student_equivalent`, `student_technical`, `student_second_degree`, `student_affiliated`,
+`student_special_program` and `student_visiting` (RESEARCH §1.2 [S6, S9, S10, S14, S17]); disability and ex-military
+routes are a field of `student_new`. Otherwise every route × mode becomes a type and the clerk's list passes twenty.
+Private, ahlia and Azhar lists ship as editable starting points marked "review with your bylaw" (RESEARCH §8).
+
+## D-1407 — The student timeline is a merged read, not a copied log · 2026-11-21 · accepted
+
+`GET …/students/{uid}/timeline` reads case events, level advances, registrations and results per term, complaints,
+meetings, audit rows and status events, each behind its own right (a kind the caller may not see is named in
+`hidden_kinds`). Only status events are new data. Copying history into one table would drift.
+
+## D-1408 — Opening a student file is logged once per person, student and section per 30 minutes · 2026-11-21 · accepted
+
+`student.file_viewed` in `org_audit_log` (`entity = student`), with the section. One row per click would bury the
+log; the window is a setting (0 = every open). The file tells staff the open is recorded, and holders of `audit:view`
+see "who opened this file". The action name never starts with a permission-affecting prefix.
+
+## D-1409 — One new module, `student_status`, and four system roles · 2026-11-21 · accepted
+
+`student_status`: view · insert (propose) · update (decide what the matrix marks for officers) · approve (decide what
+it marks for a body, undo others' decisions) · export. Roles `student_affairs_staff`, `registrar`,
+`complaints_officer`, `student_affairs_head` are created unassigned in every organization. The default matrix follows
+RESEARCH §7 ("Body" column) and §5 (art. 127 for penalties): an officer can resume, withdraw and set three flags,
+never dismiss or suspend.
+
+## D-1410 — "Ask the student" is one mechanism; full screen keeps must-ack's guards · 2026-11-21 · accepted
+
+`org_student_asks` holds a meeting, a data request, a document request or a confirmation with a stored answer, shown
+as a notification, a popup or a full-screen card. Full screen needs `student_status:update` and a due date within 7
+days, and is drawn by the existing `OrgMustAckHost`, so `main.dart` is untouched. A field answer changes the file only
+when the reviewer accepts it.
+
+## D-1411 — A body's approval is first a recorded decision number and date · 2026-11-21 · accepted
+
+An onboarding chain step may name people (`user_ids`) or a council (`council_id`). Until the governance link of phase
+6, the council step is completed by recording the council's decision number and date; the real agenda item and vote
+come with the lifecycle requests (owner, Q4).
+
+## D-1412 — Fix: a meeting booked from a complaint obeys `attendees_busy` · 2026-11-21 · accepted
+
+`POST …/complaints/{cid}/meeting` created the meeting without the calendar's busy check. It now goes through the same
+helper as every lifecycle meeting: 409 `attendees_busy` unless `force`. An installed app without `force` gets that
+409 only when the sender is busy (owner, Q9: change the route, do not add a second one).
+
+## D-1413 — Rules start from a bylaw preset and can be tried on a real student · 2026-11-21 · accepted
+
+The progression rules of RESEARCH "Configurable options implied" are settings with the most common confirmed default
+(carried courses 2 [S9, S12]; years inside a year 2 and outside chances 0 / 1 / 3 [S3]; warning below CGPA 2.0 [S10];
+suspension 2 years [S5, S6]). "Start from a bylaw" fills them at once (Law 49 traditional 2015, credit hours
+engineering, credit hours law, 5-point levels) and "Try it" shows what the rules would say for one student before
+saving. Rules are per institution with per-programme overrides; rule sets per intake year wait (owner, Q6).
+
+## D-1414 — The Students list is members; applicants stay in Admissions · 2026-11-21 · accepted
+
+The list shows students who have a membership. Files not yet active are counted on the "Awaiting approval" card,
+which opens the existing Admissions page. The missing-data badge is computed from the student's own case
+(`requirements`), never stored, so a change to a type's required items shows at once.
+
+## D-1415 — Out of scope for this job, recorded so nobody builds half of it · 2026-11-21 · accepted
+
+Postgraduate thesis states (registered, struck, defended; RESEARCH §1.4) wait for a later job; discipline is recorded
+as status events and a flag only, with no investigation workflow (RESEARCH §5 arts. 123–129); fees stay a field and
+never block a status change (D-1204); a national ID enrolled in a sister faculty warns and does not block
+(RESEARCH §1.1 [S6]); incomplete files are reminded every 7 days, four times, then become a staff task.

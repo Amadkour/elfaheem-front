@@ -1,6 +1,6 @@
 // lib/features/org/onboarding/onboarding_api.dart — every staff route of member onboarding (contract §6), through
 // `orgCall` (never throws: the screen reads `OrgCall.error`). Paths are under `/api/v1/org/orgs/{org}/onboarding`.
-// Phase B (import) and C (invite, intake, applicant) routes are added when those screens land.
+// Phase B (import, with the inline row fix), C (invite, intake, applicant), D (report) and the student file's reminder.
 library;
 
 import 'dart:typed_data';
@@ -22,6 +22,9 @@ enum OnbStage {
   const OnbStage(this.status);
   final String status;
 }
+
+/// A calendar day as the server's `date` (`YYYY-MM-DD`).
+String onbDay(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
 class OnboardingApi {
   OnboardingApi([ApiClient? api, this.applicant = false]) : _api = api ?? ApiClient();
@@ -80,7 +83,14 @@ class OnboardingApi {
   Future<OrgCall> requestCorrection(int orgId, int id, {required String reason, List<Map<String, String>> fields = const [], List<Map<String, String>> documents = const []}) =>
       orgCall(() => _api.post('${_base(orgId)}/cases/$id/request-correction', body: {'reason': reason, 'fields': fields, 'documents': documents}), quiet: true);
 
-  Future<OrgCall> approve(int orgId, int id, {String note = ''}) => orgCall(() => _api.post('${_base(orgId)}/cases/$id/approve', body: {'note': note}), quiet: true);
+  /// A body's step (`need.council_id`) needs [decisionNo] and [decisionDate] (422 `decision_no_required`).
+  Future<OrgCall> approve(int orgId, int id, {String note = '', String? decisionNo, DateTime? decisionDate}) => orgCall(
+      () => _api.post('${_base(orgId)}/cases/$id/approve', body: {
+            'note': note,
+            if (decisionNo != null && decisionNo.trim().isNotEmpty) 'decision_no': decisionNo.trim(),
+            if (decisionDate != null) 'decision_date': onbDay(decisionDate),
+          }),
+      quiet: true);
 
   Future<OrgCall> reject(int orgId, int id, {required String reason, String reasonKey = ''}) =>
       orgCall(() => _api.post('${_base(orgId)}/cases/$id/reject', body: {'reason': reason, 'reason_key': reasonKey}), quiet: true);
@@ -156,6 +166,16 @@ class OnboardingApi {
   Future<OrgCall> confirmImport(int orgId, int id, {required bool includeWarnings}) =>
       orgCall(() => _api.post('${_base(orgId)}/imports/$id/confirm', body: {'include_warnings': includeWarnings}), quiet: true);
 
+  /// The inline fix: one staged row re-validated with the edited cells → `{row, counts}` ([OnbRowPatchResult]).
+  /// 409 `batch_not_staged`, 404 `row_not_found`. A masked ID sent back unchanged keeps the stored number; `''` clears.
+  Future<OrgCall> patchImportRow(int orgId, int batchId, int rowId, Map<String, dynamic> fields) =>
+      orgCall(() => _api.patch('${_base(orgId)}/imports/$batchId/rows/$rowId', body: {'fields': fields}), quiet: true);
+
+  /// "Fix the same value everywhere": every staged row whose [field] reads [from] gets [to] → `{changed, counts}`
+  /// ([OnbRowFixResult]).
+  Future<OrgCall> fixImportRows(int orgId, int batchId, {required String field, required Object from, required Object? to}) =>
+      orgCall(() => _api.post('${_base(orgId)}/imports/$batchId/rows/fix', body: {'field': field, 'from': from, 'to': to}), quiet: true);
+
   /// The xlsx of the error / warning rows (bytes), or null.
   Future<Uint8List?> importReportBytes(int orgId, int id) async {
     try {
@@ -196,6 +216,12 @@ class OnboardingApi {
       return null;
     }
   }
+
+  // ── Student file ────────────────────────────────────────────────────────────
+
+  /// "Remind the student" of what the file lacks now (notification, push, e-mail fallback) → `{sent}`; 429
+  /// `reminded_recently` with `next_at` once per 24 h ([onbRemindNextAt]).
+  Future<OrgCall> remindMissing(int orgId, int uid) => orgCall(() => _api.post('$orgBase/orgs/$orgId/students/$uid/missing/remind'), quiet: true);
 
   // ── Applicant ───────────────────────────────────────────────────────────────
 

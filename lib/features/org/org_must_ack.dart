@@ -7,6 +7,12 @@
 //                         room (LiveRoomHost) is open it asks nothing and shows nothing (D-977). The card covers
 //                         the app (focus and semantics of the pages below are excluded) until "I have read this";
 //                         the acknowledge answer's `next` is shown at once (the queue, one at a time).
+//                         A second source (student lifecycle phase 4, D-1400): GET /api/v1/org/me/asks — an open ask
+//                         with presentation `fullscreen` covers the app until answered (drawn AFTER the must-ack
+//                         messages: a message waiting wins), one with `popup` shows as a card with "Later" (put off for
+//                         this session). Read on the same triggers plus the `student_lifecycle` live event; switch
+//                         org.students.asks. The form is MyAskOverlay (students/my_ask_page.dart);
+//                         test/org/must_ack_asks_test.dart.
 //   MustAckCardView       the full-screen card, plain values (test/org/institutions_s4_test.dart)
 //   OrgMyMessagesPage     "Organization messages": GET /me/org-messages, reloads on `org_message`; a row opens
 //                         MemberMessageView in a sheet (GET …/{mid} marks it read) with the reply: the org chat with
@@ -35,6 +41,7 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart' show asMap, asMapList, t;
 import 'org_messages_models.dart';
 import 'org_v3.dart' show OrgCall;
+import 'students/my_ask_page.dart' show MyAsk, MyAskOverlay, MyAskSource, MyAsksState, RemoteMyAskSource, myAsksEnabled, myAsksShouldAsk;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  The host
@@ -57,10 +64,14 @@ class RemoteMustAckSource implements MustAckSource {
 }
 
 class OrgMustAckHost extends StatefulWidget {
-  const OrgMustAckHost({super.key, required this.child, this.source = const RemoteMustAckSource(), this.signedIn});
+  const OrgMustAckHost({super.key, required this.child, this.source = const RemoteMustAckSource(), this.asks, this.signedIn});
 
   final Widget child;
   final MustAckSource source;
+
+  /// The asks source; null = the server's when [source] is the server's (a test that fakes only the messages gets
+  /// no asks).
+  final MyAskSource? asks;
 
   /// Tests: whether someone is signed in (else MyAuthProvider decides).
   final bool Function()? signedIn;
@@ -74,6 +85,11 @@ class OrgMustAckHost extends StatefulWidget {
 
 class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObserver {
   MustAckState _state = MustAckState.none;
+  MyAsksState _asks = MyAsksState.none;
+  final _later = <int>{};                                 // popups put off this session
+  Future<void>? _runningAsks;
+  bool _asksAgain = false;                                // a forced read came while one was in flight
+  final _gone = <int>{};                                  // answered / closed here: hidden until a read that started after
   bool _busy = false, _wasSignedIn = false, _askLater = false, _hidingAssistant = false;
   String? _error;
   DateTime? _lastAsk;
@@ -85,7 +101,8 @@ class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObse
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _live = LiveEvents.instance.listen({LiveEvents.orgMustAck}, (_) => _ask(force: true));
+    _live = LiveEvents.instance.listen({LiveEvents.orgMustAck, LiveEvents.studentLifecycle},
+        (e) => _ask(force: true, ack: e.type == LiveEvents.orgMustAck, asks: e.type != LiveEvents.orgMustAck));
     LiveFocus.examOpen.addListener(_onFocus);
     LiveRoomHost.listenable.addListener(_onFocus);
     AppConfig.disableListVersion.addListener(_onSwitch);
@@ -114,6 +131,8 @@ class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObse
 
   bool get _signedIn => widget.signedIn?.call() ?? (_auth?.isAuthenticated ?? false);
 
+  MyAskSource? get _askSource => widget.asks ?? (widget.source is RemoteMustAckSource ? const RemoteMyAskSource() : null);
+
   bool get _blocked => !mustAckMayShow(examOpen: LiveFocus.isExamOpen, roomOpen: LiveRoomHost.isOpen);
 
   void _onAuth() {
@@ -123,7 +142,10 @@ class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObse
       _ask(force: true);
     } else if (!s && _wasSignedIn) {
       _wasSignedIn = false;
+      _later.clear();
+      _gone.clear();
       _set(MustAckState.none);
+      _setAsks(MyAsksState.none);
     }
   }
 
@@ -144,6 +166,7 @@ class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObse
 
   void _onSwitch() => scheduleMicrotask(() {
         if (mounted && !orgMustAckEnabled()) _set(MustAckState.none);
+        if (mounted && !myAsksEnabled()) _setAsks(MyAsksState.none);
       });
 
   void _set(MustAckState s) {
@@ -154,22 +177,72 @@ class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObse
     });
   }
 
-  void _ask({bool force = false}) {
-    if (!mustAckShouldAsk(signedIn: _signedIn, viewAs: ViewAsState.active)) {
-      if (_state.item != null) _set(MustAckState.none);
-      return;
-    }
+  void _setAsks(MyAsksState s) {
+    if (!mounted) return;
+    setState(() => _asks = s);
+  }
+
+  /// [ack]: read the must-ack messages, [asks]: read my open asks (both by default).
+  void _ask({bool force = false, bool ack = true, bool asks = true}) {
+    final ackOk = ack && mustAckShouldAsk(signedIn: _signedIn, viewAs: ViewAsState.active);
+    final asksOk = asks && _askSource != null && myAsksShouldAsk(signedIn: _signedIn, viewAs: ViewAsState.active);
+    if (ack && !ackOk && _state.item != null) _set(MustAckState.none);
+    if (asks && !asksOk && _asks.items.isNotEmpty) _setAsks(MyAsksState.none);
+    if (!ackOk && !asksOk) return;
     if (_blocked) {
       _askLater = true;                                   // read it again when the exam / room closes
       return;
     }
     final now = DateTime.now();
     if (!force && _lastAsk != null && now.difference(_lastAsk!) < OrgMustAckHost.resumeGap) return;
-    if (_running != null) return;
     _askLater = false;
     _lastAsk = now;
-    _running = widget.source.fetch().then(_set).whenComplete(() => _running = null);
+    if (ackOk && _running == null) {
+      _running = widget.source.fetch().then(_set).whenComplete(() => _running = null);
+    }
+    if (asksOk) _readAsks(again: force);
   }
+
+  /// GET /me/asks once at a time. A forced read while one is in flight ([again]) is queued: the in-flight answer is
+  /// dropped (it may predate an answer or a close) and one more read runs after it. [_gone] ids known before a read
+  /// started are cleared when it lands: from then on the server's answer decides (a returned ask shows again).
+  void _readAsks({bool again = false}) {
+    final src = _askSource;
+    if (src == null) return;
+    if (_runningAsks != null) {
+      if (again) _asksAgain = true;
+      return;
+    }
+    final known = {..._gone};
+    _runningAsks = src.fetch().then((s) {
+      if (_asksAgain || !mounted) return;
+      _gone.removeAll(known);
+      _setAsks(s);
+    }).whenComplete(() {
+      _runningAsks = null;
+      if (_asksAgain && mounted) {
+        _asksAgain = false;
+        _readAsks();
+      }
+    });
+  }
+
+  /// The ask [a] is done or closed here: hide it now, then read the asks again.
+  void _dropAsk(MyAsk a) {
+    if (mounted) setState(() => _gone.add(a.id));
+    _ask(force: true, ack: false);
+  }
+
+  void _askAnswered(MyAsk a) {
+    _dropAsk(a);
+    showAppNotice(t('أُرسل ردّك', 'Your answer was sent'));
+  }
+
+  /// A failed answer: read the asks again (an ask that closed meanwhile must never keep the app covered). A closed
+  /// one shows "closed" with Close ([_dropAsk]) until the read lands and takes it away.
+  void _askFailed(MyAsk a) => _ask(force: true, ack: false);
+
+  void _putOff(MyAsk a) => setState(() => _later.add(a.id));
 
   Future<void> _acknowledge() async {
     final m = _state.item;
@@ -196,14 +269,32 @@ class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObse
   @override
   Widget build(BuildContext context) {
     final m = _state.item;
-    final show = m != null && !_blocked && _signedIn && orgMustAckEnabled();
+    final free = !_blocked && _signedIn;
+    final showAck = m != null && free && orgMustAckEnabled();
+    final asksOn = free && !showAck && _askSource != null && myAsksEnabled();
+    final full = asksOn ? _asks.nextFullscreen(_gone) : null;
+    final pop = asksOn && full == null ? _asks.nextPopup({..._later, ..._gone}) : null;
+    final show = showAck || full != null || pop != null;
     if (show != _hidingAssistant) {
       _hidingAssistant = show;
       show ? AppAssistant.hide() : AppAssistant.release();     // the floating bubble never sits on the card
     }
     return Stack(fit: StackFit.expand, children: [
       ExcludeFocus(excluding: show, child: ExcludeSemantics(excluding: show, child: widget.child)),
-      if (show)
+      if (full != null || pop != null)
+        Positioned.fill(
+          child: MyAskOverlay(
+            key: ValueKey('my_ask.${(full ?? pop)!.id}'),
+            ask: (full ?? pop)!,
+            source: _askSource!,
+            fullscreen: full != null,
+            onAnswered: _askAnswered,
+            onFailed: _askFailed,
+            onClose: () => _dropAsk((full ?? pop)!),
+            onLater: pop == null ? null : () => _putOff(pop),
+          ),
+        ),
+      if (showAck)
         Positioned.fill(
           child: MustAckCardView(
             key: ValueKey('must_ack.${m.id}'),

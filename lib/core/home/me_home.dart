@@ -355,6 +355,16 @@ class MeHome {
   /// switch on, stage / grade or a required field missing, not dismissed in 30 days); false from an older server.
   bool get studyPrompt => raw['study_prompt'] == true;
 
+  /// My own study status in organization [orgId] (student lifecycle D-1400): the `my_status[]` entry of that
+  /// organization, raw (`MyStatus.fromJson`, org/students/student_status_models.dart); null = none (not a student
+  /// there, nothing to show, an older server).
+  Map<String, dynamic>? myStatusOf(int orgId) {
+    for (final x in meHomeMapList(raw['my_status'])) {
+      if (meHomeInt(x['org_id'], -1) == orgId) return x;
+    }
+    return null;
+  }
+
   /// My open admission cases (D-1210): `onboarding[]`, max 3; empty when none or from an older server.
   final List<MeOnboardingItem> onboarding;
 

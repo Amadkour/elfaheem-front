@@ -34,6 +34,7 @@ import 'package:flutter_education_app/core/attention/attention_service.dart' sho
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_education_app/utils/top_route_observer.dart' show topRouteObserver;
 import 'app_shell_nav.dart' show AppShellNav;
 import 'chrome_button.dart' show ChromeBar;
 
@@ -71,18 +72,26 @@ int pendingElsewhere(AppModeController ctl) {
 ///
 /// With the personal profile off (UX v3 phase 3, [PersonalAccess.enabled]) there is no personal space: the org pages
 /// above the root close instead (back to the organization's home), and the mode stays Organization.
+///
+/// Never throws on a stale [context]: a button whose subtree the mode switch rebuilt (the switcher's exit pill, a
+/// sheet opened from it) may call it after its element left the tree, where a release build's `Navigator.of` is a
+/// null check on null (the switcher and the home's cards then did nothing until a reload). The root navigator comes
+/// from the app's one route observer then, and nothing reads [context] after the first await.
 Future<void> leaveToPersonal(BuildContext context) async {
-  final nav = Navigator.of(context, rootNavigator: true);
+  final live = context.mounted;
+  final nav = (live ? Navigator.maybeOf(context, rootNavigator: true) : null) ?? topRouteObserver.navigator;
+  if (nav == null) return;
   if (!PersonalAccess.enabled) {
     closeOrgPages(nav);
     return;
   }
   // an org page opened inside a tab of the personal shell (D-081): that tab goes back to its own first page too
-  final near = Navigator.maybeOf(context);
+  final near = live ? Navigator.maybeOf(context) : null;
   final ctl = AppModeController.instance;
   await ctl.setMode(AppMode.individual);
   ctl.applyOrgContext();
   if (near != null && !identical(near, nav) && near.mounted) near.popUntil((r) => r.isFirst);
+  if (!nav.mounted) return;
   String? root;
   nav.popUntil((r) {
     if (r.isFirst) root = r.settings.name;
@@ -351,7 +360,8 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
           caption: widget.compact ? null : (inOrg ? 'ctx_in_org'.tr : 'ctx_personal_space'.tr),
           badge: pendingElsewhere(ctl),
           logoUrl: inOrg ? '${org['logo_url'] ?? ''}' : null,
-          onTap: () => showContextSwitcherSheet(context, allowPersonal: allowPersonal), // always: join is offered
+          // the State's context, not the builder's: it outlives the org/personal rebuild of the pill
+          onTap: () => showContextSwitcherSheet(this.context, allowPersonal: allowPersonal), // always: join is offered
         );
 
         if (!inOrg || !allowPersonal || widget.compact) return pill;
@@ -378,7 +388,7 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
                     child: InkWell(
                       key: const ValueKey('ctx.exit'),
                       customBorder: const StadiumBorder(),
-                      onTap: () => leaveToPersonal(context),
+                      onTap: () => leaveToPersonal(this.context), // this LayoutBuilder is gone once the mode flips
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(minHeight: AppTouch.min, minWidth: AppTouch.min),
                         child: Padding(
