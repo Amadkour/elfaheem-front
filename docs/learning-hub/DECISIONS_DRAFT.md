@@ -94,6 +94,9 @@ Only surah names, ayah counts and juz boundaries, from Tanzil Quran Metadata v1.
 ## D-1346 – D-1349 [front] — learn kit + games (1346), Quran (1347), module switches page (1348), nahw (1349)
 One entry each, as the commit messages and the code comments already cite them.
 
+## D-1350 [back + front] — Phase 6 review and QA fixes (TO WRITE in both `docs/DECISIONS.md`)
+The fix round's commits (back a5a45ae, front d88aba13) and four code comments cite D-1350, so the number stays theirs and the offline decisions moved up by one (D-1351 – D-1353). One short entry per repo. Back: the staff enrolment paths apply the Quran booking rule, `program_kind` on the course API, `admin.nahw`, exercise validation. Front: learning hub pages have URLs, a refused booking shows its reason on the course page and at checkout with no retry, the theme follows the account's country.
+
 ## D-1351 — Offline-first v1: a generic outbox for four kinds; money is never offline
 `game_play`, `nahw_attempt`, `quran_progress`, `study_profile`. The attendance and exam queues stay as they are and report into the same status.
 
