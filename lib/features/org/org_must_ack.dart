@@ -88,6 +88,8 @@ class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObse
   MyAsksState _asks = MyAsksState.none;
   final _later = <int>{};                                 // popups put off this session
   Future<void>? _runningAsks;
+  bool _asksAgain = false;                                // a forced read came while one was in flight
+  final _gone = <int>{};                                  // answered / closed here: hidden until a read that started after
   bool _busy = false, _wasSignedIn = false, _askLater = false, _hidingAssistant = false;
   String? _error;
   DateTime? _lastAsk;
@@ -141,6 +143,7 @@ class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObse
     } else if (!s && _wasSignedIn) {
       _wasSignedIn = false;
       _later.clear();
+      _gone.clear();
       _set(MustAckState.none);
       _setAsks(MyAsksState.none);
     }
@@ -197,15 +200,47 @@ class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObse
     if (ackOk && _running == null) {
       _running = widget.source.fetch().then(_set).whenComplete(() => _running = null);
     }
-    if (asksOk && _runningAsks == null) {
-      _runningAsks = _askSource!.fetch().then(_setAsks).whenComplete(() => _runningAsks = null);
+    if (asksOk) _readAsks(again: force);
+  }
+
+  /// GET /me/asks once at a time. A forced read while one is in flight ([again]) is queued: the in-flight answer is
+  /// dropped (it may predate an answer or a close) and one more read runs after it. [_gone] ids known before a read
+  /// started are cleared when it lands: from then on the server's answer decides (a returned ask shows again).
+  void _readAsks({bool again = false}) {
+    final src = _askSource;
+    if (src == null) return;
+    if (_runningAsks != null) {
+      if (again) _asksAgain = true;
+      return;
     }
+    final known = {..._gone};
+    _runningAsks = src.fetch().then((s) {
+      if (_asksAgain || !mounted) return;
+      _gone.removeAll(known);
+      _setAsks(s);
+    }).whenComplete(() {
+      _runningAsks = null;
+      if (_asksAgain && mounted) {
+        _asksAgain = false;
+        _readAsks();
+      }
+    });
+  }
+
+  /// The ask [a] is done or closed here: hide it now, then read the asks again.
+  void _dropAsk(MyAsk a) {
+    if (mounted) setState(() => _gone.add(a.id));
+    _ask(force: true, ack: false);
   }
 
   void _askAnswered(MyAsk a) {
-    _ask(force: true, ack: false);
+    _dropAsk(a);
     showAppNotice(t('أُرسل ردّك', 'Your answer was sent'));
   }
+
+  /// A failed answer: read the asks again (an ask that closed meanwhile must never keep the app covered). A closed
+  /// one shows "closed" with Close ([_dropAsk]) until the read lands and takes it away.
+  void _askFailed(MyAsk a) => _ask(force: true, ack: false);
 
   void _putOff(MyAsk a) => setState(() => _later.add(a.id));
 
@@ -237,8 +272,8 @@ class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObse
     final free = !_blocked && _signedIn;
     final showAck = m != null && free && orgMustAckEnabled();
     final asksOn = free && !showAck && _askSource != null && myAsksEnabled();
-    final full = asksOn ? _asks.nextFullscreen() : null;
-    final pop = asksOn && full == null ? _asks.nextPopup(_later) : null;
+    final full = asksOn ? _asks.nextFullscreen(_gone) : null;
+    final pop = asksOn && full == null ? _asks.nextPopup({..._later, ..._gone}) : null;
     final show = showAck || full != null || pop != null;
     if (show != _hidingAssistant) {
       _hidingAssistant = show;
@@ -254,6 +289,8 @@ class _OrgMustAckHostState extends State<OrgMustAckHost> with WidgetsBindingObse
             source: _askSource!,
             fullscreen: full != null,
             onAnswered: _askAnswered,
+            onFailed: _askFailed,
+            onClose: () => _dropAsk((full ?? pop)!),
             onLater: pop == null ? null : () => _putOff(pop),
           ),
         ),

@@ -244,6 +244,7 @@ class LifecycleRequest {
     this.needsDecisionNo = false,
     this.councils = const [],
     this.can = const RequestCan(),
+    this.changeLabels = const [],
   });
 
   final int id;
@@ -270,7 +271,22 @@ class LifecycleRequest {
   final List<RequestCouncil> councils;
   final RequestCan can;
 
+  /// The server's labels of [changes]: `change_labels` [{key, label_ar, label_en}] (from the student type).
+  final List<RequestField> changeLabels;
+
   String get label => _pick(labelAr, labelEn).isEmpty ? requestKindLabel(request) : _pick(labelAr, labelEn);
+
+  /// The words for a changed field [key]: the server's label, else [fallback] (the type's fields), else the key.
+  String changeLabel(String key, [Map<String, String> fallback = const {}]) {
+    for (final f in changeLabels) {
+      if (f.key == key && _pick(f.labelAr, f.labelEn).trim().isNotEmpty) return f.label;
+    }
+    final l = fallback[key];
+    return l == null || l.trim().isEmpty ? key : l;
+  }
+
+  /// Filed by the student (a staff proposal about them carries `origin: staff`; no field = an older server).
+  bool get byStudent => origin == null || origin == 'student';
   bool get isOpen => stage == 'review' || stage == 'council';
   bool get isDataUpdate => request == 'data_update' || (decision == null && changes.isNotEmpty);
 
@@ -310,6 +326,7 @@ class LifecycleRequest {
       needsDecisionNo: asBool(m['needs_decision_no']),
       councils: [for (final c in asMapList(m['councils'])) RequestCouncil.fromJson(c)],
       can: RequestCan.fromJson(asMap(m['can'])),
+      changeLabels: [for (final f in asMapList(m['change_labels'])) if (asStr(f['key']).isNotEmpty) RequestField.fromJson(f)],
     );
   }
 }
@@ -331,7 +348,8 @@ class MyRequests {
 
   factory MyRequests.fromJson(Map<String, dynamic> m) => MyRequests(
         options: [for (final o in asMapList(m['options'])) RequestOption.fromJson(o)],
-        items: [for (final i in asMapList(m['items'])) LifecycleRequest.fromJson(i)],
+        // only what the student filed (defence in depth: the server filters too; a staff proposal is not theirs)
+        items: [for (final i in asMapList(m['items'])) if (LifecycleRequest.fromJson(i) case final r when r.byStudent) r],
       );
 }
 
@@ -520,6 +538,7 @@ class TransferCredits {
     this.gpaHours = 0,
     this.canEdit = false,
     this.canDecide = false,
+    this.canSettings = false,
   });
 
   final List<TransferCredit> items;
@@ -527,6 +546,10 @@ class TransferCredits {
   final int pending, credited;
   final double creditedHours, gpaHours;
   final bool canEdit, canDecide;
+
+  /// May change the organization's transfer credit rules: the server's `can.settings` when it sends one, else
+  /// [canEdit] (the PUT needs `academic:update`; a 403 then says so).
+  final bool canSettings;
 
   factory TransferCredits.fromJson(Map<String, dynamic> m) {
     final s = asMap(m['summary']);
@@ -540,6 +563,7 @@ class TransferCredits {
       gpaHours: _num(s['gpa_hours']) ?? 0,
       canEdit: asBool(can['edit']),
       canDecide: asBool(can['decide']),
+      canSettings: can.containsKey('settings') ? asBool(can['settings']) : asBool(can['edit']),
     );
   }
 }

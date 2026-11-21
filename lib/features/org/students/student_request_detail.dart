@@ -223,7 +223,7 @@ class _StudentRequestDetailViewState extends State<StudentRequestDetailView> {
       if (dates.isNotEmpty) (t('المدة', 'Dates'), dates),
       if (r.bodyKey != null) (t('جهة القرار', 'Decided by'), bodyLabel(r.bodyKey!)),
       if (r.decisionNo != null) (t('رقم القرار', 'Decision number'), r.decisionNo!),
-      for (final e in r.changes.entries) (e.key, e.value),
+      for (final e in r.changes.entries) (r.changeLabel(e.key), e.value),
     ];
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [

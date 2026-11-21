@@ -30,7 +30,6 @@ import '../org_page_kit.dart' show OrgFilterButton, OrgMenuItem, OrgPageBody, Or
 import '../org_providers.dart' show OrgSession;
 import '../org_v3.dart' show orgErrorText;
 import 'add_student_sheet.dart' show showAddStudentSheet;
-import 'my_ask_page.dart' show myAsksEnabled;
 import 'student_file_page.dart' show pushStudentPage;
 import 'student_report_page.dart' show exportStudents, openStudentReport;
 import 'student_requests_page.dart' show OrgStudentRequestsPage;
@@ -180,7 +179,9 @@ class _OrgStudentsPageState extends State<OrgStudentsPage> {
     final open = widget.onOpenStudent;
     final can = _data?.can ?? const StudentsCan();
     final s = _session;
-    final requestsOn = s != null && (s.can('students') || s.can('student_status')) && myAsksEnabled();
+    // the inbox also holds lifecycle requests and admission files: it stays with asks off (only its ask parts hide)
+    final requestsOn = s != null && (s.can('students') || s.can('student_status'));
+    final canExport = can.export || (s?.can('students', 'export') ?? false);
     final reportOn = s != null && s.can('student_status', 'export') && !AppConfig.disableList.contains(kStudentsStatusKey);
     final view = StudentsPageView(
       data: _data,
@@ -201,8 +202,8 @@ class _OrgStudentsPageState extends State<OrgStudentsPage> {
       onImport: can.import ? _import : null,
       onSettings: can.settings ? () => showStudentSettingsChooser(context, widget.orgId) : null,
       onRequests: requestsOn ? _requests : null,
-      onReport: reportOn ? () => openStudentReport(context, widget.orgId) : null,
-      onExport: can.export || (s?.can('students', 'export') ?? false)
+      onReport: reportOn ? () => openStudentReport(context, widget.orgId, canExport: canExport) : null,
+      onExport: canExport
           ? () => exportStudents(context, widget.orgId, filters: _query, api: _api)
           : null,
     );

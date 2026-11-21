@@ -53,6 +53,29 @@ void main() {
     expect(m.open.single.canWithdraw, isTrue);
   });
 
+  test('my requests draw only what the student filed; changed fields use the server labels', () {
+    final j = myRequestsJson();
+    final m = MyRequests.fromJson({
+      ...j,
+      'items': [
+        ...j['items'] as List,
+        {'id': 30, 'request': 'suspend', 'status': 'open', 'stage': 'review', 'origin': 'staff'},
+        {
+          'id': 31, 'request': 'data_update', 'status': 'open', 'stage': 'review', 'changes': {'address': '5 Nile St', 'gone': 'x'},
+          'change_labels': [{'key': 'address', 'label_ar': 'العنوان', 'label_en': 'Home address'}],
+        },
+      ],
+    });
+    expect(m.items.map((r) => r.id), [12, 9, 31], reason: 'a staff proposal is not the student\'s request; no origin = an older server');
+    final u = m.items.last;
+    expect(u.changeLabel('address'), 'Home address');
+    expect(u.changeLabel('gone', {'gone': 'Old field'}), 'Old field');
+    expect(u.changeLabel('other'), 'other');
+    final t = TransferCredits.fromJson({'can': {'edit': true}});
+    expect(t.canSettings, isTrue, reason: 'no settings flag: follows edit');
+    expect(TransferCredits.fromJson({'can': {'edit': true, 'settings': false}}).canSettings, isFalse);
+  });
+
   test('the staff detail: can, councils, the student name', () {
     final r = LifecycleRequest.fromJson({
       'id': 4, 'ref': 'REQ-4', 'request': 'suspend', 'status': 'open', 'stage': 'review', 'title': 'وقف القيد: Ahmed Ali',

@@ -129,7 +129,11 @@ class _CreditsSheetState extends State<_CreditsSheet> {
             initial: d.settings,
             onSave: (s) async {
               final r = await _api.saveCreditSettings(s);
-              if (!r.ok) return requestsErrorText(r.error!);
+              if (!r.ok) {
+                return r.error!.statusCode == 403
+                    ? t('لا تملك صلاحية تغيير قواعد المقاصة. تحتاج صلاحية تعديل الشؤون الأكاديمية.', 'You cannot change the transfer credit rules: it needs the right to edit academic settings.')
+                    : requestsErrorText(r.error!);
+              }
               if (ctx.mounted) Navigator.of(ctx).pop(true);
               return null;
             },
@@ -161,7 +165,7 @@ class _CreditsSheetState extends State<_CreditsSheet> {
             onEdit: d.canEdit ? _edit : null,
             onDecide: d.canDecide ? _decide : null,
             onDelete: d.canEdit ? _delete : null,
-            onSettings: _settings,
+            onSettings: d.canSettings ? _settings : null,
           ),
       ],
     );

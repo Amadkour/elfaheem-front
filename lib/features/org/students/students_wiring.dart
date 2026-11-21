@@ -8,7 +8,8 @@
 //   openStudentFile(context, orgId, uid, {name})   pushes the unified student file (the session carried over)
 //   openStudentsList(context, orgId)               pushes the Students list on its own (a deep link, the palette)
 //   openStudentFromLink(nav, orgId:, uid:)         the deep link `org_student` {org_id, id} / `/org/:orgId/students/:uid`
-//   studentRequestsSub(OrgSession s)               the People sub-page "Student requests" (kill switch org.students.asks)
+//   studentRequestsSub(OrgSession s)               the People sub-page "Student requests" (under org.students; with
+//                                                  org.students.asks off only its ask parts hide)
 //   openStudentRequestsFromLink(nav, orgId:)       the deep link `org_student` with focus `asks` → the requests inbox
 //   openStudentAskFromLink(nav, askId)             the student's deep link `student_ask` {id} → their ask page
 //   openLifecycleRequestFromLink(nav, orgId:, id:, role:)   a lifecycle request notice (`org_work` + lifecycle_request_id):
@@ -43,10 +44,11 @@ void _openRow(BuildContext context, int orgId, StudentRow row) =>
 }
 
 /// The "Student requests" sub-page of People, right after Students: `('student_requests', title, icon, page)`. null
-/// without `students` / `student_status` rights, with no organization open or with asks switched off.
+/// without `students` / `student_status` rights, with no organization open or with the Students switch off. Asks off
+/// (`org.students.asks`) keeps it: it also holds lifecycle requests and admission files; only its ask parts hide.
 (String, String, IconData, Widget)? studentRequestsSub(OrgSession s) {
   final oid = s.currentId;
-  if (oid == null || !(s.can('students') || s.can('student_status')) || !studentsEnabled() || !myAsksEnabled()) return null;
+  if (oid == null || !(s.can('students') || s.can('student_status')) || !studentsEnabled()) return null;
   return ('student_requests', t('طلبات الطلاب', 'Student requests'), Icons.assignment_turned_in_rounded,
       OrgStudentRequestsPage(orgId: oid, canFullscreen: s.can('student_status', 'update')));
 }
@@ -68,9 +70,9 @@ Future<bool> openStudentFromLink(NavigatorState nav, {required int orgId, requir
 }
 
 /// The staff deep link `org_student` with focus `asks` (a student answered an ask): the requests inbox, where it is
-/// decided. False with the switches off (the caller falls back to the file / the notifications).
+/// decided. False with the Students switch off (the caller falls back to the file / the notifications).
 Future<bool> openStudentRequestsFromLink(NavigatorState nav, {required int orgId}) async {
-  if (!studentsEnabled() || !myAsksEnabled()) return false;
+  if (!studentsEnabled()) return false;
   await nav.push(MaterialPageRoute<void>(builder: (_) => OrgStudentRequestsPage(orgId: orgId, pushed: true)));
   return true;
 }

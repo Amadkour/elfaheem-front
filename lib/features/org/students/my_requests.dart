@@ -17,6 +17,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -28,7 +29,7 @@ import '../../admin/admin_common.dart' show t;
 import '../governance/gov_models.dart' show GovAttachment;
 import '../governance/gov_request_parts.dart' show uploadGovAttachment;
 import 'student_requests_api.dart';
-import 'student_status_models.dart' show reasonLabel, statusCodeTexts;
+import 'student_status_models.dart' show kStudentsStatusKey, reasonLabel, statusCodeTexts;
 import 'student_status_sheet.dart' show StatusDateField;
 
 /// Pushes the student's requests page of organization [orgId].
@@ -159,6 +160,7 @@ class _MyRequestsPageState extends State<MyRequestsPage> {
           onRefresh: () => _load(quiet: true),
           onStart: _start,
           onWithdraw: _withdraw,
+          statusOn: !AppConfig.disableList.contains(kStudentsStatusKey),
         ),
       );
 }
@@ -178,6 +180,7 @@ class MyRequestsView extends StatelessWidget {
     this.onRefresh,
     this.onStart,
     this.onWithdraw,
+    this.statusOn = true,
   });
 
   final MyRequests? data;
@@ -189,6 +192,10 @@ class MyRequestsView extends StatelessWidget {
   final ValueChanged<RequestOption>? onStart;
   final ValueChanged<LifecycleRequest>? onWithdraw;
 
+  /// The status switch (`org.students.status`) is on. Off, only the data update is offered: the server refuses the
+  /// status requests then (409 status_disabled) and still takes a data update.
+  final bool statusOn;
+
   @override
   Widget build(BuildContext context) {
     final d = data;
@@ -197,6 +204,7 @@ class MyRequestsView extends StatelessWidget {
       return const Padding(padding: EdgeInsets.all(AppSpace.md), child: AppListSkeleton(items: 4));
     }
     final open = d.open, closed = d.closed;
+    final options = statusOn ? d.options : [for (final o in d.options) if (o.request == 'data_update') o];
     final labels = {for (final f in d.option('data_update')?.fields ?? const <RequestField>[]) f.key: f.label};
     final list = ListView(
       key: const ValueKey('my_requests.list'),
@@ -213,10 +221,10 @@ class MyRequestsView extends StatelessWidget {
           for (final r in open) _gap(MyRequestCard(request: r, labels: labels, busy: busy.contains(r.id), onWithdraw: onWithdraw == null ? null : () => onWithdraw!(r))),
         ],
         AppSectionTitle(t('اطلب شيئاً', 'Ask for something')),
-        if (d.options.isEmpty)
+        if (options.isEmpty)
           Text(t('لا توجد طلبات متاحة لك الآن.', 'No requests are open to you right now.'), style: AppType.meta(context))
         else
-          for (final o in d.options) _gap(_OptionCard(option: o, onTap: o.canStart && onStart != null ? () => onStart!(o) : null)),
+          for (final o in options) _gap(_OptionCard(option: o, onTap: o.canStart && onStart != null ? () => onStart!(o) : null)),
         if (closed.isNotEmpty) ...[
           AppSectionTitle(t('طلبات سابقة', 'Earlier requests')),
           for (final r in closed) _gap(MyRequestCard(request: r, labels: labels)),
@@ -319,7 +327,7 @@ class MyRequestCard extends StatelessWidget {
           Text(dates, style: AppType.meta(context)),
         ],
         for (final e in r.changes.entries)
-          Text('${labels[e.key] ?? e.key}: ${e.value}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+          Text('${r.changeLabel(e.key, labels)}: ${e.value}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
         if (r.stage == 'rejected' && (r.note ?? '').isNotEmpty) ...[
           AppSpace.gapSm,
           AppBanner(icon: Icons.info_outline_rounded, text: t('السبب: ${r.note}', 'The reason: ${r.note}'), color: c.danger),

@@ -110,6 +110,7 @@ class MyAsk {
     this.fromName,
     this.meeting,
     this.canAnswer = false,
+    this.docLabels = const {},
   });
 
   final int id, orgId;
@@ -122,10 +123,28 @@ class MyAsk {
   final MyAskMeeting? meeting;
   final bool canAnswer;
 
+  /// The server's words for [docKeys]: `doc_labels` [{key, label_ar, label_en}] → `key → (ar, en)`.
+  final Map<String, (String, String)> docLabels;
+
   bool get returned => status == 'returned';
   bool get fullscreen => presentation == 'fullscreen';
   bool get popup => presentation == 'popup';
   String get org => t(orgName.isEmpty ? orgNameEn : orgName, orgNameEn.isEmpty ? orgName : orgNameEn);
+
+  /// The words for document [key]: the server's bilingual label, else [myAskDocLabel] (an older server).
+  String docLabel(String key) {
+    final l = docLabels[key];
+    if (l == null) return myAskDocLabel(key);
+    final (ar, en) = l;
+    final s = t(ar.isEmpty ? en : ar, en.isEmpty ? ar : en).trim();
+    return s.isEmpty ? myAskDocLabel(key) : s;
+  }
+
+  /// The same ask, closed on the server ([status]: `cancelled` / `expired` / …): no form, the closed line instead.
+  MyAsk closedAs(String status) => MyAsk(
+        id: id, orgId: orgId, orgName: orgName, orgNameEn: orgNameEn, kind: kind, presentation: presentation, title: title,
+        body: body, fields: fields, docKeys: docKeys, status: status.isEmpty ? 'closed' : status, answer: answer, dueAt: dueAt,
+        reviewNote: reviewNote, fromName: fromName, meeting: meeting, docLabels: docLabels);
 
   /// The documents already uploaded for this ask: `req_key → document id`.
   Map<String, int> get uploaded => {for (final e in asMap(answer['documents']).entries) e.key: asInt(e.value)};
@@ -157,6 +176,10 @@ class MyAsk {
       fromName: by.isEmpty ? null : by,
       meeting: MyAskMeeting.fromJson(m['meeting']),
       canAnswer: asMap(m['can'])['answer'] == true,
+      docLabels: {
+        for (final d in asMapList(m['doc_labels']))
+          if (asStr(d['key']).trim().isNotEmpty) asStr(d['key']).trim(): (asStr(d['label_ar']).trim(), asStr(d['label_en']).trim()),
+      },
     );
   }
 }
@@ -178,8 +201,13 @@ class MyAsksState {
     );
   }
 
-  /// The full-screen ask to draw now (oldest first), or null.
-  MyAsk? nextFullscreen() => items.where((a) => a.fullscreen && a.canAnswer).firstOrNull ?? fullscreen;
+  /// The full-screen ask to draw now (oldest first), or null; [skip]: answered / closed here, until the next read.
+  MyAsk? nextFullscreen([Set<int> skip = const {}]) {
+    final f = items.where((a) => a.fullscreen && a.canAnswer && !skip.contains(a.id)).firstOrNull;
+    if (f != null) return f;
+    final q = fullscreen;
+    return q != null && !skip.contains(q.id) ? q : null;
+  }
 
   /// The popup ask to draw now, skipping those the student put off this session.
   MyAsk? nextPopup(Set<int> later) {
@@ -208,7 +236,7 @@ IconData myAskKindIcon(String kind) => switch (kind) {
       _ => Icons.task_alt_rounded,
     };
 
-/// A document key in plain words (the ask carries keys only).
+/// A document key in plain words: the fallback when the ask carries no `doc_labels` (an older server).
 String myAskDocLabel(String key) {
   final k = key.trim();
   if (k.isEmpty) return k;
@@ -298,7 +326,8 @@ class RemoteMyAskSource implements MyAskSource {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// The ask with its answer form. Plain values in, callbacks out: [onSubmit] gets the values and the confirm flag,
-/// [onUpload] one document key. [onLater] draws a "Later" button (the popup).
+/// [onUpload] one document key. [onLater] draws a "Later" button (the popup). [onClose] draws "Close" under a closed
+/// ask (the overlay: a full-screen ask that closed must never lock the app).
 class MyAskView extends StatefulWidget {
   const MyAskView({
     super.key,
@@ -306,6 +335,7 @@ class MyAskView extends StatefulWidget {
     this.onSubmit,
     this.onUpload,
     this.onLater,
+    this.onClose,
     this.busy = false,
     this.uploading = const {},
     this.error,
@@ -315,7 +345,7 @@ class MyAskView extends StatefulWidget {
   final MyAsk ask;
   final void Function(Map<String, dynamic> values, bool? confirm)? onSubmit;
   final ValueChanged<String>? onUpload;
-  final VoidCallback? onLater;
+  final VoidCallback? onLater, onClose;
   final bool busy, showOrg;
   final Set<String> uploading;
   final String? error;
@@ -458,7 +488,11 @@ class _MyAskViewState extends State<MyAskView> {
         AppSpace.gapSm,
         Text(widget.error!, key: const ValueKey('my_ask.error'), style: AppType.body(context).copyWith(color: c.danger)),
       ],
-      if (widget.onLater != null) ...[
+      if (!a.canAnswer && widget.onClose != null) ...[
+        // a closed ask over the app (full screen / popup): never a dead end
+        AppSpace.gapSm,
+        AppButton.secondary(key: const ValueKey('my_ask.close'), label: t('إغلاق', 'Close'), icon: Icons.close_rounded, expand: true, onPressed: widget.onClose),
+      ] else if (widget.onLater != null) ...[
         AppSpace.gapSm,
         AppButton.ghost(key: const ValueKey('my_ask.later'), label: t('لاحقاً', 'Later'), expand: true, onPressed: widget.busy ? null : widget.onLater),
       ],
@@ -539,7 +573,7 @@ class _MyAskViewState extends State<MyAskView> {
         return [
           for (final k in a.docKeys) ...[
             _DocRow(
-              label: myAskDocLabel(k),
+              label: a.docLabel(k),
               uploaded: have.containsKey(k),
               busy: widget.uploading.contains(k),
               onUpload: busy || widget.onUpload == null ? null : () => widget.onUpload!(k),
@@ -709,19 +743,26 @@ class _DocRow extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// [onChanged] gets the ask the server answered (after an answer or an upload). [onAnswered] runs after a
-/// successful answer. [inline] errors only (the root overlay is hidden under the full-screen card).
+/// successful answer, [onFailed] after ANY failed answer and an upload refused as closed (the host reads the asks
+/// again, so an ask that closed meanwhile never stays over the app). A closed ask (409 ask_closed, gone, asks off)
+/// shows the closed line; [onClose] adds a "Close" button under it. Errors are inline only (the root overlay is hidden
+/// under the full-screen card).
 class MyAskAnswerer extends StatefulWidget {
-  const MyAskAnswerer({super.key, required this.ask, required this.source, this.onChanged, this.onAnswered, this.onLater, this.showOrg = true});
+  const MyAskAnswerer({super.key, required this.ask, required this.source, this.onChanged, this.onAnswered, this.onFailed, this.onLater, this.onClose, this.showOrg = true});
 
   final MyAsk ask;
   final MyAskSource source;
   final ValueChanged<MyAsk>? onChanged, onAnswered;
-  final VoidCallback? onLater;
+  final ValueChanged<MyAsk>? onFailed;
+  final VoidCallback? onLater, onClose;
   final bool showOrg;
 
   @override
   State<MyAskAnswerer> createState() => _MyAskAnswererState();
 }
+
+/// The answer / upload error codes that mean the ask can no longer be answered.
+const _closedCodes = {'ask_closed', 'ask_not_found', 'asks_disabled'};
 
 class _MyAskAnswererState extends State<MyAskAnswerer> {
   late MyAsk _ask = widget.ask;
@@ -735,7 +776,16 @@ class _MyAskAnswererState extends State<MyAskAnswerer> {
     if (!identical(old.ask, widget.ask)) _ask = widget.ask;
   }
 
-  String _errorOf(OrgCall r) => askErrorText(r.error!);
+  /// A failed call: a closed ask turns into the closed line (no error under it), anything else shows its text.
+  void _failed(OrgCall r) {
+    if (_closedCodes.contains(r.code)) {
+      final s = asStr(r.detail['ask_status']).trim();
+      _ask = _ask.closedAs(s.isEmpty ? 'closed' : s);
+      _error = null;
+    } else {
+      _error = r.ok ? t('تعذّرت قراءة رد الخادم. حاول مرة أخرى.', 'The server answer could not be read. Try again.') : askErrorText(r.error!);
+    }
+  }
 
   Future<void> _submit(Map<String, dynamic> values, bool? confirm) async {
     if (_busy) return;
@@ -748,12 +798,17 @@ class _MyAskAnswererState extends State<MyAskAnswerer> {
     final next = r.ok ? MyAsk.fromJson(r.map) : null;
     setState(() {
       _busy = false;
-      if (next != null) _ask = next;
-      if (!r.ok) _error = _errorOf(r);
+      if (next != null) {
+        _ask = next;
+      } else {
+        _failed(r);
+      }
     });
     if (next != null) {
       widget.onChanged?.call(next);
       widget.onAnswered?.call(next);
+    } else {
+      widget.onFailed?.call(_ask);
     }
   }
 
@@ -772,10 +827,17 @@ class _MyAskAnswererState extends State<MyAskAnswerer> {
     final next = r.ok ? MyAsk.fromJson(r.map) : null;
     setState(() {
       _uploading.remove(key);
-      if (next != null) _ask = next;
-      if (!r.ok) _error = _errorOf(r);
+      if (next != null) {
+        _ask = next;
+      } else {
+        _failed(r);
+      }
     });
-    if (next != null) widget.onChanged?.call(next);
+    if (next != null) {
+      widget.onChanged?.call(next);
+    } else if (_closedCodes.contains(r.code)) {
+      widget.onFailed?.call(_ask);
+    }
   }
 
   @override
@@ -788,6 +850,7 @@ class _MyAskAnswererState extends State<MyAskAnswerer> {
         onSubmit: _submit,
         onUpload: _upload,
         onLater: widget.onLater,
+        onClose: widget.onClose,
       );
 }
 
@@ -799,13 +862,13 @@ class _MyAskAnswererState extends State<MyAskAnswerer> {
 /// selection) and a place for the date picker. [fullscreen] covers the app until answered; otherwise a popup on a
 /// scrim with "Later" ([onLater]).
 class MyAskOverlay extends StatelessWidget {
-  const MyAskOverlay({super.key, required this.ask, required this.source, required this.fullscreen, this.onAnswered, this.onLater});
+  const MyAskOverlay({super.key, required this.ask, required this.source, required this.fullscreen, this.onAnswered, this.onFailed, this.onLater, this.onClose});
 
   final MyAsk ask;
   final MyAskSource source;
   final bool fullscreen;
-  final ValueChanged<MyAsk>? onAnswered;
-  final VoidCallback? onLater;
+  final ValueChanged<MyAsk>? onAnswered, onFailed;
+  final VoidCallback? onLater, onClose;
 
   @override
   Widget build(BuildContext context) => Navigator(
@@ -815,7 +878,7 @@ class MyAskOverlay extends StatelessWidget {
           pageBuilder: (_, _, _) => MyAskCardFrame(
             fullscreen: fullscreen,
             onLater: onLater,
-            child: MyAskAnswerer(ask: ask, source: source, onAnswered: onAnswered, onLater: fullscreen ? null : onLater),
+            child: MyAskAnswerer(ask: ask, source: source, onAnswered: onAnswered, onFailed: onFailed, onLater: fullscreen ? null : onLater, onClose: onClose),
           ),
         ),
       );
@@ -927,6 +990,7 @@ class _MyAskPageState extends State<MyAskPage> {
               source: widget.source,
               onChanged: (x) => setState(() => _ask = x),
               onAnswered: (_) => showAppNotice(t('أُرسل ردّك', 'Your answer was sent')),
+              onFailed: (_) => _load(),
             ),
           ),
         ]),

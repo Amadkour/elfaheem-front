@@ -102,10 +102,24 @@ class ScaleEdit {
     return ScaleEdit(rows: next, passLetter: passLetter, presetKey: 'custom');
   }
 
+  /// Removes row [i]. Removing the pass row moves the pass mark to the grade right above it (rows run high → low,
+  /// so that is the lowest one still passing); with none above, the pass mark is cleared and [scaleProblem] asks for
+  /// one. Never to the top grade: that would make every other grade fail without a word.
   ScaleEdit withoutRow(int i) {
-    final gone = asStr(rows[i]['letter']);
+    final gone = asStr(rows[i]['letter']).trim();
     final next = [for (var k = 0; k < rows.length; k++) if (k != i) rows[k]];
-    return ScaleEdit(rows: next, passLetter: gone == passLetter && next.isNotEmpty ? asStr(next.first['letter']) : passLetter, presetKey: 'custom');
+    var pass = passLetter;
+    if (gone.isNotEmpty && gone == passLetter) {
+      pass = '';
+      for (var k = i - 1; k >= 0; k--) {
+        final l = asStr(rows[k]['letter']).trim();
+        if (l.isNotEmpty) {
+          pass = l;
+          break;
+        }
+      }
+    }
+    return ScaleEdit(rows: next, passLetter: pass, presetKey: 'custom');
   }
 
   ScaleEdit withPass(String letter) => ScaleEdit(rows: rows, passLetter: letter, presetKey: 'custom');
@@ -387,7 +401,15 @@ class _ScaleEditorViewState extends State<ScaleEditorView> {
             AppIconButton(
               icon: Icons.delete_outline_rounded,
               tooltip: t('حذف هذا التقدير', 'Remove this grade'),
-              onPressed: () => _emit(v.withoutRow(i), rebuild: true),
+              onPressed: () {
+                final next = v.withoutRow(i);
+                _emit(next, rebuild: true);
+                if (next.passLetter != v.passLetter) {
+                  showAppNotice(next.passLetter.isEmpty
+                      ? t('حُذف أدنى تقدير ناجح. اختر تقديراً ناجحاً آخر.', 'The lowest passing grade was removed. Pick another one.')
+                      : t('صار أدنى تقدير ناجح «${next.passLetter}».', 'The lowest passing grade is now "${next.passLetter}".'));
+                }
+              },
             ),
         ]),
       ]),

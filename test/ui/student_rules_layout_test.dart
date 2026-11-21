@@ -218,6 +218,15 @@ void main() {
     expect(scaleProblem(ok.withoutRow(3).withRowAdded()), isNotNull); // the new row has no letter yet
   });
 
+  test('removing the pass grade moves the pass mark to the grade above it, never to the top', () {
+    final ok = ScaleEdit.ofRules(usualRules());
+    expect(ok.withoutRow(3).passLetter, 'C', reason: 'D was the lowest pass: C is now');
+    expect(ok.withoutRow(4).passLetter, 'D', reason: 'removing another grade keeps it');
+    final topPass = ok.withPass('A').withoutRow(0);
+    expect(topPass.passLetter, '');
+    expect(scaleProblem(topPass), isNotNull, reason: 'no passing grade left: the editor asks for one');
+  });
+
   test('a programme stores only what differs from the institution', () {
     final inst = usualRules();
     final prog = rulesSet(rulesSet(inst, 'traditional', {'max_carry': 3}), 'study', {'summer': false});

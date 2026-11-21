@@ -382,7 +382,11 @@ class _OrgStudentRulesPageState extends State<OrgStudentRulesPage> {
       final again = await _api.rules();
       if (!mounted) return;
       setState(() {
-        if (again.ok) _takeRules(again.map);
+        if (again.ok) {
+          _takeRules(again.map);
+        } else {
+          _saved = Map<String, dynamic>.from(d);      // the PUT went through: what was sent is what is saved
+        }
       });
     }
     setState(() => _busy = false);

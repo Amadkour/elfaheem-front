@@ -23,6 +23,7 @@ import '../../admin/admin_common.dart' show t;
 import '../../help/help_info_button.dart';
 import '../onboarding/onboarding_review.dart' show OnbReviewPage;
 import '../org_page_header.dart' show OrgPushedPage;
+import 'my_ask_page.dart' show myAsksEnabled;
 import 'student_ask_sheet.dart';
 import 'student_asks_models.dart';
 import 'student_file_page.dart' show pushStudentPage;
@@ -87,7 +88,7 @@ class _OrgStudentRequestsPageState extends State<OrgStudentRequestsPage> {
     final tab = _tab;
     final calls = await Future.wait([
       _api.requests(tab: tab, page: _page),
-      if (tab == 'waiting') _api.asks(status: 'open', size: 100),
+      if (tab == 'waiting' && myAsksEnabled()) _api.asks(status: 'open', size: 100),
     ]);
     if (!mounted || seq != _seq) return;
     final r = calls.first;
@@ -222,6 +223,7 @@ class _OrgStudentRequestsPageState extends State<OrgStudentRequestsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final asksOn = myAsksEnabled();
     final view = StudentRequestsView(
       data: _data,
       loading: _loading,
@@ -240,8 +242,9 @@ class _OrgStudentRequestsPageState extends State<OrgStudentRequestsPage> {
       onAccept: _accept,
       onReturn: _return,
       onReject: _reject,
-      onMeeting: (r) => _sheet(r, 'meeting'),
-      onAsk: (r) => _sheet(r, 'data'),
+      // asks switched off (org.students.asks): the inbox stays, only "Request a meeting" / "Ask the student" go
+      onMeeting: asksOn ? (r) => _sheet(r, 'meeting') : null,
+      onAsk: asksOn ? (r) => _sheet(r, 'data') : null,
     );
     if (!widget.pushed) return view;
     return OrgPushedPage(

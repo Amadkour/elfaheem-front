@@ -2,7 +2,7 @@
 // where the organization's students stand at the end of a period and what changed inside it, for staff who are not
 // technical. Summary first, then the detail.
 //
-//   openStudentReport(context, orgId)        pushes the page (keeps the OrgSession)
+//   openStudentReport(context, orgId, canExport:)   pushes the page (keeps the OrgSession; Export with students:export)
 //   exportStudents(context, orgId, filters:) the Export Studio for the dataset `org_students` with the Students
 //                                            list's filters (every row fetched behind a progress dialog, so the
 //                                            older in-app flow has them too; the v3 flow renders from the dataset)
@@ -38,9 +38,9 @@ import 'students_api.dart';
 import 'students_errors.dart';
 import 'students_models.dart';
 
-/// Opens the Students report of [orgId].
-Future<void> openStudentReport(BuildContext context, int orgId) =>
-    pushStudentPage<void>(context, OrgStudentReportPage(orgId: orgId));
+/// Opens the Students report of [orgId]. [canExport]: the caller holds `students:export` (the Export button).
+Future<void> openStudentReport(BuildContext context, int orgId, {required bool canExport}) =>
+    pushStudentPage<void>(context, OrgStudentReportPage(orgId: orgId, canExport: canExport));
 
 String _errorText(ApiException e) => studentsCodeTexts()[e.code] ?? orgErrorText(e);
 
@@ -151,7 +151,7 @@ Future<void> exportStudents(BuildContext context, int orgId, {StudentsQuery filt
 // ═════════════════════════════════════════════════════════════════════════════
 
 class OrgStudentReportPage extends StatefulWidget {
-  const OrgStudentReportPage({super.key, required this.orgId, this.api, this.canExport = true});
+  const OrgStudentReportPage({super.key, required this.orgId, this.api, this.canExport = false});
   final int orgId;
   final StudentReportApi? api;
 
