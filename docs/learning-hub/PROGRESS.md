@@ -40,7 +40,7 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | 7.1 | Back: sync push / pull (0108) | B8 | todo | |
 | 7.2 | Front: LocalDb, Outbox, SyncEngine, status chip | F12 | todo | |
 | 7.3 | Front: wire entities + caches + offline library | F13 | todo | |
-| 7.R | Review: `sync_engine.dart`, `features/sync/service.py` | planner | done | needs fixes: "7.R code review" at the end (6 must-fix); the Phase 8 run plan follows it |
+| 7.R | Review: `sync_engine.dart`, `features/sync/service.py` | planner | verified | 6 of 6 fixed (re-check in "Final gate") |
 | 8.1 | Android: verify keystore, APK + AAB | N1 | todo | |
 | 8.2 | Windows installer | N2 | todo | |
 | 8.3 | Linux AppImage; macOS + iOS workflows; APPLE.md | N3 | todo | |
@@ -803,3 +803,58 @@ Scope is PLAN Phase 8. No migration, no API change, no tests beyond each script'
 4. `APPLE.md`: the exact list of what the owner provides (team id, certificates, the App Store Connect API key, bundle id `com.doubley.nextbrain`), where each goes in Codemagic, and nothing secret in the file.
 
 **Done when:** Android (3 APKs + AAB) and Windows (installer + zip) files exist in `build/releases/<version>/` with SHA-256 and were installed and opened once; Linux is built or logged; macOS / iOS are workflows + `APPLE.md`, logged as gaps that need the owner's account. **8.R:** the planner reads the three docs, `nextbrain.iss`, the `codemagic.yaml` diff, and checks that no key material entered either repo.
+
+### Final gate (planner, 2026-11-21) — front 3dee4241, back 46ee092 — verdict: not ready for production yet
+I read the code named below; I ran no tests. The PostgreSQL numbers (sync 101, privacy 122, store 630, games 105, quran 211, nahw 118) are the lead's. The owner's report is `FINAL_REPORT.md`.
+
+**7.R re-check: all six fixed** (back cde295b, front d043273e).
+| # | Item | Verdict |
+|---|---|---|
+| 1 | Wrong-user ops | fixed: the push carries `user_id`, 409 `sync_wrong_user` before anything is applied, the outbox and the drain are off in View-As |
+| 2 | 4xx retried for ever | fixed: retry only no-status / 408 / 429 / 5xx; a refused batch is sent one op at a time and the bad op dropped; a row parks at its try limit |
+| 3 | `sync_error` loses the op | fixed: not stored on the server, kept and retried on the device |
+| 4 | Second offline profile edit | fixed: `Outbox.supersede` keeps the first base, in the row |
+| 5 | Identity keys in the cache | fixed: `nid`, `student_code(s)`, `identifier(s)` added |
+| 6 | Sign-out deletes unsent work | fixed: `settleUnsentWork` before the wipe, `forced: true` skips the question, every path goes through `logout` |
+
+Deviations accepted: every 403 stops the push (the rows wait, nothing loops); `supersede` also replaces a parked profile row; the chip's "needs attention" state; `logout` returning false on Cancel.
+
+**W-1..W-3 (QA_PHASE7): fixed.** `ReachabilityInterceptor` marks the server unreachable only on a request that got no answer (timeouts, connection errors, a gateway 502 / 504) and ignores a failure older than the last answer, so one slow call cannot flip the app offline. The re-probe is booked only while unreachable with the link up (5 s doubling to 60 s), one at a time; a healthy app sends none, so the home budgets hold. A lost session runs the forced sign-out and its wipe.
+
+**Moyasar currency (W-8): safe.** The form charges `_priceCurrency ?? gateway.currency`. The server refuses the checkout when the gateway's currency differs from the course's (`_require_gateway_currency`) and compares the charged currency again on confirmation (`payment_service.py:629`). The old SAR fallback under an EGP total was the unsafe one.
+
+**B9 privacy (back 3a48d3d): sound.** Consent is per (parent, student); `child_for_parent` checks role + active link (404), then consent for a minor (403), then writes one view row a day. Unlink and the parent's own DELETE revoke. Notes: `grant` can add a second live row for the same pair (harmless; nice-to-have: answer the live one); the older parent routes carry no consent check (the lead's reason holds: logged as a known gap, with the fix below as a nice-to-have).
+
+#### The brief's quality gate
+| Gate | State |
+|---|---|
+| Core flow end to end (landing, choices, search, course, login, booking, store purchase) | met in the walks (QA 3–6), except a real card payment: no gateway keys locally. Owner check after deploy. |
+| Permissions and protected downloads | met (e2e_store 630, e2e_privacy 122). Opening an owned file offline was not walked. |
+| Education levels editable and driving every screen | met |
+| Every tab switchable; every Quran rule a switch | met. A country's or an organization's OFF hides the tab but the server enforces only a platform-wide OFF (nice-to-have). |
+| Offline actions queue and sync; the indicator is accurate | met in code and tests; a real link loss and a real phone were not walked. Owner check. |
+| Each platform has a real artifact on the Downloads page with a checksum; the APK is signed | **unmet.** Android is built and signed but unpublished (version still `1.0.0+1`, the old-app-id move pending); Windows (N2) not merged; Linux AppImage not built; macOS / iOS need the owner's Apple account. |
+| Saudi examples generalized, Egypt on the same logic | met |
+| UI consistent, premium, RTL / Arabic and English | met in the walks; QA_PHASE7 left one low open: the sync chip may be missing from some `ScreenAppBar` variants. |
+| Only the necessary tests, and they pass | the phase suites pass as reported; the full gate has not been run on the merged branch (must-fix 1). |
+
+#### Must-fix before the merge to production — ONE brief for an Opus agent (both repos; don't `dart format`; commit with `git commit --only`; don't push)
+1. **Run the whole gate once on the merged branch** (the per-phase runs were partial). Front: `flutter analyze --no-fatal-infos --fatal-warnings`; `flutter test test/org/ test/export/ test/ui/ test/auth/ test/access/ test/admin/ test/perf/ test/contract/ test/sync/ test/store/`; `MSYS_NO_PATHCONV=1 flutter build web --release --base-href /app/`; the landing build (`scripts/build_landing.sh`). Back: every `tests/learning_hub/e2e_*.py` on SQLite, then `alembic upgrade head` → `downgrade 0101` → `upgrade head` on the PostgreSQL test container. Fix what fails; a failure that predates this branch is listed, not fixed.
+2. **Snapshots and generated files are current.** From `../lh-back`: `scripts/contract/export_api_paths.py --front ../lh-front`; `dart run tool/gen_help_index.dart ../lh-back/data/help_seed.json`. A diff means a route, key or help id drifted in the parallel phases: commit it and re-run `test/contract/` and the help tests.
+3. **Decisions into both `docs/DECISIONS.md` files** from DECISIONS_DRAFT: D-1360 – D-1363 (releases), D-1370, D-1371 (consent), D-1380, D-1381 (demo data). D-1353 into the back file if the back cites it. Then mark the draft as merged.
+4. **The features guide** (`../lh-back/data/app_features_guide.json`): check there is an entry, with its kill-switch keys, for offline sync (`sync.offline`), the parent consent, the Downloads page and the Quran teachers admin page; add what is missing. `FLUTTER_API_CHANGES.md` has the Phase 7 – 10 routes (it has the consent and sync ones; check the rest).
+5. **The sync chip in every header.** `lib/utils/widget/app_bar.dart` (`ScreenAppBar`) and `OrgPageHeader` / `HomeHeader`: a widget test per header variant that has tools — offline or pending shows the chip; add it where it is missing (QA_PHASE7's open low).
+6. **Version and the old app.** `pubspec.yaml` `version:` to `1.0.1+2` (or the lead's number) before any publish. Check what `GET /app/version-check` answers the OLD build (`com.example.flutter_education_app`, 1.0.0+1): it must be the dismissible "install the new app, sign in, then remove this one" text in ar and en with the Downloads page link, never an in-place update of a file that installs as a second app. One test for that branch in `VersionCheckService`.
+7. **Merge N2** when it lands, then re-run item 1's front build for Windows only and confirm `sqlite3.dll` is inside the installer (the 7.R carry-over).
+8. **Migration chain.** Back `production` is at 0101; this branch adds 0102 – 0108 in one chain. The student-lifecycle job numbers from 0110: tell the lead its first revision must set `down_revision = "0108"` (there is no 0109). Check `alembic heads` prints one head after the merge.
+
+#### Nice to have (not blocking)
+- Old parent routes (report, profile, overview): refuse only a pair whose consent was explicitly REVOKED (a revoked row and no live one). That blocks no parent who was never asked.
+- `consent_service.grant`: answer the live row instead of adding a second.
+- The 6.R nice-to-have list is unchanged (country / org OFF on the server, games admin screen, the open prefixes rule).
+- Page-level offline tests per kind.
+
+#### Deploy notes for the lead
+- Backend first (migrations 0102 – 0108, then `scripts/dev/load_learn_seed.py` for the Quran metadata, the nahw lessons and the starter games; the demo seed never runs on production), then the web build, then the landing.
+- The server must serve `.dmg` and `.AppImage` and allow the Firebase landing origin on the release list (CORS) before those are advertised.
+- Owner actions are in `FINAL_REPORT.md` "What needs you".
