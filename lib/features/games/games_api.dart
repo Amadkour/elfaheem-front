@@ -10,6 +10,11 @@
 //
 // Kill switches: `student_tab_games` (the tab and every games route), `games.rewards` (points for a play: the server
 // decides, the app only shows what it paid).
+//
+// Offline (D-1351): the list and each opened game's `config` are kept in ReadCache and shown while offline; a play is
+// an outbox op (`game_play`, its id = the `client_id`), so it is graded and shown on the device at once and the
+// server's answer (points, badges, progress) replaces it when it arrives. Without an outbox (the web, `sync.offline`
+// off) the play is posted to the route as before.
 library;
 
 import 'dart:async';
@@ -17,8 +22,12 @@ import 'dart:async';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
+import 'package:flutter_education_app/core/offline/sync/outbox.dart';
+import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/games_models.dart';
+import 'package:flutter_education_app/features/learn_kit/learn_grading.dart';
 import 'package:uuid/uuid.dart';
 
 /// The games tab's kill switch (the server answers 403 `feature_disabled` too).
@@ -51,16 +60,20 @@ class GamesApi {
 
   final ApiClient _api;
 
-  Future<GameList> games({String? country, int? stageId, int? gradeId, int? subjectId}) async =>
-      GameList.fromJson(await _api.get('/api/v1/games', queryParams: {
-        if (country != null && country.isNotEmpty) 'country': country,
-        'stage_id': ?stageId,
-        'grade_id': ?gradeId,
-        'subject_id': ?subjectId,
-      }));
+  Future<GameList> games({String? country, int? stageId, int? gradeId, int? subjectId}) async {
+    final q = <String, dynamic>{
+      if (country != null && country.isNotEmpty) 'country': country,
+      'stage_id': ?stageId,
+      'grade_id': ?gradeId,
+      'subject_id': ?subjectId,
+    };
+    return GameList.fromJson(
+        await readThrough('games.list?${Uri(queryParameters: {for (final e in q.entries) e.key: '${e.value}'}).query}',
+            () => _api.get('/api/v1/games', queryParams: q)));
+  }
 
   Future<GameSummary> game(int id) async {
-    final r = await _api.get('/api/v1/games/$id');
+    final r = await readThrough('games.game.$id', () => _api.get('/api/v1/games/$id'));
     return GameSummary.fromJson(r is Map ? Map<String, dynamic>.from(r) : const {});
   }
 
@@ -108,6 +121,34 @@ class GamePlaySubmission {
   bool settledWithError = false;
 
   bool get done => result != null || settledWithError;
+
+  /// Kept in the device's outbox (D-1351): the sync engine sends it, [settle] takes the answer, no retry here.
+  bool queued = false;
+
+  /// The op's payload (CONTRACT §7: `game_play`).
+  Map<String, dynamic> get payload => {'game_id': gameId, 'score': score, 'max_score': maxScore, 'duration_s': ?durationS};
+
+  /// Puts the play in the outbox; false = no outbox here (the web, `sync.offline` off): post it with [send].
+  Future<bool> enqueue([Outbox? outbox]) async {
+    final r = await (outbox ?? Outbox.instance).enqueue(
+        id: clientId, kind: SyncKinds.gamePlay, payload: payload, clientTs: playedAt);
+    return queued = r != EnqueueResult.postDirectly;
+  }
+
+  /// The outbox's answer for this play: the server's result (or the device's own when a duplicate came back without
+  /// one), or the refusal.
+  void settle(SyncResult r) {
+    if (r.id != clientId) return;
+    if (r.accepted) {
+      result = r.entity != null
+          ? GamePlayResult.fromJson(r.entity)
+          : GamePlayResult(stars: learnStars(score, maxScore), score: score, maxScore: maxScore);
+      error = null;
+    } else if (r.rejected) {
+      settledWithError = true;
+      error = gamesCodeText(r.code) ?? syncRejectedText(r.code);
+    }
+  }
 
   /// Sends the play (again). Returns the answer, or null on a failure ([error] says why).
   Future<GamePlayResult?> send(GamesApi api) async {

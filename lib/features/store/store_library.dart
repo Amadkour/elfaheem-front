@@ -6,12 +6,14 @@
 //                         the offline-video scheme), then read in StoreReaderPage under ScreenSecurity; a kept copy
 //                         opens with no request. A file the reader cannot draw (EPUB) opens by its link.
 //                       • web: the link opens in the browser (nothing is kept).
-//                     Reloads when an order is paid (StoreLibraryBus).
+//                     Reloads when an order is paid (StoreLibraryBus). Offline (D-1351): the list comes from the
+//                     device (ReadCache) and a kept copy opens as usual; a download says it needs a connection.
 //   StoreLibraryView  the page's body with plain values (test/ui/store_layout_test.dart)
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/store/store_api.dart';
@@ -64,7 +66,11 @@ class _StoreLibraryPageState extends State<StoreLibraryPage> {
       _error = null;
     });
     try {
-      final r = await Future.wait([_api.library(), _api.orders(limit: 50)]);
+      final r = await Future.wait([
+        _api.library(),
+        // the purchase history is never kept: offline it is empty and the library still opens
+        _api.orders(limit: 50).catchError((Object e) => isTransportFailure(e) ? const StoreOrderPage(items: [], total: 0, hasMore: false) : throw e),
+      ]);
       final items = r[0] as List<StoreLibraryItem>;
       final kept = <int>{};
       if (_vault.available) {
@@ -97,7 +103,7 @@ class _StoreLibraryPageState extends State<StoreLibraryPage> {
   }
 
   Future<void> _download(StoreLibraryItem it) async {
-    if (_progress.containsKey(it.itemId)) return;
+    if (_progress.containsKey(it.itemId) || offlineBlocked()) return;
     setState(() => _progress[it.itemId] = 0);
     try {
       final d = await _api.download(it.itemId);

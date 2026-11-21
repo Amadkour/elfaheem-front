@@ -58,7 +58,15 @@ class _QuranProgressPageState extends State<QuranProgressPage> {
   @override
   void initState() {
     super.initState();
+    QuranBus.wireSync();
+    QuranBus.revision.addListener(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    QuranBus.revision.removeListener(_load);
+    super.dispose();
   }
 
   Future<QuranProgress> _read() => switch (widget._source) {
@@ -68,6 +76,7 @@ class _QuranProgressPageState extends State<QuranProgressPage> {
       };
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() {
       _loading = true;
       _error = null;

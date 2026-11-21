@@ -2,16 +2,23 @@
 // not carry it, plays one round on its engine (engines/game_engine.dart), then shows the learn kit's result and
 // sends the play.
 //
-//   GamePlayPage  the page: GET /api/v1/games/{id}, a round, POST /api/v1/games/{id}/plays through a
-//                 [GamePlaySubmission] (one `client_id` per round, kept until the server answers; a retry after a
-//                 lost answer sends the same id). A guest plays without saving.
+//   GamePlayPage  the page: GET /api/v1/games/{id}, a round, then the play through a [GamePlaySubmission] (one
+//                 `client_id` per round). With the device's outbox (D-1351) the play is an op: the result shows at
+//                 once from the device's grading and the server's answer (points, badges) replaces it when the sync
+//                 engine brings it; replaying is allowed meanwhile. Without one (the web, `sync.offline` off) it is
+//                 POST /api/v1/games/{id}/plays, kept until the server answers (a retry sends the same id). A guest
+//                 plays without saving.
 //   GamePlayView  the body with plain values (test/ui/games_layout_test.dart)
-//   GamesBus      `revision` bumps after a saved play, so the tab and the progress page reload
+//   GamesBus      `revision` bumps after a saved play (also one the outbox saved after the page closed), so the tab and
+//                 the progress page reload
 library;
 
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
+import 'package:flutter_education_app/core/offline/sync/outbox.dart';
+import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/engines/game_engine.dart';
@@ -25,6 +32,17 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 /// Bumps after a play the server saved.
 abstract final class GamesBus {
   static final ValueNotifier<int> revision = ValueNotifier<int>(0);
+
+  static bool _wired = false;
+
+  /// Once: a play the outbox saved bumps [revision], whichever page is open.
+  static void wireSync([SyncEngine? engine]) {
+    if (_wired) return;
+    _wired = true;
+    (engine ?? SyncEngine.instance).listen(SyncKinds.gamePlay, (r) {
+      if (r.accepted) revision.value++;
+    });
+  }
 }
 
 class GamePlayPage extends StatefulWidget {
@@ -52,11 +70,30 @@ class _GamePlayPageState extends State<GamePlayPage> {
   @override
   void initState() {
     super.initState();
+    GamesBus.wireSync();
+    SyncEngine.instance.listen(SyncKinds.gamePlay, _onSync);
     if (_game.config.isEmpty) {
       _load();
     } else {
       _clock.start();
     }
+  }
+
+  @override
+  void dispose() {
+    SyncEngine.instance.unlisten(SyncKinds.gamePlay, _onSync);
+    super.dispose();
+  }
+
+  /// The outbox brought the server's answer for this page's play.
+  void _onSync(SyncResult r) {
+    final sub = _sub;
+    if (sub == null || r.id != sub.clientId || !mounted) return;
+    setState(() {
+      sub.settle(r);
+      final res = sub.result;
+      if (res != null) _game = _game.withProgress(res.progress ?? _game.progress);
+    });
   }
 
   Future<void> _load() async {
@@ -92,7 +129,12 @@ class _GamePlayPageState extends State<GamePlayPage> {
 
   Future<void> _send() async {
     final sub = _sub;
-    if (sub == null || sub.done) return;
+    if (sub == null || sub.done || sub.queued) return;
+    if (await sub.enqueue()) {
+      if (mounted) setState(() {}); // shown from the device's grading; the engine sends it
+      return;
+    }
+    if (!mounted) return;
     setState(() => _saving = true);
     final r = await sub.send(_api);
     if (!mounted) return;
@@ -118,7 +160,8 @@ class _GamePlayPageState extends State<GamePlayPage> {
   @override
   Widget build(BuildContext context) {
     final sub = _sub;
-    final waiting = sub != null && !GuestState.active && !sub.done;
+    final waiting = sub != null && !GuestState.active && !sub.done && !sub.queued;
+    final kept = sub != null && sub.queued && !sub.done;
     return BasePage(
       appBar: ScreenAppBar(title: _game.title),
       child: SafeArea(
@@ -142,6 +185,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
           saveError: sub?.error,
           onRetrySave: waiting && !_saving ? _send : null,
           guest: GuestState.active,
+          kept: kept,
           onReplay: waiting ? null : _replay,
           onDone: () => Navigator.of(context).maybePop(),
         ),
@@ -168,6 +212,7 @@ class GamePlayView extends StatelessWidget {
     this.saveError,
     this.onRetrySave,
     this.guest = false,
+    this.kept = false,
     this.onReplay,
     this.onDone,
     this.random,
@@ -184,6 +229,9 @@ class GamePlayView extends StatelessWidget {
   final String? saveError;
   final VoidCallback? onRetrySave, onReplay, onDone;
   final bool guest;
+
+  /// The play waits in the device's outbox: the result is the device's own until the server answers.
+  final bool kept;
 
   /// The engines' shuffle (tests pass a seeded one).
   final Random? random;
@@ -214,7 +262,11 @@ class GamePlayView extends StatelessWidget {
         saving: saving,
         saveError: saveError,
         onRetrySave: onRetrySave,
-        note: guest ? t('سجّل الدخول لتحفظ نجومك وشاراتك.', 'Sign in to keep your stars and badges.') : null,
+        note: guest
+            ? t('سجّل الدخول لتحفظ نجومك وشاراتك.', 'Sign in to keep your stars and badges.')
+            : kept
+                ? keptOnDeviceText()
+                : null,
         onReplay: onReplay,
         onDone: onDone,
       );

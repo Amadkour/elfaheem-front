@@ -17,6 +17,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -71,7 +72,7 @@ class _PointsWalletPageState extends State<PointsWalletPage> {
 
   Future<void> _buy() async {
     final w = _wallet;
-    if (w == null) return;
+    if (w == null || offlineBlocked()) return; // points are never bought on the device (D-1351)
     final done = await showAppSheet<Object>(
         context,
         (ctx) => TopupForm(

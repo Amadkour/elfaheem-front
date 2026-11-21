@@ -51,6 +51,8 @@ import '../app_time.dart';
 import '../attention/decision_refresh.dart';
 import '../inbox_badge.dart';
 import '../offline/app_connectivity.dart';
+import '../offline/sync/offline_reads.dart' show isTransportFailure;
+import '../offline/sync/read_cache.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Small parsers (null-safe, never throw)
@@ -640,7 +642,18 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
     loading = true;
     notifyListeners();
     try {
-      final r = await _fetch(path, query: query);
+      dynamic r;
+      var kept = false;
+      try {
+        r = await _fetch(path, query: query);
+        if (r is Map) unawaited(ReadCache.instance.put('me.home.$key', r));
+      } catch (e) {
+        // offline with nothing on screen: the last home kept on this device (D-1351), reloaded at the next open
+        final hit = home == null && isTransportFailure(e) ? await ReadCache.instance.get('me.home.$key') : null;
+        if (hit == null) rethrow;
+        r = hit.body;
+        kept = true;
+      }
       if (_scopeKey != key) {
         // the person switched side while this answer was on its way: it is the other side's home — its course
         // blocks are dropped, the rest (today, inbox, organization slices) is drawn until the right one lands
@@ -656,7 +669,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
         InboxBadge.instance.setTodo(home!.inboxTodo);
         outcome = MeHomeOutcome.ok;
         error = null;
-        loadedAt = _clock();
+        loadedAt = kept ? null : _clock();
       }
     } catch (e) {
       final err = ApiException.from(e);

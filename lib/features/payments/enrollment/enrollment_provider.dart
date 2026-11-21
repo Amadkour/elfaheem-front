@@ -32,6 +32,7 @@ import 'package:flutter_education_app/features/payments/enrollment/enrollment_mo
 import 'package:flutter_education_app/features/payments/enrollment/payment_flow_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/core/api_error_text.dart' show apiErrorText;
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 
 export 'package:flutter_education_app/features/payments/enrollment/payment_flow_provider.dart' show EnrollStep;
 
@@ -417,6 +418,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
 
   Future<void> confirm(BuildContext context) async {
     if (isLoading || !_optionsLoaded) return;
+    if (offlineBlocked()) return; // enrolment and checkout are never queued on the device (D-1351)
     if (isFree) return _enrollFree();
     if (!canConfirm) return; // nothing selectable (e.g. the admin just closed the chosen method)
 

@@ -9,6 +9,7 @@ library;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 
@@ -170,7 +171,7 @@ class MyCoursesProvider extends BaseProvider {
     _started = true;
     final gen = ++_gen;
     _pageFailed = false;
-    final r = await run(() => _api.get('/api/v1/my-enrolled-courses', queryParams: _params(0)));
+    final r = await run(() => _firstPage(_params(0)));
     if (gen != _gen) return; // another refresh / re-init started meanwhile
     if (r is Map && r['items'] is List) {
       _apply(r, replace: true);
@@ -197,7 +198,8 @@ class MyCoursesProvider extends BaseProvider {
   Future<void> _loadPage() async {
     final gen = _gen;
     _pageGen = gen;
-    final r = await run(() => _api.get('/api/v1/my-enrolled-courses', queryParams: _params(_skip)));
+    final q = _params(_skip);
+    final r = await run(() => _skip == 0 ? _firstPage(q) : _api.get('/api/v1/my-enrolled-courses', queryParams: q));
     if (_pageGen == gen) _pageGen = -1;
     if (gen != _gen) return; // a refresh started while this page was loading
     if (r is Map && r['items'] is List) {
@@ -207,6 +209,11 @@ class MyCoursesProvider extends BaseProvider {
       notifyListeners();
     }
   }
+
+  /// The first page, kept on the device for offline opens (ReadCache, D-1351); later pages need the server.
+  Future<Object?> _firstPage(Map<String, dynamic> q) => readThrough(
+      'courses.mine?${q['scope'] ?? ''}&${q['org_id'] ?? ''}&${q['limit']}',
+      () => _api.get('/api/v1/my-enrolled-courses', queryParams: q));
 
   /// Applies a server page: replaces the list (refresh) or appends to it (next page).
   void _apply(Map r, {required bool replace}) {

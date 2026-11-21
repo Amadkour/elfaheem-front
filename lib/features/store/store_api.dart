@@ -18,6 +18,7 @@ import 'dart:async';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/courses/student/security/device_id_service.dart';
 import 'package:flutter_education_app/features/store/store_models.dart';
@@ -145,7 +146,8 @@ class StoreApi {
       StoreOrderPage.fromJson(await _api.get('/api/v1/store/orders', queryParams: {'skip': skip, 'limit': limit}));
 
   Future<List<StoreLibraryItem>> library() async {
-    final m = _m(await _api.get('/api/v1/store/library'));
+    // kept on the device (ReadCache, D-1351): a file already downloaded opens offline from the list
+    final m = _m(await readThrough('store.library', () => _api.get('/api/v1/store/library')));
     final items = m['items'];
     return [
       if (items is List)

@@ -4,7 +4,9 @@
 //
 //   StudyProfileStepPage   the sign-up's ONE extra step (students, when the super admin keeps it on): stage + grade,
 //                          the rest folded under "Add school and governorate"; its button creates the account
-//   StudyProfilePage       Profile › Study details: the same form, loaded from and saved to /me/study-profile
+//   StudyProfilePage       Profile › Study details: the same form, loaded from and saved to /me/study-profile;
+//                          offline the edit waits in the outbox, and a `sync_stale` answer puts the server's copy
+//                          back in the form (StudyProfileSync, D-1352)
 //   StudyProfileTile       the Account page's row into it
 //   StudyPromptCard        the student home's dismissible "Complete your profile" card (plain values; the home shows it
 //                          while /me/home says `study_prompt`, never a blocking wall)
@@ -25,6 +27,7 @@ import 'package:flutter_education_app/features/auth/auth_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_widgets.dart' show AuthButton;
 import 'package:flutter_education_app/features/auth/register_levels_step.dart' show offerContactWhatsapp;
 import 'package:flutter_education_app/core/edu/edu_catalog.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/core/edu/edu_countries.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_form.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
@@ -181,7 +184,40 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
   @override
   void initState() {
     super.initState();
+    StudyProfileSync.wireSync();
+    StudyProfileSync.latest.addListener(_onSync);
     _load();
+  }
+
+  @override
+  void dispose() {
+    StudyProfileSync.latest.removeListener(_onSync);
+    super.dispose();
+  }
+
+  /// The server's copy arrived through the outbox: an applied edit, or a stale one refused (the engine said so).
+  void _onSync() {
+    final x = StudyProfileSync.latest.value;
+    if (x == null || !mounted) return;
+    setState(() {
+      _loaded = x.view;
+      _value = x.view.profile;
+      _showErrors = false;
+    });
+  }
+
+  /// Keeps the edit on the device; false when there is no outbox here.
+  Future<bool> _queue() async {
+    if (!await _api.queue(_value, baseUpdatedAt: _loaded?.updatedAt)) return false;
+    if (!mounted) return true;
+    final l = _loaded!;
+    setState(() {
+      _loaded = StudyProfileView(profile: _value, settings: l.settings, updatedAt: l.updatedAt);
+      _showErrors = false;
+    });
+    showAppNotice(t('حُفظت بيانات الدراسة على هذا الجهاز وتُرسل عند الاتصال.',
+        'Study details saved on this device. They are sent once you are online.'));
+    return true;
   }
 
   Future<void> _loadEdu(String? country) async {
@@ -213,6 +249,7 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
     }
     setState(() => _saving = true);
     try {
+      if (!offlineReadsOnline().value && await _queue()) return;
       final v = await _api.save(_value);
       if (!mounted) return;
       setState(() {
@@ -223,6 +260,7 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
       showAppNotice(t('حُفظت بيانات الدراسة', 'Study details saved'));
       await offerContactWhatsapp(_countryOf(_edu), _stageOf(_edu, _value));
     } catch (e) {
+      if (isTransportFailure(e) && await _queue()) return;
       if (mounted) {
         if (studyErrorFields(e).isNotEmpty) setState(() => _showErrors = true);
         showAppNotice(studyErrorText(e), error: true);

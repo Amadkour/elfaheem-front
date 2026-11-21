@@ -1,6 +1,8 @@
 // lib/features/nahw/nahw_lesson_page.dart — one nahw lesson (D-1349): the reading text, then its exercises one at a
 // time with instant feedback (graded on the device: the lesson carries the answers), then the result, which is
-// saved as ONE attempt with a `client_id` kept until the server answers (a retry is the same attempt).
+// saved as ONE attempt with a `client_id`. With the device's outbox (D-1351) the attempt is an op: the result shows
+// at once and the server's progress replaces the note when the sync engine brings it; without one it is posted and
+// the `client_id` kept until the server answers (a retry is the same attempt).
 //
 //   NahwLessonPage     loads GET /api/v1/nahw/lessons/{id}, runs the round, posts the attempt
 //   NahwReadingView    the lesson text + "Start the exercises" (plain values)
@@ -9,6 +11,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
+import 'package:flutter_education_app/core/offline/sync/outbox.dart';
+import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
@@ -24,6 +29,17 @@ import 'nahw_models.dart';
 class NahwBus {
   NahwBus._();
   static final revision = ValueNotifier<int>(0);
+
+  static bool _wired = false;
+
+  /// Once: an attempt the outbox saved bumps [revision], whichever page is open.
+  static void wireSync([SyncEngine? engine]) {
+    if (_wired) return;
+    _wired = true;
+    (engine ?? SyncEngine.instance).listen(SyncKinds.nahwAttempt, (r) {
+      if (r.accepted) revision.value++;
+    });
+  }
 }
 
 String nahwExercisesText(int n) => countText(n,
@@ -55,6 +71,9 @@ class _NahwLessonPageState extends State<NahwLessonPage> {
   final List<Object?> _answers = [];
 
   String? _clientId;
+
+  /// The attempt waiting in the outbox (its op id), until the server's answer arrives.
+  String? _queuedId;
   bool _saving = false;
   String? _saveError;
   NahwProgress? _saved;
@@ -62,7 +81,28 @@ class _NahwLessonPageState extends State<NahwLessonPage> {
   @override
   void initState() {
     super.initState();
+    NahwBus.wireSync();
+    SyncEngine.instance.listen(SyncKinds.nahwAttempt, _onSync);
     _load();
+  }
+
+  @override
+  void dispose() {
+    SyncEngine.instance.unlisten(SyncKinds.nahwAttempt, _onSync);
+    super.dispose();
+  }
+
+  /// The outbox brought the server's answer for this page's attempt.
+  void _onSync(SyncResult r) {
+    if (r.id != _queuedId || !mounted) return;
+    setState(() {
+      _queuedId = null;
+      if (r.accepted) {
+        _saved = NahwProgress.from(r.entity?['progress']) ?? _saved;
+      } else if (r.rejected) {
+        _saveError = nahwCodeText(r.code) ?? syncRejectedText(r.code);
+      }
+    });
   }
 
   Future<void> _load() async {
@@ -85,6 +125,7 @@ class _NahwLessonPageState extends State<NahwLessonPage> {
         _saveError = null;
         _saved = null;
         _clientId = null;
+        _queuedId = null;
       });
 
   void _check() {
@@ -114,10 +155,26 @@ class _NahwLessonPageState extends State<NahwLessonPage> {
   Future<void> _save() async {
     final l = _lesson!;
     _clientId ??= nahwClientId();
+    final id = _clientId!;
     setState(() {
       _saving = true;
       _saveError = null;
     });
+    final q = await Outbox.instance.enqueue(
+        id: id,
+        kind: SyncKinds.nahwAttempt,
+        payload: {'lesson_id': l.id, 'score': _score, 'max_score': l.maxScore, 'answers': [..._answers]});
+    if (q != EnqueueResult.postDirectly) {
+      // the outbox owns it now: the engine sends it and [_onSync] takes the answer
+      _clientId = null;
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _queuedId = id;
+        });
+      }
+      return;
+    }
     try {
       final r = await _api.attempt(l.id, clientId: _clientId!, score: _score, maxScore: l.maxScore, answers: [..._answers]);
       _clientId = null;
@@ -178,7 +235,7 @@ class _NahwLessonPageState extends State<NahwLessonPage> {
           saveError: _saveError,
           onRetrySave: _save,
           note: best == null
-              ? null
+              ? (_queuedId != null ? keptOnDeviceText() : null)
               : best.completed
                   ? t('أتممت الدرس · أفضل نتيجة ${best.percent}%', 'Lesson complete · best ${best.percent}%')
                   : t('يكتمل الدرس عند 60% · أفضل نتيجة ${best.percent}%', 'The lesson completes at 60% · best ${best.percent}%'),

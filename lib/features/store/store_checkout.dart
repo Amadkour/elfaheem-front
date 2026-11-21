@@ -15,6 +15,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/payments/points/points_card_checkout.dart' show openPointsPaymentPage;
@@ -122,6 +123,7 @@ class _StoreCheckoutSheetState extends State<StoreCheckoutSheet> {
   }
 
   Future<void> _pay() async {
+    if (offlineBlocked()) return; // money is never queued on the device (D-1351)
     final key = _key ??= newIdempotencyKey();
     setState(() {
       _phase = StoreCheckoutPhase.paying;

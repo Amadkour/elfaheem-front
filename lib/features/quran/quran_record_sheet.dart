@@ -6,17 +6,43 @@
 //                          `quran_self_log_off` otherwise)
 //   QuranRecordForm        plain values (test/ui/quran_layout_test.dart)
 //
-// Offline-safe: the entry gets its `client_id` when the form opens and keeps it on every retry; a network failure
-// puts the entry in [QuranOutbox], which sends it again with the same id (the server answers `duplicate: true`).
+// Offline-first (D-1351): the entry gets its `client_id` when the form opens; saving puts it in the device's outbox
+// as a `quran_progress` op (that id, the device's time as `client_ts`), the sheet closes at once and the sync engine
+// sends it; [QuranBus] bumps when the server has it. Without an outbox (the web, `sync.offline` off) it is posted as
+// in Phase 6: a network failure puts it in [QuranOutbox], which sends it again with the same id.
 // No Quran text: the surah is picked by name and the ayahs by number.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
+import 'package:flutter_education_app/core/offline/sync/outbox.dart';
+import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/quran/quran_api.dart';
 import 'package:flutter_education_app/features/quran/quran_models.dart';
+
+/// Bumps when an entry the outbox kept reached the server, so the progress pages reload.
+abstract final class QuranBus {
+  static final ValueNotifier<int> revision = ValueNotifier<int>(0);
+
+  static bool _wired = false;
+
+  /// Once: an entry the outbox saved bumps [revision].
+  static void wireSync([SyncEngine? engine]) {
+    if (_wired) return;
+    _wired = true;
+    (engine ?? SyncEngine.instance).listen(SyncKinds.quranProgress, (r) {
+      if (r.accepted) revision.value++;
+    });
+  }
+}
+
+/// The `quran_progress` op's payload of a record body (CONTRACT §7): the body without its id and time, which travel
+/// as the op's own `id` and `client_ts`.
+Map<String, dynamic> quranOpPayload(Map<String, dynamic> body) =>
+    {for (final e in body.entries) if (e.key != 'client_id' && e.key != 'recorded_at') e.key: e.value};
 
 /// Opens the sheet; true when an entry was saved (or kept on the device for later).
 ///
@@ -53,6 +79,20 @@ Future<bool> showQuranRecordSheet(
 
 /// null = saved; `''` = kept on the device for later; any other text = the server's refusal.
 Future<String?> _submit(QuranApi api, Map<String, dynamic> body) async {
+  QuranBus.wireSync();
+  final q = await Outbox.instance.enqueue(
+    id: '${body['client_id']}',
+    kind: SyncKinds.quranProgress,
+    payload: quranOpPayload(body),
+    clientTs: DateTime.tryParse('${body['recorded_at'] ?? ''}'),
+  );
+  if (q != EnqueueResult.postDirectly) {
+    showAppNotice(offlineReadsOnline().value
+        ? t('تم التسجيل', 'Recorded')
+        : t('لا اتصال الآن: حُفظ التسجيل على هذا الجهاز وسيُرسل عند عودة الاتصال.',
+            'No connection now: the entry is kept on this device and sent when you are back online.'));
+    return null;
+  }
   try {
     final r = await api.record(body);
     showAppNotice(r.duplicate ? t('سُجّل هذا من قبل', 'This was already recorded') : t('تم التسجيل', 'Recorded'));

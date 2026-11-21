@@ -18,8 +18,10 @@
 // Kill switches: `student_tab_quran` (the tab, the list, my progress, a student's own log), `quran.teacher_apply`
 // (the teacher's card editor).
 //
-// [QuranOutbox] keeps an entry the network lost (per user, SharedPreferences) and sends it again with the SAME
-// `client_id`, so a retry never records it twice (the server answers `duplicate: true`).
+// Offline (D-1351): the meta, the teacher list and my progress are kept in ReadCache and shown while offline; an entry
+// is an outbox op (`quran_progress`, its id = the `client_id`, the record sheet). [QuranOutbox] is the Phase 6 path
+// kept for where there is no outbox (the web, `sync.offline` off): it keeps an entry the network lost (per user,
+// SharedPreferences) and sends it again with the SAME `client_id`, so a retry never records it twice.
 library;
 
 import 'dart:async';
@@ -30,6 +32,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/features/quran/quran_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -92,7 +95,9 @@ class QuranApi {
   Future<QuranMeta> meta() {
     final hit = _meta;
     if (hit != null) return Future.value(hit);
-    return _metaInflight ??= _api.get('/api/v1/quran/meta', auth: false).then((r) => _meta = QuranMeta.fromJson(r)).whenComplete(() {
+    return _metaInflight ??= readThrough('quran.meta', () => _api.get('/api/v1/quran/meta', auth: false))
+        .then((r) => _meta = QuranMeta.fromJson(r))
+        .whenComplete(() {
       _metaInflight = null;
     });
   }
@@ -100,8 +105,9 @@ class QuranApi {
   @visibleForTesting
   static void setMetaForTest(QuranMeta? m) => _meta = m;
 
-  Future<QuranTeacherList> teachers(QuranFilters f) async =>
-      QuranTeacherList.fromJson(await _api.get('/api/v1/quran/teachers', queryParams: f.toQuery()));
+  Future<QuranTeacherList> teachers(QuranFilters f) async => QuranTeacherList.fromJson(await readThrough(
+      'quran.teachers?${f.gender ?? ''}&${f.goal ?? ''}&${f.sessionType ?? ''}',
+      () => _api.get('/api/v1/quran/teachers', queryParams: f.toQuery())));
 
   Future<QuranTeacher> teacher(int id) async => QuranTeacher.fromJson(await _api.get('/api/v1/quran/teachers/$id'));
 
@@ -142,7 +148,8 @@ class QuranApi {
         'publish': publish,
       }));
 
-  Future<QuranProgress> myProgress() async => QuranProgress.fromJson(await _api.get('/api/v1/me/quran/progress'));
+  Future<QuranProgress> myProgress() async =>
+      QuranProgress.fromJson(await readThrough('quran.progress.mine', () => _api.get('/api/v1/me/quran/progress')));
 
   Future<QuranProgress> studentProgress(int studentId) async =>
       QuranProgress.fromJson(await _api.get('/api/v1/quran/students/$studentId/progress'));

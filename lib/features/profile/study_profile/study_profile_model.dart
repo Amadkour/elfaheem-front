@@ -10,16 +10,27 @@
 //   GET|PUT /api/v1/admin/study-profile/settings   super admin
 //   GET  /api/v1/auth/policy → `study_profile`  the same settings before sign-in (the sign-up step)
 //   POST /api/v1/auth/register  `study_profile`  the sign-up step's values (stage + grade required)
+//
+// Offline (D-1351, D-1352): the GET is kept in ReadCache; an edit saved while offline (or whose PUT lost the
+// connection) waits in the outbox as a `study_profile` op with the `updated_at` it was made on. The server refuses
+// it as `sync_stale` when the profile changed elsewhere meanwhile and sends its own copy, which replaces the form
+// (StudyProfileSync).
 library;
 
 import 'dart:async' show unawaited;
 
+import 'package:flutter/foundation.dart' show ValueNotifier;
+
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart' show ThemeConfigProvider;
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
+import 'package:flutter_education_app/core/offline/sync/outbox.dart';
+import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart' show EduStage;
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/courses/course_filters.dart' show CourseFilterStore;
+import 'package:uuid/uuid.dart';
 
 /// Kill switch of every study-data surface (the sign-up step, the profile row, the home card, the admin page).
 const kStudyProfileFeatureKey = 'profile.study';
@@ -409,11 +420,14 @@ class StudySettings {
 }
 
 class StudyProfileView {
-  const StudyProfileView({required this.profile, required this.settings, this.missing = const []});
+  const StudyProfileView({required this.profile, required this.settings, this.missing = const [], this.updatedAt});
 
   final StudyProfile profile;
   final StudySettings settings;
   final List<String> missing;
+
+  /// The server's `updated_at` of the row (null = never saved): an offline edit's base (D-1352).
+  final String? updatedAt;
 
   bool get complete => missing.isEmpty;
 
@@ -421,6 +435,7 @@ class StudyProfileView {
         profile: StudyProfile.fromJson(j['profile'] is Map ? Map<String, dynamic>.from(j['profile'] as Map) : null),
         settings: StudySettings.fromJson(j['settings']),
         missing: [for (final f in (j['missing'] is List ? j['missing'] as List : const [])) '$f'],
+        updatedAt: j['updated_at'] is String && (j['updated_at'] as String).isNotEmpty ? j['updated_at'] as String : null,
       );
 }
 
@@ -452,7 +467,12 @@ class StudyProfileApi {
   static const _me = '/api/v1/me/study-profile';
   static const _admin = '/api/v1/admin/study-profile/settings';
 
-  Future<StudyProfileView> load() async => _seed(StudyProfileView.fromJson(_map(await _api.get(_me))));
+  Future<StudyProfileView> load() async =>
+      _seed(StudyProfileView.fromJson(_map(await readThrough('study.profile', () => _api.get(_me)))));
+
+  /// Keeps the edit in the outbox (offline, or the PUT lost the connection). False = no outbox here.
+  Future<bool> queue(StudyProfile p, {String? baseUpdatedAt, Outbox? outbox}) =>
+      StudyProfileSync.queue(p.toJson(), baseUpdatedAt: baseUpdatedAt, outbox: outbox);
 
   Future<StudyProfileView> save(StudyProfile p) async {
     final v = _seed(StudyProfileView.fromJson(_map(await _api.put(_me, body: p.toJson()))));
@@ -475,6 +495,43 @@ class StudyProfileApi {
   Future<StudySettings> saveSettings(StudySettings s) async => StudySettings.fromJson(await _api.put(_admin, body: s.toJson()));
 
   static Map<String, dynamic> _map(dynamic r) => r is Map ? Map<String, dynamic>.from(r) : <String, dynamic>{};
+}
+
+/// The outbox side of the study profile (D-1352): queues an edit and takes the server's answer.
+abstract final class StudyProfileSync {
+  /// The server's copy after an op was applied, or the one it sent back with `sync_stale`; the open page shows it.
+  static final ValueNotifier<({StudyProfileView view, bool stale})?> latest = ValueNotifier(null);
+
+  /// This device's edits still waiting: a second edit on top of the first is not "stale" against the first one's
+  /// own save, so it goes without a base (the server then does not compare).
+  static final Set<String> _waiting = {};
+  static bool _wired = false;
+
+  static void wireSync([SyncEngine? engine]) {
+    if (_wired) return;
+    _wired = true;
+    (engine ?? SyncEngine.instance).listen(SyncKinds.studyProfile, take);
+  }
+
+  /// One op's answer (the engine has already told the person about a refusal, `sync_stale` included).
+  static void take(SyncResult r) {
+    _waiting.remove(r.id);
+    final e = r.entity;
+    if (e == null || !(r.accepted || r.stale)) return;
+    final v = StudyProfileApi._seed(StudyProfileView.fromJson(e));
+    latest.value = (view: v, stale: r.stale);
+    if (r.accepted) unawaited(ThemeConfigProvider.accountChanged(force: true));
+  }
+
+  static Future<bool> queue(Map<String, dynamic> body, {String? baseUpdatedAt, Outbox? outbox}) async {
+    wireSync();
+    final id = const Uuid().v4();
+    final r = await (outbox ?? Outbox.instance).enqueue(
+        id: id, kind: SyncKinds.studyProfile, payload: body, baseUpdatedAt: _waiting.isEmpty ? baseUpdatedAt : null);
+    if (r == EnqueueResult.postDirectly) return false;
+    _waiting.add(id);
+    return true;
+  }
 }
 
 /// The Learning Hub's 422 codes on the study profile, the teaching levels and the parent link, in the person's
