@@ -695,6 +695,7 @@
   "GET /api/v1/org/orgs/{org_id:int}/students/rules/programs/{pid:int}",
   "GET /api/v1/org/orgs/{org_id:int}/students/rules/scales",
   "GET /api/v1/org/orgs/{org_id:int}/students/settings",
+  "GET /api/v1/org/orgs/{org_id:int}/students/status-report",
   "GET /api/v1/org/orgs/{org_id:int}/students/{uid:int}/access-log",
   "GET /api/v1/org/orgs/{org_id:int}/students/{uid:int}/file",
   "GET /api/v1/org/orgs/{org_id:int}/students/{uid:int}/missing",
