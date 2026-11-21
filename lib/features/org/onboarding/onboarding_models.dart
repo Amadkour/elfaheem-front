@@ -246,7 +246,9 @@ class OnbDocReq {
       );
 }
 
-/// One approval step: either a module permission (`{module, action}`) or a department role (`{org_role, scope}`).
+/// One approval step (`service.step_kind`): a module permission (`{module, action}`), a department role
+/// (`{org_role, scope}`), named people (`{user_ids: [int]}`) or a body (`{council_id: int}`, whose approval needs a
+/// decision number and date).
 class OnbChainStep {
   const OnbChainStep({required this.key, this.labelAr = '', this.labelEn = '', this.need = const {}});
   final String key, labelAr, labelEn;
@@ -254,13 +256,42 @@ class OnbChainStep {
 
   String get label => _bi(labelAr, labelEn);
 
+  /// `module | org_role | people | council` (the server's order of precedence).
+  String get kind {
+    if (asStr(need['module']).isNotEmpty && asStr(need['action']) == 'approve') return 'module';
+    if (asStr(need['org_role']).isNotEmpty) return 'org_role';
+    if (userIds.isNotEmpty) return 'people';
+    if (councilId != null) return 'council';
+    return 'module';
+  }
+
+  /// The named people of a `people` step.
+  List<int> get userIds => [for (final x in (need['user_ids'] is List ? need['user_ids'] as List : const [])) if (asInt(x) > 0) asInt(x)];
+
+  /// The body of a `council` step.
+  int? get councilId => asInt(need['council_id']) > 0 ? asInt(need['council_id']) : null;
+
+  /// Approving this step needs `{decision_no, decision_date}`.
+  bool get needsDecision => kind == 'council';
+
   /// A short sentence on who decides this step.
   String get needText {
     final role = asStr(need['org_role']);
-    if (role.isNotEmpty) return role == 'dept_head' ? t('رئيس القسم', 'The department head') : role;
+    switch (kind) {
+      case 'org_role':
+        return role == 'dept_head' ? t('رئيس القسم', 'The department head') : role;
+      case 'people':
+        final n = userIds.length;
+        return n == 1 ? t('شخص محدد', 'A named person') : t('أشخاص محددون ($n)', 'Named people ($n)');
+      case 'council':
+        return t('مجلس، بقرار مرقّم', 'A council, by a numbered decision');
+    }
     final m = asStr(need['module']);
     return t('من يملك صلاحية القبول على ${onbModuleLabel(m)}', 'Whoever may approve ${onbModuleLabel(m).toLowerCase()}');
   }
+
+  OnbChainStep copyWith({String? labelAr, String? labelEn, Map<String, dynamic>? need}) =>
+      OnbChainStep(key: key, labelAr: labelAr ?? this.labelAr, labelEn: labelEn ?? this.labelEn, need: need ?? this.need);
 
   factory OnbChainStep.fromJson(Map<String, dynamic> j) =>
       OnbChainStep(key: asStr(j['key']), labelAr: asStr(j['label_ar']), labelEn: asStr(j['label_en']), need: Map<String, dynamic>.from(asMap(j['need'])));
@@ -268,11 +299,53 @@ class OnbChainStep {
   Map<String, dynamic> toJson() => {'key': key, 'label_ar': labelAr, 'label_en': labelEn, 'need': need};
 }
 
+/// The entry policies of a type (`service.ENTRY_POLICIES`): a label over the chain / intake / invite settings.
+const onbEntryPolicies = ['direct', 'review', 'invitation', 'code'];
+
+String onbEntryPolicyLabel(String p) => switch (p) {
+      'direct' => t('قيد مباشر', 'Direct enrolment'),
+      'invitation' => t('بدعوة', 'By invitation'),
+      'code' => t('برابط أو رمز تقديم', 'By an intake link or code'),
+      _ => t('بعد المراجعة', 'After review'),
+    };
+
+String onbEntryPolicyHint(String p) => switch (p) {
+      'direct' => t('يُقيد من يضيفه الموظف مباشرة دون مراجعة.', 'Whoever staff add is enrolled straight away, with no review.'),
+      'invitation' => t('يصل الشخص رابط ليكمل بياناته، ثم يراجعه الموظف.', 'The person gets a link to complete their details, then staff review.'),
+      'code' => t('يتقدم الشخص بنفسه من رابط التقديم، ثم يراجعه الموظف.', 'People apply themselves from the intake link, then staff review.'),
+      _ => t('كل ملف يمر بخطوات الاعتماد قبل القيد.', 'Every file goes through the approval steps before enrolment.'),
+    };
+
+/// The student number tokens of `student_code_pattern` (contract §7.2).
+const onbStudentCodeTokens = ['{yy}', '{yyyy}', '{program}', '{level}', '{seq:4}'];
+
+/// The preset student types, the admission routes of phase 3 included (contract §7.2).
+const onbStudentTypeKeys = [
+  'student_new', 'student_transfer', 'student_equivalent', 'student_technical', 'student_second_degree', 'student_affiliated',
+  'student_special_program', 'student_visiting',
+];
+
 class OnbSettings {
-  const OnbSettings({this.autoActivate = true, this.studentCodePattern, this.inviteDays = 14, this.purgeRejectedDays = 180, this.guardianUnder = 18});
+  const OnbSettings({
+    this.autoActivate = true,
+    this.studentCodePattern,
+    this.inviteDays = 14,
+    this.purgeRejectedDays = 180,
+    this.guardianUnder = 18,
+    this.entryPolicy = 'review',
+    this.extra = const {},
+  });
   final bool autoActivate;
   final String? studentCodePattern;
   final int inviteDays, purgeRejectedDays, guardianUnder;
+
+  /// `direct | review | invitation | code`; the server always answers it.
+  final String entryPolicy;
+
+  /// Keys this app does not edit, sent back untouched (the PUT replaces the whole settings object).
+  final Map<String, dynamic> extra;
+
+  static const _known = {'auto_activate', 'student_code_pattern', 'invite_days', 'purge_rejected_days', 'guardian_under', 'entry_policy', 'intake'};
 
   factory OnbSettings.fromJson(Map<String, dynamic> j) => OnbSettings(
         autoActivate: j['auto_activate'] != false,
@@ -280,22 +353,29 @@ class OnbSettings {
         inviteDays: asInt(j['invite_days'], 14),
         purgeRejectedDays: asInt(j['purge_rejected_days'], 180),
         guardianUnder: asInt(j['guardian_under'], 18),
+        entryPolicy: onbEntryPolicies.contains(asStr(j['entry_policy'])) ? asStr(j['entry_policy']) : 'review',
+        extra: {for (final e in j.entries) if (!_known.contains(e.key)) e.key: e.value},
       );
 
   Map<String, dynamic> toJson() => {
+        ...extra,
         'auto_activate': autoActivate,
         'student_code_pattern': studentCodePattern,
         'invite_days': inviteDays,
         'purge_rejected_days': purgeRejectedDays,
         'guardian_under': guardianUnder,
+        'entry_policy': entryPolicy,
       };
 
-  OnbSettings copyWith({bool? autoActivate}) => OnbSettings(
+  /// [studentCodePattern] `''` clears the pattern.
+  OnbSettings copyWith({bool? autoActivate, String? entryPolicy, String? studentCodePattern, int? inviteDays}) => OnbSettings(
       autoActivate: autoActivate ?? this.autoActivate,
-      studentCodePattern: studentCodePattern,
-      inviteDays: inviteDays,
+      studentCodePattern: studentCodePattern == null ? this.studentCodePattern : (studentCodePattern.trim().isEmpty ? null : studentCodePattern.trim()),
+      inviteDays: inviteDays ?? this.inviteDays,
       purgeRejectedDays: purgeRejectedDays,
-      guardianUnder: guardianUnder);
+      guardianUnder: guardianUnder,
+      entryPolicy: entryPolicy ?? this.entryPolicy,
+      extra: extra);
 }
 
 class OnbIntake {
@@ -494,6 +574,11 @@ class OnbEvent {
       'document_uploaded' => t('رُفع مستند', 'A document was uploaded'),
       'document_verified' => t('تم التحقق من مستند', 'A document was verified'),
       'document_rejected' => t('رُفض مستند', 'A document was rejected'),
+      'file_completed' => t('اكتمل الملف', 'The file is complete'),
+      'incomplete_reminder' => asInt(details['n']) > 0
+          ? t('ذُكِّر الطالب بما ينقص ملفه (المرة ${asInt(details['n'])})', 'The student was reminded of what the file lacks (time ${asInt(details['n'])})')
+          : t('ذُكِّر الطالب بما ينقص ملفه', 'The student was reminded of what the file lacks'),
+      'incomplete_task' => t('أُنشئت مهمة للموظفين: الملف ما زال ناقصاً', 'A staff task was created: the file is still incomplete'),
       _ => to.isNotEmpty ? to : kind,
     };
   }
@@ -736,21 +821,93 @@ class OnbRejectReason {
 //  Phase B / C: import batches, intake link, invite result
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// One message of an import row: the field it names, the code and the bilingual text.
-class OnbRowMessage {
-  const OnbRowMessage({this.field = '', this.code = '', this.ar = '', this.en = ''});
-  final String field, code, ar, en;
-  String get text => _bi(ar, en);
+/// The warning codes of an import row (`importer.WARNING_CODES`), for a server that sends no `level`.
+const onbImportWarningCodes = {
+  'same_email', 'same_phone', 'same_name_birth', 'reapplicant', 'no_contact', 'same_email_in_file', 'same_phone_in_file',
+  'same_name_birth_in_file', 'enrolled_in_sibling_org',
+};
 
-  factory OnbRowMessage.fromJson(Map<String, dynamic> j) => OnbRowMessage(field: asStr(j['field']), code: asStr(j['code']), ar: asStr(j['ar']), en: asStr(j['en']));
+/// The codes that point at another row of the same file (`importer.IN_FILE_CODES`).
+const onbInFileCodes = {'duplicate_in_file', 'same_email_in_file', 'same_phone_in_file', 'same_name_birth_in_file'};
+
+/// One message of an import row: the field it names, the code, the bilingual text and its level.
+class OnbRowMessage {
+  const OnbRowMessage({this.field = '', this.code = '', this.ar = '', this.en = '', this.level = 'error'});
+  final String field, code, ar, en;
+
+  /// `error` (blocks the row) or `warning` (saved when warnings are included).
+  final String level;
+  String get text => _bi(ar, en);
+  bool get isError => level != 'warning';
+  bool get isWarning => level == 'warning';
+  bool get inFile => onbInFileCodes.contains(code);
+
+  factory OnbRowMessage.fromJson(Map<String, dynamic> j) {
+    final code = asStr(j['code']);
+    final lv = asStr(j['level']);
+    return OnbRowMessage(
+      field: asStr(j['field']),
+      code: code,
+      ar: asStr(j['ar']),
+      en: asStr(j['en']),
+      level: lv == 'warning' || lv == 'error' ? lv : (onbImportWarningCodes.contains(code) ? 'warning' : 'error'),
+    );
+  }
 }
 
+/// One staged row. [id] is what the inline fix sends; [raw] holds the text of the cells the importer could not read
+/// (e.g. an unknown programme name), which is what the person sees and corrects; [dupOfRow] is the other row of a
+/// duplicate inside the file (both rows point at each other).
 class OnbImportRow {
-  const OnbImportRow({required this.rowNo, this.state = 'ok', this.data = const {}, this.messages = const []});
-  final int rowNo;
+  const OnbImportRow({
+    required this.rowNo,
+    this.id = 0,
+    this.state = 'ok',
+    this.data = const {},
+    this.raw = const {},
+    this.messages = const [],
+    this.dupOfRow,
+    this.edited = false,
+    this.caseId,
+  });
+  final int id, rowNo;
   final String state; // ok | warning | error
   final Map<String, dynamic> data;
+  final Map<String, String> raw;
   final List<OnbRowMessage> messages;
+  final int? dupOfRow, caseId;
+  final bool edited;
+
+  List<OnbRowMessage> get errors => [for (final m in messages) if (m.isError) m];
+  List<OnbRowMessage> get warnings => [for (final m in messages) if (m.isWarning) m];
+
+  /// The fields an error names, in message order (a field once): the cells that open for editing.
+  List<String> get errorFields {
+    final out = <String>[];
+    for (final m in messages) {
+      if (m.isError && m.field.isNotEmpty && !out.contains(m.field)) out.add(m.field);
+    }
+    return out;
+  }
+
+  List<OnbRowMessage> messagesFor(String field) => [for (final m in messages) if (m.field == field) m];
+
+  /// The text a cell shows and starts its editor with: what was typed when it could not be read, else the stored
+  /// value (a masked ID stays masked; sent back unchanged, the server keeps the stored number).
+  String cell(String key) {
+    final r = raw[key];
+    if (r != null && r.isNotEmpty) return r;
+    final v = data[key];
+    if (v == null) return '';
+    if (v is List) return v.map((x) => '$x').join(', ');
+    return '$v';
+  }
+
+  /// The value [cell] would show is a typed one the importer could not read.
+  bool isRaw(String key) => (raw[key] ?? '').isNotEmpty;
+
+  /// Editable through `PATCH …/rows/{id}` (staged, not yet a case).
+  bool get editable => id > 0 && caseId == null;
 
   /// The person of the row, for the card title: the full name, else the first value.
   String get title {
@@ -763,43 +920,143 @@ class OnbImportRow {
   }
 
   factory OnbImportRow.fromJson(Map<String, dynamic> j) => OnbImportRow(
+        id: asInt(j['id']),
         rowNo: asInt(j['row_no']),
         state: asStr(j['state']).isEmpty ? 'ok' : asStr(j['state']),
         data: Map<String, dynamic>.from(asMap(j['data'])),
+        raw: {for (final e in asMap(j['raw']).entries) if (e.value != null) e.key: '${e.value}'},
         messages: asMapList(j['messages']).map(OnbRowMessage.fromJson).toList(),
+        dupOfRow: asInt(j['dup_of_row']) > 0 ? asInt(j['dup_of_row']) : null,
+        edited: j['edited'] == true,
+        caseId: asInt(j['case_id']) > 0 ? asInt(j['case_id']) : null,
       );
+}
+
+/// One value repeated in the error cells of several rows: "fix it once" (`POST …/rows/fix`).
+class OnbRepeatedFix {
+  const OnbRepeatedFix({required this.field, required this.value, required this.rows});
+  final String field, value;
+  final List<int> rows; // row numbers
+  int get count => rows.length;
 }
 
 /// BatchOut: the staged import the person reviews before confirming (24 h).
 class OnbBatch {
-  const OnbBatch({required this.id, this.typeKey = '', this.mode = 'draft', this.ok = 0, this.warning = 0, this.error = 0, this.rows = const [], this.expiresAt});
+  const OnbBatch({
+    required this.id,
+    this.typeKey = '',
+    this.mode = 'draft',
+    this.status = 'staged',
+    this.fileName = '',
+    this.ok = 0,
+    this.warning = 0,
+    this.error = 0,
+    this.rows = const [],
+    this.expiresAt,
+  });
   final int id, ok, warning, error;
-  final String typeKey, mode;
+  final String typeKey, mode, status, fileName;
   final List<OnbImportRow> rows;
   final DateTime? expiresAt;
 
   int get total => ok + warning + error;
 
+  /// Rows can still be edited (not confirmed or expired).
+  bool get staged => status == 'staged';
+
   /// What a confirm would save (rows with a warning only when included).
   int willCreate({required bool includeWarnings}) => ok + (includeWarnings ? warning : 0);
 
+  /// What a confirm would skip.
+  int willSkip({required bool includeWarnings}) => total - willCreate(includeWarnings: includeWarnings);
+
   List<OnbImportRow> rowsIn(String state) => state.isEmpty ? rows : [for (final r in rows) if (r.state == state) r];
 
+  OnbImportRow? rowNo(int no) {
+    for (final r in rows) {
+      if (r.rowNo == no) return r;
+    }
+    return null;
+  }
+
+  /// The values that fail in more than one row of the same column (the typed text of an unreadable cell, or the
+  /// value itself), most rows first: each one can be fixed in every row at once. The secret ID columns and the
+  /// in-file duplicates are never offered (the server refuses the first, the second is not one wrong value).
+  List<OnbRepeatedFix> repeatedFixes({int min = 2}) {
+    final seen = <(String, String), List<int>>{};
+    final order = <(String, String)>[];
+    for (final r in rows) {
+      if (!r.editable) continue;
+      for (final f in r.errorFields) {
+        if (f == 'national_id' || f == 'passport_no') continue;
+        if (r.messagesFor(f).every((m) => m.inFile)) continue;
+        final v = r.cell(f).trim();
+        if (v.isEmpty) continue;
+        final k = (f, v.toLowerCase());
+        if (!seen.containsKey(k)) order.add(k);
+        (seen[k] ??= []).add(r.rowNo);
+      }
+    }
+    final out = [
+      for (final k in order)
+        if (seen[k]!.length >= min) OnbRepeatedFix(field: k.$1, value: rowNo(seen[k]!.first)!.cell(k.$1).trim(), rows: seen[k]!),
+    ];
+    out.sort((a, b) => b.count.compareTo(a.count));
+    return out;
+  }
+
+  static ({int ok, int warning, int error}) _counts(Map<String, dynamic> c, List<OnbImportRow> rows) {
+    int n(String k) => c.containsKey(k) ? asInt(c[k]) : rows.where((r) => r.state == k).length;
+    return (ok: n('ok'), warning: n('warning'), error: n('error'));
+  }
+
+  /// The batch after `PATCH …/rows/{id}` (`{row, counts}`): the row replaced in place, the counts the server's. Other
+  /// rows' in-file duplicate marks may change with it: reload the batch quietly to pick those up.
+  OnbBatch withRow(OnbImportRow row, Map<String, dynamic> counts) => _copy([for (final r in rows) r.id == row.id ? row : r], counts);
+
+  /// The same rows with the server's counts.
+  OnbBatch withCounts(Map<String, dynamic> counts) => _copy(rows, counts);
+
+  OnbBatch _copy(List<OnbImportRow> next, Map<String, dynamic> counts) {
+    final c = _counts(counts, next);
+    return OnbBatch(id: id, typeKey: typeKey, mode: mode, status: status, fileName: fileName, ok: c.ok, warning: c.warning, error: c.error, rows: next, expiresAt: expiresAt);
+  }
+
   factory OnbBatch.fromJson(Map<String, dynamic> j) {
-    final c = asMap(j['counts']);
     final rows = asMapList(j['rows']).map(OnbImportRow.fromJson).toList();
-    int n(String k, String state) => c.containsKey(k) ? asInt(c[k]) : rows.where((r) => r.state == state).length;
+    final c = _counts(Map<String, dynamic>.from(asMap(j['counts'])), rows);
     return OnbBatch(
       id: asInt(j['id']),
       typeKey: asStr(j['type_key']),
       mode: asStr(j['mode']).isEmpty ? 'draft' : asStr(j['mode']),
-      ok: n('ok', 'ok'),
-      warning: n('warning', 'warning'),
-      error: n('error', 'error'),
+      status: asStr(j['status']).isEmpty ? 'staged' : asStr(j['status']),
+      fileName: asStr(j['file_name']),
+      ok: c.ok,
+      warning: c.warning,
+      error: c.error,
       rows: rows,
       expiresAt: orgParseUtc(j['expires_at']),
     );
   }
+}
+
+/// `{row, counts}` of `PATCH …/rows/{id}`.
+class OnbRowPatchResult {
+  const OnbRowPatchResult({required this.row, this.counts = const {}});
+  final OnbImportRow row;
+  final Map<String, dynamic> counts;
+
+  factory OnbRowPatchResult.fromJson(Map<String, dynamic> j) =>
+      OnbRowPatchResult(row: OnbImportRow.fromJson(Map<String, dynamic>.from(asMap(j['row']))), counts: Map<String, dynamic>.from(asMap(j['counts'])));
+}
+
+/// `{changed, counts}` of `POST …/rows/fix`.
+class OnbRowFixResult {
+  const OnbRowFixResult({this.changed = 0, this.counts = const {}});
+  final int changed;
+  final Map<String, dynamic> counts;
+
+  factory OnbRowFixResult.fromJson(Map<String, dynamic> j) => OnbRowFixResult(changed: asInt(j['changed']), counts: Map<String, dynamic>.from(asMap(j['counts'])));
 }
 
 /// `{created, skipped, invited, case_ids}` of a confirmed import (skipped may be a number or a list).
