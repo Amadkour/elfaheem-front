@@ -17,7 +17,9 @@ import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppFill, AppReveal;
 import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
+import 'package:flutter_education_app/features/self_learning/sl_motion.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -269,28 +271,81 @@ class NahwReadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final p = lesson.progress;
+    final paragraphs = [for (final l in lesson.bodyAr.split('\n')) if (l.trim().isNotEmpty) l.trim()];
+    // the self-learning cards' calmer look (D-1611): the title and progress first, then the reading text in
+    // separate paragraphs; one entrance per route
     return ListView(padding: AppSpace.card, children: [
+      AppReveal(
+        group: 'nahw.reading',
+        index: 0,
+        child: AppCard(
+          padding: AppSpace.card,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(children: [
+              Icon(Icons.auto_stories_rounded, size: AppIconSize.md, color: c.primary),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(child: Text(lesson.title, style: AppType.pageTitle(context))),
+            ]),
+            if (p != null) ...[
+              AppSpace.gapSm,
+              Semantics(
+                container: true,
+                excludeSemantics: true,
+                label: p.completed
+                    ? t('أتممته · أفضل نتيجة ${p.percent}%', 'Completed · best ${p.percent}%')
+                    : t('أفضل نتيجة ${p.percent}% · ${p.attempts} محاولة', 'Best ${p.percent}% · ${p.attempts} attempts'),
+                child: Row(children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      child: SizedBox(
+                        height: AppSpace.xs,
+                        child: AppFill(
+                          value: p.percent / 100,
+                          builder: (context, f) => Stack(fit: StackFit.expand, children: [
+                            ColoredBox(color: c.inputBg),
+                            FractionallySizedBox(
+                              alignment: AlignmentDirectional.centerStart,
+                              widthFactor: f.clamp(0.0, 1.0),
+                              child: ColoredBox(color: p.completed ? c.success : c.primary),
+                            ),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpace.sm),
+                  Flexible(
+                    child: Text(
+                      p.completed
+                          ? t('أتممته · ${p.percent}%', 'Completed · ${p.percent}%')
+                          : t('أفضل نتيجة ${p.percent}%', 'Best ${p.percent}%'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context),
+                    ),
+                  ),
+                ]),
+              ),
+            ],
+          ]),
+        ),
+      ),
+      AppSpace.gapMd,
       AppCard(
         padding: AppSpace.card,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(lesson.title, style: AppType.pageTitle(context)),
-          if (p != null) ...[
-            const SizedBox(height: AppSpace.xxs),
-            Text(
-              p.completed
-                  ? t('أتممته · أفضل نتيجة ${p.percent}%', 'Completed · best ${p.percent}%')
-                  : t('أفضل نتيجة ${p.percent}% · ${p.attempts} محاولة', 'Best ${p.percent}% · ${p.attempts} attempts'),
-              style: AppType.meta(context),
-            ),
-          ],
-          AppSpace.gapMd,
-          // the lesson text is Arabic (the subject is Arabic grammar): always right to left
-          Directionality(
-            textDirection: TextDirection.rtl,
-            child: Text(lesson.bodyAr, style: AppType.body(context).copyWith(height: 1.8, color: context.colors.textDark)),
-          ),
-        ]),
+        // the lesson text is Arabic (the subject is Arabic grammar): always right to left
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (var i = 0; i < paragraphs.length; i++) ...[
+              if (i > 0) AppSpace.gapSm,
+              Text(paragraphs[i], style: AppType.body(context).copyWith(height: 1.9, color: c.textDark)),
+            ],
+          ]),
+        ),
       ),
       AppSpace.gapMd,
       AppButton.primary(
@@ -349,13 +404,20 @@ class NahwRoundView extends StatelessWidget {
           onPressed: response.complete(exercise) ? onCheck : null,
         )
       else
-        LearnFeedback(
-          key: const ValueKey('nahw.feedback'),
-          correct: g.correct,
-          title: g.correct || exercise.kind != 'classify' || g.score == 0 ? null : nahwPartText(g),
-          explanation: exercise.explanation,
-          actionLabel: last ? t('النتيجة', 'See the result') : t('التالي', 'Next'),
-          onAction: onNext,
+        // the feedback rises in once and a right answer gets the light celebration (D-1611); grading unchanged
+        SlFeedbackIn(
+          key: ValueKey('nahw.feedback.in.${exercise.id}'),
+          child: Stack(clipBehavior: Clip.none, children: [
+            LearnFeedback(
+              key: const ValueKey('nahw.feedback'),
+              correct: g.correct,
+              title: g.correct || exercise.kind != 'classify' || g.score == 0 ? null : nahwPartText(g),
+              explanation: exercise.explanation,
+              actionLabel: last ? t('النتيجة', 'See the result') : t('التالي', 'Next'),
+              onAction: onNext,
+            ),
+            if (g.correct) const Positioned.fill(child: SlCelebration()),
+          ]),
         ),
     ]);
   }

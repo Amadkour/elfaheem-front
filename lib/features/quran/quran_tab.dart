@@ -19,6 +19,8 @@ import 'package:flutter_education_app/features/quran/quran_api.dart';
 import 'package:flutter_education_app/features/quran/quran_models.dart';
 import 'package:flutter_education_app/features/quran/quran_progress.dart';
 import 'package:flutter_education_app/features/quran/quran_teacher_page.dart';
+import 'package:flutter_education_app/features/self_learning/self_learning_page.dart' show SelfLearningSection;
+import 'package:flutter_education_app/features/self_learning/sl_models.dart' show kSlQuranSubjects;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -140,6 +142,8 @@ class _QuranTabState extends State<QuranTab> {
           onRetry: _load,
           onRefresh: _load,
           onProgress: _openProgress,
+          // today's Quran / tajweed / fiqh lesson and reviews (Learning Hub v2 §5, D-1603)
+          top: const SelfLearningSection(subjects: kSlQuranSubjects),
         ),
       ),
     );
@@ -161,7 +165,11 @@ class QuranBrowseView extends StatelessWidget {
     this.onRetry,
     this.onRefresh,
     this.onProgress,
+    this.top,
   });
+
+  /// Drawn first (the tab's daily learning section).
+  final Widget? top;
 
   final QuranFilters filters;
   final ValueChanged<QuranFilters> onFilters;
@@ -177,6 +185,7 @@ class QuranBrowseView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final head = <Widget>[
+      ?top,
       AppBlock(
         tone: AppBlockTone.emerald,
         onTap: onProgress,

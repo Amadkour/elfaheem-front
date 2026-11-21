@@ -17,6 +17,8 @@ import 'package:flutter_education_app/features/parent/parent_consent.dart' show 
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
+import 'package:flutter_education_app/features/self_learning/self_learning_page.dart' show SelfLearningSection;
+
 import 'nahw_api.dart';
 import 'nahw_lesson_page.dart';
 import 'nahw_models.dart';
@@ -100,6 +102,8 @@ class _NahwTabState extends State<NahwTab> {
         error: _error,
         onRetry: _load,
         onOpen: _open,
+        // today's grammar lesson and reviews (Learning Hub v2 §5, D-1603)
+        top: const SelfLearningSection(subjects: {'nahw'}),
         mine: _stageId == null ? null : _mine,
         onMine: (v) {
           setState(() => _mine = v);
@@ -124,7 +128,11 @@ class NahwLevelsView extends StatelessWidget {
     this.onOpen,
     this.mine,
     this.onMine,
+    this.top,
   });
+
+  /// Drawn first (the tab's daily learning section).
+  final Widget? top;
 
   /// null = loading.
   final List<NahwLevel>? levels;
@@ -142,6 +150,7 @@ class NahwLevelsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final list = levels;
     final head = <Widget>[
+      ?top,
       if (mine != null) ...[
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           AppChoiceChip(

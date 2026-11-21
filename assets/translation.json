@@ -1,4 +1,20 @@
 {
+  "admin_self_learning": {
+    "en": "Self-learning content",
+    "ar": "محتوى التعلّم الذاتي"
+  },
+  "admin_self_learning_d": {
+    "en": "The short daily lessons and review questions students get",
+    "ar": "الدروس اليومية القصيرة وأسئلة المراجعة التي تصل الطلاب"
+  },
+  "self_learning_title": {
+    "en": "My daily learning",
+    "ar": "تعلّمي اليومي"
+  },
+  "self_learning_off": {
+    "en": "Daily lessons are switched off",
+    "ar": "الدروس اليومية متوقفة"
+  },
   "course_scope_all": {
     "en": "All",
     "ar": "الكل"

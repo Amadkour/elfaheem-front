@@ -24,6 +24,17 @@ const knownMissing = <String, String>{
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
   // the paper exam flow (D-697 over the back's OFFLINE_FLOW_CONTRACT.md §2 / §3, branch of/b)
   // org_inst_notify.dart: the phone-push setting and "Message this department"
+
+  // self-learning (Learning Hub v2 CONTRACT §5, D-1600): the server routes land with the back's branch
+  'DELETE /api/v1/admin/self-learning/items/{}': 'lands with feature/lh2-learn',
+  'GET /api/v1/admin/self-learning/items': 'lands with feature/lh2-learn',
+  'GET /api/v1/me/self-learning': 'lands with feature/lh2-learn',
+  'POST /api/v1/admin/self-learning/items': 'lands with feature/lh2-learn',
+  'POST /api/v1/admin/self-learning/items/reorder': 'lands with feature/lh2-learn',
+  'POST /api/v1/me/self-learning/lessons/{}/seen': 'lands with feature/lh2-learn',
+  'POST /api/v1/me/self-learning/reviews/{}': 'lands with feature/lh2-learn',
+  'PUT /api/v1/admin/self-learning/items/{}': 'lands with feature/lh2-learn',
+  'PUT /api/v1/me/self-learning': 'lands with feature/lh2-learn',
 };
 
 void main() {

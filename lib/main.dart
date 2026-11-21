@@ -111,6 +111,8 @@ import 'package:flutter_education_app/features/games/game_play_page.dart' show G
 import 'package:flutter_education_app/features/games/games_models.dart' show GameSummary;
 import 'package:flutter_education_app/features/games/games_progress.dart' show GamesProgressPage;
 import 'package:flutter_education_app/features/nahw/nahw_lesson_page.dart' show NahwLessonPage;
+import 'package:flutter_education_app/features/self_learning/sl_api.dart' show slOff;
+import 'package:flutter_education_app/features/self_learning/self_learning_page.dart' show SelfLearningPage;
 import 'package:flutter_education_app/features/quran/quran_api.dart' show quranOff;
 import 'package:flutter_education_app/features/quran/quran_progress.dart' show QuranProgressPage;
 import 'package:flutter_education_app/features/quran/quran_teacher_page.dart' show QuranTeacherPage;
@@ -918,6 +920,8 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
         if (lessonId != null && !AppConfig.disableList.contains('student_tab_nahw')) {
           return _fade(_Guard(child: NahwLessonPage(lessonId: lessonId)), settings);
         }
+      case 'self_learning': // My daily learning by URL / a reload (D-1610)
+        if (!slOff()) return _fade(const _Guard(child: SelfLearningPage()), settings);
       case 'quran.progress':
         if (!quranOff()) return _fade(const _Guard(child: QuranProgressPage.mine()), settings);
       case 'quran.teacher':

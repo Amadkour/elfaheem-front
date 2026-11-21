@@ -15,7 +15,11 @@ import 'dart:io';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const notInCatalog = <String, String>{};
+const notInCatalog = <String, String>{
+  // self-learning (Learning Hub v2 §5): the catalog entries come with the back's branch
+  'admin.self_learning': 'lands with feature/lh2-learn',
+  'student_tab_self_learning': 'lands with feature/lh2-learn',
+};
 
 final _patterns = [
   RegExp(r"featureKey:\s*'([^'$]+)'"),

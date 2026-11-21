@@ -107,6 +107,7 @@ class AppRoutes {
   static const gamesProgress = AppRouteDef('games.progress', '/games/progress', description: 'My games progress and badges');
   static const gamePlay = AppRouteDef('games.play', '/games/:gameId', description: 'One learning game');
   static const nahwLesson = AppRouteDef('nahw.lesson', '/nahw/lessons/:lessonId', description: 'One Arabic grammar (nahw) lesson');
+  static const selfLearning = AppRouteDef('self_learning', '/learn/daily', description: "My daily learning: today's lessons and reviews (D-1610)");
   static const quranProgress = AppRouteDef('quran.progress', '/quran/progress', description: 'My Quran memorization progress');
   static const quranTeacher = AppRouteDef('quran.teacher', '/quran/teachers/:teacherId', description: "A Quran teacher's card and programs");
   static const entityView = AppRouteDef('entity.view', '/view/:kind/:id',
@@ -136,7 +137,7 @@ class AppRoutes {
     studentHome, teacherHome, adminHome, parentHome, orgHome,
     course, orgMember, orgOnboardingCase, orgMemberships, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
     downloads, exports, exportLog, exportSchedules, exportLinks, entityView, meetingLinks, storeLibrary, storeItem,
-    gamesProgress, gamePlay, nahwLesson, quranProgress, quranTeacher,
+    gamesProgress, gamePlay, nahwLesson, selfLearning, quranProgress, quranTeacher,
     courseLink, profileLink, liveLink, verifyHome, verifyLink, exportLink, orgJoinLink, orgInvitationLink, onboardIntakeLink, shareLink,
     privacy, terms,
   ];

@@ -73,6 +73,7 @@ import 'modules/admin_modules_page.dart' show AdminModulesPage;
 import 'modules/module_settings_api.dart' show kAdminModulesFeatureKey;
 import 'package:flutter_education_app/features/quran/admin/quran_admin_page.dart' show QuranAdminPage;
 import 'package:flutter_education_app/features/nahw/admin/nahw_admin_page.dart' show NahwAdminPage;
+import 'package:flutter_education_app/features/self_learning/admin/sl_admin_page.dart' show SlAdminPage;
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -373,6 +374,16 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           featureKey: 'admin.nahw',
           visible: isSuper,
           onTap: () => push(const NahwAdminPage()),
+        ),
+        // self-learning lessons and review questions (Learning Hub v2 §5, D-1607); super admin only
+        AdminService(
+          labelKey: 'admin_self_learning',
+          descKey: 'admin_self_learning_d',
+          icon: Icons.auto_stories_rounded,
+          colors: AdminPalette.teal,
+          featureKey: 'admin.self_learning',
+          visible: isSuper,
+          onTap: () => push(const SlAdminPage()),
         ),
         AdminService(
           labelKey: 'admin_points',

@@ -21,10 +21,10 @@ import '../admin_common.dart' show asMap, asMapList, t;
 const kAdminModulesFeatureKey = 'admin.modules';
 
 /// The modules the page edits, in page order.
-const kModuleKeys = ['store', 'games', 'quran'];
+const kModuleKeys = ['store', 'games', 'quran', 'self_learning'];
 
 /// The student tab keys a country can switch off (`edu_countries.disabled_features`).
-const kCountryTabKeys = ['student_tab_store', 'student_tab_games', 'student_tab_quran', 'student_tab_nahw'];
+const kCountryTabKeys = ['student_tab_store', 'student_tab_games', 'student_tab_quran', 'student_tab_nahw', 'student_tab_self_learning'];
 
 const kModuleScopes = ['platform', 'country', 'org'];
 
