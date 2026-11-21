@@ -36,7 +36,11 @@ Each phase: build (Opus agents, ≤3, disjoint files) → targeted tests + analy
 - Then: real-app check + Fable review for P4–P6, P7.
 
 ## Final (2026-11-21)
-- Final real-app check of all phases: running (sl-check-* at front 1ca534fa / back 666519e).
+- Final real-app check of all phases: done (front 1ca534fa / back 666519e, 360 px + desktop, ar + en).
+- Final fix round: back 2bcfb66b (reason labels, open lifecycle requests in the file, ISO nationality + configured-level import checks); front 47afc703 (report time shift, inbox tap opens detail, bidi, Latin digits, plurals, 360 headers, Level naming, standing column, new fields), 9307c84a (org-mode asks on the member home, leave-to-personal hardening, Study requests naming, greeting space, time shift), 6f876ec6 (spacing tokens).
+- Recheck in the real app later: complaint ref wrap at 360 px, the null check after leaving the org (hardened, not reproduced), returning an ask, send to council, English student pass, dark mode.
+- kit_rules ratchet still fails on production files (app_shell, shell_pins, ws_alerts), not ours.
+- Contract payload fixtures not regenerated for the new file / report fields (parsers are defensive).
 - e2e_query_budgets fails on origin/production too; our deltas were added to its budgets (b4748b6).
 - Known pre-existing failure: test/ui/rtl_icons_test.dart (onboarding_applicant.dart:282, from production).
 - Not pushed, not deployed (owner rule).
