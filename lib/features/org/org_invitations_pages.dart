@@ -708,7 +708,7 @@ class _OrgInviteePageState extends State<OrgInviteePage> {
     setState(() {
       _busy = false;
       _doneText = caseId != null
-          ? t('ÙØ¨ÙØª Ø§ÙØ¯Ø¹ÙØ©. Ø£ÙÙÙ Ø·ÙØ¨Ù Ø§ÙØ¢Ù.', 'Invitation accepted. Complete your application now.')
+          ? t('قبلت الدعوة. أكمل طلبك الآن.', 'Invitation accepted. Complete your application now.')
           : accept
           ? t('أصبحت عضواً في «${lk?.orgName ?? ''}».', 'You are now a member of "${lk?.orgName ?? ''}".')
           : t('رفضت الدعوة.', 'You declined the invitation.');
