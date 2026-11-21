@@ -40,7 +40,7 @@ Resume rule: read this file, continue the first step that is not `done` / `verif
 | 7.1 | Back: sync push / pull (0108) | B8 | todo | |
 | 7.2 | Front: LocalDb, Outbox, SyncEngine, status chip | F12 | todo | |
 | 7.3 | Front: wire entities + caches + offline library | F13 | todo | |
-| 7.R | Review: `sync_engine.dart`, `features/sync/service.py` | planner | todo | |
+| 7.R | Review: `sync_engine.dart`, `features/sync/service.py` | planner | done | needs fixes: "7.R code review" at the end (6 must-fix); the Phase 8 run plan follows it |
 | 8.1 | Android: verify keystore, APK + AAB | N1 | todo | |
 | 8.2 | Windows installer | N2 | todo | |
 | 8.3 | Linux AppImage; macOS + iOS workflows; APPLE.md | N3 | todo | |
