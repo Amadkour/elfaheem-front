@@ -219,6 +219,9 @@ abstract final class AppBorder {
   static const double hairline = 1;
   static const double strong = 1.5;
   static const double focus = 2;
+
+  /// A drawn line that carries meaning (the match game's connectors, D-1740).
+  static const double line = 3;
 }
 
 /// Type roles over the theme's styles (fonts follow DisplaySettings, never a family name here). Weights stay at

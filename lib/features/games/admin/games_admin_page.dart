@@ -10,6 +10,10 @@
 //
 // The engines offered are the server's (`/admin/games/engines`) that this app can edit; an older server without
 // that route gets the app's own list.
+//
+//   GameSoundCheck      Games v3 §11: the app bar's "Sound check" plays each of the 8 game sounds, so the super admin
+//                       (the owner) can audition the set on a real device; it ignores the mute and the live-room rule
+//                       but not the `games.sounds` switch
 library;
 
 import 'dart:async';
@@ -153,6 +157,17 @@ class _GamesAdminPageState extends State<GamesAdminPage> {
       icon: Icons.extension_rounded,
       onRefresh: _load,
       updatedAt: _loadedAt,
+      actions: [
+        IconButton(
+          key: const ValueKey('games.admin.sounds'),
+          tooltip: t('تجربة الأصوات', 'Sound check'),
+          icon: const Icon(Icons.graphic_eq_rounded),
+          onPressed: () => showAppSheet<void>(
+            context,
+            (ctx) => AppSheetContent(title: t('تجربة الأصوات', 'Sound check'), children: const [GameSoundCheck()]),
+          ),
+        ),
+      ],
       primaryAction: AppButton.primary(
         key: const ValueKey('games.admin.add'),
         label: t('إضافة لعبة', 'Add game'),
@@ -991,4 +1006,61 @@ class _DraftFieldState extends State<_DraftField> {
         maxLines: widget.maxLines,
         onChanged: widget.onChanged,
       );
+}
+
+/// The game sounds, one button each (Games v3 §11): the owner auditions the synthesized set here. Plays through the
+/// same seam as a round, with a shell attached while the sheet is open (so the players are made and released).
+class GameSoundCheck extends StatefulWidget {
+  const GameSoundCheck({super.key});
+
+  static String nameOf(GameSound s) => switch (s) {
+        GameSound.tap => t('نقرة', 'Tap'),
+        GameSound.correct => t('صحيح', 'Correct'),
+        GameSound.wrong => t('خطأ', 'Wrong'),
+        GameSound.combo => t('سلسلة صحيحة', 'Combo'),
+        GameSound.snap => t('تثبيت', 'Snap'),
+        GameSound.flip => t('قلب بطاقة', 'Card flip'),
+        GameSound.finish => t('نهاية الجولة', 'Round finished'),
+        GameSound.champion => t('البطل', 'Champion'),
+      };
+
+  @override
+  State<GameSoundCheck> createState() => _GameSoundCheckState();
+}
+
+class _GameSoundCheckState extends State<GameSoundCheck> {
+  @override
+  void initState() {
+    super.initState();
+    GameFeedback.instance.attach();
+  }
+
+  @override
+  void dispose() {
+    GameFeedback.instance.detach();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text(
+        gameSoundsOff()
+            ? t('الأصوات موقوفة من مفتاح الميزات (games.sounds).', 'Sounds are switched off in Features (games.sounds).')
+            : t('اضغط لسماع كل صوت. كتم الصوت في اللعبة لا يؤثر هنا.', 'Tap to hear each sound. The in-game mute does not apply here.'),
+        style: AppType.meta(context).copyWith(color: c.textMedium),
+      ),
+      const SizedBox(height: AppSpace.sm),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        for (final s in GameSound.values)
+          AppButton.secondary(
+            key: ValueKey('games.sound.${s.name}'),
+            label: GameSoundCheck.nameOf(s),
+            icon: Icons.play_arrow_rounded,
+            onPressed: () => GameFeedback.instance.audition(s),
+          ),
+      ]),
+    ]);
+  }
 }

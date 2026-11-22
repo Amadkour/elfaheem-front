@@ -6,28 +6,32 @@
 //                        particles drawn by ONE CustomPainter. Under Reduce motion nothing moves; the chip still
 //                        says it.
 //   GameShellController  what the engine reports (`report(done:, score:, correct:)`); the header listens to it, the
-//                        engine is never rebuilt by it
+//                        engine is never rebuilt by it. Games v3: the run of right answers (`streak`, the ×3 combo
+//                        chip and a bigger burst, no points), the ranked round's trace (`record(i, a)`, CONTRACT §3:
+//                        content indices, ms since the engine first showed) and the round's sounds (`sound(s)`)
 //   GameShellScope       hands the controller to the engine: `GameShellScope.maybeOf(context)` (no dependency). An
 //                        engine outside a shell (a test, the nahw exercises) draws its own progress header
-//   GameFeedback         the sound / vibration cue and the per-device mute (SharedPreferences `games.muted`). No
-//                        audio package is in the app (D-1582), so the cue is a light vibration where the device has
-//                        one; the toggle is labelled "Sound and vibration" so a later sound file needs no new switch
+//   GameFeedback         the sound + vibration and the per-device mute: game_sounds.dart (Games v3 §11, D-1741),
+//                        exported from here
 //   GameTheme            `sand | sea | night | garden` as block tones of the live theme (never a fixed colour):
 //                        sand = peach, sea = sage, night = the forest hero (cream ink), garden = emerald
 //   GameFinishView       the end: stars filling in one by one, the score, the points earned, new badges, the save
-//                        state, Play again / Back (keys `learn.result.*`, as the learn kit's result)
+//                        state, Play again / Back (keys `learn.result.*`, as the learn kit's result); Games v3: a
+//                        second burst and the "Rank 4 today" line of a ranked round
 library;
 
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/games/shell/game_motion.dart';
+import 'package:flutter_education_app/features/games/shell/game_sounds.dart';
 import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+export 'package:flutter_education_app/features/games/shell/game_sounds.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Theme
@@ -57,44 +61,7 @@ AppBlockColors gameThemeColors(BuildContext context, String? key) => AppBlockCol
 //  Sound / vibration
 // ─────────────────────────────────────────────────────────────────────────────
 
-class GameFeedback {
-  GameFeedback._();
-
-  static final GameFeedback instance = GameFeedback._();
-
-  static const String _key = 'games.muted';
-
-  /// True = no cue. Read from the device once, the first time a shell opens.
-  final ValueNotifier<bool> muted = ValueNotifier<bool>(false);
-  bool _loaded = false;
-
-  Future<void> load() async {
-    if (_loaded) return;
-    _loaded = true;
-    try {
-      final p = await SharedPreferences.getInstance();
-      muted.value = p.getBool(_key) ?? false;
-    } catch (_) {}
-  }
-
-  Future<void> setMuted(bool v) async {
-    muted.value = v;
-    try {
-      final p = await SharedPreferences.getInstance();
-      await p.setBool(_key, v);
-    } catch (_) {}
-  }
-
-  /// The cue for one answer (nothing when muted).
-  void cue(bool correct) {
-    if (muted.value) return;
-    if (correct) {
-      HapticFeedback.selectionClick();
-    } else {
-      HapticFeedback.lightImpact();
-    }
-  }
-}
+// GameFeedback: game_sounds.dart (exported above).
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Controller + scope
@@ -102,11 +69,37 @@ class GameFeedback {
 
 /// One round's running state as the header draws it.
 class GameShellController extends ChangeNotifier {
-  GameShellController({this.total = 0});
+  GameShellController({this.total = 0, this.category = '', this.silent = false});
 
   /// Steps in the round (questions, pairs, items, words).
   int total;
   int done = 0, score = 0;
+
+  /// Right answers in a row (a wrong one resets it). From [kGameComboFrom] the header shows the combo chip.
+  int streak = 0;
+
+  /// The game's category: `quran` / `tajweed` are [sacred].
+  final String category;
+
+  /// No sound (the editor's preview).
+  final bool silent;
+
+  /// A quran / tajweed game: nothing is drawn over the text, no tile shakes, no `wrong` sound (§1, §11).
+  bool get sacred => category == 'quran' || category == 'tajweed';
+
+  /// The ranked round's trace (CONTRACT §3): `{i, a, ms}` in the order things happened, content indices only.
+  final List<Map<String, Object>> trace = [];
+  final Stopwatch _clock = Stopwatch()..start();
+
+  /// Milliseconds since the engine first showed.
+  int get elapsedMs => _clock.elapsedMilliseconds;
+
+  /// One trace entry; [hint] marks a word_puzzle check after a hint (`h: true`); [ms] pins the time (order's Check).
+  void record(int i, Object a, {bool hint = false, int? ms}) =>
+      trace.add({'i': i, 'a': a, 'ms': ms ?? elapsedMs, if (hint) 'h': true});
+
+  /// A sound of the round that is not an answer (a pick, a drop, a flip).
+  void sound(GameSound s) => GameFeedback.instance.play(s, sacred: sacred, silent: silent);
 
   /// Bumps on every right / wrong answer; [lastCorrect] says which.
   final ValueNotifier<int> feedback = ValueNotifier<int>(0);
@@ -119,7 +112,8 @@ class GameShellController extends ChangeNotifier {
     if (score != null) this.score = score;
     if (correct != null) {
       lastCorrect = correct;
-      GameFeedback.instance.cue(correct);
+      streak = correct ? streak + 1 : 0;
+      GameFeedback.instance.answer(correct, streak: streak, sacred: sacred, silent: silent);
       feedback.value++;
     }
     notifyListeners();
@@ -127,8 +121,12 @@ class GameShellController extends ChangeNotifier {
 
   void reset({int? total}) {
     if (total != null) this.total = total;
-    done = score = 0;
+    done = score = streak = 0;
     lastCorrect = null;
+    trace.clear();
+    _clock
+      ..reset()
+      ..start();
     notifyListeners();
   }
 
@@ -177,13 +175,24 @@ class _GameShellState extends State<GameShell> {
   void initState() {
     super.initState();
     GameFeedback.instance.load();
+    GameFeedback.instance.attach();
+  }
+
+  @override
+  void dispose() {
+    GameFeedback.instance.detach();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return GameShellScope(
       controller: widget.controller,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      // the web's sounds wait for a first touch (the autoplay rule)
+      child: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) => GameFeedback.instance.userGesture(),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Stack(clipBehavior: Clip.none, children: [
           RepaintBoundary(
             child: ListenableBuilder(
@@ -195,6 +204,7 @@ class _GameShellState extends State<GameShell> {
                 score: widget.controller.score,
                 feedbackSeq: widget.controller.feedback.value,
                 lastCorrect: widget.controller.lastCorrect,
+                streak: widget.controller.streak,
                 showMute: widget.showMute,
               ),
             ),
@@ -204,6 +214,7 @@ class _GameShellState extends State<GameShell> {
         const SizedBox(height: AppSpace.md),
         widget.child,
       ]),
+      ),
     );
   }
 }
@@ -218,11 +229,12 @@ class GameShellHeader extends StatelessWidget {
     required this.score,
     this.feedbackSeq = 0,
     this.lastCorrect,
+    this.streak = 0,
     this.showMute = true,
   });
 
   final String? theme;
-  final int done, total, score, feedbackSeq;
+  final int done, total, score, feedbackSeq, streak;
   final bool? lastCorrect;
   final bool showMute;
 
@@ -274,6 +286,7 @@ class GameShellHeader extends StatelessWidget {
                     ]),
                   ),
                 ),
+              GameComboChip(streak: streak),
             ]),
           ),
           if (showMute) _MuteButton(color: b.ink),
@@ -381,20 +394,29 @@ class _GameBurstState extends State<GameBurst> with SingleTickerProviderStateMix
       child: AnimatedBuilder(
         animation: _c,
         builder: (context, _) => _c.isAnimating
-            ? CustomPaint(painter: GameBurstPainter(t: _c.value, colors: colors, seed: widget.controller.feedback.value))
+            ? CustomPaint(
+                painter: GameBurstPainter(
+                  t: _c.value,
+                  colors: colors,
+                  seed: widget.controller.feedback.value,
+                  // a combo throws the bigger burst (§1: 16 -> 24 particles)
+                  count: widget.controller.streak >= kGameComboFrom ? GameBurstPainter.maxCount : GameBurstPainter.baseCount,
+                ))
             : const SizedBox.expand(),
       ),
     );
   }
 }
 
-/// [t] 0..1: 16 particles fly out from the centre, shrink and fade.
+/// [t] 0..1: [count] particles (16, a combo 24, never more: §1) fly out from the centre, shrink and fade.
 class GameBurstPainter extends CustomPainter {
-  GameBurstPainter({required this.t, required this.colors, this.seed = 0});
+  GameBurstPainter({required this.t, required this.colors, this.seed = 0, int count = baseCount}) : count = count.clamp(0, maxCount);
+
+  static const int baseCount = 16, maxCount = 24;
 
   final double t;
   final List<Color> colors;
-  final int seed;
+  final int seed, count;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -404,8 +426,8 @@ class GameBurstPainter extends CustomPainter {
     final reach = math.min(size.width, size.height * 3) * 0.45;
     final ease = Curves.easeOutCubic.transform(t);
     final paint = Paint();
-    for (var i = 0; i < 16; i++) {
-      final a = (i / 16) * math.pi * 2 + r.nextDouble() * 0.4;
+    for (var i = 0; i < count; i++) {
+      final a = (i / count) * math.pi * 2 + r.nextDouble() * 0.4;
       final d = reach * (0.5 + r.nextDouble() * 0.5) * ease;
       paint.color = colors[i % colors.length].withValues(alpha: (1 - t).clamp(0.0, 1.0));
       canvas.drawCircle(centre + Offset(math.cos(a) * d, math.sin(a) * d * 0.6), 2 + 3 * (1 - t), paint);
@@ -413,7 +435,55 @@ class GameBurstPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(GameBurstPainter old) => old.t != t || old.seed != seed;
+  bool shouldRepaint(GameBurstPainter old) => old.t != t || old.seed != seed || old.count != count;
+}
+
+/// One burst of [GameBurstPainter.maxCount] particles when it first shows (the finish view's second burst); nothing
+/// under Reduce motion or when [play] is false.
+class GameBurstOnce extends StatefulWidget {
+  const GameBurstOnce({super.key, this.play = true});
+
+  final bool play;
+
+  @override
+  State<GameBurstOnce> createState() => _GameBurstOnceState();
+}
+
+class _GameBurstOnceState extends State<GameBurstOnce> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this);
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    final m = GameMotion.of(context);
+    if (!widget.play || m.off) return;
+    _c
+      ..duration = m.celebrate
+      ..forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final colors = [c.success, appToneColor(context, AppTone.gold), c.primary];
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) => _c.isAnimating
+            ? CustomPaint(painter: GameBurstPainter(t: _c.value, colors: colors, seed: 7, count: GameBurstPainter.maxCount))
+            : const SizedBox.expand(),
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -438,9 +508,13 @@ class GameFinishView extends StatelessWidget {
     this.note,
     this.onReplay,
     this.onDone,
+    this.rankToday,
   });
 
   final int score, max;
+
+  /// A ranked round's place in today's standings (`rank_today`, CONTRACT §2); null = not ranked.
+  final int? rankToday;
 
   /// The server's stars (null = from the score).
   final int? stars;
@@ -467,7 +541,11 @@ class GameFinishView extends StatelessWidget {
           border: b.border == null ? null : Border.all(color: b.border!),
         ),
         child: Column(children: [
-          GameStarsFill(stars: s),
+          // the second burst sits behind the stars, inside the card (never over the text below)
+          Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
+            Positioned.fill(child: IgnorePointer(child: GameBurstOnce(play: s > 0))),
+            GameStarsFill(stars: s),
+          ]),
           const SizedBox(height: AppSpace.sm),
           Text(learnResultTitle(s), textAlign: TextAlign.center, style: AppType.headline(context).copyWith(color: b.ink)),
           const SizedBox(height: AppSpace.xxs),
@@ -485,6 +563,17 @@ class GameFinishView extends StatelessWidget {
               ),
               const SizedBox(width: AppSpace.xxs),
               Text(t('نقطة', 'points'), style: AppType.label(context).copyWith(color: b.muted)),
+            ]),
+          ],
+          if (rankToday != null) ...[
+            const SizedBox(height: AppSpace.xs),
+            Row(key: const ValueKey('games.finish.rank'), mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.emoji_events_rounded, color: b.accentInk(appToneColor(context, AppTone.gold)), size: AppIconSize.md),
+              const SizedBox(width: AppSpace.xxs),
+              Flexible(
+                child: Text(t('المركز $rankToday اليوم', 'Rank $rankToday today'),
+                    style: AppType.label(context).copyWith(color: b.ink, fontFeatures: const [FontFeature.liningFigures()])),
+              ),
             ]),
           ],
           if (badges.isNotEmpty) ...[

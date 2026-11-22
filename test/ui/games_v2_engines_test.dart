@@ -27,6 +27,8 @@ Future<void> _pump(WidgetTester tester, Widget w) async {
 
 Future<void> _tap(WidgetTester tester, String key) async {
   await tester.tap(find.byKey(ValueKey(key)));
+  // one frame to start the move (a memory card's flip, Games v3), then let it run
+  await tester.pump();
   await tester.pump(const Duration(milliseconds: 400));
 }
 

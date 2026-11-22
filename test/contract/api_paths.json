@@ -1252,6 +1252,7 @@
   "POST /api/v1/exports/templates/{tid:int}/default",
   "POST /api/v1/exports/templates/{tid:int}/used",
   "POST /api/v1/games/{game_id:int}/plays",
+  "POST /api/v1/games/{game_id:int}/rounds",
   "POST /api/v1/identity-fields",
   "POST /api/v1/live-sessions/start",
   "POST /api/v1/live-sessions/{session_id:int}/end",

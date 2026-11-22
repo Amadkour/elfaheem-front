@@ -4,8 +4,9 @@ Every sound of the games is MADE by this script from sine tones, soft envelopes 
 is downloaded, sampled or taken from a stock library, so the set is the project's own and can be regenerated.
 
     py -3.12 -m pip install numpy soundfile
-    py -3.12 tool/gen_game_sounds.py                 # writes assets/sounds/games/<name>.ogg + <name>.mp3
+    py -3.12 tool/gen_game_sounds.py                 # writes assets/sounds/games/<name>.mp3 (MP3 only, the default)
     py -3.12 tool/gen_game_sounds.py --out <dir> --wav   # also the WAV masters (to listen, never shipped)
+    py -3.12 tool/gen_game_sounds.py --out <dir> --ogg   # also OGG Vorbis copies (not shipped: MP3 plays everywhere)
 
 The set (calm on purpose: a Quran / children context, so no melody that reads as music, no harsh buzzer):
 
@@ -22,9 +23,9 @@ Rules the script checks before it writes anything (it exits 1 otherwise):
   * every sound <= 600 ms, `champion` <= 2 s;
   * loudness: each sound is brought to the same active RMS (TARGET_RMS_DB, with a per-sound trim so a tap is quieter
     than a fanfare) and its peak is kept under PEAK_DB;
-  * the encoded set (ogg + mp3 together) <= 150 KB.
-The output is deterministic: the only noise (flip) uses a fixed seed. OGG Vorbis is for Android, desktop, Chrome and
-Firefox; MP3 is the web-safe / iOS copy (Safari does not play Vorbis everywhere).
+  * the encoded set <= 150 KB, and each shipped MP3 <= 12 KB (test/ui/games_v3_sounds_test.dart checks the files).
+The output is deterministic: the only noise (flip) uses a fixed seed. Only MP3 ships (PLAN §11, D-1741): it plays on
+Android, iOS and the web, so the app needs no per-platform switch.
 """
 from __future__ import annotations
 
@@ -40,6 +41,7 @@ TARGET_RMS_DB = -20.0       # active RMS every sound is brought to (before its t
 PEAK_DB = -1.5              # no sample above this
 MAX_MS, MAX_FANFARE_MS = 600, 2000
 MAX_TOTAL_BYTES = 150_000
+MAX_FILE_BYTES = 12_000
 NAMES = ("tap", "correct", "wrong", "combo", "snap", "flip", "finish", "champion")
 # how far under the target a sound sits (dB): small, frequent sounds are quieter than the rare ones
 TRIM_DB = {"tap": -8.0, "snap": -5.0, "flip": -7.0, "wrong": -3.0, "correct": -2.0, "combo": -2.0, "finish": -1.0,
@@ -194,6 +196,7 @@ def main() -> int:
     ap.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "assets" / "sounds" / "games"))
     ap.add_argument("--wav", action="store_true", help="also write the WAV masters")
     ap.add_argument("--wav-only", action="store_true", help="WAV only (no soundfile needed); not for shipping")
+    ap.add_argument("--ogg", action="store_true", help="also write OGG Vorbis copies (never shipped)")
     args = ap.parse_args()
 
     sf = None
@@ -203,7 +206,7 @@ def main() -> int:
         except ImportError:
             print("soundfile is missing: py -3.12 -m pip install soundfile   (or --wav-only to listen)")
             return 1
-        missing = [f for f in ("OGG", "MP3") if f not in sf.available_formats()]
+        missing = [f for f in (("OGG", "MP3") if args.ogg else ("MP3",)) if f not in sf.available_formats()]
         if missing:
             print(f"this libsndfile cannot write {missing}: upgrade soundfile (>= 0.12)")
             return 1
@@ -221,19 +224,23 @@ def main() -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     total = 0
-    print(f"{'sound':<10}{'ms':>6}{'peak dB':>9}{'rms dB':>8}{'ogg B':>8}{'mp3 B':>8}")
+    formats = ((("ogg", "OGG", "VORBIS"),) if args.ogg else ()) + (("mp3", "MP3", "MPEG_LAYER_III"),)
+    print(f"{'sound':<10}{'ms':>6}{'peak dB':>9}{'rms dB':>8}" + "".join(f"{e + ' B':>8}" for e, _, _ in formats))
     for name, x in built.items():
         sizes = []
         if sf is not None:
-            for ext, fmt, sub in (("ogg", "OGG", "VORBIS"), ("mp3", "MP3", "MPEG_LAYER_III")):
+            for ext, fmt, sub in formats:
                 p = out / f"{name}.{ext}"
                 sf.write(str(p), x.astype("float32"), SR, format=fmt, subtype=sub)
                 sizes.append(p.stat().st_size)
+                if ext == "mp3" and p.stat().st_size > MAX_FILE_BYTES:
+                    print(f"{name}.mp3: {p.stat().st_size} bytes is over the {MAX_FILE_BYTES} B limit")
+                    return 1
             total += sum(sizes)
         if args.wav or args.wav_only:
             write_wav(out / f"{name}.wav", x)
         ms = len(x) * 1000 / SR
-        cols = "".join(f"{s:>8}" for s in sizes) if sizes else f"{'-':>8}{'-':>8}"
+        cols = "".join(f"{s:>8}" for s in sizes) if sizes else "".join(f"{'-':>8}" for _ in formats)
         print(f"{name:<10}{ms:>6.0f}{_db(float(np.max(np.abs(x)))):>9.1f}{_db(active_rms(x)):>8.1f}{cols}")
     if sf is not None:
         print(f"total {total} bytes (limit {MAX_TOTAL_BYTES}) -> {out}")
