@@ -145,6 +145,14 @@ class _FeeBreakdownCardState extends State<FeeBreakdownCard> {
                       value: q.fmt(q.coursePrice),
                       icon: Icons.school_rounded,
                     ),
+                    if (q.couponDiscount > 0)
+                      _FeeRow(
+                        key: const ValueKey('enroll.coupon_discount'),
+                        label: helpers.AppConfig.lang == 'ar' ? 'خصم القسيمة' : 'Coupon discount',
+                        value: '−${q.fmt(q.couponDiscount)}',
+                        icon: Icons.local_offer_rounded,
+                        sub: q.couponCode,
+                      ),
                     _FeeRow(
                       label: 'platform_fees'.tr,
                       value: q.fmt(q.platformFee),
@@ -197,6 +205,7 @@ class _FeeRow extends StatelessWidget {
   final String? sub;
 
   const _FeeRow({
+    super.key,
     required this.label,
     required this.value,
     required this.icon,

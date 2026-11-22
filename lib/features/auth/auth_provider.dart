@@ -3,6 +3,8 @@ library;
 import 'package:flutter_education_app/features/store/store_vault.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show StudySettings;
 import 'package:flutter_education_app/features/auth/register_levels_step.dart' show TeachingLevel;
+import 'package:flutter_education_app/features/rewards/ref_capture.dart';
+import 'package:flutter_education_app/features/rewards/rewards_models.dart' show referralOff;
 import 'package:flutter_education_app/features/messaging/chat/chat_store.dart' show ChatHub;
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_access.dart';
@@ -548,11 +550,16 @@ class MyAuthProvider extends BaseProvider {
     String? way,
     String? username,
     Map<String, dynamic>? studyProfile,
+    String? invitedBy,
   }) async {
     isLoadingRegistration = true;
     usernameError = null;
     notifyListeners();
     final handle = UsernameRules.normalize(username ?? '');
+    // Games v3 (CONTRACT §8): who invited me — the kept link ref and the typed @username; neither can fail a sign-up
+    final referral = !referralOff();
+    final ref = referral ? await RefCapture.current() : null;
+    final inviter = referral ? (invitedBy ?? '').trim().replaceFirst(RegExp(r'^@'), '') : '';
     final result = await run(() async {
       try {
         return await _api.post(
@@ -568,6 +575,8 @@ class MyAuthProvider extends BaseProvider {
             'way': ?way,
             if (handle.isNotEmpty) 'username': handle,
             'study_profile': ?studyProfile, // the student's study step (D-790)
+            'ref': ?ref,
+            if (inviter.isNotEmpty) 'invited_by': inviter,
           },
           auth: false,
         );
@@ -578,6 +587,7 @@ class MyAuthProvider extends BaseProvider {
     });
 
     if (result is Map) {
+      if (ref != null) RefCapture.clear();
       pendingGmail = result['gmail']?.toString() ?? gmail;
       pendingChannels = _channelsFrom(result['pending_channels'], const ['email']);
       pendingPhoneMasked = phone;

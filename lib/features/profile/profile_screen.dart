@@ -68,6 +68,7 @@ import 'package:flutter_education_app/features/quran/quran_teacher_hub.dart' sho
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/payments/points/points_api.dart' show kPointsFeatureKey;
 import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart' show PointsWalletPage;
+import 'package:flutter_education_app/features/rewards/my_rewards_page.dart' show MyRewardsPage, MyRewardsTile;
 import 'package:flutter_education_app/features/records/records_page.dart' show RecordsPage, RecordsSettingsTile;
 import 'package:flutter_education_app/features/profile/public_profile/public_profile_page.dart' show MyProfileTile, ShareMyProfileTile, myShareableUsername, shareProfileLink;
 import 'package:flutter_education_app/core/personal_access.dart' show PersonalAccess;
@@ -208,6 +209,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
             onTap: () => _push(const DownloadsScreen()),
           ),
       ],
+      // My rewards (Games v3): coupons, wins and the invite link, with the count of new coupons
+      MyRewardsTile(onOpen: () => _push(const MyRewardsPage())),
       // Records: my meeting recordings + their edits (D-311, kill switch profile.records)
       RecordsSettingsTile(onOpen: () => _push(const RecordsPage())),
       // where those recordings are saved (feature key profile.cloud_drives)

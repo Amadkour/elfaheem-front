@@ -64,6 +64,9 @@ import 'package:flutter_education_app/features/courses/roadmap/recommendations.d
 import 'package:flutter_education_app/features/home/student/home_continue.dart';
 import 'package:flutter_education_app/features/home/student/home_event_rows.dart';
 import 'package:flutter_education_app/features/home/student/home_journey.dart';
+import 'package:flutter_education_app/features/games/champions/champions_models.dart' show HomeChampion, championsOff;
+import 'package:flutter_education_app/features/games/champions/champions_page.dart' show HallOfChampionsPage;
+import 'package:flutter_education_app/features/games/champions/winner_sheet.dart' show HomeChampionLine;
 import 'package:flutter_education_app/features/home/home_application_card.dart';
 import 'package:flutter_education_app/features/home/student/home_live.dart';
 import 'package:flutter_education_app/features/home/student/home_provider.dart';
@@ -659,6 +662,17 @@ class _Sections extends StatelessWidget {
     final invite = j == null && body.onPickInterests != null && homeJourneyInvite(home.journeyHint);
     final study = home.studyPrompt && body.onCompleteStudy != null && body.onDismissStudy != null;
     final asks = homeAsksOf(home.raw);
+    // Games v3 (D-1772): my newest win, from /me/home's `champion` block — one slim line, no request of its own
+    final champ = championsOff() ? null : HomeChampion.maybe(home.raw['champion']);
+    final champion = champ == null
+        ? null
+        : HomeChampionLine(
+            win: champ,
+            onOpen: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                settings: const RouteSettings(name: '/games/champions'),
+                builder: (_) => HallOfChampionsPage(scope: champ.scope, tab: champ.weekly ? 1 : 0))),
+            onUse: () => AppNavigator.openModule('rewards', targetId: champ.couponId),
+          );
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       HomeA2Layout(
@@ -674,7 +688,7 @@ class _Sections extends StatelessWidget {
           if (asks.isNotEmpty) HomeAsksCard(items: asks, onOpen: body.onOpenAsk),
         ],
         queue: HomeEntrance(index: 1, child: queue),
-        side: [HomeEntrance(index: 2, child: today), ?inbox],
+        side: [HomeEntrance(index: 2, child: today), ?inbox, ?champion],
         below: [
           ?cont,
           ?courses,

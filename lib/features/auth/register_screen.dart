@@ -30,6 +30,7 @@ import 'google_auth_flow.dart';
 import 'verify_way.dart';
 import 'username.dart';
 import 'username_field.dart';
+import 'package:flutter_education_app/features/rewards/invited_by_field.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
 import 'package:flutter_education_app/features/onboarding/join/join_draft.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_pages.dart' show StudyProfileStepPage;
@@ -63,6 +64,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmedPasswordController = TextEditingController();
   final _dobController = TextEditingController();
   final _usernameController = TextEditingController();
+
+  /// Games v3 (CONTRACT §8): the optional "Invited by @username", folded (kill switch rewards.referral).
+  final _invitedByController = TextEditingController();
   final _rolController = ExpansibleController();
 
   /// The optional @username: where its check stands, and the submit's USERNAME_* error (shown on the field).
@@ -138,6 +142,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _confirmedPasswordController.dispose();
     _dobController.dispose();
     _usernameController.dispose();
+    _invitedByController.dispose();
     _busy.dispose();
     super.dispose();
   }
@@ -258,6 +263,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       way: pickedWay?.name,
       username: _usernameOn ? _usernameController.text : null,
       studyProfile: study?.toJson(withDob: false),
+      invitedBy: _invitedByController.text,
     );
     _busy.value = false;
     if (!mounted) return;
@@ -524,6 +530,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onChanged: (w) => setState(() => _pickedWay = w),
                       ),
                     ),
+            ),
+
+            // who invited me (optional, folded; the server ignores an unknown name)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.md),
+              child: InvitedByField(controller: _invitedByController),
             ),
 
             // ── Terms acceptance row ─────────────────────────────────────

@@ -26,6 +26,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/payments/points/points_card_checkout.dart' show openPointsPaymentPage;
+import 'package:flutter_education_app/features/rewards/coupon_field.dart';
+import 'package:flutter_education_app/features/rewards/rewards_models.dart' show CouponQuote, CouponTarget, couponsOff;
 import 'package:flutter_education_app/features/store/store_models.dart' show StoreCheckout;
 import 'package:flutter_education_app/features/teachers/teachers_api.dart';
 import 'package:flutter_education_app/features/teachers/teachers_models.dart';
@@ -720,9 +722,16 @@ class _PackagePageState extends State<PackagePage> {
   Future<void> _join() async {
     final p = _p;
     if (p == null || packagesOff()) return;
+    // Games v3: a paid package asks once, with the coupon box (one coupon off the price before fees)
+    String? coupon;
+    if (!p.isFree && !couponsOff()) {
+      final go = await showAppSheet<PackageJoinChoice>(context, (_) => PackageJoinSheet(package: p));
+      if (go == null || !mounted) return;
+      coupon = go.couponCode;
+    }
     setState(() => _busy = true);
     try {
-      final r = await _api.enroll(p.id);
+      final r = await _api.enroll(p.id, couponCode: coupon);
       if (!mounted) return;
       if (r.needsPayment) {
         await _pay(r);
@@ -788,6 +797,71 @@ class _PackagePageState extends State<PackagePage> {
                 onRefresh: () async => _load(),
               ),
       ),
+    );
+  }
+}
+
+/// What the join sheet decided: go, with this coupon (null = none).
+class PackageJoinChoice {
+  const PackageJoinChoice(this.couponCode);
+  final String? couponCode;
+}
+
+/// The paid package's join sheet (Games v3): the price, the coupon box, then Join.
+class PackageJoinSheet extends StatefulWidget {
+  const PackageJoinSheet({super.key, required this.package, this.coupon});
+
+  final TeacherPackage package;
+
+  /// The coupon box (tests pass a plain one); null = the real CouponField for this package.
+  final Widget? coupon;
+
+  @override
+  State<PackageJoinSheet> createState() => _PackageJoinSheetState();
+}
+
+class _PackageJoinSheetState extends State<PackageJoinSheet> {
+  CouponQuote? _q;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.package;
+    final q = _q;
+    return AppSheetContent(
+      title: t('الانضمام إلى الباقة', 'Join the package'),
+      icon: Icons.groups_rounded,
+      children: [
+        Text(p.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+        AppSpace.gapXs,
+        Text(
+          q == null
+              ? packagePriceLabel(p.finalPrice, p.currency)
+              : t('${packagePriceLabel(q.priceAfter, p.currency)} بعد خصم القسيمة', '${packagePriceLabel(q.priceAfter, p.currency)} after the coupon'),
+          key: const ValueKey('package.join.price'),
+          style: AppType.section(context),
+        ),
+        if (p.isFull) ...[
+          AppSpace.gapXs,
+          Text(t('الباقة ممتلئة: تُحفظ القسيمة وتُستخدم حين يُعرض عليك مقعد.', 'The package is full: the coupon is kept and used when a seat is offered.'),
+              style: AppType.meta(context)),
+        ],
+        AppSpace.gapMd,
+        widget.coupon ??
+            CouponField(
+              key: const ValueKey('package.join.coupon'),
+              target: CouponTarget.package,
+              targetId: p.id,
+              onChanged: (v) => setState(() => _q = v),
+            ),
+        AppSpace.gapLg,
+        AppButton.primary(
+          key: const ValueKey('package.join.go'),
+          label: p.isFull ? t('انضم لقائمة الانتظار', 'Join the waiting list') : t('انضم وادفع', 'Join and pay'),
+          icon: p.isFull ? Icons.hourglass_top_rounded : Icons.lock_rounded,
+          expand: true,
+          onPressed: () => Navigator.of(context).pop(PackageJoinChoice(q?.coupon.code)),
+        ),
+      ],
     );
   }
 }

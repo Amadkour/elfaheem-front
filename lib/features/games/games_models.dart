@@ -195,15 +195,21 @@ class GameLeaderboard {
 }
 
 class GameList {
-  const GameList({required this.items, this.total = 0});
+  const GameList({required this.items, this.total = 0, this.champions});
 
   final List<GameSummary> items;
   final int total;
 
+  /// Games v3 (CONTRACT §6): the `champions` block for the strip, raw (ChampionsStripData.maybe); null = none.
+  final Map<String, dynamic>? champions;
+
   factory GameList.fromJson(Object? r) {
     final m = _m(r);
     final items = [for (final e in _l(m['items'])) GameSummary.fromJson(e)];
-    return GameList(items: items, total: m['total'] is num ? _i(m['total']) : items.length);
+    return GameList(
+        items: items,
+        total: m['total'] is num ? _i(m['total']) : items.length,
+        champions: m['champions'] is Map ? _m(m['champions']) : null);
   }
 }
 

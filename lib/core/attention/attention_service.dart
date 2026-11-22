@@ -71,6 +71,9 @@ class AttentionTabs {
   /// Unread messages of NextBrain Messages (D-330, services/chat).
   static const chat = 'chat';
 
+  /// My new coupons (Games v3: active, not seen yet; GET /me/rewards marks them seen).
+  static const rewards = 'rewards';
+
   /// Org dashboard section key ('people', 'academics', …) → tab key.
   static const orgSection = <String, String>{
     'people': orgPeople,

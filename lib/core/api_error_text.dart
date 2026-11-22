@@ -57,6 +57,42 @@ String featureDisabledText(String? feature) => switch (feature) {
       _ => _t('هذه الميزة متوقفة حالياً من إدارة المنصة', 'This feature is switched off by the platform right now'),
     };
 
+/// A coupon refusal (Games v3, CONTRACT §7: POST /coupons/quote and the three checkouts), null = not a coupon code.
+/// [d] is the error's `detail` (`min_order`, `expected`).
+String? couponErrorText(String? code, [Map<String, dynamic> d = const {}]) {
+  String money(Object? v) {
+    final n = v is num ? v : num.tryParse('${v ?? ''}');
+    if (n == null) return '';
+    return n == n.truncate() ? '${n.toInt()}' : n.toStringAsFixed(2);
+  }
+
+  switch (code) {
+    case 'coupon_not_found':
+      return _t('لا توجد قسيمة بهذا الرمز — تأكد من الأحرف', 'No coupon has this code — check the letters');
+    case 'coupon_not_yours':
+      return _t('هذه القسيمة لحساب آخر — القسائم شخصية', 'This coupon belongs to another account — coupons are personal');
+    case 'coupon_used':
+      return _t('استُخدمت هذه القسيمة من قبل — كل قسيمة تُستخدم مرة واحدة', 'This coupon was already used — each coupon works once');
+    case 'coupon_expired':
+      return _t('انتهت صلاحية هذه القسيمة', 'This coupon has expired');
+    case 'coupon_revoked':
+      return _t('أُلغيت هذه القسيمة من إدارة المنصة', 'The platform cancelled this coupon');
+    case 'coupon_not_applicable':
+      return _t('لا تنطبق هذه القسيمة على هذا الشراء', 'This coupon does not apply to this purchase');
+    case 'coupon_min_order':
+      final m = money(d['min_order']);
+      return m.isEmpty
+          ? _t('المبلغ أقل من الحد الأدنى لهذه القسيمة', 'The amount is below this coupon\'s minimum')
+          : _t('تعمل هذه القسيمة على مشتريات من $m فأكثر', 'This coupon works on purchases of $m or more');
+    case 'coupon_currency':
+      final cur = '${d['expected'] ?? ''}'.trim();
+      return cur.isEmpty
+          ? _t('عملة هذه القسيمة تختلف عن عملة السعر', 'This coupon is in another currency than the price')
+          : _t('هذه القسيمة تعمل بعملة $cur فقط', 'This coupon only works in $cur');
+  }
+  return null;
+}
+
 /// A short sentence in the user's language for any [ApiException]; the server's own text when the code is unknown.
 String apiErrorText(ApiException e) {
   final d = apiErrorDetail(e);
@@ -243,6 +279,8 @@ String apiErrorText(ApiException e) {
           ? d['message'] as String
           : _t('اسم المستخدم غير صالح', 'That username isn\'t valid');
   }
+  final coupon = couponErrorText(e.code, d);
+  if (coupon != null) return coupon;
   if (e.type == ApiErrorType.rateLimited) {
     return _t('طلبات كثيرة — انتظر قليلاً ثم حاول مجدداً', 'Too many requests — wait a moment and try again') + _wait(apiRetryAfter(e));
   }

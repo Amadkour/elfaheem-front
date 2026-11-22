@@ -53,6 +53,8 @@ import 'admin_subscriptions_page.dart';
 import 'package:flutter_education_app/features/courses/admin/course_students/cs_pages.dart';
 import 'package:flutter_education_app/features/courses/admin/course_trash/trash_page.dart';
 import 'admin_points_page.dart';
+import 'rewards/admin_rewards_api.dart' show kAdminRewardsFeatureKey;
+import 'rewards/admin_rewards_page.dart' show AdminRewardsPage;
 import 'admin_recs_page.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart' show kRecsAdminKey;
 import 'package:flutter_education_app/features/payments/points/points_api.dart' show kAdminPointsFeatureKey;
@@ -338,6 +340,19 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           colors: AdminPalette.indigo,
           featureKey: kAdminPointsFeatureKey,
           onTap: () => push(const AdminPointsPage()),
+        ),
+        // the champions' and referrers' rewards: rules, winners, coupons, referrals (Games v3 §3.3); super admin only
+        AdminService(
+          labelKey: 'admin_rewards',
+          descKey: 'admin_rewards_d',
+          label: t('المكافآت والقسائم', 'Rewards & coupons'),
+          desc: t('قواعد مكافآت الأبطال والدعوات، والقسائم، ومراجعة الدعوات',
+              'Reward rules for champions and referrals, the coupons, and the referral review'),
+          icon: Icons.card_giftcard_rounded,
+          colors: AdminPalette.orange,
+          featureKey: kAdminRewardsFeatureKey,
+          visible: isSuper,
+          onTap: () => push(const AdminRewardsPage()),
         ),
         AdminService(
           labelKey: 'apm_title',

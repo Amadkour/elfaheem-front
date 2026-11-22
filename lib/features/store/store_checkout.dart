@@ -21,6 +21,8 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/payments/points/points_card_checkout.dart' show openPointsPaymentPage;
 import 'package:flutter_education_app/features/store/store_api.dart';
 import 'package:flutter_education_app/features/store/store_models.dart';
+import 'package:flutter_education_app/features/rewards/coupon_field.dart';
+import 'package:flutter_education_app/features/rewards/rewards_models.dart' show CouponQuote, CouponTarget;
 
 /// The items picked on this device. In memory: a cart is a few taps, not something to keep across launches.
 class StoreCart extends ValueNotifier<List<StoreItem>> {
@@ -84,7 +86,26 @@ class _StoreCheckoutSheetState extends State<StoreCheckoutSheet> {
   /// timeout / lost connection, D-1339).
   String? _key;
 
+  /// Games v3 (CONTRACT §7): the applied coupon's code; money (card) only, never with points.
+  String? _coupon;
+
   List<int> get _ids => [for (final i in widget.items) i.id];
+
+  /// The coupon box applied [q] or took it off: the sums are quoted again with it, quietly (the box stays).
+  Future<void> _onCoupon(CouponQuote? q) async {
+    final code = q?.coupon.code;
+    if (code == _coupon) return;
+    setState(() {
+      _coupon = code;
+      _key = null; // another price is another attempt
+    });
+    try {
+      final quote = await widget.api.quote(_ids, couponCode: code);
+      if (mounted && _coupon == code) setState(() => _quote = quote);
+    } catch (e) {
+      if (mounted) showAppNotice(storeErrorText(e), error: true);
+    }
+  }
 
   @override
   void initState() {
@@ -116,10 +137,12 @@ class _StoreCheckoutSheetState extends State<StoreCheckoutSheet> {
 
   void _pickMethod(String m) {
     if (m == _method) return;
+    final dropCoupon = m != 'card' && _coupon != null;
     setState(() {
       _method = m;
       _key = null;
     });
+    if (dropCoupon) _onCoupon(null); // a coupon is money off: never with points
   }
 
   Future<void> _pay() async {
@@ -130,7 +153,7 @@ class _StoreCheckoutSheetState extends State<StoreCheckoutSheet> {
       _error = null;
     });
     try {
-      final a = await widget.api.order(_ids, method: _method, idempotencyKey: key);
+      final a = await widget.api.order(_ids, method: _method, idempotencyKey: key, couponCode: _method == 'card' ? _coupon : null);
       if (!mounted) return;
       _order = a.order;
       if (a.order.paid) return _settled(a.order);
@@ -205,6 +228,15 @@ class _StoreCheckoutSheetState extends State<StoreCheckoutSheet> {
           pointsAllowed: _quote?.pointsTotal != null && !storePointsOff(),
           error: _error,
           onMethod: _pickMethod,
+          coupon: _method == 'card' && _quote != null && !_quote!.isFree
+              ? CouponField(
+                  key: const ValueKey('store.checkout.coupon'),
+                  target: CouponTarget.store,
+                  itemIds: _ids,
+                  enabled: _phase == StoreCheckoutPhase.ready,
+                  onChanged: _onCoupon,
+                )
+              : null,
           onPay: storeBuyOff() ? null : _pay,
           onRetry: _quote == null ? _loadQuote : () => _confirm(),
           onDone: () => Navigator.of(context).pop(_phase == StoreCheckoutPhase.paid),
@@ -227,7 +259,11 @@ class StoreCheckoutView extends StatelessWidget {
     this.onPay,
     this.onRetry,
     this.onDone,
+    this.coupon,
   });
+
+  /// The coupon box (Games v3), drawn under the sums while paying by card; null = none.
+  final Widget? coupon;
 
   final StoreCheckoutPhase phase;
   final StoreQuote? quote;
@@ -320,6 +356,8 @@ class StoreCheckoutView extends StatelessWidget {
           ),
         const SizedBox(height: AppSpace.xs),
         row(t('المجموع قبل الضريبة', 'Subtotal (net)'), storeMoney(q.subtotal, q.currency)),
+        if (q.couponDiscount > 0)
+          row(t('خصم القسيمة', 'Coupon discount'), '−${storeMoney(q.couponDiscount, q.currency)}', key: const ValueKey('store.checkout.coupon_discount')),
         row('${t('ضريبة القيمة المضافة', 'VAT')} (${StorePrice(net: 0, vat: 0, gross: 0, currency: '', vatPercent: q.vatPercent).vatPercentText})',
             storeMoney(q.vatAmount, q.currency)),
         const Divider(height: AppSpace.md),
@@ -344,6 +382,10 @@ class StoreCheckoutView extends StatelessWidget {
                 onTap: () => onMethod?.call('points'),
               ),
           ]),
+        ],
+        if (coupon != null) ...[
+          const SizedBox(height: AppSpace.md),
+          coupon!,
         ],
         if (error != null) ...[
           const SizedBox(height: AppSpace.sm),

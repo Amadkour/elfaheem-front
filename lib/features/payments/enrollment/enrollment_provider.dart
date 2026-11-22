@@ -29,6 +29,7 @@ import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/checkout_pages.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/features/rewards/rewards_models.dart' show CouponQuote;
 import 'package:flutter_education_app/features/payments/enrollment/payment_flow_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/core/api_error_text.dart' show apiErrorText;
@@ -187,7 +188,23 @@ class EnrollmentProvider extends PaymentFlowProvider {
     return _usesMoyasarSdk ? 'mada' : 'creditcard';
   }
 
-  FeeQuote? get quote => _quotes['$_plan|$_quoteMethod'];
+  FeeQuote? get quote => _quotes['$_plan|$_quoteMethod|${_coupon ?? ''}'];
+
+  // ── Coupon (Games v3, CONTRACT §7) ────────────────────────────────────────
+  String? _couponCode;
+
+  /// The coupon code the checkout sends: card / wallet payments only (a bank transfer's amount is checked by a
+  /// teacher, so no coupon rides on it).
+  String? get _coupon => _selectedManualMethod == null ? _couponCode : null;
+
+  /// The coupon box applied a code ([q]) or took it off (null): the fees are quoted again with it.
+  void setCoupon(CouponQuote? q) {
+    final code = q?.coupon.code;
+    if (code == _couponCode) return;
+    _couponCode = code;
+    safeNotify();
+    ensureQuote();
+  }
 
   // ── Loading ───────────────────────────────────────────────────────────────
 
@@ -369,12 +386,13 @@ class EnrollmentProvider extends PaymentFlowProvider {
     if (isFree || !_optionsLoaded) return null;
     final method = _quoteMethod;
     final plan = _plan;
-    final key = '$plan|$method';
+    final coupon = _coupon;
+    final key = '$plan|$method|${coupon ?? ''}';
     final cached = _quotes[key];
     if (cached != null) return cached;
 
     final json = asJsonMap(await run(() async => api.get(
-        '/api/v1/payments/fees/preview?course_id=${course.id}&payment_method=$method&plan=$plan')));
+        '/api/v1/payments/fees/preview?course_id=${course.id}&payment_method=$method&plan=$plan${coupon == null ? '' : '&coupon_code=${Uri.encodeQueryComponent(coupon)}'}')));
     if (json == null) return null;
 
     final fetched = FeeQuote.fromJson(json);
@@ -408,6 +426,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
 
   void selectManualMethod(String method) {
     _selectedManualMethod = method;
+    _couponCode = null; // the coupon box is not offered with a transfer
     _selectedCard = null;
     _selectedWallet = null;
     safeNotify();
@@ -476,7 +495,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
   Future<void> _openHostedCheckout(BuildContext context) => openHostedCheckout(
     context,
     '/api/v1/payments/create-web-session',
-    body: {'course_id': course.id, 'plan': _plan},
+    body: {'course_id': course.id, 'plan': _plan, 'coupon_code': ?_coupon},
   );
 
   // ── Moyasar SDK (mobile) ──────────────────────────────────────────────────
@@ -540,6 +559,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
         'course_id': course.id,
         'moyasar_payment_id': gatewayPaymentId,
         'plan': _plan,
+        'coupon_code': ?_coupon,
         if (wallet != null) 'wallet': wallet, // priced with the wallet's own fee on the server
       },
     )));
@@ -608,7 +628,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
   Future<void> _startPaymobWallet(BuildContext context, String wallet) async {
     final session = asJsonMap(await _refusable(() async => api.post(
       '/api/v1/payments/create-wallet-session',
-      body: {'course_id': course.id, 'wallet': wallet, 'plan': _plan},
+      body: {'course_id': course.id, 'wallet': wallet, 'plan': _plan, 'coupon_code': ?_coupon},
     )));
     if (session == null && _refused) return;
     if (session == null) {
@@ -651,6 +671,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
       'payment_method': card.cardBrand?.apiKey ?? 'mada',
       'saved_method_id': card.id,
       'plan': _plan,
+      'coupon_code': ?_coupon,
     })));
     if (r == null) return;
 

@@ -8,6 +8,8 @@
 //                    tells whether a play can earn points (shown on the cards only when it can).
 //   GamesBrowseView  the tab's body with plain values (test/ui/games_layout_test.dart)
 //                    Learning Hub v2 (D-1588): a category and a difficulty filter (server side, `?category&difficulty`)
+//                    Games v3 (D-1771): the champions strip on top (the list call's `champions` block, no request of
+//                    its own) and the app bar's Hall of Champions (kill switch `games.champions`)
 //   GameCard         one game: its cover (decoded small, only when drawn) or the engine's glyph, the title, the
 //                    difficulty, the stars so far (or "New"), the points it can earn
 library;
@@ -21,6 +23,9 @@ import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/courses/course_filters.dart';
+import 'package:flutter_education_app/features/games/champions/champions_models.dart';
+import 'package:flutter_education_app/features/games/champions/champions_page.dart' show HallOfChampionsPage;
+import 'package:flutter_education_app/features/games/champions/champions_strip.dart';
 import 'package:flutter_education_app/features/games/engines/game_engine.dart';
 import 'package:flutter_education_app/features/games/game_play_page.dart';
 import 'package:flutter_education_app/features/games/games_api.dart';
@@ -75,6 +80,7 @@ class _GamesTabState extends State<GamesTab> {
   bool _rewards = false;
 
   List<GameSummary> _items = const [];
+  ChampionsStripData? _champions;
   bool _loading = true;
   String? _error;
   int _seq = 0;
@@ -138,6 +144,7 @@ class _GamesTabState extends State<GamesTab> {
       if (!mounted || seq != _seq) return;
       setState(() {
         _items = r.items;
+        _champions = ChampionsStripData.maybe(r.champions);
         _loading = false;
       });
     } catch (e) {
@@ -171,6 +178,12 @@ class _GamesTabState extends State<GamesTab> {
         builder: (_) => GamePlayPage(game: g, api: _api),
       ));
 
+  /// The Hall of Champions (Games v3), on the strip's board.
+  void _openHall([ChampionScope? scope]) => Navigator.of(context).push(MaterialPageRoute<void>(
+        settings: const RouteSettings(name: '/games/champions'),
+        builder: (_) => HallOfChampionsPage(scope: scope),
+      ));
+
   void _openProgress() => GuestGuard.run(
       context,
       () => Navigator.of(context).push(MaterialPageRoute<void>(
@@ -186,6 +199,16 @@ class _GamesTabState extends State<GamesTab> {
         title: t('الألعاب', 'Games'),
         showBack: false,
         actions: [
+          if (!GuestState.active)
+            ParentComponent(
+              featureKey: kGamesChampionsKey,
+              child: IconButton(
+                key: const ValueKey('games.hall'),
+                tooltip: t('لوحة الأبطال', 'Hall of Champions'),
+                icon: const Icon(Icons.military_tech_rounded),
+                onPressed: () => _openHall(_champions?.scope),
+              ),
+            ),
           if (!GuestState.active)
             IconButton(
               key: const ValueKey('games.progress'),
@@ -214,6 +237,8 @@ class _GamesTabState extends State<GamesTab> {
             _load();
           },
           items: _items,
+          champions: GuestState.active || championsOff() ? null : _champions,
+          onChampions: () => _openHall(_champions?.scope),
           loading: _loading,
           error: _error,
           rewards: _rewards,
@@ -247,7 +272,13 @@ class GamesBrowseView extends StatelessWidget {
     this.onOpen,
     this.onRetry,
     this.onRefresh,
+    this.champions,
+    this.onChampions,
   });
+
+  /// Games v3: today's top 3 of my board (the `champions` block of GET /games); null = no strip.
+  final ChampionsStripData? champions;
+  final VoidCallback? onChampions;
 
   final CourseFilters filters;
   final ValueChanged<CourseFilters> onFilters;
@@ -272,6 +303,10 @@ class GamesBrowseView extends StatelessWidget {
     final engines = {for (final g in items) g.engine}.toList();
     final shown = engine == null ? items : [for (final g in items) if (g.engine == engine) g];
     final head = <Widget>[
+      if (champions != null) ...[
+        ChampionsStrip(data: champions!, onOpen: onChampions),
+        const SizedBox(height: AppSpace.sm),
+      ],
       ParentComponent(
         featureKey: kCourseFiltersKey,
         child: CourseFilterBar(
