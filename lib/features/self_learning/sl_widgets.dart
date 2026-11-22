@@ -105,7 +105,7 @@ class _StatLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
         child: Row(children: [
           Icon(icon, size: AppIconSize.sm, color: appInk(context, color)),
           const SizedBox(width: AppSpace.xs),

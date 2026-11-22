@@ -139,7 +139,7 @@ void main() {
       expect(o.isAdmitted, isTrue);
       expect(o.url, 'wss://m');
       expect(o.canPublish, isTrue);
-      expect(o.recordingEnabled, isTrue);
+      expect(o.recordingEnabled, isFalse); // recording is off unless the host turns it on (D-1503)
       expect(o.identity, isNull);
     });
 
