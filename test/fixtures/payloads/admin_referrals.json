@@ -1,0 +1,30 @@
+{
+ "_source": {
+  "route": "GET /api/v1/admin/rewards/referrals?status=pending",
+  "uid": 1
+ },
+ "payload": {
+  "items": [
+   {
+    "id": 4,
+    "referrer": {
+     "id": 2,
+     "name": "referrer1",
+     "username": "ahmed"
+    },
+    "referee": {
+     "id": 18,
+     "name": "k3",
+     "username": null
+    },
+    "source": "link",
+    "status": "pending",
+    "reason": null,
+    "created_at": "2026-11-20T03:08:11.869670",
+    "qualified_at": null
+   }
+  ],
+  "total": 1,
+  "has_more": false
+ }
+}

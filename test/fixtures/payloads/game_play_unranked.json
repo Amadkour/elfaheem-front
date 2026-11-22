@@ -1,0 +1,35 @@
+{
+ "_source": {
+  "route": "POST /api/v1/games/1/plays",
+  "uid": 4
+ },
+ "payload": {
+  "play": {
+   "id": 4,
+   "game_id": 1,
+   "client_id": "a53cf43a-3b96-46ba-9378-b541afa09179",
+   "score": 4,
+   "max_score": 4,
+   "stars": 3,
+   "duration_s": 20,
+   "played_at": "2026-11-22T04:07:08.338133"
+  },
+  "progress": {
+   "game_id": 1,
+   "best_score": 4,
+   "stars": 3,
+   "plays": 1,
+   "attempts": 1,
+   "best_duration_s": 20,
+   "last_played_at": "2026-11-22T04:07:08.338133"
+  },
+  "new_badges": [],
+  "points_awarded": 0,
+  "duplicate": false,
+  "ranked": false,
+  "rank_points": 0,
+  "rank_today": null,
+  "unranked_reason": "too_fast",
+  "ranked_left": 3
+ }
+}

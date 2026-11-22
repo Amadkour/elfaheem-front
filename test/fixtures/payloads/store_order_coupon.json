@@ -1,0 +1,42 @@
+{
+ "_source": {
+  "route": "POST /api/v1/store/orders",
+  "uid": 3
+ },
+ "payload": {
+  "order": {
+   "id": 1,
+   "status": "pending",
+   "method": "card",
+   "provider": "paymob",
+   "currency": "EGP",
+   "country_code": "EG",
+   "subtotal": 100.0,
+   "vat_percent": 14.0,
+   "vat_amount": 9.8,
+   "total": 79.8,
+   "points_spent": null,
+   "coupon_discount": 30.0,
+   "coupon_code": "7UJZRVKKCZ",
+   "failure_code": null,
+   "created_at": "2026-11-22T04:07:52.234117",
+   "paid_at": null,
+   "items": [
+    {
+     "item_id": 1,
+     "title": "كتاب0",
+     "unit_net": 100.0,
+     "unit_vat": 14.0,
+     "unit_gross": 114.0
+    }
+   ]
+  },
+  "checkout": {
+   "url": "https://pay.test/x",
+   "token": "5a484ea710744f6d9a45b1a7ba2caf14",
+   "provider": "paymob",
+   "amount_minor": 7980,
+   "is_sandbox": true
+  }
+ }
+}

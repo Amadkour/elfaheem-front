@@ -1,0 +1,39 @@
+{
+ "_source": {
+  "route": "GET /api/v1/games/champions/standings",
+  "uid": 21
+ },
+ "payload": {
+  "scope": "platform",
+  "key": null,
+  "period": "daily",
+  "period_start": "2026-11-21T21:00:00",
+  "period_end": "2026-11-22T21:00:00",
+  "items": [
+   {
+    "rank": 1,
+    "name": "Tala O.",
+    "points": 300,
+    "games": 3,
+    "is_me": true
+   }
+  ],
+  "me": {
+   "rank": 1,
+   "name": "Tala O.",
+   "points": 300,
+   "games": 3,
+   "is_me": true
+  },
+  "total": 1,
+  "eligible": true,
+  "needs": {
+   "games": 0,
+   "days": 0
+  },
+  "min_games": 3,
+  "min_days": 1,
+  "min_players": 5,
+  "visible": true
+ }
+}
