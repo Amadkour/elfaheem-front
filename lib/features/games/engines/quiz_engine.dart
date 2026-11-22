@@ -1,14 +1,22 @@
 // lib/features/games/engines/quiz_engine.dart — the `quiz` engine (D-1346): one question at a time, pick an option,
 // see right / wrong at once, Next. Score = right answers, max = questions.
 // config = {shuffle: bool, questions: [{prompt_ar, prompt_en, options: [string], answer: index}]}
+//
+// Games v3 (§1, D-1740): the options enter one after another (AppReveal, `stagger`); a right pick fills green and
+// pulses, a wrong one shakes and the right option fills green a beat (`tap`) later. Trace (CONTRACT §3): one entry
+// per answered question, `i` = the question's index in the config (before the shuffle), `a` = the option picked.
 library;
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/games/shell/game_motion.dart';
 import 'package:flutter_education_app/features/games/shell/game_shell.dart';
+import 'package:flutter_education_app/features/games/shell/game_tile.dart';
 import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
 
 typedef QuizQuestion = ({String prompt, List<String> options, int answer});
@@ -41,23 +49,54 @@ class QuizEngine extends StatefulWidget {
 
 class _QuizEngineState extends State<QuizEngine> {
   late final List<QuizQuestion> _qs;
+
+  /// _order[k] = the config index of the question shown k-th (the trace names config indices).
+  late final List<int> _order;
   int _i = 0, _score = 0;
   int? _picked;
+
+  /// After a wrong pick the right option fills green a beat later.
+  bool _showRight = false;
+  Timer? _timer;
+  int _seq = 0;
 
   @override
   void initState() {
     super.initState();
     final all = QuizEngine.questionsOf(widget.config);
-    _qs = widget.config['shuffle'] == true ? learnShuffle(all, random: widget.random, avoidIdentity: false) : all;
+    final idx = [for (var k = 0; k < all.length; k++) k];
+    _order = widget.config['shuffle'] == true ? learnShuffle(idx, random: widget.random, avoidIdentity: false) : idx;
+    _qs = [for (final k in _order) all[k]];
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   void _pick(int i) {
     if (_picked != null) return;
+    final right = i == _qs[_i].answer;
+    final shell = GameShellScope.maybeOf(context);
+    shell?.record(_order[_i], i);
     setState(() {
       _picked = i;
-      if (i == _qs[_i].answer) _score++;
+      _seq++;
+      if (right) _score++;
+      _showRight = right;
     });
-    GameShellScope.maybeOf(context)?.report(done: _i + 1, score: _score, correct: i == _qs[_i].answer);
+    if (!right) {
+      final d = GameMotion.of(context).tap;
+      if (d == Duration.zero) {
+        setState(() => _showRight = true);
+      } else {
+        _timer = Timer(d, () {
+          if (mounted) setState(() => _showRight = true);
+        });
+      }
+    }
+    shell?.report(done: _i + 1, score: _score, correct: right);
   }
 
   void _next() {
@@ -65,10 +104,20 @@ class _QuizEngineState extends State<QuizEngine> {
       widget.onFinished(_score, _qs.length);
       return;
     }
+    _timer?.cancel();
     setState(() {
       _i++;
       _picked = null;
+      _showRight = false;
     });
+  }
+
+  GameTileState _state(int k, QuizQuestion q) {
+    final p = _picked;
+    if (p == null) return GameTileState.idle;
+    if (k == p) return k == q.answer ? GameTileState.correct : GameTileState.wrong;
+    if (k == q.answer) return _showRight ? GameTileState.hint : GameTileState.locked;
+    return GameTileState.locked;
   }
 
   @override
@@ -78,16 +127,10 @@ class _QuizEngineState extends State<QuizEngine> {
     }
     final q = _qs[_i];
     final last = _i + 1 >= _qs.length;
-    final marks = [
-      for (var k = 0; k < q.options.length; k++)
-        _picked == null
-            ? LearnMark.idle
-            : k == q.answer
-                ? (k == _picked ? LearnMark.correct : LearnMark.missed)
-                : (k == _picked ? LearnMark.wrong : LearnMark.idle),
-    ];
     // inside a GameShell the shell draws the progress and the score
-    final inShell = GameShellScope.maybeOf(context) != null;
+    final shell = GameShellScope.maybeOf(context);
+    final inShell = shell != null;
+    final sacred = shell?.sacred ?? false;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (!inShell) ...[
         LearnProgressHeader(current: _i + 1, total: _qs.length, score: _score),
@@ -95,7 +138,23 @@ class _QuizEngineState extends State<QuizEngine> {
       ],
       LearnPrompt(key: ValueKey('quiz.q.$_i'), text: q.prompt),
       const SizedBox(height: AppSpace.sm),
-      LearnOptionList(options: q.options, marks: marks, onSelect: _picked == null ? _pick : null),
+      for (var k = 0; k < q.options.length; k++) ...[
+        if (k > 0) const SizedBox(height: AppSpace.xs),
+        AppReveal(
+          group: 'quiz.$_i',
+          index: k,
+          child: GameTile(
+            key: ValueKey('learn.option.$k'),
+            label: q.options[k],
+            index: k,
+            state: _state(k, q),
+            pulse: _picked == k && k == q.answer ? _seq : null,
+            shake: _picked == k && k != q.answer ? _seq : null,
+            shakeEnabled: !sacred,
+            onTap: _picked == null ? () => _pick(k) : null,
+          ),
+        ),
+      ],
       if (_picked != null) ...[
         const SizedBox(height: AppSpace.md),
         LearnFeedback(

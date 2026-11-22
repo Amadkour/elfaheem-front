@@ -14,6 +14,11 @@
 //   GamePlayView  the body with plain values (test/ui/games_layout_test.dart)
 //   GamesBus      `revision` bumps after a saved play (also one the outbox saved after the page closed), so the tab and
 //                 the progress page reload
+//
+// Games v3 (CONTRACT §2): each round asks for a ranked round (`POST /games/{id}/rounds`) when it starts; any failure,
+// no network, a guest or `games.champions` off = the round is played unranked exactly as before. A ranked play
+// carries `round_id` + the engine's trace and is posted directly (the outbox keeps it, unranked, only when the
+// network lost it); the finish view shows `rank_today` when the server ranked it.
 library;
 
 import 'dart:math';
@@ -75,6 +80,10 @@ class _GamePlayPageState extends State<GamePlayPage> {
   /// Bumps when a play is saved, so the leaderboard loads again.
   int _saved = 0;
 
+  /// The ranked round of the round being played (null = unranked) and the trace the engine reported.
+  String? _roundId;
+  List<Map<String, Object>>? _trace;
+
   @override
   void initState() {
     super.initState();
@@ -84,7 +93,21 @@ class _GamePlayPageState extends State<GamePlayPage> {
       _load();
     } else {
       _clock.start();
+      _startRound();
     }
+  }
+
+  /// Asks for a ranked round for the round that starts now; it never blocks play.
+  Future<void> _startRound() async {
+    _roundId = null;
+    _trace = null;
+    if (GuestState.active || gamesChampionsOff() || gameEngine(_game.engine) == null) return;
+    final round = _round;
+    try {
+      final r = await _api.startRound(_game.id);
+      // a late answer for a round already replayed or finished is dropped
+      if (mounted && round == _round && _sub == null) _roundId = r.roundId;
+    } catch (_) {}
   }
 
   @override
@@ -122,6 +145,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
       _clock
         ..reset()
         ..start();
+      _startRound();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -133,18 +157,40 @@ class _GamePlayPageState extends State<GamePlayPage> {
 
   void _finished(int score, int max) {
     _clock.stop();
+    final trace = _trace;
     final sub = GamePlaySubmission(
         gameId: _game.id,
         score: score,
         maxScore: max,
-        durationS: _clock.elapsed.inSeconds);
+        durationS: _clock.elapsed.inSeconds,
+        roundId: trace == null ? null : _roundId,
+        trace: trace);
     setState(() => _sub = sub);
+    GameFeedback.instance.play(GameSound.finish);
     if (!GuestState.active) _send();
   }
 
   Future<void> _send() async {
     final sub = _sub;
     if (sub == null || sub.done || sub.queued) return;
+    if (sub.ranked && !_saving) {
+      // a ranked play goes straight to the plays route; only a lost answer falls back to the outbox (unranked)
+      setState(() => _saving = true);
+      final r = await sub.send(_api);
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        if (r != null) {
+          _game = _game.withProgress(r.progress ?? _game.progress);
+          _saved++;
+        }
+      });
+      if (r != null) {
+        GamesBus.revision.value++;
+        return;
+      }
+      if (sub.done) return;
+    }
     if (await sub.enqueue()) {
       if (mounted) setState(() {}); // shown from the device's grading; the engine sends it
       return;
@@ -173,6 +219,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
     _clock
       ..reset()
       ..start();
+    _startRound();
   }
 
   void _openBoard() => showAppSheet<void>(
@@ -210,6 +257,8 @@ class _GamePlayPageState extends State<GamePlayPage> {
           error: _error,
           onRetryLoad: _load,
           onFinished: _finished,
+          onTrace: (t) => _trace = t,
+          rankToday: sub?.result?.ranked == true ? sub?.result?.rankToday : null,
           finished: sub == null
               ? null
               : (
@@ -256,6 +305,8 @@ class GamePlayView extends StatelessWidget {
     this.onDone,
     this.random,
     this.leaderboard,
+    this.onTrace,
+    this.rankToday,
   });
 
   final GameSummary game;
@@ -278,6 +329,12 @@ class GamePlayView extends StatelessWidget {
 
   /// Drawn under the result (the game's leaderboard).
   final Widget? leaderboard;
+
+  /// The round's trace, just before [onFinished] (a ranked round sends it).
+  final ValueChanged<List<Map<String, Object>>>? onTrace;
+
+  /// A ranked play's place today (the finish view's "Rank 4 today").
+  final int? rankToday;
 
   @override
   Widget build(BuildContext context) {
@@ -313,6 +370,7 @@ class GamePlayView extends StatelessWidget {
                   : null,
           onReplay: onReplay,
           onDone: onDone,
+          rankToday: rankToday,
         ),
         if (leaderboard != null) ...[const SizedBox(height: AppSpace.lg), leaderboard!],
       ]);
@@ -323,6 +381,8 @@ class GamePlayView extends StatelessWidget {
         config: game.config,
         theme: game.theme,
         onFinished: onFinished ?? (_, _) {},
+        onTrace: onTrace,
+        category: game.category,
         random: random,
       );
     }

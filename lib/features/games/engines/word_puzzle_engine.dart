@@ -9,6 +9,11 @@
 // do in the word; under it one small square slot per letter (tap a placed one to take it back) and the pool of
 // square tiles, both wrapping rows sized by the touch tokens, laid out in the WORD's direction (an Arabic word runs
 // right to left in the English interface too).
+//
+// Games v3 (§1, D-1740): a tapped letter flies from the pool to its slot (`snap`) and the slot pops; a solved word
+// waves (each slot to 1.12, `stagger` apart) and turns green; a wrong word shakes. The built word stays ONE Text.
+// Trace (CONTRACT §3): one entry per check of a full word, `i` = the word's index, `a` = the letter indices in the
+// order they were placed, `h: true` when Hint was used on this word before the check.
 library;
 
 import 'dart:math';
@@ -20,6 +25,7 @@ import 'package:flutter_education_app/design/app_bidi.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/engines/game_text.dart';
+import 'package:flutter_education_app/features/games/shell/game_motion.dart';
 import 'package:flutter_education_app/features/games/shell/game_shell.dart';
 import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
 
@@ -85,6 +91,12 @@ class _WordPuzzleEngineState extends State<WordPuzzleEngine> {
   /// null = not checked yet.
   bool? _right;
 
+  /// Slots whose letter is still flying in; the moves per slot; the word's shake.
+  final Set<int> _landing = {};
+  final Map<int, int> _slotPulse = {};
+  int _seq = 0, _wordShake = 0;
+  final List<GlobalKey> _slotKeys = [], _tileKeys = [];
+
   @override
   void initState() {
     super.initState();
@@ -96,19 +108,46 @@ class _WordPuzzleEngineState extends State<WordPuzzleEngine> {
     _letters = _words.isEmpty ? const [] : WordPuzzleEngine.lettersOf(_words[_i].word);
     _pool = learnShuffle([for (var k = 0; k < _letters.length; k++) k], random: widget.random);
     _placed.clear();
+    _landing.clear();
+    _slotPulse.clear();
     _hinted = _slipped = false;
     _right = null;
+    while (_slotKeys.length < _letters.length) {
+      _slotKeys.add(GlobalKey());
+      _tileKeys.add(GlobalKey());
+    }
   }
 
   void _place(int k) {
     if (_right != null || _placed.contains(k)) return;
-    setState(() => _placed.add(k));
+    final p = _placed.length;
+    final fly = !GameMotion.of(context).off && _tileKeys[k].currentContext != null && _slotKeys[p].currentContext != null;
+    if (fly) {
+      final word = _i;
+      GameFlight.fly(context, from: _tileKeys[k], to: _slotKeys[p], child: WordPuzzleTile(letter: _letters[k])).then((_) {
+        if (!mounted || word != _i) return;
+        setState(() {
+          _landing.remove(p);
+          _slotPulse[p] = ++_seq;
+        });
+        GameShellScope.maybeOf(context)?.sound(GameSound.snap);
+      });
+    } else {
+      GameShellScope.maybeOf(context)?.sound(GameSound.snap);
+    }
+    setState(() {
+      _placed.add(k);
+      if (fly) _landing.add(p);
+    });
     _maybeCheck();
   }
 
   void _unplace(int pos) {
     if (_right != null) return;
-    setState(() => _placed.removeAt(pos));
+    setState(() {
+      _placed.removeAt(pos);
+      _landing.clear();
+    });
   }
 
   /// Takes back every letter after the right beginning, then places the next right one.
@@ -137,16 +176,28 @@ class _WordPuzzleEngineState extends State<WordPuzzleEngine> {
   void _maybeCheck() {
     if (_placed.length < _letters.length) return;
     final right = WordPuzzleEngine.isRight([for (final k in _placed) _letters[k]], _words[_i].word);
+    final shell = GameShellScope.maybeOf(context);
+    shell?.record(_i, List<int>.of(_placed), hint: _hinted);
     setState(() {
       _right = right;
+      _seq++;
+      if (right) {
+        // the wave: every slot, one after another
+        for (var p = 0; p < _placed.length; p++) {
+          _slotPulse[p] = _seq;
+        }
+      } else {
+        _wordShake = _seq;
+      }
       if (right && !_hinted && !_slipped) _score++;
       if (!right) _slipped = true;
     });
-    GameShellScope.maybeOf(context)?.report(done: _i + 1, score: _score, correct: right && !_hinted && !_slipped);
+    shell?.report(done: _i + 1, score: _score, correct: right && !_hinted && !_slipped);
   }
 
   void _retry() => setState(() {
         _placed.clear();
+        _landing.clear();
         _right = null;
       });
 
@@ -175,6 +226,23 @@ class _WordPuzzleEngineState extends State<WordPuzzleEngine> {
     final dir = contentDirection(w.word) ?? Directionality.of(context);
     final mark = right == null ? LearnMark.selected : (right ? LearnMark.correct : LearnMark.wrong);
     final n = _letters.length;
+    final m = GameMotion.of(context);
+    final sacred = GameShellScope.maybeOf(context)?.sacred ?? false;
+    final slots = Wrap(textDirection: dir, alignment: WrapAlignment.center, spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
+      for (var p = 0; p < n; p++)
+        GamePulse(
+          trigger: _slotPulse[p],
+          peak: right == true ? GameMotion.wave : GameMotion.pulse,
+          delay: right == true ? m.stagger * p : Duration.zero,
+          child: WordPuzzleSlot(
+            key: _slotKeys[p],
+            slotKey: ValueKey('word.slot.$p'),
+            letter: p < _placed.length && !_landing.contains(p) ? _letters[_placed[p]] : null,
+            mark: mark,
+            onTap: p < _placed.length && right == null ? () => _unplace(p) : null,
+          ),
+        ),
+    ]);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (!inShell) ...[
         LearnProgressHeader(current: _i + 1, total: _words.length, score: _score),
@@ -194,29 +262,29 @@ class _WordPuzzleEngineState extends State<WordPuzzleEngine> {
             : w.hint,
       ),
       const SizedBox(height: AppSpace.sm),
-      WordPuzzleAnswer(
-        key: const ValueKey('word.built'),
-        text: WordPuzzleEngine.builtText(w.word, [for (final k in _placed) _letters[k]]),
-        mark: mark,
-        direction: dir,
-        placeholder: t('اضغط الحروف بالترتيب', 'Tap the letters in order'),
+      GameShake(
+        trigger: _wordShake == 0 ? null : _wordShake,
+        enabled: !sacred,
+        child: WordPuzzleAnswer(
+          key: const ValueKey('word.built'),
+          text: WordPuzzleEngine.builtText(w.word, [for (final k in _placed) _letters[k]]),
+          mark: mark,
+          direction: dir,
+          placeholder: t('اضغط الحروف بالترتيب', 'Tap the letters in order'),
+        ),
       ),
+      // one slot per letter: how many are left, and a placed one taps back into the pool (shown after the check
+      // too, for the wave)
+      const SizedBox(height: AppSpace.sm),
+      slots,
       if (right == null) ...[
-        const SizedBox(height: AppSpace.sm),
-        // one slot per letter: how many are left, and a placed one taps back into the pool
-        Wrap(textDirection: dir, alignment: WrapAlignment.center, spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
-          for (var p = 0; p < n; p++)
-            WordPuzzleSlot(
-              key: ValueKey('word.slot.$p'),
-              letter: p < _placed.length ? _letters[_placed[p]] : null,
-              mark: mark,
-              onTap: p < _placed.length ? () => _unplace(p) : null,
-            ),
-        ]),
         const SizedBox(height: AppSpace.md),
         Wrap(textDirection: dir, alignment: WrapAlignment.center, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final k in pool)
-            WordPuzzleTile(key: ValueKey('word.tile.$k'), letter: _letters[k], onTap: () => _place(k)),
+            KeyedSubtree(
+              key: _tileKeys[k],
+              child: WordPuzzleTile(key: ValueKey('word.tile.$k'), letter: _letters[k], onTap: () => _place(k)),
+            ),
         ]),
         const SizedBox(height: AppSpace.sm),
         Align(
@@ -294,7 +362,12 @@ class WordPuzzleAnswer extends StatelessWidget {
           border: Border.all(color: checked ? tone : c.divider, width: checked ? AppBorder.strong : AppBorder.hairline),
         ),
         child: empty
-            ? Text(placeholder, textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium))
+            // a hidden letter in the word's style keeps the box as tall as it is once letters come, so nothing under
+            // it moves on the first tap (a fast player's next tap stays on its tile)
+            ? Stack(alignment: Alignment.center, children: [
+                Visibility.maintain(visible: false, child: Text('ا', maxLines: 1, style: AppType.display(context))),
+                Text(placeholder, textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
+              ])
             : FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
@@ -311,7 +384,10 @@ class WordPuzzleAnswer extends StatelessWidget {
 
 /// One slot of the word, a small square: empty (a line), or a placed letter (tap to take it back).
 class WordPuzzleSlot extends StatelessWidget {
-  const WordPuzzleSlot({super.key, this.letter, this.mark = LearnMark.selected, this.onTap});
+  const WordPuzzleSlot({super.key, this.letter, this.mark = LearnMark.selected, this.onTap, this.slotKey});
+
+  /// The key of the slot's box (tests), when [key] is the flight's GlobalKey.
+  final Key? slotKey;
 
   /// The slot's side: the smallest touch target.
   static const double size = AppTouch.min;
@@ -337,6 +413,7 @@ class WordPuzzleSlot extends StatelessWidget {
         borderRadius: AppRadius.chipAll,
         onTap: onTap,
         child: Container(
+          key: slotKey,
           width: WordPuzzleSlot.size,
           height: WordPuzzleSlot.size,
           alignment: Alignment.center,
