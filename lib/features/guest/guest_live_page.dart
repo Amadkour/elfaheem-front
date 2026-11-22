@@ -351,7 +351,10 @@ class _GuestLivePageState extends State<GuestLivePage> {
       return;
     }
     final j = GuestJoin.fromJson(o.payload);
-    final ref = info.ref;
+    // a repeating meeting's link (D-1720) lands in the date that is on NOW: the join answer names its meeting,
+    // which is not the one this page loaded when it was left open since an earlier date
+    final joined = int.tryParse('${o.payload['meeting_id'] ?? ''}');
+    final ref = info.isMeeting && joined != null && joined > 0 ? LiveRoomRef.meeting(joined) : info.ref;
     final sessionId = ref.isMeeting ? ref.sessionId : (j.sessionId == 0 ? info.sessionId : j.sessionId);
     // A signed-in member joined as themselves (member identity): the room may use their token; a signed-in
     // visitor admitted as a named guest, or a plain visitor, stays in guest mode (no authenticated calls).
@@ -669,6 +672,9 @@ class _SessionCardState extends State<_SessionCard> {
           ),
           if (info.isMeeting)
             AppBadgePill(t('اجتماع', 'Meeting'), key: const ValueKey('guest_live.meeting'), icon: Icons.groups_rounded, color: c.primary),
+          if (info.recurring)
+            AppBadgePill('guest_live_recurring'.tr,
+                key: const ValueKey('guest_live.recurring'), icon: Icons.event_repeat_rounded, color: c.primary),
         ]),
         const SizedBox(height: AppSpace.xs),
         Text(title, style: appText(18, w: FontWeight.w800, c: c.textDark, h: 1.2)),
@@ -706,7 +712,10 @@ class _SessionCardState extends State<_SessionCard> {
           AppBanner(
             key: const ValueKey('guest_live.waiting_banner'),
             icon: Icons.hourglass_top_rounded,
-            text: liveTr('guest_live_waiting_msg', kind),
+            // a repeating meeting between two dates: when the next one is, and that this same link opens it
+            text: info.recurring && info.startsAt != null
+                ? 'guest_live_recurring_next'.tr.replaceAll('{when}', AppTime.dateTime(info.startsAt!))
+                : liveTr('guest_live_waiting_msg', kind),
             color: c.warning,
             action: const Padding(
               padding: EdgeInsets.all(8),

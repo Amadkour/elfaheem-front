@@ -5929,3 +5929,31 @@ The super admin's hub has a fifth group, `learning` ("Learning content" / "مح�
 ## D-1676 — Fill-in-the-blank options are compared as written · 2026-11-22 · accepted
 
 Found in the real-app walk: the seeded "Fill in the right ending" offers العلمُ / العلمَ / العلمِ, and the engine dropped options that matched after the Arabic normalization, so the student saw one option and any ending counted right. `FillBlankEngine.itemsOf` now drops only exact repeats, a picked option is right only when it is the answer as written (the server already requires `answer in options` exactly), and the editor's "the answer is not one of the options" uses the same exact check. A TYPED answer is still compared after the normalization (no tashkeel, any alef).
+
+## D-1720 — A repeating meeting has ONE guest link · 2026-11-22 · accepted
+
+Owner report: guests of a repeating online meeting must use the same URL for every repeat. They could not: each date of a series is its own meeting row with its own share link (`live_room_settings.link_token`), and a date had no row at all until someone opened it, so there was nothing to share ahead of time. The series now owns a link (`cal_series_links`, back migration 0121): `<site>/live/<token>` never changes, and the public guest routes resolve it when it is opened to the date that is on now. The door opens 15 minutes before a date starts and stays open until it ends (or while its room is still running, up to 2 hours past the end); between dates the guest page shows the NEXT date and waits instead of an error; a cancelled date, or one the host closed, is skipped; nothing left answers `live_ended`. The date's meeting row is materialised once on the first open (the existing unique `series_id + occurrence_date`). App: `lib/features/calendar/recurrence/series_guest_link.dart` (`SeriesLinkApi` points the share sheet's `LiveRoomApi` at the series routes, so `ShareLinkSheet` is reused as is: speak / listen, cap, PIN, QR, revoke). Tests: back `tests/org_v2/e2e_series_guest_link.py`, app `test/ui/course_meetings_test.dart`.
+
+## D-1721 — A link made inside a date's room is the series' link · 2026-11-22 · accepted
+
+The host also shares from inside the room (the lobby's share sheet, the quick guest link). For a meeting that is one date of a series those calls (`/api/v1/live/meeting/{id}/link`) now read, create, change and revoke the SERIES' link, so no path hands out a URL that dies at the next repeat. A date that already had a link of its own (made before this change) keeps it. `LiveLink.seriesId` (`series_id`) makes the share sheet say "The same link works for every date of this repeating meeting". Known limit: after a host handover the acting host can change the series' link from the room, as they can a single meeting's.
+
+## D-1722 — The link survives an edit "from a date on" · 2026-11-22 · accepted
+
+Editing a series from a date ends it and starts a new one (`previous_id`, D-1555). The link row moves to the new series, and the resolver reads the whole chain, so the dates of the old half still open through the same URL until the cut. The owner's link routes accept the id of any half (a screen still holding the old id keeps working).
+
+## D-1723 — Meet now on a course's Sessions tab · 2026-11-22 · accepted
+
+The teacher's Sessions tab had no way to start an online meeting at once: "Meet now" lived only on the schedule and made a private meeting. `POST /me/calendar/meetings/quick` takes `course_id`: the course's teacher only (403 `course_forbidden`), the active students are invited exactly like a meeting created with `audience.course_ids` and told at once, the title is the course's name, and nothing records until the teacher presses Record (D-1503). `startQuickMeeting(courseId:)` then opens the pre-join page as every entry does (D-106).
+
+## D-1724 — A course's repeating meeting opens as an online one · 2026-11-22 · accepted
+
+The meeting form opened from a course started on "In person", so the teacher who wanted a repeating ONLINE meeting had to notice and flip the mode (and an in-person series has no room, no guest link). With `courseId` the form now starts online; In person is still one tap away.
+
+## D-1725 — "Online meetings" block on the teacher's Sessions tab · 2026-11-22 · accepted
+
+The only entry was one small "Repeating meeting" link above the timeline (D-1575), easy to miss. It is now a titled card, `CourseMeetingActions` (course_sessions.dart, plain values): Meet now (filled, the one that matters now) · Repeating meeting. Each button hides with its own kill switch (`live.quick_meeting`, `calendar.recurring`); both off draw nothing. No new kill-switch key: the existing ones already say what a super admin wants to turn off.
+
+## D-1726 — Copy guest link on the series card and the date sheet · 2026-11-22 · accepted
+
+The owner of an ONLINE series sees "Copy guest link" (one tap; the link is made on the first tap, guests may speak) and "Link options" (the share sheet) on the series card of the Sessions tab, and "Copy guest link" on a date's sheet. `GET /me/calendar/series?course_id=` and the series detail carry `guest_link` for the owner only. Hidden by `live.share_link`. A student never sees the row. The guest page (`GuestLivePage`) marks a repeating meeting and, between dates, says when the next one is (`AppTime`); it takes the room from the JOIN answer's `meeting_id`, because a page left open since an earlier date still holds that date's id. Still public calls only (`auth: false`).

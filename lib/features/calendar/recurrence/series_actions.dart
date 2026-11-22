@@ -20,6 +20,8 @@ import 'package:flutter_education_app/features/calendar/calendar_api.dart';
 import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show openMeetingRoom;
 import 'package:flutter_education_app/features/calendar/calendar_models.dart';
 import 'package:flutter_education_app/features/calendar/recurrence/recurrence_rule.dart';
+import 'package:flutter_education_app/features/calendar/recurrence/series_guest_link.dart';
+import 'package:flutter_education_app/features/live/live_room.dart' show kLiveShareLinkFeatureKey;
 
 /// Which dates a change of one occurrence reaches.
 enum SeriesScope { one, following }
@@ -299,6 +301,13 @@ class _SeriesOccurrenceSheetState extends State<SeriesOccurrenceSheet> {
                 label: 'cal_series_cancel'.tr,
                 color: c.danger,
                 onTap: _busy ? null : _cancel),
+            // the series' ONE guest link (D-1720): the same URL for every date
+            if (e.mode == 'online' && !AppConfig.disableList.contains(kLiveShareLinkFeatureKey))
+              AppPill(
+                  key: const ValueKey('series_occurrence.copy_link'),
+                  icon: Icons.link_rounded,
+                  label: 'series_link_copy'.tr,
+                  onTap: _busy ? null : () => copySeriesGuestLink(e.seriesId!)),
           ]),
         ],
       ]),

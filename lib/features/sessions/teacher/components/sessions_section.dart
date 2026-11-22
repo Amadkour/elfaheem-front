@@ -21,10 +21,11 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/config/app_config.dart' show AppConfig, Trans;
 import 'package:flutter_education_app/features/calendar/calendar_api.dart';
-import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show calNextSensibleSlot, showMeetingForm;
+import 'package:flutter_education_app/features/calendar/calendar_meeting.dart'
+    show calNextSensibleSlot, showMeetingForm, startQuickMeeting;
+import 'package:flutter_education_app/features/payments/points/points_api.dart' show kQuickMeetingFeatureKey;
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart' show TeacherCourse;
 import 'package:flutter_education_app/features/calendar/recurrence/recurrence_rule.dart' show kRecurringFeatureKey;
-import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 /// The meeting form with [courseId] preset and a weekly repeat on, from the next full hour. True when one was made.
 /// [title]: the course's name, the series' first title (D-1661).
@@ -48,10 +49,22 @@ class _TeacherSessionsBodyState extends State<TeacherSessionsBody> {
   /// Bumped after a repeating meeting is made, so the series block reads the course's series again.
   int _seriesReload = 0;
 
+  /// "Meet now" is creating its meeting.
+  bool _starting = false;
+
   Future<void> _repeat(TeacherCourse course) async {
     final ar = AppConfig.lang == 'ar';
     final name = (ar ? course.titleAr : course.titleEn) ?? course.titleEn ?? course.titleAr;
     if (await openCourseRepeatingMeeting(context, course.id, title: name) && mounted) setState(() => _seriesReload++);
+  }
+
+  /// An online meeting with the course's students, now (D-1723): the server invites and tells them, then the
+  /// pre-join page opens (the teacher presses Join there, D-106). Recording stays off until the teacher records.
+  Future<void> _meetNow(TeacherCourse course) async {
+    if (_starting) return;
+    setState(() => _starting = true);
+    await startQuickMeeting(context, courseId: course.id);
+    if (mounted) setState(() => _starting = false);
   }
 
   @override
@@ -69,14 +82,17 @@ class _TeacherSessionsBodyState extends State<TeacherSessionsBody> {
           count: provider.sessionCount,
           // New session is the page header's (D-943); the empty state below keeps its own first-session button
         ),
-        // the course's repeating meeting (D-1575): this body is the teacher's course page only
-        ParentComponent(
-          featureKey: kRecurringFeatureKey,
-          child: Padding(
+        // the course's online meetings (D-1725): Meet now · Repeating meeting, each behind its own kill switch
+        // (a hidden one leaves no gap). This body is the teacher's course page only.
+        if (!AppConfig.disableList.contains(kQuickMeetingFeatureKey) || !AppConfig.disableList.contains(kRecurringFeatureKey))
+          Padding(
             padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, AppSpace.sm),
-            child: CourseRepeatingMeetingEntry(onTap: () => _repeat(provider.course)),
+            child: CourseMeetingActions(
+              starting: _starting,
+              onMeetNow: AppConfig.disableList.contains(kQuickMeetingFeatureKey) ? null : () => _meetNow(provider.course),
+              onRepeating: AppConfig.disableList.contains(kRecurringFeatureKey) ? null : () => _repeat(provider.course),
+            ),
           ),
-        ),
         // its series with their coming dates (D-1660): meetings, not lessons, so above the timeline and shown even
         // while the course has no lesson yet
         CourseSeriesSection(
