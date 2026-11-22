@@ -1206,6 +1206,14 @@ class ShareLinkBody extends StatelessWidget {
               style: AppType.row(context),
             ),
           ),
+          if (l.seriesId != null) ...[
+            const SizedBox(height: AppSpace.sm),
+            Row(key: const ValueKey('share_link.series'), crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(Icons.event_repeat_rounded, size: AppIconSize.sm, color: bc.ink),
+              const SizedBox(width: AppSpace.xxs),
+              Flexible(child: Text('series_link_same'.tr, style: AppType.label(context).copyWith(color: bc.ink))),
+            ]),
+          ],
           if (l.hasPin) ...[
             const SizedBox(height: AppSpace.sm),
             Row(children: [

@@ -32,7 +32,7 @@ import 'package:flutter_education_app/core/plural.dart' show arabicPluralForm;
 import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppSpace, AppRadius, AppType, AppIconSize, AppBorder, AppShadow, AppTouch, AppMotion, AppBlockColors, AppBlockTone,
+    show AppCard, AppSpace, AppRadius, AppType, AppIconSize, AppBorder, AppShadow, AppTouch, AppMotion, AppBlockColors, AppBlockTone,
         appInk, appInkOn, appInkOnFill, appTintOn;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppPressScale, appMotionOff;
 import 'package:flutter_education_app/utils/helpers.dart';
@@ -1221,24 +1221,60 @@ class CourseSessionAction extends StatelessWidget {
   }
 }
 
-/// The teacher's "Repeating meeting" entry above the timeline (D-1575): opens the meeting form with the course
-/// preset and a weekly repeat on. The host shows it to the course's teacher only and wraps it in the
-/// `calendar.recurring` kill switch.
-class CourseRepeatingMeetingEntry extends StatelessWidget {
-  const CourseRepeatingMeetingEntry({super.key, required this.onTap});
+/// The teacher's online meetings above the timeline (D-1725, was the lone "Repeating meeting" link of D-1575): a
+/// titled block with the two ways to meet the course's students — **Meet now** (a live meeting that starts at once,
+/// the students invited) and **Repeating meeting** (the meeting form with the course preset, online, a weekly repeat
+/// on). A null callback hides its button (its kill switch: `live.quick_meeting` / `calendar.recurring`); both null
+/// draw nothing. The host shows it to the course's teacher only.
+class CourseMeetingActions extends StatelessWidget {
+  const CourseMeetingActions({super.key, required this.onMeetNow, required this.onRepeating, this.starting = false});
 
-  final VoidCallback? onTap;
+  final VoidCallback? onMeetNow;
+  final VoidCallback? onRepeating;
+
+  /// "Meet now" is creating its meeting.
+  final bool starting;
 
   @override
-  Widget build(BuildContext context) => Align(
-    alignment: AlignmentDirectional.centerStart,
-    child: CourseSessionAction(
-      key: const ValueKey('course_sessions.repeating_meeting'),
-      label: _t('اجتماع متكرر', 'Repeating meeting'),
-      icon: Icons.event_repeat_rounded,
-      onTap: onTap,
-    ),
-  );
+  Widget build(BuildContext context) {
+    if (onMeetNow == null && onRepeating == null) return const SizedBox.shrink();
+    final c = context.colors;
+    return AppCard(
+      key: const ValueKey('course_sessions.meetings'),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.video_call_rounded, size: AppIconSize.lg, color: c.primary),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text('course_meet_title'.tr, style: AppType.row(context).copyWith(color: c.textDark)),
+              const SizedBox(height: AppSpace.xxs),
+              Text('course_meet_hint'.tr, style: AppType.meta(context).copyWith(color: c.textMedium)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+          if (onMeetNow != null)
+            CourseSessionAction(
+              key: const ValueKey('course_sessions.meet_now'),
+              label: 'course_meet_now'.tr,
+              icon: Icons.videocam_rounded,
+              filled: true,
+              loading: starting,
+              onTap: onMeetNow,
+            ),
+          if (onRepeating != null)
+            CourseSessionAction(
+              key: const ValueKey('course_sessions.repeating_meeting'),
+              label: 'course_meet_repeating'.tr,
+              icon: Icons.event_repeat_rounded,
+              onTap: onRepeating,
+            ),
+        ]),
+      ]),
+    );
+  }
 }
 
 /// The expand chevron at a row's end (student) — turns while the materials are open.

@@ -1,7 +1,8 @@
 // lib/features/calendar/calendar_api.dart — calls of the smart calendar (../back/routers/calendar_router.py).
 //
 //   GET    /api/v1/me/calendar[?detail=true] · /depts/{id} · /people          POST /busy
-//   POST   /meetings/quick ("Meet now": online, private, starts now — live-rooms-spec §7)
+//   POST   /meetings/quick ("Meet now": online, private, starts now — live-rooms-spec §7; with `course_id` the
+//          course's meeting: its students are invited, D-1723)
 //   POST   /meetings · GET|PATCH|DELETE /meetings/{id} · POST /meetings/{id}/respond|accept-proposal|join
 //   POST   /api/v1/org/orgs/{o}/complaints/{c}/meeting          (a complaint / request → a meeting with its sender)
 //   POST   /series · GET|PATCH|DELETE /series/{id} · PATCH|DELETE /series/{id}/occurrences/{date}
@@ -28,7 +29,8 @@ abstract class CalendarApi {
   Future<dynamic> create(Map<String, dynamic> body);
 
   /// "Meet now": no title (the server names it after its start), [minutes] 15..240 (server default 60).
-  Future<dynamic> quick({int? orgId, int? minutes});
+  /// [courseId]: the course's meeting — its teacher only, its students invited, named after the course (D-1723).
+  Future<dynamic> quick({int? orgId, int? minutes, int? courseId});
   Future<dynamic> update(int id, Map<String, dynamic> body);
   Future<dynamic> cancel(int id);
   Future<dynamic> respond(int id, Map<String, dynamic> body);
@@ -78,8 +80,9 @@ class RemoteCalendarApi implements CalendarApi {
   Future<dynamic> create(Map<String, dynamic> body) => _api.post('$_base/meetings', body: body).timeout(calTimeout);
 
   @override
-  Future<dynamic> quick({int? orgId, int? minutes}) =>
-      _api.post('$_base/meetings/quick', body: {'org_id': ?orgId, 'minutes': ?minutes}).timeout(calTimeout);
+  Future<dynamic> quick({int? orgId, int? minutes, int? courseId}) => _api
+      .post('$_base/meetings/quick', body: {'org_id': ?orgId, 'minutes': ?minutes, 'course_id': ?courseId})
+      .timeout(calTimeout);
 
   @override
   Future<dynamic> update(int id, Map<String, dynamic> body) =>

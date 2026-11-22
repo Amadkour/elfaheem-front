@@ -2,6 +2,7 @@
 // (D-1660, QA S17). A series is a meeting, not a lesson, so it gets its own block above the lessons timeline instead
 // of being mixed into the course's sessions: each series' title, its rule in one sentence (describeRule) and its
 // next dates (AppTime; a cancelled one struck through). Data: GET /me/calendar/series?course_id= (back D-1699).
+// The owner of an online series also gets its ONE guest link (D-1720): Copy guest link · Link options.
 //
 //   CourseSeriesItem / CourseSeriesDate   plain values, parsed from the server answer
 //   CourseSeriesBlock                     the block (plain values: pumped by the layout harness)
@@ -20,6 +21,8 @@ import 'package:flutter_education_app/features/calendar/calendar_api.dart';
 import 'package:flutter_education_app/features/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/calendar/recurrence/recurrence_rule.dart';
 import 'package:flutter_education_app/features/calendar/recurrence/series_actions.dart' show showSeriesOccurrenceSheet;
+import 'package:flutter_education_app/features/calendar/recurrence/series_guest_link.dart';
+import 'package:flutter_education_app/features/live/live_room.dart' show LiveLink, kLiveShareLinkFeatureKey;
 
 DateTime? _utc(dynamic v) {
   final s = '${v ?? ''}'.trim();
@@ -47,7 +50,14 @@ class CourseSeriesItem {
     this.location,
     this.isOwner = false,
     this.upcoming = const [],
+    this.guestLink,
   });
+
+  /// The owner's guest link of the series (`guest_link`), null while none was made.
+  final LiveLink? guestLink;
+
+  /// The owner of an online series may hand out its guest link.
+  bool get canShareLink => isOwner && mode == 'online';
 
   final int id;
   final String title;
@@ -84,6 +94,7 @@ class CourseSeriesItem {
       location: raw['location']?.toString(),
       isOwner: raw['is_owner'] == true,
       upcoming: dates,
+      guestLink: raw['guest_link'] is Map ? LiveLink.fromJson(Map<String, dynamic>.from(raw['guest_link'] as Map)) : null,
     );
   }
 
@@ -112,10 +123,15 @@ class CourseSeriesItem {
 
 /// The course's repeating meetings: one card each with the rule sentence and the next [dates] dates.
 class CourseSeriesBlock extends StatelessWidget {
-  const CourseSeriesBlock({super.key, required this.items, this.dates = 3, this.onDate});
+  const CourseSeriesBlock({super.key, required this.items, this.dates = 3, this.onDate, this.onCopyLink, this.onLinkOptions});
 
   final List<CourseSeriesItem> items;
   final int dates;
+
+  /// The guest link of an online series its owner looks at (D-1720): one tap copies it, the other opens its
+  /// options. Null: the row is not drawn.
+  final void Function(CourseSeriesItem item)? onCopyLink;
+  final void Function(CourseSeriesItem item)? onLinkOptions;
 
   /// Tap on a coming date (null: the dates are read only).
   final void Function(CourseSeriesItem item, CourseSeriesDate date)? onDate;
@@ -131,7 +147,7 @@ class CourseSeriesBlock extends StatelessWidget {
         Text(t('اجتماعات متكررة', 'Repeating meetings'), style: AppType.overline(context).copyWith(color: c.textMedium)),
         const SizedBox(height: AppSpace.xs),
         for (final s in items) ...[
-          _SeriesCard(item: s, dates: dates, onDate: onDate),
+          _SeriesCard(item: s, dates: dates, onDate: onDate, onCopyLink: onCopyLink, onLinkOptions: onLinkOptions),
           const SizedBox(height: AppSpace.sm),
         ],
       ],
@@ -140,10 +156,12 @@ class CourseSeriesBlock extends StatelessWidget {
 }
 
 class _SeriesCard extends StatelessWidget {
-  const _SeriesCard({required this.item, required this.dates, this.onDate});
+  const _SeriesCard({required this.item, required this.dates, this.onDate, this.onCopyLink, this.onLinkOptions});
 
   final CourseSeriesItem item;
   final int dates;
+  final void Function(CourseSeriesItem item)? onCopyLink;
+  final void Function(CourseSeriesItem item)? onLinkOptions;
   final void Function(CourseSeriesItem item, CourseSeriesDate date)? onDate;
 
   @override
@@ -173,6 +191,25 @@ class _SeriesCard extends StatelessWidget {
           Text(t('لا مواعيد قادمة', 'No coming dates'), style: AppType.meta(context).copyWith(color: c.textMedium))
         else
           for (final d in shown) _DateRow(item: s, date: d, onTap: onDate == null ? null : () => onDate!(s, d)),
+        if (s.canShareLink && (onCopyLink != null || onLinkOptions != null)) ...[
+          const SizedBox(height: AppSpace.xs),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+            if (onCopyLink != null)
+              AppPill(
+                key: ValueKey('course_series.${s.id}.copy_link'),
+                icon: Icons.link_rounded,
+                label: 'series_link_copy'.tr,
+                onTap: () => onCopyLink!(s),
+              ),
+            if (onLinkOptions != null)
+              AppPill(
+                key: ValueKey('course_series.${s.id}.link_options'),
+                icon: Icons.tune_rounded,
+                label: 'series_link_options'.tr,
+                onTap: () => onLinkOptions!(s),
+              ),
+          ]),
+        ],
       ]),
     );
   }
@@ -267,9 +304,29 @@ class _CourseSeriesSectionState extends State<CourseSeriesSection> {
     if (changed && mounted) unawaited(_load());
   }
 
+  /// One tap: the series' guest link to the clipboard (made on the first tap), then the card knows it.
+  Future<void> _copyLink(CourseSeriesItem s) async {
+    final l = await copySeriesGuestLink(s.id, known: s.guestLink);
+    if (l != null && s.guestLink == null && mounted) unawaited(_load());
+  }
+
+  Future<void> _linkOptions(CourseSeriesItem s) async {
+    await showSeriesGuestLinkSheet(context, seriesId: s.id, title: s.title);
+    if (mounted) unawaited(_load()); // made, changed or revoked there
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_items.isEmpty || AppConfig.disableList.contains(kRecurringFeatureKey)) return const SizedBox.shrink();
-    return Padding(padding: widget.padding, child: CourseSeriesBlock(items: _items, onDate: _open));
+    final links = !AppConfig.disableList.contains(kLiveShareLinkFeatureKey);
+    return Padding(
+      padding: widget.padding,
+      child: CourseSeriesBlock(
+        items: _items,
+        onDate: _open,
+        onCopyLink: links ? _copyLink : null,
+        onLinkOptions: links ? _linkOptions : null,
+      ),
+    );
   }
 }

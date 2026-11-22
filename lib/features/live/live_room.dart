@@ -125,7 +125,11 @@ class LiveLink {
     this.hasPin = false,
     this.createdAt,
     this.direct = false,
+    this.seriesId,
   });
+
+  /// The link of a repeating meeting (`series_id`, D-1720): the same URL for every date.
+  final int? seriesId;
 
   final String url;
   final String token;
@@ -145,6 +149,7 @@ class LiveLink {
         hasPin: j['has_pin'] == true,
         createdAt: DateTime.tryParse('${j['created_at'] ?? ''}'),
         direct: j['direct'] == true,
+        seriesId: (j['series_id'] as num?)?.toInt(),
       );
 }
 

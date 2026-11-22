@@ -96,7 +96,7 @@ class FakeCalendarApi implements CalendarApi {
   @override
   Future create(Map<String, dynamic> body) async => meetingDetail(1);
   @override
-  Future quick({int? orgId, int? minutes}) async => meetingDetail(2);
+  Future quick({int? orgId, int? minutes, int? courseId}) async => meetingDetail(2);
   @override
   Future update(int id, Map<String, dynamic> body) async => meetingDetail(id);
   @override
