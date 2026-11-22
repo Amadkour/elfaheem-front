@@ -23,6 +23,7 @@ scripts/build_release.sh apk|appbundle|ipa|web   # release builds (bash): obfusc
 dart run tool/gen_help_index.dart ../back/data/help_seed.json   # regenerate assets/help/help_index.json (test/ui/help_index_test.dart fails when it drifts)
 dart run flutter_launcher_icons      # regenerate app icons
 dart run flutter_native_splash:create  # regenerate splash screens (android/ios drawables + assets/images/splash*.png)
+py -3.12 tool/gen_game_sounds.py      # regenerate the game sounds: assets/sounds/games/*.mp3, MP3 only (needs numpy + soundfile; a throwaway venv if missing, D-1741)
 ```
 
 App versions: `codemagic.yaml` holds every build workflow (D-144). `tools/runner/` runs the SAME workflows on the owner's computer for free (D-146, the default "Build on: My computer"), so keep website workflows free of Codemagic-only tools; store uploads stay on Codemagic. `scripts/release/` is the direct-download publisher (D-137).

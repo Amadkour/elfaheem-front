@@ -168,7 +168,8 @@ class _FillBlankEngineState extends State<FillBlankEngine> {
         blankKey: _blankKey,
         caption: prompt.isEmpty ? t('أكمل الفراغ', 'Fill in the blank') : prompt,
         text: item.text,
-        filled: given == null || _flying ? null : item.answer,
+        // the blank holds what was given, in its colour; the right answer is the green option and the explanation
+        filled: given == null || _flying ? null : given,
         state: given == null || _flying ? GameTileState.idle : (right ? GameTileState.correct : GameTileState.wrong),
       ),
       const SizedBox(height: AppSpace.sm),

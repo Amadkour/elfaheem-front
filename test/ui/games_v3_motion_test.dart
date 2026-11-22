@@ -398,7 +398,7 @@ void main() {
       await _tapKey(tester, 'learn.option.$k', ms: 0);
       await settledNow(tester);
       expect(tester.widget<FillBlankSentence>(find.byType(FillBlankSentence)).state, GameTileState.wrong);
-      expect(tester.widget<FillBlankSentence>(find.byType(FillBlankSentence)).filled, 'blue');
+      expect(tester.widget<FillBlankSentence>(find.byType(FillBlankSentence)).filled, 'green');
     });
 
     testWidgets('word_puzzle: no flight, the letter is in its slot at once', (tester) async {

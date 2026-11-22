@@ -455,7 +455,7 @@ class _MatchEngineState extends State<MatchEngine> with TickerProviderStateMixin
       RepaintBoundary(
         child: LayoutBuilder(builder: (context, box) {
           // the gutter the connectors run in: wider when there is room
-          final gutter = box.maxWidth < 480 ? AppSpace.xl : AppSpace.xxl;
+          final gutter = box.maxWidth < 340 ? AppSpace.xl : AppSpace.xxl;
           return Stack(key: _board, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(

@@ -273,10 +273,19 @@ class _MemoryCardTileState extends State<MemoryCardTile> with SingleTickerProvid
         onTap: w.onTap,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: AppTouch.primary + AppSpace.md),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpace.xs),
-            child: Center(child: face),
-          ),
+          child: Stack(fit: StackFit.passthrough, children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpace.xs),
+              child: Center(child: face),
+            ),
+            // never colour alone: a found pair carries a check, two that do not belong a cross
+            if (up && (w.matched || w.wrong))
+              PositionedDirectional(
+                top: AppSpace.xxs,
+                end: AppSpace.xxs,
+                child: Icon(w.matched ? Icons.check_circle_rounded : Icons.cancel_rounded, size: AppIconSize.sm, color: tone),
+              ),
+          ]),
         ),
       ),
     );

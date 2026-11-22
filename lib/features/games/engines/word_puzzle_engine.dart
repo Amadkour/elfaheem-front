@@ -362,7 +362,12 @@ class WordPuzzleAnswer extends StatelessWidget {
           border: Border.all(color: checked ? tone : c.divider, width: checked ? AppBorder.strong : AppBorder.hairline),
         ),
         child: empty
-            ? Text(placeholder, textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium))
+            // a hidden letter in the word's style keeps the box as tall as it is once letters come, so nothing under
+            // it moves on the first tap (a fast player's next tap stays on its tile)
+            ? Stack(alignment: Alignment.center, children: [
+                Visibility.maintain(visible: false, child: Text('ا', maxLines: 1, style: AppType.display(context))),
+                Text(placeholder, textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
+              ])
             : FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(

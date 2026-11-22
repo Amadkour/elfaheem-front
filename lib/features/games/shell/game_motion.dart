@@ -520,6 +520,8 @@ class GameComboChip extends StatelessWidget {
             Icon(Icons.local_fire_department_rounded, size: AppIconSize.sm, color: appInkOn(context, gold, tint)),
             const SizedBox(width: AppSpace.xxs),
             Text('×$streak',
+                // "×3" reads the same way in Arabic
+                textDirection: TextDirection.ltr,
                 style: AppType.label(context).copyWith(
                     color: appInkOn(context, gold, tint),
                     fontFeatures: const [FontFeature.liningFigures(), FontFeature.tabularFigures()])),
