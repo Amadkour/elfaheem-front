@@ -129,14 +129,16 @@ class StoreApi {
       '/api/v1/store/items/$id',
       queryParams: {if (country != null && country.isNotEmpty) 'country': country})));
 
-  Future<StoreQuote> quote(List<int> itemIds) async =>
-      StoreQuote.fromJson(await _api.post('/api/v1/store/quote', body: {'item_ids': itemIds}));
+  /// [couponCode] (Games v3): the sums with that coupon off the net subtotal.
+  Future<StoreQuote> quote(List<int> itemIds, {String? couponCode}) async =>
+      StoreQuote.fromJson(await _api.post('/api/v1/store/quote', body: {'item_ids': itemIds, 'coupon_code': ?couponCode}));
 
-  /// [method] `card | points | free`; [idempotencyKey] one per checkout attempt.
-  Future<StoreOrderAnswer> order(List<int> itemIds, {required String method, required String idempotencyKey, String? provider}) async =>
+  /// [method] `card | points | free`; [idempotencyKey] one per checkout attempt; [couponCode] money methods only.
+  Future<StoreOrderAnswer> order(List<int> itemIds,
+          {required String method, required String idempotencyKey, String? provider, String? couponCode}) async =>
       StoreOrderAnswer.fromJson(await _api.post(
         '/api/v1/store/orders',
-        body: {'item_ids': itemIds, 'method': method, 'provider': ?provider},
+        body: {'item_ids': itemIds, 'method': method, 'provider': ?provider, 'coupon_code': ?couponCode},
         headers: {'Idempotency-Key': idempotencyKey},
       ));
 

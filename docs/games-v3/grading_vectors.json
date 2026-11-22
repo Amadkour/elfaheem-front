@@ -1,0 +1,2273 @@
+{
+ "version": 1,
+ "about": "Games v3 grading vectors (docs/games-v3/CONTRACT.md sections 3-5). The Dart engines and the server's games_config.grade must both give these numbers. valid=false: the trace is refused (the play is saved unranked, reason bad_trace). duration_ms is the last entry's ms.",
+ "par_step_s": {
+  "quiz": 12,
+  "match": 6,
+  "order": 6,
+  "memory": 8,
+  "fill_blank": 15,
+  "word_puzzle": 20
+ },
+ "difficulty_percent": {
+  "easy": 100,
+  "medium": 125,
+  "hard": 150
+ },
+ "no_speed_bonus_categories": [
+  "quran",
+  "tajweed"
+ ],
+ "normalize": [
+  {
+   "in": "العِلْمُ",
+   "out": "العلم"
+  },
+  {
+   "in": "أَحْمَد",
+   "out": "احمد"
+  },
+  {
+   "in": "إسلام",
+   "out": "اسلام"
+  },
+  {
+   "in": "آمن",
+   "out": "امن"
+  },
+  {
+   "in": "ٱلرَّحْمَٰنِ",
+   "out": "الرحمن"
+  },
+  {
+   "in": "مـــحمد",
+   "out": "محمد"
+  },
+  {
+   "in": "  Hello   World ",
+   "out": "hello world"
+  },
+  {
+   "in": "المدرسة",
+   "out": "المدرسة"
+  },
+  {
+   "in": "المدرسه",
+   "out": "المدرسه"
+  },
+  {
+   "in": "a b\tc",
+   "out": "a b c"
+  },
+  {
+   "in": "ـ",
+   "out": ""
+  },
+  {
+   "in": "",
+   "out": ""
+  }
+ ],
+ "letters": [
+  {
+   "word": "كتاب",
+   "letters": [
+    "ك",
+    "ت",
+    "ا",
+    "ب"
+   ]
+  },
+  {
+   "word": "عِلْم",
+   "letters": [
+    "عِ",
+    "لْ",
+    "م"
+   ]
+  },
+  {
+   "word": "مُحَمَّد",
+   "letters": [
+    "مُ",
+    "حَ",
+    "مَّ",
+    "د"
+   ]
+  },
+  {
+   "word": "abc",
+   "letters": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "word": "ٱلرَّحْمَٰنِ",
+   "letters": [
+    "ٱ",
+    "ل",
+    "رَّ",
+    "حْ",
+    "مَٰ",
+    "نِ"
+   ]
+  }
+ ],
+ "vectors": [
+  {
+   "name": "quiz_all_right",
+   "engine": "quiz",
+   "config": {
+    "shuffle": true,
+    "questions": [
+     {
+      "prompt_ar": "كم عدد أركان الإسلام؟",
+      "prompt_en": "How many pillars of Islam?",
+      "options": [
+       "3",
+       "4",
+       "5",
+       "6"
+      ],
+      "answer": 2
+     },
+     {
+      "prompt_ar": "ما أول سورة في المصحف؟",
+      "prompt_en": "",
+      "options": [
+       "البقرة",
+       "الفاتحة"
+      ],
+      "answer": 1
+     },
+     {
+      "prompt_ar": "",
+      "prompt_en": "2 + 2 = ?",
+      "options": [
+       "3",
+       "4",
+       "5"
+      ],
+      "answer": 1
+     },
+     {
+      "prompt_ar": "عاصمة مصر",
+      "prompt_en": "Capital of Egypt",
+      "options": [
+       "القاهرة",
+       "الرياض",
+       "عمّان"
+      ],
+      "answer": 0
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 2,
+     "ms": 4000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 9000
+    },
+    {
+     "i": 2,
+     "a": 1,
+     "ms": 15000
+    },
+    {
+     "i": 3,
+     "a": 0,
+     "ms": 20000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 4,
+   "max_score": 4,
+   "expected_stars": 3,
+   "rank": {
+    "difficulty": "medium",
+    "category": "general",
+    "duration_ms": 20000,
+    "expected_rank_points": 145
+   }
+  },
+  {
+   "name": "quiz_shuffled_two_wrong",
+   "engine": "quiz",
+   "config": {
+    "shuffle": true,
+    "questions": [
+     {
+      "prompt_ar": "كم عدد أركان الإسلام؟",
+      "prompt_en": "How many pillars of Islam?",
+      "options": [
+       "3",
+       "4",
+       "5",
+       "6"
+      ],
+      "answer": 2
+     },
+     {
+      "prompt_ar": "ما أول سورة في المصحف؟",
+      "prompt_en": "",
+      "options": [
+       "البقرة",
+       "الفاتحة"
+      ],
+      "answer": 1
+     },
+     {
+      "prompt_ar": "",
+      "prompt_en": "2 + 2 = ?",
+      "options": [
+       "3",
+       "4",
+       "5"
+      ],
+      "answer": 1
+     },
+     {
+      "prompt_ar": "عاصمة مصر",
+      "prompt_en": "Capital of Egypt",
+      "options": [
+       "القاهرة",
+       "الرياض",
+       "عمّان"
+      ],
+      "answer": 0
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 3,
+     "a": 1,
+     "ms": 5000
+    },
+    {
+     "i": 0,
+     "a": 2,
+     "ms": 12000
+    },
+    {
+     "i": 2,
+     "a": 0,
+     "ms": 30000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 41000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 2,
+   "max_score": 4,
+   "expected_stars": 1,
+   "rank": {
+    "difficulty": "hard",
+    "category": "fiqh",
+    "duration_ms": 41000,
+    "expected_rank_points": 84
+   }
+  },
+  {
+   "name": "quiz_one_right_zero_stars",
+   "engine": "quiz",
+   "config": {
+    "shuffle": true,
+    "questions": [
+     {
+      "prompt_ar": "كم عدد أركان الإسلام؟",
+      "prompt_en": "How many pillars of Islam?",
+      "options": [
+       "3",
+       "4",
+       "5",
+       "6"
+      ],
+      "answer": 2
+     },
+     {
+      "prompt_ar": "ما أول سورة في المصحف؟",
+      "prompt_en": "",
+      "options": [
+       "البقرة",
+       "الفاتحة"
+      ],
+      "answer": 1
+     },
+     {
+      "prompt_ar": "",
+      "prompt_en": "2 + 2 = ?",
+      "options": [
+       "3",
+       "4",
+       "5"
+      ],
+      "answer": 1
+     },
+     {
+      "prompt_ar": "عاصمة مصر",
+      "prompt_en": "Capital of Egypt",
+      "options": [
+       "القاهرة",
+       "الرياض",
+       "عمّان"
+      ],
+      "answer": 0
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 3000
+    },
+    {
+     "i": 1,
+     "a": 0,
+     "ms": 6000
+    },
+    {
+     "i": 2,
+     "a": 1,
+     "ms": 9000
+    },
+    {
+     "i": 3,
+     "a": 2,
+     "ms": 12000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 1,
+   "max_score": 4,
+   "expected_stars": 0,
+   "rank": {
+    "difficulty": "hard",
+    "category": "general",
+    "duration_ms": 12000,
+    "expected_rank_points": 0
+   }
+  },
+  {
+   "name": "quiz_quran_no_speed_bonus",
+   "engine": "quiz",
+   "config": {
+    "shuffle": true,
+    "questions": [
+     {
+      "prompt_ar": "كم عدد أركان الإسلام؟",
+      "prompt_en": "How many pillars of Islam?",
+      "options": [
+       "3",
+       "4",
+       "5",
+       "6"
+      ],
+      "answer": 2
+     },
+     {
+      "prompt_ar": "ما أول سورة في المصحف؟",
+      "prompt_en": "",
+      "options": [
+       "البقرة",
+       "الفاتحة"
+      ],
+      "answer": 1
+     },
+     {
+      "prompt_ar": "",
+      "prompt_en": "2 + 2 = ?",
+      "options": [
+       "3",
+       "4",
+       "5"
+      ],
+      "answer": 1
+     },
+     {
+      "prompt_ar": "عاصمة مصر",
+      "prompt_en": "Capital of Egypt",
+      "options": [
+       "القاهرة",
+       "الرياض",
+       "عمّان"
+      ],
+      "answer": 0
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 2,
+     "ms": 2000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 4000
+    },
+    {
+     "i": 2,
+     "a": 1,
+     "ms": 6000
+    },
+    {
+     "i": 3,
+     "a": 0,
+     "ms": 8000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 4,
+   "max_score": 4,
+   "expected_stars": 3,
+   "rank": {
+    "difficulty": "medium",
+    "category": "quran",
+    "duration_ms": 8000,
+    "expected_rank_points": 125
+   }
+  },
+  {
+   "name": "quiz_slow_no_bonus_left",
+   "engine": "quiz",
+   "config": {
+    "shuffle": true,
+    "questions": [
+     {
+      "prompt_ar": "كم عدد أركان الإسلام؟",
+      "prompt_en": "How many pillars of Islam?",
+      "options": [
+       "3",
+       "4",
+       "5",
+       "6"
+      ],
+      "answer": 2
+     },
+     {
+      "prompt_ar": "ما أول سورة في المصحف؟",
+      "prompt_en": "",
+      "options": [
+       "البقرة",
+       "الفاتحة"
+      ],
+      "answer": 1
+     },
+     {
+      "prompt_ar": "",
+      "prompt_en": "2 + 2 = ?",
+      "options": [
+       "3",
+       "4",
+       "5"
+      ],
+      "answer": 1
+     },
+     {
+      "prompt_ar": "عاصمة مصر",
+      "prompt_en": "Capital of Egypt",
+      "options": [
+       "القاهرة",
+       "الرياض",
+       "عمّان"
+      ],
+      "answer": 0
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 2,
+     "ms": 30000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 60000
+    },
+    {
+     "i": 2,
+     "a": 1,
+     "ms": 90000
+    },
+    {
+     "i": 3,
+     "a": 1,
+     "ms": 120000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 3,
+   "max_score": 4,
+   "expected_stars": 2,
+   "rank": {
+    "difficulty": "easy",
+    "category": "general",
+    "duration_ms": 120000,
+    "expected_rank_points": 75
+   }
+  },
+  {
+   "name": "quiz_missing_question_invalid",
+   "engine": "quiz",
+   "config": {
+    "shuffle": true,
+    "questions": [
+     {
+      "prompt_ar": "كم عدد أركان الإسلام؟",
+      "prompt_en": "How many pillars of Islam?",
+      "options": [
+       "3",
+       "4",
+       "5",
+       "6"
+      ],
+      "answer": 2
+     },
+     {
+      "prompt_ar": "ما أول سورة في المصحف؟",
+      "prompt_en": "",
+      "options": [
+       "البقرة",
+       "الفاتحة"
+      ],
+      "answer": 1
+     },
+     {
+      "prompt_ar": "",
+      "prompt_en": "2 + 2 = ?",
+      "options": [
+       "3",
+       "4",
+       "5"
+      ],
+      "answer": 1
+     },
+     {
+      "prompt_ar": "عاصمة مصر",
+      "prompt_en": "Capital of Egypt",
+      "options": [
+       "القاهرة",
+       "الرياض",
+       "عمّان"
+      ],
+      "answer": 0
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 2,
+     "ms": 4000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 9000
+    },
+    {
+     "i": 2,
+     "a": 1,
+     "ms": 15000
+    }
+   ],
+   "valid": false,
+   "expected_server_score": null,
+   "max_score": 4,
+   "expected_stars": null,
+   "rank": null
+  },
+  {
+   "name": "match_first_try",
+   "engine": "match",
+   "config": {
+    "prompt_ar": "صِل كل كلمة بضدها",
+    "prompt_en": "Match the opposites",
+    "pairs": [
+     {
+      "a": "ليل",
+      "b": "نهار"
+     },
+     {
+      "a": "حار",
+      "b": "بارد"
+     },
+     {
+      "a": "كبير",
+      "b": "صغير"
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 3000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 6000
+    },
+    {
+     "i": 2,
+     "a": 2,
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 3,
+   "max_score": 3,
+   "expected_stars": 3,
+   "rank": {
+    "difficulty": "easy",
+    "category": "nahw",
+    "duration_ms": 9000,
+    "expected_rank_points": 115
+   }
+  },
+  {
+   "name": "match_one_slip",
+   "engine": "match",
+   "config": {
+    "prompt_ar": "صِل كل كلمة بضدها",
+    "prompt_en": "Match the opposites",
+    "pairs": [
+     {
+      "a": "ليل",
+      "b": "نهار"
+     },
+     {
+      "a": "حار",
+      "b": "بارد"
+     },
+     {
+      "a": "كبير",
+      "b": "صغير"
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 1,
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 5000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 8000
+    },
+    {
+     "i": 2,
+     "a": 2,
+     "ms": 11000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 2,
+   "max_score": 3,
+   "expected_stars": 2,
+   "rank": {
+    "difficulty": "medium",
+    "category": "nahw",
+    "duration_ms": 11000,
+    "expected_rank_points": 95
+   }
+  },
+  {
+   "name": "match_same_left_slips_twice",
+   "engine": "match",
+   "config": {
+    "prompt_ar": "صِل كل كلمة بضدها",
+    "prompt_en": "Match the opposites",
+    "pairs": [
+     {
+      "a": "ليل",
+      "b": "نهار"
+     },
+     {
+      "a": "حار",
+      "b": "بارد"
+     },
+     {
+      "a": "كبير",
+      "b": "صغير"
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 1,
+     "a": 0,
+     "ms": 2000
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 4000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 6000
+    },
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 9000
+    },
+    {
+     "i": 2,
+     "a": 2,
+     "ms": 12000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 2,
+   "max_score": 3,
+   "expected_stars": 2,
+   "rank": {
+    "difficulty": "medium",
+    "category": "general",
+    "duration_ms": 12000,
+    "expected_rank_points": 95
+   }
+  },
+  {
+   "name": "match_every_left_slips",
+   "engine": "match",
+   "config": {
+    "prompt_ar": "صِل كل كلمة بضدها",
+    "prompt_en": "Match the opposites",
+    "pairs": [
+     {
+      "a": "ليل",
+      "b": "نهار"
+     },
+     {
+      "a": "حار",
+      "b": "بارد"
+     },
+     {
+      "a": "كبير",
+      "b": "صغير"
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 1,
+     "ms": 2000
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 4000
+    },
+    {
+     "i": 2,
+     "a": 0,
+     "ms": 6000
+    },
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 8000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 10000
+    },
+    {
+     "i": 2,
+     "a": 2,
+     "ms": 12000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 0,
+   "max_score": 3,
+   "expected_stars": 0,
+   "rank": {
+    "difficulty": "hard",
+    "category": "general",
+    "duration_ms": 12000,
+    "expected_rank_points": 0
+   }
+  },
+  {
+   "name": "match_unfinished_invalid",
+   "engine": "match",
+   "config": {
+    "prompt_ar": "صِل كل كلمة بضدها",
+    "prompt_en": "Match the opposites",
+    "pairs": [
+     {
+      "a": "ليل",
+      "b": "نهار"
+     },
+     {
+      "a": "حار",
+      "b": "بارد"
+     },
+     {
+      "a": "كبير",
+      "b": "صغير"
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 3000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 6000
+    }
+   ],
+   "valid": false,
+   "expected_server_score": null,
+   "max_score": 3,
+   "expected_stars": null,
+   "rank": null
+  },
+  {
+   "name": "order_all_right",
+   "engine": "order",
+   "config": {
+    "prompt_ar": "رتّب الصلوات",
+    "prompt_en": "Order the prayers",
+    "items": [
+     "الفجر",
+     "الظهر",
+     "العصر",
+     "المغرب",
+     "العشاء"
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 20000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 20000
+    },
+    {
+     "i": 2,
+     "a": 2,
+     "ms": 20000
+    },
+    {
+     "i": 3,
+     "a": 3,
+     "ms": 20000
+    },
+    {
+     "i": 4,
+     "a": 4,
+     "ms": 20000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 5,
+   "max_score": 5,
+   "expected_stars": 3,
+   "rank": {
+    "difficulty": "easy",
+    "category": "fiqh",
+    "duration_ms": 20000,
+    "expected_rank_points": 113
+   }
+  },
+  {
+   "name": "order_two_swapped",
+   "engine": "order",
+   "config": {
+    "prompt_ar": "رتّب الصلوات",
+    "prompt_en": "Order the prayers",
+    "items": [
+     "الفجر",
+     "الظهر",
+     "العصر",
+     "المغرب",
+     "العشاء"
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 26000
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 26000
+    },
+    {
+     "i": 2,
+     "a": 1,
+     "ms": 26000
+    },
+    {
+     "i": 3,
+     "a": 3,
+     "ms": 26000
+    },
+    {
+     "i": 4,
+     "a": 4,
+     "ms": 26000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 3,
+   "max_score": 5,
+   "expected_stars": 2,
+   "rank": {
+    "difficulty": "medium",
+    "category": "fiqh",
+    "duration_ms": 26000,
+    "expected_rank_points": 84
+   }
+  },
+  {
+   "name": "order_rotated_none_right",
+   "engine": "order",
+   "config": {
+    "prompt_ar": "رتّب الصلوات",
+    "prompt_en": "Order the prayers",
+    "items": [
+     "الفجر",
+     "الظهر",
+     "العصر",
+     "المغرب",
+     "العشاء"
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 1,
+     "ms": 15000
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 15000
+    },
+    {
+     "i": 2,
+     "a": 3,
+     "ms": 15000
+    },
+    {
+     "i": 3,
+     "a": 4,
+     "ms": 15000
+    },
+    {
+     "i": 4,
+     "a": 0,
+     "ms": 15000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 0,
+   "max_score": 5,
+   "expected_stars": 0,
+   "rank": {
+    "difficulty": "hard",
+    "category": "fiqh",
+    "duration_ms": 15000,
+    "expected_rank_points": 0
+   }
+  },
+  {
+   "name": "order_reversed_middle_right",
+   "engine": "order",
+   "config": {
+    "prompt_ar": "رتّب الصلوات",
+    "prompt_en": "Order the prayers",
+    "items": [
+     "الفجر",
+     "الظهر",
+     "العصر",
+     "المغرب",
+     "العشاء"
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 4,
+     "ms": 18000
+    },
+    {
+     "i": 1,
+     "a": 3,
+     "ms": 18000
+    },
+    {
+     "i": 2,
+     "a": 2,
+     "ms": 18000
+    },
+    {
+     "i": 3,
+     "a": 1,
+     "ms": 18000
+    },
+    {
+     "i": 4,
+     "a": 0,
+     "ms": 18000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 1,
+   "max_score": 5,
+   "expected_stars": 0,
+   "rank": {
+    "difficulty": "hard",
+    "category": "general",
+    "duration_ms": 18000,
+    "expected_rank_points": 0
+   }
+  },
+  {
+   "name": "order_repeated_item_invalid",
+   "engine": "order",
+   "config": {
+    "prompt_ar": "رتّب الصلوات",
+    "prompt_en": "Order the prayers",
+    "items": [
+     "الفجر",
+     "الظهر",
+     "العصر",
+     "المغرب",
+     "العشاء"
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 9000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 9000
+    },
+    {
+     "i": 2,
+     "a": 1,
+     "ms": 9000
+    },
+    {
+     "i": 3,
+     "a": 3,
+     "ms": 9000
+    },
+    {
+     "i": 4,
+     "a": 4,
+     "ms": 9000
+    }
+   ],
+   "valid": false,
+   "expected_server_score": null,
+   "max_score": 5,
+   "expected_stars": null,
+   "rank": null
+  },
+  {
+   "name": "memory_no_miss",
+   "engine": "memory",
+   "config": {
+    "prompt_ar": "صِل كل كلمة بضدها",
+    "prompt_en": "Match the opposites",
+    "pairs": [
+     {
+      "a": "ليل",
+      "b": "نهار"
+     },
+     {
+      "a": "حار",
+      "b": "بارد"
+     },
+     {
+      "a": "كبير",
+      "b": "صغير"
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 1,
+     "ms": 4000
+    },
+    {
+     "i": 2,
+     "a": 3,
+     "ms": 8000
+    },
+    {
+     "i": 5,
+     "a": 4,
+     "ms": 12000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 3,
+   "max_score": 3,
+   "expected_stars": 3,
+   "rank": {
+    "difficulty": "medium",
+    "category": "general",
+    "duration_ms": 12000,
+    "expected_rank_points": 144
+   }
+  },
+  {
+   "name": "memory_misses_within_free_looks",
+   "engine": "memory",
+   "config": {
+    "prompt_ar": "صِل كل كلمة بضدها",
+    "prompt_en": "Match the opposites",
+    "pairs": [
+     {
+      "a": "ليل",
+      "b": "نهار"
+     },
+     {
+      "a": "حار",
+      "b": "بارد"
+     },
+     {
+      "a": "كبير",
+      "b": "صغير"
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 2,
+     "ms": 3000
+    },
+    {
+     "i": 1,
+     "a": 4,
+     "ms": 6000
+    },
+    {
+     "i": 3,
+     "a": 5,
+     "ms": 9000
+    },
+    {
+     "i": 0,
+     "a": 1,
+     "ms": 12000
+    },
+    {
+     "i": 2,
+     "a": 3,
+     "ms": 15000
+    },
+    {
+     "i": 4,
+     "a": 5,
+     "ms": 18000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 3,
+   "max_score": 3,
+   "expected_stars": 3,
+   "rank": {
+    "difficulty": "medium",
+    "category": "general",
+    "duration_ms": 18000,
+    "expected_rank_points": 141
+   }
+  },
+  {
+   "name": "memory_four_misses_cost_one",
+   "engine": "memory",
+   "config": {
+    "prompt_ar": "صِل كل كلمة بضدها",
+    "prompt_en": "Match the opposites",
+    "pairs": [
+     {
+      "a": "ليل",
+      "b": "نهار"
+     },
+     {
+      "a": "حار",
+      "b": "بارد"
+     },
+     {
+      "a": "كبير",
+      "b": "صغير"
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 2,
+     "ms": 2000
+    },
+    {
+     "i": 1,
+     "a": 4,
+     "ms": 4000
+    },
+    {
+     "i": 3,
+     "a": 5,
+     "ms": 6000
+    },
+    {
+     "i": 0,
+     "a": 3,
+     "ms": 8000
+    },
+    {
+     "i": 0,
+     "a": 1,
+     "ms": 10000
+    },
+    {
+     "i": 2,
+     "a": 3,
+     "ms": 12000
+    },
+    {
+     "i": 4,
+     "a": 5,
+     "ms": 14000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 2,
+   "max_score": 3,
+   "expected_stars": 2,
+   "rank": {
+    "difficulty": "easy",
+    "category": "general",
+    "duration_ms": 14000,
+    "expected_rank_points": 77
+   }
+  },
+  {
+   "name": "memory_many_misses_zero",
+   "engine": "memory",
+   "config": {
+    "prompt_ar": "ابحث عن الأزواج",
+    "prompt_en": "Find the pairs",
+    "pairs": [
+     {
+      "a": "1 + 1",
+      "b": "2"
+     },
+     {
+      "a": "2 + 2",
+      "b": "4"
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 2,
+     "ms": 2000
+    },
+    {
+     "i": 0,
+     "a": 3,
+     "ms": 4000
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 6000
+    },
+    {
+     "i": 1,
+     "a": 3,
+     "ms": 8000
+    },
+    {
+     "i": 0,
+     "a": 1,
+     "ms": 10000
+    },
+    {
+     "i": 2,
+     "a": 3,
+     "ms": 12000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 0,
+   "max_score": 2,
+   "expected_stars": 0,
+   "rank": {
+    "difficulty": "hard",
+    "category": "general",
+    "duration_ms": 12000,
+    "expected_rank_points": 0
+   }
+  },
+  {
+   "name": "memory_two_a_sides_is_a_miss",
+   "engine": "memory",
+   "config": {
+    "prompt_ar": "ابحث عن الأزواج",
+    "prompt_en": "Find the pairs",
+    "pairs": [
+     {
+      "a": "1 + 1",
+      "b": "2"
+     },
+     {
+      "a": "2 + 2",
+      "b": "4"
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 2,
+     "ms": 2000
+    },
+    {
+     "i": 0,
+     "a": 1,
+     "ms": 4000
+    },
+    {
+     "i": 3,
+     "a": 2,
+     "ms": 6000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 2,
+   "max_score": 2,
+   "expected_stars": 3,
+   "rank": {
+    "difficulty": "easy",
+    "category": "tajweed",
+    "duration_ms": 6000,
+    "expected_rank_points": 100
+   }
+  },
+  {
+   "name": "memory_matched_card_reused_invalid",
+   "engine": "memory",
+   "config": {
+    "prompt_ar": "ابحث عن الأزواج",
+    "prompt_en": "Find the pairs",
+    "pairs": [
+     {
+      "a": "1 + 1",
+      "b": "2"
+     },
+     {
+      "a": "2 + 2",
+      "b": "4"
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": 1,
+     "ms": 2000
+    },
+    {
+     "i": 0,
+     "a": 2,
+     "ms": 4000
+    },
+    {
+     "i": 2,
+     "a": 3,
+     "ms": 6000
+    }
+   ],
+   "valid": false,
+   "expected_server_score": null,
+   "max_score": 2,
+   "expected_stars": null,
+   "rank": null
+  },
+  {
+   "name": "fill_all_right_normalised_typing",
+   "engine": "fill_blank",
+   "config": {
+    "prompt_ar": "أكمل الفراغ",
+    "prompt_en": "Fill in the blank",
+    "items": [
+     {
+      "text": "طلبُ ___ فريضةٌ",
+      "answer": "العلمِ",
+      "options": [
+       "العلمُ",
+       "العلمَ",
+       "العلمِ"
+      ]
+     },
+     {
+      "text": "___ نورٌ",
+      "answer": "العِلْمُ",
+      "options": null
+     },
+     {
+      "text": "قال ___ الحمد لله",
+      "answer": "أحمد",
+      "options": null
+     },
+     {
+      "text": "ذهبت إلى ___",
+      "answer": "المدرسة",
+      "options": null
+     },
+     {
+      "text": "The sky is ___",
+      "answer": "Blue",
+      "options": null
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": "العلمِ",
+     "ms": 6000
+    },
+    {
+     "i": 1,
+     "a": "العلم",
+     "ms": 15000
+    },
+    {
+     "i": 2,
+     "a": "احمد",
+     "ms": 24000
+    },
+    {
+     "i": 3,
+     "a": "المدرسة",
+     "ms": 33000
+    },
+    {
+     "i": 4,
+     "a": "  BLUE ",
+     "ms": 40000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 5,
+   "max_score": 5,
+   "expected_stars": 3,
+   "rank": {
+    "difficulty": "medium",
+    "category": "nahw",
+    "duration_ms": 40000,
+    "expected_rank_points": 143
+   }
+  },
+  {
+   "name": "fill_option_other_tashkeel_is_wrong",
+   "engine": "fill_blank",
+   "config": {
+    "prompt_ar": "أكمل الفراغ",
+    "prompt_en": "Fill in the blank",
+    "items": [
+     {
+      "text": "طلبُ ___ فريضةٌ",
+      "answer": "العلمِ",
+      "options": [
+       "العلمُ",
+       "العلمَ",
+       "العلمِ"
+      ]
+     },
+     {
+      "text": "___ نورٌ",
+      "answer": "العِلْمُ",
+      "options": null
+     },
+     {
+      "text": "قال ___ الحمد لله",
+      "answer": "أحمد",
+      "options": null
+     },
+     {
+      "text": "ذهبت إلى ___",
+      "answer": "المدرسة",
+      "options": null
+     },
+     {
+      "text": "The sky is ___",
+      "answer": "Blue",
+      "options": null
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": "العلمَ",
+     "ms": 6000
+    },
+    {
+     "i": 1,
+     "a": "العِلمُ",
+     "ms": 15000
+    },
+    {
+     "i": 2,
+     "a": "أحمد",
+     "ms": 24000
+    },
+    {
+     "i": 3,
+     "a": "المدرسة",
+     "ms": 33000
+    },
+    {
+     "i": 4,
+     "a": "blue",
+     "ms": 40000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 4,
+   "max_score": 5,
+   "expected_stars": 2,
+   "rank": {
+    "difficulty": "medium",
+    "category": "nahw",
+    "duration_ms": 40000,
+    "expected_rank_points": 115
+   }
+  },
+  {
+   "name": "fill_option_without_tashkeel_is_wrong",
+   "engine": "fill_blank",
+   "config": {
+    "prompt_ar": "أكمل الفراغ",
+    "prompt_en": "Fill in the blank",
+    "items": [
+     {
+      "text": "طلبُ ___ فريضةٌ",
+      "answer": "العلمِ",
+      "options": [
+       "العلمُ",
+       "العلمَ",
+       "العلمِ"
+      ]
+     },
+     {
+      "text": "___ نورٌ",
+      "answer": "العِلْمُ",
+      "options": null
+     },
+     {
+      "text": "قال ___ الحمد لله",
+      "answer": "أحمد",
+      "options": null
+     },
+     {
+      "text": "ذهبت إلى ___",
+      "answer": "المدرسة",
+      "options": null
+     },
+     {
+      "text": "The sky is ___",
+      "answer": "Blue",
+      "options": null
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": "العلم",
+     "ms": 5000
+    },
+    {
+     "i": 1,
+     "a": "علم",
+     "ms": 10000
+    },
+    {
+     "i": 2,
+     "a": "إحمد",
+     "ms": 15000
+    },
+    {
+     "i": 3,
+     "a": "المدرسه",
+     "ms": 20000
+    },
+    {
+     "i": 4,
+     "a": "blu",
+     "ms": 25000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 1,
+   "max_score": 5,
+   "expected_stars": 0,
+   "rank": {
+    "difficulty": "hard",
+    "category": "nahw",
+    "duration_ms": 25000,
+    "expected_rank_points": 0
+   }
+  },
+  {
+   "name": "fill_tatweel_and_spaces",
+   "engine": "fill_blank",
+   "config": {
+    "prompt_ar": "أكمل الفراغ",
+    "prompt_en": "Fill in the blank",
+    "items": [
+     {
+      "text": "طلبُ ___ فريضةٌ",
+      "answer": "العلمِ",
+      "options": [
+       "العلمُ",
+       "العلمَ",
+       "العلمِ"
+      ]
+     },
+     {
+      "text": "___ نورٌ",
+      "answer": "العِلْمُ",
+      "options": null
+     },
+     {
+      "text": "قال ___ الحمد لله",
+      "answer": "أحمد",
+      "options": null
+     },
+     {
+      "text": "ذهبت إلى ___",
+      "answer": "المدرسة",
+      "options": null
+     },
+     {
+      "text": "The sky is ___",
+      "answer": "Blue",
+      "options": null
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": " العلمِ ",
+     "ms": 8000
+    },
+    {
+     "i": 1,
+     "a": "العـــلم",
+     "ms": 16000
+    },
+    {
+     "i": 2,
+     "a": "ٱحمد",
+     "ms": 24000
+    },
+    {
+     "i": 3,
+     "a": "المدرســة",
+     "ms": 32000
+    },
+    {
+     "i": 4,
+     "a": "red",
+     "ms": 40000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 4,
+   "max_score": 5,
+   "expected_stars": 2,
+   "rank": {
+    "difficulty": "easy",
+    "category": "general",
+    "duration_ms": 40000,
+    "expected_rank_points": 92
+   }
+  },
+  {
+   "name": "fill_empty_answer_invalid",
+   "engine": "fill_blank",
+   "config": {
+    "prompt_ar": "أكمل الفراغ",
+    "prompt_en": "Fill in the blank",
+    "items": [
+     {
+      "text": "طلبُ ___ فريضةٌ",
+      "answer": "العلمِ",
+      "options": [
+       "العلمُ",
+       "العلمَ",
+       "العلمِ"
+      ]
+     },
+     {
+      "text": "___ نورٌ",
+      "answer": "العِلْمُ",
+      "options": null
+     },
+     {
+      "text": "قال ___ الحمد لله",
+      "answer": "أحمد",
+      "options": null
+     },
+     {
+      "text": "ذهبت إلى ___",
+      "answer": "المدرسة",
+      "options": null
+     },
+     {
+      "text": "The sky is ___",
+      "answer": "Blue",
+      "options": null
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": "العلمِ",
+     "ms": 6000
+    },
+    {
+     "i": 1,
+     "a": "  ",
+     "ms": 15000
+    },
+    {
+     "i": 2,
+     "a": "أحمد",
+     "ms": 24000
+    },
+    {
+     "i": 3,
+     "a": "المدرسة",
+     "ms": 33000
+    },
+    {
+     "i": 4,
+     "a": "blue",
+     "ms": 40000
+    }
+   ],
+   "valid": false,
+   "expected_server_score": null,
+   "max_score": 5,
+   "expected_stars": null,
+   "rank": null
+  },
+  {
+   "name": "word_all_first_try",
+   "engine": "word_puzzle",
+   "config": {
+    "prompt_ar": "كوّن الكلمة",
+    "prompt_en": "Build the word",
+    "words": [
+     {
+      "word": "كتاب",
+      "hint": "نقرأ فيه"
+     },
+     {
+      "word": "عِلْم",
+      "hint": "ضد الجهل"
+     },
+     {
+      "word": "أنا",
+      "hint": "ضمير المتكلم"
+     },
+     {
+      "word": "باب",
+      "hint": ""
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "ms": 9000
+    },
+    {
+     "i": 1,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 17000
+    },
+    {
+     "i": 2,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 24000
+    },
+    {
+     "i": 3,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 30000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 4,
+   "max_score": 4,
+   "expected_stars": 3,
+   "rank": {
+    "difficulty": "medium",
+    "category": "general",
+    "duration_ms": 30000,
+    "expected_rank_points": 145
+   }
+  },
+  {
+   "name": "word_slip_then_right_scores_nothing",
+   "engine": "word_puzzle",
+   "config": {
+    "prompt_ar": "كوّن الكلمة",
+    "prompt_en": "Build the word",
+    "words": [
+     {
+      "word": "كتاب",
+      "hint": "نقرأ فيه"
+     },
+     {
+      "word": "عِلْم",
+      "hint": "ضد الجهل"
+     },
+     {
+      "word": "أنا",
+      "hint": "ضمير المتكلم"
+     },
+     {
+      "word": "باب",
+      "hint": ""
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      1,
+      0,
+      2,
+      3
+     ],
+     "ms": 9000
+    },
+    {
+     "i": 0,
+     "a": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "ms": 15000
+    },
+    {
+     "i": 1,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 24000
+    },
+    {
+     "i": 2,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 31000
+    },
+    {
+     "i": 3,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 38000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 3,
+   "max_score": 4,
+   "expected_stars": 2,
+   "rank": {
+    "difficulty": "medium",
+    "category": "general",
+    "duration_ms": 38000,
+    "expected_rank_points": 108
+   }
+  },
+  {
+   "name": "word_hint_and_skip",
+   "engine": "word_puzzle",
+   "config": {
+    "prompt_ar": "كوّن الكلمة",
+    "prompt_en": "Build the word",
+    "words": [
+     {
+      "word": "كتاب",
+      "hint": "نقرأ فيه"
+     },
+     {
+      "word": "عِلْم",
+      "hint": "ضد الجهل"
+     },
+     {
+      "word": "أنا",
+      "hint": "ضمير المتكلم"
+     },
+     {
+      "word": "باب",
+      "hint": ""
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "ms": 9000,
+     "h": true
+    },
+    {
+     "i": 1,
+     "a": [
+      2,
+      1,
+      0
+     ],
+     "ms": 17000
+    },
+    {
+     "i": 2,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 24000
+    },
+    {
+     "i": 3,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 30000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 2,
+   "max_score": 4,
+   "expected_stars": 1,
+   "rank": {
+    "difficulty": "hard",
+    "category": "nahw",
+    "duration_ms": 30000,
+    "expected_rank_points": 87
+   }
+  },
+  {
+   "name": "word_equal_letters_and_alef_forms",
+   "engine": "word_puzzle",
+   "config": {
+    "prompt_ar": "كوّن الكلمة",
+    "prompt_en": "Build the word",
+    "words": [
+     {
+      "word": "كتاب",
+      "hint": "نقرأ فيه"
+     },
+     {
+      "word": "عِلْم",
+      "hint": "ضد الجهل"
+     },
+     {
+      "word": "أنا",
+      "hint": "ضمير المتكلم"
+     },
+     {
+      "word": "باب",
+      "hint": ""
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "ms": 9000
+    },
+    {
+     "i": 1,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 17000
+    },
+    {
+     "i": 2,
+     "a": [
+      2,
+      1,
+      0
+     ],
+     "ms": 24000
+    },
+    {
+     "i": 3,
+     "a": [
+      2,
+      1,
+      0
+     ],
+     "ms": 30000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 4,
+   "max_score": 4,
+   "expected_stars": 3,
+   "rank": {
+    "difficulty": "easy",
+    "category": "general",
+    "duration_ms": 30000,
+    "expected_rank_points": 116
+   }
+  },
+  {
+   "name": "word_all_wrong_zero",
+   "engine": "word_puzzle",
+   "config": {
+    "prompt_ar": "كوّن الكلمة",
+    "prompt_en": "Build the word",
+    "words": [
+     {
+      "word": "كتاب",
+      "hint": "نقرأ فيه"
+     },
+     {
+      "word": "عِلْم",
+      "hint": "ضد الجهل"
+     },
+     {
+      "word": "أنا",
+      "hint": "ضمير المتكلم"
+     },
+     {
+      "word": "باب",
+      "hint": ""
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      3,
+      2,
+      1,
+      0
+     ],
+     "ms": 5000
+    },
+    {
+     "i": 1,
+     "a": [
+      2,
+      1,
+      0
+     ],
+     "ms": 10000
+    },
+    {
+     "i": 2,
+     "a": [
+      1,
+      0,
+      2
+     ],
+     "ms": 15000
+    },
+    {
+     "i": 3,
+     "a": [
+      1,
+      0,
+      2
+     ],
+     "ms": 20000
+    }
+   ],
+   "valid": true,
+   "expected_server_score": 0,
+   "max_score": 4,
+   "expected_stars": 0,
+   "rank": {
+    "difficulty": "easy",
+    "category": "general",
+    "duration_ms": 20000,
+    "expected_rank_points": 0
+   }
+  },
+  {
+   "name": "word_letter_missing_invalid",
+   "engine": "word_puzzle",
+   "config": {
+    "prompt_ar": "كوّن الكلمة",
+    "prompt_en": "Build the word",
+    "words": [
+     {
+      "word": "كتاب",
+      "hint": "نقرأ فيه"
+     },
+     {
+      "word": "عِلْم",
+      "hint": "ضد الجهل"
+     },
+     {
+      "word": "أنا",
+      "hint": "ضمير المتكلم"
+     },
+     {
+      "word": "باب",
+      "hint": ""
+     }
+    ]
+   },
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 9000
+    },
+    {
+     "i": 1,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 17000
+    },
+    {
+     "i": 2,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 24000
+    },
+    {
+     "i": 3,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 30000
+    }
+   ],
+   "valid": false,
+   "expected_server_score": null,
+   "max_score": 4,
+   "expected_stars": null,
+   "rank": null
+  }
+ ]
+}

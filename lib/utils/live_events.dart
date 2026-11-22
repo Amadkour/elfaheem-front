@@ -164,6 +164,11 @@ class LiveEvents {
   /// D-1121: a platform admin approved / rejected MY waiting account ({state}); the waiting page reloads.
   static const accountApproval = 'account_approval';
 
+  /// Games v3 (CONTRACT §1): a champions period was computed ({period_id, period_kind, scope_kind, scope_key}) · my
+  /// coupons or referrals changed ({kind, coupon_id?}).
+  static const gamesChampions = 'games_champions';
+  static const rewards = 'rewards';
+
   static const connectivity = 'connectivity_changed';
 
   /// D-520: a phone is asked to join the person's live room · the request was answered, ended or changed.
@@ -202,6 +207,8 @@ class LiveEvents {
     orgMessageAck,
     studentLifecycle,
     accountApproval,
+    gamesChampions,
+    rewards,
   };
 
   /// The VISIBLE notifications of the same features (data["type"]) also nudge

@@ -1,0 +1,67 @@
+{
+ "_source": {
+  "route": "GET /api/v1/me/rewards",
+  "uid": 2
+ },
+ "payload": {
+  "enabled": {
+   "coupons": true,
+   "referral": true
+  },
+  "coupons": [
+   {
+    "id": 2,
+    "code": "W3BP3DJJ77",
+    "status": "active",
+    "kind": "percent",
+    "value": 10.0,
+    "currency": "EGP",
+    "max_discount": 100.0,
+    "applies_to": "any",
+    "min_order": 0.0,
+    "source": "referrals",
+    "issued_at": "2026-11-22T04:08:13.560233",
+    "expires_at": "2026-12-22T04:08:13.560233",
+    "redeemed_at": null,
+    "target": null
+   }
+  ],
+  "wins": [],
+  "referral": {
+   "link": "https://nextbrain.site/app/?ref=2",
+   "username": "ahmed",
+   "pending": 1,
+   "qualified": 3,
+   "qualified_this_month": 3,
+   "tiers": [
+    {
+     "rule_id": 1,
+     "threshold": 2,
+     "window": "month",
+     "reward_kind": "coupon_percent",
+     "value": 10.0,
+     "currency": "EGP",
+     "max_discount": 100.0,
+     "count": 3,
+     "issued": true
+    }
+   ]
+  },
+  "shares": {
+   "unique_opens": 0,
+   "tiers": [
+    {
+     "rule_id": 3,
+     "threshold": 4,
+     "window": "lifetime",
+     "reward_kind": "coupon_percent",
+     "value": 5.0,
+     "currency": "EGP",
+     "max_discount": 50.0,
+     "count": 0,
+     "issued": false
+    }
+   ]
+  }
+ }
+}

@@ -60,6 +60,12 @@ import 'package:flutter_education_app/features/exams/paper/exam_setup_wizard.dar
 import 'package:flutter_education_app/features/exams/exam_notice.dart' deferred as exam_notice;
 import 'package:flutter_education_app/features/exams/hub/result/parent_grades_link.dart' deferred as parent_grades_link;
 import '../../features/admin/app_releases/app_releases_page.dart' show AppReleasesPage, kAppReleasesFeatureKey;
+import 'package:flutter_education_app/core/home/me_home.dart' show MeHomeService;
+import 'package:flutter_education_app/features/games/champions/champions_models.dart' show ChampionScope, HomeChampion, championsOff;
+import 'package:flutter_education_app/features/games/champions/champions_page.dart' show HallOfChampionsPage;
+import 'package:flutter_education_app/features/games/champions/winner_sheet.dart' show WinnerSeen, showWinnerSheet;
+import 'package:flutter_education_app/features/rewards/my_rewards_page.dart' show MyRewardsPage;
+import 'package:flutter_education_app/features/rewards/rewards_models.dart' show rewardsOff;
 
 class AppNavigator {
   AppNavigator._();
@@ -128,7 +134,11 @@ class AppNavigator {
   /// page / the console's Alerts tab, `rag_admin_links.dart`; anyone else the notifications list) | app_release ·
   /// app_releases (super admins only, D-143: [targetId] = the release → its page, else App versions)
   ///
-  /// org_invitations (a push / notification for a phone invitation; no org_id, I am not a member yet) → My organizations with the invitations card.
+  /// games_champions (Games v3; [targetId] = the champion id, `scope_kind` / `scope_key` / `period_kind` in [data]) →
+/// the Hall of Champions on that board, plus the winner sheet when the win is mine and not shown yet. rewards
+/// ([targetId] = a coupon id → My rewards on it; `section: invite` → its invite card).
+///
+/// org_invitations (a push / notification for a phone invitation; no org_id, I am not a member yet) → My organizations with the invitations card.
   ///
   /// parent_grades (D-350, a parent's notice that a child's result is out): the child's report with its grades; the
   /// notice does not say which child, so a parent of several picks one (a `student_id` in [data] is used if a server sends it).
@@ -447,6 +457,41 @@ class AppNavigator {
         }
         await nav.push(MaterialPageRoute(settings: const RouteSettings(name: '/learn/daily'), builder: (_) => const SelfLearningPage()));
         return;
+      case 'games_champions': // Games v3 (CONTRACT §1): a champions period was computed → the Hall on that board;
+        // my own win (the push names its champion id) → the winner sheet on top, once per win
+        if (championsOff()) {
+          await nav.pushNamed('/notifications');
+          return;
+        }
+        final inner = data['data'] is Map ? Map<String, dynamic>.from(data['data'] as Map) : const <String, dynamic>{};
+        Object? field(String k) => data[k] ?? inner[k];
+        final scopeKind = '${field('scope_kind') ?? 'platform'}';
+        final scopeKey = field('scope_key');
+        final scope = ChampionScope(scope: scopeKind, key: scopeKey == null || '$scopeKey'.isEmpty || '$scopeKey' == 'null' ? null : '$scopeKey');
+        final period = '${field('period_kind') ?? kind ?? 'daily'}';
+        unawaited(nav.push(MaterialPageRoute(
+            settings: const RouteSettings(name: '/games/champions'),
+            builder: (_) => HallOfChampionsPage(scope: scope, tab: period == 'weekly' ? 1 : 0))));
+        final win = targetId == null ? null : MeHomeService.instance.home?.raw['champion'];
+        final w = HomeChampion.maybe(win);
+        if (w != null && w.championId == targetId && !await WinnerSeen.has(w.championId)) {
+          final c2 = navigatorKey.currentContext;
+          if (c2 != null && c2.mounted) {
+            await showWinnerSheet(c2, w,
+                onUse: () => openModule('rewards', targetId: w.couponId));
+          }
+        }
+        return;
+      case 'rewards': // Games v3: a coupon was issued / is about to expire → My rewards on it; a friend qualified → the invite card
+        if (rewardsOff()) {
+          await nav.pushNamed('/notifications');
+          return;
+        }
+        final section = '${data['section'] ?? (data['data'] is Map ? (data['data'] as Map)['section'] : null) ?? kind ?? ''}';
+        await nav.push(MaterialPageRoute(
+            settings: const RouteSettings(name: '/rewards'),
+            builder: (_) => MyRewardsPage(focusCouponId: targetId, section: section == 'invite' ? 'invite' : null)));
+        return;
       case 'live_lobby': // someone waits at the door of a room I host → the meeting / session with its lobby sheet
         await openLiveLobby(LiveRoomRef.parse(kind, targetId));
         return;
@@ -599,7 +644,8 @@ class AppNavigator {
     final module = data['module']?.toString() ??
         (profile ? 'course_profile' : (timetable ? 'org_timetable' : (data['type'] == 'exam_notice' ? 'exam_notice' : data['type'] == 'org_invitation' ? 'org_invitation' : data['type'] == 'org_onboarding' ? 'org_onboarding' : pointsModuleFor(data['type']?.toString()))));
     final govPush = (module ?? '').startsWith('org_');        // governance pushes carry {module, id}
-    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (module == 'org_onboarding' ? data['case_id'] ?? data['related_id'] : null) ?? (profile || timetable || govPush ? data['id'] : null) ?? (module == 'org_invitation' ? data['related_id'] : null) ?? ''}') ?? _examIdFromRef(data['exam_ref']);
+    final rewardsPush = module == 'games_champions' || module == 'rewards'; // Games v3 pushes carry {module, id}
+    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (module == 'org_onboarding' ? data['case_id'] ?? data['related_id'] : null) ?? (profile || timetable || govPush || rewardsPush ? data['id'] : null) ?? (module == 'org_invitation' ? data['related_id'] : null) ?? ''}') ?? _examIdFromRef(data['exam_ref']);
     final orgId = int.tryParse('${data['org_id'] ?? ''}');
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) {

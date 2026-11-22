@@ -204,6 +204,8 @@ class StoreQuote {
     this.vatPercent = 0,
     this.includesVat = false,
     this.pointsTotal,
+    this.couponDiscount = 0,
+    this.couponCode,
   });
 
   factory StoreQuote.fromJson(Object? j) {
@@ -217,8 +219,14 @@ class StoreQuote {
       vatPercent: _num(m['vat_percent']),
       includesVat: m['includes_vat'] == true,
       pointsTotal: _intOrNull(m['points_total']),
+      couponDiscount: _num(m['coupon_discount']),
+      couponCode: _str(m['coupon_code']).isEmpty ? null : _str(m['coupon_code']),
     );
   }
+
+  /// Games v3 (CONTRACT §7): what the coupon took off the net subtotal (0 without one), and its code.
+  final double couponDiscount;
+  final String? couponCode;
 
   final List<StoreQuoteLine> lines;
   final double subtotal, vatAmount, total;

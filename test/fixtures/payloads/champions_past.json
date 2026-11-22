@@ -1,0 +1,131 @@
+{
+ "_source": {
+  "route": "GET /api/v1/games/champions?scope=platform&period=daily",
+  "uid": 24
+ },
+ "payload": {
+  "scope": "platform",
+  "key": null,
+  "period": "daily",
+  "items": [
+   {
+    "id": 18,
+    "period_kind": "daily",
+    "period_start": "2026-11-20T21:00:00",
+    "period_end": "2026-11-21T21:00:00",
+    "status": "computed",
+    "winners": [
+     {
+      "rank": 1,
+      "name": "Player0 C.",
+      "points": 297,
+      "games": 3,
+      "is_me": true
+     },
+     {
+      "rank": 2,
+      "name": "Player1 C.",
+      "points": 267,
+      "games": 3,
+      "is_me": false
+     },
+     {
+      "rank": 3,
+      "name": "Player2 C.",
+      "points": 237,
+      "games": 3,
+      "is_me": false
+     }
+    ]
+   },
+   {
+    "id": 17,
+    "period_kind": "daily",
+    "period_start": "2026-11-19T21:00:00",
+    "period_end": "2026-11-20T21:00:00",
+    "status": "empty",
+    "winners": []
+   },
+   {
+    "id": 16,
+    "period_kind": "daily",
+    "period_start": "2026-11-18T21:00:00",
+    "period_end": "2026-11-19T21:00:00",
+    "status": "empty",
+    "winners": []
+   },
+   {
+    "id": 32,
+    "period_kind": "daily",
+    "period_start": "2026-11-11T21:00:00",
+    "period_end": "2026-11-12T21:00:00",
+    "status": "computed",
+    "winners": [
+     {
+      "rank": 1,
+      "name": "Flag0 U.",
+      "points": 300,
+      "games": 3,
+      "is_me": false
+     },
+     {
+      "rank": 2,
+      "name": "Flag1 U.",
+      "points": 270,
+      "games": 3,
+      "is_me": false
+     },
+     {
+      "rank": 3,
+      "name": "Flag2 U.",
+      "points": 240,
+      "games": 3,
+      "is_me": false
+     }
+    ]
+   }
+  ],
+  "page": 1,
+  "size": 10,
+  "total": 4,
+  "has_more": false,
+  "scopes": [
+   {
+    "scope": "platform",
+    "key": null,
+    "name_ar": "الجميع",
+    "name_en": "Everyone"
+   },
+   {
+    "scope": "category",
+    "key": "quran",
+    "name_ar": "القرآن",
+    "name_en": "Quran"
+   },
+   {
+    "scope": "category",
+    "key": "tajweed",
+    "name_ar": "التجويد",
+    "name_en": "Tajweed"
+   },
+   {
+    "scope": "category",
+    "key": "fiqh",
+    "name_ar": "الفقه",
+    "name_en": "Fiqh"
+   },
+   {
+    "scope": "category",
+    "key": "nahw",
+    "name_ar": "النحو",
+    "name_en": "Grammar"
+   },
+   {
+    "scope": "category",
+    "key": "general",
+    "name_ar": "عام",
+    "name_en": "General"
+   }
+  ]
+ }
+}

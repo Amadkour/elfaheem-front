@@ -195,15 +195,21 @@ class GameLeaderboard {
 }
 
 class GameList {
-  const GameList({required this.items, this.total = 0});
+  const GameList({required this.items, this.total = 0, this.champions});
 
   final List<GameSummary> items;
   final int total;
 
+  /// Games v3 (CONTRACT §6): the `champions` block for the strip, raw (ChampionsStripData.maybe); null = none.
+  final Map<String, dynamic>? champions;
+
   factory GameList.fromJson(Object? r) {
     final m = _m(r);
     final items = [for (final e in _l(m['items'])) GameSummary.fromJson(e)];
-    return GameList(items: items, total: m['total'] is num ? _i(m['total']) : items.length);
+    return GameList(
+        items: items,
+        total: m['total'] is num ? _i(m['total']) : items.length,
+        champions: m['champions'] is Map ? _m(m['champions']) : null);
   }
 }
 
@@ -251,12 +257,23 @@ class GamePlayResult {
     this.newBadges = const [],
     this.pointsAwarded = 0,
     this.duplicate = false,
+    this.ranked = false,
+    this.rankPoints = 0,
+    this.rankToday,
+    this.unrankedReason,
   });
 
   final int stars, score, maxScore, pointsAwarded;
   final GameProgress? progress;
   final List<GameBadge> newBadges;
   final bool duplicate;
+
+  /// Games v3 (CONTRACT §2): the play counted for the champions; its points there; my place today (null = not
+  /// ranked); why it did not count (`no_round`, `too_fast`, …).
+  final bool ranked;
+  final int rankPoints;
+  final int? rankToday;
+  final String? unrankedReason;
 
   factory GamePlayResult.fromJson(Object? r) {
     final m = _m(r);
@@ -269,6 +286,10 @@ class GamePlayResult {
       newBadges: [for (final b in _l(m['new_badges'])) GameBadge.fromJson(b)],
       pointsAwarded: _i(m['points_awarded']),
       duplicate: m['duplicate'] == true,
+      ranked: m['ranked'] == true,
+      rankPoints: _i(m['rank_points']),
+      rankToday: m['rank_today'] is num ? (m['rank_today'] as num).toInt() : null,
+      unrankedReason: m['unranked_reason'] is String ? m['unranked_reason'] as String : null,
     );
   }
 }
@@ -313,5 +334,20 @@ class GamesReport {
       gamesPlayed: _i(t['games']),
       perfect: _i(t['perfect']),
     );
+  }
+}
+
+/// `POST /games/{id}/rounds` (Games v3, CONTRACT §2): a ranked round's id (null = no ranked attempt left today; the
+/// round is played unranked) and the ranked attempts left for this game today, this one included.
+class GameRoundStart {
+  const GameRoundStart({this.roundId, this.rankedLeft = 0});
+
+  final String? roundId;
+  final int rankedLeft;
+
+  factory GameRoundStart.fromJson(Object? r) {
+    final m = _m(r);
+    final id = m['round_id'];
+    return GameRoundStart(roundId: id is String && id.isNotEmpty ? id : null, rankedLeft: _i(m['ranked_left']));
   }
 }

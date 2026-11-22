@@ -151,6 +151,10 @@ class FeeQuote {
   final int amountMinor;
   final String? plan;
 
+  /// Games v3 (CONTRACT §7): what the coupon took off the course price (0 without one), and its code.
+  final double couponDiscount;
+  final String? couponCode;
+
   const FeeQuote({
     required this.coursePrice,
     required this.platformFee,
@@ -160,6 +164,8 @@ class FeeQuote {
     required this.gatewayLabel,
     required this.amountMinor,
     this.plan,
+    this.couponDiscount = 0,
+    this.couponCode,
   });
 
   factory FeeQuote.fromJson(Map<String, dynamic> j) {
@@ -173,6 +179,8 @@ class FeeQuote {
       gatewayLabel: j['gateway_label'] as String? ?? '',
       amountMinor: (j['amount_minor'] as num?)?.toInt() ?? 0,
       plan: j['plan'] as String?,
+      couponDiscount: d('coupon_discount'),
+      couponCode: j['coupon_code'] is String ? j['coupon_code'] as String : null,
     );
   }
 

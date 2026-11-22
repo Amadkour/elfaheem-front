@@ -1,0 +1,11 @@
+{
+ "_source": {
+  "route": "POST /api/v1/games/1/rounds",
+  "uid": 3
+ },
+ "payload": {
+  "round_id": "974d0dc2-bd29-4426-b0a4-9f5ac02d82e6",
+  "issued_at": "2026-11-22T04:07:07.335037",
+  "ranked_left": 3
+ }
+}

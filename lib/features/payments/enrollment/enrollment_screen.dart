@@ -26,6 +26,8 @@ import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_provider.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_widgets.dart';
+import 'package:flutter_education_app/features/rewards/coupon_field.dart';
+import 'package:flutter_education_app/features/rewards/rewards_models.dart' show CouponTarget;
 
 
 class EnrollmentScreen extends StatelessWidget {
@@ -178,6 +180,18 @@ class _MethodStep extends StatelessWidget {
                   else ...[
                     const _PricePlanPicker(),
                     const _PaymentMethodPicker(),
+                    // Games v3: one coupon off the plan price (card / wallet; a transfer goes without one)
+                    if (enroll.selectedManualMethod == null) ...[
+                      const SizedBox(height: AppSpace.md),
+                      CouponField(
+                        key: const ValueKey('enroll.coupon'),
+                        target: CouponTarget.course,
+                        targetId: int.tryParse(enroll.course.id),
+                        plan: enroll.selectedPlan,
+                        enabled: !enroll.isLoading,
+                        onChanged: enroll.setCoupon,
+                      ),
+                    ],
                     const SizedBox(height: AppSpace.lg),
                     FeeBreakdownCard(
                       quote: quote,

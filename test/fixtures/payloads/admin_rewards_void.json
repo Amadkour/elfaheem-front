@@ -1,0 +1,11 @@
+{
+ "_source": {
+  "route": "POST /api/v1/admin/rewards/periods/31/void",
+  "uid": 1
+ },
+ "payload": {
+  "id": 31,
+  "status": "void",
+  "recomputed_id": 32
+ }
+}

@@ -127,7 +127,12 @@ class GuestLiveInfo {
     this.signedInJoin = false,
     this.meetingId,
     this.autoJoin = false,
+    this.recurring = false,
   });
+
+  /// The link of a repeating meeting (`recurring`, D-1720): the same URL every time. While no date is on,
+  /// [isLive] is false and [startsAt] is the NEXT date — the page waits, it is not an error.
+  final bool recurring;
 
   final int sessionId;
   final String sessionName;
@@ -199,6 +204,7 @@ class GuestLiveInfo {
       signedInJoin: j['signed_in_join'] == true,
       meetingId: kind == 'meeting' ? ((j['meeting_id'] ?? j['id']) as num?)?.toInt() : null,
       autoJoin: j['auto_join'] == true,
+      recurring: j['recurring'] == true,
     );
   }
 }

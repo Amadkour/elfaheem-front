@@ -1,0 +1,21 @@
+{
+ "_source": {
+  "route": "GET /api/v1/payments/fees/preview?course_id=1&payment_method=creditcard&coupon_code=N3QYW4XKSB",
+  "uid": 3
+ },
+ "payload": {
+  "course_price": 200.0,
+  "platform_fee": 20.0,
+  "vat_on_platform": 3.0,
+  "gateway_fee": 6.8,
+  "gateway_label": "بطاقة ائتمانية (2.9% + 1 ر.س)",
+  "total": 229.8,
+  "amount_minor": 22980,
+  "currency": "SAR",
+  "plan": "yearly",
+  "list_price": 400.0,
+  "duration_days": 365,
+  "coupon_discount": 200.0,
+  "coupon_code": "N3QYW4XKSB"
+ }
+}

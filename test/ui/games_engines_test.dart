@@ -25,7 +25,13 @@ class _FakeGames extends GamesApi {
 
   @override
   Future<GamePlayResult> play(int gameId,
-      {required String clientId, required int score, required int maxScore, int? durationS, DateTime? playedAt}) async {
+      {required String clientId,
+      required int score,
+      required int maxScore,
+      int? durationS,
+      DateTime? playedAt,
+      String? roundId,
+      List<Map<String, Object>>? trace}) async {
     ids.add(clientId);
     final a = answers.removeAt(0);
     if (a is! int) throw a;

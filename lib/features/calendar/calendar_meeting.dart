@@ -379,7 +379,10 @@ class _MeetingFormState extends State<MeetingForm> {
     super.initState();
     _student = widget.student ?? calIsStudent(context);
     if (_student) _mode = 'online';
-    if (_course) _private = false;
+    if (_course) {
+      _private = false;
+      _mode = 'online'; // a course's meeting is a live one by default (D-1724); In person stays one tap away
+    }
     if (widget.repeat) _rule = RecurrenceRule.from(_s, end: _e);
     _scheduleCheck();
   }
@@ -1185,10 +1188,12 @@ String? _strOrNull(dynamic v) {
 /// "Meet now" (live-rooms-spec §7): creates an online, private meeting that starts now (no title: the server names
 /// it after its start) and opens its pre-join page, where the creator (the host) presses Join (D-106). Returns the
 /// meeting (null when it could not be created — the person was told).
-Future<Map<String, dynamic>?> startQuickMeeting(BuildContext context, {int? orgId, CalendarApi api = const RemoteCalendarApi()}) async {
+/// [courseId]: "Meet now" on a course page (D-1723) — the course's students are invited and told.
+Future<Map<String, dynamic>?> startQuickMeeting(BuildContext context,
+    {int? orgId, int? courseId, CalendarApi api = const RemoteCalendarApi()}) async {
   final Map<String, dynamic> m;
   try {
-    m = asMap(await api.quick(orgId: orgId));
+    m = asMap(await api.quick(orgId: orgId, courseId: courseId));
   } catch (e) {
     appToast(pointsErrorText(e), error: true);
     return null;

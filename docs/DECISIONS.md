@@ -5929,3 +5929,108 @@ The super admin's hub has a fifth group, `learning` ("Learning content" / "مح�
 ## D-1676 — Fill-in-the-blank options are compared as written · 2026-11-22 · accepted
 
 Found in the real-app walk: the seeded "Fill in the right ending" offers العلمُ / العلمَ / العلمِ, and the engine dropped options that matched after the Arabic normalization, so the student saw one option and any ending counted right. `FillBlankEngine.itemsOf` now drops only exact repeats, a picked option is right only when it is the answer as written (the server already requires `answer in options` exactly), and the editor's "the answer is not one of the options" uses the same exact check. A TYPED answer is still compared after the normalization (no tashkeel, any alef).
+
+## D-1720 — A repeating meeting has ONE guest link · 2026-11-22 · accepted
+
+Owner report: guests of a repeating online meeting must use the same URL for every repeat. They could not: each date of a series is its own meeting row with its own share link (`live_room_settings.link_token`), and a date had no row at all until someone opened it, so there was nothing to share ahead of time. The series now owns a link (`cal_series_links`, back migration 0121): `<site>/live/<token>` never changes, and the public guest routes resolve it when it is opened to the date that is on now. The door opens 15 minutes before a date starts and stays open until it ends (or while its room is still running, up to 2 hours past the end); between dates the guest page shows the NEXT date and waits instead of an error; a cancelled date, or one the host closed, is skipped; nothing left answers `live_ended`. The date's meeting row is materialised once on the first open (the existing unique `series_id + occurrence_date`). App: `lib/features/calendar/recurrence/series_guest_link.dart` (`SeriesLinkApi` points the share sheet's `LiveRoomApi` at the series routes, so `ShareLinkSheet` is reused as is: speak / listen, cap, PIN, QR, revoke). Tests: back `tests/org_v2/e2e_series_guest_link.py`, app `test/ui/course_meetings_test.dart`.
+
+## D-1721 — A link made inside a date's room is the series' link · 2026-11-22 · accepted
+
+The host also shares from inside the room (the lobby's share sheet, the quick guest link). For a meeting that is one date of a series those calls (`/api/v1/live/meeting/{id}/link`) now read, create, change and revoke the SERIES' link, so no path hands out a URL that dies at the next repeat. A date that already had a link of its own (made before this change) keeps it. `LiveLink.seriesId` (`series_id`) makes the share sheet say "The same link works for every date of this repeating meeting". Known limit: after a host handover the acting host can change the series' link from the room, as they can a single meeting's.
+
+## D-1722 — The link survives an edit "from a date on" · 2026-11-22 · accepted
+
+Editing a series from a date ends it and starts a new one (`previous_id`, D-1555). The link row moves to the new series, and the resolver reads the whole chain, so the dates of the old half still open through the same URL until the cut. The owner's link routes accept the id of any half (a screen still holding the old id keeps working).
+
+## D-1723 — Meet now on a course's Sessions tab · 2026-11-22 · accepted
+
+The teacher's Sessions tab had no way to start an online meeting at once: "Meet now" lived only on the schedule and made a private meeting. `POST /me/calendar/meetings/quick` takes `course_id`: the course's teacher only (403 `course_forbidden`), the active students are invited exactly like a meeting created with `audience.course_ids` and told at once, the title is the course's name, and nothing records until the teacher presses Record (D-1503). `startQuickMeeting(courseId:)` then opens the pre-join page as every entry does (D-106).
+
+## D-1724 — A course's repeating meeting opens as an online one · 2026-11-22 · accepted
+
+The meeting form opened from a course started on "In person", so the teacher who wanted a repeating ONLINE meeting had to notice and flip the mode (and an in-person series has no room, no guest link). With `courseId` the form now starts online; In person is still one tap away.
+
+## D-1725 — "Online meetings" block on the teacher's Sessions tab · 2026-11-22 · accepted
+
+The only entry was one small "Repeating meeting" link above the timeline (D-1575), easy to miss. It is now a titled card, `CourseMeetingActions` (course_sessions.dart, plain values): Meet now (filled, the one that matters now) · Repeating meeting. Each button hides with its own kill switch (`live.quick_meeting`, `calendar.recurring`); both off draw nothing. No new kill-switch key: the existing ones already say what a super admin wants to turn off.
+
+## D-1726 — Copy guest link on the series card and the date sheet · 2026-11-22 · accepted
+
+The owner of an ONLINE series sees "Copy guest link" (one tap; the link is made on the first tap, guests may speak) and "Link options" (the share sheet) on the series card of the Sessions tab, and "Copy guest link" on a date's sheet. `GET /me/calendar/series?course_id=` and the series detail carry `guest_link` for the owner only. Hidden by `live.share_link`. A student never sees the row. The guest page (`GuestLivePage`) marks a repeating meeting and, between dates, says when the next one is (`AppTime`); it takes the room from the JOIN answer's `meeting_id`, because a page left open since an earlier date still holds that date's id. Still public calls only (`auth: false`).
+
+## D-1740 – D-1749 — Games v3: motion, engines, sounds · 2026-11-22 · accepted
+
+**D-1740: one motion vocabulary for the games, all from tokens.** `lib/features/games/shell/game_motion.dart` derives
+tap / snap / settle / celebrate / stagger / hold from `AppMotion.of(context)` (so Reduce motion and `app.animations`
+zero them) and holds the shared moves: `GameShake`, `GamePulse`, `GamePopIn`, `GameDraggable` + `GameDragOffset`,
+`GameFlight`, `GameComboChip`; `game_tile.dart` is `GameTile` (idle / selected / correct / wrong / locked / hint +
+hover), the learn kit's look with the games' moves; the learn kit itself is unchanged. `AppBorder.line = 3` is the
+connector stroke. A move's wrapper is always in the tree (the identity when idle), so starting or ending a move never
+remounts the child (a remount reset the memory card's flip).
+
+**D-1741: sounds through one seam, `GameFeedback.play(GameSound)`** (`shell/game_sounds.dart`, exported from
+`game_shell.dart`; only that file imports `audioplayers`). Eight synthesized MP3s (`tool/gen_game_sounds.py`, MP3 only
+by default now; `--ogg` writes OGG copies that are never shipped), 29 KB in total. Players are made by the first shell
+that opens (on the web at the first touch inside a shell), one low-latency player per sound, released when the last
+shell closes; muted = no player at all. Android: usage `game`, content `sonification`, no audio focus; iOS: the
+`ambient` category. Under a test binding the default factory makes no player.
+
+**D-1742: `hold` stays 600 ms under Reduce motion.** Every motion token is zero there, but `hold` is how long a wrong
+state stays readable (two memory cards that do not belong, a wrong match), which is reading time, not motion.
+
+**D-1743: the combo and its sound.** The shell counts right answers in a row (`streak`). From 3 the header shows
+`×n` (it bumps on each new one) and the burst has 24 particles instead of 16. The `combo` sound replaces `correct` on
+every third right answer in a row (3, 6, 9 …), so the two never play together. The combo adds no points.
+
+**D-1744: sacred categories.** `quran` / `tajweed` (from the game's category, through `GameRound(category:)`): no
+tile in the round shakes (the content may be an ayah, and we cannot tell which tile holds one), no live drag line
+crosses the tiles, and the `wrong` sound is skipped (vibration + colour + icon only). Bursts stay in the header.
+
+**D-1745: drag next to tap, not instead.** Match: a long press (touch) or a plain drag (mouse) on a tile draws a live
+line to the finger; letting go on a tile of the other side is the same try as two taps. Order: the placed rows drag to
+reorder (neighbours slide aside over `snap`, the row snaps into the gap), with Move up / Move down for screen
+readers; tapping still places and takes back. A long press on touch, so a swipe still scrolls the page.
+
+**D-1746: flights decorate, they never gate.** In fill_blank and word_puzzle the answer is settled at the tap; the
+flying copy (overlay, transform only) lands afterwards and only then does the blank / slot show its letter. Logic,
+tests and screen readers never wait on a flight, and a fast player can tap ahead.
+
+**D-1747: the trace lives in the shell controller.** `GameShellController.record(i, a)` with `ms` from a stopwatch
+started when the round's controller is made; `GameRound(onTrace:)` hands it over just before `onFinished`. Content
+indices only (CONTRACT §3). A typed fill_blank answer is sent as typed (the server trims), a picked option as written.
+
+**D-1748: ranked rounds never block play.** `GamePlayPage` asks `POST /games/{id}/rounds` when each round starts
+(not for a guest, not with `games.champions` off); any error or a late answer = the round is unranked, exactly as
+before. A ranked play is posted to the plays route directly, because the outbox's sync route has no `round_id` /
+`trace`; only when that post is lost on the network does the play fall back to the outbox (then unranked). The finish
+view shows "Rank N today" only when the server says `ranked: true`.
+
+**D-1749: no sound while a live room is open; video needs no rule.** `LiveRoomHost.isOpen` (a minimized room floats
+over the games) silences the games. The course video is a full page pushed over the game, so no game tap can happen
+under it. The super admin's "Sound check" (the games admin page's app bar) plays each sound through the same seam,
+ignoring the mute and the live-room rule but not the `games.sounds` switch, so the owner can audition the set.
+
+Snapshots: `test/contract/api_paths.json` gains `POST /api/v1/games/{game_id:int}/rounds` and
+`test/contract/feature_keys.json` gains `games.champions` and `games.sounds` by hand (S3 adds both to the catalog;
+the lead's regeneration gives the same lines).
+
+## D-1770 – D-1779 — Games v3: champions and rewards UI · 2026-11-22 · accepted
+
+- **D-1770 Podium and rows: an initial, never an avatar.** The top 3 stand on steps (2 · 1 · 3), each an initial in a theme block tone: gold for the first (achievements only), sage, then peach. Every row is "First L." as the server sends it, with the games played and the points. My row is tinted and pinned above the list when it is below the top 20 (`rank` null until I meet the minimum activity). No red, no "you lost your place".
+- **D-1771 The strip costs no request.** The Games tab draws the champions strip from the `champions` block of `GET /games` (`GameList.champions`, raw), plus an app-bar button to the Hall, so the Hall stays reachable when the strip is absent. The Hall itself loads the standings and, at open, the first page of past winners, because that page names the scope chips (the organization chip exists only there). Until it answers, the chips are Everyone + the 5 categories.
+- **D-1772 The home line sits in the side column.** My newest win (`/me/home` `champion`) is one slim card under Today and the inbox. It is not a banner: it does not wait for my answer. The first time a `champion_id` is drawn on a device, the winner sheet opens once (`WinnerSeen`, SharedPreferences, last 50 ids). A `games_champions` push for my own win opens the same sheet only if it was not shown yet.
+- **D-1773 `ref` capture: first touch wins, 30 days, never while signed in.** The router keeps the `ref` of any start link (`/c/<id>?ref=`, `/app/?ref=`), and on the web `main()` keeps it from `Uri.base` after the binding starts. The value is `<uid>|<ms>` in SharedPreferences (`rewards.ref.v1`). It is sent as `ref` on `POST /auth/register` and cleared after a successful register. With `rewards.referral` off, neither `ref` nor `invited_by` is sent. Google sign-up does not send it (the contract names only `/auth/register`).
+- **D-1774 The coupon box refuses on the device what can never be a code.** The code is trimmed, upper-cased and stripped of inner spaces, and must be 10 characters of the code alphabet; anything else gets a local message with no request. A newer answer always wins over a slower older one (sequence number). When the purchase changes (plan, items), an applied code is quoted again. A refusal takes the coupon off and tells the checkout (`onChanged(null)`).
+- **D-1775 No coupon on a bank transfer or InstaPay.** A teacher checks the amount of a transfer against the proof, and the contract gives the transfer routes no `coupon_code`, so the course page shows the coupon box only for card and wallet methods. Choosing a transfer drops the code.
+- **D-1776 Store: money only, quoted quietly.** The box shows only while paying by card. Switching to points drops the code (O8). Applying or removing a code re-posts `POST /store/quote` with `coupon_code` without going back to the skeleton, so the box keeps its state. A new code also means a new Idempotency-Key.
+- **D-1777 Packages get a join sheet.** A paid package used to join in one tap. With coupons on, a sheet now shows the price, the coupon box and Join (or "Join the waiting list" when it is full; the coupon is then kept for the offered seat, CONTRACT §7). A free package still joins in one tap.
+- **D-1778 "Use now" copies the code and goes where it can be spent.** A coupon for one course opens that course. Otherwise the app switches tab: the store for a store coupon, Teachers for a package coupon, the home (course search) for any other. The code is copied first, so the person can paste it at checkout.
+- **D-1779 My rewards is one page for every role, and its badge is the server's.** The Profile row shows the `rewards` attention count (new active coupons). Opening the page (`GET /me/rewards`) marks them seen, and the page then refreshes `AttentionService` quietly. The row is hidden when both `rewards.coupons` and `rewards.referral` are off. Each section follows its own switch, and the invite card also needs `share.links` for its Share button.
+
+Admin page (built by S2's fork; recorded here):
+
+- **Finance group, super admins only.** Coupons are money.
+- **Master-detail.** From `Breakpoints.desktop` up, the list and an `AppCard` detail pane sit side by side; narrower screens open the detail in `showAppSheet`.
+- **The rule switch sends the whole rule on PUT.** The form clears the fields that do not belong to the chosen trigger.
+- **"Give a coupon" finds people through `GET /admin/points/users`.** With `admin.points` off, only a typed user id works.
+- **Reasons and confirms.** Revoke and void always ask for a reason, and void asks for a confirm first. Approve and reject take an optional reason. The Champions tab opens on weekly, Referrals on "To review".

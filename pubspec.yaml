@@ -97,6 +97,7 @@ dependencies:
   volume_controller: ^3.7.1
   local_auth: ^3.0.2
   pdfrx: 3.0.0
+  audioplayers: ^6.8.1
 dependency_overrides:
   # The fork rebased on upstream v1.6.2+hotfix.4 (the exact version livekit_client 2.13.1 pins, WebRTC-SDK
   # 150.7871.01 on Android and iOS), branch nextbrain/1.6.2-hotfix.4: the single-projection screen-share capturer,
@@ -131,6 +132,8 @@ flutter:
     # (FontLoader) when a studio opens, the exports load the bytes of the fonts they use
     # (lib/design/export/export_fonts.dart, 7.1)
     - assets/fonts/cert/
+    # the games' sounds (lib/features/games/shell/game_sounds.dart), synthesized by tool/gen_game_sounds.py; MP3 only
+    - assets/sounds/games/
   fonts:
     # exam papers (exam_paper.dart): full Arabic presentation forms, which package:pdf needs (Cairo / Tajawal lack some)
     - family: PaperPlex

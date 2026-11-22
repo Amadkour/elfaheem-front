@@ -1,0 +1,19 @@
+{
+ "_source": {
+  "route": "POST /api/v1/packages/1/enroll",
+  "uid": 3
+ },
+ "payload": {
+  "status": "pending_payment",
+  "position": null,
+  "checkout": {
+   "url": "https://pay.test/x",
+   "token": "544fb4a75aee49b5a8e9a7932ec787a6",
+   "provider": "paymob",
+   "amount_minor": 15000,
+   "is_sandbox": true
+  },
+  "coupon_discount": 50.0,
+  "coupon_code": "XYZRFUZ569"
+ }
+}

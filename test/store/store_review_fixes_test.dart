@@ -23,7 +23,7 @@ class _FakeStore extends StoreApi {
   int _calls = 0;
 
   @override
-  Future<StoreQuote> quote(List<int> itemIds) async => StoreQuote.fromJson({
+  Future<StoreQuote> quote(List<int> itemIds, {String? couponCode}) async => StoreQuote.fromJson({
         'lines': [
           {'item_id': 1, 'title': 'Book', 'net': 0, 'vat': 0, 'gross': 0},
         ],
@@ -36,7 +36,7 @@ class _FakeStore extends StoreApi {
       });
 
   @override
-  Future<StoreOrderAnswer> order(List<int> itemIds, {required String method, required String idempotencyKey, String? provider}) async {
+  Future<StoreOrderAnswer> order(List<int> itemIds, {required String method, required String idempotencyKey, String? provider, String? couponCode}) async {
     keys.add(idempotencyKey);
     if (_calls++ == 0) throw TimeoutException('lost answer');
     return StoreOrderAnswer.fromJson({

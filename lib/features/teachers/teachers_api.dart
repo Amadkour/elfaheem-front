@@ -133,7 +133,9 @@ class TeachersApi {
   Future<TeacherPackage> setPackageStatus(int id, String status) async =>
       TeacherPackage.fromJson(await _api.post('/api/v1/packages/$id/status', body: {'status': status}));
 
-  Future<PackageEnrollResult> enroll(int id) async => PackageEnrollResult.fromJson(await _api.post('/api/v1/packages/$id/enroll'));
+  /// [couponCode] (Games v3, CONTRACT §7): one coupon off the package price; a waiting-list seat keeps it for later.
+  Future<PackageEnrollResult> enroll(int id, {String? couponCode}) async => PackageEnrollResult.fromJson(
+      await _api.post('/api/v1/packages/$id/enroll', body: couponCode == null ? null : {'coupon_code': couponCode}));
 
   Future<void> leave(int id) => _api.post('/api/v1/packages/$id/leave');
 

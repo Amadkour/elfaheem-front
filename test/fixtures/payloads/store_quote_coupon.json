@@ -1,0 +1,27 @@
+{
+ "_source": {
+  "route": "POST /api/v1/store/quote",
+  "uid": 3
+ },
+ "payload": {
+  "lines": [
+   {
+    "item_id": 1,
+    "title": "كتاب0",
+    "vat_exempt": false,
+    "net": 100.0,
+    "vat": 14.0,
+    "gross": 114.0
+   }
+  ],
+  "subtotal": 100.0,
+  "vat_amount": 9.8,
+  "total": 79.8,
+  "currency": "EGP",
+  "vat_percent": 14.0,
+  "includes_vat": false,
+  "points_total": null,
+  "coupon_discount": 30.0,
+  "coupon_code": "7UJZRVKKCZ"
+ }
+}

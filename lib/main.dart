@@ -32,6 +32,7 @@ import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/core/offline/offline_strings.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
+import 'package:flutter_education_app/features/rewards/ref_capture.dart';
 import 'package:flutter_education_app/core/app_time.dart' show AppTime;
 import 'package:flutter_education_app/utils/web_base_path.dart';
 import 'package:flutter_education_app/utils/web_entry_route.dart';
@@ -157,6 +158,8 @@ Future<void> main() async {
 
   if (kIsWeb) {
     WidgetsFlutterBinding.ensureInitialized();
+    // the invite link `/app/?ref=<uid>` opens the usual start: its ref is kept here for a sign-up (Games v3)
+    if (Uri.base.queryParameters.containsKey('ref')) unawaited(RefCapture.captureFromUri(Uri.base));
     await _bootstrap();
   } else {
     // ensureInitialized and runApp must run in the SAME zone.
@@ -824,6 +827,13 @@ class _AlfaheemAppState extends State<AlfaheemApp> with WidgetsBindingObserver {
   }
 
   Route<dynamic>? _router(RouteSettings settings) {
+    // Games v3 (CONTRACT §8): a `?ref=<uid>` on any start link (a course share link, the invite link) is kept for a
+    // sign-up on this device (first touch wins, 30 days); never while signed in
+    final refName = settings.name;
+    if (refName != null && refName.contains('ref=') && !context.read<MyAuthProvider>().isAuthenticated) {
+      final u = Uri.tryParse(refName);
+      if (u != null) unawaited(RefCapture.captureFromUri(u));
+    }
     // /live/<token> — a live session's public guest link (web deep link, app link, QR). No account needed:
     // it resolves before login and in guest mode, on purpose outside _Guard.
     final guestToken = guestLiveTokenFromRoute(settings.name);

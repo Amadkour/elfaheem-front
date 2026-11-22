@@ -1,0 +1,28 @@
+{
+ "_source": {
+  "route": "POST /api/v1/coupons/quote",
+  "uid": 3
+ },
+ "payload": {
+  "coupon": {
+   "id": 1,
+   "code": "ST96DNQNPF",
+   "status": "active",
+   "kind": "percent",
+   "value": 30.0,
+   "currency": null,
+   "max_discount": 300.0,
+   "applies_to": "any",
+   "min_order": 0.0,
+   "source": "manual",
+   "issued_at": "2026-11-22T04:07:44.226928",
+   "expires_at": "2026-12-22T04:07:44.226928",
+   "redeemed_at": null,
+   "target": null
+  },
+  "currency": "SAR",
+  "price": 400.0,
+  "discount": 120.0,
+  "price_after": 280.0
+ }
+}

@@ -24836,5 +24836,15 @@
   "cal_series_this_only_hint": {"en": "Only this date moves", "ar": "يُنقل هذا الموعد وحده"},
   "cal_recur_end_after": {"en": "After a number of times", "ar": "بعد عدد من المرات"},
   "cal_recur_after": {"en": "After", "ar": "بعد"},
-  "cal_series_join": {"en": "Join now", "ar": "انضم الآن"}
+  "cal_series_join": {"en": "Join now", "ar": "انضم الآن"},
+  "course_meet_title": {"en": "Online meetings", "ar": "اجتماعات مباشرة"},
+  "course_meet_hint": {"en": "Meet the course's students live now, or set a meeting that repeats.", "ar": "اجتمع بطلاب المقرر مباشرةً الآن، أو أنشئ اجتماعاً يتكرر."},
+  "course_meet_now": {"en": "Meet now", "ar": "اجتمع الآن"},
+  "course_meet_repeating": {"en": "Repeating meeting", "ar": "اجتماع متكرر"},
+  "series_link_copy": {"en": "Copy guest link", "ar": "انسخ رابط الضيوف"},
+  "series_link_options": {"en": "Link options", "ar": "خيارات الرابط"},
+  "series_link_copied": {"en": "Guest link copied. It works for every date.", "ar": "نُسخ رابط الضيوف، وهو يعمل لكل المواعيد."},
+  "series_link_same": {"en": "The same link works for every date of this repeating meeting.", "ar": "الرابط نفسه يعمل لكل مواعيد هذا الاجتماع المتكرر."},
+  "guest_live_recurring": {"en": "Repeating meeting", "ar": "اجتماع متكرر"},
+  "guest_live_recurring_next": {"en": "The next meeting is {when}. Keep this page: the room opens here shortly before it starts, with this same link every time.", "ar": "الاجتماع القادم {when}. أبقِ هذه الصفحة مفتوحة: تُفتح الغرفة هنا قبل الموعد بقليل، وبالرابط نفسه في كل مرة."}
 }
