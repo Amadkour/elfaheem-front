@@ -623,9 +623,17 @@ class _SessionCardState extends State<_SessionCard> {
   /// Wraps the name field: a direct link focuses it at once (AppField has no autofocus of its own).
   final FocusNode _nameGroup = FocusNode(debugLabel: 'guest_live.name', skipTraversal: true, canRequestFocus: false);
 
+  /// The dates are drawn in the platform zone; on the web the zone data (and the theme's zone) can land after the
+  /// first frame, and a guest's device clock may be another zone, so redraw when the effective zone changes.
+  void _zoneChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    AppTime.version.addListener(_zoneChanged);
+    AppTime.loadDatabase();
     if (widget.info.autoJoin && widget.nameController.text.trim().isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -641,6 +649,7 @@ class _SessionCardState extends State<_SessionCard> {
 
   @override
   void dispose() {
+    AppTime.version.removeListener(_zoneChanged);
     _ownPin?.dispose();
     _nameGroup.dispose();
     super.dispose();
