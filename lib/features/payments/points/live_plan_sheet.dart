@@ -13,6 +13,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
@@ -60,6 +61,7 @@ class _LivePlanSheetState extends State<LivePlanSheet> {
   }
 
   Future<void> _subscribe() async {
+    if (offlineBlocked()) return; // points are spent online only (D-1351)
     setState(() {
       _busy = true;
       _error = null;

@@ -1,0 +1,17 @@
+{
+  "id": 7,
+  "name_ar": "كورس الاختبار",
+  "name_en": "Test course",
+  "type": "live",
+  "fees": 100.0,
+  "currency": "EGP",
+  "delivery_mode": "both",
+  "country_code": "EG",
+  "subject": {"id": 3, "name_ar": "الرياضيات", "name_en": "Mathematics"},
+  "area": {"id": 6, "name_ar": "مدينة نصر", "name_en": "Nasr City", "parent": {"id": 5, "name_ar": "القاهرة", "name_en": "Cairo", "parent": null}},
+  "address": "12 Tahrir St",
+  "targets": [
+    {"stage_id": 2, "stage_ar": "الثانوية", "stage_en": "Secondary", "grade_id": 22, "grade_ar": "الصف الثاني", "grade_en": "Grade 2"},
+    {"stage_id": 1, "stage_ar": "الابتدائية", "stage_en": "Primary", "grade_id": null, "grade_ar": null, "grade_en": null}
+  ]
+}

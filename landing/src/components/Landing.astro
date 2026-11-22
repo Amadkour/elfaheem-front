@@ -38,6 +38,14 @@ const entryHref: Record<string, string> = {
   institution: `${APP}/start/institution?${q}`,
 };
 
+// The four hero entries (D-1324): the first three open the app's join flow, the last the institution application.
+const joinLinks = [
+  { k: 'student', href: `${APP}/join?role=student&${q}`, d: 'M3 9l9-5 9 5-9 5zM7 11.5V16c0 1.5 2.5 3 5 3s5-1.5 5-3v-4.5' },
+  { k: 'teacher', href: `${APP}/join?role=teacher&${q}`, d: 'M4 5h16v10H4zM8 19h8M12 15v4M8 9h5' },
+  { k: 'parent', href: `${APP}/join?role=parent&${q}`, d: 'M9 5a3 3 0 1 1 0 6a3 3 0 1 1 0-6zM17 8a2 2 0 1 1 0 4a2 2 0 1 1 0-4zM3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M14.5 15.5c.8-.6 1.6-.9 2.5-.9 2.2 0 4 1.8 4 4.4' },
+  { k: 'org', href: `${APP}/start/institution?${q}`, d: 'M4 20V9l8-5 8 5v11zM9 20v-6h6v6' },
+] as const;
+
 const items = (testimonials as Array<Record<string, string>>) || [];
 
 const jsonLd = [
@@ -107,6 +115,7 @@ const icons = [
         <a href="#features">{t.nav.features}</a>
         <a href="#start">{t.nav.entry}</a>
         <a href="#faq">{t.nav.faq}</a>
+        <a href={`/${lang}/download/`}>{t.nav.download}</a>
       </nav>
       <div class="header__end">
         <a class="langsw" href={`/${other}/`} hreflang={other} lang={other} title={t.switchTo.title} data-setlang={other}
@@ -163,6 +172,16 @@ const icons = [
           <a id="nb-cta" class="btn" href={explore}>{t.hero.cta}</a>
           <a class="btn btn--ghost" href={explore}>{t.hero.browse}</a>
         </div>
+        <nav class="join" aria-label={t.hero.join.label}>
+          {joinLinks.map((j) => (
+            <a class={`join__btn join__btn--${j.k}`} href={j.href} data-join={j.k}>
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                <path d={j.d} fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>{t.hero.join[j.k]}</span>
+            </a>
+          ))}
+        </nav>
         {options?.subjects?.length ? (
           <script type="application/json" id="nb-options" set:html={jsonForScript(options)} />
         ) : null}
@@ -321,6 +340,7 @@ const icons = [
         <a href="#how">{t.nav.how}</a>
         <a href="#features">{t.nav.features}</a>
         <a href="#faq">{t.nav.faq}</a>
+        <a href={`/${lang}/download/`}>{t.nav.download}</a>
         <a href={`${APP}/login`}>{t.login}</a>
         <a href={`/${lang}/privacy/`}>{lang === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}</a>
         <a href={`/${lang}/terms/`}>{lang === 'ar' ? 'شروط الاستخدام' : 'Terms of Service'}</a>
@@ -332,6 +352,72 @@ const icons = [
   <div id="nb-sticky" class="sticky">
     <a id="nb-sticky-cta" class="btn" href={explore}>{t.sticky}</a>
   </div>
+
+  <style>
+    /* Hero entry buttons (D-1324): the hero's own glass + gold language, two per row down to 360 px. */
+    .join {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .join__btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 56px;
+      padding: 8px 14px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--on-hero);
+      font-weight: 700;
+      line-height: 1.3;
+      text-decoration: none;
+      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+    .join__btn svg {
+      flex: none;
+      width: 36px;
+      height: 36px;
+      padding: 7px;
+      border-radius: 10px;
+      background: var(--gold-soft);
+      color: var(--on-gold);
+    }
+    .join__btn span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .join__btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+    .join__btn:focus-visible {
+      outline: 3px solid #fff;
+      outline-offset: 2px;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .join__btn:active {
+        transform: scale(0.98);
+      }
+    }
+    @media (max-width: 400px) {
+      .join {
+        gap: 8px;
+      }
+      .join__btn {
+        padding: 8px 10px;
+        gap: 8px;
+        font-size: 0.95rem;
+      }
+      .join__btn svg {
+        width: 32px;
+        height: 32px;
+        padding: 6px;
+      }
+    }
+  </style>
 
   <script>
     import '../scripts/landing.ts';

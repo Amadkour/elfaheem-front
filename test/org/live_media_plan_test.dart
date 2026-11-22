@@ -7,16 +7,26 @@ import 'package:livekit_client/livekit_client.dart';
 
 void main() {
   group('camera layers', () {
-    test('host 720p @ 24: 180p@15 · 360p · 720p, explicit bitrates', () {
-      final l = cameraLayersFor(LiveCameraCap.p720, fps: 24);
+    test('host 720p @ 30 (D-1504): 180p@15 · 360p · 720p at 1.8 Mbit/s, explicit bitrates', () {
+      final l = cameraLayersFor(LiveCameraCap.p720, fps: 30);
       expect(l, const [
         LiveCameraLayer(320, 180, 15, 100),
-        LiveCameraLayer(640, 360, 24, 380),
-        LiveCameraLayer(1280, 720, 24, 1280),
+        LiveCameraLayer(640, 360, 30, 450),
+        LiveCameraLayer(1280, 720, 30, 1800),
       ]);
-      // The whole camera upload when everything is watched (dynacast stops what nobody watches): ~1.8 Mbit/s,
-      // was 1080p60 at 5 Mbit/s + two lower layers (~5.6 Mbit/s).
-      expect(cameraUploadKbps(LiveCameraCap.p720, fps: 24), 1760);
+      // The whole camera upload when everything is watched (dynacast stops what nobody watches): ~2.35 Mbit/s.
+      expect(cameraUploadKbps(LiveCameraCap.p720, fps: 30), 2350);
+    });
+
+    test('host 1080p (only when the server sends it): 180p · 540p · 1080p', () {
+      expect(cameraLayersFor(LiveCameraCap.p1080, fps: 30), const [
+        LiveCameraLayer(320, 180, 15, 100),
+        LiveCameraLayer(960, 540, 30, 800),
+        LiveCameraLayer(1920, 1080, 30, 3000),
+      ]);
+      final o = videoPublishFor(LiveConfig.parse({'camera_max_host': '1080p'}), host: true, codec: 'vp8');
+      expect(o.videoEncoding?.maxBitrate, 3000000);
+      expect(o.videoSimulcastLayers.map((p) => p.dimensions.height), [180, 540]);
     });
 
     test('participant 360p @ 24: two layers, under 0.5 Mbit/s', () {
@@ -33,19 +43,24 @@ void main() {
     });
 
     test('bitrate per fps and codec', () {
-      expect(cameraBitrateKbps(720, 30, LiveVideoCodec.vp8), 1500);
-      expect(cameraBitrateKbps(720, 15, LiveVideoCodec.vp8), 980);
-      expect(cameraBitrateKbps(720, 30, LiveVideoCodec.h264), 1650);
-      expect(cameraBitrateKbps(720, 30, LiveVideoCodec.vp9), 1130);
+      expect(cameraBitrateKbps(720, 30, LiveVideoCodec.vp8), 1800);
+      expect(cameraBitrateKbps(720, 24, LiveVideoCodec.vp8), 1530);
+      expect(cameraBitrateKbps(720, 15, LiveVideoCodec.vp8), 1170);
+      expect(cameraBitrateKbps(720, 30, LiveVideoCodec.h264), 1980);
+      expect(cameraBitrateKbps(720, 30, LiveVideoCodec.vp9), 1350);
+      expect(cameraBitrateKbps(1080, 30, LiveVideoCodec.vp8), 3000);
+      expect(cameraBitrateKbps(540, 30, LiveVideoCodec.vp8), 800);
       expect(cameraBitrateKbps(360, 30, LiveVideoCodec.vp8), 450);
       expect(cameraBitrateKbps(180, 30, LiveVideoCodec.vp8), 160);
     });
 
-    test('capture options: the cap at camera_fps, front camera', () {
+    test('capture options: the cap at the role\'s fps (host 30, everyone else camera_fps), front camera', () {
       final host = cameraCaptureFor(const LiveConfig(), host: true, deviceId: 'cam1');
       expect(host.params.dimensions.width, 1280);
       expect(host.params.dimensions.height, 720);
-      expect(host.maxFrameRate, 24);
+      expect(host.maxFrameRate, 30);
+      expect(host.params.encoding?.maxBitrate, 1800000);
+      expect(cameraCaptureFor(const LiveConfig(), host: false).maxFrameRate, 24);
       expect(host.deviceId, 'cam1');
       expect(host.cameraPosition, CameraPosition.front);
       final student = cameraCaptureFor(const LiveConfig(), host: false);
@@ -58,14 +73,18 @@ void main() {
       final o = videoPublishFor(const LiveConfig(cameraFps: 30), host: true, codec: 'h264');
       expect(o.simulcast, isTrue);
       expect(o.videoCodec, 'h264');
-      expect(o.videoEncoding?.maxBitrate, 1500000);
+      expect(o.videoEncoding?.maxBitrate, 1800000); // the layers follow the config's codec (VP8 here)
       expect(o.videoEncoding?.maxFramerate, 30);
       expect(o.videoSimulcastLayers.map((p) => p.dimensions.height), [180, 360]);
       expect(o.videoSimulcastLayers.first.encoding?.maxFramerate, 15);
       expect(o.backupVideoCodec.enabled, isTrue);
       expect(o.backupVideoCodec.codec, 'vp8');
-      expect(o.degradationPreference, isNull); // the SDK's per-source default
-      expect(videoPublishFor(const LiveConfig(), host: false, codec: 'vp8').backupVideoCodec.enabled, isFalse);
+      // D-1504: the host's camera keeps its resolution; everyone else the SDK's per-source default.
+      expect(o.degradationPreference, DegradationPreference.maintainResolution);
+      final student = videoPublishFor(const LiveConfig(), host: false, codec: 'vp8');
+      expect(student.degradationPreference, isNull);
+      expect(student.backupVideoCodec.enabled, isFalse);
+      expect(student.videoEncoding?.maxFramerate, 24);
     });
   });
 

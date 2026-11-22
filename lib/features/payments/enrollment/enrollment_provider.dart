@@ -30,6 +30,9 @@ import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/checkout_pages.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
 import 'package:flutter_education_app/features/payments/enrollment/payment_flow_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
+import 'package:flutter_education_app/core/api_error_text.dart' show apiErrorText;
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 
 export 'package:flutter_education_app/features/payments/enrollment/payment_flow_provider.dart' show EnrollStep;
 
@@ -48,6 +51,20 @@ class EnrollmentProvider extends PaymentFlowProvider {
   // ── Price plans ───────────────────────────────────────────────────────────
   List<PriceOption> _options = const [];
   bool _optionsLoaded = false;
+
+  /// The course's own currency from GET /payments/price-options (D-1326): the prices and the fee quote are in it,
+  /// whatever the gateway's currency (/config) is.
+  String? _priceCurrency;
+
+  @override
+  String get currencySymbol => _priceCurrency == null ? super.currencySymbol : currencySymbolFor(_priceCurrency);
+
+  /// The ISO code the card / Apple Pay form charges in (QA_PHASE7 W-8): the course's own currency, else the
+  /// gateway's (the country's); never the SDK's SAR default under an EGP total.
+  String get _chargeCurrency {
+    final c = (_priceCurrency ?? gateway?.currency ?? 'EGP').trim().toUpperCase();
+    return c.isEmpty ? 'EGP' : c;
+  }
   String _plan = PlanKeys.yearly;
   int? _pendingPaymentId;
   String? _pendingTransactionId;
@@ -84,6 +101,33 @@ class EnrollmentProvider extends PaymentFlowProvider {
 
   bool get pendingIsManualReview => _pendingIsManualReview;
   bool get manualTransferRejected => _manualTransferRejected;
+
+  /// The server refused the enrolment itself (a 403, e.g. a Quran program's `quran_gender_rule` /
+  /// `quran_teacher_unverified`): the failed page shows [failureReason] (the bilingual text) and offers no retry,
+  /// since a retry can never succeed.
+  bool get refused => _refused;
+  bool _refused = false;
+
+  /// A 403 of the enrol / checkout call: the failure page with the server's bilingual reason, no retry.
+  @override
+  void onCheckoutError(ApiException e) {
+    if (e.statusCode != 403) return;
+    _refused = true;
+    setStep(EnrollStep.failed, reason: apiErrorText(e));
+  }
+
+  @override
+  bool get handledCheckoutError => _refused;
+
+  /// [fn] with a 403 turned into the refusal page ([onCheckoutError]); null on any failure.
+  Future<T?> _refusable<T>(Future<T> Function() fn) => run(() async {
+        try {
+          return await fn();
+        } on ApiException catch (e) {
+          onCheckoutError(e);
+          rethrow;
+        }
+      });
 
   SavedPaymentMethod? get selectedCard => _selectedCard;
 
@@ -238,6 +282,8 @@ class EnrollmentProvider extends PaymentFlowProvider {
     ];
     if (json != null) {
       _options = parsed;
+      final cur = json['currency'];
+      if (cur is String && cur.trim().isNotEmpty) _priceCurrency = cur;
       // A renewal starts on the plan the student had (D-210); otherwise the teacher's default.
       final had = course.access?.plan;
       final def = parsed.any((o) => o.plan == had) ? had : json['default_plan'] as String?;
@@ -310,6 +356,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
   /// fresh attempt starts from a clean slate.
   @override
   void backToMethod() {
+    _refused = false;
     _pendingIsManualReview = false;
     _manualTransferRejected = false;
     super.backToMethod();
@@ -378,6 +425,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
 
   Future<void> confirm(BuildContext context) async {
     if (isLoading || !_optionsLoaded) return;
+    if (offlineBlocked()) return; // enrolment and checkout are never queued on the device (D-1351)
     if (isFree) return _enrollFree();
     if (!canConfirm) return; // nothing selectable (e.g. the admin just closed the chosen method)
 
@@ -421,7 +469,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
   }
 
   Future<void> _enrollFree() async {
-    final r = await run(() => api.post('/api/v1/courses/${course.id}/enroll'));
+    final r = await _refusable(() => api.post('/api/v1/courses/${course.id}/enroll'));
     if (r != null) setStep(EnrollStep.success);
   }
 
@@ -449,6 +497,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
       publishableApiKey: publishableKey,
       amount: fees.amountMinor,
       description: '${'course'.tr} : ${ (AppConfig.lang=='ar'? course.titleAr:course.titleEn)??''}',
+      currency: _chargeCurrency,
       metadata: {'course_id': course.id.toString(), 'plan': _plan},
       creditCard: CreditCardConfig(saveCard: false, manual: false),
     );
@@ -539,6 +588,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
       publishableApiKey: key,
       amount: fees.amountMinor,
       description: '${'course'.tr} : ${(AppConfig.lang == 'ar' ? course.titleAr : course.titleEn) ?? ''}',
+      currency: _chargeCurrency,
       metadata: {'course_id': course.id.toString(), 'plan': _plan},
       applePay: ApplePayConfig(merchantId: merchantId, label: _kWalletAppName, manual: false, saveCard: false),
     );
@@ -556,10 +606,11 @@ class EnrollmentProvider extends PaymentFlowProvider {
   /// Paymob: the server opens an intention for this wallet and returns client_secret + public_key;
   /// Paymob's native SDK pays; Paymob's webhook completes the payment on the server, so we poll it.
   Future<void> _startPaymobWallet(BuildContext context, String wallet) async {
-    final session = asJsonMap(await run(() async => api.post(
+    final session = asJsonMap(await _refusable(() async => api.post(
       '/api/v1/payments/create-wallet-session',
       body: {'course_id': course.id, 'wallet': wallet, 'plan': _plan},
     )));
+    if (session == null && _refused) return;
     if (session == null) {
       setStep(EnrollStep.failed, reason: 'payment_session_create_failed'.tr);
       return;

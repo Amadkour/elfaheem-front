@@ -6,6 +6,8 @@ import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/features/messaging/chat/chat_store.dart' show ChatHub;
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
+import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
+import 'package:flutter_education_app/core/offline/sync/sync_status.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 
@@ -151,6 +153,15 @@ class TopRouteObserver extends NavigatorObserver {
     AppConnectivity.instance.online.addListener(_onConnectivityChanged);
     // A video was downloaded / deleted → the button may need to appear / go away.
     OfflineVideoService.instance.downloadedIds.addListener(_refreshShortcut);
+    // the offline outbox (D-1351): its status follows the connection, and what a previous run left is sent
+    SyncEngine.instance.bind();
+    if (!kIsWeb) {
+      // the older queues keep their own code and only report their counts into the one status
+      unawaited(AttendanceStore.instance
+          .pending()
+          .then((l) => SyncStatus.instance.report(SyncStatus.attendance, l.length), onError: (Object _) {}));
+      unawaited(OfflineExamStore.instance.reportPending());
+    }
   }
 
   void _onConnectivityChanged() {
@@ -182,6 +193,7 @@ class TopRouteObserver extends NavigatorObserver {
     AttendanceOfflineSync.instance.onReconnect();
     OfflineExamSync.instance.onReconnect();          // finished offline exam sittings + answers carried for classmates
     AdvDraftStore.instance.onReconnect();            // advising notes written offline (idempotent by client_id)
+    SyncEngine.instance.onReconnect();               // the outbox: games, nahw, Quran, study profile (D-1351)
 
     // 2) Close the Downloads page only if the APP opened it.
     _awaitingAutoRoute = false;

@@ -271,6 +271,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         'finance',
       ),
       hub(
+        Icons.school_outlined,
+        Icons.school_rounded,
+        'admin_group_learning',
+        'learning',
+      ),
+      hub(
         Icons.support_agent_outlined,
         Icons.support_agent_rounded,
         _supportLabel,

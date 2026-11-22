@@ -23,6 +23,10 @@
 //       ([ShellBadgeTone]: attention = danger, reward = gold).
 //   UserChipButton · NotificationIcon · CalendarIcon
 //       the sidebar's user chip and the top bar's icons (the home headers use them too).
+//   Pins and colour boxes (D-1170, shell_pins.dart): any page opened inside a tab can be pinned from its header; on
+//       the sidebar / rail each pin is an entry under "Pinned" after the role's tabs (AppShell selects it itself, the
+//       dashboard's index never sees it), on phones a strip at the top of Home. A long press on a tab (or Customize
+//       tabs) gives each tab a colour box. `AppShell(pinScope:)` names the dashboard the pins belong to.
 //
 // The look (floating chrome, D-648, after the Spike admin reference): the page is the canvas; the sidebar is a white
 // rounded card ([ChromeCard]) inset from the window by the page gutter — the wordmark on top, the tabs in groups under
@@ -37,6 +41,11 @@
 // icons in the on-hero roles, the open tab a soft glass pill with a 3 px gold bar on its start edge and cream ink, the
 // person in a glass box; counts stay red. The top bar stays a white card (the intended contrast), its avatar ringed
 // in the brand gradient; the phone bar stays light, its open tab on a brand-gradient pill.
+// D-1340 (the phone bar's slots): the bar draws at most BottomNavMetrics.maxSlots (5) slots. More items than that:
+// items sharing a DashboardItem.mobileGroup fold into ONE slot at the first member's place (a group with one visible
+// member draws that tab itself); still too many, slots 5… fold into the built-in "More" group. A group slot is active
+// while a member is open, its count is the members' sum, and a tap opens a sheet of its members ([ShellGroupSheet]).
+// The items, their indexes, LazyTabStack and the wide shells do not change: only the phone bar draws slots.
 // Colours come from context.colors only. Layout test: test/ui/app_shell_layout_test.dart.
 library;
 
@@ -64,10 +73,14 @@ import 'listenable_selector.dart';
 import 'app_tokens.dart';
 import 'app_responsive.dart';
 import 'app_shell_nav.dart';
+import 'shell_pins.dart';
 import 'calendar_entry.dart';
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant, appAssistantFeatureKey;
 import 'chrome_button.dart';
+import 'sync_status_chip.dart' show SyncStatusChip;
 import 'app_settings.dart' show appRoleLabel;
+import 'app_kit.dart' show showAppSheet;
+import 'app_sheet_header.dart' show AppSheetHeader;
 import '../core/display/app_fonts.dart' show AppFonts;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -77,6 +90,26 @@ import '../core/display/app_fonts.dart' show AppFonts;
 /// What a tab's count means, and so its colour (system.md §2): [attention] — things waiting on the person — is the
 /// danger red; [reward] — what they earned (a new badge, points) — is the gold tint. Gold is never an alarm.
 enum ShellBadgeTone { attention, reward }
+
+/// A group of tabs that share ONE slot on the phone bar when the bar would hold more than
+/// [BottomNavMetrics.maxSlots] (D-1340). [label] is a translation key. Groups are equal by [id].
+@immutable
+class ShellMobileGroup {
+  const ShellMobileGroup(this.id, this.icon, this.selectedIcon, this.label);
+
+  final String id;
+  final IconData icon, selectedIcon;
+  final String label;
+
+  /// The fallback every role gets (rule 3): the slots past the fourth.
+  static const more = ShellMobileGroup('more', Icons.more_horiz_rounded, Icons.more_horiz_rounded, 'more');
+
+  @override
+  bool operator ==(Object other) => other is ShellMobileGroup && other.id == id;
+
+  @override
+  int get hashCode => id.hashCode;
+}
 
 class DashboardItem {
   DashboardItem(
@@ -89,10 +122,29 @@ class DashboardItem {
     this.badgeTone = ShellBadgeTone.attention,
     this.attentionKeys = const [],
     this.attentionOrgId,
+    this.id,
+    this.mobileGroup,
+    this.hint,
   });
 
   final IconData icon, selectedIcon;
   final String label;
+
+  /// The phone bar's group this tab folds into when the bar is full (D-1340); null = a slot of its own.
+  final ShellMobileGroup? mobileGroup;
+
+  /// One line under the label in a group's sheet (a translation key); null = none.
+  final String? hint;
+
+  /// The tab's identity in the shell (its back stack, its URL `<home>/<tab>`): [label] unless set (a pinned page's
+  /// `pin_…`, D-1170).
+  final String? id;
+  String get tabId => id ?? label;
+
+  /// A stable key for what the person chooses about this tab (its colour, D-1170) when [label] is a translated text
+  /// that changes with the language (the organization dashboards set their section keys here).
+  String? prefKey;
+  String get colorKey => prefKey ?? tabId;
   final Future<void> Function()? onRefresh;
   final Widget screen;
 
@@ -244,10 +296,10 @@ class _LazyTabStackState extends State<LazyTabStack> {
     final items = widget.items;
     if (items.isEmpty) return const SizedBox.shrink();
     final current = widget.index.clamp(0, items.length - 1);
-    _visited.add(items[current].label);
+    _visited.add(items[current].tabId);
     _initial ??= {..._visited};
-    _tabs.homeLabel = items.first.label; // the home's own URL; another tab is `<home>/<tab>` (D-170)
-    _tabs.setActive(items[current].label);
+    _tabs.homeLabel = items.first.tabId; // the home's own URL; another tab is `<home>/<tab>` (D-170)
+    _tabs.setActive(items[current].tabId);
     // Each tab's navigator draws its pages over a modal barrier, and a barrier BLOCKS the semantics of everything
     // painted before it in the same semantics container — the sidebar, the rail and the top bar (H12: at 1440 a
     // screen reader found no navigation at all). A container of its own keeps that block inside the tabs.
@@ -258,14 +310,14 @@ class _LazyTabStackState extends State<LazyTabStack> {
       index: current,
       children: [
         for (var i = 0; i < items.length; i++)
-          _visited.contains(items[i].label)
+          _visited.contains(items[i].tabId)
               ? KeyedSubtree(
-                  key: ValueKey('tab:${items[i].label}'),
+                  key: ValueKey('tab:${items[i].tabId}'),
                   // the tab coming to the front fades in and rises 8 px (D-580)
                   child: AppTabEntrance(
                     active: i == current,
-                    enterNow: !_initial!.contains(items[i].label),
-                    child: _TabNavigatorHost(tab: _tabs.tab(items[i].label), screen: items[i].screen, active: i == current),
+                    enterNow: !_initial!.contains(items[i].tabId),
+                    child: _TabNavigatorHost(tab: _tabs.tab(items[i].tabId), screen: items[i].screen, active: i == current),
                   ),
                 )
               : const SizedBox.shrink(),
@@ -322,12 +374,17 @@ class AppShell extends StatefulWidget {
     required this.items,
     this.unreadCount = 0,
     this.showTopBar = true,
+    this.pinScope,
   });
 
   final double width;
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<DashboardItem> items;
+
+  /// Which dashboard the pins and tab colours belong to (D-1170): `org<id>` for an organization's; null = the
+  /// shell's own route ('/dashboard', '/teacher_dashboard', …).
+  final String? pinScope;
 
   /// Unread notifications, for the top bar's bell (phones have none in the shell).
   final int unreadCount;
@@ -345,11 +402,23 @@ class _AppShellState extends State<AppShell> {
   final _tabs = ShellTabs();
   final _stackKey = GlobalKey(debugLabel: 'shell-tabs');
 
+  /// This dashboard's pins and tab colours (D-1170); null for a guest.
+  ShellPinScope? _pins;
+
+  /// The pinned page on screen instead of the dashboard's own tab (its tab id); null = [AppShell.currentIndex].
+  /// Only the sidebar / rail have pin entries; the dashboard's index never sees them.
+  String? _pinTab;
+
+  /// What the last build drew: its tabs (the role's, then the pins) and the open one.
+  List<DashboardItem> _shown = const [];
+  int _cur = 0;
+
   @override
   void initState() {
     super.initState();
     AppShellNav.register(_tabs);
     _tabs.addListener(_changed);
+    _tabs.onPinnedRootPop = _goHome;
     AppFocusMode.instance.addListener(_changed);
     appSidebarCollapsed.addListener(_changed);
     AppFocusMode.instance.ensureLoaded();
@@ -359,24 +428,71 @@ class _AppShellState extends State<AppShell> {
   }
 
   /// A tab asked for by its key (`/admin_dashboard/users`, D-170): every role's home switches to it. The dashboards
-  /// that know other keys ('profile', 'last') answer those themselves.
+  /// that know other keys ('profile', 'last') answer those themselves. A pinned page's key (`pin_…`, a refreshed
+  /// URL) is answered once the pins are read.
   void _onTabRequested() {
     final id = AppNavigator.requestedTab.value;
     if (id == null || !mounted) return;
-    final i = widget.items.indexWhere((e) => e.label == id);
+    if (isShellPinTab(id)) {
+      final pins = _pins;
+      if (pins == null || !pins.loaded) return;
+      AppNavigator.requestedTab.value = null; // consumed
+      if (pins.pins.any((p) => p.tabId == id)) setState(() => _pinTab = id);
+      return;
+    }
+    final i = widget.items.indexWhere((e) => e.tabId == id);
     if (i < 0) return;
     AppNavigator.requestedTab.value = null; // consumed
-    if (i != _current) widget.onTap(i);
+    if (_pinTab != null) setState(() => _pinTab = null);
+    if (i != widget.currentIndex) widget.onTap(i);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _tabs.hostRoute = ModalRoute.of(context);
+    _bindPins();
+  }
+
+  @override
+  void didUpdateWidget(AppShell old) {
+    super.didUpdateWidget(old);
+    // the dashboard moved to one of its tabs (a deep link, its own code): that tab shows, not a pin
+    if (old.currentIndex != widget.currentIndex) _pinTab = null;
+    if (old.pinScope != widget.pinScope) _bindPins();
+  }
+
+  /// The scope of this person on this dashboard (`<user>|<dashboard>`); none for a guest.
+  void _bindPins() {
+    if (GuestState.active) {
+      _pins?.removeListener(_pinsChanged);
+      _pins = _tabs.pins = null;
+      return;
+    }
+    int? uid;
+    try {
+      uid = Provider.of<MyAuthProvider>(context, listen: false).currentUser?.id;
+    } on ProviderNotFoundException {
+      uid = null;
+    }
+    final key = '${uid ?? 0}|${widget.pinScope ?? _tabs.hostRoute?.settings.name ?? 'home'}';
+    if (_pins?.key == key) return;
+    _pins?.removeListener(_pinsChanged);
+    _pins = ShellPins.scope(key)..addListener(_pinsChanged);
+    _tabs.pins = _pins;
+  }
+
+  void _pinsChanged() {
+    if (!mounted) return;
+    final pins = _pins;
+    if (_pinTab != null && !(pins?.pins.any((p) => p.tabId == _pinTab) ?? false)) _pinTab = null;
+    setState(() {});
+    _onTabRequested();
   }
 
   @override
   void dispose() {
+    _pins?.removeListener(_pinsChanged);
     _tabs.removeListener(_changed);
     AppFocusMode.instance.removeListener(_changed);
     appSidebarCollapsed.removeListener(_changed);
@@ -390,36 +506,104 @@ class _AppShellState extends State<AppShell> {
     if (mounted) setState(() {});
   }
 
-  int get _current => widget.items.isEmpty ? 0 : widget.currentIndex.clamp(0, widget.items.length - 1);
+  /// The pinned pages' entries, kept per pin so their tab keeps its page between builds.
+  final Map<ShellPin, DashboardItem> _pinItems = {};
+
+  /// The role's tabs, then (sidebar / rail only) one entry per pin.
+  List<DashboardItem> _itemsFor(AppShellKind kind) {
+    final pins = _pins;
+    if (kind == AppShellKind.mobile || pins == null || pins.pins.isEmpty) return widget.items;
+    _pinItems.removeWhere((p, _) => !pins.pins.contains(p));
+    return [
+      ...widget.items,
+      for (final p in pins.pins)
+        _pinItems.putIfAbsent(
+          p,
+          () => DashboardItem(Icons.push_pin_outlined, Icons.push_pin_rounded, p.title, null,
+              ShellPinnedPage(scope: pins, pin: p), id: p.tabId),
+        ),
+    ];
+  }
+
+  int _currentIn(List<DashboardItem> items) {
+    final pin = _pinTab;
+    if (pin != null) {
+      final i = items.indexWhere((e) => e.tabId == pin);
+      if (i >= 0) return i;
+    }
+    return widget.items.isEmpty ? 0 : widget.currentIndex.clamp(0, widget.items.length - 1);
+  }
 
   Widget _shellTools(BuildContext context) => _GlobalTools(unread: widget.unreadCount);
 
   void _onTap(int i) {
-    switch (shellTapAction(tapped: i, current: _current, tabCanPop: _tabs.activeCanPop)) {
+    if (i < 0 || i >= _shown.length) return;
+    switch (shellTapAction(tapped: i, current: _cur, tabCanPop: _tabs.activeCanPop)) {
       case ShellTap.popToRoot:
         _tabs.popActiveToRoot();
       case ShellTap.switchTab:
       case ShellTap.none:
+        final id = _shown[i].tabId;
+        if (isShellPinTab(id)) {
+          setState(() => _pinTab = id);
+          return;
+        }
+        if (_pinTab != null) setState(() => _pinTab = null);
         widget.onTap(i);
     }
   }
 
+  /// To the home tab (Back from a tab's first page, a pinned page that closed itself).
+  void _goHome() {
+    if (!mounted) return;
+    if (_pinTab != null) setState(() => _pinTab = null);
+    widget.onTap(0);
+  }
+
   void _onBack() {
-    switch (shellBackAction(tabCanPop: _tabs.activeCanPop, index: _current)) {
+    switch (shellBackAction(tabCanPop: _tabs.activeCanPop, index: _cur)) {
       case ShellBack.popTab:
         _tabs.active?.navigator?.maybePop();
       case ShellBack.homeTab:
-        widget.onTap(0);
+        _goHome();
       case ShellBack.leave:
         break;
     }
   }
 
+  /// Customize tabs: a colour for each of the role's tabs and the pins.
+  void _customize() {
+    final pins = _pins;
+    if (pins == null) return;
+    showShellTabsSheet(context, scope: pins, tabs: [
+      for (final it in widget.items) ShellTabEntry(tabId: it.colorKey, label: it.label.tr, icon: it.selectedIcon),
+    ]);
+  }
+
+  /// Phones: a pin opens inside Home, over its first page (the bar keeps the role's tabs, D-1160).
+  void _openPinHere(ShellPin pin) {
+    final pins = _pins;
+    final nav = _tabs.active?.navigator;
+    if (pins == null || nav == null) return;
+    nav.push(MaterialPageRoute<void>(builder: (_) => ShellPinnedPage(scope: pins, pin: pin)));
+  }
+
+  /// The pins' strip on a phone's Home, at its first page.
+  Widget? _strip(AppShellKind kind, bool full) {
+    final pins = _pins;
+    if (kind != AppShellKind.mobile || full || pins == null || pins.pins.isEmpty) return null;
+    if (_cur != 0 || _tabs.activeCanPop) return null;
+    return ShellPinStrip(pins: pins.pins, colors: pins.state.colors, onOpen: _openPinHere, onCustomize: _customize);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final items = widget.items;
-    final body = LazyTabStack(key: _stackKey, index: _current, items: items, tabs: _tabs);
     final kind = Breakpoints.shellFor(widget.width);
+    final items = _shown = _itemsFor(kind);
+    final current = _cur = _currentIn(items);
+    final pinnedFrom = items.length > widget.items.length ? widget.items.length : null;
+    final customize = _pins == null ? null : _customize;
+    final body = LazyTabStack(key: _stackKey, index: current, items: items, tabs: _tabs);
     final full = _tabs.fullScreen;
     final focus = kind != AppShellKind.mobile && AppFocusMode.instance.value;
     _tabs.bottomBar = full || kind != AppShellKind.mobile ? 0 : BottomNavMetrics.heightFor(context);
@@ -436,14 +620,16 @@ class _AppShellState extends State<AppShell> {
         ? ColoredBox(color: context.colors.background, child: body)
         : switch (kind) {
             AppShellKind.wide => WideShell(
-                currentIndex: _current, onTap: _onTap, dashboardItems: items, unreadCount: widget.unreadCount, body: body,
-                showTopBar: widget.showTopBar, focus: focus),
+                currentIndex: current, onTap: _onTap, dashboardItems: items, unreadCount: widget.unreadCount, body: body,
+                showTopBar: widget.showTopBar, focus: focus, pinnedFrom: pinnedFrom, onCustomize: customize),
             AppShellKind.rail => RailShell(
-                currentIndex: _current, onTap: _onTap, dashboardItems: items, unreadCount: widget.unreadCount, body: body,
-                showTopBar: widget.showTopBar, focus: focus),
-            AppShellKind.mobile => MobileShell(currentIndex: _current, onTap: _onTap, dashboardItems: items, body: body),
+                currentIndex: current, onTap: _onTap, dashboardItems: items, unreadCount: widget.unreadCount, body: body,
+                showTopBar: widget.showTopBar, focus: focus, pinnedFrom: pinnedFrom, onCustomize: customize),
+            AppShellKind.mobile => MobileShell(
+                currentIndex: current, onTap: _onTap, dashboardItems: items, body: body,
+                top: _strip(kind, full), onCustomize: customize),
           };
-    final back = shellBackAction(tabCanPop: _tabs.activeCanPop, index: _current);
+    final back = shellBackAction(tabCanPop: _tabs.activeCanPop, index: current);
     final barAvailable = widget.showTopBar && !full && kind != AppShellKind.mobile;
     return ShellScope(
       tabs: _tabs,
@@ -530,6 +716,12 @@ class WideShell extends StatelessWidget {
   /// The tab bodies ([AppShell] passes its keyed [LazyTabStack]); null = a stack of its own.
   final Widget? body;
 
+  /// The first pinned page's index in [dashboardItems] (null: none), D-1170.
+  final int? pinnedFrom;
+
+  /// Customize tabs (a long press on a tab, the button under them); null = none.
+  final VoidCallback? onCustomize;
+
   const WideShell({
     super.key,
     required this.currentIndex,
@@ -539,6 +731,8 @@ class WideShell extends StatelessWidget {
     this.body,
     this.showTopBar = true,
     this.focus = false,
+    this.pinnedFrom,
+    this.onCustomize,
   });
 
   /// False: no top bar — the pages draw their own header with these actions (the organization dashboard, D-103).
@@ -564,8 +758,11 @@ class WideShell extends StatelessWidget {
                 valueListenable: appSidebarCollapsed,
                 builder: (context, collapsed, _) => collapsed
                     ? _RailColumn(
-                        items: dashboardItems, current: current, onTap: onTap, user: barShown ? null : user, foldable: true)
-                    : _Sidebar(items: dashboardItems, current: current, onTap: onTap, user: user),
+                        items: dashboardItems, current: current, onTap: onTap, user: barShown ? null : user, foldable: true,
+                        pinnedFrom: pinnedFrom, onCustomize: onCustomize)
+                    : _Sidebar(
+                        items: dashboardItems, current: current, onTap: onTap, user: user,
+                        pinnedFrom: pinnedFrom ?? dashboardItems.length, onCustomize: onCustomize),
               ),
             ),
           ),
@@ -578,7 +775,9 @@ class WideShell extends StatelessWidget {
                     crumb: current == 0 ? null : dashboardItems[0].label.tr,
                     unread: unreadCount,
                     onRefresh: dashboardItems[current].onRefresh,
-                    helpPageId: shellHelpPageId(context, dashboardItems[current].label, current == 0),
+                    helpPageId: isShellPinTab(dashboardItems[current].tabId)
+                        ? null
+                        : shellHelpPageId(context, dashboardItems[current].label, current == 0),
                     focus: focus,
                     user: user,
                     inset: inset,
@@ -617,12 +816,21 @@ class _SideInset extends StatelessWidget {
 /// The floating sidebar card (D-648): the wordmark and the fold button, the tabs in groups under small muted labels,
 /// and the signed-in person in a tinted box at the bottom. No rules inside: space and the labels group it.
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.items, required this.current, required this.onTap, required this.user});
+  const _Sidebar({
+    required this.items,
+    required this.current,
+    required this.onTap,
+    required this.user,
+    required this.pinnedFrom,
+    this.onCustomize,
+  });
 
   final List<DashboardItem> items;
   final int current;
   final ValueChanged<int> onTap;
   final UserModel? user;
+  final int pinnedFrom;
+  final VoidCallback? onCustomize;
 
   @override
   Widget build(BuildContext context) {
@@ -652,9 +860,12 @@ class _Sidebar extends StatelessWidget {
                   children: [
                     if (generalLabel != null) _GroupLabel(generalLabel, first: true),
                     for (int i = 0; i < items.length; i++) ...[
-                      if (i == 1) _GroupLabel('shell_group_workspace'.tr),
-                      _SidebarTile(item: items[i], selected: current == i, onTap: () => onTap(i)),
+                      if (i == 1 && pinnedFrom > 1) _GroupLabel('shell_group_workspace'.tr),
+                      if (i == pinnedFrom) _GroupLabel('shell_group_pinned'.tr),
+                      _SidebarTile(
+                          item: items[i], selected: current == i, onTap: () => onTap(i), onLongPress: onCustomize),
                     ],
+                    if (onCustomize != null) _CustomizeTile(onTap: onCustomize!),
                   ],
                 ),
               ),
@@ -971,8 +1182,9 @@ class _SidebarTile extends StatelessWidget {
   final DashboardItem item;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
-  const _SidebarTile({required this.item, required this.selected, required this.onTap});
+  const _SidebarTile({required this.item, required this.selected, required this.onTap, this.onLongPress});
 
   /// The gold bar's width and its inset from the pill's top and bottom.
   static const double _bar = 3, _barInset = AppSpace.sm + 2;
@@ -995,6 +1207,7 @@ class _SidebarTile extends StatelessWidget {
           type: MaterialType.transparency,
           child: InkWell(
             onTap: onTap,
+            onLongPress: onLongPress,
             customBorder: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
             hoverColor: l.hover,
             focusColor: l.hover,
@@ -1032,9 +1245,15 @@ class _SidebarTile extends StatelessWidget {
                       constraints: const BoxConstraints(minHeight: AppTouch.min),
                       child: Row(
                         children: [
-                          // D-650 r3: every tab's glyph wears the brand family, matched to what is under it
-                          AppGradientIcon(selected ? item.selectedIcon : item.icon,
-                              size: AppIconSize.md, on: selected ? l.activeSurfaces : l.surfaces),
+                          // D-650 r3: every tab's glyph wears the brand family, matched to what is under it; a tab the
+                          // person coloured sits on its colour box instead (D-1170)
+                          _ColorOr(
+                            item: item,
+                            selected: selected,
+                            box: 28,
+                            fallback: AppGradientIcon(selected ? item.selectedIcon : item.icon,
+                                size: AppIconSize.md, on: selected ? l.activeSurfaces : l.surfaces),
+                          ),
                           const SizedBox(width: AppSpace.sm),
                           Expanded(
                             child: Text(
@@ -1278,13 +1497,23 @@ class _TopSearch extends StatelessWidget {
 /// An icon column (the rail, and the desktop sidebar folded): the brand mark, the fold button when [foldable], the
 /// tabs as icon cells with the open one's tinted pill, the person at the bottom when no top bar carries them.
 class _RailColumn extends StatelessWidget {
-  const _RailColumn({required this.items, required this.current, required this.onTap, this.user, this.foldable = false});
+  const _RailColumn({
+    required this.items,
+    required this.current,
+    required this.onTap,
+    this.user,
+    this.foldable = false,
+    this.pinnedFrom,
+    this.onCustomize,
+  });
 
   final List<DashboardItem> items;
   final int current;
   final ValueChanged<int> onTap;
   final UserModel? user;
   final bool foldable;
+  final int? pinnedFrom;
+  final VoidCallback? onCustomize;
 
   @override
   Widget build(BuildContext context) {
@@ -1305,8 +1534,11 @@ class _RailColumn extends StatelessWidget {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  for (int i = 0; i < items.length; i++)
-                    _RailTile(item: items[i], selected: current == i, onTap: () => onTap(i)),
+                  for (int i = 0; i < items.length; i++) ...[
+                    if (i == pinnedFrom && i > 0) const _RailRule(),
+                    _RailTile(item: items[i], selected: current == i, onTap: () => onTap(i), onLongPress: onCustomize),
+                  ],
+                  if (onCustomize != null) _RailCustomize(onTap: onCustomize!),
                 ],
               ),
             ),
@@ -1327,6 +1559,8 @@ class _GlobalTools extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+        // offline / syncing / waiting writes (D-1351); draws nothing while online with nothing waiting
+        if (!GuestState.active) const SyncStatusChip(),
         if (!GuestState.active) const CalendarIcon(),
         if (!GuestState.active) const ChatEntryIcon(),
         if (!GuestState.active && !AppConfig.disableList.contains(appAssistantFeatureKey))
@@ -1409,6 +1643,12 @@ class RailShell extends StatelessWidget {
   /// The tab bodies ([AppShell] passes its keyed [LazyTabStack]); null = a stack of its own.
   final Widget? body;
 
+  /// The first pinned page's index in [dashboardItems] (null: none), D-1170.
+  final int? pinnedFrom;
+
+  /// Customize tabs (a long press on a tab, the button under them); null = none.
+  final VoidCallback? onCustomize;
+
   const RailShell({
     super.key,
     required this.currentIndex,
@@ -1418,6 +1658,8 @@ class RailShell extends StatelessWidget {
     this.body,
     this.showTopBar = true,
     this.focus = false,
+    this.pinnedFrom,
+    this.onCustomize,
   });
 
   /// False: no top bar — the pages draw their own header with these actions (the organization dashboard, D-103).
@@ -1439,7 +1681,9 @@ class RailShell extends StatelessWidget {
             focus: focus,
             child: _SideInset(
               inset: inset,
-              child: _RailColumn(items: dashboardItems, current: current, onTap: onTap, user: barShown ? null : user),
+              child: _RailColumn(
+                  items: dashboardItems, current: current, onTap: onTap, user: barShown ? null : user,
+                  pinnedFrom: pinnedFrom, onCustomize: onCustomize),
             ),
           ),
           Expanded(
@@ -1451,7 +1695,9 @@ class RailShell extends StatelessWidget {
                     crumb: current == 0 ? null : dashboardItems[0].label.tr,
                     unread: unreadCount,
                     onRefresh: dashboardItems[current].onRefresh,
-                    helpPageId: shellHelpPageId(context, dashboardItems[current].label, current == 0),
+                    helpPageId: isShellPinTab(dashboardItems[current].tabId)
+                        ? null
+                        : shellHelpPageId(context, dashboardItems[current].label, current == 0),
                     focus: focus,
                     user: user,
                     inset: inset,
@@ -1476,11 +1722,12 @@ class RailShell extends StatelessWidget {
 /// One rail tab: an icon-only cell (the label is its tooltip and its screen-reader name) with the pill of the open
 /// tab, a hand-drawn rail so the pill, the count and the 48 px target match the phone bar exactly.
 class _RailTile extends StatelessWidget {
-  const _RailTile({required this.item, required this.selected, required this.onTap});
+  const _RailTile({required this.item, required this.selected, required this.onTap, this.onLongPress});
 
   final DashboardItem item;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -1501,6 +1748,7 @@ class _RailTile extends StatelessWidget {
           type: MaterialType.transparency,
           child: InkWell(
             onTap: onTap,
+            onLongPress: onLongPress,
             borderRadius: AppRadius.controlAll,
             hoverColor: hover,
             focusColor: hover,
@@ -1557,12 +1805,18 @@ class _TabIconPill extends StatelessWidget {
             // D-650 r3: every tab glyph wears the brand family, matched to what is under it (the rail's spot, the
             // phone's green pill, the paper bar)
             child: Center(
-              child: AppGradientIcon(
-                active ? item.selectedIcon : item.icon,
-                size: AppIconSize.lg,
-                on: onBrand
-                    ? (active ? k.activeSurfaces : k.surfaces)
-                    : (active ? [l.button.first] : [c.cardBg]),
+              // the person's colour box for this tab, when they chose one (D-1170)
+              child: _ColorOr(
+                item: item,
+                selected: active,
+                box: _ShellMetrics.pillH - AppSpace.xxs,
+                fallback: AppGradientIcon(
+                  active ? item.selectedIcon : item.icon,
+                  size: AppIconSize.lg,
+                  on: onBrand
+                      ? (active ? k.activeSurfaces : k.surfaces)
+                      : (active ? [l.button.first] : [c.cardBg]),
+                ),
               ),
             ),
           ),
@@ -1591,36 +1845,95 @@ class MobileShell extends StatelessWidget {
   /// The tab bodies ([AppShell] passes its keyed [LazyTabStack]); null = a stack of its own.
   final Widget? body;
 
+  /// Over the tabs: the pinned pages' strip on Home (D-1170); null = nothing.
+  final Widget? top;
+
+  /// Customize tabs (a long press on a tab); null = none.
+  final VoidCallback? onCustomize;
+
   const MobileShell({
     super.key,
     required this.currentIndex,
     required this.onTap,
     required this.dashboardItems,
     this.body,
+    this.top,
+    this.onCustomize,
   });
 
   @override
   Widget build(BuildContext context) {
     final current = currentIndex.clamp(0, dashboardItems.length - 1);
+    final tabs = body ?? LazyTabStack(index: current, items: dashboardItems);
     return BasePage(
-      bottomNavigationBar: _BottomNav(onSelect: onTap, index: current, dashboardItems: dashboardItems),
-      child: body ?? LazyTabStack(index: current, items: dashboardItems),
+      bottomNavigationBar:
+          _BottomNav(onSelect: onTap, index: current, dashboardItems: dashboardItems, onLongPress: onCustomize),
+      // one Column always, so the keyed tab stack keeps its place when the strip comes and goes
+      child: Column(children: [
+        if (top != null) SafeArea(bottom: false, child: top!),
+        Expanded(child: MediaQuery.removePadding(context: context, removeTop: top != null, child: tabs)),
+      ]),
     );
   }
 }
 
+/// One slot of the phone bar (D-1340): one tab ([group] null, [members] = its index) or a group of tabs.
+@immutable
+class ShellNavSlot {
+  const ShellNavSlot(this.members, [this.group]);
+
+  /// Indexes into the items, in their order.
+  final List<int> members;
+
+  /// Null: the slot is the tab `members.single` itself.
+  final ShellMobileGroup? group;
+
+  bool get isGroup => group != null;
+}
+
+/// The phone bar's slots for [items] (D-1340): rule 1 (at most [max] items: one slot each), rule 2 (items of one
+/// [DashboardItem.mobileGroup] fold into one slot at the first member's place; one member draws the tab itself),
+/// rule 3 (still more than [max]: slots [max]… and on fold into [ShellMobileGroup.more]).
+List<ShellNavSlot> shellNavSlots(List<DashboardItem> items, {int max = BottomNavMetrics.maxSlots}) {
+  if (items.length <= max) return [for (var i = 0; i < items.length; i++) ShellNavSlot([i])];
+  final slots = <ShellNavSlot>[];
+  final byGroup = <ShellMobileGroup, List<int>>{};
+  for (var i = 0; i < items.length; i++) {
+    final g = items[i].mobileGroup;
+    if (g == null) {
+      slots.add(ShellNavSlot([i]));
+      continue;
+    }
+    final members = byGroup[g];
+    if (members != null) {
+      members.add(i);
+      continue;
+    }
+    final list = byGroup[g] = [i];
+    slots.add(ShellNavSlot(list, g));
+  }
+  final folded = [for (final sl in slots) sl.isGroup && sl.members.length == 1 ? ShellNavSlot(sl.members) : sl];
+  if (folded.length <= max) return folded;
+  return [
+    ...folded.take(max - 1),
+    ShellNavSlot([for (final sl in folded.skip(max - 1)) ...sl.members], ShellMobileGroup.more),
+  ];
+}
+
 /// Paper with one hairline on top; no shadow — the bar is a surface the page scrolls under, not something afloat. The
-/// open tab's icon sits on a tinted pill and its label turns to the primary ink (D-631).
+/// open tab's icon sits on a tinted pill and its label turns to the primary ink (D-631). At most five slots (D-1340).
 class _BottomNav extends StatelessWidget {
   final int index;
   final ValueChanged<int> onSelect;
   final List<DashboardItem> dashboardItems;
+  final VoidCallback? onLongPress;
 
-  const _BottomNav({required this.index, required this.onSelect, required this.dashboardItems});
+  const _BottomNav({required this.index, required this.onSelect, required this.dashboardItems, this.onLongPress});
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final slots = shellNavSlots(dashboardItems);
     return Container(
       decoration: BoxDecoration(
         color: c.cardBg,
@@ -1631,9 +1944,219 @@ class _BottomNav extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xs),
           child: Row(
             children: [
-              for (var i = 0; i < dashboardItems.length; i++)
-                Expanded(child: _BottomTab(item: dashboardItems[i], active: i == index, onTap: () => onSelect(i))),
+              for (final sl in slots)
+                Expanded(
+                  child: sl.isGroup
+                      ? _GroupSlot(
+                          group: sl.group!,
+                          items: dashboardItems,
+                          members: sl.members,
+                          index: index,
+                          onSelect: onSelect,
+                          onLongPress: onLongPress)
+                      : _BottomTab(
+                          item: dashboardItems[sl.members.single],
+                          active: sl.members.single == index,
+                          onTap: () => onSelect(sl.members.single),
+                          onLongPress: onLongPress),
+                ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A group's slot on the phone bar (D-1340): the group's icon and label, active while one of its members is the open
+/// tab, the members' counts summed. A tap ALWAYS opens the group's sheet; a long press is Customize tabs.
+class _GroupSlot extends StatelessWidget {
+  const _GroupSlot({
+    required this.group,
+    required this.items,
+    required this.members,
+    required this.index,
+    required this.onSelect,
+    this.onLongPress,
+  });
+
+  final ShellMobileGroup group;
+  final List<DashboardItem> items;
+  final List<int> members;
+  final int index;
+  final ValueChanged<int> onSelect;
+  final VoidCallback? onLongPress;
+
+  /// The slot drawn as a tab of its own: the group's glyphs, the members' summed count.
+  DashboardItem _asItem() {
+    final ms = [for (final i in members) items[i]];
+    final orgs = {for (final m in ms) m.attentionOrgId};
+    return DashboardItem(group.icon, group.selectedIcon, group.label, null, const SizedBox.shrink(),
+        id: 'group:${group.id}',
+        badge: ms.fold<int>(0, (n, m) => n + m.badge),
+        badgeTone: ms.every((m) => m.badgeTone == ShellBadgeTone.reward) ? ShellBadgeTone.reward : ShellBadgeTone.attention,
+        attentionKeys: [for (final m in ms) ...m.attentionKeys],
+        attentionOrgId: orgs.length == 1 ? orgs.first : null);
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final picked = await showAppSheet<int>(
+      context,
+      (ctx) => ShellGroupSheet(
+        title: group.label.tr,
+        items: items,
+        members: members,
+        current: index,
+        onPick: (i) => Navigator.of(ctx).pop(i),
+      ),
+    );
+    if (picked != null) onSelect(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) => _BottomTab(
+        key: ValueKey('shell.group.${group.id}'),
+        item: _asItem(),
+        active: members.contains(index),
+        onTap: () => _open(context),
+        onLongPress: onLongPress,
+      );
+}
+
+/// A phone-bar group's members as a sheet (D-1340), from plain values: the title, then one row per member in the
+/// items' order (its icon pill or colour box, the label, a one-line hint, its count, a mirrored chevron); the open
+/// tab's row is marked selected. Each row is at least [AppTouch.min] high; a tap calls [onPick] with the item's index.
+class ShellGroupSheet extends StatelessWidget {
+  const ShellGroupSheet({
+    super.key,
+    required this.title,
+    required this.items,
+    required this.members,
+    required this.current,
+    required this.onPick,
+  });
+
+  final String title;
+  final List<DashboardItem> items;
+  final List<int> members;
+  final int current;
+  final ValueChanged<int> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .8),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppSheetHeader(title),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpace.sm, 0, AppSpace.sm, AppSpace.md),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final i in members)
+                      _GroupRow(
+                          key: ValueKey('shell.group.row.${items[i].tabId}'),
+                          item: items[i],
+                          selected: i == current,
+                          onTap: () => onPick(i)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GroupRow extends StatelessWidget {
+  const _GroupRow({super.key, required this.item, required this.selected, required this.onTap});
+
+  final DashboardItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final hint = item.hint;
+    final ink = selected ? c.blockAccentInk(c.primary, c.primaryTint) : c.textDark;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+      child: Semantics(
+        button: true,
+        selected: selected,
+        child: Material(
+          color: selected ? c.primaryTint : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+                child: Row(
+                  children: [
+                    _ColorOr(
+                      item: item,
+                      selected: selected,
+                      box: _ShellMetrics.pillH + AppSpace.xxs,
+                      fallback: Container(
+                        width: _ShellMetrics.pillH + AppSpace.xxs,
+                        height: _ShellMetrics.pillH + AppSpace.xxs,
+                        decoration: BoxDecoration(
+                          color: selected ? c.cardBg : c.primaryTint,
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(selected ? item.selectedIcon : item.icon,
+                            size: AppIconSize.md, color: c.blockAccentInk(c.primary, selected ? c.cardBg : c.primaryTint)),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item.label.tr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppType.row(context)
+                                  .copyWith(color: ink, fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
+                          if (hint != null)
+                            Text(hint.tr,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppType.meta(context)
+                                    .copyWith(color: selected ? c.blockAccentInk(c.textMedium, c.primaryTint) : c.textMedium)),
+                        ],
+                      ),
+                    ),
+                    ShellBadge(
+                      item: item,
+                      builder: (context, n) => n > 0
+                          ? Padding(
+                              padding: const EdgeInsetsDirectional.only(start: AppSpace.xs),
+                              child: _CountPill(n, tone: item.badgeTone),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    const SizedBox(width: AppSpace.xxs),
+                    Icon(Icons.chevron_right_rounded, size: AppIconSize.lg, color: c.textLight),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -1644,11 +2167,12 @@ class _BottomNav extends StatelessWidget {
 /// One phone tab: the icon on an emerald pill when open, its label under it. The label always shows; the open
 /// tab's is heavier and in the primary ink. The whole column is the target (≥ 48 px).
 class _BottomTab extends StatelessWidget {
-  const _BottomTab({required this.item, required this.active, required this.onTap});
+  const _BottomTab({super.key, required this.item, required this.active, required this.onTap, this.onLongPress});
 
   final DashboardItem item;
   final bool active;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -1657,6 +2181,7 @@ class _BottomTab extends StatelessWidget {
       selected: active,
       child: GestureDetector(
         onTap: onTap,
+        onLongPress: onLongPress,
         behavior: HitTestBehavior.opaque,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: AppTouch.min),
@@ -1684,6 +2209,9 @@ class _BottomTab extends StatelessWidget {
 class BottomNavMetrics {
   BottomNavMetrics._();
 
+  /// The most slots the phone bar draws (D-1340); more tabs fold into groups.
+  static const int maxSlots = 5;
+
   /// The size and line of a tab's label (the overline role, tracking off: spaced Arabic loses its joins).
   static const double _labelSize = 11;
   static const double _labelLine = 1.3;
@@ -1704,4 +2232,124 @@ class BottomNavMetrics {
     final label = MediaQuery.textScalerOf(context).scale(_labelSize) * _labelLine;
     return AppSpace.xs + _ShellMetrics.pillH + AppSpace.xxs + label + AppSpace.xs + MediaQuery.paddingOf(context).bottom;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Colour boxes and Customize tabs (D-1170)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// The colour the person gave [item]'s tab, if any.
+ShellTabColor? _tabColor(BuildContext context, DashboardItem item) =>
+    ShellScope.maybeOf(context)?.pins?.state.colorOf(item.colorKey);
+
+/// [item]'s colour box when the person gave its tab a colour, else [fallback] (the shell's own glyph).
+class _ColorOr extends StatelessWidget {
+  const _ColorOr({required this.item, required this.selected, required this.box, required this.fallback});
+
+  final DashboardItem item;
+  final bool selected;
+  final double box;
+  final Widget fallback;
+
+  @override
+  Widget build(BuildContext context) {
+    final col = _tabColor(context, item);
+    // the same width either way, so the labels of coloured and plain tabs line up
+    if (col == null) return SizedBox(width: box, height: box, child: Center(child: fallback));
+    return ShellColorBox(icon: selected ? item.selectedIcon : item.icon, color: col, size: box);
+  }
+}
+
+/// The sidebar's last row: Customize tabs (colours, the pins' order), quiet under the tabs.
+class _CustomizeTile extends StatelessWidget {
+  const _CustomizeTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: AppSpace.sm),
+        child: AppBrandInk(
+          builder: (context, l) => Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              key: const ValueKey('app.shell.customize'),
+              onTap: onTap,
+              customBorder: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
+              hoverColor: l.hover,
+              focusColor: l.hover,
+              highlightColor: l.hover,
+              splashColor: l.hover,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AppTouch.min),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                  child: Row(children: [
+                    SizedBox(
+                      width: 28,
+                      child: Center(child: Icon(Icons.palette_outlined, size: AppIconSize.md, color: l.muted)),
+                    ),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(
+                      child: Text(
+                        'shell_customize'.tr,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.row(context).copyWith(color: l.muted),
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+/// The rail's line between the role's tabs and the pins.
+class _RailRule extends StatelessWidget {
+  const _RailRule();
+
+  @override
+  Widget build(BuildContext context) => AppBrandInk(
+        builder: (context, l) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+          child: Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: l.glassBorder),
+        ),
+      );
+}
+
+/// The rail's Customize tabs cell (an icon; its name is the tooltip and the screen reader's).
+class _RailCustomize extends StatelessWidget {
+  const _RailCustomize({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => AppBrandInk(
+        builder: (context, l) => Tooltip(
+          message: 'shell_customize'.tr,
+          excludeFromSemantics: true,
+          child: Semantics(
+            button: true,
+            label: 'shell_customize'.tr,
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                key: const ValueKey('app.shell.customize'),
+                onTap: onTap,
+                borderRadius: AppRadius.controlAll,
+                hoverColor: l.hover,
+                focusColor: l.hover,
+                child: SizedBox(
+                  width: _ShellMetrics.railW,
+                  height: _ShellMetrics.railCellH,
+                  child: Center(child: Icon(Icons.palette_outlined, size: AppIconSize.md, color: l.muted)),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
 }

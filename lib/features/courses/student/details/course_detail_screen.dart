@@ -15,6 +15,8 @@ library;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/design/app_states.dart' show AppNeedsConnection;
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart' show offlineBlocked;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
@@ -28,6 +30,7 @@ import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart'
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_tab.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppNavigator;
 import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/core/routing/pending_intent.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/profile/compalints/new_complaint_screen.dart';
 import 'package:flutter_education_app/features/profile/public_profile/public_profile_page.dart' show openPersonProfile;
@@ -52,6 +55,7 @@ import 'package:flutter_education_app/features/courses/course_profile/course_pro
 import 'package:flutter_education_app/features/courses/course_profile/course_page_sheets.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_parts.dart' show CpTrackTab;
 import 'package:flutter_education_app/features/courses/student/details/growth_tr.dart';
+import 'package:flutter_education_app/features/quran/quran_api.dart' show QuranApi, quranOff;
 
 void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
   Navigator.of(context).push(
@@ -63,7 +67,12 @@ void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
 /// course details (enrolled state, price, etc). Shared by the enroll button
 /// and by the payment-status banner's "send it again" action.
 Future<void> _openEnrollment(BuildContext context, CourseModel course) async {
-  if (!GuestGuard.ensure(context, reasonKey: 'guest_reason_enroll')) return;
+  // a guest: the login sheet, and this course's checkout opens again right after the sign-in (D-1324)
+  if (!GuestGuard.ensure(context,
+      reasonKey: 'guest_reason_enroll', intent: PendingIntent(kind: PendingIntentKind.bookCourse, id: course.id))) {
+    return;
+  }
+  if (offlineBlocked()) return; // enrolment and checkout are never queued on the device (D-1351)
   await Navigator.of(context).push(MaterialPageRoute(builder: (_) => EnrollmentScreen(course: course)));
   if (context.mounted) {
     await context.read<CourseDetailProvider>().refresh();
@@ -90,9 +99,12 @@ void _openSupport(BuildContext context, CourseModel course) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class CourseDetailScreen extends StatefulWidget {
-  const CourseDetailScreen({super.key, required this.course, this.profileHub, this.initialTab});
+  const CourseDetailScreen({super.key, required this.course, this.profileHub, this.initialTab, this.openCheckout = false});
 
   final CourseModel course;
+
+  /// Opens the checkout once the course has loaded (a resumed [PendingIntent], D-1324).
+  final bool openCheckout;
 
   /// The course profile already loaded (opened from an old profile entry point); null → loaded on demand.
   final CourseProfileHub? profileHub;
@@ -129,8 +141,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     _provider.block = null; // a block from the previous course page must not flash here
     _provider.pageState = null; // nor the previous course's unread count
     _provider.addListener(_seedHub);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _provider.init(widget.course);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _provider.init(widget.course);
+      // a guest's "book this course" resumed after the sign-in (D-1324): its checkout, unless already enrolled
+      final c = _provider.course;
+      if (widget.openCheckout && mounted && _provider.block == null && !c.isEnrolled && c.id == widget.course.id) {
+        await _openEnrollment(context, c);
+      }
     });
   }
 
@@ -148,6 +166,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       width: AppWidth.wide,
       child: loading
           ? const CourseDetailSkeleton()
+          : provider.offline && provider.sessions.isEmpty
+          // the course could not be fetched: offline (QA_PHASE7 W-4)
+          ? AppNeedsConnection(onRetry: () => provider.init(provider.course))
           : block != null
           // 404 (draft / unknown) or 403 course_locked: a calm page instead of an empty course
           ? CourseBlockedView(
@@ -269,6 +290,21 @@ class _CoursePageState extends State<_CoursePage> {
     await Future.wait([p.refresh(), _hub.refresh()]);
   }
 
+  /// A Quran program the student would be refused (gender rule): the bilingual reason replaces Enroll (QA_PHASE6
+  /// 4.5). One teacher-list call, only on a Quran program's page for a signed-in student who is not enrolled.
+  String? _quranRefusal;
+  String? _quranCheckedFor;
+
+  void _checkQuranBooking(CourseModel c) {
+    if (_quranCheckedFor == c.id) return;
+    _quranCheckedFor = c.id;
+    final teacherId = c.teacher?.id;
+    if (c.setup.programKind != 'quran' || c.isEnrolled || teacherId == null || GuestState.active || quranOff()) return;
+    QuranApi().bookingRefusal(teacherId).then((r) {
+      if (mounted && r != _quranRefusal) setState(() => _quranRefusal = r);
+    });
+  }
+
   void _loadDataLabConfig(CourseModel c) {
     if (!c.isEnrolled || _configFor == c.id) return;
     _configFor = c.id;
@@ -348,6 +384,7 @@ class _CoursePageState extends State<_CoursePage> {
     final title = (ar ? c.titleAr : c.titleEn) ?? '';
     final courseId = int.tryParse(c.id);
     _loadDataLabConfig(c);
+    _checkQuranBooking(c);
 
     final live = p.liveSessions;
     final showLiveTab = c.type == 'live' || live.isNotEmpty;
@@ -421,7 +458,7 @@ class _CoursePageState extends State<_CoursePage> {
                     ),
                     caption: gt('التالي: ${next.name}', 'Up next: ${next.name}'),
                   ))
-          : courseBuyCta(c, onEnroll: () => _openEnrollment(context, c), status: status),
+          : courseBuyCta(c, onEnroll: () => _openEnrollment(context, c), status: status, refusal: _quranRefusal),
     );
 
     // ── spotlight ──────────────────────────────────────────────────────────
@@ -625,7 +662,7 @@ class _CoursePageState extends State<_CoursePage> {
             : CourseBuyCard(course: c, purchase: false, onEnroll: () => _openEnrollment(context, c)),
         bottomBar: c.isEnrolled || archived
             ? null
-            : CourseBuyBar(course: c, status: status, onEnroll: () => _openEnrollment(context, c)),
+            : CourseBuyBar(course: c, status: status, refusal: _quranRefusal, onEnroll: () => _openEnrollment(context, c)),
       ),
     );
   }

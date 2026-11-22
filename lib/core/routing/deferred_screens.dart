@@ -40,6 +40,8 @@ import '../../features/org/org_availability_pages.dart' deferred as org_availabi
 import '../../features/org/org_billing_page.dart' deferred as org_billing_page;
 import '../../features/org/org_dashboard_screen.dart' deferred as org_dashboard;
 import '../../features/org/org_invitations_pages.dart' deferred as org_invitations_pages;
+import '../../features/org/onboarding/onboarding_applicant.dart' deferred as onboarding_applicant;
+import '../../features/org/onboarding/onboarding_review.dart' deferred as onboarding_review;
 import '../../features/org/org_member_dashboard.dart' deferred as org_member_dashboard;
 import '../../features/org/org_member_pages.dart' deferred as org_member_pages;
 import '../../features/org/org_member_space.dart' deferred as org_member_space;
@@ -361,8 +363,10 @@ Widget deferredAdminEntityManage(EntitySummary summary, {VoidCallback? onChanged
     load: admin_entity_manage.loadLibrary,
     builder: (_) => admin_entity_manage.adminEntityManage(summary, onChanged: onChanged, onRemoved: onRemoved));
 
-Widget deferredCourseForm({TeacherCourse? course}) =>
-    DeferredPage(id: 'course_form', load: course_form.loadLibrary, builder: (_) => course_form.CourseFormScreen(course: course));
+Widget deferredCourseForm({TeacherCourse? course, String programKind = 'course'}) => DeferredPage(
+    id: 'course_form',
+    load: course_form.loadLibrary,
+    builder: (_) => course_form.CourseFormScreen(course: course, programKind: programKind));
 
 Widget deferredTeacherExamHub({
   required int courseId,
@@ -445,3 +449,19 @@ Future<void> openOrgApprovalDeferred(BuildContext context, int orgId, String wha
   if (!context.mounted) return;
   return org_member_dashboard.openOrgApproval(context, orgId, what);
 }
+
+/// `/onboard/<CODE>` (D-1200): a member onboarding intake link; the preview needs no account, starting does.
+Widget deferredOnboardIntake({required String code}) => DeferredPage(
+    id: 'onboard_intake', load: onboarding_applicant.loadLibrary, builder: (_) => onboarding_applicant.OnbIntakeLandingPage(code: code));
+
+/// "My application" on the memberships page; nothing while the part downloads (or if it can't).
+Widget deferredOnbApplicantCard() =>
+    DeferredSlot(id: 'onboard_intake', load: onboarding_applicant.loadLibrary, builder: (_) => onboarding_applicant.OnbApplicantCard());
+
+/// The applicant's own page of one admission case (a notification tap for the applicant).
+Widget deferredOnbApplicantPage({required int caseId, int orgId = 0}) => DeferredPage(
+    id: 'onboard_intake', load: onboarding_applicant.loadLibrary, builder: (_) => onboarding_applicant.OnbApplicantPage(caseId: caseId, orgId: orgId));
+
+/// `/org/<o>/onboarding/<caseId>` (D-1200): the staff review page of one case.
+Widget deferredOnbCasePage({required int orgId, required int caseId}) => DeferredPage(
+    id: 'onboard_review', load: onboarding_review.loadLibrary, builder: (_) => onboarding_review.OnbReviewPage(orgId: orgId, caseId: caseId));

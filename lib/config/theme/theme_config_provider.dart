@@ -37,6 +37,7 @@ import 'theme_config_model.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_canvas.dart';
 import 'package:flutter_education_app/design/app_contrast.dart';
+import 'package:flutter_education_app/features/courses/course_filters.dart' show CourseFilterStore;
 
 // v2: drops palettes cached before the new default theme, so offline users
 // get the new default instead of the old cached one.
@@ -56,6 +57,41 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   ThemeConfigProvider({required ApiClient api}) : _api = api {
     WidgetsBinding.instance.addObserver(this);
+    _live = this;
+  }
+
+  /// The app's provider (the last one made), for [accountChanged] from code that has no context.
+  static ThemeConfigProvider? _live;
+
+  /// The account the last theme request was made for ('guest' when signed out / guest mode), null before the first.
+  String? _fetchedFor;
+
+  /// The country layer of the disable list (D-1341) follows the account: call after a sign-in, a sign-out or a saved
+  /// study-profile country. Fetches again only when the account differs from the last request's ([force]: always,
+  /// e.g. the study profile's country changed), so the /auth/me refresh at every start-up costs nothing.
+  static Future<void> accountChanged({bool force = false}) async {
+    final p = _live;
+    if (p == null || p._fetchedFor == null) return; // the first fetch has not started: it will be right anyway
+    try {
+      final u = await CourseFilterStore.user();
+      if (!force && u.id == p._fetchedFor) return;
+    } catch (_) {}
+    await p.silentRefresh();
+  }
+
+  /// The theme request's query: a guest (signed out or guest mode) sends the country it remembered (the course
+  /// filter bar's), so a tab the super admin switched off for that country goes for a guest too (D-1341); a
+  /// signed-in user sends nothing (the server reads the study profile).
+  @visibleForTesting
+  static Future<({String user, Map<String, dynamic>? query})> requestScope() async {
+    try {
+      final u = await CourseFilterStore.user();
+      if (u.id != 'guest') return (user: u.id, query: null);
+      final country = (await CourseFilterStore.initial('guest')).country?.trim().toUpperCase() ?? '';
+      return (user: 'guest', query: country.isEmpty ? null : <String, dynamic>{'country': country});
+    } catch (_) {
+      return (user: 'guest', query: null);
+    }
   }
 
   @override
@@ -1406,19 +1442,34 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   static void prefetch(ApiClient api) {
     if (_early != null) return;
-    final f = api.get('/api/v1/theme/$_currentPlatform').timeout(const Duration(seconds: 30));
+    final f = () async {
+      final scope = await requestScope();
+      _earlyFor = scope.user;
+      return api.get('/api/v1/theme/$_currentPlatform', queryParams: scope.query);
+    }()
+        .timeout(const Duration(seconds: 30));
     f.ignore(); // a failure is the first fetch's to handle
     _early = f;
   }
+
+  /// The account the early request was made for.
+  static String? _earlyFor;
 
   Future<bool> _fetchFromServer({bool silent = false}) async {
     try {
       final early = _early;
       _early = null;
       final platform = _currentPlatform;
-      final json = await (early ?? _api
-          .get('/api/v1/theme/$platform')
-          .timeout(const Duration(seconds: 30))) as Map<String, dynamic>;
+      final Future<dynamic> request;
+      if (early != null) {
+        request = early;
+        _fetchedFor = _earlyFor ?? 'guest';
+      } else {
+        final scope = await requestScope();
+        _fetchedFor = scope.user;
+        request = _api.get('/api/v1/theme/$platform', queryParams: scope.query).timeout(const Duration(seconds: 30));
+      }
+      final json = await request as Map<String, dynamic>;
       final colors = json['colors'] as Map<String, dynamic>;
       _model = ThemeConfigModel.fromJson(colors);
 

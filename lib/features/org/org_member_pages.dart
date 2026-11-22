@@ -126,10 +126,12 @@ class _MembershipView extends StatelessWidget {
           : p.mine.isEmpty
               ? ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.xl), children: [
                   deferredOrgMyInvitationsCard(onChanged: p.loadMine),
+                  deferredOnbApplicantCard(),
                   OrgEmpty(icon: Icons.domain_rounded, title: t('لم تنضم لأي مؤسسة بعد', "You haven't joined an organization yet")),
                 ])
               : ListView(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxxl + AppSpace.xl), children: [
                   deferredOrgMyInvitationsCard(onChanged: p.loadMine),
+                  deferredOnbApplicantCard(),
                   for (final m in p.mine)
                     Padding(
                       padding: const EdgeInsets.only(bottom: AppSpace.sm),

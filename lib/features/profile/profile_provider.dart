@@ -265,14 +265,12 @@ class ProfileProvider extends BaseProvider {
   }
 
   // ── Logout ────────────────────────────────────────────────────────────────
-  /// Calls POST /api/v1/auth/logout, clears local state, and navigates to
-  /// the login screen.
-  ///
-  /// Pass [fcmToken] if you want to remove only this device's push token;
-  /// omit it to remove all devices (full logout).
-  Future<void> logout(BuildContext context, {String? fcmToken}) async {
-    // this device's refresh token → only this session is revoked server-side (shared with MyAuthProvider.logout)
-    await _api.signOutServer();
+  /// The main sign-out button: the one sign-out flow ([MyAuthProvider.logout]: unsent offline work settled first,
+  /// then the server session revoked and the outbox, the read caches, the local database and the store files wiped),
+  /// then this provider's state and the login screen. Cancel on the unsent-work question keeps the person signed in.
+  /// [forced] (the session or the account is gone) wipes without asking.
+  Future<void> logout(BuildContext context, {String? fcmToken, bool forced = false}) async {
+    if (!await context.read<MyAuthProvider>().logout(forced: forced)) return;
 
     await _api.clearTokens();
     LiveEventsClient.instance.sessionChanged();
@@ -310,7 +308,9 @@ class ProfileProvider extends BaseProvider {
       if (r != null && r is Map) {
         final deleteAfter = r['delete_after'] as String?;
 
-        // Clear local tokens and state exactly like logout
+        // Clear local tokens and state exactly like logout; the account is gone, so its offline data goes without
+        // asking (forced)
+        if (context.mounted) await context.read<MyAuthProvider>().logout(forced: true);
         await _api.clearTokens();
         LiveEventsClient.instance.sessionChanged();
         _reset();

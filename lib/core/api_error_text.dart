@@ -94,6 +94,115 @@ String apiErrorText(ApiException e) {
       return _t('لا تملك صلاحية الوصول لهذه المؤسسة', 'You don\'t have access to this organization');
     case 'orgs_disabled':
       return _t('المؤسسات متوقفة حالياً على المنصة', 'Organizations are switched off on the platform right now');
+    // booking a Quran program (D-1347): every enrol path and checkout can answer these two
+    case 'quran_gender_rule':
+      return d['reason'] == 'gender_unknown'
+          ? _t('هذا البرنامج يشترط أن يكون المعلم من نفس جنس الطالب. أضف الجنس في ملفك الدراسي ثم احجز.',
+              'This program needs a teacher of the student\'s gender. Add your gender in your study profile, then book.')
+          : _t('هذا البرنامج يشترط أن يكون المعلم من نفس جنس الطالب. اختر معلماً آخر.',
+              'This program needs a teacher of the student\'s gender. Choose another teacher.');
+    case 'quran_teacher_unverified':
+      return _t('لم تتحقق المنصة من هذا المعلم بعد، فلا يمكن الحجز معه الآن.',
+          'The platform has not verified this teacher yet, so booking is not open now.');
+    // Learning Hub v2 teachers and packages (D-1620 .., CONTRACT.md §1 / §2)
+    case 'no_profile':
+      return _t('لم تنشئ ملفك كمعلم بعد', 'You have not created your teacher profile yet');
+    case 'profile_incomplete':
+      return _t('أكمل ملفك قبل الإرسال: الاسم والجنس ومادة واحدة ونبذة ومستند واحد على الأقل.',
+          'Complete your profile before sending it: name, gender, one subject, an introduction and at least one document.');
+    case 'profile_locked':
+      return _t('ملفك قيد المراجعة الآن، فلا يمكن تعديله حتى يُراجع.', 'Your profile is being reviewed, so it cannot be changed until the review ends.');
+    case 'bad_document':
+      return _t('الملف ليس صورة ولا PDF صالحاً. اختر ملفاً آخر.', 'The file is not a valid image or PDF. Choose another file.');
+    case 'file_too_large':
+      return _t('الملف أكبر من 10 ميجابايت', 'The file is larger than 10 MB');
+    case 'not_approved':
+      return _t('تُفتح الباقات بعد اعتماد ملفك كمعلم من المنصة.', 'Packages open once the platform approves your teacher profile.');
+    case 'package_full':
+      return _t('اكتملت مقاعد هذه الباقة', 'This package is full');
+    case 'package_locked':
+      return _t('انضم طلاب لهذه الباقة، فلا يتغير عدد الجلسات ولا الجدول ولا تاريخ البدء.',
+          'Students have joined this package, so the sessions, the schedule and the start date can no longer change.');
+    case 'package_closed':
+      return _t('أُغلقت هذه الباقة', 'This package is closed');
+    case 'already_enrolled':
+      return _t('أنت مشترك في هذه الباقة بالفعل', 'You are already in this package');
+    // Learning Hub v2 final review (D-1646): the rest of the teachers / packages / games / self-learning / series codes
+    case 'teacher_only':
+      return _t('هذه الصفحة للمعلمين فقط', 'This page is for teachers only');
+    case 'students_only':
+      return _t('هذا متاح للطلاب فقط', 'This is for students only');
+    case 'not_owner':
+      return _t('يستطيع صاحبها فقط فعل ذلك', 'Only its owner can do this');
+    case 'not_pending':
+      return _t('رُوجع هذا الطلب بالفعل — حدّث الصفحة', 'This was already reviewed — refresh the page');
+    case 'reason_required':
+      return _t('اكتب السبب أولاً', 'Write the reason first');
+    case 'not_enrolled':
+      return _t('لست مسجلاً هنا', 'You are not enrolled here');
+    case 'card_unavailable':
+      return _t('بطاقة الدفع غير متاحة الآن — حاول بعد قليل', 'Card payment is not available right now — try again shortly');
+    case 'gateway_error':
+      return _t('تعذّر الاتصال ببوابة الدفع — لم يُخصم شيء، حاول مرة أخرى', 'The payment gateway could not be reached — nothing was charged, try again');
+    case 'not_due':
+      return _t('هذه الدفعة ليست بانتظار استرداد', 'This payment is not waiting for a refund');
+    case 'bad_rule':
+      return _t('قاعدة التكرار غير صالحة — راجع الأيام والوقت وتاريخ البدء', 'The repeat rule is not valid — check the days, the time and the start date');
+    case 'no_occurrences':
+      return _t('لا تنتج قاعدة التكرار أي موعد — غيّر الأيام أو تاريخ الانتهاء', 'The repeat rule gives no dates — change the days or the end date');
+    case 'series_ended':
+      return _t('انتهى هذا الاجتماع المتكرر، فلا يمكن تعديله', 'This repeating meeting has ended, so it cannot change');
+    case 'series_not_found':
+      return _t('هذا الاجتماع المتكرر غير موجود', 'This repeating meeting no longer exists');
+    case 'occurrence_cancelled':
+      return _t('أُلغي هذا الموعد بالفعل', 'This date was already cancelled');
+    case 'occurrence_not_found':
+      return _t('هذا الموعد ليس من مواعيد الاجتماع المتكرر', 'This date is not one of the repeating meeting\'s dates');
+    case 'bad_from_date':
+      return _t('لا يمكن تعديل مواعيد مضت — اختر اليوم أو بعده', 'Past dates cannot change — pick today or later');
+    case 'badge_key_taken':
+      return _t('هذا المعرّف مستخدم لشارة أخرى', 'Another badge already uses this key');
+    case 'badge_not_found':
+      return _t('هذه الشارة غير موجودة', 'This badge no longer exists');
+    case 'badge_bad_key' || 'badge_bad_name' || 'badge_bad_icon' || 'badge_bad_rule':
+      return _t('بيانات الشارة غير صالحة — راجع المعرّف والاسمين والأيقونة والقاعدة',
+          'The badge is not valid — check the key, both names, the icon and the rule');
+    case 'game_bad_engine':
+      return _t('نوع اللعبة غير معروف', 'Unknown game type');
+    case 'game_bad_status':
+      return _t('حالة اللعبة غير صالحة', 'Not a valid game status');
+    case 'game_bad_cover':
+      return _t('رابط الغلاف يجب أن يبدأ بـ https://', 'The cover link must start with https://');
+    case 'game_bad_order' || 'sl_bad_order':
+      return _t('تعذّر حفظ الترتيب — حدّث الصفحة وحاول مرة أخرى', 'The order could not be saved — refresh and try again');
+    case 'game_bad_period':
+      return _t('الفترة غير صالحة', 'Not a valid period');
+    case 'sl_bad_subject':
+      return _t('هذه المادة غير متاحة في الدروس اليومية', 'This subject is not offered in daily lessons');
+    case 'sl_bad_choice':
+      return _t('اختر إجابة من الخيارات', 'Pick one of the options');
+    case 'sl_bad_client_id':
+      return _t('تعذّر حفظ هذه الإجابة — أجب مرة أخرى', 'This answer could not be saved — answer again');
+    case 'sl_bad_item':
+      final f = '${d['field'] ?? ''}';
+      return _t('بيانات العنصر غير صالحة${f.isEmpty ? '' : ' ($f)'}', 'The item is not valid${f.isEmpty ? '' : ' ($f)'}');
+    // the offline outbox (D-1351, D-1352): a write the server refused when it was synced
+    case 'sync_stale':
+      return _t('تغيّر ملفك الدراسي من جهاز آخر، فلم يُحفظ تعديلك. عرضنا أحدث نسخة — عدّل مرة أخرى.',
+          'Your study profile changed on another device, so your edit was not saved. The latest copy is shown — edit it again.');
+    case 'sync_too_many':
+      return _t('تغييرات كثيرة في دفعة واحدة — ستُرسل على دفعات', 'Too many changes at once — they will be sent in batches');
+    case 'sync_bad_since':
+      return _t('تعذّرت مزامنة آخر التغييرات — حاول مرة أخرى', 'The latest changes could not be synced — try again');
+    case 'sync_bad_op' || 'sync_unknown_kind' || 'sync_error':
+      return _t('تعذّر حفظ أمر سجّلته دون اتصال، فحُذف من الانتظار.',
+          'Something you did offline could not be saved, so it was dropped from the queue.');
+    // a parent's view of a minor's games / Quran / grammar, or a link redeem (D-1311, D-1371)
+    case 'consent_required':
+      return _t('هذا الطالب دون السن القانونية: يلزم موافقتك كولي أمر أولاً. افتح "أبنائي" واضغط "إعطاء الموافقة".',
+          'This student is under the legal age: your consent as their parent is needed first. Open My children and tap Give consent.');
+    case 'program_kind_locked':
+      return _t('لا يمكن تغيير نوع البرنامج بعد تسجيل طلاب فيه', 'The program type cannot change once the course has students');
     case 'WEAK_PASSWORD':
       return _t('كلمة المرور ضعيفة — 8 أحرف على الأقل', 'The password is too weak — at least 8 characters');
     case 'PHONE_TAKEN':

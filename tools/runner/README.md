@@ -21,6 +21,9 @@ anyway, so iPhone users keep the web app.
    - Python 3.9 or newer
    - Android Studio, for the Android SDK and JDK. Run `flutter doctor --android-licenses` once.
    - Visual Studio 2022 Community with the **Desktop development with C++** workload. Only needed for Windows builds.
+   - Inno Setup 6 (`winget install JRSoftware.InnoSetup`), which makes the Windows installer. Only needed for Windows
+     builds; `scripts/release/package_windows.ps1` installs it with winget itself when it is missing, and `--check`
+     reports it.
 
    Then install the one Python package the runner needs:
    ```

@@ -5060,3 +5060,872 @@ Renders (by eye, `test/visual/exam_round3_golden_test.dart`, 320 and 1400, ar an
 exam and an online one, appeals (teacher and student), the decision and request sheets, the grading queue, a paper
 import result and the submit confirmation. `exam_take` / `exam_wizard_ux` goldens take `GOLDEN_SIZES` /
 `GOLDEN_THEMES` (`test/visual/golden_sizes.dart`).
+
+## D-1150 — Teacher organization workspace · 2026-11-18 · accepted
+
+Every non-student organization role WITHOUT organization-wide admin access (`!isOrgAdmin && access != 'admin'`)
+opens the teacher workspace (`lib/features/org/workspace/`) instead of the D-103 admin sections; organization
+admins keep D-103. Kill switch `org.teacher_workspace` (off → D-103 for everyone; the server answers 403
+`feature_off`). Nothing was removed: the organization pages a teacher holds a right to stay reachable from the
+Profile tab, the command palette and deep links (a section that is not a tab is pushed), and every unit keeps its
+full department page. Plan, contract and tracker: `docs/teacher-org/PLAN.md`.
+
+## D-1151 — Workspace tabs and the Pinned tab · 2026-11-18 · accepted
+
+Overview · Management · Membership · Pinned · Alerts · Profile, in that order; Management / Membership hide when
+empty, Pinned when nothing is pinned. Pins (a tab, a unit, an Overview box) live in ONE Pinned tab, never one nav
+entry each (a phone bar cannot hold them): a chip strip that scrolls, and past `wsPinStripMax` (10) an "All pinned"
+grid with search and drag-to-reorder.
+
+## D-1152 — Manager vs member, decided by the server · 2026-11-18 · accepted
+
+`GET …/my-workspace`: a unit is managed when I head it or hold `departments.update` / `team.update` there; council
+entities are left out. A manager sees every person's data and history and gets bulk actions; a member sees names,
+avatars and kinds (no e-mail or phone) and only their own actions in a history. The server enforces both (403
+`not_in_unit` / `not_manager`).
+
+## D-1153 — A unit's items are its people · 2026-11-18 · accepted
+
+The list inside a unit is its people (team seats as head / team, joined members), paged with search, kinds, a
+joined-date range and sort. A person's history comes from `org_audit_log` (the person as target or actor, in that
+unit); bulk changes write a `workspace.remove` / `workspace.restore` row per person so their history shows them.
+
+## D-1154 — Bulk bar at the bottom, Undo by snapshot · 2026-11-18 · accepted
+
+The bulk bar sits at the bottom (thumb reach; the list's header stays still). Remove asks first, then offers Undo,
+which sends back the server's removal snapshot (`op: restore`); heads and the caller are never removed.
+
+## D-1155 — Workspace export goes through the Export Studio · 2026-11-18 · accepted
+
+All, filtered or selected people go through `showAppExportSheet` / `AppTableExport` with the Studio's paged fetch
+and progress; no second export system. A large export keeps running while the person uses the app and ends with a
+notice. A push for "export ready" is not added (the Studio has none today).
+
+## D-1156 — Alerts with per-user state, no migration · 2026-11-18 · accepted
+
+`GET …/my-alerts` normalises the organization's tasks and attention rows for me (source, severity, the person it is
+about, a link). Read / snooze / archive are stored per user in one `app_settings` row `org_alert_state:<uid>:<oid>`
+(the teacher to-do pattern): small, per person, pruned as keys go away, so no table.
+
+## D-1157 — Workspace preferences stay on the device · 2026-11-18 · accepted
+
+Display mode, main tab, focus mode, pins, saved filters and the alert view are stored per user + organization in
+SharedPreferences (`org_ws.<user>.<org>`), like `OrgPersonaStore`. Not synced through `/me/ui-prefs`: that store is
+one 4 KB dictionary other features share, written whole.
+
+## D-1158 — "Switch account" in the personal Profile · 2026-11-18 · accepted
+
+The personal Profile gets a Switch account row (`SwitchAccountTile`) that opens the one context switcher (personal
++ every organization account); choosing an organization opens its dashboard. No second switcher.
+
+## D-1160 — Organization admins get the premium workspace too; at most five tabs · 2026-11-18 · accepted
+
+The owner asked for a premium admin dashboard with the number of tabs left to best practice. Admins (org admin,
+platform admin, admin assistants: `wsIsAdmin`) now open the same workspace (D-1150 widened; the D-103 shell is the
+kill switch's fallback, nothing deleted). Admin tabs: Overview · Management · Pinned (once something is pinned) ·
+Alerts · Profile — five at most, the phone bottom bar's limit (Material's 3–5). Membership appears only when the
+admin is also a plain member of a unit. Management leads with the organization's sections (People · Academics ·
+Timetable · Services, each page with its badge) and then the units; boxes / tabs, the main tab (a unit or a page,
+`WsPrefs.mainSection`) and focus mode work as for teachers, and any page can be pinned (`section:<key>`). The admin
+Overview draws the organization's figures from the dashboard call the shell already makes (no new request);
+Profile puts Organization settings first.
+
+## D-1170 — Pin any page to a dashboard's tabs; a colour box per tab · 2026-11-18 · accepted
+
+The owner asked to pin any screen to the dashboard tab list in every dashboard, and to colour the tabs so the flow
+reads at a glance. It lives in the ONE shell (`lib/design/shell_pins.dart` over `AppShell`), so student, teacher,
+parent, admin, the D-103 organization dashboard and the D-1150 workspace all get it with no per-dashboard code.
+- **Pin:** every kit header (`AppHeader`, `AppPageHeader`, `OrgPageHeader`) draws `ShellPinButton` next to the focus
+  toggle; it shows only on a page opened inside a role tab (not a tab's own first page, not a root page, not a
+  guest). One tap pins, a second unpins, both with Undo; at most 8 pins per dashboard.
+- **Where pins go:** on the desktop sidebar and the tablet rail each pin is its own entry under "Pinned", after the
+  role's tabs, with its own back stack; the shell selects it itself, so a dashboard's `currentIndex` never sees it.
+  On phones the bottom bar keeps the role's tabs (D-1160's 5-tab cap holds; the owner chose this over a 6th tab or
+  a scrolling bar) and the pins are a strip of colour boxes at the top of Home; a tap opens the page inside Home.
+  D-1151's single Pinned tab of the workspace stays for its units and boxes.
+- **Colour box:** a long press on any tab, or Customize tabs under the list, gives each tab a colour; a coloured
+  tab draws its icon on a filled tile of that colour, a tab without one keeps the brand look. The brand colour is the
+  theme's primary; the other six are fixed hues (coral, amber, sky, indigo, plum, slate) at one weight, lifted in dark
+  mode — the theme's own accents sit too close to tell steps apart (peach / rust, success / primary). Only these
+  boxes use them; no theme preset was added.
+- **Rebuilding a pin:** the page's route builder is captured when it is pinned. A page with a URL (a named route)
+  is rebuilt after a restart through the router; any other page keeps its pin and reconnects the next time it is
+  opened (matched by its title), and until then its tab says so and offers Unpin. A pinned page that closes itself
+  (Back, a save that pops) goes to the Home tab instead of closing the dashboard.
+- **Storage:** on the device, per user and dashboard (`ui.shell_tabs.v1.<user>|<route or org<id>>`), like D-1157;
+  not synced through `/me/ui-prefs`. No server change, no kill switch.
+
+## D-1180 — Organization admins: Profile is the person, a new Organization tab is the organization · 2026-11-19 · accepted
+
+The owner found the admin's Profile overloaded: one "Organization settings" row led to a page of about 40 rows that
+mixed personal settings (dark mode, language, sign out) with the organization's (roles, billing, closing it), with
+duplicates (three ways to switch, two personal-account rows, Delete in both the Edit sheet and the danger zone) and
+the organization's own identity visible nowhere. Plan and element mapping: `docs/org-profile/PLAN.md`.
+- **Profile = me; Organization = the organization; Management = its daily work.** Admins get a 5th tab,
+  Organization (Overview · Management · Organization · Alerts · Profile): an identity card (logo or initial on the
+  brand colour, name, type, status, about, official details, Edit details, prompts for a missing logo / about) and
+  the groups Joining & access · Structure · Policies · Records & billing, then the danger zone folded to one row.
+- **Profile (admins)** keeps the hero, Account (one Switch account, personal account, messages, create another
+  organization), My units, Preferences (organization alerts, display, language, dark mode, assistant, workspace
+  reset), Security, Help & legal, Sign out. A "settings moved" row points to the new tab for this release. Non-admins
+  keep their Profile as it was.
+- **One source of rows:** `org_settings_groups.dart`; the D-103 Settings tab (the `org.teacher_workspace` fallback)
+  composes the same groups, organization first, so both stay identical. Every row keeps its right check and its
+  kill-switch key; nothing was removed.
+- **Edit sheet:** identity and contact only. "How people join" is its own row (it sends only `join_mode`; the
+  server's `PUT /orgs/{id}` changes only the fields it is sent, so the plan's whole-object risk did not apply). The
+  sheet's second Delete is gone (the danger zone keeps Close / delete); its raw TextStyles use the kit's.
+- **Phones keep five tabs** (D-1160): the workspace's Pinned tab folds into a strip at the top of Overview; desktop
+  and tablet keep the Pinned tab. The shell keeps the open tab by key when Pinned comes and goes with the width.
+- **Redirects:** the home's "Settings & roles" link and a `settings` attention / deep-link request open the
+  Organization tab when the workspace has it; the `org.settings` badge sits on that tab. Exams moved to Management.
+- Help page `home.org/ws_organization` (back `data/help_seed.json`), features guide `org_admin_organization_tab`.
+
+## D-1190 — Log out and Delete account in the profile card; one icon colour; a reading order · 2026-11-19 · accepted
+
+The owner asked for Log out and Delete account in the profile's top card, icons in the primary colour only, and an
+easier order. `ProfileHero` takes `onLogout` / `onDeleteAccount`: two quiet buttons under Update account (Log out a
+paper button, Delete account a ghost one, both in the primary ink; phones put them side by side, wide screens in the
+action column). The callers keep their confirmations (Delete still asks twice: confirm, then the password + two-step
+code). The red Exit group at the end of the personal Profile is gone; its kill switches (`profile.exit_group`,
+`profile.logout`, `profile.delete_account`) now hide the buttons. The org workspace's Profile card gets Log out too
+(leaving an organization stays where it was). The second "Update account" row in Account & security is removed (the
+card's main button is the one). Every row icon is the primary: the floating-assistant row was the last grey one.
+Sections now read: My learning / teaching · Messages & schedule · Settings · Account & security · Help.
+
+## D-1333 — The student store: one filter bar, the top-up's card flow, encrypted files read in the app · 2026-11-20 · accepted
+
+`lib/features/store/` (tab `student_tab_store`): the browse reuses `CourseFilterBar` with `withPlace: false` (stage,
+grade, subject; the courses' remembered level is the store's start) plus a category row and a search. Buy goes through
+`GuestGuard` with the `buy_store_item` intent; `resumeStoreBuy` opens the item page, with its checkout only when
+`storeResumeAction` allows (not owned, `store.buy` and the tab on). The checkout quotes, then orders with one
+`Idempotency-Key` per attempt (a new one when the method changes or an attempt failed); card opens the provider page
+through the points top-up's `openPointsPaymentPage` and polls `GET /store/orders/{id}`; `store_already_owned` closes the
+sheet into My Library; `gateway_error` (no order made) offers "Try again". My Library keeps a PDF on phones and
+desktops AES-CTR encrypted with the offline-video scheme (`StoreVault`, SHA-256 checked, key in Keystore / Keychain)
+and reads it in memory under `ScreenSecurity.protect` / `release`; the web, and an EPUB anywhere, open the short link.
+**New package `pdfrx` 3.0.0** (PDFium) for the reader: `pubspec.lock` gained only it and its own dependencies
+(pdfrx_engine, pdfium_dart, pdfium_flutter, native_toolchain_c, glob, process), nothing downgraded; its web assets
+(pdfium.wasm) ship in the web build but load only when the reader opens, which the web never does.
+
+## D-1339 — Store review + QA fixes: own cover route, sign-out wipe, kept Idempotency-Key, store URLs · 2026-11-20 · accepted
+
+Front half of back D-1339. Covers go through `POST /store/manage/items/{id}/cover` (a new item is saved first, the
+route needs its id); the form sends `cover_url` only to clear it, and `storeCoverUrl` puts an older relative
+`/api/v1/org/files/…` path on the API base. Sign-out runs `MyAuthProvider.wipeStoreFiles` (every kept `.enc` and every
+`store_file_key_*`, also keys without a file); My Library prunes kept copies whose row is gone. The checkout drops its
+Idempotency-Key only on a definite server answer (`storeDefiniteAnswer`: an `ApiException` with a status), so a retry
+after a timeout or a lost connection returns the same order. Buyers see `storeFailureText(failure_code)`, never the
+provider's reason. `/store/<id>` and `/store/library` are registry routes (`store.item`, `store.library`) opened by URL
+or a reload over the home, signed out → the login, then back. On a phone the item page pins Buy / Add to cart in a bar
+above the shell's bottom nav; the store header's icons take the header's own colour (they were `onHero`, white on the
+white tray). A download refused for the device (`DEVICE_MISMATCH` / `DEVICE_ID_MISSING` on `/store/library/…`) says
+the purchase is safe and opens the device-switch dialog; paying is not tied to the device. Help ids `store.browse`,
+`store.item`, `store.library`, `store.manage`, `admin.store`.
+
+## D-1340 — Nine student tabs on a phone: the bar draws at most five slots, with a "Learn" slot · 2026-11-21 · accepted
+
+Front half (back D-1340 is the module-flag resolver). The student shell keeps every tab as a real `DashboardItem` with
+its own navigator, URL, deep link and lazy body; only the phone bar (`_BottomNav` in `lib/design/app_shell.dart`) draws
+**slots**: at most `BottomNavMetrics.maxSlots = 5`. Items that share a `DashboardItem.mobileGroup` fold into one slot at
+the first member's place; a group with one visible member draws that tab itself; when there are still more than five
+slots, slot 5 onwards folds into the built-in `more` group (any role). The student's store, games, Quran, nahw and
+analysis tabs carry the `learn` group, so the bar reads Home · My courses · Learn · Schedule · Profile. A group slot is
+active while a member is open, its badge is the sum of its members', and a tap opens a sheet (`showAppSheet`) with one
+row per member (icon, label, `hint`, badge). `WideShell` / `RailShell`, `LazyTabStack`, `AppNavigator.requestedTab`
+and pins are untouched because the indexes are. The student dashboard also follows a live disable-list change, so a
+tab switched off for the student's country goes without a restart. Phase 7's sync chip goes in the top bar, never in
+the bottom bar.
+
+## D-1346 — Learn kit + games: a game is data, one engine per kind, plays idempotent on `client_id` · 2026-11-20 · accepted
+
+`lib/features/learn_kit/` holds the shared question, feedback, progress and result widgets that games and nahw draw.
+`lib/features/games/` (tab `student_tab_games`): `game_engine.dart` maps a game's `engine` (`quiz`, `match`, `order`)
+to its widget; the content comes from `GET /games` as data. A finished play is posted with a `client_id` kept until a
+definite answer, so a retry never counts twice; stars, points and badges come back from the server (back D-1342).
+Progress and badges have their own page, and a parent sees a linked child's games. "All pairs matched" is a calm
+result, never the error style; the question, its step and the score are their own semantics nodes.
+
+## D-1347 — Quran: teachers by gender / goal / session, booking through the course, progress by surah and juz · 2026-11-20 · accepted
+
+`lib/features/quran/` (tab `student_tab_quran`): a Quran program is a course with `program_kind = 'quran'` (back
+D-1343), set in the course form's "Program type" (shown while the Quran tab is on, locked once the course has students)
+or from the teacher hub's "Add a Quran program". Students filter teachers; a teacher the rules refuse is marked "not
+available to you" and Book is disabled, and the course page of such a program shows the reason instead of Join. A 403
+`quran_gender_rule` / `quran_teacher_unverified` at checkout shows the bilingual reason with "Back to the course", no
+retry. Progress is numbers only (no Quran text, back D-1345); a juz's surahs open in a sheet. The teacher's card warns
+that a change of gender or ijazah needs a new verification. The super admin verifies and reviews cards on
+`QuranAdminPage` (help id `admin.quran`). `/quran/progress` and `/quran/teachers/<id>` are deep routes.
+
+## D-1348 — Module switches page: typed fields per module and scope, each value's source shown · 2026-11-20 · accepted
+
+`lib/features/admin/modules/` (kill switch `admin.modules`, super admin only): a scope picker (platform / country /
+organization), one section per registry module (`store`, `games`, `quran`), each field typed from the GET answer
+(`AppSwitchTile`, a number field, `AppDropdown`), a source tag per value with "use the default / the platform" to drop
+it, and each country's student tabs through `PUT /admin/edu/countries/{code}/features`. The Quran section links to
+the Quran teachers page under the verification and review flags. The theme request carries a guest's remembered
+country, and the theme is fetched again after sign-in, sign-out and a study-profile save, so the country layer reaches
+the app without a restart.
+
+## D-1349 — Nahw: levels, lessons and exercises checked on the device; a content editor for the super admin · 2026-11-20 · accepted
+
+`lib/features/nahw/` (tab `student_tab_nahw`): levels → lessons → `choose` / `fill` / `classify` exercises, checked on
+the device for instant feedback (back D-1344), attempts posted with a kept `client_id`. `order` is not offered.
+`lib/features/nahw/admin/` (`NahwAdminPage`, kill switch `admin.nahw`, help id `admin.nahw`) edits levels, lessons and
+exercises with one typed form per kind and a preview through the student's own exercise view; the server validates
+`data` / `answer` against the kind (422 `nahw_bad_exercise`). `/nahw/lessons/<id>` is a deep route.
+
+## D-1350 — Phase 6 review and QA fixes: learning-hub URLs, a refused booking says why, the theme follows the country · 2026-11-21 · accepted
+
+The fix round after the Phase 6 review (front d88aba13). The learning hub pages have deep routes (`/games/progress`,
+`/games/<id>`, `/nahw/lessons/<id>`, `/quran/progress`, `/quran/teachers/<id>`). A refused Quran booking shows its
+reason instead of Join on the course page, and a 403 at checkout or enrolment (`quran_gender_rule`,
+`quran_teacher_unverified`) shows `apiErrorText`'s bilingual reason with "Back to the course" and no retry
+(`EnrollmentProvider.refused`, `test/ui/quran_refused_checkout_test.dart`). The theme request carries a guest's
+remembered country and is fetched again after sign-in, sign-out and a study-profile save.
+
+## D-1351 — Offline-first v1: a generic outbox for four kinds; money is never offline · 2026-11-21 · accepted
+
+`lib/core/offline/sync/`: `Outbox` keeps `game_play`, `nahw_attempt`, `quran_progress` and `study_profile` ops on the
+device (the op id IS the entity's `client_id`, so a write pushed twice, or posted and then pushed, is one row);
+`SyncEngine` sends them through `POST /api/v1/sync/push` in batches of at most 100, oldest first, on reconnect
+(`topRouteObserver`), on resume and after an enqueue, one run at a time. An empty outbox makes no request. Applied
+and duplicate ops are dropped and their `entity` goes to the kind's listeners; a rejected op is dropped and told once
+(`showAppNotice` with `apiErrorText` of the code); a transport error, 5xx or 429 keeps the rows and books ONE retry on
+a growing backoff (5 s doubling, at most 5 min) — no polling. Rows carry the user who made them and only go out under
+that user's token. `SyncStatus` (offline | online | syncing + the waiting count) is the one status: the offline
+attendance and exam queues keep their own code and only report their counts into it; `SyncStatusChip` draws it in
+the shell's top bar and the student Home header on phones, never in the bottom bar (D-1340), hidden while online with
+nothing waiting. `ReadCache` keeps the last answer of a GET per user. Store orders, checkout, enrolment and points are
+never ops. Kill switch `sync.offline`: off (and on the web) `Outbox.enqueue` answers `postDirectly` and the caller
+posts to the route as before. A 403 `feature_disabled` from the server keeps the rows and ends the run.
+
+## D-1352 — Conflicts: append-only kinds dedupe by client id; the profile is last-write-wins with a stale check · 2026-11-21 · accepted
+
+Simple and predictable. A `study_profile` op carries `base_updated_at`; an older one than the server's row is
+rejected `sync_stale` with the server's profile as `entity`, the person is told, and the listener refetches.
+
+## D-1353 — `sqflite` (+ `sqflite_common_ffi` on Windows / Linux), no encrypted database · 2026-11-21 · accepted
+
+Drift and SQLCipher add build weight on six platforms. One file in the app's support folder, two tables (`outbox`,
+`read_cache`). Nothing sensitive is kept: tokens stay in secure storage, `ReadCache` strips identity numbers at any
+depth, paid files are AES-CTR encrypted already, and `MyAuthProvider.logout` wipes both tables (`wipeSyncData`, next
+to `wipeStoreFiles`). The web has no device database: an in-memory stub, online-only. `sqflite_common_ffi` brings
+`sqlite3` 3.x, whose build hook bundles a SQLite library into native builds.
+
+## D-1360 — The Android release keystore already exists and is NOT regenerated · 2026-11-21 · accepted
+
+`~/.nextbrain-keys/nextbrain-release.jks` signs the installed apps (D-137). A new key would block every update. The brief's "generate a keystore" is met by the existing one; FINAL_REPORT reminds the owner to back it up.
+
+## D-1361 — Windows ships an unsigned Inno Setup installer · 2026-11-21 · accepted
+
+MSIX needs a certificate to install at all. The Downloads page documents "More info → Run anyway".
+
+## D-1362 — macOS and iOS are built on Codemagic, not this PC · 2026-11-21 · accepted
+
+Workflows and `docs/release/APPLE.md` are written; the builds wait for the owner's Apple Developer account. Logged as a gap, never blocking.
+
+## D-1363 — No new update checker · 2026-11-21 · accepted
+
+`VersionCheckService` and `releases.json` already do it; Phase 9 only teaches them the new file kinds.
+
+## D-1370 — Parent consent is a row with the text version, IP and time · 2026-11-21 · accepted
+
+Required for a student under the country's `minor_age` (data, default 18). Captured in Phase 3, enforced in Phase 10.
+
+## D-1371 — Consent per parent-student pair, revocable, every view audited · 2026-11-21 · accepted
+
+A consent row belongs to one parent and one student: a second parent gives their own (no riding on the first one's). The child's games, Quran and grammar routes go through one gate (`consent_service.child_for_parent`: link, else 404 `LINK_NOT_FOUND`; minor without this parent's consent, else 403 `consent_required`), and every allowed read writes one `parent.child_viewed` audit row per child and area a day. The parent revokes with `DELETE /parent/children/{id}/consent` (front: "Revoke consent" on the child card, behind `appConfirm`; the button reads `GET .../consent` first, so an adult child says "nothing to revoke"); a student unlinking a parent revokes that parent's consent too, so a relink asks again. Grant and revoke write `parent.consent_granted` / `parent.consent_revoked`. On the front a 403 `consent_required` turns the child tab into one state with "Give consent" (the same dialog and text version as the card). Also: an admin gets a course's private address only on the single course page (audited `course.address_viewed`), never in a list.
+
+## D-1380 — Demo data is marked three ways and removed by one command · 2026-11-21 · accepted
+
+`is_demo` on new tables, `@demo.nextbrain.invalid` e-mails, a `demo` course tag. `seed_learning_hub_demo.py --remove` deletes only those.
+
+## D-1381 — Demo nahw levels are marked by the `demo_` key prefix · 2026-11-21 · accepted
+
+`nahw_levels` has no `is_demo` column and Phase 10 adds no migration, so the seed names every demo level `demo_…` (its lessons and exercises hang from it). `--remove` deletes the levels whose key starts with `demo_` and their children, nothing else; a real level must never use that prefix.
+
+## D-1364 — An Android build under the old app id is told to install the new app, never offered the APK · 2026-11-21 · accepted
+
+Every Android build up to 1.0.0 is signed under the old id `com.example.flutter_education_app`; the new APK (`com.doubley.nextbrain`, from 1.0.1+2) installs beside it, not over it. Once an active android version at 1.0.1 or above is published, `GET /app/version-check` answers a build below 1.0.1 with `should_update` (never `must_update`, whatever the minimum), the ar + en text "install the new app from the Downloads page, sign in, then remove this one" as `notes` / `release_notes`, `download_url` = `<PUBLIC_WEB_URL>/ar/download/` and `source: custom` (no "install over this app" hint), plus `legacy_app_id: true` (`app_update_policy.legacy_android_answer`, checked in `tests/org_v2/e2e_update_policy.py`). Limit: an old build older than D-143 ignores `download_url` and follows `releases.json`, whose prompt still offers the APK.
+## D-1400 — A student has an enrolment status, an academic standing and flags, shown as one chip · 2026-11-21 · accepted
+
+Student lifecycle job (plan `docs/student-lifecycle/PLAN.md`, contract `CONTRACT.md`, research `RESEARCH.md`). The
+owner listed statuses in five groups; they are stored as independent dimensions, not one list. Intake stays the
+onboarding case status (D-1200). Enrolment (`org_student_academic.enrol_status`: enrolled, suspended, postponed,
+disc_suspended, outside, withdrawn, cancelled, dismissed, transferred_out, graduated, deceased; RESEARCH §5, §7) and
+academic standing (`acad_standing`: regular, carrying, repeating, warning, final_chance; RESEARCH §4.1, §4.2) are new,
+and flags are a table. Reason: real students hold several at once (repeating and suspended; regular, transferred in and
+owing documents), and a suspended student returns to the standing he left. Staff see one chip by precedence
+(enrolment, membership, intake, standing). The old `standing` (good / probation / honours) keeps being written for
+installed apps; honours stays a distinction, not a standing (RESEARCH §6).
+
+## D-1401 — "Struggling" is a flag with a configurable rule, not a legal status · 2026-11-21 · accepted
+
+RESEARCH §4.2 (last bullet) found no bylaw that defines متعثر; the operative states are academic warning, repeating
+and final chance. So `struggling` is a flag set by the institution's rule (default: standing warning or final chance,
+or repeating the same year twice) or by hand (the complaints flow), removable with a reason, and hidden from the
+student, as are `special_case` and `disciplinary_record`. "Transferred" is two things: `transferred_in` is a permanent
+origin flag, `transferred_out` a final enrolment status (RESEARCH §1.3).
+
+## D-1402 — The system recommends, a body decides, for anything that removes a student · 2026-11-21 · accepted
+
+Standing changes are automatic from approved results. Dismissal (exhausted chances, RESEARCH §4.1 art. 80 [S3]; GPA,
+duration, non-registration, §4.2 [S10, S11]), "outside" status and the final chance are opened as registrar decisions
+(`OrgDecision`) with the rule and the evidence, because every bylaw read gives them to a council (RESEARCH §7) and a
+dismissal on a wrong grade is not reversible in practice. The decision matrix lets an institution switch
+`dismiss_academic` and `final_chance` to automatic. `dismiss_after_probations`, defined and never read, becomes
+`dismissal.consecutive_warnings`.
+
+## D-1403 — No fourth request system · 2026-11-21 · accepted
+
+Intake stays in onboarding cases; students' lifecycle requests (suspension, withdrawal, re-enrolment, transfer,
+excuse; RESEARCH §5) are governance work items of `lifecycle.*` categories whose final approval applies the status;
+rule findings are registrar decisions. The "Student requests" inbox merges the three and the asks on read.
+
+## D-1404 — Status history is append-only; undo is a compensating event · 2026-11-21 · accepted
+
+`org_student_status_events` is never edited (PostgreSQL trigger; only `reverted_by_id` may be set once). Undo writes a
+new event (`via = undo`, `reverts_id`) that restores the previous value and reverses the recorded side effects. Only
+the newest event of a dimension can be undone (409 `not_latest`), with the original decision's right and a reason.
+Undoing an automatic event holds the rule until the next approved results so the job does not re-apply it.
+
+## D-1405 — A status change never silently drops courses or ends access · 2026-11-21 · accepted
+
+Any enrolment status other than `enrolled` blocks new course registration (`enrolment_not_active`). Dropping current
+courses and the access end date are asked in the decision sheet and recorded in the event's `effects`. A student who
+left keeps read-only access for 90 days by default (owner, Q7), an institution setting.
+
+## D-1406 — Student types are admission routes; study mode and fee class are fields · 2026-11-21 · accepted
+
+The presets gain `student_equivalent`, `student_technical`, `student_second_degree`, `student_affiliated`,
+`student_special_program` and `student_visiting` (RESEARCH §1.2 [S6, S9, S10, S14, S17]); disability and ex-military
+routes are a field of `student_new`. Otherwise every route × mode becomes a type and the clerk's list passes twenty.
+Private, ahlia and Azhar lists ship as editable starting points marked "review with your bylaw" (RESEARCH §8).
+
+## D-1407 — The student timeline is a merged read, not a copied log · 2026-11-21 · accepted
+
+`GET …/students/{uid}/timeline` reads case events, level advances, registrations and results per term, complaints,
+meetings, audit rows and status events, each behind its own right (a kind the caller may not see is named in
+`hidden_kinds`). Only status events are new data. Copying history into one table would drift.
+
+## D-1408 — Opening a student file is logged once per person, student and section per 30 minutes · 2026-11-21 · accepted
+
+`student.file_viewed` in `org_audit_log` (`entity = student`), with the section. One row per click would bury the
+log; the window is a setting (0 = every open). The file tells staff the open is recorded, and holders of `audit:view`
+see "who opened this file". The action name never starts with a permission-affecting prefix.
+
+## D-1409 — One new module, `student_status`, and four system roles · 2026-11-21 · accepted
+
+`student_status`: view · insert (propose) · update (decide what the matrix marks for officers) · approve (decide what
+it marks for a body, undo others' decisions) · export. Roles `student_affairs_staff`, `registrar`,
+`complaints_officer`, `student_affairs_head` are created unassigned in every organization. The default matrix follows
+RESEARCH §7 ("Body" column) and §5 (art. 127 for penalties): an officer can resume, withdraw and set three flags,
+never dismiss or suspend.
+
+## D-1410 — "Ask the student" is one mechanism; full screen keeps must-ack's guards · 2026-11-21 · accepted
+
+`org_student_asks` holds a meeting, a data request, a document request or a confirmation with a stored answer, shown
+as a notification, a popup or a full-screen card. Full screen needs `student_status:update` and a due date within 7
+days, and is drawn by the existing `OrgMustAckHost`, so `main.dart` is untouched. A field answer changes the file only
+when the reviewer accepts it.
+
+## D-1411 — A body's approval is first a recorded decision number and date · 2026-11-21 · accepted
+
+An onboarding chain step may name people (`user_ids`) or a council (`council_id`). Until the governance link of phase
+6, the council step is completed by recording the council's decision number and date; the real agenda item and vote
+come with the lifecycle requests (owner, Q4).
+
+## D-1412 — Fix: a meeting booked from a complaint obeys `attendees_busy` · 2026-11-21 · accepted
+
+`POST …/complaints/{cid}/meeting` created the meeting without the calendar's busy check. It now goes through the same
+helper as every lifecycle meeting: 409 `attendees_busy` unless `force`. An installed app without `force` gets that
+409 only when the sender is busy (owner, Q9: change the route, do not add a second one).
+
+## D-1413 — Rules start from a bylaw preset and can be tried on a real student · 2026-11-21 · accepted
+
+The progression rules of RESEARCH "Configurable options implied" are settings with the most common confirmed default
+(carried courses 2 [S9, S12]; years inside a year 2 and outside chances 0 / 1 / 3 [S3]; warning below CGPA 2.0 [S10];
+suspension 2 years [S5, S6]). "Start from a bylaw" fills them at once (Law 49 traditional 2015, credit hours
+engineering, credit hours law, 5-point levels) and "Try it" shows what the rules would say for one student before
+saving. Rules are per institution with per-programme overrides; rule sets per intake year wait (owner, Q6).
+
+## D-1414 — The Students list is members; applicants stay in Admissions · 2026-11-21 · accepted
+
+The list shows students who have a membership. Files not yet active are counted on the "Awaiting approval" card,
+which opens the existing Admissions page. The missing-data badge is computed from the student's own case
+(`requirements`), never stored, so a change to a type's required items shows at once.
+
+## D-1415 — Out of scope for this job, recorded so nobody builds half of it · 2026-11-21 · accepted
+
+Postgraduate thesis states (registered, struck, defended; RESEARCH §1.4) wait for a later job; discipline is recorded
+as status events and a flag only, with no investigation workflow (RESEARCH §5 arts. 123–129); fees stay a field and
+never block a status change (D-1204); a national ID enrolled in a sister faculty warns and does not block
+(RESEARCH §1.1 [S6]); incomplete files are reminded every 7 days, four times, then become a staff task.
+
+## D-1501 — Drawing on a shared screen works in the app after the Android overlay is granted · 2026-11-21 · accepted
+
+Once "Display over other apps" was granted, the armed overlay put the annotation board in burned-in mode at once and
+closed the in-app toolbar, so the presenter could draw over other apps but no longer on the share inside NextBrain;
+full view also put the pen down (D-108 round 7 kept it for the board only). Now burned-in mode follows where the
+presenter is (`annotBurnedInNow`: overlay armed AND the app in the background, re-evaluated on every lifecycle
+change and role re-sort): in front, the in-app layer and toolbar draw as vectors that viewers see; outside the app,
+the overlay burns the strokes into the video as before. Full view keeps the pen on a share. While my camera is
+swapped onto the stage the share in the small box shows its drawings view only (`_swappedStageTile`) and the pen
+is not offered there (`liveCanAnnotateShare(shareInBox:)`). `canDraw`, sender checks and normalized coordinates are
+unchanged. Vector strokes drawn in the app stay on the board while the presenter is away in another app.
+
+## D-1503 — Live recording is off unless the host turns it on · 2026-11-21 · accepted
+
+Every parser read a missing `record_enabled` / `recording_enabled` as ON, and the Go live sheet, the session form
+and the course's "last session" fallback all started at on. Now a session records only when its flag is exactly
+`true`: payload parsers use `== true`, model / widget defaults are false, `goLiveDefaultRecord` falls back to off
+(a suggested session's or the course's latest live session's explicit choice still wins). In the room every host
+sees "⏸ Not recording · ● Record" while nothing records (`liveRecordOffer`): a meeting's creator as before (D-313),
+and now a course session's teacher in client mode too — their Record sets the session's switch
+(`PUT /sessions/{id} {record_enabled: true}`) and then starts the device recorder. Students and guests see the
+recording only while it runs (REC / the info sheet).
+
+## D-1504 — The teacher's camera: 720p at 30 fps, 1.8 Mbit/s, keeps its resolution; optional 1080p · 2026-11-21 · accepted
+
+The host camera was 720p at the shared `camera_fps` (24) with a 1.28 Mbit/s top layer: soft on a teacher's
+writing. `LiveConfig.cameraFpsHost` (from `camera_fps_host`; absent → 30, or 15 when the super admin set
+`camera_fps` 15 for every camera) drives the host's capture and layers; `cameraBitrateKbps` gives 720p 1800 and
+1080p 3000 at 30 fps (VP8; ×0.85 at 24, ×0.65 at 15, H.264 ×1.1, VP9 ×0.75). Layers stay 180p@≤15 · 360p · 720p
+(180p · 540p · 1080p under a 1080p cap, which `camera_max_host: "1080p"` turns on — participants stay ≤ 540p).
+The host's camera publishes with `degradationPreference: maintainResolution`; adaptive stream and dynacast stay
+on. `screen_fps_max` defaults to 15 (the server's recommended value) and only applies when the server sends none;
+screen-share presets are unchanged.
+
+## D-1570 — One repeat rule model and one picker for meetings and packages · 2026-11-21 · accepted
+
+`lib/features/calendar/recurrence/`: `RecurrenceRule` is the plain wire model of Learning Hub v2 §4 + C6
+(`toJson` / `fromJson`, weekday 0 = Monday sent as `DateTime.weekday - 1`, dates `YYYY-MM-DD`, wall times `HH:MM`
+in `tz` = `AppTime.zoneId`), `RecurrencePicker` is the controlled Repeat section (null = does not repeat) and
+`describeRule(rule, lang)` writes the summary sentence; the server sends no `rule_summary`. The packages wizard
+reuses all three. The meeting form shows the picker with `withDateTime: false`: its own day and from–to are the
+rule's first date and clock, so the form never holds two clocks.
+
+## D-1571 — "Custom" is every n days, or every n weeks on chosen weekdays · 2026-11-21 · accepted
+
+The picker's Custom choice has a step (1..30) and a unit; the unit is not on the wire. Per C6 a custom rule with
+no weekdays is "every n days" and one with weekdays is "every n weeks on them". Skipped weekdays are offered only
+in the day unit (in the week unit you untick the day). The end is never / a date / after N times (`count`, C6).
+
+## D-1572 — Series dates in the schedule: a repeat mark, cancelled ones struck through · 2026-11-21 · accepted
+
+`CalEvent` reads `series_id` (or the virtual id `s<series>:<date>`, C5) and `occurrence_date`; `recurring` draws
+`Icons.repeat_rounded` as the grid block's marker and a "Repeats" tag on the agenda row. Cancelled dates use the
+existing struck-through look. A virtual date (no `meeting_id`) opens `SeriesOccurrenceSheet`; Join calls
+`POST …/occurrences/{date}/open` first, then the normal meeting join.
+
+## D-1573 — Moving or cancelling a date asks "This meeting only / This and following" · 2026-11-21 · accepted
+
+Every move (sheet, drag in the grid) and cancel of a series date asks the scope. "This meeting only" →
+PATCH / DELETE the occurrence; "This and following" → PATCH / DELETE the series with `from_date` = the date (C6).
+"Following" changes the rule's clock only (a different day is a one-date move). The 409 `attendees_busy` asks once
+and sends `force`, as for single meetings.
+
+## D-1574 — `calendar.recurring` hides the Repeat section and the course entry · 2026-11-21 · accepted
+
+The picker wraps itself in `ParentComponent(featureKey: 'calendar.recurring')`; the form treats a set rule as off
+when the key is disabled, so a hidden picker never creates a series. The reminder field (default 15 min) stays:
+single meetings send `reminder_minutes` too.
+
+## D-1575 — A course's repeating meeting invites the course, not a picked audience · 2026-11-21 · accepted
+
+The teacher's Sessions tab (`TeacherSessionsBody`, the course teacher's page only) carries "Repeating meeting"
+(`CourseRepeatingMeetingEntry` in `course_sessions.dart`). It opens the same form with `course_id` preset and a
+weekly rule on. The audience pickers hide and the body sends an empty audience + `course_id`: the server, which
+knows the course's students, decides who is invited.
+
+## D-1580 — Every game is played in one GameShell · 2026-11-21 · accepted
+
+`lib/features/games/shell/`: a calm header on the game's theme tint (steps bar, "3 of 8", the score with the stars it
+is worth, the sound toggle), the engine under it, and the finish view (stars filling in, points, new badges, Play
+again / Back). Engines report each step through `GameShellScope.maybeOf(context)?.report(done:, score:, correct:)`;
+the header listens to the controller, so a report never rebuilds the engine or the page. Outside a shell (tests, the
+nahw exercises) an engine still draws its own progress header. The quiz / match / order scoring is unchanged.
+
+## D-1581 — Right / wrong feedback is one-shot and parks under Reduce motion · 2026-11-21 · accepted
+
+The feedback chip pops through `AppBump`; a right answer throws 16 particles drawn by ONE `CustomPainter` over the
+header (560 ms, `RepaintBoundary`). Nothing loops, so no `syncMotionLoop`; under Reduce motion the burst is skipped
+and the stars appear at once. Themes `sand | sea | night | garden` are block tones of the live theme (peach, sage,
+the forest hero with its cream ink, emerald), never fixed colours.
+
+## D-1582 — No game sounds yet: the cue is a light vibration · 2026-11-21 · accepted
+
+The app has no audio package (no `audioplayers` / `just_audio`) and the brief allows one only if it is already
+there, so no WAV assets were added. The cue is `HapticFeedback` (selection click when right, light impact when
+wrong); the per-device toggle (`SharedPreferences` `games.muted`) is labelled "Sound and vibration", so sound files
+later need no new switch.
+
+## D-1583 — Typed answers are compared after Arabic normalization · 2026-11-21 · accepted
+
+`game_text.dart`: tashkeel (harakat, tanween, shadda, sukun, dagger alef, Quranic marks) and tatweel are dropped,
+أ إ آ ٱ become ا, Latin is lower-cased, spaces collapse. Taa marbuta / haa and yaa / alef maqsura are NOT folded
+(they make different words). Used by `fill_blank` (typed and option answers) and `word_puzzle`.
+
+## D-1584 — The three new engines and how they score · 2026-11-21 · accepted
+
+`memory`: score = pairs, less one per wrong try beyond the first `pairs` tries (a first look is free), never below 0.
+`fill_blank`: one item per step, options when given (the answer is added if the author left it out), typed
+otherwise; score = right items. `word_puzzle`: the clue on top, letters (each keeps its tashkeel) shuffled; the word
+is checked when every tile is placed; Hint places the next right letter; a word solved with a hint or after a wrong
+try scores nothing (as a pair matched after a slip in `match`). All grade on the device, like the others.
+
+## D-1586 — The game fields of CONTRACT §3 + C10 · 2026-11-21 · accepted
+
+`GameSummary` reads `category`, `difficulty`, `level`, `cover_url`, `theme`, `status`, `sort`. There is no `enabled`:
+the admin's on/off is `status` published ↔ hidden. The play time stays `duration_s` (`time_ms` dropped by C10).
+
+## D-1587 — The leaderboard is loaded only when shown, and shows no avatar · 2026-11-21 · accepted
+
+Under the finish view and in the play page's app-bar sheet, never with the game. Week / All time, one load per
+period, again after a saved play; the caller's own row is pinned on top when it is not on the page. Rows show the
+name the server sends (first name + last initial, C9) and no avatar. "Show me on leaderboards" is
+`PUT /me/games/leaderboard {visible}`, its current value read from the board's `visible` (true when absent). Kill
+switch `games.leaderboard` hides both entries; guests see neither.
+
+## D-1588 — Category and difficulty filter on the server · 2026-11-21 · accepted
+
+Two `AppDropdown`s under the course filter bar send `?category&difficulty`; the engine chips still filter on the
+device. A card shows the cover decoded at the well's size (`cacheWidth`), the engine glyph while it loads or fails.
+
+## D-1589 — The super admin's game editor · 2026-11-21 · accepted
+
+`lib/features/games/admin/`, services hub tile next to the grammar content, kill switch `admin.games`. List: drag
+handle reorder (`POST /admin/games/reorder`), `AppSwitch` = published ↔ hidden, Edit / Delete. Editor: titles, key
+(only on create; generated when empty), type (fixed after create), category, difficulty, level, theme, points,
+cover (the app cropper, wide, then `POST /admin/games/{id}/cover` — not in the contract yet, asked under Requests;
+a new game is saved first), Save as draft / Publish.
+
+## D-1590 — The editor's forms are local knowledge filtered by the server's registry · 2026-11-21 · accepted
+
+`kGameEngineForms` says what each engine's form asks for; `GameConfigDraft.toConfig()` produces exactly the
+contract's shapes (blank rows dropped, texts trimmed, the quiz answer index moved with dropped options) and
+`problems()` makes the server's checks first, naming the same field path, so Save is offered only for a playable
+game. The engines offered are those `/admin/games/engines` lists that the app can edit; without that route (an older
+server) the app's own list.
+
+## D-1591 — The editor's live preview is the engine itself · 2026-11-21 · accepted
+
+The preview is `GameRound` (the shell + `spec.build`) on the draft's config, refreshed 400 ms after the last
+keystroke so typing does not restart a round on every letter; a finished preview round starts again.
+## D-1600 — Self-learning lives in `lib/features/self_learning/`, built on the learn kit · 2026-11-21 · accepted
+
+Models, API, the review round, the store, the widgets, the page and the admin page are one folder; questions,
+options, feedback and the progress strip are the learn kit's own widgets, so a review looks like a nahw exercise or a
+game question. Readers are tolerant (CONTRACT §5 shapes, a missing field reads as empty).
+
+## D-1601 — The tabs show a calm section; the page holds everything · 2026-11-21 · accepted
+
+The Quran tab (quran / tajweed / fiqh) and the Nahw tab (nahw) get a section at the top: a small ring, today's first
+lesson (short) and the review round, "See all" → My daily learning (`/learn/daily`). The section draws nothing for a
+guest, on an error, or while the admin has it off; while the student has it off (and may toggle) it is one invitation
+row. The page has the control, progress per subject, every lesson and the round.
+
+## D-1602 — One copy of `GET /me/self-learning` (SlStore) · 2026-11-21 · accepted
+
+Both tabs and the page read one store; a read within 2 minutes is reused unless forced (the page forces on open, a
+pull refreshes). "Got it" and an answered review update the copy at once so the other tab never shows them again.
+
+## D-1603 — "Switched off" is the server's 403 `feature_disabled` or `available: false` · 2026-11-21 · accepted
+
+The contract's GET has no admin flag; the app reads 403 `feature_disabled` (and an optional `available: false`) as
+the admin's off and shows "Daily lessons are switched off". `enabled` is the student's own choice; the control is
+hidden when `can_toggle` is false. At least one subject stays chosen (switching the lessons off stops them all).
+
+## D-1604 — Motion: one entrance, a feedback rise, a light one-shot celebration · 2026-11-21 · accepted
+
+Lesson cards enter once per route (AppReveal); the feedback panel rises 8 px once; a right answer gets a 900 ms
+burst of dots (`SlCelebration`). Nothing loops, so `syncMotionLoop` is not needed; all three are still under Reduce
+motion (`appMotionOff`). The ring and the bars fill with AppFill.
+
+## D-1605 — A review is graded on the device, then sent once · 2026-11-21 · accepted
+
+The item carries the right option, so the feedback is instant and works offline; the server's explanation replaces
+the item's when it answers. A refusal keeps the verdict and shows the error under it (the Leitner card is the
+server's business).
+
+## D-1606 — Offline review answers go to the outbox as `sl_review` · 2026-11-21 · accepted
+
+The answer is posted directly first; only when there is no answer at all (offline, timeout) it is queued as op kind
+`sl_review` `{item_id, choice}` under the answer's `client_id` (idempotent on the server). The back's
+`sync_service.PUSH_KINDS` needs the `sl_review` handler (request to back-learn); until then such an op is refused once.
+
+## D-1607 — Admin content page `SlAdminPage` (`admin.self_learning`) · 2026-11-21 · accepted
+
+Opened from the services hub next to the grammar content and from the self-learning card of the module switches.
+Filters subject + kind, server pages of 20, drag to reorder inside a page (POST reorder with that page's ids),
+publish / unpublish from the menu, delete with a confirm.
+
+## D-1608 — The item form checks the server's rules first · 2026-11-21 · accepted
+
+`slItemProblem`: subject, title, a lesson's text, a question's prompt, 2–6 non-empty options and a marked right
+answer. Save is offered only when nothing is missing; a server refusal keeps the sheet open with its text.
+
+## D-1609 — Question → lesson link and nahw source are optional pickers · 2026-11-21 · accepted
+
+A question can name the lesson it reviews (lessons of the same subject); a nahw item can name the nahw lesson it was
+taken from (`source {type: nahw_lesson, id}`), picked from the nahw admin levels.
+
+## D-1610 — Push target `self_learning` (also `sl_lesson`, `sl_review`) → My daily learning · 2026-11-21 · accepted
+
+AppNavigator opens the page (the notifications list when `student_tab_self_learning` is off); `/learn/daily` is a
+registry route that a URL or a reload opens too.
+
+## D-1611 — The nahw lesson and round get the new cards' look; grading untouched · 2026-11-21 · accepted
+
+Reading view: title + a best-score bar in one card, the text in paragraphs in its own card, one entrance. Round: the
+feedback rises in, a right answer gets the celebration. `nahwGrade`, the keys and the attempt flow are unchanged.
+
+## D-1612 — Module settings for `self_learning` are flat (CONTRACT C7) · 2026-11-21 · accepted
+
+The modules page draws the four `subject_*` flags as switches, `interval_minutes` as a dropdown of sensible steps
+(the current value kept), `daily_limit` as a number, and the four `*_min` fields (minutes after midnight) as time
+pickers shown and picked with AppTime's 12 h / 24 h. `student_tab_self_learning` joins the country tab switches.
+## D-1620 — One teacher flow for every subject, beside the Quran card · 2026-11-21 · accepted
+
+Learning Hub v2 (CONTRACT.md §1) gives every subject (quran, tajweed, fiqh, nahw) one teacher profile, built in
+`lib/features/teachers/`. The Quran card (`lib/features/quran/`) stays: the server's old routes read the same table
+(Corrections v2 C1), so installed apps keep working, and the Quran hub links to the new hub. Entries: Profile ›
+"My teacher profile and packages" and the Quran hub card (kill switch `teacher_onboarding`).
+
+## D-1621 — The onboarding wizard saves each step · 2026-11-21 · accepted
+
+Profile → subjects + qualifications → documents → review. "Next" sends the whole profile (PUT), so a document always
+has a profile to hang on and a closed app loses nothing; "Send for review" saves, then submits. Both `session_types`
+(individual / group) and `delivery` (online / offline) are asked (C1). An approved teacher who changes gender,
+subjects or qualifications is warned first that the profile goes back to review. The photo is the account picture
+(`POST /auth/me/image`, cropped with `showAppImageCropper`); a document is checked on the device (image / PDF,
+≤ 10 MB) before it is sent and shows its size; Remove is offered until approval.
+
+## D-1622 — The hub shows one next step per state · 2026-11-21 · accepted
+
+None → "Start my profile"; draft → "Continue"; pending → the date it was sent, nothing to press; rejected → the
+platform's reason and "Fix and resubmit" (opens the wizard at the first step); approved → "Edit" and My packages.
+Packages are explained, not hidden, before approval (`not_approved`).
+
+## D-1623 — The admin queue lives in the services hub for admins too · 2026-11-21 · accepted
+
+The contract opens the queue to admins and super admins, so the entry has no `isSuper` gate (the older Quran page
+keeps its own). Documents open through the 60 s signed link right after it is fetched; nothing is cached.
+
+## D-1624 — A rejection needs a reason of 5 to 500 characters · 2026-11-21 · accepted
+
+The server requires a reason ≤ 500; the app also refuses fewer than 5 characters so the teacher always learns what to
+change. Approve asks once (appConfirm).
+
+## D-1625 — The package wizard: three steps, defaults that already pass · 2026-11-21 · accepted
+
+The teacher's first subject, 8 sessions of 60 minutes from a week today, 10 seats with a waiting list, free until a
+price is typed. The live summary sits beside the form from the desktop width and under it on phones. "Save and
+publish" is the primary action on the last step; "Save as draft" is always one tap away.
+
+## D-1626 — The recurrence editor is a slot · 2026-11-21 · accepted
+
+`PackageWizardPage(recurrenceSlot:)` takes a `RecurrenceSlotBuilder`; the default slot explains and edits nothing.
+The shared `RecurrencePicker` of the calendar stream is wired at merge, with no change to the wizard.
+
+## D-1627 — Overbooking in one line each, with an optional limit · 2026-11-21 · accepted
+
+None / allow / waiting list, each with one sentence under it. Allow shows "Extra seats (blank = no limit)" and sends
+`overbook_limit` only then (C3).
+
+## D-1628 — Once anyone joined, the locked fields are read only · 2026-11-21 · accepted
+
+When `seats_taken > 0` the sessions, the schedule and the start date are disabled with a banner, rather than sent
+and refused (`package_locked`); the past start date of a locked package is not an error.
+
+## D-1629 — "Teachers" is a Learn tab under its own switch · 2026-11-21 · accepted
+
+The student's Learn group gains Teachers (beside Quran and Grammar). It hides with `teacher_discovery` (the
+contract's key) as well as the generic `student_tab_teachers`. A guest sees the sign-in gate: the list needs an
+account.
+
+## D-1630 — Paging by scroll, filters in one sheet · 2026-11-21 · accepted
+
+The subject chips sit on the page; gender, delivery, price range, lowest rating and "Available now" are one sheet
+with a count on its chip. 20 a page, the next page loaded 600 px before the end; a stale answer (filters changed)
+is dropped.
+
+## D-1631 — One mapping from a package to its button · 2026-11-21 · accepted
+
+`packageJoinState` decides every label and state: my enrolment first (pending_payment, offered, active,
+waitlisted), then closed / not open, then full by `overbook` (allow counts `overbook_limit`, null = none), then free
+or paid. Expired and cancelled enrolments may join again.
+
+## D-1632 — A paid seat pays through the store's path · 2026-11-21 · accepted
+
+The enrol answer's `checkout` has the store's shape (C2), so it is read as a `StoreCheckout` and opened with the
+store's `openPointsPaymentPage`, never the course checkout. Afterwards the package is read again every 5 s for up to
+30 s until it leaves `pending_payment`.
+
+## D-1633 — Holds and offers count down · 2026-11-21 · accepted
+
+A pending payment (30 min) and an offer from the waiting list (24 h, a gold block) show the time left from the
+enrolment's `expires_at` and a "Pay now" button; the timer runs only while one is open.
+
+## D-1634 — Leaving a paid seat warns there is no automatic refund · 2026-11-21 · accepted
+
+The confirm says so and points to support (C3); a free seat or the waiting list says the seat goes to the next one.
+
+## D-1640 — Refunds due is a tab of the teacher review page · 2026-11-21 · accepted
+
+Package payments that arrived with no seat (`GET /admin/packages/refunds-due`) show as the last tab of the admin
+teacher review page, not a new hub tile: the same admins, the same Learning Hub area. Each card shows the student,
+the package, the amount (`packagePriceLabel`), when it was paid and why it is owed (left / closed / already paid) in
+one sentence; "Mark refunded" asks first, then calls `…/done` and drops the row. A 409 `not_due` (another admin did
+it) drops the row too, shown as a plain notice. The strings use `t(ar, en)` like the rest of `lib/features/teachers/`
+rather than `assets/translation.json`, so the module keeps one way of writing text.
+
+## D-1641 — A one-off course meeting invites the course through the audience · 2026-11-21 · accepted
+
+`POST /meetings` (`MeetingIn`) has no `course_id`, so a course meeting with Repeat off sent an empty audience and
+nobody was invited while the banner said the students were. `calSingleCourseMeetingBody` drops `course_id` and puts
+the course in `audience.course_ids` (its students and teacher). A series keeps sending `course_id`: `SeriesIn` takes
+it and adds later students too.
+
+## D-1642 — A package's start date moves its repeat rule · 2026-11-21 · accepted
+
+The series follows the rule's `start_date`, so picking a new start date in the package wizard writes it into the rule
+too (`RecurrenceRule.startingOn`): a weekly rule that held only the old first weekday follows the new one, and an end
+date before the new start is dropped.
+
+## D-1643 — Live settings: 1080p, the host frame rate, the room's bitrate table · 2026-11-21 · accepted
+
+The host camera offers 1080p / 720p / 540p / 360p, so a stored 1080p is no longer read as 720p and written back on
+the next save. The host frame rate (`camera_fps_host`) offers Automatic + 15 / 24 / 30. Automatic is shown while the
+field is not in the server's `stored` list (the value in `settings` is then only the server's derived one: 15 when
+`camera_fps` <= 15, else 30). The server refuses null and only Reset clears a stored value, so Automatic is offered
+only while the saved value is Automatic, the hint points to "Reset to recommended", and null is never sent. The
+bandwidth preview now uses the live room's own table (`cameraBitrateKbps`, 720p30 = 1800, 1080p30 = 3000) and the
+room's layers (540p under 1080p), and the teacher's camera uses the host frame rate.
+
+## D-1644 — The meeting detail asks "this one / this and following" for a series date · 2026-11-21 · accepted
+
+The meeting sheet reads `series_id` / `occurrence_date` from the meeting detail (back D-1696), and from the feed
+event when it was opened from the calendar. Move and cancel then go through `series_actions.dart` (`seriesMove` /
+`seriesCancel`), the same scope sheet as a date that has no meeting row yet.
+
+## D-1645 — "This and following" reads the clock in the rule's zone · 2026-11-21 · accepted
+
+A rule's wall times are in its own `tz`, which can differ from the viewer's AppTime zone. `seriesRuleAtClock`
+converts the new start and end with `AppTime.toZone(utc, zone: rule.tz)` (the `timezone` package; an unknown zone
+falls back to the effective one).
+
+## D-1646 — Texts for the Learning Hub v2 error codes · 2026-11-21 · accepted
+
+`apiErrorText` has Arabic and English texts for every teachers / packages / games / self-learning / series code
+in the back's `FLUTTER_API_CHANGES.md` that the app can show. Codes that other modules also send (`not_owner`,
+`not_pending`, `reason_required`, `not_enrolled`, `students_only`) get general wording. `calErrorText` now falls back
+to `apiErrorText` instead of the server's Arabic message, and has its own text for the shared `too_long` and
+`course_forbidden`. In the same round (review F5, F12): self-learning reads `per_subject.lessons` (`total` is still
+read), teacher and seat counts go through `countText`, and the game and learning-card motions use the `AppMotion`
+durations.
+
+## D-1660 — A course's repeating meetings sit above its lessons · 2026-11-22 · accepted
+
+The course Sessions tab (teacher and student) draws `CourseSeriesSection` (`lib/features/courses/course_space/course_series_block.dart`) over `GET /me/calendar/series?course_id=` (back D-1699): one card per active series with `describeRule` and the next three dates (`AppTime`, a cancelled one struck through), tapping a date opens the calendar's own date sheet (`showSeriesOccurrenceSheet`). A series is a meeting, not a lesson, so its dates are not merged into the reorderable lessons timeline; the block shows before the first lesson too, and the teacher's block reloads after "Repeating meeting" makes one (QA S17). Nothing is drawn while there is none, on an older server, or with `calendar.recurring` off.
+
+## D-1664 — The Quran tab shows a teacher's packages · 2026-11-22 · accepted
+
+A Quran teacher and a Learning Hub v2 teacher are the same `TeacherCard`, so the Quran tab no longer contradicts the Teachers tab: the list and the one-teacher answer carry the card's public name and `packages_count` (back D-1702). `QuranTeacherCard` shows "n packages" (and drops "No programs open now" when packages exist), and `QuranTeacherView` has a Packages section (`quran.teacher.see_packages`) that opens `TeacherProfilePage`. Hidden with `teacher_discovery`; an older server sends no count, which reads as 0 and changes nothing.
+
+## D-1665 — One way in for a teacher, one review for the admin · 2026-11-22 · accepted
+
+With `teacher_onboarding` on, Profile has one entry, "My teacher profile and packages"; the old "My Quran teaching" tile shows only while onboarding is off. `TeacherHubPage` opens the Quran record sheet and programs (`teacher.hub.quran`, hidden with `student_tab_quran`). `QuranTeacherHubPage` keeps its route; with onboarding on it leads with the teacher-profile card, then the programs, and folds the Quran-only card fields (ijazah, goals, session types, country: the Quran tab's filters) into an expand card instead of a competing editor. The super admin's Quran teachers page links to Teacher review (`quran.admin.teacher_review`) and says it only verifies. The admin hub's grouping is not changed here.
+
+## D-1647 — A package's repeat rule ends after its sessions · 2026-11-22 · accepted
+
+The server sets a package rule's `count` to `sessions_count` (contract C6), so the wizard says so: `RecurrencePicker` takes `fixedCount` (the "Ends" field becomes the read-only line "After 8 sessions" and the summary says "for 8 sessions", `describeRule(sessions: true)`), `enabled: false` (a package someone joined: every control drawn disabled, matching the lock banner) and `label` (the wizard no longer labels the slot a second time). `packageScheduleSynced` keeps the rule's count and end time in step with the sessions and minutes fields (not once locked: any schedule change is refused then), and a new rule's window is one session long (QA S1, S2, S3, S5).
+
+## D-1648 — A student sees a package's days and times before joining · 2026-11-22 · accepted
+
+`packageScheduleText` writes the rule with `describeRule` (the wizard's own sentence) on the package card, the package page, My teachers, My packages and the wizard's live summary. The clock is the rule's `tz`; `describeRule(withZone: true)` names that zone when it is not the reader's AppTime zone, rather than converting (a converted time can move the weekdays across midnight). A package with no schedule says the times are agreed with the teacher (QA M2, S4).
+
+## D-1649 — "Starts" is the first real session · 2026-11-22 · accepted
+
+`RecurrenceRule.matches` ports the server's `calendar_series._matches` (step from the start date, weeks counted Monday-based from the start's week, skipped weekdays and dates) and `firstDate()` scans from the start date, so "Starts" shows Sun 29 Nov, not the skipped Saturday. No rule: the package's start date (QA S9).
+
+## D-1650 — Status chips at the trailing edge; lists in the reader's language · 2026-11-22 · accepted
+
+`TitleWithStatus` (teachers_parts) puts a status chip at the title line's trailing edge, at its own width up to half the line; a `Flexible` chip beside an `Expanded` title split the row in half. Used by My packages, the review queue card and the review detail (QA S15). Language lists join with `teachersJoin` ("Arabic, English" / "العربية، الإنجليزية", S14). `fileSizeLabel` says "< 1 KB" under 1 KB (N1).
+
+## D-1651 — Typed text keeps its own direction · 2026-11-22 · accepted
+
+`UserText` lays out text a person typed (teacher names, bios, qualifications, package titles, goals, descriptions, review comments) in the direction of its first strong letter (`userTextDirection`) and aligns it to that direction's start, so "الشيخ محمود (تجريبي)" reads correctly in the English app (QA S13, teachers and packages pages).
+
+## D-1652 — An avatar's letter skips titles · 2026-11-22 · accepted
+
+`teacherInitialName` drops titles (الشيخ, الأستاذة, د., …) and the article "ال" before the avatar takes its first letter ("الأستاذة منى" → "م"). The profile hero's avatar sits on a paper ring, because its sky circle vanished on the sky hero (QA N3).
+
+## D-1653 — A full package with a waiting list says so · 2026-11-22 · accepted
+
+The package card's chip reads "Waiting list open" (warning tone) when the join state is `joinWaitlist`, not the red "No seats left" (QA S10).
+
+## D-1654 — The teacher filter button sits beside the search · 2026-11-22 · accepted
+
+It was the last item of the scrolling subject chips, off-screen in RTL on a phone (QA S23).
+
+## D-1655 — One price per row in the teacher filter · 2026-11-22 · accepted
+
+The lowest and highest price fields stack, each the sheet's full width, step 50 (QA S26).
+
+## D-1656 — A next opening with no time shows a date · 2026-11-22 · accepted
+
+The teachers list sends `next_free_kind` (back D-1703): `day` when the opening is only a package's start date (no series yet). The card then says "Starts: 28 Nov 2026" instead of a midnight-UTC time read as 2:00 AM (QA S8).
+
+## D-1657 — A free package never talks about paying · 2026-11-22 · accepted
+
+The waiting-list toast and banner of a free package leave out the payment words, and "the sessions are in your schedule" shows only when the package has a series (QA S11, N10).
+
+## D-1658 — The teacher wizard starts from the account · 2026-11-22 · accepted
+
+A new profile's "name students see" starts with the account name, and the review step lists the session types and delivery picked in step 2 (QA N5, N6).
+
+## D-1659 — The teacher hub says why packages are closed · 2026-11-22 · accepted
+
+`teacherPackagesLockedText`: under review → "your packages open as soon as it is approved"; rejected → "change it and send it again"; otherwise the old "complete it and send it first" (QA S6). Arabic text about a woman teacher takes the feminine (`teacherG`: "عن المعلمة", the approve dialog, QA N2).
+
+## D-1661 — A new meeting starts at a sensible time · 2026-11-22 · accepted
+
+`calNextSensibleSlot`: the next full hour while it falls in 08:00 – 21:00, else 10:00 the same morning or the next day (the schedule page's New meeting and the course's Repeating meeting). A course's repeating meeting starts with the course name as its title (QA S18).
+
+## D-1662 — Cancelling a series date asks first · 2026-11-22 · accepted
+
+After the scope ("this date" / "this and following"), `seriesCancel` asks `appConfirm` naming the date and that the invitees are told. The server has no "restore a date" call, so an undo toast would have promised something it can't do (QA S24).
+
+## D-1663 — A private meeting wears a person · 2026-11-22 · accepted
+
+`calEventIcon`: a meeting of kind `private` shows a person icon in the calendar's next card, rows and detail, not the group icon (QA N19).
+
+## D-1670 — The word puzzle: square tiles, and the built word is one Text · 2026-11-22 · accepted
+
+`WordPuzzleEngine` draws one small square slot per letter (`WordPuzzleSlot.size` = `AppTouch.min`) and the pool as square tiles (`WordPuzzleTile.size` = `AppTouch.primary`), both in wrapping rows, so a word of any length fits a 320 px phone. Above them, `WordPuzzleAnswer` draws the word built so far as ONE `Text` (`WordPuzzleEngine.builtText`: the placed letters joined, the word's own spaces put back), so Arabic letters connect as they do in the word; once checked only that joined word stays, in the check's colour. The slots and tiles keep their taps (a slot gives its letter back). The rows and the word take the WORD's direction (`contentDirection`), so an Arabic word runs right to left in the English interface too. The hint "a word of n letters" goes through `countText`. The admin's live preview is the same engine.
+
+## D-1671 — Author text keeps its own direction in the learn kit · 2026-11-22 · accepted
+
+`LearnPrompt` (caption and question) and the option rows draw with `AutoDirText`, as do the game card and the admin list titles and the self-learning admin rows: an Arabic question in the English interface reads "كم عدد أركان الإسلام؟" with its "؟" at the end. The rows still line up on the page's start edge.
+
+## D-1672 — The game editor marks the field, and the preview shows a missing blank · 2026-11-22 · accepted
+
+`GameConfigDraft.rowProblems(row)` gives each row's mistakes by field key; `problems()` is built from it (same fields and texts as before). `GameDraftRowCard` shows a mistake under its own field once that field holds text (a sentence without `___`, a one-letter word, an answer not among the options); an empty field's "write the …" stays in the summary above Save, so a row being typed is not painted red. `FillBlankEngine.show` no longer appends a blank to a sentence that has none: the server never stores one, and the live preview now shows the author's mistake instead of hiding it.
+
+## D-1673 — One name per game type · 2026-11-22 · accepted
+
+`kGameEngines` holds THE name of each type: Quiz / اختبار سريع, Match / توصيل, Order / ترتيب, Memory cards / بطاقات الذاكرة, Fill in the blank / أكمل الفراغ, Word puzzle / كوّن الكلمة. The editor's type menu uses these names whatever the server's engine list says (`gameEditorEngines`), the admin's empty state lists them, and the server's catalog was given the same names (back D-1710).
+
+## D-1674 — The game editor beside its preview on a wide window · 2026-11-22 · accepted
+
+`GameEditorPage` is `AppWidth.wide`; from `kGameEditorTwoPane` (960) the fields sit in their own scroll at the form width and the live preview beside them in another, so it stays in view while the rows are typed. Narrower, one column as before. A phone admin row moves the publish switch into the row's menu (Publish / Hide from students), so the title and its meta keep the room.
+
+## D-1675 — A Learning content group in the admin services hub · 2026-11-22 · accepted
+
+The super admin's hub has a fifth group, `learning` ("Learning content" / "محتوى التعلّم", a sidebar tab between Finance and Support): education levels, module switches, Quran teachers, teacher review, grammar content, educational games and self-learning content moved there from "Finance & requests", which keeps money and requests (payouts, enrollments, subscriptions, courses and students, the trash, the store, points, payment methods, fees, payments). No badge moves: none of the moved pages has an attention count.
+
+## D-1676 — Fill-in-the-blank options are compared as written · 2026-11-22 · accepted
+
+Found in the real-app walk: the seeded "Fill in the right ending" offers العلمُ / العلمَ / العلمِ, and the engine dropped options that matched after the Arabic normalization, so the student saw one option and any ending counted right. `FillBlankEngine.itemsOf` now drops only exact repeats, a picked option is right only when it is the answer as written (the server already requires `answer in options` exactly), and the editor's "the answer is not one of the options" uses the same exact check. A TYPED answer is still compared after the normalization (no tashkeel, any alef).

@@ -36,7 +36,7 @@ Future<dynamic> joinCourseLiveAsStudent(ApiClient api, int sessionId) async {
       sessionId: sessionId,
       url: m['ws_url'] as String? ?? '',
       token: m['token'] as String? ?? '',
-      recordingEnabled: m['recording_enabled'] as bool? ?? true,
+      recordingEnabled: m['recording_enabled'] == true, // D-1503
       liveStartedAt: outcome.liveStartedAt,
       liveConfig: outcome.liveConfig, // D-090
     );

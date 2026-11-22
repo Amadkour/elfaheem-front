@@ -177,12 +177,19 @@ class AppTime {
     }
   }
 
-  /// UTC instant → wall clock of the effective zone (DST aware). Naive input is taken as UTC.
-  static DateTime toZone(DateTime utc) {
+  /// UTC instant → wall clock of the effective zone (DST aware). Naive input is taken as UTC. [zone]: another IANA
+  /// zone instead (a repeat rule's own `tz`, D-1645); an unknown one falls back to the effective zone.
+  static DateTime toZone(DateTime utc, {String? zone}) {
     _ensureDb();
     final u = utc.isUtc ? utc : DateTime.utc(utc.year, utc.month, utc.day, utc.hour, utc.minute, utc.second);
     try {
-      final t = tz.TZDateTime.from(u, tz.getLocation(zoneId));
+      tz.Location loc;
+      try {
+        loc = tz.getLocation(zone == null || zone.isEmpty ? zoneId : zone);
+      } catch (_) {
+        loc = tz.getLocation(zoneId);
+      }
+      final t = tz.TZDateTime.from(u, loc);
       return DateTime(t.year, t.month, t.day, t.hour, t.minute, t.second);
     } catch (_) {
       return u.toLocal();

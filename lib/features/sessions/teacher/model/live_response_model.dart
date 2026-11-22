@@ -24,7 +24,7 @@ class LiveResponseModel {
       {required this.sessionId,
       required this.url,
       required this.token,
-      this.recordingEnabled = true,
+      this.recordingEnabled = false,
       this.freeEndsAt,
       this.liveStartedAt,
       this.liveConfig = LiveConfig.defaults});

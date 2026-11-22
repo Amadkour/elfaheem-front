@@ -35,13 +35,15 @@ import 'package:flutter_education_app/core/personal_access.dart' show PersonalAc
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
-import 'package:flutter_education_app/core/home/me_home.dart' show MeHomeService, MeLiveRoom;
+import 'package:flutter_education_app/core/home/me_home.dart' show MeHomeService, MeLiveRoom, MeOnboardingItem;
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
+import 'package:flutter_education_app/design/sync_status_chip.dart' show SyncStatusChip;
+import 'package:flutter_education_app/core/offline/sync/sync_status.dart' show SyncStatus;
 import 'package:flutter_education_app/design/home_a2.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/org/home_org_mix.dart';
@@ -62,6 +64,7 @@ import 'package:flutter_education_app/features/home/teacher/go_live_sheet.dart' 
 import 'package:flutter_education_app/features/live/meeting_links_page.dart' show MeetingLinksIcon;
 import 'package:flutter_education_app/features/home/teacher/queue_work_items.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_home_extra.dart';
+import 'package:flutter_education_app/features/home/home_application_card.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/profile/teacher/payout/teacher_payouts_screen.dart';
 import 'package:flutter_education_app/features/home/teacher/todo/teacher_todo_api.dart' show sendTodoChoice;
@@ -349,6 +352,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                         onNewCourse: _newCourse,
                         onOpenEarnings: _openEarnings,
                         onOpenInbox: _openInbox,
+                        onOpenApplication: (x) => openHomeApplication(context, x, onClosed: provider.init),
                         greeting: greeting,
                       ),
                     ),
@@ -512,13 +516,16 @@ class TeacherGreeting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phone = !HomeHeader.shellTopBar(context);
-    return ValueListenableBuilder<int>(
-      valueListenable: AppTime.version, // the greeting follows the effective timezone
-      builder: (context, _, _) => HomeGreetingRow(
+    return ListenableBuilder(
+      // the greeting follows the effective timezone; the offline chip (D-1351, QA_PHASE7 W-7) joins the row only
+      // while it has something to say: a hidden one would leave a gap
+      listenable: Listenable.merge([AppTime.version, SyncStatus.instance]),
+      builder: (context, _) => HomeGreetingRow(
         name: name,
         subline: subtitle,
         trailing: [
           ?switcher,
+          if (phone && !SyncStatus.instance.value.quiet) const SyncStatusChip(),
           ...actions,
           if (phone) ...[...shellActions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!), ?leading],
           ?goLive,
@@ -566,6 +573,7 @@ class TeacherHomeBody extends StatelessWidget {
     this.onRetry,
     this.onOpenEarnings,
     this.onOpenInbox,
+    this.onOpenApplication,
     this.showFeeds = true,
     this.liveNow = const [],
     this.now,
@@ -614,6 +622,9 @@ class TeacherHomeBody extends StatelessWidget {
   final VoidCallback onNewCourse;
   final VoidCallback? onOpenEarnings;
   final VoidCallback? onOpenInbox;
+
+  /// A case of "Your application" (from [extra]'s `onboarding`) → its applicant page (D-1210).
+  final ValueChanged<MeOnboardingItem>? onOpenApplication;
 
   /// Ads / organizations / the self-fetching inbox entry (network widgets) — off in layout tests.
   final bool showFeeds;
@@ -843,20 +854,21 @@ class TeacherHomeBody extends StatelessWidget {
             action: TextButton(onPressed: onRetry, child: Text('retry'.tr)),
           );
     // live now: the meetings I'm invited to that are live (my own running sessions sit in Today, with "Enter room")
+    final apps = extra?.onboarding ?? const <MeOnboardingItem>[];
     final live = liveNow.isEmpty ? null : HomeLiveNow(rooms: liveNow, now: now, padding: EdgeInsets.zero);
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       HomeA2Layout(
         greeting: greeting ?? const SizedBox.shrink(),
         stats: figures,
-        banners: [?stale, ?live],
+        banners: [?stale, ?live, if (apps.isNotEmpty && homeApplicationNeedsAction(apps)) HomeApplicationCard(items: apps, onOpen: onOpenApplication)],
         queue: HomeEntrance(index: 1, child: queue),
         side: [
           HomeEntrance(index: 2, child: todayCard),
           if (inboxShown) InboxEntry(counts: inboxCounts, unread: unread, onTap: onOpenInbox, padding: EdgeInsets.zero),
           if (extra == null && showFeeds) const InboxEntryCard(padding: EdgeInsets.zero),
         ],
-        below: [coursesCard],
+        below: [coursesCard, if (apps.isNotEmpty && !homeApplicationNeedsAction(apps)) HomeApplicationCard(items: apps, onOpen: onOpenApplication)],
       ),
       if (showFeeds) ...[
         const HomeAdsSlider(padding: EdgeInsets.fromLTRB(_kInset, 0, _kInset, AppSpace.sm)),

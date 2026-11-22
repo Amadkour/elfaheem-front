@@ -385,7 +385,7 @@ class RoomPage extends StatefulWidget {
         this.enableAudio = true,
         this.enableVideo = true,
         this.sessionName,
-        this.recordingEnabled = true,
+        this.recordingEnabled = false,
         this.isGuest = false,
         this.canPublish = true,
         this.roomRef,
@@ -555,7 +555,17 @@ class _RoomPageState extends State<RoomPage>
   final LiveBackgroundCamera _bgCamera = LiveBackgroundCamera();
   AppLifecycleListener? _lifecycle;
 
+  /// Alfaheem is in front (D-1501: the Android overlay's burned-in mode only counts while it is not).
+  bool _appInFront = true;
+
   void _onAppLifecycle(AppLifecycleState state) {
+    if (state == AppLifecycleState.hidden || state == AppLifecycleState.paused) {
+      _appInFront = false;
+      _syncAnnotBurn();
+    } else if (state == AppLifecycleState.resumed) {
+      _appInFront = true;
+      _syncAnnotBurn();
+    }
     if (kIsWeb || !lkPlatformIsMobile()) return;
     // D-090: nobody watches the videos of an app in the background — they stop until it is back (audio goes on).
     if (state == AppLifecycleState.hidden || state == AppLifecycleState.paused) {
@@ -901,6 +911,40 @@ class _RoomPageState extends State<RoomPage>
   RecordingStart? _meetingRecording;
   bool _meetingRecordBusy = false;
 
+  /// D-1503: a course session's record switch as it stands in this room (the start payload's, then the teacher's
+  /// Record in the top row turns it on) and the Record tap in flight.
+  late bool _courseRecordOn = widget.recordingEnabled;
+  bool _courseRecordBusy = false;
+
+  /// The top row offers Record (a meeting's creator, a course session's teacher in client mode), nothing recording.
+  bool get _recordOffered => liveRecordOffer(
+        isMeeting: widget.ref.isMeeting,
+        canRecordMeeting: _canRecordMeeting && _meetingRecording == null,
+        isTeacher: widget.isTeacher,
+        isGuest: widget.isGuest,
+        deviceRecorder: widget.liveConfig.deviceRecorder,
+        recorderRunning: _recorder != null || (!widget.ref.isMeeting && _deviceRecords), // starts by itself
+        ending: _endingSession,
+      );
+
+  /// D-1503: the teacher turns a course session's recording on from the room — the session's own switch first
+  /// (`PUT /sessions/{id} {record_enabled: true}`, what the server's chunk route follows), then the device recorder.
+  Future<void> _recordCourse() async {
+    if (widget.ref.isMeeting || !_recordOffered || _courseRecordBusy) return;
+    setState(() => _courseRecordBusy = true);
+    try {
+      await widget.apiClient.put('/api/v1/sessions/${widget.sessionId}', body: {'record_enabled': true});
+      if (!mounted) return;
+      setState(() => _courseRecordOn = true);
+      await _startRecorderOnce();
+    } catch (e) {
+      log('[REC] course recording start error: $e');
+      if (mounted) _showSnack(t('تعذّر بدء التسجيل', 'Could not start the recording'));
+    } finally {
+      if (mounted) setState(() => _courseRecordBusy = false);
+    }
+  }
+
   /// D-313: the destination + quality of a meeting's first recording in this app session, by room: the next Record
   /// of the same meeting starts straight on with them (the setup sheet only the first time, or when that fails).
   static final Map<String, ({RecordingQuality quality, CloudProvider destination})> _recChoice = {};
@@ -1024,7 +1068,7 @@ class _RoomPageState extends State<RoomPage>
     if (_recordsHere && st == RecState.paused) return LiveInfoRecording.paused;
     if (_recordsHere && st == RecState.recording) return LiveInfoRecording.recording;
     if (_serverRecording) return LiveInfoRecording.server;
-    if (!widget.ref.isMeeting && widget.recordingEnabled) return LiveInfoRecording.server;
+    if (!widget.ref.isMeeting && _courseRecordOn) return LiveInfoRecording.server;
     return LiveInfoRecording.off;
   }
 
@@ -1564,8 +1608,9 @@ class _RoomPageState extends State<RoomPage>
         await _startRecorderOnce();
       }
 
-      // D-306: a meeting opens with the recording stopped; its creator is told once where Record is.
-      if (mounted && _canRecordMeeting && _recorder == null) {
+      // D-306: a meeting opens with the recording stopped; its creator is told once where Record is (D-1503: a course
+      // session's teacher too when the session started with its switch off).
+      if (mounted && _recordOffered) {
         showAppNotice(
             t('لا يُسجَّل الاجتماع بعد. اضغط «تسجيل» في الأعلى عندما تريد البدء.',
                 'Not recording yet. Press Record at the top when you want to start.'),
@@ -3700,6 +3745,17 @@ class _RoomPageState extends State<RoomPage>
     if (_selfSpot == SelfViewSpot.stage) unawaited(LiveCameraFocus.tap(_localCamTrack, at, stage));
   }
 
+  /// The stage's video while my camera is swapped onto the stage (D-1501): a shared screen keeps its drawings on it
+  /// (view only in the box), anything else is the usual tile.
+  Widget _swappedStageTile() {
+    final first = _stageTracks.first;
+    if (first.type == ParticipantTrackType.kScreenShare) {
+      final track = _resolveScreenTrack(first.participant);
+      if (track != null) return _AnnotatedShareVideo(track: track, controller: _annotEnabled ? _annot : null);
+    }
+    return ParticipantWidget.widgetFor(first, showStatsLayer: false);
+  }
+
   void _selfMoved(SelfViewSide side, double y) {
     unawaited(SelfViewStore.instance.update(_selfPrefs.copyWith(side: side, y: y)));
   }
@@ -3723,7 +3779,7 @@ class _RoomPageState extends State<RoomPage>
             onLongPress: _openSelfViewOptions,
             tile: ClipRRect(
               borderRadius: BorderRadius.circular(prefs.shape == SelfViewShape.circle ? AppRadius.pill : AppRadius.card),
-              child: AbsorbPointer(child: ParticipantWidget.widgetFor(_stageTracks.first, showStatsLayer: false)),
+              child: AbsorbPointer(child: _swappedStageTile()),
             ),
           ),
         );
@@ -3759,7 +3815,12 @@ class _RoomPageState extends State<RoomPage>
           _pokeControls();
         },
         onMoved: _selfMoved,
-        onTap: _canSwapSelf ? () => setState(() => _pipSwapped = true) : _toggleControlsVisibility,
+        onTap: _canSwapSelf
+            ? () {
+                if (_annotOpen) _closeAnnot(); // D-1501: no pen on a share that moves into the small box
+                setState(() => _pipSwapped = true);
+              }
+            : _toggleControlsVisibility,
         onLongPress: _openSelfViewOptions,
         tile: SelfViewTile(
           shape: prefs.shape,
@@ -4258,7 +4319,7 @@ class _RoomPageState extends State<RoomPage>
     final controls = st != null &&
         showsRecorderControls(
           isTeacher: widget.isTeacher,
-          recordingEnabled: widget.recordingEnabled && widget.liveConfig.deviceRecorder,
+          recordingEnabled: _courseRecordOn && widget.liveConfig.deviceRecorder,
           recordsHere: _recordsHere,
         );
     final meetingRec = _canRecordMeeting && _meetingRecording != null;
@@ -4266,8 +4327,8 @@ class _RoomPageState extends State<RoomPage>
     final remote = st == null && !meetingRec && _remoteRec != null && !_remoteRec!.staleAt(now) ? _remoteRec : null;
     final phase = liveRecPhase(
       state: st,
-      pending: meetingRec,
-      offer: _canRecordMeeting && _meetingRecording == null && !_endingSession,
+      pending: meetingRec || _courseRecordBusy,
+      offer: _recordOffered, // D-1503: every room's host sees "Not recording · ● Record"
       server: _serverRecording,
       remote: remote?.state,
     );
@@ -4297,8 +4358,8 @@ class _RoomPageState extends State<RoomPage>
         phase: phase,
         elapsed: remote?.elapsedAt(now) ?? Duration(seconds: _recElapsedSeconds),
         detail: detail,
-        busy: _meetingRecordBusy || _isPausingRecording || _isResumingRecording,
-        onRecord: _recordMeeting,
+        busy: _meetingRecordBusy || _courseRecordBusy || _isPausingRecording || _isResumingRecording,
+        onRecord: widget.ref.isMeeting ? _recordMeeting : _recordCourse,
         onPause: controls && st == RecState.recording && !_isPausingRecording && !_endingSession
             ? () => unawaited(_pauseRecording())
             : null,
@@ -4436,7 +4497,7 @@ class _RoomPageState extends State<RoomPage>
       return LiveOverlayRec.recording;
     }
     if (st == RecState.paused || remote == LiveRemoteRecState.paused) return LiveOverlayRec.paused;
-    if (_canRecordMeeting && _meetingRecording == null) return LiveOverlayRec.notYet; // D-313 (5): not recording yet
+    if (_recordOffered) return LiveOverlayRec.notYet; // D-313 (5) / D-1503: not recording yet
     return LiveOverlayRec.none;
   }
 
@@ -4457,8 +4518,8 @@ class _RoomPageState extends State<RoomPage>
     if (on == _focus || !mounted) return;
     _focusBarsTimer?.cancel();
     _focusHintTimer?.cancel();
-    // The pen on a shared screen is put down (its toolbar is chrome); the board keeps its pen (D-108, round 7).
-    if (on && _annotOpen) _closeAnnot();
+    // D-1501: the pen on a shared screen stays in full view, like the board's (D-108 round 7 put it down); its
+    // toolbar is the one piece of chrome full view keeps while drawing.
     setState(() {
       _focus = on;
       _focusBars = false;
@@ -4646,9 +4707,16 @@ class _RoomPageState extends State<RoomPage>
   bool get _annotStudentGranted =>
       !_annot.isHost && (_annot.allowStudents || _annot.allowedIdentities.contains(_annot.localIdentity));
 
-  /// Annotate is offered: a share fills the stage, this person may draw, and no Android overlay burns it in.
-  bool get _canAnnotate =>
-      _annotEnabled && _isScreenShareMain && !_isBoardMain && _annot.canDrawLocal && !_annot.burnedIn;
+  /// Annotate is offered: a share fills the stage (full view too), this person may draw, and no Android overlay burns
+  /// it in — which since D-1501 is only while the app is in the background.
+  bool get _canAnnotate => liveCanAnnotateShare(
+        enabled: _annotEnabled,
+        shareOnStage: _isScreenShareMain,
+        boardOnStage: _isBoardMain,
+        canDrawLocal: _annot.canDrawLocal,
+        burnedIn: _annot.burnedIn,
+        shareInBox: _selfSpot == SelfViewSpot.stage,
+      );
 
   /// Hosts present and the presenter on the stage → the controller (a no-op when nothing changed). Runs after
   /// every re-layout (_sortParticipants: connect / disconnect / track (un)publish / local track events).
@@ -4672,6 +4740,21 @@ class _RoomPageState extends State<RoomPage>
       }
     }
     _annot.setRoles(hosts: hosts, presenter: presenter);
+    _syncAnnotBurn(); // the presenter is a lead now: an armed overlay's mode can be set
+  }
+
+  /// This device's overlay put the board in burned-in mode (only that device lifts it: another host's re-sort must
+  /// never undo the presenter's mode).
+  bool _annotBurnMine = false;
+
+  /// D-1501: burned-in mode = the native overlay armed AND the app in the background (a no-op when unchanged, and
+  /// for anyone but the presenter / a host).
+  void _syncAnnotBurn() {
+    if (!mounted) return;
+    final want = annotBurnedInNow(overlayArmed: annotationOverlayActive.value, appInFront: _appInFront);
+    if (!want && !_annotBurnMine) return;
+    _annotBurnMine = want;
+    _annot.setBurnedIn(want);
   }
 
   void _onAnnotChanged() {
@@ -4699,13 +4782,10 @@ class _RoomPageState extends State<RoomPage>
   /// The Android whole-screen overlay is shown / closed (RoomScreenShareMixin, room_wiring_pending.md §4).
   void _onAnnotOverlay() {
     if (!mounted) return;
-    final on = annotationOverlayActive.value;
-    // _syncAnnotRoles has made the local presenter a lead by now (LocalTrackPublishedEvent re-sorts).
-    _annot.setBurnedIn(on);
-    if (on && _annotOpen) {
-      _annot.setDrawMode(false);
-      setState(() => _annotOpen = false); // the native toolbar replaces the in-app one
-    }
+    // _syncAnnotRoles has made the local presenter a lead by now (LocalTrackPublishedEvent re-sorts). D-1501: armed
+    // while the app is in front changes nothing (the in-app pen and toolbar keep working); burned in only once the
+    // presenter leaves the app, and _onAnnotChanged closes the in-app toolbar then.
+    _syncAnnotBurn();
   }
 
   void _toggleAnnot() {

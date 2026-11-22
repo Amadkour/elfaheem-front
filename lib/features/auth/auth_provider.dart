@@ -1,11 +1,21 @@
 library;
 
+import 'package:flutter_education_app/features/store/store_vault.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show StudySettings;
+import 'package:flutter_education_app/features/auth/register_levels_step.dart' show TeachingLevel;
 import 'package:flutter_education_app/features/messaging/chat/chat_store.dart' show ChatHub;
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_access.dart';
+import 'package:flutter_education_app/core/offline/sync/outbox.dart' show Outbox;
+import 'package:flutter_education_app/core/offline/app_connectivity.dart' show AppConnectivity;
+import 'package:flutter_education_app/core/plural.dart' show countText;
+import 'package:flutter_education_app/design/app_kit.dart' show appConfirm;
+import 'package:flutter_education_app/main.dart' show navigatorKey;
+import 'package:flutter_education_app/core/offline/sync/sync_engine.dart' show SyncEngine;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async' show unawaited;
 import 'dart:developer';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart' show ThemeConfigProvider;
 
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -25,6 +35,11 @@ import 'mfa.dart';
 import 'teacher_onboarding_token.dart';
 import 'username.dart';
 import 'package:flutter_education_app/core/personal_access.dart';
+import 'package:flutter/material.dart' show MaterialPageRoute;
+import 'package:flutter_education_app/core/routing/pending_intent.dart';
+import 'package:flutter_education_app/features/onboarding/join/join_draft.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart' show CoursePageLoader;
+import 'package:flutter_education_app/features/store/store_item_page.dart' show resumeStoreBuy;
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -339,6 +354,10 @@ class MyAuthProvider extends BaseProvider {
     // Restore the user from disk immediately so role/isTeacher are ready
     // before the first frame is drawn — no async gap, no null user.
     loadCachedUser();
+    // a forced sign-out (401 after the refresh, a refused refresh) runs the same flow, without asking
+    ApiClient.onSessionLost = () async {
+      if (_currentUser != null) await logout(forced: true);
+    };
     // the personal-account switch (settings, the enable_personal fix) keeps the cached user in step
     PersonalAccess.onChanged = (on) async {
       final u = _currentUser;
@@ -460,6 +479,8 @@ class MyAuthProvider extends BaseProvider {
     }
     await NotificationService.instance.registerWithBackend(_api);
     notifyListeners();
+    // a sign-in (password, Google, MFA): the country layer of the disable list is this account's (D-1341)
+    unawaited(ThemeConfigProvider.accountChanged());
   }
 
   void _resetMfa() {
@@ -673,6 +694,7 @@ class MyAuthProvider extends BaseProvider {
     required int experienceYears,
     required String email,
     String? bio,
+    List<TeachingLevel> levels = const [],
   }) async {
     isLoadingAdditionalRegistration = true;
     notifyListeners();
@@ -687,6 +709,8 @@ class MyAuthProvider extends BaseProvider {
           'gmail': email,
           'specialization_id': selectedSpecialization!['id'],
           if (bio != null && bio.trim().isNotEmpty) 'about': bio.trim(),
+          // saved with the profile, in the same commit (D-1315)
+          if (levels.isNotEmpty) 'teaching_levels': [for (final l in levels) l.toJson()],
         },
         headers: TeacherOnboardingToken.headers,
       ),
@@ -1002,6 +1026,8 @@ class MyAuthProvider extends BaseProvider {
     // the admin's cached profile, so after exiting (or restarting) the admin became a "student".
     if (!ViewAsState.active) await _storage.saveUser(user.toJson());
     notifyListeners();
+    // a sign-in: the country layer of the disable list is this account's (no request when the account is the same)
+    if (!ViewAsState.active) unawaited(ThemeConfigProvider.accountChanged());
   }
 
   /// Called when view-as ends: forget the viewed user and bring back the admin's own cached profile.
@@ -1081,9 +1107,115 @@ class MyAuthProvider extends BaseProvider {
     notifyListeners();
   }
 
+  // ── A guest's pending intent (D-1324) ─────────────────────────────────────────
+
+  /// Called by the first signed-in page (main.dart's route guard: after a sign-in, a finished registration and a
+  /// page reload alike): what the person tried as a guest ("book this course") opens once, on top of [nav] — the
+  /// course page and, for a student, its checkout. False when nothing was pending (or not signed in).
+  Future<bool> resumePendingIntent(NavigatorState nav) async {
+    if (!isAuthenticated) return false;
+    final student = isStudent;
+    return PendingIntent.resume((i) async {
+      switch (i.kind) {
+        case PendingIntentKind.bookCourse:
+          final id = int.tryParse(i.id);
+          if (id == null || !nav.mounted) return;
+          nav.push(MaterialPageRoute<void>(
+            settings: RouteSettings(name: '/courses/$id'),
+            builder: (_) => CoursePageLoader(courseId: id, openCheckout: student),
+          ));
+        case PendingIntentKind.buyStoreItem:
+          // the item page with its checkout; nothing with the store tab off, the page alone when the item is owned or
+          // buying is off (storeResumeAction, D-1333)
+          await resumeStoreBuy(nav, i);
+      }
+    });
+  }
+
   // ── Logout ────────────────────────────────────────────────────────────────────
 
-  Future<void> logout() async {
+  /// What a sign-out drops from the device before anything else: a guest's "book this course" (PendingIntent) and
+  /// the join flow's answers (JoinDraft: name, phone, child code), so neither carries over to the next person (D-1326).
+  static Future<void> clearGuestHandoff() async {
+    await PendingIntent.clear();
+    await JoinDraft.clear();
+  }
+
+  /// The store's kept copies and their keys (D-1339): named per item, not per account, so a sign-out removes them
+  /// all and the next account on a shared phone finds nothing. A no-op on the web. Never fails the sign-out.
+  static Future<void> wipeStoreFiles({Future<void> Function()? wipe}) async {
+    try {
+      await (wipe ?? StoreVault.instance.wipe)();
+    } catch (_) {}
+  }
+
+  /// The offline outbox, the read caches and the device tables they live in (D-1351, D-1353): unsent offline work
+  /// and cached answers never outlive the session on a shared phone. Never fails the sign-out.
+  static Future<void> wipeSyncData({Future<void> Function()? wipe}) async {
+    try {
+      SyncEngine.instance.reset();
+      await (wipe ?? Outbox.instance.wipe)();
+    } catch (_) {}
+  }
+
+  /// Before a sign-out the person chose (7.R): unsent offline work is sent first when online (at most [timeout]);
+  /// whatever still waits (offline, or the push failed) is only deleted once the person says so. False = stay
+  /// signed in. Never throws: a failure here never blocks a sign-out.
+  static Future<bool> settleUnsentWork({
+    Outbox? outbox,
+    Future<void> Function()? sync,
+    bool Function()? online,
+    Future<bool> Function(int n)? confirm,
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    try {
+      final box = outbox ?? Outbox.instance;
+      Future<int> waiting() async {
+        final uid = await box.currentUserId();
+        return uid == null ? 0 : (await box.rowsFor(uid)).length;
+      }
+
+      var n = await waiting();
+      if (n == 0) return true;
+      if ((online ?? () => AppConnectivity.instance.online.value)()) {
+        try {
+          await (sync ?? () => SyncEngine.instance.run(withParked: true))().timeout(timeout);
+        } catch (_) {}
+        n = await waiting();
+        if (n == 0) return true;
+      }
+      return await (confirm ?? confirmUnsentLoss ?? _confirmUnsentLoss)(n);
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Replaces the "delete unsent work?" question in tests of a whole sign-out (null = the dialog).
+  @visibleForTesting
+  static Future<bool> Function(int n)? confirmUnsentLoss;
+
+  static Future<bool> _confirmUnsentLoss(int n) async {
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return true;
+    return appConfirm(ctx, danger: true, message: unsentWorkLossText(n));
+  }
+
+  /// "3 changes made offline have not reached your account and will be deleted" in the open language.
+  static String unsentWorkLossText(int n) => countText(n,
+      ar1: 'تغيير واحد سجّلته دون اتصال لم يصل إلى حسابك بعد وسيُحذف',
+      ar2: 'تغييران سجّلتهما دون اتصال لم يصلا إلى حسابك بعد وسيُحذفان',
+      arFew: '{n} تغييرات سجّلتها دون اتصال لم تصل إلى حسابك بعد وستُحذف',
+      arMany: '{n} تغييراً سجّلتها دون اتصال لم تصل إلى حسابك بعد وستُحذف',
+      en1: '1 change made offline has not reached your account and will be deleted',
+      en: '{n} changes made offline have not reached your account and will be deleted');
+
+  /// Signs out. A sign-out the person chose first settles the unsent offline work ([settleUnsentWork]) and answers
+  /// false (still signed in) when they cancel; [forced] (a 401, a device block) wipes without asking.
+  Future<bool> logout({bool forced = false}) async {
+    if (!forced && !await settleUnsentWork()) return false;
+    await clearGuestHandoff();
+    await wipeStoreFiles();
+    await wipeSyncData();
     ViewAsState.instance.stop(); // never carry view-as into the next session
     AppModeController.instance.reset(); // Organization/Individual mode belongs to the user who chose it
     EntitiesApi.instance.invalidate(); // a cached detail or access answer is this user's, never the next one's (D-290)
@@ -1096,7 +1228,8 @@ class MyAuthProvider extends BaseProvider {
       await NotificationService.instance.unregisterFromBackend(_api);
     } catch (_) {}
     await _api.signOutServer(); // revoke the refresh family (S15); never blocks on a network failure
-    await _storage.clearAll(); // wipes tokens + user JSON
+    await _api.clearTokens(); // the access + refresh tokens: no sign-out path leaves a session behind
+    await _storage.clearAll(); // the cached user JSON
     try {                       // unsent exam answers kept for crash recovery never outlive the session (shared devices)
       final p = await SharedPreferences.getInstance();
       for (final k in p.getKeys().where((k) => k.startsWith('exam.pending.')).toList()) {
@@ -1110,6 +1243,8 @@ class MyAuthProvider extends BaseProvider {
     await ChatHub.instance.signedOut(); // unsent messages and drafts are plain text on this device
     _currentUser = null;
     notifyListeners();
+    unawaited(ThemeConfigProvider.accountChanged()); // signed out: the guest's country layer, not the last user's
+    return true;
   }
 
   // ── Dropdown helpers ──────────────────────────────────────────────────────────

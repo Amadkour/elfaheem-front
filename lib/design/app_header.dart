@@ -27,6 +27,9 @@ import 'chrome_button.dart' show ChromeCard;
 import 'app_focus_mode.dart';
 import 'app_responsive.dart';
 import 'app_shell_nav.dart' show ShellChrome;
+import 'shell_pins.dart' show ShellPinButton;
+import 'sync_status_chip.dart' show SyncStatusChip;
+import '../features/guest/guest_state.dart' show GuestState;
 import 'app_tokens.dart';
 
 /// Drives a header's collapse from the enclosing Scaffold's scrolling: [builder] gets 0 (open) … 1 (compact).
@@ -279,7 +282,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                               collapse: t,
                             ),
                           ),
-                          _Tools(actions: actions),
+                          _Tools(actions: actions, title: title),
                         ]),
                       ),
                     );
@@ -367,9 +370,12 @@ class _TitleBlock extends StatelessWidget {
 
 /// In this order at the end of every header: the page's actions, the app-wide actions, the focus toggle last.
 class _Tools extends StatelessWidget {
-  const _Tools({required this.actions});
+  const _Tools({required this.actions, required this.title});
 
   final List<Widget> actions;
+
+  /// The page's title: the name its pin takes (D-1170).
+  final String title;
 
   @override
   Widget build(BuildContext context) {
@@ -382,6 +388,11 @@ class _Tools extends StatelessWidget {
       ],
       // the app-wide tools (calendar, messages, assistant, bell) draw as paper chips on the canvas, like the rest
       if (global != null) global(context),
+      // no app-wide tools here (a phone, a page above the shell): the offline / waiting-writes chip still shows on
+      // every header while it has something to say (QA_PHASE7 W-7); it draws nothing while online and quiet
+      if (global == null && !GuestState.active) const SyncStatusChip(),
+      // pins this page to the dashboard's tabs (only on a page opened inside a tab, D-1170)
+      ShellPinButton(title: title),
       const AppFocusToggle(),
       const SizedBox(width: AppSpace.xs),
     ]);

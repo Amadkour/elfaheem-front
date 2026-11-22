@@ -1221,6 +1221,26 @@ class CourseSessionAction extends StatelessWidget {
   }
 }
 
+/// The teacher's "Repeating meeting" entry above the timeline (D-1575): opens the meeting form with the course
+/// preset and a weekly repeat on. The host shows it to the course's teacher only and wraps it in the
+/// `calendar.recurring` kill switch.
+class CourseRepeatingMeetingEntry extends StatelessWidget {
+  const CourseRepeatingMeetingEntry({super.key, required this.onTap});
+
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: AlignmentDirectional.centerStart,
+    child: CourseSessionAction(
+      key: const ValueKey('course_sessions.repeating_meeting'),
+      label: _t('اجتماع متكرر', 'Repeating meeting'),
+      icon: Icons.event_repeat_rounded,
+      onTap: onTap,
+    ),
+  );
+}
+
 /// The expand chevron at a row's end (student) — turns while the materials are open.
 class CourseSessionChevron extends StatelessWidget {
   const CourseSessionChevron({super.key, required this.open});

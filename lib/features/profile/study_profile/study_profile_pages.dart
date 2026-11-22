@@ -4,7 +4,9 @@
 //
 //   StudyProfileStepPage   the sign-up's ONE extra step (students, when the super admin keeps it on): stage + grade,
 //                          the rest folded under "Add school and governorate"; its button creates the account
-//   StudyProfilePage       Profile › Study details: the same form, loaded from and saved to /me/study-profile
+//   StudyProfilePage       Profile › Study details: the same form, loaded from and saved to /me/study-profile;
+//                          offline the edit waits in the outbox, and a `sync_stale` answer puts the server's copy
+//                          back in the form (StudyProfileSync, D-1352)
 //   StudyProfileTile       the Account page's row into it
 //   StudyPromptCard        the student home's dismissible "Complete your profile" card (plain values; the home shows it
 //                          while /me/home says `study_prompt`, never a blocking wall)
@@ -23,8 +25,37 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry, t;
 import 'package:flutter_education_app/features/auth/auth_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_widgets.dart' show AuthButton;
+import 'package:flutter_education_app/features/auth/register_levels_step.dart' show offerContactWhatsapp;
+import 'package:flutter_education_app/core/edu/edu_catalog.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
+import 'package:flutter_education_app/core/edu/edu_countries.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_form.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
+
+/// The catalog for the form: the countries and [country]'s stages (the profile's country, else the first one). Null
+/// when nothing loaded, and the form falls back to its fixed keys.
+Future<StudyEduData?> loadStudyEdu(String? country, {EduCatalog? catalog}) async {
+  final countries = await EduCountries.load();
+  final c = pickEduCountry(countries, country)?.code ?? (country ?? 'EG').toUpperCase();
+  final cat = await (catalog ?? EduCatalog.instance).load(c);
+  if (cat == null || cat.isEmpty) return null;
+  return StudyEduData(
+    countries: countries,
+    country: c,
+    stages: cat.stages,
+    labels: cat.geoLabels,
+    loadAreas: (parent) => (catalog ?? EduCatalog.instance).areas(c, parentId: parent),
+  );
+}
+
+EduStage? _stageOf(StudyEduData? edu, StudyProfile v) {
+  for (final s in edu?.stages ?? const <EduStage>[]) {
+    if (s.id == v.stageId) return s;
+  }
+  return null;
+}
+
+EduCountry? _countryOf(StudyEduData? edu) => pickEduCountry(edu?.countries ?? const [], edu?.country);
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  The sign-up step
@@ -55,17 +86,32 @@ class StudyProfileStepPage extends StatefulWidget {
 class _StudyProfileStepPageState extends State<StudyProfileStepPage> {
   late StudyProfile _value = widget.initial;
   bool _showErrors = false;
+  StudyEduData? _edu;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEdu(widget.initial.countryCode);
+  }
+
+  Future<void> _loadEdu(String? country) async {
+    final e = await loadStudyEdu(country);
+    if (mounted && e != null) setState(() => _edu = e);
+  }
 
   /// The sign-up form asks the date of birth itself.
   List<String> get _required => [for (final f in widget.settings.required) if (f != 'dob') f];
 
   Future<void> _submit() async {
-    if (_value.missing(_required).isNotEmpty) {
+    if (_value.missingIn(_edu?.stages, _required).isNotEmpty) {
       setState(() => _showErrors = true);
       showAppNotice(t('أكمل الحقول المطلوبة', 'Fill in the required fields'), error: true);
       return;
     }
+    final stage = _stageOf(_edu, _value), country = _countryOf(_edu);
     await widget.onSubmit(_value);
+    // the account is made and this page is gone: a contact-only stage (university) is handed to WhatsApp
+    if (!mounted) await offerContactWhatsapp(country, stage);
   }
 
   @override
@@ -85,6 +131,8 @@ class _StudyProfileStepPageState extends State<StudyProfileStepPage> {
             showErrors: _showErrors,
             showDob: false,
             compact: true,
+            edu: _edu,
+            onCountry: _loadEdu,
             onChanged: (v) {
               setState(() => _value = v);
               widget.onChanged?.call(v);
@@ -131,11 +179,50 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
   StudyProfile _value = StudyProfile.empty;
   String? _error;
   bool _saving = false, _showErrors = false;
+  StudyEduData? _edu;
 
   @override
   void initState() {
     super.initState();
+    StudyProfileSync.wireSync();
+    StudyProfileSync.latest.addListener(_onSync);
     _load();
+  }
+
+  @override
+  void dispose() {
+    StudyProfileSync.latest.removeListener(_onSync);
+    super.dispose();
+  }
+
+  /// The server's copy arrived through the outbox: an applied edit, or a stale one refused (the engine said so).
+  void _onSync() {
+    final x = StudyProfileSync.latest.value;
+    if (x == null || !mounted) return;
+    setState(() {
+      _loaded = x.view;
+      _value = x.view.profile;
+      _showErrors = false;
+    });
+  }
+
+  /// Keeps the edit on the device; false when there is no outbox here.
+  Future<bool> _queue() async {
+    if (!await _api.queue(_value, baseUpdatedAt: _loaded?.updatedAt)) return false;
+    if (!mounted) return true;
+    final l = _loaded!;
+    setState(() {
+      _loaded = StudyProfileView(profile: _value, settings: l.settings, updatedAt: l.updatedAt);
+      _showErrors = false;
+    });
+    showAppNotice(t('حُفظت بيانات الدراسة على هذا الجهاز وتُرسل عند الاتصال.',
+        'Study details saved on this device. They are sent once you are online.'));
+    return true;
+  }
+
+  Future<void> _loadEdu(String? country) async {
+    final e = await loadStudyEdu(country);
+    if (mounted && e != null) setState(() => _edu = e);
   }
 
   Future<void> _load() async {
@@ -147,6 +234,7 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
         _loaded = v;
         _value = v.profile;
       });
+      _loadEdu(v.profile.countryCode);
     } catch (e) {
       if (mounted) setState(() => _error = studyErrorText(e));
     }
@@ -154,13 +242,14 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
 
   Future<void> _save() async {
     final required = _loaded?.settings.required ?? const <String>[];
-    if (_value.missing(required).isNotEmpty) {
+    if (_value.missingIn(_edu?.stages, required).isNotEmpty) {
       setState(() => _showErrors = true);
       showAppNotice(t('أكمل الحقول المطلوبة', 'Fill in the required fields'), error: true);
       return;
     }
     setState(() => _saving = true);
     try {
+      if (!offlineReadsOnline().value && await _queue()) return;
       final v = await _api.save(_value);
       if (!mounted) return;
       setState(() {
@@ -169,7 +258,9 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
         _showErrors = false;
       });
       showAppNotice(t('حُفظت بيانات الدراسة', 'Study details saved'));
+      await offerContactWhatsapp(_countryOf(_edu), _stageOf(_edu, _value));
     } catch (e) {
+      if (isTransportFailure(e) && await _queue()) return;
       if (mounted) {
         if (studyErrorFields(e).isNotEmpty) setState(() => _showErrors = true);
         showAppNotice(studyErrorText(e), error: true);
@@ -201,6 +292,8 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
           value: _value,
           required: loaded.settings.required,
           showErrors: _showErrors,
+          edu: _edu,
+          onCountry: _loadEdu,
           onChanged: (v) => setState(() => _value = v),
         ),
         AppSpace.gapMd,

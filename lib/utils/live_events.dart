@@ -111,6 +111,9 @@ class LiveEvents {
   /// `{org_id}`. The organization dashboard reloads `/org/mine?members=1` and re-derives its sections (D-103).
   static const orgAccessChanged = 'org_access_changed';
 
+  /// A member-onboarding case changed state (payload {org_id, case_id, status}; D-1200).
+  static const onboarding = 'onboarding';
+
   /// The model hub (D-152, ../back modelhub/events.py), to every platform admin through the core's
   /// `/internal/v1/live/platform-admins`: a download moved (the whole `Download` row: `{id, model_id, ref, role,
   /// status, bytes_done, bytes_total, percent, speed_bps, eta_s, …}`, at most every second while it runs and on every
@@ -144,6 +147,10 @@ class LiveEvents {
   /// acknowledged, pending} → the sender's list / names sheet re-read.
   static const orgMessage = 'org_message';
   static const orgMustAck = 'org_must_ack';
+
+  /// Student lifecycle (D-1400): a status / ask / request of a student changed ({org_id, student_id, kind, ask_id?};
+  /// server: features/org/students/notify.py, stream only).
+  static const studentLifecycle = 'student_lifecycle';
   static const orgMessageAck = 'org_message_ack';
 
   /// Local (not from the server): fired by TopRouteObserver when the app goes online/offline.
@@ -182,6 +189,7 @@ class LiveEvents {
     quizStarted,
     attendanceRosterUpdated,
     orgAccessChanged,
+    onboarding,
     modelDownload,
     modelChanged,
     modelAlert,
@@ -192,6 +200,7 @@ class LiveEvents {
     orgMessage,
     orgMustAck,
     orgMessageAck,
+    studentLifecycle,
     accountApproval,
   };
 

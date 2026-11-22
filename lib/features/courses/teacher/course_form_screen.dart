@@ -39,6 +39,9 @@ import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_errors.dart' show appSharedFix, showAppError;
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/core/edu/edu_catalog.dart' show EduGeoLabels;
+import 'package:flutter_education_app/features/courses/course_setup_views.dart';
+import 'package:flutter_education_app/features/quran/quran_api.dart' show quranOff;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 
@@ -52,12 +55,15 @@ class CourseFormScreen extends StatelessWidget {
   /// null → CREATE mode,  non-null → EDIT mode
   final TeacherCourse? course;
 
-  const CourseFormScreen({super.key, this.course});
+  /// The program type a NEW course starts with (`'quran'` from the Quran teacher hub, D-1343).
+  final String programKind;
+
+  const CourseFormScreen({super.key, this.course, this.programKind = 'course'});
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
     create: (_) => CourseFormProvider(api: ApiClient()),
-    child: _CourseFormInner(course: course),
+    child: _CourseFormInner(course: course, programKind: programKind),
   );
 }
 
@@ -67,8 +73,9 @@ class CourseFormScreen extends StatelessWidget {
 
 class _CourseFormInner extends StatefulWidget {
   final TeacherCourse? course;
+  final String programKind;
 
-  const _CourseFormInner({required this.course});
+  const _CourseFormInner({required this.course, this.programKind = 'course'});
 
   @override
   State<_CourseFormInner> createState() => _CourseFormInnerState();
@@ -79,6 +86,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   final _formKey = GlobalKey<FormState>();
   late bool _isPrivate;
   final _accessCodeCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController(); // the in-person address (D-1314)
   late final TextEditingController _titleArCtrl,
       _titleEnCtrl,
       _descArCtrl,
@@ -227,8 +235,10 @@ class _CourseFormInnerState extends State<_CourseFormInner>
         p.nextCoursesInPath = widget.course!.org == null && roadmapAllowedHere(context) && !roadmapOff(kRoadmapPathKey);
         await p.initUpdate(context, widget.course!);
       } else {
-        await p.initCreate(context);
+        await p.initCreate(context, programKind: widget.programKind);
       }
+      _addressCtrl.text = p.address;
+      _addressCtrl.addListener(() => p.setAddress(_addressCtrl.text));
       _fadeCtrl.forward();
     });
   }
@@ -257,6 +267,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     _certTitleCtrl.dispose();
     _fadeCtrl.dispose();
     _accessCodeCtrl.dispose();
+    _addressCtrl.dispose();
     super.dispose();
   }
 
@@ -286,6 +297,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
             c.defaultPricePlanIndex ||
         _removeDiscount ||
         _logoFile != null ||
+        context.read<CourseFormProvider>().setupDirty ||
         _reelCtrl.hasChanges;
   }
 
@@ -301,6 +313,12 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   }) async {
     if (!_formKey.currentState!.validate()) {
       setState(() => _advancedOpen = true); // an invalid discount may be hidden
+      return;
+    }
+    if (formProvider.deliveryMode != 'online' && formProvider.area1 == null) {
+      // in person needs an area: say so before any request (the server refuses it too, `course_area_required`)
+      formProvider.markAreaMissing();
+      _showSnack(courseAreaRequiredText(), context.colors.danger);
       return;
     }
     final type =
@@ -393,6 +411,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       showAppError(context, formProvider.lastApiError!,
           text: formProvider.errorMessage,
           onRetry: () => _submit(publish: publish, listProvider: listProvider, formProvider: formProvider));
+    } else if (formProvider.lastApiError?.code == 'course_area_required') {
+      formProvider.markAreaMissing();
+      _showSnack(courseAreaRequiredText(), context.colors.danger);
     } else {
       _showSnack(
         formProvider.errorMessage ?? 'error_please_retry'.tr,
@@ -502,8 +523,9 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     );
   }
 
+  /// [color] picks the notice's tone: the danger colour is an error notice, anything else a plain one.
   void _showSnack(String msg, Color color) {
-    showAppNotice(msg);
+    showAppNotice(msg, error: color == context.colors.danger);
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -704,6 +726,49 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 label: 'currency_label'.tr,
                                 selected: provider.selectedCurrency,
                                 onChanged: provider.onChangeCurrency,
+                              ),
+                            ],
+                          )),
+                      const SizedBox(height: AppSpace.md),
+
+                      // Who it's for / Where (D-1314)
+                      ParentComponent(
+                          featureKey: 'course_form.audience',
+                          child: _FormCard(
+                            icon: Icons.groups_2_outlined,
+                            title: AppConfig.lang == 'ar' ? 'لمن هذا الكورس وأين' : "Who it's for / Where",
+                            children: [
+                              // the program type (D-1343), only while the Quran tab is on
+                              if (!quranOff() && !provider.setupLoadFailed) ...[
+                                CourseProgramKindField(
+                                  value: provider.programKind,
+                                  locked: provider.programKindLocked,
+                                  onChanged: provider.setProgramKind,
+                                ),
+                                const SizedBox(height: AppSpace.lg),
+                              ],
+                              if (provider.setupLoadFailed)
+                                CourseSetupLoadError(onRetry: () async {
+                                  await provider.retrySetup();
+                                  if (mounted) _addressCtrl.text = provider.address;
+                                })
+                              else
+                              CourseSetupSection(
+                                stages: provider.eduCatalog?.stages ?? const [],
+                                subjects: provider.eduCatalog?.subjects ?? const [],
+                                targets: provider.targets,
+                                onToggleTarget: provider.toggleTarget,
+                                subjectId: provider.subjectId,
+                                onSubject: provider.setSubject,
+                                deliveryMode: provider.deliveryMode,
+                                onDeliveryMode: provider.setDeliveryMode,
+                                loadAreas: provider.loadAreas,
+                                onArea: provider.setArea,
+                                area1: provider.area1,
+                                area2: provider.area2,
+                                labels: provider.eduCatalog?.geoLabels ?? const EduGeoLabels(),
+                                address: _addressCtrl,
+                                areaMissing: provider.areaMissing,
                               ),
                             ],
                           )),

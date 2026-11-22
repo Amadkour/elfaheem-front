@@ -11,19 +11,52 @@ import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
+import 'package:flutter_education_app/features/courses/course_space/course_series_block.dart' show CourseSeriesSection;
 import 'package:flutter_education_app/features/sessions/material/session_material_widget.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:flutter_education_app/features/sessions/session_track_tabs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppElevation, AppListSkeleton, AppRadius, AppSpace;
 import 'package:flutter_education_app/features/sessions/teacher/components/teacher_course_parts.dart';
+import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
+import 'package:flutter_education_app/config/app_config.dart' show AppConfig, Trans;
+import 'package:flutter_education_app/features/calendar/calendar_api.dart';
+import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show calNextSensibleSlot, showMeetingForm;
+import 'package:flutter_education_app/features/home/teacher/teacher_models.dart' show TeacherCourse;
+import 'package:flutter_education_app/features/calendar/recurrence/recurrence_rule.dart' show kRecurringFeatureKey;
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
-class TeacherSessionsBody extends StatelessWidget {
+/// The meeting form with [courseId] preset and a weekly repeat on, from the next full hour. True when one was made.
+/// [title]: the course's name, the series' first title (D-1661).
+Future<bool> openCourseRepeatingMeeting(BuildContext context, int courseId, {String? title}) async {
+  final start = calNextSensibleSlot(AppTime.toZone(DateTime.now().toUtc()));
+  final r = await showMeetingForm(context, api: const RemoteCalendarApi(), start: start, courseId: courseId, title: title);
+  if (r != null) showAppNotice('cal_recur_course_created'.tr);
+  return r != null;
+}
+
+class TeacherSessionsBody extends StatefulWidget {
   const TeacherSessionsBody({super.key, required this.onAdd});
 
   final VoidCallback onAdd;
 
   @override
+  State<TeacherSessionsBody> createState() => _TeacherSessionsBodyState();
+}
+
+class _TeacherSessionsBodyState extends State<TeacherSessionsBody> {
+  /// Bumped after a repeating meeting is made, so the series block reads the course's series again.
+  int _seriesReload = 0;
+
+  Future<void> _repeat(TeacherCourse course) async {
+    final ar = AppConfig.lang == 'ar';
+    final name = (ar ? course.titleAr : course.titleEn) ?? course.titleEn ?? course.titleAr;
+    if (await openCourseRepeatingMeeting(context, course.id, title: name) && mounted) setState(() => _seriesReload++);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final onAdd = widget.onAdd;
     final provider = context.watch<TeacherCourseScreenProvider>();
     final sessions = provider.sessions;
     final loading = sessions.isEmpty && (provider.isLoading || provider.loadingAllPage);
@@ -35,6 +68,22 @@ class TeacherSessionsBody extends StatelessWidget {
           key: const ValueKey('teacher_sessions.header'),
           count: provider.sessionCount,
           // New session is the page header's (D-943); the empty state below keeps its own first-session button
+        ),
+        // the course's repeating meeting (D-1575): this body is the teacher's course page only
+        ParentComponent(
+          featureKey: kRecurringFeatureKey,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, AppSpace.sm),
+            child: CourseRepeatingMeetingEntry(onTap: () => _repeat(provider.course)),
+          ),
+        ),
+        // its series with their coming dates (D-1660): meetings, not lessons, so above the timeline and shown even
+        // while the course has no lesson yet
+        CourseSeriesSection(
+          key: const ValueKey('teacher_sessions.series'),
+          courseId: provider.course.id,
+          reload: _seriesReload,
+          padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, AppSpace.sm),
         ),
         if (loading)
           const AppListSkeleton(items: 3, padding: EdgeInsetsDirectional.fromSTEB(kCourseGutter, 0, kCourseGutter, 0))

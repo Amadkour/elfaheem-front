@@ -1,0 +1,8 @@
+---
+import DownloadPage from '../../components/DownloadPage.astro';
+import '../../styles/fonts-ar.css';
+import arabic400 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-400-normal.woff2?url';
+import arabic700 from '@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-arabic-700-normal.woff2?url';
+---
+
+<DownloadPage lang="ar" preload={[arabic400, arabic700]} />

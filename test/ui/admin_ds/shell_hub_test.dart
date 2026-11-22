@@ -86,7 +86,7 @@ void main() {
   });
 
   testWidgets('every hub lays out at every size and language', (tester) async {
-    for (final g in ['people', 'finance', 'support', 'config']) {
+    for (final g in ['people', 'finance', 'learning', 'support', 'config']) {
       await expectNoLayoutErrors(tester, () => withProviders(AdminServicesHub(groupId: g)));
     }
   });

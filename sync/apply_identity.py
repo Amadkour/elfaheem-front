@@ -69,7 +69,7 @@ EXCLUDE = re.compile(
 TEXT_EXT = {
     '.dart', '.json', '.md', '.yaml', '.yml', '.xml', '.plist', '.entitlements', '.swift', '.kt', '.kts', '.gradle',
     '.pbxproj', '.xcconfig', '.toml', '.xcscheme', '.html', '.js', '.mjs', '.ts', '.astro', '.txt', '.sh', '.py', '.cc', '.h',
-    '.cpp', '.rc', '.cmake', '.example', '.css', '.webmanifest', '.storyboard', '.pro', '.properties', '',
+    '.cpp', '.rc', '.cmake', '.ps1', '.iss', '.example', '.css', '.webmanifest', '.storyboard', '.pro', '.properties', '',
 }
 NAMED = {'CMakeLists.txt', 'apple-app-site-association', 'robots.txt', 'Podfile'}
 
@@ -225,6 +225,8 @@ PHRASES = [
     ('مركز الفهيم التعليمي المتكامل', f'أكاديمية {NAME_AR} التعليمية المتكاملة'),
 ]
 LINUX_PACKAGING = ('scripts/release/build_linux.sh', 'scripts/release/package_linux.sh')
+# The Windows installer packs the binary windows/CMakeLists.txt names (the .iss file name itself stays).
+WINDOWS_PACKAGING = ('scripts/release/package_windows.ps1', 'windows/installer/nextbrain.iss')
 
 
 def transform(rel: str, text: str) -> str:
@@ -241,6 +243,8 @@ def transform(rel: str, text: str) -> str:
         text = text.replace('/root/nextbrain', SERVER_DIR)
     if rel in LINUX_PACKAGING:  # the Linux binary / package / icon follow BINARY_NAME (linux/CMakeLists.txt)
         text = re.sub(r'(?<![A-Za-z_])nextbrain(?![A-Za-z_])', BIN, text)
+    if rel in WINDOWS_PACKAGING:
+        text = text.replace('nextbrain.exe', f'{BIN}.exe')
     text = rename_domain(text)
     text = platform_names(rel, text)
     return rename_names(text)

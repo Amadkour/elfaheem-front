@@ -126,7 +126,10 @@ class _AccountFeePageState extends State<AccountFeePage> with WidgetsBindingObse
     final auth = context.read<MyAuthProvider>();
     final nav = Navigator.of(context);
     _left = true;
-    await auth.logout();
+    if (!await auth.logout()) {
+      _left = false;                               // kept signed in: unsent offline work the person kept
+      return;
+    }
     nav.pushNamedAndRemoveUntil('/login', (_) => false);
   }
 

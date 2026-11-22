@@ -9,6 +9,9 @@
 library;
 
 import 'admin_exam_policy_page.dart';
+import 'edu/edu_levels_page.dart';
+import 'package:flutter_education_app/features/store/manage/store_manage_api.dart' show kAdminStoreFeatureKey, kStoreManageFeatureKey;
+import 'package:flutter_education_app/features/store/manage/store_manage_pages.dart' show StoreAdminHubPage;
 import 'admin_study_profile_settings_page.dart' show AdminStudyProfileSettingsPage;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -66,6 +69,14 @@ import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart'
 import 'package:flutter_education_app/features/exams/parent_grade_visibility.dart' show kParentVisibilityKey, openParentGradeVisibility;
 import 'landing/admin_landing_page.dart' show AdminLandingPage, landingTitle;
 import 'landing/landing_admin_api.dart' show kLandingAdminFeatureKey;
+import 'modules/admin_modules_page.dart' show AdminModulesPage;
+import 'modules/module_settings_api.dart' show kAdminModulesFeatureKey;
+import 'package:flutter_education_app/features/quran/admin/quran_admin_page.dart' show QuranAdminPage;
+import 'package:flutter_education_app/features/teachers/teacher_review_admin.dart' show TeacherReviewPage;
+import 'package:flutter_education_app/features/teachers/teachers_api.dart' show kTeacherOnboardingFeature;
+import 'package:flutter_education_app/features/nahw/admin/nahw_admin_page.dart' show NahwAdminPage;
+import 'package:flutter_education_app/features/games/admin/games_admin_page.dart' show GamesAdminPage;
+import 'package:flutter_education_app/features/self_learning/admin/sl_admin_page.dart' show SlAdminPage;
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -303,6 +314,20 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           visible: isSuper,
           onTap: () => push(const CourseTrashPage()),
         ),
+        // the digital store (learning hub phase 5, D-1336): every admin manages items; the review queue and the
+        // orders are the super admin's only (`/admin/store/*` answers 403 admin_required to admin / developer)
+        AdminService(
+          labelKey: 'admin_store',
+          descKey: 'admin_store_d',
+          label: t('المتجر الرقمي', 'Digital store'),
+          desc: isSuper
+              ? t('الكتب والملخصات، مراجعة ما يرسله المعلمون، وطلبات الشراء', 'Books and summaries, the review of what teachers send, and the purchase orders')
+              : t('الكتب والملخصات التي يبيعها المتجر', 'The books and summaries the store sells'),
+          icon: Icons.storefront_rounded,
+          colors: AdminPalette.green,
+          featureKey: isSuper ? kAdminStoreFeatureKey : kStoreManageFeatureKey,
+          onTap: () => push(StoreAdminHubPage(superAdmin: isSuper)),
+        ),
         AdminService(
           labelKey: 'admin_points',
           descKey: 'admin_points_d',
@@ -339,6 +364,101 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           colors: AdminPalette.teal,
           featureKey: 'profile.historical_payment',
           onTap: () => push(const AdminFinancePage()),
+        ),
+      ],
+    ),
+
+    // ── Learning content (S27, D-1675): what students learn and who teaches it, out of Finance ──────────────────
+    AdminServiceGroup(
+      id: 'learning',
+      titleKey: 'admin_group_learning',
+      subtitleKey: 'svc_group_learning_sub',
+      icon: Icons.school_rounded,
+      colors: AdminPalette.teal,
+      services: [
+        // the education levels of every country (learning hub phase 2, D-1304)
+        AdminService(
+          labelKey: 'admin_edu_levels',
+          descKey: 'admin_edu_levels_d',
+          label: t('المراحل الدراسية', 'Education levels'),
+          desc: t('المراحل والصفوف والمواد والمناطق لكل دولة', 'Stages, grades, subjects and areas for each country'),
+          icon: Icons.school_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: 'admin.edu_levels',
+          visible: isSuper,
+          onTap: () => push(const AdminEduLevelsPage()),
+        ),
+        // module switches (learning hub phase 6, D-1348): store / games / quran rule flags per platform, country or
+        // organization, and each country's student tabs; super admin only
+        AdminService(
+          labelKey: 'admin_modules',
+          descKey: 'admin_modules_d',
+          label: t('مفاتيح الوحدات', 'Module switches'),
+          desc: t('قواعد المتجر والألعاب والقرآن لكل المنصة أو لدولة أو لمؤسسة، وتبويبات الطلاب لكل دولة',
+              'Store, games and Quran rules for the platform, a country or an organization, and each country\'s student tabs'),
+          icon: Icons.tune_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: kAdminModulesFeatureKey,
+          visible: isSuper,
+          onTap: () => push(const AdminModulesPage()),
+        ),
+        // Quran teachers: verify and review the cards (6.R #5, D-1347); super admin only, hidden with the Quran tab
+        AdminService(
+          labelKey: 'admin_quran',
+          descKey: 'admin_quran_d',
+          label: t('معلمو القرآن', 'Quran teachers'),
+          desc: t('توثيق معلمي القرآن ومراجعة بطاقاتهم قبل النشر', 'Verify Quran teachers and review their cards before they publish'),
+          icon: Icons.menu_book_rounded,
+          colors: AdminPalette.green,
+          featureKey: 'student_tab_quran',
+          visible: isSuper,
+          onTap: () => push(const QuranAdminPage()),
+        ),
+        // every subject's teacher profiles: the review queue (Learning Hub v2, D-1623); admins and super admins
+        AdminService(
+          labelKey: 'admin_teacher_review',
+          descKey: 'admin_teacher_review_d',
+          label: t('مراجعة المعلمين', 'Teacher review'),
+          desc: t('ملفات معلمي القرآن والتجويد والفقه والنحو ومستنداتهم: اعتماد أو رفض مع السبب',
+              'Quran, tajweed, fiqh and grammar teacher profiles and documents: approve, or reject with a reason'),
+          icon: Icons.fact_check_rounded,
+          colors: AdminPalette.green,
+          featureKey: kTeacherOnboardingFeature,
+          onTap: () => push(const TeacherReviewPage()),
+        ),
+        // grammar (nahw) content editor (6.R #8, D-1349); super admin only, kill switch admin.nahw
+        AdminService(
+          labelKey: 'admin_nahw',
+          descKey: 'admin_nahw_d',
+          label: t('محتوى النحو', 'Grammar content'),
+          desc: t('مستويات النحو ودروسها وتمارينها', 'The grammar levels, lessons and exercises'),
+          icon: Icons.spellcheck_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: 'admin.nahw',
+          visible: isSuper,
+          onTap: () => push(const NahwAdminPage()),
+        ),
+        // educational games editor (Learning Hub v2 §3, D-1589); super admin only, kill switch admin.games
+        AdminService(
+          labelKey: 'admin_games',
+          descKey: 'admin_games_d',
+          label: t('الألعاب التعليمية', 'Educational games'),
+          desc: t('محتوى الألعاب وترتيبها ونشرها، مع معاينة مباشرة', 'The games\' content, order and publishing, with a live preview'),
+          icon: Icons.extension_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: 'admin.games',
+          visible: isSuper,
+          onTap: () => push(const GamesAdminPage()),
+        ),
+        // self-learning lessons and review questions (Learning Hub v2 §5, D-1607); super admin only
+        AdminService(
+          labelKey: 'admin_self_learning',
+          descKey: 'admin_self_learning_d',
+          icon: Icons.auto_stories_rounded,
+          colors: AdminPalette.teal,
+          featureKey: 'admin.self_learning',
+          visible: isSuper,
+          onTap: () => push(const SlAdminPage()),
         ),
       ],
     ),

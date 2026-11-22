@@ -81,6 +81,8 @@ class AppRoutes {
       aliases: ['/course-profile/:courseId'], description: 'The course page (D-111), every role');
   static const orgMember =
       AppRouteDef('org.member', '/org/:orgId', description: "A student's organization page (Organization mode)");
+  static const orgOnboardingCase = AppRouteDef('org.onboarding_case', '/org/:orgId/onboarding/:caseId',
+      description: "One admission case on its own page (staff review), opened from a notification or a link (D-1200)");
   static const orgMemberships = AppRouteDef('org.memberships', '/my-organizations',
       description: 'My organizations: memberships, join requests and invitations (D-283)');
   static const calendar = AppRouteDef('calendar', '/calendar', description: 'The schedule page (D-085)');
@@ -97,6 +99,17 @@ class AppRoutes {
   static const exportLinks = AppRouteDef('exports.links', '/exports/links', description: 'Export share links');
   static const meetingLinks = AppRouteDef('meetings.links', '/meeting-links',
       description: 'Meeting links: every live session and meeting link to join, copy or share (D-307)');
+  static const storeLibrary = AppRouteDef('store.library', '/store/library',
+      description: "The store's My Library: what the person bought, and the purchases (D-1339)");
+  static const storeItem = AppRouteDef('store.item', '/store/:itemId',
+      description: 'One item of the digital store: its price and Buy (D-1339)');
+  // learning hub pages opened from a tab (D-1350): a reload, a URL or a shared link opens the same page again
+  static const gamesProgress = AppRouteDef('games.progress', '/games/progress', description: 'My games progress and badges');
+  static const gamePlay = AppRouteDef('games.play', '/games/:gameId', description: 'One learning game');
+  static const nahwLesson = AppRouteDef('nahw.lesson', '/nahw/lessons/:lessonId', description: 'One Arabic grammar (nahw) lesson');
+  static const selfLearning = AppRouteDef('self_learning', '/learn/daily', description: "My daily learning: today's lessons and reviews (D-1610)");
+  static const quranProgress = AppRouteDef('quran.progress', '/quran/progress', description: 'My Quran memorization progress');
+  static const quranTeacher = AppRouteDef('quran.teacher', '/quran/teachers/:teacherId', description: "A Quran teacher's card and programs");
   static const entityView = AppRouteDef('entity.view', '/view/:kind/:id',
       description: 'A student, course, teacher or category on a page of its own (D-290), every role');
 
@@ -115,14 +128,17 @@ class AppRoutes {
       signIn: false, description: 'A share link (D-307): a lesson, session, meeting, path, teacher, course or page');
   static const orgInvitationLink = AppRouteDef('link.org_invitation', '/i/:token',
       signIn: false, description: 'An organization invitation: accept or decline, after signing in (D-283)');
+  static const onboardIntakeLink = AppRouteDef('link.onboard', '/onboard/:code',
+      signIn: false, description: "A member onboarding intake link: the public preview, then sign in and start the application (D-1200)");
 
   /// Every page, in match order.
   static const all = <AppRouteDef>[
     login, register, forgotPassword,
     studentHome, teacherHome, adminHome, parentHome, orgHome,
-    course, orgMember, orgMemberships, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
-    downloads, exports, exportLog, exportSchedules, exportLinks, entityView, meetingLinks,
-    courseLink, profileLink, liveLink, verifyHome, verifyLink, exportLink, orgJoinLink, orgInvitationLink, shareLink,
+    course, orgMember, orgOnboardingCase, orgMemberships, calendar, inbox, notifications, subscription, editAccount, changePassword, profile,
+    downloads, exports, exportLog, exportSchedules, exportLinks, entityView, meetingLinks, storeLibrary, storeItem,
+    gamesProgress, gamePlay, nahwLesson, selfLearning, quranProgress, quranTeacher,
+    courseLink, profileLink, liveLink, verifyHome, verifyLink, exportLink, orgJoinLink, orgInvitationLink, onboardIntakeLink, shareLink,
     privacy, terms,
   ];
 

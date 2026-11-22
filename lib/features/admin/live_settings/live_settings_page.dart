@@ -389,6 +389,26 @@ class LiveSettingsView extends StatelessWidget {
               onChanged: (v) => onChanged(draft.copyWith(cameraFps: v)),
             ),
           ),
+          // the host's own rate (D-1643): Automatic follows the line above; once a rate is saved only Reset brings
+          // Automatic back (the server keeps a stored value until a reset)
+          _Field(
+            label: t('إطارات كاميرا المعلم', "Teacher's camera frame rate"),
+            hint: draft.cameraFpsHost == null
+                ? t('تلقائي: ${_ltr('${draft.effectiveHostFps} fps')} حسب الإطارات أعلاه',
+                    'Automatic: ${draft.effectiveHostFps} fps, from the rate above')
+                : (saved.cameraFpsHost != null && recommended.cameraFpsHost == null
+                    ? t('«الرجوع إلى المستحسن» يعيده تلقائياً', '"Reset to recommended" makes it automatic again')
+                    : null),
+            child: _Segmented<int?>(
+              value: draft.cameraFpsHost,
+              recommended: recommended.cameraFpsHost,
+              items: [
+                if (saved.cameraFpsHost == null) (null, t('تلقائي', 'Auto')),
+                for (final v in kHostCameraFps) (v, '$v fps'),
+              ],
+              onChanged: (v) => onChanged(v == null ? draft.copyWith(autoHostFps: true) : draft.copyWith(cameraFpsHost: v)),
+            ),
+          ),
           const SizedBox(height: AppSpace.xxs),
           _SwitchRow(
             icon: Icons.videocam_off_rounded,

@@ -522,10 +522,13 @@ class _CourseTeamBlockState extends State<CourseTeamBlock> {
 /// Opens a course on its one page knowing only its id, at [tab] (a course-profile tab name is mapped). Used by
 /// openCourseProfile, the '/course-profile' route and course_profile notifications.
 class CoursePageLoader extends StatefulWidget {
-  const CoursePageLoader({super.key, required this.courseId, this.tab});
+  const CoursePageLoader({super.key, required this.courseId, this.tab, this.openCheckout = false});
 
   final int courseId;
   final String? tab;
+
+  /// A student's page then opens its checkout (a resumed guest "book this course", D-1324).
+  final bool openCheckout;
 
   @override
   State<CoursePageLoader> createState() => _CoursePageLoaderState();
@@ -566,7 +569,8 @@ class _CoursePageLoaderState extends State<CoursePageLoader> {
           child: deferredTeacherSessionsScreen(profileHub: hub, initialTab: tab),
         );
       } else {
-        page = CourseDetailScreen(course: CourseModel.fromJson(json), profileHub: hub, initialTab: tab);
+        page = CourseDetailScreen(
+            course: CourseModel.fromJson(json), profileHub: hub, initialTab: tab, openCheckout: widget.openCheckout);
       }
     } catch (_) {
       // the course page itself is not reachable (e.g. a closed organization course): the profile alone still is

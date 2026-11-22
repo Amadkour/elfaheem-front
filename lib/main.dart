@@ -7,6 +7,7 @@ import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/features/profile/about/about_and_terms_screen.dart' show TermsScreen;
 import 'package:flutter_education_app/core/offline/downloads_availability.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
+import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
 import 'package:flutter_education_app/features/downloads/downloads_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -55,6 +56,8 @@ import 'features/auth/register_screen.dart';
 import 'features/org/org_application_screen.dart';
 import 'features/onboarding/explore_entry_page.dart';
 import 'features/onboarding/guest_search_screen.dart';
+import 'features/onboarding/join/join_flow_screen.dart';
+import 'features/onboarding/join/join_route.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/onboarding/onboarding_store.dart';
 import 'features/onboarding/start_route.dart';
@@ -103,6 +106,17 @@ import 'package:flutter_education_app/features/share/share_link_page.dart';
 import 'package:flutter_education_app/features/records/record_guest_page.dart' show GuestMediaKind, GuestRecordPage;
 import 'package:flutter_education_app/features/records/records_guests_api.dart' show isGuestRecordToken;
 import 'package:flutter_education_app/features/live/meeting_links_page.dart';
+import 'package:flutter_education_app/features/store/store_item_page.dart';
+import 'package:flutter_education_app/features/games/game_play_page.dart' show GamePlayPage;
+import 'package:flutter_education_app/features/games/games_models.dart' show GameSummary;
+import 'package:flutter_education_app/features/games/games_progress.dart' show GamesProgressPage;
+import 'package:flutter_education_app/features/nahw/nahw_lesson_page.dart' show NahwLessonPage;
+import 'package:flutter_education_app/features/self_learning/sl_api.dart' show slOff;
+import 'package:flutter_education_app/features/self_learning/self_learning_page.dart' show SelfLearningPage;
+import 'package:flutter_education_app/features/quran/quran_api.dart' show quranOff;
+import 'package:flutter_education_app/features/quran/quran_progress.dart' show QuranProgressPage;
+import 'package:flutter_education_app/features/quran/quran_teacher_page.dart' show QuranTeacherPage;
+import 'package:flutter_education_app/features/store/store_library.dart';
 import 'core/routing/deferred_screens.dart';
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'firebase_options.dart';
@@ -517,12 +531,18 @@ class _AlfaheemAppState extends State<AlfaheemApp> with WidgetsBindingObserver {
       if (!mounted) return;
       context.read<ThemeConfigProvider>().load();
 
-      // When the network link returns, AppConnectivity asks the server before it says "online".
+      // When the network link returns, and while the server does not answer (5 s doubling to 60 s, on resume too:
+      // QA_PHASE7 W-2), AppConnectivity asks the server before it says "online". The probe is the public theme
+      // route: an answer also clears the offline banner. Never booked while the server answers.
+      final theme = context.read<ThemeConfigProvider>();
       AppConnectivity.instance.serverProbe = () async {
-        final t = context.read<ThemeConfigProvider>();
-        await t.reload();
-        return !t.serverUnreachable;
+        await theme.reload();
+        return !theme.serverUnreachable;
       };
+      // Another request's answer brought the app back online first: the banner follows (one theme reload).
+      AppConnectivity.instance.online.addListener(() {
+        if (AppConnectivity.instance.isOnline && theme.serverUnreachable && !theme.isRetrying) theme.reload();
+      });
 
       // ── Version check – blocks launch if a force-update is required ──────────
       try {
@@ -574,8 +594,8 @@ class _AlfaheemAppState extends State<AlfaheemApp> with WidgetsBindingObserver {
       guestLiveTokenFromRoute(r) != null || certVerifyTokenFromRoute(r) != null || isCertVerifyHomeRoute(r) ||
       exportLinkTokenFromRoute(r) != null ||
       DeepLinkService.parse(r) != null || DeepLinkService.parseProfile(r) != null || AppLink.parse(r) != null ||
-      const {'link.org_join', 'link.org_invitation'}.contains(AppRoutes.match(r)?.id) ||
-      ExploreRequest.matches(r) || isInstitutionRoute(r) ||
+      const {'link.org_join', 'link.org_invitation', 'link.onboard'}.contains(AppRoutes.match(r)?.id) ||
+      ExploreRequest.matches(r) || isInstitutionRoute(r) || JoinRequest.matches(r) ||
       // /register?role=teacher (the landing's teacher card) is a sign-in page: signed out only, like /register
       (!context.read<MyAuthProvider>().isAuthenticated && registerRoleFromRoute(r) != null);
 
@@ -607,6 +627,10 @@ class _AlfaheemAppState extends State<AlfaheemApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
+    if (s == AppLifecycleState.resumed) {
+      AppConnectivity.instance.onResume(); // an unreachable server is asked again at once (W-2); nothing when it answers
+      SyncEngine.instance.onResume(); // the offline outbox (D-1351); no request when empty
+    }
     if (s == AppLifecycleState.resumed &&
         context.read<MyAuthProvider>().isAuthenticated &&
         !ViewAsState.active) {
@@ -868,10 +892,41 @@ class _AlfaheemAppState extends State<AlfaheemApp> with WidgetsBindingObserver {
         return _fade(OrgsGate(child: deferredOrgJoinLink(code: page!.params['code']!)), settings);
       case 'link.org_invitation':
         return _fade(OrgsGate(child: deferredOrgInvitation(token: page!.params['token']!)), settings);
+      case 'link.onboard': // member onboarding intake link (D-1200): the public preview handles a signed-out visitor itself
+        return _fade(OrgsGate(child: deferredOnboardIntake(code: page!.params['code']!)), settings);
+      case 'org.onboarding_case': // one admission case on its own page (staff)
+        final onbOrg = page!.intParam('orgId'), onbCase = page.intParam('caseId');
+        if (onbOrg != null && onbCase != null) return _fade(_Guard(child: OrgsGate(child: deferredOnbCasePage(orgId: onbOrg, caseId: onbCase))), settings);
       case 'org.memberships':
         return _fade(_Guard(child: OrgsGate(child: deferredOrgMemberships())), settings);
       case 'meetings.links': // every meeting / live session link (D-307)
         return _fade(const _Guard(child: MeetingLinksPage()), settings);
+      case 'store.library': // the store's My Library by URL / a reload (D-1339)
+        return _fade(const _Guard(child: StoreLibraryPage()), settings);
+      case 'store.item': // a store item by URL / a reload / a shared link (D-1339)
+        final storeId = page!.intParam('itemId');
+        if (storeId != null) return _fade(_Guard(child: StoreItemPage(itemId: storeId)), settings);
+      // learning hub pages by URL / a reload (D-1350): the tab's kill switch still hides each one
+      case 'games.progress':
+        if (!AppConfig.disableList.contains('student_tab_games')) return _fade(const _Guard(child: GamesProgressPage()), settings);
+      case 'games.play':
+        final gameId = page!.intParam('gameId');
+        if (gameId != null && !AppConfig.disableList.contains('student_tab_games')) {
+          return _fade(
+              _Guard(child: GamePlayPage(game: GameSummary(id: gameId, key: '', engine: '', titleAr: '', titleEn: ''))), settings);
+        }
+      case 'nahw.lesson':
+        final lessonId = page!.intParam('lessonId');
+        if (lessonId != null && !AppConfig.disableList.contains('student_tab_nahw')) {
+          return _fade(_Guard(child: NahwLessonPage(lessonId: lessonId)), settings);
+        }
+      case 'self_learning': // My daily learning by URL / a reload (D-1610)
+        if (!slOff()) return _fade(const _Guard(child: SelfLearningPage()), settings);
+      case 'quran.progress':
+        if (!quranOff()) return _fade(const _Guard(child: QuranProgressPage.mine()), settings);
+      case 'quran.teacher':
+        final teacherId = page!.intParam('teacherId');
+        if (teacherId != null && !quranOff()) return _fade(_Guard(child: QuranTeacherPage(teacherId: teacherId)), settings);
       case 'course':
         final id = page!.intParam('courseId');
         if (id != null) return _fade(_Guard(child: CoursePageLoader(courseId: id)), settings); // the one course page (D-111)
@@ -900,8 +955,17 @@ class _AlfaheemAppState extends State<AlfaheemApp> with WidgetsBindingObserver {
     if (ExploreRequest.matches(settings.name)) {
       return _fade(ExploreEntryPage(request: ExploreRequest.parse(settings.name)), const RouteSettings(name: '/explore'));
     }
-    if (isInstitutionRoute(settings.name)) {
+    if (isInstitutionRoute(settings.name) || JoinRequest.isOrg(settings.name)) {
       return _fade(const OrgApplicationScreen(), const RouteSettings(name: '/start/institution'));
+    }
+    // the landing's Student / Teacher / Parent buttons (D-1323): the join flow, signed in or out, web and apps alike
+    if (JoinRequest.matches(settings.name)) {
+      // switched off (kill switch join.flow, D-1326): the old guest search
+      if (JoinRequest.switchedOff(AppConfig.disableList)) {
+        return _fade(const GuestSearchScreen(), const RouteSettings(name: '/guest-search'));
+      }
+      final join = JoinRequest.parse(settings.name);
+      return _fade(JoinFlowScreen(role: join.role, lang: join.lang), settings);
     }
     final regRole = registerRoleFromRoute(settings.name);
     if (regRole != null) {
@@ -1230,6 +1294,10 @@ class _GuardState extends State<_Guard> {
       DeepLinkService.instance.consumePending(); // link opened while logged out
       ExportLinkPending.consume(Navigator.of(context)); // an export share link, likewise
       SignInReturn.consume(); // any other page opened by URL while signed out (D-170)
+      if (!ViewAsState.active) {
+        // a guest's "book this course" (D-1324): the course and its checkout, once, also after a page reload
+        context.read<MyAuthProvider>().resumePendingIntent(Navigator.of(context));
+      }
       if (!ViewAsState.active) {
         AdminMessageDialogs.checkPending(); // dialogs sent by admins
       }

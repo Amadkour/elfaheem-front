@@ -620,6 +620,7 @@ Future<Map<String, dynamic>?> orgPickAndUpload(String uploadPath,
 String fileSizeLabel(dynamic bytes) {
   final b = asInt(bytes);
   if (b <= 0) return '';
+  if (b < 1024) return '< 1 KB'; // a 300-byte file is not "0 KB" (D-1650)
   if (b < 1024 * 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
   return '${(b / 1024 / 1024).toStringAsFixed(1)} MB';
 }

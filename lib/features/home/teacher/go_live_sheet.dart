@@ -552,7 +552,7 @@ class GoLiveSheetView extends StatelessWidget {
     this.suggestion,
     this.useSuggestion = false,
     this.onUseSuggestion,
-    this.record = true,
+    this.record = false,
     this.onRecord,
     this.camera = true,
     this.mic = true,

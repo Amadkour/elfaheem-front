@@ -1,10 +1,13 @@
 // lib/features/profile/profile_hero.dart — the Account page's hero block (Warm Editorial, D-613 / D-622, D-713).
 //
-//   ProfileHero(name:, role:, email:, username:, imageUrl:, heroTag:, onEdit:, onShare:, stats: [ProfileHeroStat(…)])
+//   ProfileHero(name:, role:, email:, username:, imageUrl:, heroTag:, onEdit:, onShare:, onLogout:, onDeleteAccount:,
+//               stats: [ProfileHeroStat(…)])
 //
 // The page's ONE tinted block, the identity tone (a soft primary gradient, D-713): the avatar on a paper ring, the
 // name in the editorial face, the role / @username / e-mail chips, up to three figures the page already holds (no
-// request of its own) and the two actions, "Update account" and, for a shareable profile, "Share".
+// request of its own) and the two actions, "Update account" and, for a shareable profile, "Share". Under them the
+// account's exits (D-1190): Log out and Delete account as two quiet buttons in the primary ink (each caller still
+// confirms before acting), so they are found at the top instead of at the end of a long page.
 // Phones stack it centred with the actions side by side under it; from [wideFrom] it reads as a masthead:
 // avatar · name, chips and figures · the actions.
 // Plain values only (test/ui/profile_hero_layout_test.dart). Kill switches: `profile.header` (the whole block),
@@ -16,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_icons.dart' show DirIcons;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppTilt, AppPressScale;
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -39,6 +43,8 @@ class ProfileHero extends StatelessWidget {
     this.heroTag,
     this.onEdit,
     this.onShare,
+    this.onLogout,
+    this.onDeleteAccount,
     this.stats = const [],
   });
 
@@ -53,6 +59,12 @@ class ProfileHero extends StatelessWidget {
 
   /// Shares the public profile link (null = no shareable profile: no button).
   final VoidCallback? onShare;
+
+  /// Signs out (the caller confirms first); null = no button.
+  final VoidCallback? onLogout;
+
+  /// Deletes the account (the caller confirms and asks for the password); null = no button.
+  final VoidCallback? onDeleteAccount;
 
   /// Up to three figures under the chips (more are ignored).
   final List<ProfileHeroStat> stats;
@@ -125,6 +137,25 @@ class ProfileHero extends StatelessWidget {
         ? null
         : AppButton.secondary(
             label: 'profile_share'.tr, icon: Icons.ios_share_rounded, onPressed: onShare, size: AppButtonSize.sm, expand: true);
+    final logout = onLogout == null
+        ? null
+        : AppButton.secondary(
+            key: const ValueKey('profile.hero.logout'),
+            label: 'logout'.tr,
+            icon: DirIcons.logout,
+            onPressed: onLogout,
+            size: AppButtonSize.sm,
+            expand: true);
+    final delete = onDeleteAccount == null
+        ? null
+        : AppButton.ghost(
+            key: const ValueKey('profile.hero.delete'),
+            label: 'delete_account_title'.tr,
+            icon: Icons.delete_forever_rounded,
+            onPressed: onDeleteAccount,
+            size: AppButtonSize.sm,
+            expand: true);
+    final hasExits = logout != null || delete != null;
     final face = ProfileAvatar(name: name, imageUrl: imageUrl, heroTag: heroTag, onEdit: onEdit);
     final Widget content;
     if (wide) {
@@ -139,13 +170,19 @@ class ProfileHero extends StatelessWidget {
             if (figures != null) ...[const SizedBox(height: AppSpace.md), figures],
           ]),
         ),
-        if (edit != null || share != null) ...[
+        if (edit != null || share != null || hasExits) ...[
           const SizedBox(width: AppSpace.lg),
           IntrinsicWidth(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               ?edit,
               if (edit != null && share != null) const SizedBox(height: AppSpace.xs),
               ?share,
+              if (hasExits) ...[
+                if (edit != null || share != null) const SizedBox(height: AppSpace.xs),
+                ?logout,
+                if (logout != null && delete != null) const SizedBox(height: AppSpace.xxs),
+                ?delete,
+              ],
             ]),
           ),
         ],
@@ -164,6 +201,14 @@ class ProfileHero extends StatelessWidget {
             if (edit != null) Expanded(child: edit),
             if (edit != null && share != null) const SizedBox(width: AppSpace.xs),
             if (share != null) Expanded(child: share),
+          ]),
+        ],
+        if (hasExits) ...[
+          const SizedBox(height: AppSpace.xs),
+          Row(children: [
+            if (logout != null) Expanded(child: logout),
+            if (logout != null && delete != null) const SizedBox(width: AppSpace.xs),
+            if (delete != null) Expanded(child: delete),
           ]),
         ],
       ]);

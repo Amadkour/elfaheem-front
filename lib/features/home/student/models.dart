@@ -10,6 +10,7 @@ import 'package:flutter_education_app/features/courses/category/categories_provi
 import 'package:flutter_education_app/features/courses/category/model.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart' show CourseOrg;
+import 'package:flutter_education_app/features/courses/course_setup.dart';
 
 export 'package:flutter_education_app/features/courses/discount_info.dart';
 
@@ -108,7 +109,7 @@ class SessionModel {
 
   SessionModel({
     this.track = 'lecture',
-    this.recordEnabled = true,
+    this.recordEnabled = false,
     required this.id,
     required this.courseId,
     required this.name,
@@ -153,7 +154,7 @@ class SessionModel {
     durationMinutes: j['duration_minutes'] as int? ?? 0,
     order: j['order'] as int? ?? 0,
     isLiveActive: j['is_live_active'] as bool? ?? false,
-    recordEnabled: j['record_enabled'] as bool? ?? true,
+    recordEnabled: j['record_enabled'] == true, // D-1503: off unless the host set it
     rateSummary: j.containsKey('rate') && j['rate'] != null
         ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
         : null,
@@ -245,7 +246,7 @@ class TeacherSessionItem {
   final int progress;
   final RatingSummary? rateSummary;
 
-  /// Live sessions: record this session? (`record_enabled`, default on).
+  /// Live sessions: record this session? (`record_enabled`, default off, D-1503).
   final bool recordEnabled;
 
   /// D-1110: this session takes attendance (`attendance_enabled`, default on).
@@ -254,7 +255,7 @@ class TeacherSessionItem {
   const TeacherSessionItem({
     required this.id,
     this.track = 'lecture',
-    this.recordEnabled = true,
+    this.recordEnabled = false,
     this.attendanceEnabled = true,
     required this.courseId,
     required this.name,
@@ -304,7 +305,7 @@ class TeacherSessionItem {
       durationMinutes: j['duration_minutes'] as int? ?? 0,
       order: j['order'] as int? ?? 0,
       isLiveActive: j['is_live_active'] as bool? ?? false,
-      recordEnabled: j['record_enabled'] as bool? ?? true,
+      recordEnabled: j['record_enabled'] == true, // D-1503: off unless the host set it
       attendanceEnabled: j['attendance_enabled'] != false,
       roomUrl: j['room_url'] as String?,
       recordingUrl: j['recording_url'] as String?,
@@ -566,8 +567,12 @@ class CourseModel with DiscountInfo {
   /// The organization the course belongs to; null = a personal course (or an older server).
   final CourseOrg? org;
 
+  /// Who the course is for and where it is held (D-1314).
+  final CourseSetup setup;
+
   CourseModel({
     this.org,
+    this.setup = const CourseSetup(),
     this.isPrivate = false,                                 // constructor
     this.allowResubscribe = true,
     required this.id,
@@ -704,6 +709,7 @@ class CourseModel with DiscountInfo {
     descriptionAr: j['description_ar'] as String?,
     descriptionEn: j['description_en'] as String?,
     org: CourseOrg.fromJson(j['org']),
+    setup: CourseSetup.fromJson(j),
   );
 
   /// Builds a minimal-but-valid CourseModel from a lightweight summary card
@@ -727,6 +733,7 @@ class CourseModel with DiscountInfo {
 
   TeacherCourse get toTeacherModel => TeacherCourse(
     org: org,
+    setup: setup,
     titleAr: titleAr,
     titleEn: titleEn,
     descriptionAr: descriptionAr,
@@ -798,6 +805,7 @@ class CourseModel with DiscountInfo {
     discountPercentage: discountPercentage,
     discountDays: discountDays,
     org: org,
+    setup: setup,
   );
 }
 

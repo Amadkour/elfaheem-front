@@ -24,13 +24,18 @@ class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.titleColor,
     this.helpPageId,
     this.compact = false,
+    this.subtitle,
   });
+
+  /// One line under the title (a person's name, a context), so the title itself stays short on a phone.
+  final String? subtitle;
 
   /// Tool screens: always the compact height.
   final bool compact;
 
   AppHeader get _header => AppHeader(
         title: title,
+        subtitle: subtitle,
         showBack: showBack,
         compact: compact,
         actions: [...?actions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!)],

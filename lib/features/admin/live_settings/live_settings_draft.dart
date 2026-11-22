@@ -20,15 +20,20 @@ library;
 import 'dart:math' as math;
 
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/features/live/live_config.dart' show LiveVideoCodec;
+import 'package:flutter_education_app/features/live/live_media_plan.dart' show cameraBitrateKbps;
 
 const kLiveSettingsFeatureKey = 'admin.live_settings';
 const kLiveSettingsPath = '/api/v1/admin/live-settings';
 
 const kVideoCodecs = ['vp8', 'h264', 'vp9'];
 const kWeakNetworkModes = ['adaptive', 'audio_first'];
-const kHostCameraCaps = ['720p', '540p', '360p'];
+const kHostCameraCaps = ['1080p', '720p', '540p', '360p']; // 1080p: Learning Hub v2 (D-1566)
 const kParticipantCameraCaps = ['540p', '360p', '180p'];
 const kCameraFps = [15, 24, 30];
+
+/// The host's own camera rate (`camera_fps_host`, D-1566); unset = Automatic (D-1643).
+const kHostCameraFps = [15, 24, 30];
 const kRecordingModes = ['server', 'client'];
 const kRecordingEngines = ['composite', 'media'];
 const kRecordingTiers = ['single', 'all'];
@@ -51,6 +56,10 @@ int _pickInt(dynamic v, int fallback, {List<int>? allowed, int? min, int? max}) 
 
 bool _pickBool(dynamic v, bool fallback) => v is bool ? v : fallback;
 
+/// What the server uses while `camera_fps_host` is unset (live_settings_service.effective, D-1695): 15 when the
+/// attendees' rate is 15 or less, else 30.
+int derivedHostFps(int cameraFps) => cameraFps <= 15 ? 15 : 30;
+
 class LiveSettingsDraft {
   const LiveSettingsDraft({
     required this.videoCodec,
@@ -67,6 +76,7 @@ class LiveSettingsDraft {
     required this.recordingMode,
     required this.serverRecordingEngine,
     required this.serverRecordingTiers,
+    this.cameraFpsHost,
   });
 
   /// The server's recommended set (services/live_settings_service.py DEFAULTS); the page shows the server's own
@@ -88,10 +98,15 @@ class LiveSettingsDraft {
     serverRecordingTiers: 'single',
   );
 
-  factory LiveSettingsDraft.fromJson(Map<String, dynamic>? j, {LiveSettingsDraft fallback = recommended}) {
+  /// [hostFpsAuto]: `camera_fps_host` is not among the stored fields, so the value in [j] is only the server's
+  /// derived one and the draft keeps it unset (Automatic).
+  factory LiveSettingsDraft.fromJson(Map<String, dynamic>? j,
+      {LiveSettingsDraft fallback = recommended, bool hostFpsAuto = false}) {
     final m = j ?? const <String, dynamic>{};
     final f = fallback;
+    final hostFps = _pickInt(m['camera_fps_host'], -1, allowed: kHostCameraFps);
     return LiveSettingsDraft(
+      cameraFpsHost: hostFpsAuto ? null : (hostFps < 0 ? f.cameraFpsHost : hostFps),
       videoCodec: _pick(m['video_codec'], kVideoCodecs, f.videoCodec),
       weakNetwork: _pick(m['weak_network'], kWeakNetworkModes, f.weakNetwork),
       cameraMaxHost: _pick(m['camera_max_host'], kHostCameraCaps, f.cameraMaxHost),
@@ -115,6 +130,9 @@ class LiveSettingsDraft {
   final String cameraMaxHost;
   final String cameraMaxParticipant;
   final int cameraFps;
+
+  /// The host's camera rate; null = Automatic (the server derives it from [cameraFps], see [effectiveHostFps]).
+  final int? cameraFpsHost;
   final int screenFpsMax;
   final int screenBitrateKbps;
   final bool audioDtx;
@@ -125,12 +143,16 @@ class LiveSettingsDraft {
   final String serverRecordingEngine;
   final String serverRecordingTiers;
 
+  /// The rate the host's camera really runs at.
+  int get effectiveHostFps => cameraFpsHost ?? derivedHostFps(cameraFps);
+
   Map<String, dynamic> toJson() => {
         'video_codec': videoCodec,
         'weak_network': weakNetwork,
         'camera_max_host': cameraMaxHost,
         'camera_max_participant': cameraMaxParticipant,
         'camera_fps': cameraFps,
+        'camera_fps_host': cameraFpsHost,
         'screen_fps_max': screenFpsMax,
         'screen_bitrate_kbps': screenBitrateKbps,
         'audio_dtx': audioDtx,
@@ -142,10 +164,11 @@ class LiveSettingsDraft {
         'server_recording_tiers': serverRecordingTiers,
       };
 
-  /// The fields whose value differs from [other] (the PUT body: only what the super admin changed).
+  /// The fields whose value differs from [other] (the PUT body: only what the super admin changed). An unset
+  /// `camera_fps_host` is never sent: the server refuses null, and only Reset clears a stored rate.
   Map<String, dynamic> changesFrom(LiveSettingsDraft other) {
     final a = toJson(), b = other.toJson();
-    return {for (final e in a.entries) if (b[e.key] != e.value) e.key: e.value};
+    return {for (final e in a.entries) if (b[e.key] != e.value && e.value != null) e.key: e.value};
   }
 
   /// How many fields differ from [other] (the "n changes" line, "n away from recommended").
@@ -157,6 +180,8 @@ class LiveSettingsDraft {
     String? cameraMaxHost,
     String? cameraMaxParticipant,
     int? cameraFps,
+    int? cameraFpsHost,
+    bool autoHostFps = false,
     int? screenFpsMax,
     int? screenBitrateKbps,
     bool? audioDtx,
@@ -173,6 +198,7 @@ class LiveSettingsDraft {
         cameraMaxHost: cameraMaxHost ?? this.cameraMaxHost,
         cameraMaxParticipant: cameraMaxParticipant ?? this.cameraMaxParticipant,
         cameraFps: cameraFps ?? this.cameraFps,
+        cameraFpsHost: autoHostFps ? null : (cameraFpsHost ?? this.cameraFpsHost),
         screenFpsMax: screenFpsMax ?? this.screenFpsMax,
         screenBitrateKbps: screenBitrateKbps ?? this.screenBitrateKbps,
         audioDtx: audioDtx ?? this.audioDtx,
@@ -185,7 +211,7 @@ class LiveSettingsDraft {
       );
 
   @override
-  bool operator ==(Object other) => other is LiveSettingsDraft && differencesFrom(other) == 0;
+  bool operator ==(Object other) => other is LiveSettingsDraft && other.cameraFpsHost == cameraFpsHost && differencesFrom(other) == 0;
 
   @override
   int get hashCode => Object.hashAll(toJson().values);
@@ -204,12 +230,15 @@ class LiveSettingsInfo {
 
   factory LiveSettingsInfo.fromJson(Map<String, dynamic> j) {
     Map<String, dynamic>? map(dynamic v) => v is Map ? v.cast<String, dynamic>() : null;
-    final rec = LiveSettingsDraft.fromJson(map(j['recommended']));
+    // the recommended host rate is Automatic: the server's DEFAULTS value only stands in while nothing is stored
+    final rec = LiveSettingsDraft.fromJson(map(j['recommended']), hostFpsAuto: true);
     final env = map(j['env']) ?? const {};
+    final stored = {for (final s in (j['stored'] is List ? j['stored'] as List : const [])) '$s'};
     return LiveSettingsInfo(
-      settings: LiveSettingsDraft.fromJson(map(j['settings']), fallback: rec),
+      settings: LiveSettingsDraft.fromJson(map(j['settings']),
+          fallback: rec, hostFpsAuto: !stored.contains('camera_fps_host')),
       recommended: rec,
-      stored: {for (final s in (j['stored'] is List ? j['stored'] as List : const [])) '$s'},
+      stored: stored,
       envRecordingMode: env['recording_mode'] is String ? env['recording_mode'] as String : null,
       envRecordingTiers: env['server_recording_tiers'] is String ? env['server_recording_tiers'] as String : null,
       updatedAt: DateTime.tryParse('${j['updated_at'] ?? ''}'),
@@ -230,11 +259,8 @@ class LiveSettingsInfo {
 
 // ── Bandwidth preview ────────────────────────────────────────────────────────
 
-/// Top-layer bitrate at 30 fps, VP8 (kbit/s) — the order of LiveKit's own presets (h720 1.7 Mbit/s, h360 0.45 …).
-const Map<String, int> kLayerKbps30 = {'720p': 1700, '540p': 900, '360p': 500, '180p': 160};
-
-/// Relative size of the same picture per codec (VP9 ≈ 30 % smaller; H.264 constrained baseline a little larger).
-const Map<String, double> kCodecFactor = {'vp8': 1.0, 'h264': 1.1, 'vp9': 0.7};
+/// Relative size of the same picture per codec for the screen share (the camera layers use the room's own table).
+const Map<String, double> kCodecFactor = {'vp8': 1.0, 'h264': 1.1, 'vp9': 0.75};
 
 const kOpusKbps = 32;
 
@@ -245,18 +271,25 @@ const kPreviewVisibleTiles = 4;
 /// Cameras that are on in the preview class when students join with the camera OFF (a few turn it on).
 const kPreviewCamerasWhenDefaultOff = 2;
 
+/// One camera layer's top bitrate: the live room's own table (`cameraBitrateKbps` in live_media_plan.dart, VP8 at
+/// 30 fps: 180p 160 · 360p 450 · 540p 800 · 720p 1800 · 1080p 3000), so the preview shows what the room sends (D-1643).
 int layerKbps(String layer, int fps, String codec) {
-  final base = kLayerKbps30[layer] ?? kLayerKbps30['360p']!;
-  final f = math.pow(fps.clamp(5, 30) / 30, 0.7);
-  return (base * f * (kCodecFactor[codec] ?? 1.0)).round();
+  final h = int.tryParse(layer.replaceAll('p', '')) ?? 360;
+  final c = LiveVideoCodec.values.where((v) => v.name == codec).firstOrNull ?? LiveVideoCodec.vp8;
+  return cameraBitrateKbps(h, fps, c);
 }
 
-/// The simulcast layers a camera capped at [top] publishes (top + 360p + 180p, without duplicates).
+/// The simulcast layers a camera capped at [top] publishes, as the room does (`cameraLayersFor`): the cap, 360p
+/// (540p under a 1080p cap) and 180p, without duplicates.
 List<String> simulcastLayers(String top) {
-  const order = ['720p', '540p', '360p', '180p'];
+  const order = ['1080p', '720p', '540p', '360p', '180p'];
   final i = order.indexOf(top);
   final out = <String>[top];
-  if (i >= 0 && i < order.indexOf('360p')) out.add('360p');
+  if (top == '1080p') {
+    out.add('540p');
+  } else if (i >= 0 && i < order.indexOf('360p')) {
+    out.add('360p');
+  }
   if (top != '180p') out.add('180p');
   return out;
 }
@@ -304,8 +337,9 @@ class LiveBandwidth {
 
 LiveBandwidth estimateBandwidth(LiveSettingsDraft d) {
   final codec = d.videoCodec;
-  final teacher = layerKbps(d.cameraMaxHost, d.cameraFps, codec);
-  final upload = [for (final l in simulcastLayers(d.cameraMaxHost)) layerKbps(l, d.cameraFps, codec)]
+  final hostFps = d.effectiveHostFps;
+  final teacher = layerKbps(d.cameraMaxHost, hostFps, codec);
+  final upload = [for (final l in simulcastLayers(d.cameraMaxHost)) layerKbps(l, l == '180p' ? math.min(hostFps, 15) : hostFps, codec)]
       .fold<int>(0, (a, b) => a + b);
   final participantUp = [for (final l in simulcastLayers(d.cameraMaxParticipant)) layerKbps(l, d.cameraFps, codec)]
       .fold<int>(0, (a, b) => a + b);

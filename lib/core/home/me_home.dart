@@ -51,6 +51,8 @@ import '../app_time.dart';
 import '../attention/decision_refresh.dart';
 import '../inbox_badge.dart';
 import '../offline/app_connectivity.dart';
+import '../offline/sync/offline_reads.dart' show isTransportFailure;
+import '../offline/sync/read_cache.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Small parsers (null-safe, never throw)
@@ -238,6 +240,53 @@ class MeNextUp {
   final bool live;
 }
 
+/// One row of `/me/home`'s `onboarding[]`: my open admission case (D-1200), max 3 from the server.
+class MeOnboardingItem {
+  const MeOnboardingItem({
+    required this.caseId,
+    required this.orgId,
+    this.orgName = '',
+    this.orgLogo = '',
+    this.typeKey = '',
+    this.typeLabelAr = '',
+    this.typeLabelEn = '',
+    this.status = '',
+    this.conditional = false,
+    this.missingCount = 0,
+    this.dueAt,
+    this.needsAction = false,
+  });
+  final int caseId, orgId, missingCount;
+  final String orgName, orgLogo, typeKey, typeLabelAr, typeLabelEn, status;
+  final bool conditional, needsAction;
+  final DateTime? dueAt;
+
+  String get typeLabel => AppConfig.lang == 'ar'
+      ? (typeLabelAr.isEmpty ? typeLabelEn : typeLabelAr)
+      : (typeLabelEn.isEmpty ? typeLabelAr : typeLabelEn);
+
+  static MeOnboardingItem? fromJson(dynamic v) {
+    if (v is! Map) return null;
+    final m = meHomeMap(v);
+    final id = meHomeInt(m['case_id']);
+    if (id <= 0) return null;
+    return MeOnboardingItem(
+      caseId: id,
+      orgId: meHomeInt(m['org_id']),
+      orgName: '${m['org_name'] ?? ''}',
+      orgLogo: '${m['org_logo'] ?? ''}',
+      typeKey: '${m['type_key'] ?? ''}',
+      typeLabelAr: '${m['type_label_ar'] ?? ''}',
+      typeLabelEn: '${m['type_label_en'] ?? ''}',
+      status: '${m['status'] ?? ''}',
+      conditional: m['conditional'] == true,
+      missingCount: meHomeInt(m['missing_count']),
+      dueAt: meHomeUtc(m['due_at']),
+      needsAction: m['needs_action'] == true,
+    );
+  }
+}
+
 class MeHome {
   const MeHome({
     required this.now,
@@ -257,6 +306,7 @@ class MeHome {
     this.liveNow = const [],
     this.liveNowKnown = false,
     this.journey,
+    this.onboarding = const [],
     this.legacy = false,
     this.raw = const {},
   });
@@ -305,6 +355,19 @@ class MeHome {
   /// switch on, stage / grade or a required field missing, not dismissed in 30 days); false from an older server.
   bool get studyPrompt => raw['study_prompt'] == true;
 
+  /// My own study status in organization [orgId] (student lifecycle D-1400): the `my_status[]` entry of that
+  /// organization, raw (`MyStatus.fromJson`, org/students/student_status_models.dart); null = none (not a student
+  /// there, nothing to show, an older server).
+  Map<String, dynamic>? myStatusOf(int orgId) {
+    for (final x in meHomeMapList(raw['my_status'])) {
+      if (meHomeInt(x['org_id'], -1) == orgId) return x;
+    }
+    return null;
+  }
+
+  /// My open admission cases (D-1210): `onboarding[]`, max 3; empty when none or from an older server.
+  final List<MeOnboardingItem> onboarding;
+
   /// Composed from today's separate calls (older server).
   final bool legacy;
   final Map<String, dynamic> raw;
@@ -332,6 +395,7 @@ class MeHome {
           .toList(),
       liveNowKnown: m['live_now'] is List,
       journey: m['journey'] is Map ? meHomeMap(m['journey']) : null,
+      onboarding: [for (final x in m['onboarding'] is List ? m['onboarding'] as List : const []) MeOnboardingItem.fromJson(x)].whereType<MeOnboardingItem>().toList(),
       legacy: legacy,
       raw: m,
     );
@@ -588,7 +652,18 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
     loading = true;
     notifyListeners();
     try {
-      final r = await _fetch(path, query: query);
+      dynamic r;
+      var kept = false;
+      try {
+        r = await _fetch(path, query: query);
+        if (r is Map) unawaited(ReadCache.instance.put('me.home.$key', r));
+      } catch (e) {
+        // offline with nothing on screen: the last home kept on this device (D-1351), reloaded at the next open
+        final hit = home == null && isTransportFailure(e) ? await ReadCache.instance.get('me.home.$key') : null;
+        if (hit == null) rethrow;
+        r = hit.body;
+        kept = true;
+      }
       if (_scopeKey != key) {
         // the person switched side while this answer was on its way: it is the other side's home — its course
         // blocks are dropped, the rest (today, inbox, organization slices) is drawn until the right one lands
@@ -604,7 +679,7 @@ class MeHomeService extends ChangeNotifier with WidgetsBindingObserver {
         InboxBadge.instance.setTodo(home!.inboxTodo);
         outcome = MeHomeOutcome.ok;
         error = null;
-        loadedAt = _clock();
+        loadedAt = kept ? null : _clock();
       }
     } catch (e) {
       final err = ApiException.from(e);

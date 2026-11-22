@@ -40,6 +40,7 @@ import '../../features/org/org_messages_models.dart' show orgMessagesFeatureKey;
 import '../../features/org/org_must_ack.dart' show OrgMyMessagesPage;
 import '../../features/org/governance/gov_wiring.dart' deferred as gov_wiring;
 import '../../features/org/advising/adv_wiring.dart' deferred as adv_wiring;
+import '../../features/org/students/students_wiring.dart' deferred as students_wiring;
 import '../../features/org/org_inst_notify.dart' deferred as org_notify;
 import '../../features/org/org_institution_health.dart' deferred as org_health;
 import 'package:flutter_education_app/features/live/companion/companion_incoming.dart' show CompanionIncoming;
@@ -49,6 +50,8 @@ import 'package:flutter_education_app/features/payments/points/points_api.dart' 
 import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart' show PointsWalletPage;
 import 'package:flutter_education_app/features/records/records_api.dart' show kRecordsFeatureKey;
 import 'package:flutter_education_app/features/records/records_page.dart' show RecordsPage;
+import 'package:flutter_education_app/features/self_learning/sl_api.dart' show slOff;
+import 'package:flutter_education_app/features/self_learning/self_learning_page.dart' show SelfLearningPage;
 import 'package:flutter_education_app/features/records/records_share.dart' show SharedRecordPage;
 import 'package:flutter_education_app/features/records/records_share_api.dart' show kRecordsShareFeatureKey;
 import 'package:flutter_education_app/features/rag/rag_admin_links.dart' deferred as rag_admin_links;
@@ -257,6 +260,41 @@ class AppNavigator {
       case 'org_invitations': // an invitation to join an organization (phone invites, push + notification tap) → My organizations, which shows the invitations card
         await nav.pushNamed(AppRoutes.location(AppRoutes.orgMemberships.id));
         return;
+      case 'org_student': // student lifecycle (D-1400): a status notice for staff → the unified student file;
+        // focus `asks` (a student answered an ask) → the Student requests inbox, where it is decided
+        if (orgId != null && (link?.focus ?? data['focus']) == 'asks' &&
+            await _deferred('students_wiring', students_wiring.loadLibrary, () => students_wiring.openStudentRequestsFromLink(nav, orgId: orgId))) {
+          return;
+        }
+        if (orgId != null && targetId != null &&
+            await _deferred('students_wiring', students_wiring.loadLibrary, () => students_wiring.openStudentFromLink(nav, orgId: orgId, uid: targetId))) {
+          return;
+        }
+        await nav.pushNamed('/notifications');
+        return;
+      case 'student_ask': // student lifecycle (D-1400): the organization asks me something → my ask page (id = the ask)
+        if (targetId != null &&
+            await _deferred('students_wiring', students_wiring.loadLibrary, () => students_wiring.openStudentAskFromLink(nav, targetId))) {
+          return;
+        }
+        await nav.pushNamed('/notifications');
+        return;
+      case 'org_onboarding': // member onboarding (D-1200): staff open the case review page, the applicant their own page
+        if (targetId == null || AppConfig.disableList.contains('org.onboarding')) {
+          await nav.pushNamed('/notifications');
+          return;
+        }
+        final staffSide = orgId != null && AppModeController.instance.opensDashboardFor(orgId) == true;
+        if (staffSide) {
+          await nav.pushNamed(AppRoutes.location(AppRoutes.orgOnboardingCase.id, {'orgId': orgId, 'caseId': targetId}));
+        } else {
+          await nav.push(MaterialPageRoute(builder: (_) => deferredOnbApplicantPage(caseId: targetId, orgId: orgId ?? 0)));
+        }
+        return;
+      case 'onboard_intake': // an intake link tapped inside the app: /onboard/<code>
+        final code = '${data['code'] ?? ''}';
+        if (code.isNotEmpty) await nav.pushNamed(AppRoutes.location(AppRoutes.onboardIntakeLink.id, {'code': code}));
+        return;
       case 'org_reports': // a report sent to me → Received reports
         await nav.push(MaterialPageRoute(builder: (_) => deferredOrgReceivedReports()));
         return;
@@ -317,6 +355,13 @@ class AppNavigator {
             () => nav.push(MaterialPageRoute(settings: const RouteSettings(name: '/needs-my-action'), builder: (_) => needs_action.NeedsMyActionPage())));
         return;
       case 'org_work':
+        // student lifecycle (D-1400): a lifecycle request keeps `org_work` + id and adds lifecycle_request_id / role
+        final lifecycleId = int.tryParse('${data['lifecycle_request_id'] ?? ''}');
+        if (orgId != null && lifecycleId != null &&
+            await _deferred('students_wiring', students_wiring.loadLibrary,
+                () => students_wiring.openLifecycleRequestFromLink(nav, orgId: orgId, id: lifecycleId, role: data['role']?.toString()))) {
+          return;
+        }
         if (targetId != null) await _deferred('gov_wiring', gov_wiring.loadLibrary, () => gov_wiring.govOpenItemLink(nav, ctx, targetId, orgId: orgId, link: link));
         return;
       case 'org_department': // Institutions v2 phase 2: e.g. "you are now the acting head" → that department's dashboard (staff)
@@ -392,6 +437,15 @@ class AppNavigator {
         await nav.push(MaterialPageRoute(
             settings: const RouteSettings(name: '/records/shared'),
             builder: (_) => token.isEmpty || token == 'null' ? const RecordsPage(shared: true) : SharedRecordPage(token: token)));
+        return;
+      case 'self_learning': // a daily lesson or a review question was delivered (Learning Hub v2 §5, D-1610) → My daily learning
+      case 'sl_lesson':
+      case 'sl_review':
+        if (slOff()) {
+          await nav.pushNamed('/notifications');
+          return;
+        }
+        await nav.push(MaterialPageRoute(settings: const RouteSettings(name: '/learn/daily'), builder: (_) => const SelfLearningPage()));
         return;
       case 'live_lobby': // someone waits at the door of a room I host → the meeting / session with its lobby sheet
         await openLiveLobby(LiveRoomRef.parse(kind, targetId));
@@ -543,9 +597,9 @@ class AppNavigator {
     final timetable = data['type'] == 'org_timetable';        // a draft timetable is ready (schedule_auto / autopilot)
     // the wallet and the plan push {type: points | live_plan | live_plan_expiring | live_plan_renewed | …} (spec §9, §15)
     final module = data['module']?.toString() ??
-        (profile ? 'course_profile' : (timetable ? 'org_timetable' : (data['type'] == 'exam_notice' ? 'exam_notice' : data['type'] == 'org_invitation' ? 'org_invitation' : pointsModuleFor(data['type']?.toString()))));
+        (profile ? 'course_profile' : (timetable ? 'org_timetable' : (data['type'] == 'exam_notice' ? 'exam_notice' : data['type'] == 'org_invitation' ? 'org_invitation' : data['type'] == 'org_onboarding' ? 'org_onboarding' : pointsModuleFor(data['type']?.toString()))));
     final govPush = (module ?? '').startsWith('org_');        // governance pushes carry {module, id}
-    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? (module == 'org_invitation' ? data['related_id'] : null) ?? ''}') ?? _examIdFromRef(data['exam_ref']);
+    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (module == 'org_onboarding' ? data['case_id'] ?? data['related_id'] : null) ?? (profile || timetable || govPush ? data['id'] : null) ?? (module == 'org_invitation' ? data['related_id'] : null) ?? ''}') ?? _examIdFromRef(data['exam_ref']);
     final orgId = int.tryParse('${data['org_id'] ?? ''}');
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) {

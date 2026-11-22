@@ -6,8 +6,10 @@
 ///   • below `min_build`  → a blocking "Please update to continue" dialog (force update);
 ///   • below `build`      → a gentle "A new version is ready" dialog, "Later" hides it for 3 days for that build;
 ///   • otherwise, offline, no manifest, nothing published for this platform (iOS today) → nothing.
-/// The button opens the file for this device (Android: the APK for the phone's CPU) in the browser, which downloads
-/// it; installing it over the app keeps the data (same package, same signing key).
+/// The button opens the file for this device in the browser, which downloads it; installing it over the app keeps the
+/// data (same package, same signing key). The file is [updateFileFor]: Android the APK for the phone's CPU, Windows
+/// the setup `.exe`, macOS the `.dmg`, Linux the same kind the app was installed from (AppImage, `.deb`, `.tar.gz`),
+/// each for the CPU this build runs on; never the Play `.aab`.
 ///
 /// App versions from the dashboard (D-143): `GET /app/version-check` now also names the live release's `download_url`,
 /// `source` (website | google_play | app_store | custom) and `notes` ({ar, en}). When it asks for an update AND names a
@@ -64,6 +66,15 @@ String? nativeReleaseKey() {
   if (Platform.isMacOS) return 'macos';
   if (Platform.isLinux) return 'linux';
   return null;
+}
+
+/// The file an update offer opens for [platform] (a manifest key): the best installer of that platform for the CPU
+/// [archHint] (Android: the device's first ABI; desktop: [archFromDartVersion]), the Linux one of [linuxKind]
+/// ([linuxInstalledKind]). Null when the release names nothing for this platform.
+@visibleForTesting
+ReleaseFile? updateFileFor(String platform, PlatformRelease? release, {String? archHint, String? linuxKind}) {
+  if (release == null) return null;
+  return release.primaryFile(archHint: archHint, installedKind: platform == 'linux' ? linuxKind : null);
 }
 
 /// The snooze rule: a suggestion is shown unless "Later" was tapped for this very build less than [kUpdateSnooze] ago.
@@ -199,7 +210,7 @@ class VersionCheckService {
       final manifest = asked[1] is ReleasesManifest ? asked[1] as ReleasesManifest : ReleasesManifest.empty;
       final release = manifest[key];
       final need = block != null ? UpdateNeed.force : updateNeedFor(installedBuild: installed, release: release);
-      if (block != null && (release == null || release.build <= installed || release.primaryFile() == null)) {
+      if (block != null && (release == null || release.build <= installed || updateFileFor(key, release) == null)) {
         // Blocked, and the manifest names nothing newer: a blocking dialog whose button opens the site (Get the app).
         return _show(
           force: true,
@@ -213,13 +224,17 @@ class VersionCheckService {
       if (block != null) message = block.tr;
       if (need == UpdateNeed.none || release == null) return;
       String? arch;
+      String? linuxKind;
       if (key == 'android') {
         try {
           final abis = (await DeviceInfoPlugin().androidInfo).supportedAbis;
           if (abis.isNotEmpty) arch = abis.first;
         } catch (_) {}
+      } else if (key == 'windows' || key == 'macos' || key == 'linux') {
+        arch = archFromDartVersion(Platform.version);
+        if (key == 'linux') linuxKind = linuxInstalledKind(environment: Platform.environment, executable: Platform.resolvedExecutable);
       }
-      final file = release.primaryFile(archHint: arch);
+      final file = updateFileFor(key, release, archHint: arch, linuxKind: linuxKind);
       if (file == null) return;
       force = need == UpdateNeed.force;
       version = release.version;

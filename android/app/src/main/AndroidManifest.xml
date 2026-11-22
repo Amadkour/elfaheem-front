@@ -116,6 +116,11 @@
                     android:host="alfheemacademy.com"
                     android:pathPrefix="/i/"
                     android:scheme="https" />
+                <!-- member onboarding intake links /onboard/<code> (D-1200) -->
+                <data
+                    android:host="alfheemacademy.com"
+                    android:pathPrefix="/onboard/"
+                    android:scheme="https" />
                 <!-- share links of everything /s/<kind>/<id> and /s/page/<pageId> (D-307) -->
                 <data
                     android:host="alfheemacademy.com"

@@ -66,6 +66,7 @@ Widget _view({
   String? error,
   bool busy = false,
   bool meetNow = true,
+  bool record = false,
 }) =>
     GoLiveSheetView(
       courses: courses,
@@ -77,6 +78,7 @@ Widget _view({
       suggestion: suggestion,
       useSuggestion: useSuggestion,
       onUseSuggestion: (_) {},
+      record: record,
       onRecord: (_) {},
       onCamera: (_) {},
       onMic: (_) {},
@@ -136,7 +138,11 @@ void main() {
     final tile = tester.widget<AppSwitchTile>(find.widgetWithText(AppSwitchTile, 'Record this session'));
     expect(tile.activeColor, isNull, reason: 'no red track: AppSwitch falls back to the primary colour');
     final ctx = tester.element(find.byType(AppSwitchTile));
-    expect(tile.iconColor, ctx.colors.danger);
+    // Recording starts off (D-1503): the dot is quiet until the host turns it on, then red.
+    expect(tile.value, isFalse);
+    expect(tile.iconColor, ctx.colors.textLight);
+    await tester.pumpWidget(layoutHost(_view(suggestion: _scheduled, record: true)));
+    expect(tester.widget<AppSwitchTile>(find.widgetWithText(AppSwitchTile, 'Record this session')).iconColor, ctx.colors.danger);
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -186,13 +192,13 @@ void main() {
     expect(api.calls, ['sessions 2', 'create 2']);
     expect(api.createdTitle, ''); // no name: the server stores its neutral title (title_auto)
     expect((r as GoLiveLaunch).title, goLiveDefaultTitle(_now));
-    expect(api.createdRecord, isTrue);
+    expect(api.createdRecord, isFalse); // recording is off unless the host turns it on (D-1503)
     expect(api.createdAt, _now);
     expect(r, isA<GoLiveLaunch>());
     final go = r;
     expect(go.sessionId, 77);
     expect(go.courseId, 2);
-    expect(go.record, isTrue);
+    expect(go.record, isFalse);
     expect(go.camera, isFalse);
     expect(go.mic, isTrue);
   });

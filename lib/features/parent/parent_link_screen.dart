@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../utils/helpers.dart';
+import 'parent_consent.dart';
 import 'parent_link_providers.dart';
 import 'parent_widgets.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -102,8 +103,17 @@ class _ParentLinkPageState extends State<ParentLinkPage> {
         return;
       }
     }
-    final r = await p.redeem(code, values, Map.of(_docs));
+    var r = await p.redeem(code, values, Map.of(_docs));
     if (!mounted) return;
+    // an under-age child: ask for the parent's consent (version v1), then send the same request with it
+    if (r == null && p.lastErrorCode == 'consent_required') {
+      final agreed = await showParentConsentDialog(context);
+      if (!mounted) return;
+      if (agreed) {
+        r = await p.redeem(code, values, Map.of(_docs), consent: true);
+        if (!mounted) return;
+      }
+    }
     if (r == null) {
       plToast(p.errorMessage);
       return;
@@ -116,7 +126,7 @@ class _ParentLinkPageState extends State<ParentLinkPage> {
     for (final c in _ctrls.values) {
       c.clear();
     }
-    plToast(r['status'] == 'approved' ? 'pl_linked_ok'.tr : 'pl_submitted_pending'.tr);
+    plToast(r['status'] == 'approved' ? 'pl_linked_ok'.tr : 'pl_submitted_pending'.tr, error: false);
   }
 
   Widget _fieldWidget(Map<String, dynamic> f) {

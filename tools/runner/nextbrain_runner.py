@@ -478,6 +478,19 @@ class Build:
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+def find_iscc() -> Optional[str]:
+    """Inno Setup 6's compiler, looked up like scripts/release/package_windows.ps1 does (windows-website)."""
+    found = os.environ.get("ISCC") or shutil.which("ISCC.exe") or shutil.which("ISCC")
+    if found and Path(found).is_file():
+        return found
+    for root in (os.environ.get("LOCALAPPDATA", "") + "\\Programs", os.environ.get("ProgramFiles(x86)", ""),
+                 os.environ.get("ProgramFiles", "")):
+        p = Path(root) / "Inno Setup 6" / "ISCC.exe"
+        if root and p.is_file():
+            return str(p)
+    return None
+
+
 def check(cfg: Config) -> int:
     """--check: the setup and the token, without taking a job."""
     problems = []
@@ -497,6 +510,10 @@ def check(cfg: Config) -> int:
         problems.append("git is not on PATH")
     if IS_WIN and not cfg.bash:
         problems.append("Git Bash was not found (install Git for Windows or set NB_BASH)")
+    if IS_WIN and "windows" in cfg.platforms and not find_iscc():
+        # windows-website packages the installer with Inno Setup (package_windows.ps1 also tries winget itself;
+        # this tells the owner before a build fails on it)
+        problems.append("Inno Setup 6 is missing (the Windows installer): winget install JRSoftware.InnoSetup")
     if "android" in cfg.platforms:
         if cfg.key_properties is None or not cfg.key_properties.is_file():
             problems.append("NB_KEY_PROPERTIES does not point to the Android release key.properties")

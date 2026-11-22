@@ -23,6 +23,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -888,7 +889,7 @@ class CalTodayHero extends StatelessWidget {
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
                       child: Row(children: [
-                        Icon(calSourceIcon(n.source), size: AppIconSize.md, color: calEventColor(c, n)),
+                        Icon(calEventIcon(n), size: AppIconSize.md, color: calEventColor(c, n)),
                         const SizedBox(width: AppSpace.sm - 2),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
@@ -1123,6 +1124,7 @@ List<Widget> calTagsOf(BuildContext context, CalEvent e, {required bool live, re
   return [
     if (e.cancelled) CalTag(t('أُلغيت', 'Cancelled'), c.danger, icon: Icons.event_busy_rounded),
     if (e.ended) CalTag(t('انتهى', 'Ended'), c.textMedium, icon: Icons.task_alt_rounded),
+    if (e.recurring) CalTag('cal_recur_tag'.tr, c.textMedium, icon: Icons.repeat_rounded),
     if (live) CalTag(t('مباشر الآن', 'Live now'), c.danger, icon: Icons.sensors_rounded, solid: true),
     if (!e.cancelled && ch != null && ch.online) CalTag(t('أونلاين هذه المرة', 'Online this time'), c.primary, icon: Icons.videocam_rounded),
     if (!e.cancelled && ch != null && ch.substitute) CalTag(t('مدرس بديل', 'Substitute'), c.warning, icon: Icons.person_pin_rounded),
@@ -1230,7 +1232,7 @@ class CalAgendaTile extends StatelessWidget {
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Padding(
                   padding: const EdgeInsetsDirectional.only(top: AppSpace.xxs / 2, end: AppSpace.xxs),
-                  child: Icon(calSourceIcon(e.source), size: AppIconSize.xs - 1, color: muted ? c.textLight : appInk(context, color)),
+                  child: Icon(calEventIcon(e), size: AppIconSize.xs - 1, color: muted ? c.textLight : appInk(context, color)),
                 ),
                 Expanded(child: Text(meta, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
               ]),
@@ -1409,7 +1411,7 @@ class CalEventSheet extends StatelessWidget {
             width: AppTouch.min - 2,
             height: AppTouch.min - 2,
             decoration: BoxDecoration(color: calTint(c, color, 0.14), borderRadius: AppRadius.controlAll),
-            child: Icon(calSourceIcon(e.source), color: appInk(context, color), size: AppIconSize.lg),
+            child: Icon(calEventIcon(e), color: appInk(context, color), size: AppIconSize.lg),
           ),
           const SizedBox(width: AppSpace.md - 2),
           Expanded(

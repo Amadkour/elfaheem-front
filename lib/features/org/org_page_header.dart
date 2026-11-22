@@ -61,6 +61,7 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter_education_app/config/app_config.dart' show AppConfig, translate;
 import 'package:flutter_education_app/design/app_focus_mode.dart' show AppFocusExitButton, AppFocusMode, AppFocusToggle;
+import 'package:flutter_education_app/design/shell_pins.dart' show ShellPinButton;
 import 'package:flutter_education_app/design/app_header.dart' show AppHeader, AppHeaderCollapse, appBarCardMargin;
 import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
 import 'package:flutter_education_app/design/app_shell.dart' show NotificationIcon;
@@ -69,6 +70,7 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart' show CalendarEntryIcon, ChatEntryIcon;
 import 'package:flutter_education_app/design/chrome_button.dart' show ChromeCard, ChromeIconButton;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextPill;
+import 'package:flutter_education_app/design/sync_status_chip.dart' show SyncStatusChip;
 import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant, appAssistantFeatureKey;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -481,10 +483,13 @@ class OrgPageHeader extends StatelessWidget {
               ),
               AppSpace.gapXs,
               Row(mainAxisSize: MainAxisSize.min, children: [
+                // offline / waiting writes (D-1351, QA_PHASE7 W-7); draws nothing while online and quiet
+                const SyncStatusChip(),
                 const CalendarEntryIcon(),
                 const ChatEntryIcon(),
                 NotificationIcon(unreadCount: unread),
                 ?help,
+                ShellPinButton(title: title),
               ]),
             ]);
       // the one order of every header's end (D-551): page tools, app-wide tools, the context, focus last
@@ -493,12 +498,15 @@ class OrgPageHeader extends StatelessWidget {
           : Row(mainAxisSize: MainAxisSize.min, children: [
               if (search != null) _ChipButton(icon: Icons.search_rounded, label: _searchLabel, onTap: search, compact: !roomy),
               if (refresh != null) _RefreshIcon(refresh: refresh),
+              const SyncStatusChip(),
               const CalendarEntryIcon(),
               const ChatEntryIcon(),
               if (!AppConfig.disableList.contains(appAssistantFeatureKey))
                 ChromeIconButton(icon: Icons.auto_awesome_rounded, label: translate('assistant_entry_title'), onTap: AppAssistant.openPanel),
               NotificationIcon(unreadCount: unread),
               ?help,
+              // pins this page to the dashboard's tabs (only on a page opened inside a tab, D-1170)
+              ShellPinButton(title: title),
             ]);
       final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6);
       final hasLine = refresh != null || (subtitle ?? '').isNotEmpty;

@@ -1,4 +1,20 @@
 {
+  "admin_self_learning": {
+    "en": "Self-learning content",
+    "ar": "محتوى التعلّم الذاتي"
+  },
+  "admin_self_learning_d": {
+    "en": "The short daily lessons and review questions students get",
+    "ar": "الدروس اليومية القصيرة وأسئلة المراجعة التي تصل الطلاب"
+  },
+  "self_learning_title": {
+    "en": "My daily learning",
+    "ar": "تعلّمي اليومي"
+  },
+  "self_learning_off": {
+    "en": "Daily lessons are switched off",
+    "ar": "الدروس اليومية متوقفة"
+  },
   "course_scope_all": {
     "en": "All",
     "ar": "الكل"
@@ -1750,6 +1766,22 @@
   "my_schedule": {
     "en": "Schedule",
     "ar": "جدولي"
+  },
+  "store": {
+    "en": "Store",
+    "ar": "المتجر"
+  },
+  "games": {
+    "en": "Games",
+    "ar": "الألعاب"
+  },
+  "quran": {
+    "en": "Quran",
+    "ar": "القرآن"
+  },
+  "nahw": {
+    "en": "Grammar",
+    "ar": "النحو"
   },
   "analysis": {
     "en": "Analysis",
@@ -8509,6 +8541,10 @@
     "en": "Finance & requests",
     "ar": "المالية والطلبات"
   },
+  "admin_group_learning": {
+    "en": "Learning content",
+    "ar": "محتوى التعلّم"
+  },
   "admin_group_config": {
     "en": "App configuration",
     "ar": "إعدادات التطبيق"
@@ -11712,6 +11748,10 @@
   "svc_group_finance_sub": {
     "ar": "التحويلات والاشتراكات والتسجيلات والمدفوعات",
     "en": "Payouts, enrollments, subscriptions and payments"
+  },
+  "svc_group_learning_sub": {
+    "ar": "المراحل الدراسية والمعلمون والنحو والألعاب والتعلّم الذاتي",
+    "en": "Education levels, teachers, grammar, games and self-learning"
   },
   "svc_group_support_sub": {
     "ar": "مركز المساعدة والأجهزة وقواعد الدخول ومستندات المعلمين",
@@ -24712,5 +24752,89 @@
   "home_published_chip": {"en": "{n} published", "ar": "منشور: {n}"},
   "home_up_next": {"en": "Up next", "ar": "التالي لك"},
   "home_tasks": {"en": "Your tasks", "ar": "مهامك"},
-  "home_schedule_link": {"en": "Schedule", "ar": "الجدول"}
+  "home_schedule_link": {"en": "Schedule", "ar": "الجدول"},
+  "shell_pin": {"en": "Pin to my tabs", "ar": "تثبيت في تبويباتي"},
+  "shell_unpin": {"en": "Unpin", "ar": "إلغاء التثبيت"},
+  "shell_undo": {"en": "Undo", "ar": "تراجع"},
+  "shell_pinned_notice": {"en": "Pinned to your tabs. Long-press a tab to change its colour.", "ar": "تم التثبيت في تبويباتك. اضغط مطولًا على أي تبويب لتغيير لونه."},
+  "shell_unpinned_notice": {"en": "Removed from your tabs", "ar": "أُزيلت من تبويباتك"},
+  "shell_pins_full": {"en": "You can pin up to 8 pages. Unpin one first.", "ar": "يمكنك تثبيت 8 صفحات بحد أقصى. ألغِ تثبيت إحداها أولًا."},
+  "shell_group_pinned": {"en": "Pinned", "ar": "المثبّتة"},
+  "shell_customize": {"en": "Customize tabs", "ar": "تخصيص التبويبات"},
+  "shell_customize_hint": {"en": "Give each tab a colour so your flow is easy to follow. Pin any page with the pin button at its top.", "ar": "اختر لونًا لكل تبويب ليسهل تتبّع مسار عملك. ثبّت أي صفحة بزر التثبيت في أعلاها."},
+  "shell_color_default": {"en": "Default colour", "ar": "اللون الافتراضي"},
+  "shell_reset_colors": {"en": "Reset colours", "ar": "إعادة الألوان"},
+  "shell_move_up": {"en": "Move up", "ar": "تحريك لأعلى"},
+  "shell_move_down": {"en": "Move down", "ar": "تحريك لأسفل"},
+  "shell_pin_reconnect_body": {"en": "This page can't be rebuilt after the app restarts. Open it once from its usual place and this tab works again.", "ar": "لا يمكن إعادة بناء هذه الصفحة بعد إعادة تشغيل التطبيق. افتحها مرة من مكانها المعتاد وسيعمل هذا التبويب من جديد."},
+  "shell_color_primary": {"en": "Brand", "ar": "لون الهوية"},
+  "shell_color_coral": {"en": "Coral", "ar": "مرجاني"},
+  "shell_color_sky": {"en": "Sky", "ar": "سماوي"},
+  "shell_color_amber": {"en": "Amber", "ar": "كهرماني"},
+  "shell_color_plum": {"en": "Plum", "ar": "بنفسجي"},
+  "shell_color_indigo": {"en": "Indigo", "ar": "نيلي"},
+  "shell_color_slate": {"en": "Slate", "ar": "رمادي داكن"},
+  "learn_hub": {"en": "Learn", "ar": "التعلّم"},
+  "learn_hint_store": {"en": "Books, notes and files to buy", "ar": "كتب ومذكرات وملفات للشراء"},
+  "learn_hint_games": {"en": "Educational games and badges", "ar": "ألعاب تعليمية وشارات"},
+  "learn_hint_quran": {"en": "Quran teachers and your memorization", "ar": "معلمو القرآن ومتابعة حفظك"},
+  "learn_hint_nahw": {"en": "Arabic grammar lessons and exercises", "ar": "دروس النحو وتمارينه"},
+  "learn_hint_teachers": {"en": "Teachers of Quran, tajweed, fiqh and grammar", "ar": "معلمو القرآن والتجويد والفقه والنحو"},
+  "guest_locked_teachers": {"en": "Sign in to browse teachers and join their packages", "ar": "سجّل الدخول لتتصفح المعلمين وتنضم لباقاتهم"},
+  "learn_hint_analysis": {"en": "Your grades, attendance and progress", "ar": "درجاتك وحضورك وتقدّمك"},
+  "enroll_refused_title": {"en": "Booking is not available", "ar": "الحجز غير متاح"},
+  "enroll_refused_back": {"en": "Back to the course", "ar": "العودة إلى الكورس"},
+  "sync_status_offline": {"en": "You are offline", "ar": "أنت غير متصل"},
+  "sync_status_syncing": {"en": "Sending what you did offline…", "ar": "جارٍ إرسال ما سجّلته دون اتصال…"},
+  "sync_status_done": {"en": "Everything is saved", "ar": "كل شيء محفوظ"},
+  "store_file_corrupt": {"en": "The file arrived damaged. Download it again.", "ar": "وصل الملف تالفاً. نزّله من جديد."},
+  "cal_recur_add_date": {"en": "Skip a date", "ar": "تخطَّ تاريخًا"},
+  "cal_recur_any_time": {"en": "Any time of the day", "ar": "في أي وقت من اليوم"},
+  "cal_recur_course_created": {"en": "Repeating meeting added — the course students are invited", "ar": "أُضيف الاجتماع المتكرر ودُعي طلاب المقرر"},
+  "cal_recur_course_meeting": {"en": "Repeating meeting", "ar": "اجتماع متكرر"},
+  "cal_recur_course_note": {"en": "The course's students are invited to every date.", "ar": "يُدعى طلاب المقرر إلى كل المواعيد."},
+  "cal_recur_custom": {"en": "Custom…", "ar": "مخصص…"},
+  "cal_recur_daily": {"en": "Every day", "ar": "كل يوم"},
+  "cal_recur_end_date": {"en": "Last date", "ar": "آخر موعد"},
+  "cal_recur_end_on": {"en": "On a date", "ar": "في تاريخ محدد"},
+  "cal_recur_ends": {"en": "Ends", "ar": "ينتهي"},
+  "cal_recur_every": {"en": "Every", "ar": "كل"},
+  "cal_recur_from": {"en": "From", "ar": "من"},
+  "cal_recur_less": {"en": "Less often", "ar": "أقل"},
+  "cal_recur_more": {"en": "More", "ar": "أكثر"},
+  "cal_recur_no_end": {"en": "Until further notice", "ar": "حتى إشعار آخر"},
+  "cal_recur_none": {"en": "Does not repeat", "ar": "لا يتكرر"},
+  "cal_recur_on_days": {"en": "On these days", "ar": "في هذه الأيام"},
+  "cal_recur_remind_at_start": {"en": "When it starts", "ar": "عند البدء"},
+  "cal_recur_reminder": {"en": "Reminder", "ar": "التذكير"},
+  "cal_recur_remove_date": {"en": "Remove this date", "ar": "أزل هذا التاريخ"},
+  "cal_recur_repeat": {"en": "Repeat", "ar": "التكرار"},
+  "cal_recur_skip_dates": {"en": "Skip dates", "ar": "تواريخ مستثناة"},
+  "cal_recur_skip_days": {"en": "Skip these days", "ar": "استثنِ هذه الأيام"},
+  "cal_recur_starts": {"en": "Starts", "ar": "يبدأ"},
+  "cal_recur_tag": {"en": "Repeats", "ar": "متكرر"},
+  "cal_recur_to": {"en": "To", "ar": "إلى"},
+  "cal_recur_weekly": {"en": "Every week", "ar": "كل أسبوع"},
+  "cal_series_busy": {"en": "Busy at this time", "ar": "مشغولون في هذا الوقت"},
+  "cal_series_cancel": {"en": "Cancel", "ar": "إلغاء"},
+  "cal_series_cancel_title": {"en": "Cancel a repeating meeting", "ar": "إلغاء اجتماع متكرر"},
+  "cal_series_cancelled_one": {"en": "This date is cancelled — invitees notified", "ar": "أُلغي هذا الموعد وأُبلغ المدعوون"},
+  "cal_series_cancelled_tag": {"en": "Cancelled", "ar": "أُلغي"},
+  "cal_series_change_time": {"en": "Change time", "ar": "تغيير الموعد"},
+  "cal_series_edit_title": {"en": "Change a repeating meeting", "ar": "تعديل اجتماع متكرر"},
+  "cal_series_ended": {"en": "The series ends at this date — invitees notified", "ar": "ينتهي التكرار عند هذا الموعد وأُبلغ المدعوون"},
+  "cal_series_following": {"en": "This and following", "ar": "هذا الموعد وما بعده"},
+  "cal_series_following_cancel_hint": {"en": "Ends the series: no more dates from this one on", "ar": "ينهي التكرار: لا مواعيد من هذا الموعد فصاعدًا"},
+  "cal_series_following_hint": {"en": "The new time applies to this date and every one after it", "ar": "الوقت الجديد لهذا الموعد وكل ما بعده"},
+  "cal_series_load_failed": {"en": "Could not load the series. Try again.", "ar": "تعذر تحميل التكرار. حاول مرة أخرى."},
+  "cal_series_move_anyway": {"en": "Move anyway", "ar": "انقل رغم ذلك"},
+  "cal_series_moved_following": {"en": "Updated from this date on — invitees notified", "ar": "عُدّلت المواعيد من هذا الموعد وأُبلغ المدعوون"},
+  "cal_series_moved_one": {"en": "This date moved — invitees notified", "ar": "نُقل هذا الموعد وأُبلغ المدعوون"},
+  "cal_series_online": {"en": "Online", "ar": "عبر الإنترنت"},
+  "cal_series_this_only": {"en": "This meeting only", "ar": "هذا الاجتماع فقط"},
+  "cal_series_this_only_cancel_hint": {"en": "The other dates stay as they are", "ar": "تبقى المواعيد الأخرى كما هي"},
+  "cal_series_this_only_hint": {"en": "Only this date moves", "ar": "يُنقل هذا الموعد وحده"},
+  "cal_recur_end_after": {"en": "After a number of times", "ar": "بعد عدد من المرات"},
+  "cal_recur_after": {"en": "After", "ar": "بعد"},
+  "cal_series_join": {"en": "Join now", "ar": "انضم الآن"}
 }

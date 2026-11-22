@@ -32,6 +32,7 @@ import 'package:flutter_education_app/core/plural.dart';
 import 'app_kit.dart';
 import 'app_responsive.dart' show Breakpoints;
 import 'app_shell_nav.dart' show ShellChrome;
+import 'shell_pins.dart' show ShellPinButton;
 import 'chrome_button.dart' show ChromeCard;
 
 /// "Updated just now" / "Updated 3 min ago" / "Updated 2 h ago" / "Updated 12 Oct 2026 · 09:30".
@@ -228,9 +229,12 @@ class AppPageHeader extends StatelessWidget {
         // the app-wide tools (calendar, messages, assistant, bell) on every pushed page, as AppHeader draws them
         if (global != null) ...[AppSpace.gapXs, global(context)],
         AppSpace.gapXs,
+        // pins this page to the dashboard's tabs (only on a page opened inside a tab, D-1170)
+        ShellPinButton(title: title),
         const AppFocusToggle(),
       ] else ...[
         ?refresh,
+        ShellPinButton(title: title),
         if (actions.isNotEmpty) _MoreButton(actions: actions),
       ],
     ]);

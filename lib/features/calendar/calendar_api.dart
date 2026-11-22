@@ -4,6 +4,8 @@
 //   POST   /meetings/quick ("Meet now": online, private, starts now — live-rooms-spec §7)
 //   POST   /meetings · GET|PATCH|DELETE /meetings/{id} · POST /meetings/{id}/respond|accept-proposal|join
 //   POST   /api/v1/org/orgs/{o}/complaints/{c}/meeting          (a complaint / request → a meeting with its sender)
+//   POST   /series · GET|PATCH|DELETE /series/{id} · PATCH|DELETE /series/{id}/occurrences/{date}
+//   POST   /series/{id}/occurrences/{date}/open → {meeting_id}   (repeating meetings, Learning Hub v2 §4 + C5/C6)
 //
 // Every call has a timeout, so no calendar screen ever spins forever.
 library;
@@ -11,6 +13,8 @@ library;
 import 'dart:async';
 
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 
 import 'package:flutter_education_app/features/payments/points/points_api.dart' show pointsCodeText, pointsErrorCode;
 
@@ -33,6 +37,27 @@ abstract class CalendarApi {
   Future<dynamic> people({int? orgId, String? q});
   Future<dynamic> join(int id);
   Future<dynamic> complaintMeeting(int orgId, int complaintId, Map<String, dynamic> body);
+
+  /// A repeating meeting: the meeting fields + `rule` + `reminder_minutes` (+ `course_id`); 409 `attendees_busy`.
+  Future<dynamic> createSeries(Map<String, dynamic> body);
+  Future<dynamic> series(int id);
+
+  /// The course's active series with their coming dates → `{items: [...]}` (the course page's Sessions tab, D-1660).
+  Future<dynamic> courseSeries(int courseId);
+
+  /// The series from [fromDate] ("YYYY-MM-DD", local; null = today) on: the server splits it, past dates keep the
+  /// old one (contract C6).
+  Future<dynamic> updateSeries(int id, Map<String, dynamic> body, {String? fromDate});
+
+  /// Ends the series from [fromDate] (null = today).
+  Future<dynamic> endSeries(int id, {String? fromDate});
+
+  /// The meeting row of a date (idempotent, contract C5) → `{meeting_id}`; the join button calls it.
+  Future<dynamic> openOccurrence(int seriesId, String date);
+
+  /// [date] "YYYY-MM-DD": edit one occurrence (`starts_at`, `ends_at`, `title`, `notes`, `location`).
+  Future<dynamic> updateOccurrence(int seriesId, String date, Map<String, dynamic> body);
+  Future<dynamic> cancelOccurrence(int seriesId, String date);
 }
 
 class RemoteCalendarApi implements CalendarApi {
@@ -86,6 +111,36 @@ class RemoteCalendarApi implements CalendarApi {
   @override
   Future<dynamic> complaintMeeting(int orgId, int complaintId, Map<String, dynamic> body) =>
       _api.post('/api/v1/org/orgs/$orgId/complaints/$complaintId/meeting', body: body).timeout(calTimeout);
+
+  @override
+  Future<dynamic> createSeries(Map<String, dynamic> body) => _api.post('$_base/series', body: body).timeout(calTimeout);
+
+  @override
+  Future<dynamic> series(int id) => _api.get('$_base/series/$id').timeout(calTimeout);
+
+  @override
+  Future<dynamic> courseSeries(int courseId) =>
+      _api.get('$_base/series', queryParams: {'course_id': courseId}).timeout(calTimeout);
+
+  @override
+  Future<dynamic> updateSeries(int id, Map<String, dynamic> body, {String? fromDate}) =>
+      _api.patch('$_base/series/$id', body: {...body, 'from_date': ?fromDate}).timeout(calTimeout);
+
+  @override
+  Future<dynamic> endSeries(int id, {String? fromDate}) =>
+      _api.delete('$_base/series/$id', queryParams: {'from_date': ?fromDate}).timeout(calTimeout);
+
+  @override
+  Future<dynamic> openOccurrence(int seriesId, String date) =>
+      _api.post('$_base/series/$seriesId/occurrences/$date/open').timeout(calTimeout);
+
+  @override
+  Future<dynamic> updateOccurrence(int seriesId, String date, Map<String, dynamic> body) =>
+      _api.patch('$_base/series/$seriesId/occurrences/$date', body: body).timeout(calTimeout);
+
+  @override
+  Future<dynamic> cancelOccurrence(int seriesId, String date) =>
+      _api.delete('$_base/series/$seriesId/occurrences/$date').timeout(calTimeout);
 }
 
 /// The 409 `attendees_busy` list of an error (empty for any other error).
@@ -102,7 +157,14 @@ String calErrorText(Object e) {
   if (e is TimeoutException) return ApiMessages.timeout;
   final code = pointsErrorCode(e);
   if (_meetingCodes.contains(code)) return pointsCodeText(code) ?? ApiException.from(e).message;
-  return ApiException.from(e).message;
+  // the calendar's own wording for two shared codes; every other code (the series ones too) in apiErrorText (D-1646)
+  switch (code) {
+    case 'too_long':
+      return t('الاجتماع أطول من المسموح', 'The meeting is longer than allowed');
+    case 'course_forbidden':
+      return t('يستطيع مدرّس المقرر فقط فعل ذلك', 'Only the course teacher can do this');
+  }
+  return apiErrorText(ApiException.from(e));
 }
 
 /// Meeting codes of live-rooms-spec §7 – §8 with app texts (points_api.dart).

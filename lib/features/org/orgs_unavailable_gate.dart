@@ -56,7 +56,7 @@ class _OrgsUnavailablePageState extends State<OrgsUnavailablePage> {
   Future<void> _logout() async {
     final auth = context.read<MyAuthProvider>();
     final nav = Navigator.of(context);
-    await auth.logout();
+    if (!await auth.logout()) return;              // kept signed in: unsent offline work the person kept
     nav.pushNamedAndRemoveUntil('/login', (_) => false);
   }
 

@@ -31,6 +31,8 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/features/courses/home_course_list.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
+import 'package:flutter_education_app/features/courses/course_filters.dart';
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show StudyProfileApi;
 
 const double _kWideBreakpoint = 840;
 
@@ -38,12 +40,15 @@ const double _kWideBreakpoint = 840;
 const double _kSideWidth = 280;
 
 class CategoriesScreen extends StatefulWidget {
-  const CategoriesScreen({super.key, this.selectedId, this.mode});
+  const CategoriesScreen({super.key, this.selectedId, this.mode, this.filters});
 
   final String? selectedId;
 
   /// The guest search's filter ('any' / 'online' / 'center'); null for every other caller.
   final String? mode;
+
+  /// The join flow's search filters (CONTRACT §4), sent with [mode].
+  final Map<String, dynamic>? filters;
 
   @override
   State<CategoriesScreen> createState() => _CategoriesScreenState();
@@ -55,17 +60,63 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<CategoriesProvider>().setExploreMode(widget.mode);
+    context.read<CategoriesProvider>().setExploreMode(widget.mode, filters: widget.filters);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CategoriesProvider>().fetchCategories();
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.selectedId != null) {
-        context.read<CategoriesProvider>().selectCategory(widget.selectedId!, force: widget.mode != null);
-      } else {
-        context.read<CategoriesProvider>().clearSelection();
+    // the filter bar's start (D-1325) first, so the first course call already carries it
+    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+  }
+
+  // ── The course filter bar (D-1325) ─────────────────────────────────────────
+  CourseFilters _filters = CourseFilters.empty;
+  CourseFilterEdu? _edu;
+  String _user = 'guest';
+
+  /// The filters handed in (the join flow), else the user's remembered ones, else the study profile's level (asked
+  /// once for a student who has nothing stored yet); then the course list, then the catalog for the names.
+  Future<void> _start() async {
+    final u = await CourseFilterStore.user();
+    var f = CourseFilters.fromQuery(widget.filters);
+    // the bar switched off (courses.filters): only the join flow's start filters apply, nothing remembered (D-1326)
+    if (f.isEmpty && !courseFiltersOff()) {
+      final country = f.country;
+      if (u.student && !await CourseFilterStore.known(u.id)) {
+        try {
+          await StudyProfileApi().load(); // stores the level as the start
+        } catch (_) {}
       }
+      f = await CourseFilterStore.initial(u.id);
+      if (f.country == null && country != null) f = CourseFilters.fromQuery({...f.toQuery(), 'country': country});
+    }
+    if (!mounted) return;
+    setState(() {
+      _user = u.id;
+      _filters = f;
     });
+    final p = context.read<CategoriesProvider>();
+    p.setFilters(f.toQuery(), fetch: false);
+    if (widget.selectedId != null) {
+      p.selectCategory(widget.selectedId!, force: widget.mode != null);
+    } else {
+      p.clearSelection();
+    }
+    _loadEdu();
+  }
+
+  Future<CourseFilterEdu?> _loadEdu() async {
+    final edu = await CourseFilterEdu.load(_filters.country);
+    if (mounted && edu != null) setState(() => _edu = edu);
+    return edu;
+  }
+
+  /// "Show every level" on the empty list (D-1326).
+  void showEveryLevel() => _onFilters(_filters.withLevel(null, null));
+
+  void _onFilters(CourseFilters f) {
+    setState(() => _filters = f);
+    CourseFilterStore.save(_user, f);
+    context.read<CategoriesProvider>().setFilters(f.toQuery());
   }
 
   @override
@@ -76,6 +127,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bar = ParentComponent(
+      featureKey: kCourseFiltersKey,
+      child: Consumer<CategoriesProvider>(
+        builder: (_, p, _) => CourseFilterBar(
+          value: _filters,
+          edu: _edu,
+          loadEdu: _loadEdu,
+          resultCount: p.isLoadingCourse ? null : p.total,
+          onChanged: _onFilters,
+        ),
+      ),
+    );
     return BasePage(
       useWebCard: true,
       width: AppWidth.wide,
@@ -83,8 +146,8 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) => constraints.maxWidth >= _kWideBreakpoint
-              ? _WideLayout(searchCtrl: _searchCtrl)
-              : _NarrowLayout(searchCtrl: _searchCtrl),
+              ? _WideLayout(searchCtrl: _searchCtrl, filterBar: bar)
+              : _NarrowLayout(searchCtrl: _searchCtrl, filterBar: bar),
         ),
       ),
     );
@@ -215,7 +278,9 @@ class _SearchField extends StatelessWidget {
 class _NarrowLayout extends StatelessWidget {
   final TextEditingController searchCtrl;
 
-  const _NarrowLayout({required this.searchCtrl});
+  final Widget filterBar;
+
+  const _NarrowLayout({required this.searchCtrl, required this.filterBar});
 
   @override
   Widget build(BuildContext context) {
@@ -234,6 +299,11 @@ class _NarrowLayout extends StatelessWidget {
                 child: _SearchField(controller: searchCtrl),
               ),
             ),
+          ),
+          // the course filter bar (D-1325): chips + a sheet here
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
+            sliver: SliverToBoxAdapter(child: filterBar),
           ),
           SliverPadding(
             padding: const EdgeInsets.only(top: AppSpace.md),
@@ -269,7 +339,9 @@ class _NarrowLayout extends StatelessWidget {
 class _WideLayout extends StatelessWidget {
   final TextEditingController searchCtrl;
 
-  const _WideLayout({required this.searchCtrl});
+  final Widget filterBar;
+
+  const _WideLayout({required this.searchCtrl, required this.filterBar});
 
   @override
   Widget build(BuildContext context) {
@@ -322,6 +394,11 @@ class _WideLayout extends StatelessWidget {
                       ),
                     ),
                   ),
+                ),
+                // the course filter bar (D-1325): one row of fields here
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, 0),
+                  sliver: SliverToBoxAdapter(child: filterBar),
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.md),
@@ -728,8 +805,15 @@ class _CoursesSliver extends StatelessWidget {
       );
     }
 
+    // a level picked and nothing for it: say so, and offer every level (D-1326)
+    final screen = context.findAncestorStateOfType<_CategoriesScreenState>();
+    if (courses.isEmpty && screen != null && screen._filters.hasLevel && !provider.isSearching) {
+      return SliverToBoxAdapter(
+        child: CourseFilterEmpty(filters: screen._filters, onChanged: (_) => screen.showEveryLevel()),
+      );
+    }
     if (courses.isEmpty) {
-      final hasFilter = provider.selectedCategoryId != null || provider.isSearching;
+      final hasFilter = provider.selectedCategoryId != null || provider.isSearching || (screen?._filters.isEmpty == false);
       return SliverToBoxAdapter(
         child: AppEmpty(
           icon: hasFilter ? Icons.search_off_rounded : Icons.category_rounded,

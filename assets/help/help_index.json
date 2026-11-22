@@ -78,6 +78,10 @@
    "super_admin"
   ],
   [
+   "admin.nahw",
+   "super_admin"
+  ],
+  [
    "admin.organizations",
    "super_admin"
   ],
@@ -86,7 +90,15 @@
    "super_admin"
   ],
   [
+   "admin.quran",
+   "super_admin"
+  ],
+  [
    "admin.rag_console",
+   "super_admin"
+  ],
+  [
+   "admin.store",
    "super_admin"
   ],
   [
@@ -224,6 +236,34 @@
   [
    "home.org/timetable",
    "org_admin"
+  ],
+  [
+   "home.org/ws_alerts",
+   "org_member"
+  ],
+  [
+   "home.org/ws_management",
+   "org_member"
+  ],
+  [
+   "home.org/ws_membership",
+   "org_member"
+  ],
+  [
+   "home.org/ws_organization",
+   "org_admin"
+  ],
+  [
+   "home.org/ws_overview",
+   "org_member"
+  ],
+  [
+   "home.org/ws_pinned",
+   "org_member"
+  ],
+  [
+   "home.org/ws_profile",
+   "org_member"
   ],
   [
    "home.org",
@@ -374,6 +414,38 @@
    "teacher"
   ],
   [
+   "me.asks",
+   "student"
+  ],
+  [
+   "me.onboarding",
+   "org_member"
+  ],
+  [
+   "me.onboarding",
+   "student"
+  ],
+  [
+   "me.onboarding",
+   "teacher"
+  ],
+  [
+   "me.requests",
+   "student"
+  ],
+  [
+   "me.status",
+   "student"
+  ],
+  [
+   "org.advising",
+   "org_admin"
+  ],
+  [
+   "org.advising",
+   "org_member"
+  ],
+  [
    "org.courses",
    "org_admin"
   ],
@@ -395,6 +467,58 @@
   ],
   [
    "org.member",
+   "org_member"
+  ],
+  [
+   "org.onboarding.import",
+   "org_admin"
+  ],
+  [
+   "org.onboarding.types",
+   "org_admin"
+  ],
+  [
+   "org.onboarding",
+   "org_admin"
+  ],
+  [
+   "org.onboarding",
+   "org_member"
+  ],
+  [
+   "org.students.file",
+   "org_admin"
+  ],
+  [
+   "org.students.file",
+   "org_member"
+  ],
+  [
+   "org.students.requests",
+   "org_admin"
+  ],
+  [
+   "org.students.requests",
+   "org_member"
+  ],
+  [
+   "org.students.rules",
+   "org_admin"
+  ],
+  [
+   "org.students.status",
+   "org_admin"
+  ],
+  [
+   "org.students.status",
+   "org_member"
+  ],
+  [
+   "org.students",
+   "org_admin"
+  ],
+  [
+   "org.students",
    "org_member"
   ],
   [
@@ -439,6 +563,22 @@
   ],
   [
    "rag.library",
+   "teacher"
+  ],
+  [
+   "store.browse",
+   "student"
+  ],
+  [
+   "store.item",
+   "student"
+  ],
+  [
+   "store.library",
+   "student"
+  ],
+  [
+   "store.manage",
    "teacher"
   ],
   [

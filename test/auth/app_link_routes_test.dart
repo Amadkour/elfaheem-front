@@ -21,6 +21,7 @@ final _cases = <String, (String, bool Function(String))>{
   '/e/': ('/e/abcDEF123_-xyz', (r) => exportLinkTokenFromRoute(r) == 'abcDEF123_-xyz'),
   '/j/': ('/j/JOIN42', (r) => AppRoutes.match(r)?.id == 'link.org_join'),
   '/i/': ('/i/inv-token-1', (r) => AppRoutes.match(r)?.id == 'link.org_invitation'),
+  '/onboard/': ('/onboard/AB12CD', (r) => AppRoutes.match(r)?.id == 'link.onboard' && AppRoutes.match(r)?.params['code'] == 'AB12CD'),
   '/s/': ('/s/meeting/7', (r) => AppLink.parse(r) == const AppLink.meeting(7)),
   '/app/live/': ('/app/live/tok-123', (r) => guestLiveTokenFromRoute(r) == 'tok-123'),
   '/app/s/': ('/app/s/meeting/7', (r) => AppLink.parse(r) == const AppLink.meeting(7)),

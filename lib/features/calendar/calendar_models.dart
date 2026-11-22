@@ -165,6 +165,8 @@ class CalEvent {
     this.change,
     this.slotId,
     this.status,
+    this.seriesId,
+    this.occurrenceDate,
   });
 
   final String id, source, title;
@@ -183,6 +185,14 @@ class CalEvent {
 
   /// A meeting's state on the server: `ended` once its room was closed (an older server sends nothing).
   final String? status;
+
+  /// One date of a repeating meeting (contract §4, D-1572): its series and its "YYYY-MM-DD"; a cancelled one is
+  /// still listed ([cancelled]) and struck through.
+  final int? seriesId;
+  final String? occurrenceDate;
+
+  /// A date of a repeating meeting (the small repeat mark).
+  bool get recurring => seriesId != null;
 
   static CalEvent? fromJson(Map<String, dynamic> j) {
     final s = _utc(j['starts_at']), e = _utc(j['ends_at']);
@@ -218,6 +228,8 @@ class CalEvent {
       change: CalChange.fromJson(j['change'], changeId: _int(j['change_id']), mode: j['mode']?.toString()),
       slotId: _int(j['slot_id']),
       status: j['status']?.toString(),
+      seriesId: _int(j['series_id']) ?? _int(RegExp(r'^s(\d+):').firstMatch('${j['id']}')?.group(1)),
+      occurrenceDate: j['occurrence_date']?.toString(),
     );
   }
 
@@ -233,7 +245,8 @@ class CalEvent {
         id: id, source: source, title: title, start: start ?? this.start, end: end ?? this.end, subtitle: subtitle,
         orgId: orgId, deptId: deptId, courseId: courseId, meetingId: meetingId, location: location, mode: mode,
         myStatus: myStatus ?? this.myStatus, kind: kind, color: color, orgName: orgName, isOwner: isOwner,
-        editable: editable, counts: counts, cancelled: cancelled, change: change ?? this.change, slotId: slotId, status: status);
+        editable: editable, counts: counts, cancelled: cancelled, change: change ?? this.change, slotId: slotId, status: status,
+        seriesId: seriesId, occurrenceDate: occurrenceDate);
 
   /// The course session's id (`session:<id>`), null for every other source.
   int? get sessionId => source == 'course_session' && id.startsWith('session:') ? int.tryParse(id.substring(8)) : null;
@@ -425,6 +438,10 @@ String calSourceLabel(String s) => switch (s) {
       _ => s,
     };
 
+/// The icon of one event: a private meeting (only me) is a person, not a group (D-1663); else its source's.
+IconData calEventIcon(CalEvent e) =>
+    e.source == 'meeting' && e.kind == 'private' ? Icons.person_rounded : calSourceIcon(e.source);
+
 IconData calSourceIcon(String s) => switch (s) {
       'meeting' => Icons.groups_2_rounded,
       'timetable' => Icons.class_rounded,
@@ -527,5 +544,19 @@ Map<String, dynamic> calMeetingBody({
     'audience': student ? emptyAudience : audience,
     if (m == 'online') 'record_quality': ?recordQuality,
     'force': force,
+  };
+}
+
+/// A one-off course meeting: `POST /meetings` (`MeetingIn`) ignores `course_id`, so the course goes into
+/// `audience.course_ids` (its students + teacher) and `course_id` is dropped (D-1641). No course → [body] unchanged.
+Map<String, dynamic> calSingleCourseMeetingBody(Map<String, dynamic> body, int? courseId) {
+  if (courseId == null) return body;
+  final aud = Map<String, dynamic>.from(body['audience'] is Map ? body['audience'] as Map : const {});
+  final ids = [for (final v in (aud['course_ids'] is List ? aud['course_ids'] as List : const [])) v];
+  if (!ids.contains(courseId)) ids.add(courseId);
+  return {
+    for (final e in body.entries)
+      if (e.key != 'course_id') e.key: e.value,
+    'audience': {...aud, 'course_ids': ids},
   };
 }

@@ -11,6 +11,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 import 'package:flutter_education_app/features/courses/course_scope.dart' show CourseOrg;
+import 'package:flutter_education_app/features/courses/course_setup.dart';
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 
@@ -362,8 +363,12 @@ class TeacherCourse with DiscountInfo {
   /// The organization the course belongs to; null = a personal course (or an older server).
   final CourseOrg? org;
 
+  /// Who the course is for and where it is held (targets, subject, delivery mode, area, address; D-1314).
+  final CourseSetup setup;
+
   const TeacherCourse({
     this.org,
+    this.setup = const CourseSetup(),
     this.priceYearly,
     this.defaultPricePlanIndex = 0,
     this.priceMonthly,
@@ -487,10 +492,12 @@ class TeacherCourse with DiscountInfo {
     descriptionAr: j['description_ar'] as String?,
     descriptionEn: j['description_en'] as String?,
     org: CourseOrg.fromJson(j['org']),
+    setup: CourseSetup.fromJson(j),
   );
 
   CourseModel get toCourseModel => CourseModel(
     org: org,
+    setup: setup,
     titleAr: titleAr,
     titleEn: titleEn,
     descriptionAr: descriptionAr,
@@ -581,6 +588,7 @@ class TeacherCourse with DiscountInfo {
     recommendedCourseSummaries: recommendedCourseSummaries,
     similarCourses: similarCourses,
     org: org,
+    setup: setup,
   );
 }
 

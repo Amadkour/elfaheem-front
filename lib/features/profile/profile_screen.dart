@@ -51,6 +51,7 @@ import 'package:flutter_education_app/features/profile/change_password_widget.da
 import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaints_hub_page.dart';
 import 'package:flutter_education_app/features/profile/privacy_export.dart' show DataExportPage, dataExportEntryLabel;
+import 'package:flutter_education_app/features/profile/switch_account_tile.dart' show SwitchAccountTile;
 import 'package:flutter_education_app/features/profile/profile_provider.dart' show ProfileProvider;
 import 'package:flutter_education_app/features/profile/profile_hero.dart';
 import 'package:flutter_education_app/features/profile/update_account_widget.dart';
@@ -58,7 +59,12 @@ import 'package:flutter_education_app/features/profile/study_profile/study_profi
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/features/auth/reauth_sheet.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
-import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/features/store/manage/store_manage_api.dart' show kStoreManageFeatureKey;
+import 'package:flutter_education_app/features/store/manage/store_manage_pages.dart' show StoreManagePage;
+import 'package:flutter_education_app/features/quran/quran_api.dart' show kQuranTabKey;
+import 'package:flutter_education_app/features/teachers/teacher_onboarding.dart' show TeacherHubPage;
+import 'package:flutter_education_app/features/teachers/teachers_api.dart' show kTeacherOnboardingFeature, teacherOnboardingOff;
+import 'package:flutter_education_app/features/quran/quran_teacher_hub.dart' show QuranTeacherHubPage;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/payments/points/points_api.dart' show kPointsFeatureKey;
 import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart' show PointsWalletPage;
@@ -124,7 +130,41 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
       if (context.mounted) _refresh(context);
     }
 
-    // ── The identity header (D-713): the avatar, name, chips, the teacher's figures and the two actions ──
+    // ── The account's exits (D-1190): at the top, in the header, instead of a red group at the end ──
+    Future<void> logout() async {
+      final ok = await Helpers.confirmDialog(context);
+      if (ok == true && context.mounted) {
+        // Downloaded videos belong to this login only.
+        await OfflineVideoService.instance.deleteAll();
+        if (!context.mounted) return;
+        await context.read<ProfileProvider>().logout(context);
+      }
+    }
+
+    Future<void> deleteAccount() async {
+      final ok = await Helpers.confirmDialog(
+        context,
+        title: "are_you_sure_to_delete_account".tr,
+        confirm: "delete".tr,
+      );
+      if (ok != true || !context.mounted) return;
+      final re = await askReauth(context); // current password (+ two-step code), S9
+      if (re == null || !context.mounted) return;
+      final p = context.read<ProfileProvider>();
+      final after = await p.deleteAccount(context, password: re.password, mfaCode: re.mfaCode);
+      if (after == null) {
+        Helpers.showMessage(p.errorMessage ?? 'generic_error'.tr, isError: true);
+        return;
+      }
+      await OfflineVideoService.instance.deleteAll();
+      Helpers.showMessage('your_account_will_deleted_successfully_through_14_days'.tr);
+    }
+
+    // the old Exit group's switches keep working on the two buttons
+    final off = AppConfig.disableList;
+    final exitsOn = !off.contains('profile.exit_group');
+
+    // ── The identity header (D-713): the avatar, name, chips, the teacher's figures, the actions and the exits ──
     final shareName = myShareableUsername(context);
     final hero = ProfileHero(
       name: p.name,
@@ -135,6 +175,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
       heroTag: 'profile-user-${p.id}',
       onEdit: editAccount,
       onShare: shareName == null || !PersonalAccess.enabled ? null : () => shareProfileLink(context, username: shareName, name: p.name),
+      onLogout: exitsOn && !off.contains('profile.logout') ? logout : null,
+      onDeleteAccount: exitsOn && !off.contains('profile.delete_account') ? deleteAccount : null,
       stats: teacher ? profileTeacherFigures(context.select<TeacherHomeProvider, TeacherStats>((h) => h.stats)) : const [],
     );
 
@@ -187,6 +229,35 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           label: 'my_ads'.tr,
           onTap: () => _push(const TeacherAdsPage()),
         ),
+        // the teacher's own store items (learning hub phase 5, D-1336; kill switch store.manage)
+        AppSettingsTile(
+          featureKey: kStoreManageFeatureKey,
+          icon: Icons.storefront_rounded,
+          label: t('عناصري في المتجر', 'My store items'),
+          subtitle: t('كتب وملخصات تبيعها للطلاب', 'Books and summaries you sell to students'),
+          keywords: 'store books summaries notes sell متجر كتب ملخصات مذكرات',
+          onTap: () => _push(const StoreManagePage()),
+        ),
+        // the teacher's Quran card + record sheet (learning hub phase 6, D-1347; hidden with the Quran tab). One way in
+        // (D-1665): while the teacher profile is on, the record sheet and programs open from its hub instead
+        if (teacherOnboardingOff())
+        AppSettingsTile(
+          featureKey: kQuranTabKey,
+          icon: Icons.menu_book_rounded,
+          label: t('تعليم القرآن', 'My Quran teaching'),
+          subtitle: t('بطاقتك كمعلم وسجل التسميع', 'Your teacher card and the record sheet'),
+          keywords: 'quran memorization tajweed teacher قرآن تحفيظ تجويد حلقة',
+          onTap: () => _push(const QuranTeacherHubPage()),
+        ),
+        // every subject's teacher profile + packages (Learning Hub v2, D-1620; kill switch teacher_onboarding)
+        AppSettingsTile(
+          featureKey: kTeacherOnboardingFeature,
+          icon: Icons.co_present_rounded,
+          label: t('ملفي كمعلم وباقاتي', 'My teacher profile and packages'),
+          subtitle: t('القرآن والتجويد والفقه والنحو: ملفك ومستنداتك وباقاتك', 'Quran, tajweed, fiqh and grammar: your profile, documents and packages'),
+          keywords: 'teacher profile packages ijazah tajweed fiqh nahw معلم باقات إجازة تجويد فقه نحو',
+          onTap: () => _push(const TeacherHubPage()),
+        ),
         // https://alfheemacademy.com/@name — confirmed usernames only (D-074)
         if (PersonalAccess.enabled) const ShareMyProfileTile(),
       ],
@@ -194,12 +265,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
     // ── Account & security ───────────────────────────────────
     final security = <Widget>[
-      AppSettingsTile(
-        featureKey: 'profile.update_account',
-        icon: Icons.manage_accounts_rounded,
-        label: 'update_account'.tr,
-        onTap: editAccount,
-      ),
+      // "Update account" is the header's main button (D-1190): no second row for it here
       // a student's stage / grade / school (D-790, kill switch profile.study)
       if (student) StudyProfileTile(onOpen: () => _push(const StudyProfilePage())),
       AppSettingsTile(
@@ -212,6 +278,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
       const MfaSettingsEntry(rowsOnly: true),
       // an organization member's optional personal profile (UX v3 phase 3); nothing without an organization
       const PersonalAccountTile(),
+      // D-1158: the personal account and every organization account, one tap apart
+      const SwitchAccountTile(),
       if (teacher)
         AppSettingsTile(
           featureKey: 'profile.device_requests',
@@ -264,17 +332,6 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           children: money,
         )),
       ),
-      (
-        security.length,
-        accountSection(AppSettingsGroup(
-          title: 'profile_sec_security'.tr,
-          subtitle: 'profile_sec_security_sub'.tr,
-          icon: Icons.shield_rounded,
-          accent: accents.security,
-          children: security,
-        )),
-      ),
-
       // ── Preferences: the quick switches stay compact ──────
       (
         6,
@@ -316,6 +373,17 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
+      ),
+
+      (
+        security.length,
+        accountSection(AppSettingsGroup(
+          title: 'profile_sec_security'.tr,
+          subtitle: 'profile_sec_security_sub'.tr,
+          icon: Icons.shield_rounded,
+          accent: accents.security,
+          children: security,
+        )),
       ),
 
       // ── Help ───────────────────────────────────────────────
@@ -390,65 +458,6 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
         ),
       ),
 
-      // ── Logout ─────────────────────────────────────────────
-      (
-        2,
-        ParentComponent(
-          featureKey: 'profile.exit_group',
-          child: AppSettingsGroup(
-            title: 'exit'.tr,
-            icon: DirIcons.exitToApp,
-            danger: true,
-            children: [
-              AppSettingsTile(
-                featureKey: 'profile.logout',
-                icon: DirIcons.logout,
-                danger: true,
-                label: 'logout'.tr,
-                onTap: () async {
-                  final ok = await Helpers.confirmDialog(context);
-                  if (ok == true && context.mounted) {
-                    // Downloaded videos belong to this login only.
-                    await OfflineVideoService.instance.deleteAll();
-                    if (!context.mounted) return;
-                    await context.read<ProfileProvider>().logout(
-                      context,
-                    );
-                  }
-                },
-              ),
-              AppSettingsTile(
-                featureKey: 'profile.delete_account',
-                icon: Icons.delete_forever_rounded,
-                danger: true,
-                label: 'delete_account_title'.tr,
-                onTap: () async {
-                  final ok = await Helpers.confirmDialog(
-                    context,
-                    title: "are_you_sure_to_delete_account".tr,
-                    confirm: "delete".tr,
-                  );
-                  if (ok != true || !context.mounted) return;
-                  final re = await askReauth(context); // current password (+ two-step code), S9
-                  if (re == null || !context.mounted) return;
-                  final p = context.read<ProfileProvider>();
-                  final after = await p.deleteAccount(context,
-                      password: re.password, mfaCode: re.mfaCode);
-                  if (after == null) {
-                    Helpers.showMessage(p.errorMessage ?? 'generic_error'.tr, isError: true);
-                    return;
-                  }
-                  await OfflineVideoService.instance.deleteAll();
-                  Helpers.showMessage(
-                    'your_account_will_deleted_successfully_through_14_days'
-                        .tr,
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
     ].where((s) => s.$1 > 0).toList();
 
     // ── Profile E (D-1081): the four most used entries as tiles under the header, each keeps its kill switch ──

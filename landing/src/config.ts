@@ -10,3 +10,6 @@ export const STORAGE_KEY = 'nb_lang';
 
 /** JSON for an inline <script>: "<" escaped so a value can never close the tag. */
 export const jsonForScript = (v: unknown): string => JSON.stringify(v).replace(/</g, String.fromCharCode(92) + 'u003c');
+// The releases manifest the app reads too (D-137, `releases/releases.json` at the site root), fetched by the
+// downloads page in the browser. Same origin by default; PUBLIC_LANDING_API_BASE points it at the main site.
+export const RELEASES = `${import.meta.env.PUBLIC_LANDING_API_BASE ?? ''}/releases/releases.json`;

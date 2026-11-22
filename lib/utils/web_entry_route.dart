@@ -29,8 +29,9 @@ const kWebUrlPages = {'/notifications', '/inbox', '/change-password', '/subscrip
 
 /// Registry pages (by id) with a path of their own that a signed-in person may open by URL, over the home.
 const kWebUrlRouteIds = {
-  'course', 'org.member', 'org.memberships', 'exports', 'exports.log', 'exports.schedules', 'exports.links',
-  'entity.view', 'meetings.links',
+  'course', 'org.member', 'org.onboarding_case', 'org.memberships', 'exports', 'exports.log', 'exports.schedules', 'exports.links',
+  'entity.view', 'meetings.links', 'store.item', 'store.library',
+  'games.progress', 'games.play', 'nahw.lesson', 'self_learning', 'quran.progress', 'quran.teacher',
 };
 
 /// URLs that name a tab of the person's home (N10): the app starts on the home and switches to that tab

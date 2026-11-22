@@ -102,6 +102,22 @@ class FakeCalendarApi implements CalendarApi {
   @override
   Future cancel(int id) async => {'cancelled': true};
   @override
+  Future createSeries(Map<String, dynamic> body) async => {'id': 9, 'rule': body['rule']};
+  @override
+  Future series(int id) async => {'id': id};
+  @override
+  Future courseSeries(int courseId) async => {'items': const []};
+  @override
+  Future updateSeries(int id, Map<String, dynamic> body, {String? fromDate}) async => {'id': id};
+  @override
+  Future endSeries(int id, {String? fromDate}) async => {'ended': true};
+  @override
+  Future openOccurrence(int seriesId, String date) async => {'meeting_id': 7};
+  @override
+  Future updateOccurrence(int seriesId, String date, Map<String, dynamic> body) async => {'ok': true};
+  @override
+  Future cancelOccurrence(int seriesId, String date) async => {'cancelled': true};
+  @override
   Future respond(int id, Map<String, dynamic> body) async => meetingDetail(id);
   @override
   Future acceptProposal(int id, int attendeeId) async => meetingDetail(id);
@@ -145,6 +161,28 @@ class FakeCalendarApi implements CalendarApi {
 
 void main() {
   group('pure logic', () {
+    test('a new meeting starts at a sensible slot, never midnight (D-1661)', () {
+      expect(calNextSensibleSlot(DateTime(2026, 11, 21, 14, 20)), DateTime(2026, 11, 21, 15));
+      expect(calNextSensibleSlot(DateTime(2026, 11, 21, 23, 30)), DateTime(2026, 11, 22, 10));
+      expect(calNextSensibleSlot(DateTime(2026, 11, 21, 21, 10)), DateTime(2026, 11, 22, 10));
+      expect(calNextSensibleSlot(DateTime(2026, 11, 21, 5, 0)), DateTime(2026, 11, 21, 10));
+      expect(calNextSensibleSlot(DateTime(2026, 11, 30, 23, 0)), DateTime(2026, 12, 1, 10));
+    });
+
+    test('a private meeting wears a person, not a group (N19)', () {
+      final e = CalEvent.fromJson({'id': 'm1', 'source': 'meeting', 'kind': 'private', 'title': 'x',
+        'starts_at': '2026-11-21T10:00:00', 'ends_at': '2026-11-21T11:00:00'})!;
+      expect(calEventIcon(e), Icons.person_rounded);
+    });
+
+    test('a one-off course meeting invites the course through the audience (D-1641)', () {
+      final b = calSingleCourseMeetingBody({'title': 'x', 'course_id': 7, 'audience': CalAudience().toJson()}, 7);
+      expect(b.containsKey('course_id'), isFalse);
+      expect((b['audience'] as Map)['course_ids'], [7]);
+      final same = {'title': 'y', 'audience': CalAudience().toJson()};
+      expect(identical(calSingleCourseMeetingBody(same, null), same), isTrue);
+    });
+
     test('visible days and ranges', () {
       final a = DateTime(2026, 10, 21); // Wednesday
       expect(calVisibleDays(CalView.day, a), [a]);
@@ -259,7 +297,11 @@ void main() {
           tester, () => SingleChildScrollView(child: MeetingForm(api: FakeCalendarApi(), start: wall(0, 9), student: false)),
           act: (t) async {
         expect(find.byKey(const ValueKey('meeting_form.title_optional')), findsNothing); // in person by default
-        await t.tap(find.byIcon(Icons.videocam_rounded).first);
+        // the Repeat section and the reminder sit above the mode choice: scroll to it first
+        final online = find.descendant(of: find.byType(CalModeChoice), matching: find.byIcon(Icons.videocam_rounded));
+        await t.ensureVisible(online);
+        await t.pump();
+        await t.tap(online);
         await t.pump();
         expect(find.byKey(const ValueKey('meeting_form.title_optional')), findsOneWidget);
       });
@@ -308,6 +350,27 @@ void main() {
           act: (t) async => expect(
               find.byKey(const ValueKey('calendar.meet_now')).evaluate().length + find.byKey(const ValueKey('meetings.meet_now')).evaluate().length,
               1));
+    });
+
+    testWidgets('meeting details of a series date: cancel asks this one / this and following (D-1644)', (tester) async {
+      final api = FakeCalendarApi();
+      await expectNoLayoutErrors(
+          tester,
+          () => MeetingSheet(api: api, meetingId: 5, initial: {
+                ...api.meetingDetail(5),
+                'is_owner': true,
+                'series_id': 9,
+                'occurrence_date': '2026-11-23',
+              }),
+          act: (t) async {
+            await t.ensureVisible(find.byKey(const ValueKey('meeting.cancel')));
+            await t.pump();
+            await t.tap(find.byKey(const ValueKey('meeting.cancel')));
+            await t.pumpAndSettle();
+            expect(find.byKey(const ValueKey('series_scope.following')), findsOneWidget);
+            Navigator.of(t.element(find.byKey(const ValueKey('series_scope.one')))).pop();
+            await t.pumpAndSettle();
+          });
     });
 
     testWidgets('meeting details (invitee)', (tester) async {

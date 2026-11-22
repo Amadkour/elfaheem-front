@@ -7,6 +7,8 @@
 //   AppLoadingState(shape: AppLoadingShape.cards)                            skeletons of the page's shape, no spinner
 //   AppEmpty(icon:, title:, message:, actionLabel:, onAction:)               an editorial headline, one action and a
 //                                                                            drawn plate (AppStatePlate), no stock art
+//   AppNeedsConnection(onRetry: _load)                                       a page that can not load offline (D-1351):
+//                                                                            "needs a connection", never an error
 //   AppStateView<T>(loading:, error:, data:, builder:, onRetry:)             THE switch between them
 //
 // AppStateView never wipes good data: when a refresh fails and data is already on screen, the data stays and a slim
@@ -20,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart' show needsConnectionText;
 
 import 'app_badges.dart';
 import 'app_blocks.dart';
@@ -244,6 +247,28 @@ class AppEmpty extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A page whose data needs the server, opened offline or after the connection went (QA_PHASE7 W-4): the D-1351
+/// sentence and Retry, never an error and never a skeleton that waits forever. Pick it with `isConnectionFailure(e)`.
+class AppNeedsConnection extends StatelessWidget {
+  const AppNeedsConnection({super.key, this.onRetry});
+
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        liveRegion: true,
+        container: true,
+        child: AppEmpty(
+          key: const ValueKey('app.needsConnection'),
+          icon: Icons.cloud_off_rounded,
+          title: AppConfig.lang == 'ar' ? 'لا يوجد اتصال' : 'You are offline',
+          message: needsConnectionText(),
+          actionLabel: onRetry == null ? null : (AppConfig.lang == 'ar' ? 'أعد المحاولة' : 'Try again'),
+          onAction: onRetry,
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

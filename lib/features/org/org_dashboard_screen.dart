@@ -59,6 +59,8 @@ import 'org_services_pages.dart';
 import 'org_status_screen.dart';
 import 'org_ui.dart';
 import 'org_people_page.dart';
+import 'onboarding/onboarding_models.dart' show onboardingFeatureKey;
+import 'onboarding/onboarding_page.dart' show OnboardingPage;
 import 'org_providers.dart';
 import 'org_schedule_autopilot.dart';
 import 'org_schedule_pages.dart';
@@ -69,6 +71,8 @@ import 'org_join_pages.dart' show OrgJoinInboxPage;
 import 'advising/adv_wiring.dart' show advServiceSubs;
 import 'governance/gov_wiring.dart' show govServiceSubs;
 import 'org_messages.dart' show msgServiceSubs;
+import 'students/students_wiring.dart' show studentRequestsSub, studentsSub;
+import 'workspace/ws_shell.dart' show TeacherWorkspace, wsEligible;
 
 export 'org_dashboard_settings.dart' show showJoinCode, showOrgForm, showOrgSwitcher;
 
@@ -186,7 +190,9 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
     AttentionService.instance.orgTabRequest.value = null;       // consumed
     if (s.currentId != r.orgId && s.items.any((o) => asInt(o['id']) == r.orgId)) s.select(r.orgId);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _tabs.go(r.section, sub: r.sub)) return;
+      // the workspace has no 'settings' tab: an admin's settings link opens its Organization tab
+      final section = r.section == 'settings' && _tabs.keys.contains('ws_organization') ? 'ws_organization' : r.section;
+      if (!mounted || _tabs.go(section, sub: r.sub)) return;
       final x = r.sub == null ? null : _tabs.subOf(r.section, r.sub!);
       if (x != null) orgPushPage(context, session: s, dash: _dash, title: x.$2, page: x.$4);
     });
@@ -206,25 +212,25 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
     return [
       // the Home draws OrgPageHeader itself (at the top of its scroll) and registers its own refresher
       ('home', DashboardItem(Icons.dashboard_outlined, Icons.dashboard_rounded, t('الرئيسية', 'Home'), null,
-          _OrgTab(title: t('الرئيسية', 'Home'), header: false, child: const OrgHomePage()))),
+          OrgShellTab(title: t('الرئيسية', 'Home'), header: false, child: const OrgHomePage()))),
       if (people.isNotEmpty)
         ('people', DashboardItem(Icons.groups_outlined, Icons.groups_rounded, t('الأعضاء', 'People'), null,
-            _OrgTab(helpPageId: 'home.org/people', title: t('الأعضاء والإدارات', 'People & departments'), child: _SectionHub(id: 'people', subs: people)),
-            attentionKeys: const [AttentionTabs.orgPeople], attentionOrgId: oid)),
+            OrgShellTab(helpPageId: 'home.org/people', title: t('الأعضاء والإدارات', 'People & departments'), child: _SectionHub(id: 'people', subs: people)),
+            attentionKeys: const [AttentionTabs.orgPeople, AttentionTabs.orgOnboarding], attentionOrgId: oid)),
       if (academics.isNotEmpty)
         ('academics', DashboardItem(Icons.school_outlined, Icons.school_rounded, t('الأكاديمي', 'Academics'), null,
-            _OrgTab(helpPageId: 'home.org/academics', title: t('الشؤون الأكاديمية', 'Academics'), child: _SectionHub(id: 'academics', subs: academics)),
+            OrgShellTab(helpPageId: 'home.org/academics', title: t('الشؤون الأكاديمية', 'Academics'), child: _SectionHub(id: 'academics', subs: academics)),
             attentionKeys: const [AttentionTabs.orgAcademics], attentionOrgId: oid)),
       if (s.can('schedule'))
         ('timetable', DashboardItem(Icons.calendar_month_outlined, Icons.calendar_month_rounded, t('الجدول', 'Timetable'), null,
-            _OrgTab(helpPageId: 'home.org/timetable', title: t('الجدول الدراسي', 'Timetable'), child: const OrgSchedulePage()),
+            OrgShellTab(helpPageId: 'home.org/timetable', title: t('الجدول الدراسي', 'Timetable'), child: const OrgSchedulePage()),
             attentionKeys: const [AttentionTabs.orgTimetable], attentionOrgId: oid)),
       if (!compact && services.isNotEmpty)
         ('services', DashboardItem(Icons.forum_outlined, Icons.forum_rounded, t('الخدمات', 'Services'), null,
-            _OrgTab(helpPageId: 'home.org/services', title: t('التواصل والخدمات', 'Communication & services'), child: _SectionHub(id: 'services', subs: services)),
+            OrgShellTab(helpPageId: 'home.org/services', title: t('التواصل والخدمات', 'Communication & services'), child: _SectionHub(id: 'services', subs: services)),
             attentionKeys: const [AttentionTabs.orgServices], attentionOrgId: oid)),
       ('settings', DashboardItem(Icons.tune_outlined, Icons.tune_rounded, settingsTitle, null,
-          _OrgTab(helpPageId: 'home.org/settings', title: settingsTitle, child: OrgSettingsPage(services: compact ? services : const [])),
+          OrgShellTab(helpPageId: 'home.org/settings', title: settingsTitle, child: OrgSettingsPage(services: compact ? services : const [])),
           attentionKeys: compact ? const [AttentionTabs.orgServices, AttentionTabs.orgSettings] : const [AttentionTabs.orgSettings],
           attentionOrgId: oid)),
     ];
@@ -281,9 +287,27 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
             textDirection: dir,
             child: LayoutBuilder(builder: (context, constraints) {
               final w = constraints.maxWidth;
+              if (wsEligible(session)) {
+                // D-1150 / D-1160: every non-student role gets the workspace; the organization pages they hold a
+                // right to stay reachable (an admin's Management tab, the Profile tab, the palette, deep links)
+                final role = '${session.current?['my_role'] ?? ''}';
+                _tabs.sections = {
+                  'people': _peopleSubs(session),
+                  'academics': _academicSubs(session, role),
+                  if (session.can('schedule'))
+                    'timetable': [('timetable', t('الجدول الدراسي', 'Timetable'), Icons.calendar_month_rounded, const OrgSchedulePage())],
+                  'services': _serviceSubs(session),
+                };
+                return AppCommandPaletteScope(
+                  enabled: orgPaletteEnabled,
+                  onOpen: () => _openPalette(context, session, const []),
+                  child: TeacherWorkspace(session: session, userId: _uid, width: w, unreadCount: _unread(context)),
+                );
+              }
               final entries = _items(session, compact: Breakpoints.shellFor(w) == AppShellKind.mobile);
               tabs.keys = [for (final e in entries) e.$1];
-              final items = [for (final e in entries) e.$2];
+              // the section key keeps a tab's colour when the language changes its label (D-1170)
+              final items = [for (final e in entries) e.$2..prefKey = e.$1];
               final current = tabs.currentTab.clamp(0, items.length - 1);
               // no shell top bar: every page's OrgPageHeader carries search · refresh · calendar · bell · switcher;
               // Ctrl+K / ⌘K and the header's Search open the command palette (off with `org.search`)
@@ -297,6 +321,7 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
                   items: items,
                   unreadCount: _unread(context),
                   showTopBar: false,
+                  pinScope: 'org${session.currentId}',
                 ),
               );
             }),
@@ -441,8 +466,15 @@ class OrgStaffOnlyPage extends StatelessWidget {
 // ── section contents (key, label, icon, page) — each one only when I hold the right ──
 
 List<OrgSub> _peopleSubs(OrgSession s) => [
+      // the Students section and the unified student file (D-1400); kill switch org.students
+      ?studentsSub(s),
+      // the asks and lifecycle requests about students (D-1400); kill switch org.students.asks
+      ?studentRequestsSub(s),
       if (s.can('students') || s.can('teachers') || s.can('staff'))
         ('members', t('الأعضاء', 'Members'), Icons.groups_rounded, const OrgPeoplePage()),
+      // admissions & appointments (D-1200): cases from a draft to an active member; kill switch org.onboarding
+      if (s.currentId != null && !AppConfig.disableList.contains(onboardingFeatureKey) && (s.can('students') || s.can('teachers') || s.can('staff')))
+        ('onboarding', t('الالتحاق والتعيين', 'Admissions & appointments'), Icons.how_to_reg_rounded, OnboardingPage(orgId: s.currentId!)),
       if (s.can('departments') || s.myDeptIds.isNotEmpty)
         ('departments', t('الإدارات والأقسام', 'Departments'), Icons.apartment_rounded, const OrgDepartmentsPage()),
       // approvers can be unit managers or chosen assistants — the server lists only what I may decide
@@ -480,20 +512,20 @@ List<OrgSub> _serviceSubs(OrgSession s) => [
       ...msgServiceSubs(s),
     ];
 
-/// Page frame: THE page header (OrgPageHeader) + the page's own refresh scope + live reload when the organization
+/// Page frame (also the teacher workspace's, ws_shell.dart): THE page header (OrgPageHeader) + the page's own refresh scope + live reload when the organization
 /// changes. [header] false = the page draws OrgPageHeader itself (the Home, at the top of its scroll).
-class _OrgTab extends StatefulWidget {
-  const _OrgTab({required this.title, required this.child, this.header = true, this.helpPageId});
+class OrgShellTab extends StatefulWidget {
+  const OrgShellTab({required this.title, required this.child, this.header = true, this.helpPageId});
   final String? helpPageId;
   final String title;
   final Widget child;
   final bool header;
 
   @override
-  State<_OrgTab> createState() => _OrgTabState();
+  State<OrgShellTab> createState() => _OrgShellTabState();
 }
 
-class _OrgTabState extends State<_OrgTab> {
+class _OrgShellTabState extends State<OrgShellTab> {
   final _refresh = OrgPageRefresh();
 
   @override
@@ -587,6 +619,8 @@ class OrgOverviewPage extends StatelessWidget {
 /// The help page of a hub's section (the chip row has no header of its own): the page ids of the help seed.
 const _subHelpIds = <String, String>{
   'members': 'org.members',
+  'students': 'org.students',
+  'student_requests': 'org.students.requests',
   'departments': 'org.departments',
   'courses': 'org.courses',
   'governance': 'org.governance',

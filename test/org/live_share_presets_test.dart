@@ -56,7 +56,9 @@ void main() {
       expect(SharePreset.motion.tuned(LiveConfig.parse({'screen_bitrate_kbps': 6000})).maxBitrate, 6000000);
       // The defaults keep the presets as they were.
       expect(SharePreset.detail.tuned(LiveConfig.defaults).maxBitrate, 2500000);
-      expect(SharePreset.motion.tuned(LiveConfig.defaults).maxFps, 30);
+      // The app's default ceiling follows the server's (15, D-1504), so Motion drops to 15 until the super admin raises it.
+      expect(SharePreset.motion.tuned(LiveConfig.defaults).maxFps, 15);
+      expect(SharePreset.motion.tuned(LiveConfig.parse({'screen_fps_max': 30})).maxFps, 30);
       expect(SharePreset.detail.tuned(LiveConfig.defaults).maxFps, 15);
     });
 

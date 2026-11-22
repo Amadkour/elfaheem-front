@@ -1,7 +1,7 @@
 name: flutter_education_app
 description: Complete educational platform with VOD and live streaming
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: '>=3.10.0 <4.0.0'
@@ -72,6 +72,10 @@ dependencies:
   http: any
   device_info_plus: ^13.3.0
   uuid: any
+  # Offline-first outbox and read caches (D-1353): the device database on
+  # phones; sqflite_common_ffi on desktop and in tests. The web stays online-only.
+  sqflite: ^2.4.2
+  sqflite_common_ffi: ^2.3.6
   qr: ^3.0.2
   qr_flutter: ^4.1.0
   # Camera QR scanner for organization join codes (org_join_scan.dart).
@@ -92,6 +96,7 @@ dependencies:
   screen_brightness: ^2.1.11
   volume_controller: ^3.7.1
   local_auth: ^3.0.2
+  pdfrx: 3.0.0
 dependency_overrides:
   # The fork rebased on upstream v1.6.2+hotfix.4 (the exact version livekit_client 2.13.1 pins, WebRTC-SDK
   # 150.7871.01 on Android and iOS), branch nextbrain/1.6.2-hotfix.4: the single-projection screen-share capturer,

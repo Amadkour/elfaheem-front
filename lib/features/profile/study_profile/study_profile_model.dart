@@ -10,11 +10,27 @@
 //   GET|PUT /api/v1/admin/study-profile/settings   super admin
 //   GET  /api/v1/auth/policy → `study_profile`  the same settings before sign-in (the sign-up step)
 //   POST /api/v1/auth/register  `study_profile`  the sign-up step's values (stage + grade required)
+//
+// Offline (D-1351, D-1352): the GET is kept in ReadCache; an edit saved while offline (or whose PUT lost the
+// connection) waits in the outbox as a `study_profile` op with the `updated_at` it was made on. The server refuses
+// it as `sync_stale` when the profile changed elsewhere meanwhile and sends its own copy, which replaces the form
+// (StudyProfileSync).
 library;
 
+import 'dart:async' show unawaited;
+
+import 'package:flutter/foundation.dart' show ValueNotifier;
+
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart' show ThemeConfigProvider;
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
+import 'package:flutter_education_app/core/offline/sync/outbox.dart';
+import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
+import 'package:flutter_education_app/core/edu/edu_catalog.dart' show EduStage;
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/courses/course_filters.dart' show CourseFilterStore;
+import 'package:uuid/uuid.dart';
 
 /// Kill switch of every study-data surface (the sign-up step, the profile row, the home card, the admin page).
 const kStudyProfileFeatureKey = 'profile.study';
@@ -134,6 +150,11 @@ class StudyProfile {
     this.city,
     this.parentPhone,
     this.dob,
+    this.countryCode,
+    this.stageId,
+    this.gradeId,
+    this.areaId,
+    this.gender,
   });
 
   final String? stage;
@@ -146,6 +167,12 @@ class StudyProfile {
 
   /// YYYY-MM-DD (users.dob).
   final String? dob;
+
+  /// The catalog ids (Learning Hub, CONTRACT §3): the country, the stage and grade rows, the area (a governorate or a
+  /// city) and `m` / `f`. Sent instead of the old keys when a stage id is set; the server writes the old keys itself.
+  final String? countryCode;
+  final int? stageId, gradeId, areaId;
+  final String? gender;
 
   static const empty = StudyProfile();
 
@@ -166,21 +193,83 @@ class StudyProfile {
       city: _s(j['city']),
       parentPhone: _s(j['parent_phone']),
       dob: _s(j['dob']),
+      countryCode: _s(j['country_code']),
+      stageId: _n(j['stage_id']),
+      gradeId: _n(j['grade_id']),
+      areaId: _n(j['area_id']),
+      gender: _s(j['gender']),
     );
   }
 
+  static int? _n(dynamic v) => v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}'));
+
   /// The body of PUT /me/study-profile (every field: null clears it). [withDob] false for the sign-up, whose form
   /// sends the date of birth itself.
-  Map<String, dynamic> toJson({bool withDob = true}) => {
+  Map<String, dynamic> toJson({bool withDob = true}) {
+    final byIds = stageId != null;
+    return {
+      if (byIds) ...{
+        'country_code': countryCode,
+        'stage_id': stageId,
+        'grade_id': gradeId,
+        'area_id': areaId,
+        'gender': gender,
+        'track': track,
+      } else ...{
         'stage': stage,
         'grade': grade,
         'track': studyTrackApplies(stage, grade) ? track : null,
-        'school_name': schoolName,
         'governorate': governorate,
         'city': governorate == 'other' ? city : null,
-        'parent_phone': parentPhone,
-        if (withDob) 'dob': dob,
-      };
+        if (gender != null) 'gender': gender,
+      },
+      'school_name': schoolName,
+      'parent_phone': parentPhone,
+      if (withDob) 'dob': dob,
+    };
+  }
+
+  /// The catalog choice (country, stage, grade, track, area, gender) replaced as one; the old keys follow the ids.
+  StudyProfile withEdu({
+    String? countryCode,
+    int? stageId,
+    int? gradeId,
+    String? track,
+    int? areaId,
+    String? gender,
+    String? stageKey,
+    int? gradeNumber,
+  }) =>
+      StudyProfile(
+        stage: stageKey ?? stage,
+        grade: gradeNumber,
+        track: track,
+        schoolName: schoolName,
+        governorate: governorate,
+        city: city,
+        parentPhone: parentPhone,
+        dob: dob,
+        countryCode: countryCode,
+        stageId: stageId,
+        gradeId: gradeId,
+        areaId: areaId,
+        gender: gender,
+      );
+
+  /// What is still missing when the stage and grade come from the catalog [stages] (ids), else the old rule.
+  List<String> missingIn(List<EduStage>? stages, List<String> required) {
+    if (stages == null || stages.isEmpty) return missing(required);
+    EduStage? st;
+    for (final s in stages) {
+      if (s.id == stageId) st = s;
+    }
+    if (st == null) return const ['stage', 'grade'];
+    return [
+      if (st.hasGrades && st.grades.isNotEmpty && gradeId == null) 'grade',
+      for (final f in required)
+        if (f == 'governorate' ? areaId == null : (f == 'track' ? false : valueOf(f) == null)) f,
+    ];
+  }
 
   StudyProfile copyWith({
     String? stage,
@@ -210,6 +299,11 @@ class StudyProfile {
       city: city ?? this.city,
       parentPhone: parentPhone ?? this.parentPhone,
       dob: dob ?? this.dob,
+      countryCode: countryCode,
+      stageId: stageId,
+      gradeId: gradeId,
+      areaId: areaId,
+      gender: gender,
     );
   }
 
@@ -225,6 +319,11 @@ class StudyProfile {
       city: field == 'city' ? v : city,
       parentPhone: field == 'parent_phone' ? v : parentPhone,
       dob: field == 'dob' ? v : dob,
+      countryCode: countryCode,
+      stageId: stageId,
+      gradeId: gradeId,
+      areaId: areaId,
+      gender: gender,
     );
   }
 
@@ -275,10 +374,15 @@ class StudyProfile {
       other.governorate == governorate &&
       other.city == city &&
       other.parentPhone == parentPhone &&
-      other.dob == dob;
+      other.dob == dob &&
+      other.countryCode == countryCode &&
+      other.stageId == stageId &&
+      other.gradeId == gradeId &&
+      other.areaId == areaId &&
+      other.gender == gender;
 
   @override
-  int get hashCode => Object.hash(stage, grade, track, schoolName, governorate, city, parentPhone, dob);
+  int get hashCode => Object.hash(stage, grade, track, schoolName, governorate, city, parentPhone, dob, countryCode, stageId, gradeId, areaId, gender);
 }
 
 /// The super admin's settings (also in the public auth policy).
@@ -316,11 +420,14 @@ class StudySettings {
 }
 
 class StudyProfileView {
-  const StudyProfileView({required this.profile, required this.settings, this.missing = const []});
+  const StudyProfileView({required this.profile, required this.settings, this.missing = const [], this.updatedAt});
 
   final StudyProfile profile;
   final StudySettings settings;
   final List<String> missing;
+
+  /// The server's `updated_at` of the row (null = never saved): an offline edit's base (D-1352).
+  final String? updatedAt;
 
   bool get complete => missing.isEmpty;
 
@@ -328,12 +435,15 @@ class StudyProfileView {
         profile: StudyProfile.fromJson(j['profile'] is Map ? Map<String, dynamic>.from(j['profile'] as Map) : null),
         settings: StudySettings.fromJson(j['settings']),
         missing: [for (final f in (j['missing'] is List ? j['missing'] as List : const [])) '$f'],
+        updatedAt: j['updated_at'] is String && (j['updated_at'] as String).isNotEmpty ? j['updated_at'] as String : null,
       );
 }
 
 /// The server's `study_*` codes in the person's language (the server's own text is Arabic + `message_en`).
 String studyErrorText(Object error) {
   final e = ApiException.from(error);
+  final known = eduErrorText(e.code ?? e.detail['code']?.toString());
+  if (known != null) return known;
   final body = e.body;
   final detail = body is Map && body['detail'] is Map ? body['detail'] as Map : null;
   final en = detail?['message_en']?.toString();
@@ -357,9 +467,26 @@ class StudyProfileApi {
   static const _me = '/api/v1/me/study-profile';
   static const _admin = '/api/v1/admin/study-profile/settings';
 
-  Future<StudyProfileView> load() async => StudyProfileView.fromJson(_map(await _api.get(_me)));
+  Future<StudyProfileView> load() async =>
+      _seed(StudyProfileView.fromJson(_map(await readThrough('study.profile', () => _api.get(_me)))));
 
-  Future<StudyProfileView> save(StudyProfile p) async => StudyProfileView.fromJson(_map(await _api.put(_me, body: p.toJson())));
+  /// Keeps the edit in the outbox (offline, or the PUT lost the connection). False = no outbox here.
+  Future<bool> queue(StudyProfile p, {String? baseUpdatedAt, Outbox? outbox}) =>
+      StudyProfileSync.queue(p.toJson(), baseUpdatedAt: baseUpdatedAt, outbox: outbox);
+
+  Future<StudyProfileView> save(StudyProfile p) async {
+    final v = _seed(StudyProfileView.fromJson(_map(await _api.put(_me, body: p.toJson()))));
+    // the country may have changed: a tab switched off for the new country goes now, not after a restart (D-1341)
+    unawaited(ThemeConfigProvider.accountChanged(force: true));
+    return v;
+  }
+
+  /// The course filter bar's start (D-1325): the level is kept per user, so the student home never asks for it.
+  static StudyProfileView _seed(StudyProfileView v) {
+    final p = v.profile;
+    CourseFilterStore.rememberProfile(country: p.countryCode, stageId: p.stageId, gradeId: p.gradeId);
+    return v;
+  }
 
   Future<void> dismiss() => _api.post('$_me/dismiss');
 
@@ -369,3 +496,52 @@ class StudyProfileApi {
 
   static Map<String, dynamic> _map(dynamic r) => r is Map ? Map<String, dynamic>.from(r) : <String, dynamic>{};
 }
+
+/// The outbox side of the study profile (D-1352): queues an edit and takes the server's answer.
+abstract final class StudyProfileSync {
+  /// The server's copy after an op was applied, or the one it sent back with `sync_stale`; the open page shows it.
+  static final ValueNotifier<({StudyProfileView view, bool stale})?> latest = ValueNotifier(null);
+
+  static bool _wired = false;
+
+  static void wireSync([SyncEngine? engine]) {
+    if (_wired) return;
+    _wired = true;
+    (engine ?? SyncEngine.instance).listen(SyncKinds.studyProfile, take);
+  }
+
+  /// One op's answer (the engine has already told the person about a refusal, `sync_stale` included).
+  static void take(SyncResult r) {
+    final e = r.entity;
+    if (e == null || !(r.accepted || r.stale)) return;
+    final v = StudyProfileApi._seed(StudyProfileView.fromJson(e));
+    latest.value = (view: v, stale: r.stale);
+    if (r.accepted) unawaited(ThemeConfigProvider.accountChanged(force: true));
+  }
+
+  /// The PUT is the whole profile, so a later edit supersedes one still waiting and keeps ITS base (the row
+  /// holds it, so it survives a restart): two offline edits are one op with the first edit's base. Only while the
+  /// earlier edit is in the push under way does the new one go without a base (it would be "stale" against that
+  /// edit's own save).
+  static Future<bool> queue(Map<String, dynamic> body, {String? baseUpdatedAt, Outbox? outbox}) async {
+    wireSync();
+    final box = outbox ?? Outbox.instance;
+    final id = const Uuid().v4();
+    if (await box.supersede(SyncKinds.studyProfile, id: id, payload: body)) return true;
+    final base = await box.inFlight(SyncKinds.studyProfile) ? null : baseUpdatedAt;
+    final r = await box.enqueue(id: id, kind: SyncKinds.studyProfile, payload: body, baseUpdatedAt: base);
+    return r != EnqueueResult.postDirectly;
+  }
+}
+
+/// The Learning Hub's 422 codes on the study profile, the teaching levels and the parent link, in the person's
+/// language (null for any other code).
+String? eduErrorText(String? code) => switch (code) {
+      'edu_grade_mismatch' => t('هذا الصف لا يتبع المرحلة المختارة', 'That grade does not belong to the chosen stage'),
+      'edu_stage_invalid' => t('المرحلة المختارة غير متاحة', 'That stage is not available'),
+      'edu_area_invalid' => t('المنطقة المختارة غير صحيحة', 'That area is not valid'),
+      'study_grade_required' => t('اختر الصف أو الفرقة', 'Pick your grade or year'),
+      'consent_required' => t('يلزم موافقة ولي الأمر على ربط هذا الحساب', "A parent's consent is needed to link this account"),
+      'consent_version_required' => t('تعذّر تسجيل الموافقة، حاول مرة أخرى', 'The consent could not be recorded, try again'),
+      _ => null,
+    };

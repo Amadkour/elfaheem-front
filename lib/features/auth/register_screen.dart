@@ -31,6 +31,7 @@ import 'verify_way.dart';
 import 'username.dart';
 import 'username_field.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
+import 'package:flutter_education_app/features/onboarding/join/join_draft.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_pages.dart' show StudyProfileStepPage;
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_inputs.dart';
@@ -105,6 +106,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
       context.read<MyAuthProvider>().loadSpecialization(context);
       context.read<MyAuthProvider>().loadPolicy();
       context.read<AboutTermsProvider>().loadTerms(context);
+      _prefillFromJoin();
+    });
+  }
+
+  /// The join flow's answers (D-1323): the role, the name and phone, and a student's study step. Only into empty
+  /// fields, and only when the draft is for the role this page opened with.
+  Future<void> _prefillFromJoin() async {
+    final d = await JoinDraft.load();
+    if (d == null || !mounted) return;
+    final pre = widget.initialRole;
+    if (pre != null && pre != d.role) return;
+    final a = context.read<MyAuthProvider>();
+    setState(() {
+      if (pre == null) {
+        final i = a.roles.indexWhere((r) => r['text'] == d.role);
+        if (i >= 0) a.selectedRole = a.roles[i];
+      }
+      if (_fullNameController.text.isEmpty) _fullNameController.text = d.name;
+      if (_phoneController.text.isEmpty) _phoneController.text = d.phone;
+      if (d.role == 'student' && d.stageId != null) _study = d.studyProfile;
     });
   }
 
@@ -250,6 +271,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _usernameError = authProvider.usernameError);
     }
     if (success) {
+      // the join flow's answers are in the account now; a teacher's levels still go with the profile step (D-1323)
+      if (authProvider.selectedRole?['text'] != 'teacher') JoinDraft.clear();
       // Open the verification page on the way the student chose (they can still switch there).
       final pendingWays = verifyWaysForChannels(
         authProvider,
@@ -529,7 +552,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: LinkRow(
                 message: 'have_account'.tr,
                 linkText: 'auth_sign_in'.tr,
-                onTap: () => Navigator.pop(context),
+                // the register page can be the first route (a reload): popping it left a white page (D-1326)
+                onTap: () {
+                  final nav = Navigator.of(context);
+                  if (nav.canPop()) {
+                    nav.pop();
+                  } else {
+                    nav.pushReplacementNamed('/login');
+                  }
+                },
               ),
             ),
           ],

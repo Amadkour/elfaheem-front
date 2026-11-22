@@ -8,6 +8,10 @@
                  uploads them (temporary name, then rename) with release_manifest.py next to them, and lets the server
                  write the `android` entry of releases.json from the files it actually holds (size + SHA-256, compared
                  with the local ones). Alfaheem-latest.apk points to the universal APK.
+  --aab          builds the signed, obfuscated Play App Bundle, checks its signer (jarsigner + the certificate's
+                 SHA-256, which must equal the APKs'), copies it into build/releases/<version>-<build>/ with a .sha256 file
+                 and lists it as kind `aab` in manifest-draft.json there. It is NEVER uploaded or put on the downloads
+                 page: the store upload stays on Codemagic (android-store). --aab alone touches no server.
   --linux        runs scripts/release/build_linux.sh on the server (builds, packages .deb + .tar.gz, updates `linux`).
   --no-build     publish the APKs already in build/releases/<version>-<build>/ (made by an earlier run).
   --dry-run      build and check only; print what would be published.
@@ -23,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import shlex
@@ -126,6 +131,55 @@ def check_apk(apk: Path, build: int) -> str:
     return cert.group(1) if cert else "?"
 
 
+def java_tool(name: str) -> Path:
+    """keytool / jarsigner: JAVA_HOME, then Android Studio's bundled JDK, then PATH."""
+    exe = name + (".exe" if os.name == "nt" else "")
+    homes = [os.environ.get("JAVA_HOME", ""), r"C:\Program Files\Android\Android Studio\jbr",
+             "/Applications/Android Studio.app/Contents/jbr/Contents/Home"]
+    for h in homes:
+        if h and (Path(h) / "bin" / exe).exists():
+            return Path(h) / "bin" / exe
+    found = shutil.which(name)
+    if not found:
+        raise SystemExit(f"{name} not found (set JAVA_HOME)")
+    return Path(found)
+
+
+def check_aab(aab: Path) -> str:
+    """jarsigner verifies the bundle and it is not debug-signed. Returns the signer certificate's SHA-256."""
+    out = subprocess.run([str(java_tool("jarsigner")), "-verify", str(aab)], capture_output=True, text=True)
+    if out.returncode != 0 or "jar verified" not in out.stdout:
+        raise SystemExit(f"{aab.name}: jarsigner does not verify\n{out.stdout[-2000:]}{out.stderr[-2000:]}")
+    cert = subprocess.run([str(java_tool("keytool")), "-printcert", "-jarfile", str(aab)], capture_output=True, text=True).stdout
+    if "Android Debug" in cert:
+        raise SystemExit(f"{aab.name}: signed with the DEBUG key, refusing")
+    m = re.search(r"SHA256:\s*([0-9A-Fa-f:]+)", cert)
+    return m.group(1).replace(":", "").lower() if m else "?"
+
+
+def build_aab(ver: str, build: int) -> Path:
+    env = signing_env()
+    say("flutter build appbundle")
+    symbols = FRONT / "build" / "debug-info" / f"{ver}+{build}"
+    cmd = [flutter(), "build", "appbundle", "--release", "--obfuscate", f"--split-debug-info={symbols}"]
+    if subprocess.run(cmd, cwd=FRONT, env=env).returncode != 0:
+        raise SystemExit("appbundle build failed")
+    return FRONT / "build" / "app" / "outputs" / "bundle" / "release" / "app-release.aab"
+
+
+def write_draft(out_dir: Path, ver: str, build: int, entries: list[dict]) -> Path:
+    """build/releases/<version>-<build>/manifest-draft.json: the local files with size + SHA-256 (merged by file
+    name with an earlier run's). A draft only: releases.json on the server is written by release_manifest.py."""
+    draft = out_dir / "manifest-draft.json"
+    data = json.loads(draft.read_text(encoding="utf-8")) if draft.exists() else {}
+    files = {f["file"]: f for f in data.get("files", [])}
+    for e in entries:
+        files[e["file"]] = e
+    data = {"platform": "android", "version": ver, "build": build, "files": sorted(files.values(), key=lambda f: f["file"])}
+    draft.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return draft
+
+
 def build_android(ver: str, build: int, out_dir: Path) -> None:
     env = signing_env()
     exe = flutter()
@@ -189,6 +243,7 @@ def upload(sftp, local: Path, remote_path: str) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--android", action="store_true")
+    ap.add_argument("--aab", action="store_true")
     ap.add_argument("--linux", action="store_true")
     ap.add_argument("--no-build", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
@@ -196,12 +251,14 @@ def main() -> int:
     ap.add_argument("--notes-en", default="")
     ap.add_argument("--notes-ar", default="")
     a = ap.parse_args()
-    if not (a.android or a.linux):
-        ap.error("choose --android and/or --linux")
+    if not (a.android or a.linux or a.aab):
+        ap.error("choose --android, --aab and/or --linux")
 
     ver, build = version()
     out_dir = FRONT / "build" / "releases" / f"{ver}-{build}"
     files: list[tuple[str, Path]] = []
+    draft: list[dict] = []
+    signer = ""
     if a.android:
         if not a.no_build:
             build_android(ver, build, out_dir)
@@ -213,8 +270,34 @@ def main() -> int:
             cert = check_apk(apk, build)
             print(f"   {apk.name}: {apk.stat().st_size / 1e6:.1f} MB  sha256 {sha256(apk)}  signer {cert[:16]}…")
             files.append((arch, apk))
+            signer = cert
+            draft.append({"arch": arch, "kind": "apk", "file": apk.name, "size": apk.stat().st_size,
+                          "sha256": sha256(apk), "signer_sha256": cert, "published": not a.dry_run})
+    if a.aab:
+        aab = out_dir / f"Alfaheem-{ver}-{build}.aab"
+        built = FRONT / "build" / "app" / "outputs" / "bundle" / "release" / "app-release.aab"
+        if not a.no_build:
+            built = build_aab(ver, build)
+        if not built.exists():
+            raise SystemExit(f"missing {built} (run without --no-build, or scripts/build_release.sh appbundle)")
+        say("check the AAB")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(built, aab)
+        cert = check_aab(aab)
+        if signer and cert != signer:
+            raise SystemExit(f"{aab.name}: signer {cert} differs from the APKs' {signer}")
+        digest = sha256(aab)
+        (out_dir / f"{aab.name}.sha256").write_text(f"{digest}  {aab.name}\n", encoding="utf-8")
+        print(f"   {aab.name}: {aab.stat().st_size / 1e6:.1f} MB  sha256 {digest}  signer {cert[:16]}…")
+        draft.append({"arch": "universal", "kind": "aab", "file": aab.name, "size": aab.stat().st_size,
+                      "sha256": digest, "signer_sha256": cert, "published": False})
+    if draft:
+        print(f"   draft: {write_draft(out_dir, ver, build, draft)}")
     if a.dry_run:
         say("dry run: nothing uploaded")
+        return 0
+    if not (files or a.linux):
+        say("AAB ready in build/releases (not published: the store upload is Codemagic's android-store)")
         return 0
 
     p = pipeline()

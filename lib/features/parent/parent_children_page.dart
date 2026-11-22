@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import 'package:flutter_education_app/features/analytics/analytics_ui.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_models.dart' show DlProfile;
+import 'parent_consent.dart';
 import 'parent_link_providers.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
@@ -22,7 +23,13 @@ import 'package:flutter_education_app/design/master_detail/entity_detail_view.da
 import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
 import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
-import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
+import 'package:flutter_education_app/features/games/games_api.dart' show gamesOff, gamesLabel;
+import 'package:flutter_education_app/features/games/games_progress.dart' show ParentChildGamesPage;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry, t;
+import 'package:flutter_education_app/features/quran/quran_api.dart' show quranOff;
+import 'package:flutter_education_app/features/quran/quran_progress.dart' show QuranProgressPage;
+import 'package:flutter_education_app/features/nahw/nahw_api.dart' show nahwOff, nahwLabel;
+import 'package:flutter_education_app/features/nahw/nahw_tab.dart' show ParentChildNahwPage;
 
 class ParentChildrenPage extends StatefulWidget {
   const ParentChildrenPage({super.key, required this.onOpenLinkTab});
@@ -159,6 +166,14 @@ class _ChildCard extends StatelessWidget {
     final pr = profile;
     final attention = pr?.courses.where((b) => _needsAttention(b.attendance, b.examAvg)).length ?? 0;
     void report() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ParentChildReportScreen(studentId: id, studentName: name)));
+    final needsConsent = data['needs_consent'] == true;
+    // a child tab can ask for the consent itself (403 consent_required, D-1371): the card follows on the way back
+    void openTab(Route<void> route) {
+      final p = context.read<ParentLinkProvider>();
+      Navigator.of(context).push(route).then((_) {
+        if (needsConsent) p.refreshChildrenAndRequests();
+      });
+    }
     // The child's own tone (the same one their report hero wears): a parent learns each child's colour.
     return AppBlock(
       tone: parentChildTone(id),
@@ -205,8 +220,51 @@ class _ChildCard extends StatelessWidget {
             )
           else
             const SizedBox(height: AppSpace.md),
+          if (needsConsent) ...[
+            ConsentNeededNotice(onGive: () => _giveConsent(context, id, name)),
+            const SizedBox(height: AppSpace.sm),
+          ],
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
             AppButton(label: 'pl_tab_reports'.tr, icon: Icons.insights_rounded, variant: AppButtonVariant.secondary, size: AppButtonSize.sm, onPressed: report),
+            // the child's games: stars, badges, rounds (D-1346; hidden with the Games tab)
+            if (!gamesOff())
+              AppButton(
+                key: ValueKey('parent.games.$id'),
+                label: gamesLabel(),
+                icon: Icons.extension_rounded,
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                onPressed: () => openTab(MaterialPageRoute<void>(
+                  settings: RouteSettings(name: '/parent/children/$id/games'),
+                  builder: (_) => ParentChildGamesPage(studentId: id, studentName: name),
+                )),
+              ),
+            // the child's Quran memorization by surah and juz (D-1347; hidden with the Quran tab)
+            if (!quranOff())
+              AppButton(
+                key: ValueKey('parent.quran.$id'),
+                label: t('القرآن', 'Quran'),
+                icon: Icons.menu_book_rounded,
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                onPressed: () => openTab(MaterialPageRoute<void>(
+                  settings: RouteSettings(name: '/parent/children/$id/quran'),
+                  builder: (_) => QuranProgressPage.child(childId: id, name: name),
+                )),
+              ),
+            // the child's Arabic grammar progress per level and lesson (D-1349; hidden with the Grammar tab)
+            if (!nahwOff())
+              AppButton(
+                key: ValueKey('parent.nahw.$id'),
+                label: nahwLabel(),
+                icon: Icons.translate_rounded,
+                variant: AppButtonVariant.secondary,
+                size: AppButtonSize.sm,
+                onPressed: () => openTab(MaterialPageRoute<void>(
+                  settings: RouteSettings(name: '/parent/children/$id/nahw'),
+                  builder: (_) => ParentChildNahwPage(studentId: id, studentName: name),
+                )),
+              ),
             if (pr != null) AppStatusBadge(label: '${pr.courses.length} ${anTr('an_courses', 'Courses')}', icon: Icons.menu_book_rounded),
             if (attention > 0)
               AppStatusBadge(
@@ -220,11 +278,33 @@ class _ChildCard extends StatelessWidget {
                 tone: AppTone.danger,
                 icon: Icons.notifications_active_rounded,
               ),
+            // withdraw this parent's consent (D-1371): the server says first whether there is one to withdraw
+            if (!needsConsent && !(gamesOff() && quranOff() && nahwOff()))
+              AppButton(
+                key: ValueKey('consent.revoke.$id'),
+                label: t('سحب الموافقة', 'Revoke consent'),
+                icon: Icons.remove_moderator_outlined,
+                variant: AppButtonVariant.ghost,
+                size: AppButtonSize.sm,
+                onPressed: () => _revokeConsent(context, id, name),
+              ),
           ]),
         ]);
       }),
     );
   }
+}
+
+Future<void> _giveConsent(BuildContext context, int id, String name) async {
+  final p = context.read<ParentLinkProvider>();
+  if (!await showParentConsentDialog(context, childName: name)) return;
+  final ok = await p.giveConsent(id);
+  if (!ok) plToast(p.errorMessage);
+}
+
+Future<void> _revokeConsent(BuildContext context, int id, String name) async {
+  final p = context.read<ParentLinkProvider>();
+  if (await revokeParentConsentFlow(context, id, name)) await p.refreshChildrenAndRequests();
 }
 
 bool _needsAttention(double? attendance, double? exams) =>

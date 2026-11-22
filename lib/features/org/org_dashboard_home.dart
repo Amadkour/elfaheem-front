@@ -589,6 +589,9 @@ Future<void> orgPush(BuildContext context, String title, Widget page, {double? m
       session: context.read<OrgSession>(), dash: context.read<OrgDashController>(), tabs: tabs, title: title, page: page, maxWidth: maxWidth, width: width, helpPageId: helpPageId);
 }
 
+/// The workspace's Organization tab key (WsTabs.organization): where "Settings & roles" goes for an admin there.
+const _wsOrganizationKey = 'ws_organization';
+
 /// The section AND its chip when the section is a tab; else the sub-page pushed on top (phones: Services lives in
 /// "More"); else [fallback] (a page the server points at although I hold no section for it).
 Future<void> orgJump(BuildContext context, String section, {String? sub, (String, Widget)? fallback}) async {
@@ -935,7 +938,7 @@ class _OrgHomePageState extends State<OrgHomePage> {
           'courses' => sub('academics', 'courses', Icons.menu_book_rounded, t('المقررات', 'Courses')),
           'timetable' when hasTimetable =>
             orgLinkRow(Icons.calendar_month_rounded, t('الجدول الدراسي', 'Timetable'), () => tabs.go('timetable')),
-          'settings' => orgLinkRow(Icons.tune_rounded, t('الإعدادات والأدوار', 'Settings & roles'), () => tabs.go('settings')),
+          'settings' => orgLinkRow(Icons.tune_rounded, t('الإعدادات والأدوار', 'Settings & roles'), () => tabs.go(tabs.keys.contains(_wsOrganizationKey) ? _wsOrganizationKey : 'settings')),
           _ => null,
         };
     final councils = [

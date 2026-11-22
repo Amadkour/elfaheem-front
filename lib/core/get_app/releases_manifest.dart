@@ -19,11 +19,27 @@
 //   }
 //
 // A platform that is missing, has no usable file and no `pwa` is not offered (never a guessed link). File URLs must be
-// https (a relative URL is resolved against the manifest's own URL); anything else is dropped.
+// https (a relative URL is resolved against the manifest's own URL); anything else is dropped. A file of kind `aab`
+// (the Play upload, Learning Hub Phase 9) or one with `"listed": false` is never offered for download: it is dropped
+// here, so neither the banner nor the update check can see it.
 library;
 
 /// The manifest's platform keys. iPadOS reads `ios`.
 const List<String> kReleasePlatforms = ['android', 'ios', 'windows', 'macos', 'linux'];
+
+/// The installer kinds per platform, best first: what a download button or an update offer opens when a platform
+/// has several files for one CPU (Windows: the setup `.exe` before the zip; Linux: the AppImage, which updates in
+/// place, before the `.deb` and the `.tar.gz`). Mirrors `KINDS` in scripts/release/release_manifest.py.
+const Map<String, List<String>> kInstallerKinds = {
+  'android': ['apk'],
+  'windows': ['exe', 'msix', 'zip'],
+  'macos': ['dmg', 'zip'],
+  'linux': ['AppImage', 'deb', 'tar.gz'],
+  'ios': [],
+};
+
+/// Kinds that are published but never downloaded from the site (the Play App Bundle).
+const Set<String> kUnlistedKinds = {'aab'};
 
 /// One downloadable file.
 class ReleaseFile {
@@ -32,7 +48,7 @@ class ReleaseFile {
   /// `universal`, `arm64-v8a`, `armeabi-v7a`, `x64`, `arm64`, …
   final String arch;
 
-  /// `apk`, `deb`, `tar.gz`, `AppImage`, `msix`, `exe`, `dmg`, `zip`, …
+  /// `apk`, `deb`, `tar.gz`, `AppImage`, `msix`, `exe`, `dmg`, `zip`, … (never `aab`: see [kUnlistedKinds])
   final String kind;
   final String url;
 
@@ -94,21 +110,32 @@ class PlatformRelease {
   String notes(String lang) => lang == 'ar' ? (notesAr.isNotEmpty ? notesAr : notesEn) : (notesEn.isNotEmpty ? notesEn : notesAr);
 
   /// The file the main button downloads: the one built for [archHint] (the device's CPU, when the browser says),
-  /// else the `primary` arch, else `universal`, else the first file. Null when there is none.
-  ReleaseFile? primaryFile({String? archHint}) {
+  /// else the `primary` arch, else `universal`, else any file. Among the files for that CPU the best installer of
+  /// this platform wins ([kInstallerKinds]); [installedKind] (how the running app was installed, e.g. `deb`) comes
+  /// first, so an update replaces the copy the person has. Null when there is none.
+  ReleaseFile? primaryFile({String? archHint, String? installedKind}) {
     if (files.isEmpty) return null;
-    if (archHint != null && archHint.isNotEmpty) {
+    final order = [
+      if (installedKind != null && installedKind.isNotEmpty) installedKind,
+      ...?kInstallerKinds[platform],
+    ];
+    int rank(ReleaseFile f) {
+      final i = order.indexOf(f.kind);
+      return i < 0 ? order.length : i;
+    }
+
+    ReleaseFile? best(bool Function(ReleaseFile) test) {
+      ReleaseFile? out;
       for (final f in files) {
-        if (f.arch == archHint) return f;
+        if (test(f) && (out == null || rank(f) < rank(out))) out = f;
       }
+      return out;
     }
-    for (final f in files) {
-      if (primary.isNotEmpty && f.arch == primary) return f;
-    }
-    for (final f in files) {
-      if (f.arch == 'universal') return f;
-    }
-    return files.first;
+
+    return (archHint != null && archHint.isNotEmpty ? best((f) => f.arch == archHint) : null) ??
+        (primary.isNotEmpty ? best((f) => f.arch == primary) : null) ??
+        best((f) => f.arch == 'universal') ??
+        best((_) => true);
   }
 }
 
@@ -151,6 +178,7 @@ ReleasesManifest parseReleasesManifest(Object? json, {Uri? base}) {
     if (rawFiles is List) {
       for (final f in rawFiles) {
         if (f is! Map) continue;
+        if (kUnlistedKinds.contains(_str(f['kind'])) || f['listed'] == false) continue; // never a download
         final url = _safeUrl(_str(f['url']), base);
         if (url == null) continue;
         final sha = _str(f['sha256']).toLowerCase();
@@ -190,6 +218,25 @@ String? _safeUrl(String raw, Uri? base) {
   if (!uri.hasScheme && base != null) uri = base.resolveUri(uri);
   if (uri.scheme != 'https' || uri.host.isEmpty) return null;
   return uri.toString();
+}
+
+/// The CPU of the running Dart VM from `Platform.version` (`… on "windows_x64"`) as a manifest arch: `x64`, `arm64`,
+/// or null when it does not say. Desktop update offers use it (Android asks the device for its ABIs instead).
+String? archFromDartVersion(String platformVersion) {
+  final m = RegExp(r'on "[a-z]+_([a-z0-9]+)"').firstMatch(platformVersion);
+  return switch (m?.group(1)) {
+    'x64' => 'x64',
+    'arm64' => 'arm64',
+    _ => null,
+  };
+}
+
+/// How a Linux build was installed, so its update is the same kind: the AppImage runtime sets `APPIMAGE`, the `.deb`
+/// installs under /opt/nextbrain; anything else (the unpacked `.tar.gz`) gives `tar.gz`.
+String linuxInstalledKind({required Map<String, String> environment, required String executable}) {
+  if ((environment['APPIMAGE'] ?? '').isNotEmpty) return 'AppImage';
+  if (executable.startsWith('/opt/nextbrain/')) return 'deb';
+  return 'tar.gz';
 }
 
 /// What the running native app should do about [release] (the manifest entry of its own platform).
