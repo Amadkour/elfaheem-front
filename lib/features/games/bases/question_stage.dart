@@ -28,6 +28,7 @@ import 'package:flutter_education_app/features/games/core/age_theme.dart';
 import 'package:flutter_education_app/features/games/core/game_character.dart';
 import 'package:flutter_education_app/features/games/core/game_items.dart';
 import 'package:flutter_education_app/features/games/core/game_session.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 
 import 'stage_kit.dart';
 
@@ -149,6 +150,14 @@ class _QuestionStageState extends State<QuestionStage> {
         final o = (item.body['options'] as List)[k];
         return stageText(o is Map ? o['text'] : o);
     }
+  }
+
+  /// The picture of an `mcq` / `select_all` option (`options[k].image`), or null.
+  String? _optionImage(int k) {
+    if (item.type != ItemType.mcq && item.type != ItemType.selectAll) return null;
+    final o = (item.body['options'] as List)[k];
+    final u = o is Map ? o['image'] : null;
+    return u is String && u.isNotEmpty ? u : null;
   }
 
   bool _isRight(int k) {
@@ -438,6 +447,13 @@ class _QuestionStageState extends State<QuestionStage> {
         boxShadow: sf.lift(blur: 24, dy: 10),
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
+        if ((it.media.image ?? '').isNotEmpty) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(sf.radius - 4),
+            child: AppNetworkImage(url: it.media.image!, width: 200, height: 120, fit: BoxFit.cover),
+          ),
+          AppSpace.gapMd,
+        ],
         if (promptText.isNotEmpty)
           Text(promptText,
               textAlign: TextAlign.center,
@@ -536,12 +552,20 @@ class _QuestionStageState extends State<QuestionStage> {
             badge: badge,
             semanticsLabel: label,
             onTap: _locked ? null : () => _onChoose(k),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              textDirection: textDirectionOf(label, Directionality.of(context)),
-              style: arabicQuran ? quranTextStyle(19, color: sf.ink) : appText(18, w: FontWeight.w600, c: sf.ink, h: 1.3),
-            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              if (_optionImage(k) != null) ...[
+                ClipRRect(borderRadius: BorderRadius.circular(10), child: AppNetworkImage(url: _optionImage(k)!, width: 48, height: 48, fit: BoxFit.cover)),
+                AppSpace.gapSm,
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  textDirection: textDirectionOf(label, Directionality.of(context)),
+                  style: arabicQuran ? quranTextStyle(19, color: sf.ink) : appText(18, w: FontWeight.w600, c: sf.ink, h: 1.3),
+                ),
+              ),
+            ]),
           ),
         ),
       );
