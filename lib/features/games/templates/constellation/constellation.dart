@@ -5,7 +5,8 @@
 //              golden thread with a soft chime, a distractor star is wrong
 //   pair       join each star to its partner (any order)
 //   a finished set reveals a drawing (crescent, lantern, book) that flies into "my sky" at the bottom; the server adds it to
-//   the learner's `profile.sky` with the play (nothing is promised here: the strip shows what this round added)
+//   the learner's `profile.sky` with the play (nothing is promised here: the strip shows the saved sky, `skyBase` from the profile
+//   GamePlayPage loads with the draw, then what this round added)
 //
 // Calm (a sacred set, `session.calm`): the dawn-teal night, no sparks, no shooting star, no penalty; a wrong try is a soft
 // amber shimmer, a line "try again", and the AYAH REPLAYS so the right word is heard. The reciter quick switch sits in the
@@ -42,6 +43,9 @@ class ConstellationTemplate extends GameTemplate {
 
   /// Drawings the learner already has in their sky.
   final int skyBase;
+
+  /// This template over a learner whose profile already holds [count] drawings (GamePlayPage: `profile.sky.length`).
+  ConstellationTemplate withSky(int count) => ConstellationTemplate(silent: silent, reciters: reciters, skyBase: count);
 
   @override
   String get key => 'constellation';

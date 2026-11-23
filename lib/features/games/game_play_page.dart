@@ -46,6 +46,7 @@ import 'package:flutter_education_app/features/games/core/game_audio.dart';
 import 'package:flutter_education_app/features/games/core/game_session.dart';
 import 'package:flutter_education_app/features/games/core/game_template.dart';
 import 'package:flutter_education_app/features/games/learner/result_sheet.dart';
+import 'package:flutter_education_app/features/games/templates/constellation/constellation.dart';
 import 'package:flutter_education_app/features/games/templates/ghost_duel/duel_scene.dart';
 import 'package:flutter_education_app/features/games/templates/register_all.dart';
 import 'package:provider/provider.dart';
@@ -207,6 +208,9 @@ class _GamePlayPageState extends State<GamePlayPage> {
   String? _roundId;
   List<Map<String, Object>>? _trace;
 
+  /// The learner's games profile, for a template that draws from it (Constellation's "my sky"); null = not loaded.
+  V4Profile? _profile;
+
   @override
   void initState() {
     super.initState();
@@ -256,6 +260,10 @@ class _GamePlayPageState extends State<GamePlayPage> {
       _loading = true;
       _error = null;
     });
+    // asked alongside the draw, only for a template that uses it; a failure or a slow answer is simply 0
+    final profile = (!GuestState.active && kProfileTemplates.contains(_game.engine))
+        ? _v4.profile().timeout(const Duration(seconds: 4)).then<V4Profile?>((p) => p).catchError((Object _) => null)
+        : null;
     Map<String, dynamic>? draw;
     try {
       draw = (await _v4.draw(_game.id, mode: widget.review ? 'review' : null, challenge: widget.challenge)).raw;
@@ -302,6 +310,11 @@ class _GamePlayPageState extends State<GamePlayPage> {
         _ghostPlayId = g?.id;
       } catch (_) {}
       if (!mounted) return;
+    }
+    if (profile != null) {
+      final p = await profile;
+      if (!mounted) return;
+      if (p != null) _profile = p;
     }
     _roundId = session.roundId;
     _session = session;
@@ -543,6 +556,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
           onFinished: _finished,
           onTrace: (t) => _trace = t,
           v4Session: _isV4 ? _session : null,
+          profile: _profile,
           unreadable: _unreadable,
           extras: switch (sub) {
             V4PlaySubmission(v4Result: final r?) => GameResultExtras(
@@ -600,12 +614,16 @@ class GamePlayView extends StatelessWidget {
     this.onTrace,
     this.rankToday,
     this.v4Session,
+    this.profile,
     this.unreadable = false,
     this.extras,
   });
 
   /// Games v4: the round in progress, drawn by the game's template (instead of the v1-v3 engine).
   final GameSession? v4Session;
+
+  /// The learner's games profile when the page loaded it (see [templateWithProfile]).
+  final V4Profile? profile;
 
   /// The draw was empty or unreadable: "needs a newer version".
   final bool unreadable;
@@ -683,7 +701,7 @@ class GamePlayView extends StatelessWidget {
       // a template fills the space it is given (a Flame stage, a board): bounded height, never inside a ListView
       return AppWidthBox(
         width: AppWidth.content,
-        child: KeyedSubtree(key: ValueKey('games.v4.$round'), child: kGameTemplates[game.engine]!.build(v4Session!)),
+        child: KeyedSubtree(key: ValueKey('games.v4.$round'), child: templateWithProfile(kGameTemplates[game.engine]!, profile).build(v4Session!)),
       );
     } else if (v4Session == null && kGameTemplates.containsKey(game.engine)) {
       body = const AppListSkeleton(items: 4, padding: EdgeInsets.zero);
@@ -713,3 +731,12 @@ bool _registered(String engine) {
   registerGameTemplates();
   return kGameTemplates.containsKey(engine);
 }
+
+/// The templates that draw from the learner's games profile: the page asks for `/me/games/profile` with their draw.
+const Set<String> kProfileTemplates = {'constellation'};
+
+/// [template] with what it takes from [profile] (Constellation: the drawings already in the learner's sky).
+GameTemplate templateWithProfile(GameTemplate template, V4Profile? profile) => switch (template) {
+      ConstellationTemplate() when profile != null => template.withSky(profile.sky.length),
+      _ => template,
+    };

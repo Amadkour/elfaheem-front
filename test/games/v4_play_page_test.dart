@@ -5,10 +5,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/games/content/games_v4_api.dart';
 import 'package:flutter_education_app/features/games/core/game_template.dart';
 import 'package:flutter_education_app/features/games/game_play_page.dart';
 import 'package:flutter_education_app/features/games/games_models.dart';
 import 'package:flutter_education_app/features/games/learner/result_sheet.dart';
+import 'package:flutter_education_app/features/games/templates/constellation/constellation.dart';
 import 'package:flutter_education_app/features/games/templates/register_all.dart';
 import 'package:flutter_education_app/features/games/templates/verse_builder/verse_builder.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,6 +46,36 @@ void main() {
     expect(find.byType(VerseBuilderGame), findsOneWidget);
     expect(fake!.calls.where((c) => c.key.startsWith('POST /api/v1/games/31/draw')), hasLength(1));
     await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Constellation gets the saved sky of the learner profile loaded with the draw', (tester) async {
+    final cn = Map<String, dynamic>.from(draw)..['template'] = 'constellation';
+    fake = FakeApi({
+      'POST /api/v1/games/31/draw': (_) => cn,
+      'GET /api/v1/me/games/profile': (_) => {
+            'age_band': 'adult',
+            'sky': [
+              {'shape': 'crescent'},
+              {'shape': 'lantern'},
+            ],
+          },
+    }, latency: Duration.zero)
+      ..install();
+    const g = GameSummary(id: 31, key: 'cn', engine: 'constellation', titleAr: 'كوكبة', titleEn: 'Constellation');
+    await tester.pumpWidget(layoutHost(GamePlayPage(game: g, userId: 1), scaffold: false));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(tester.widget<ConstellationView>(find.byType(ConstellationView)).skyBase, 2);
+    expect(fake!.calls.where((c) => c.key == 'GET /api/v1/me/games/profile'), hasLength(1));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  test('templateWithProfile: only Constellation takes the sky; no profile keeps the registry template', () {
+    const p = V4Profile({'sky': [{}, {}, {}]});
+    expect((templateWithProfile(const ConstellationTemplate(), p) as ConstellationTemplate).skyBase, 3);
+    expect((templateWithProfile(const ConstellationTemplate(), null) as ConstellationTemplate).skyBase, 0);
+    final vb = const VerseBuilderTemplate();
+    expect(templateWithProfile(vb, p), same(vb));
   });
 
   testWidgets('an unreadable draw shows the newer-version fallback', (tester) async {

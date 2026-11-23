@@ -204,7 +204,10 @@ class ConstellationGame extends FlameGame {
     final labels = List<_Label?>.filled(n, null);
     _r = 40;
     final big = _w >= 720;
-    final fs = big ? 18.0 : 16.0;
+    // readable at arm's length: Quran / Hadith 24 (28 on a wide screen), never under 20 after scaling; other words 19 / 21,
+    // never under 17 (the polish bar)
+    final fs = r.quran ? (big ? 28.0 : 24.0) : (big ? 21.0 : 19.0) * (kids ? 1.06 : 1.0);
+    final floor = r.quran ? 20.0 : 17.0;
 
     void place(List<int> ids, Rect area) {
       final k = ids.length;
@@ -223,7 +226,7 @@ class ConstellationGame extends FlameGame {
         final cell = cells[j];
         final cx = area.left + (cell % cols + 0.5) * cw, top = area.top + (cell ~/ cols) * ch;
         final star = r.stars[id];
-        final lab = _makeLabel(star.label, r.quran, fs, cw - 10, math.max(18.0, ch - base * 2.6));
+        final lab = _makeLabel(star.label, r.quran, fs, floor, cw - 10, math.max(18.0, ch - base * 2.6));
         labels[id] = lab;
         final labelH = lab.chip.height * lab.scale;
         final content = base * 2.5 + labelH;
@@ -257,22 +260,36 @@ class ConstellationGame extends FlameGame {
     _labels = labels;
   }
 
-  _Label _makeLabel(String text, bool quran, double size, double maxW, double maxH) {
+  /// A label laid out once: it wraps only between words (the line is never narrower than its longest word, so a word is
+  /// never split), and the whole plate scales down to fit its cell, never under [floor] px of text. No ellipsis.
+  _Label _makeLabel(String text, bool quran, double size, double floor, double maxW, double maxH) {
     TextStyle style(Color c) => quran ? quranTextStyle(size, color: c) : appText(size, w: FontWeight.w700, c: c, h: 1.3);
     final dir = textDirectionOf(text, AppConfig.lang == 'ar' ? TextDirection.rtl : TextDirection.ltr);
     TextPainter make(Color c, double w) =>
         TextPainter(text: TextSpan(text: text, style: style(c)), textDirection: dir, textAlign: TextAlign.center)..layout(maxWidth: w);
-    var tp = make(night.text, maxW);
+    final minScale = math.min(1.0, floor / size);
+    const padX = 14.0;
+    var word = 0.0;
+    final probe = TextPainter(textDirection: dir);
+    for (final w in text.split(RegExp(r'\s+'))) {
+      if (w.isEmpty) continue;
+      probe
+        ..text = TextSpan(text: w, style: style(night.text))
+        ..layout();
+      word = math.max(word, probe.width);
+    }
+    probe.dispose();
+    // the widest the text may run before it is scaled into the cell, and never narrower than its longest word
+    final lineW = math.max(word + 1, maxW / minScale - padX * 2);
+    var tp = make(night.text, lineW);
     var widest = 0.0;
     for (final m in tp.computeLineMetrics()) {
       widest = math.max(widest, m.width);
     }
-    widest = math.max(widest, tp.width);
-    final plateW = widest + 16, plateH = quran ? tp.height * 0.84 : tp.height + 8;
-    final scale = math.min(1.0, math.min(maxW / plateW, maxH / plateH)).clamp(0.5, 1.0);
-    final lit = make(night.textLit, maxW);
-    tp = make(night.text, maxW);
-    return _Label(tp, lit, scale, RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: plateW, height: plateH), Radius.circular(math.min(plateH / 2, 16))));
+    final plateW = widest + padX * 2, plateH = quran ? tp.height * 0.86 + 6 : tp.height + 10;
+    final scale = math.min(1.0, math.min(maxW / plateW, maxH / plateH)).clamp(minScale, 1.0);
+    final lit = make(night.textLit, lineW);
+    return _Label(tp, lit, scale, RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: plateW, height: plateH), Radius.circular(math.min(plateH / 2, 18))));
   }
 
   // ------------------------------------------------------------------------------------------------ input
