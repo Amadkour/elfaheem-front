@@ -143,7 +143,7 @@ void main() {
                         child: SizedBox(
                             width: 360,
                             child: Builder(builder: (c) => Column(mainAxisSize: MainAxisSize.min, children: [
-                                  for (final g in [0, 3, 6]) Padding(padding: const EdgeInsets.all(6), child: GrowingTreeCard(surface: StageSurface(theme, c), grown: g, total: 6, height: 200)),
+                                  for (final g in [0, 3, 6]) Padding(padding: const EdgeInsets.all(6), child: GrowingTreeCard(surface: StageSurface(theme, c), grown: g, total: 6, height: 190)),
                                 ])))))),
             scale: 1,
             scaffold: false));
