@@ -9,6 +9,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/engines/game_engine.dart';
 
@@ -34,6 +35,35 @@ abstract class GameTemplate {
   IconData get icon => Icons.extension_rounded;
 
   Widget build(GameSession s);
+
+  /// The sacred lock, one rule for every template (G3): a template with [sacredAllowed] false never shows a sacred
+  /// draw or an item of the Quran or the Hadith, whatever its own page checks.
+  bool locks(GameSession s) =>
+      !sacredAllowed && (s.sacred || s.items.any((i) => i.sacred || i.sourceKind == 'quran' || i.sourceKind == 'hadith'));
+
+  /// What the play page and the host draw: [build], or the lock.
+  Widget play(GameSession s) => locks(s) ? const SacredLocked() : build(s);
+}
+
+/// What a sacred draw gets on a template that never shows sacred text.
+class SacredLocked extends StatelessWidget {
+  const SacredLocked({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpace.lg),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.lock_outline_rounded, size: AppIconSize.xl, color: muted),
+          const SizedBox(height: AppSpace.sm),
+          Text(t('هذه اللعبة لا تعرض النصوص المقدسة', 'This game never shows sacred text'),
+              textAlign: TextAlign.center, style: AppType.body(context).copyWith(color: muted)),
+        ]),
+      ),
+    );
+  }
 }
 
 /// The templates this app plays, by key.
@@ -86,6 +116,6 @@ class _GameTemplateHostState extends State<GameTemplateHost> {
   Widget build(BuildContext context) {
     final s = _session;
     if (s == null) return Center(child: Text(t('تحتاج هذه اللعبة إلى إصدار أحدث من التطبيق', 'This game needs a newer version of the app')));
-    return widget.template.build(s);
+    return widget.template.play(s);
   }
 }

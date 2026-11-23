@@ -153,7 +153,7 @@ Request (all optional): `{"mode": "play" | "review" | "preview", "reciter": "<ke
 ```
 - `round_id`: `string|null`. The draw calls the v3 ranked round itself when `games.champions` is on and an attempt is left; null otherwise, and the round is played unranked. `ranked_left`: as v3.
 - `reciter`: the learner's effective reciter, null when the draw has no Quran audio.
-- Errors: 404 `game_not_found`; 422 `not_a_v4_game`; 403 `feature_disabled` (`student_tab_games`, `games.templates_v4`; `games.challenges` with `challenge`); 403 `level_locked`; 403 `template_off`; 409 `no_items` (nothing left after the filters); 422 `reciter_unknown`; 404 `challenge_not_found`; 429 `too_many_attempts`.
+- Errors: 404 `game_not_found`; 422 `not_a_v4_game`; 403 `feature_disabled` (`student_tab_games`, `games.templates_v4`; `games.challenges` with `challenge`); 403 `level_locked`; 403 `template_off`; 409 `no_items` (nothing left after the filters); 422 `reciter_unknown`; 404 `challenge_not_found`; 409 `challenge_closed` and 403 `challenge_not_joined` (with `challenge`); 429 `too_many_attempts`.
 - `mode: "preview"`: platform admins only (403 `admin_required`). Unapproved items are included and carry `status`; `round_id` is null; a play that names a preview draw is graded and answered but nothing is saved (§8).
 - `mode: "review"`: due SRS items of this level's source come first with no 30 % cap.
 
@@ -351,10 +351,12 @@ The app draws the race with the same rule, shows the server's `duel.won` when it
 
 ### Challenges (`games.challenges`)
 
-- `POST /games/challenges {game_id}` → `challenge` (201). `challenge` = `{id, code, kind: "friends", game: level, seed, owner: "First L.", week_start, status: "open" | "closed", link: "https://nextbrain.site/app/games/challenge/<code>", board: [{rank, name, score, max_score, duration_ms, is_me}], joined: bool}`. `code`: 8 characters of the coupon alphabet. A challenge closes 7 days after it was made. 429 `too_many_challenges` (10 a day).
+- `POST /games/challenges {game_id}` → `challenge` (201). `challenge` = `{id, code, kind: "friends", game: level, seed, owner: "First L.", week_start, closes_at, status: "open" | "closed", link: "https://nextbrain.site/app/games/challenge/<code>", board: [{rank, name, score, max_score, duration_ms, is_me}], joined: bool}`. `code`: 8 characters of the coupon alphabet. A challenge closes 7 days after it was made: `closes_at` (naive UTC ISO 8601 `YYYY-MM-DDTHH:MM:SS[.ffffff]`, as `issued_at`). 429 `too_many_challenges` (10 a day).
 - `GET /games/challenges/{code}` → `challenge` (404 `challenge_not_found`). `POST /games/challenges/{code}/join` → `challenge` (409 `challenge_closed`; at most 30 members: 409 `challenge_full`).
 - `GET /me/games/challenges` → `{items: [challenge without board]}`, open first, the last 20.
-- Playing is `POST /games/{id}/draw {challenge: code}`; the board takes each member's first play of that draw (never ranked twice, never better by replaying).
+- Playing is `POST /games/{id}/draw {challenge: code}`; the board takes each member's first play of that draw (never ranked twice, never better by replaying), made before `closes_at`.
+- A challenge draw needs the challenge open (409 `challenge_closed`) and the caller joined (403 `challenge_not_joined`). It skips `level_locked` (never `template_off`), and its items are filtered by the OWNER's age band so every member gets the same items.
+- A challenge play on a level still locked for that player counts for the board and pays coins (§7), but leaves `game_progress` untouched (no stars, `unlocked: []`), so it never unlocks a later level.
 - Class board: `GET /games/class-board?course_id=` → `{week_start, mine: row|null, items: [{rank, course_id, title, points_avg, players, is_mine}]}`. A class is a course. `points_avg` = the week's rank points of its students ÷ its students who played a ranked game that week; courses with fewer than 3 such students are left out; top 20. 403 `not_enrolled`.
 
 ### Smart breaks (`games.breaks`)

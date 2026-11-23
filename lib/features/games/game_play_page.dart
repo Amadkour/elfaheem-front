@@ -826,7 +826,7 @@ class GamePlayView extends StatelessWidget {
       // a template fills the space it is given (a Flame stage, a board): bounded height, never inside a ListView
       return AppWidthBox(
         width: AppWidth.content,
-        child: KeyedSubtree(key: ValueKey('games.v4.$round'), child: templateWithProfile(kGameTemplates[game.engine]!, profile).build(v4Session!)),
+        child: KeyedSubtree(key: ValueKey('games.v4.$round'), child: templateWithProfile(kGameTemplates[game.engine]!, profile).play(v4Session!)),
       );
     } else if (v4Session == null && kGameTemplates.containsKey(game.engine)) {
       // a v4 level with no round, not loading and no error: never an endless skeleton, offer to start again
