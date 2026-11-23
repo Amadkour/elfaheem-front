@@ -1,0 +1,4141 @@
+{
+ "version": 1,
+ "about": "Games v4 grading vectors (docs/games-v4/CONTRACT.md sections 5-7). The Dart session (lib/features/games/core) and the server's items_grade.grade must both give these numbers. valid=false: the trace is refused as a whole (the play is saved unranked, reason bad_trace). Items are in the snapshot form of a draw (section 4). duration_ms is the last entry's ms. too_fast: duration_ms < counted x min_step_ms. rank_points is computed for every valid case as if the play ranked.",
+ "constants": {
+  "min_step_ms": 400,
+  "max_trace": 500,
+  "program_runs": 3,
+  "program_max_steps": 200,
+  "par_s": {
+   "mcq": 12,
+   "true_false": 8,
+   "select_all": 15,
+   "sequence": 4,
+   "classify": 5,
+   "pair": 6,
+   "fraction": 20,
+   "program": 45,
+   "combine": 15
+  },
+  "par_per_unit_types": [
+   "sequence",
+   "classify",
+   "pair"
+  ],
+  "difficulty_percent": {
+   "easy": 100,
+   "medium": 125,
+   "hard": 150
+  },
+  "end_values": [
+   "done",
+   "timer",
+   "lives",
+   "quit"
+  ],
+  "no_speed_bonus_templates": [
+   "growing_tree"
+  ],
+  "stars_percent": [
+   90,
+   60,
+   30
+  ],
+  "ghost_max_events": 200
+ },
+ "items": {
+  "mcq_capital": {
+   "type": "mcq",
+   "body": {
+    "options": [
+     {
+      "text": "القاهرة"
+     },
+     {
+      "text": "الرياض"
+     },
+     {
+      "text": "عمّان"
+     },
+     {
+      "text": "تونس"
+     }
+    ],
+    "answer": 0,
+    "show": [
+     2,
+     0,
+     3,
+     1
+    ]
+   }
+  },
+  "mcq_planet": {
+   "type": "mcq",
+   "body": {
+    "options": [
+     {
+      "text": "Mars"
+     },
+     {
+      "text": "Venus"
+     },
+     {
+      "text": "Jupiter"
+     }
+    ],
+    "answer": 2,
+    "show": [
+     1,
+     2,
+     0
+    ]
+   }
+  },
+  "tf_water": {
+   "type": "true_false",
+   "body": {
+    "answer": true
+   }
+  },
+  "tf_sun": {
+   "type": "true_false",
+   "body": {
+    "answer": false
+   }
+  },
+  "sel_even": {
+   "type": "select_all",
+   "body": {
+    "options": [
+     {
+      "text": "2"
+     },
+     {
+      "text": "3"
+     },
+     {
+      "text": "4"
+     },
+     {
+      "text": "7"
+     },
+     {
+      "text": "8"
+     }
+    ],
+    "answers": [
+     0,
+     2,
+     4
+    ],
+    "show": [
+     4,
+     1,
+     0,
+     3,
+     2
+    ]
+   }
+  },
+  "seq_112_1": {
+   "type": "sequence",
+   "sacred": true,
+   "body": {
+    "mode": "order",
+    "unit": "word",
+    "tokens": [
+     "قُلْ",
+     "هُوَ",
+     "ٱللَّهُ",
+     "أَحَدٌ"
+    ],
+    "eq": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "blanks": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "extra": [
+     "ٱلصَّمَدُ",
+     "كُفُوًا"
+    ],
+    "show": [
+     3,
+     5,
+     0,
+     2,
+     4,
+     1
+    ]
+   }
+  },
+  "seq_repeat": {
+   "type": "sequence",
+   "body": {
+    "mode": "order",
+    "unit": "word",
+    "tokens": [
+     "very",
+     "good",
+     "very",
+     "nice"
+    ],
+    "eq": [
+     0,
+     1,
+     0,
+     3
+    ],
+    "blanks": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "extra": [],
+    "show": [
+     1,
+     3,
+     0,
+     2
+    ]
+   }
+  },
+  "seq_complete": {
+   "type": "sequence",
+   "body": {
+    "mode": "complete",
+    "unit": "word",
+    "tokens": [
+     "the",
+     "cat",
+     "sat",
+     "on",
+     "the",
+     "mat"
+    ],
+    "eq": [
+     0,
+     1,
+     2,
+     3,
+     0,
+     5
+    ],
+    "blanks": [
+     1,
+     5
+    ],
+    "extra": [
+     "dog"
+    ],
+    "show": [
+     6,
+     5,
+     1
+    ]
+   }
+  },
+  "seq_next": {
+   "type": "sequence",
+   "body": {
+    "mode": "next_word",
+    "unit": "word",
+    "tokens": [
+     "one",
+     "two",
+     "three",
+     "four",
+     "five"
+    ],
+    "eq": [
+     0,
+     1,
+     2,
+     3,
+     4
+    ],
+    "blanks": [
+     2,
+     3,
+     4
+    ],
+    "extra": [
+     "six",
+     "nine"
+    ],
+    "show": [
+     3,
+     6,
+     2,
+     5,
+     4
+    ]
+   }
+  },
+  "cls_irab": {
+   "type": "classify",
+   "body": {
+    "buckets": [
+     {
+      "key": "fail",
+      "label": {
+       "ar": "فاعل",
+       "en": "Subject"
+      }
+     },
+     {
+      "key": "fil",
+      "label": {
+       "ar": "فعل",
+       "en": "Verb"
+      }
+     },
+     {
+      "key": "maful",
+      "label": {
+       "ar": "مفعول به",
+       "en": "Object"
+      }
+     }
+    ],
+    "cases": [
+     {
+      "key": "raf",
+      "label": {
+       "ar": "رفع",
+       "en": "Raf"
+      }
+     },
+     {
+      "key": "nasb",
+      "label": {
+       "ar": "نصب",
+       "en": "Nasb"
+      }
+     },
+     {
+      "key": "jarr",
+      "label": {
+       "ar": "جرّ",
+       "en": "Jarr"
+      }
+     }
+    ],
+    "tokens": [
+     {
+      "text": "كتبَ",
+      "bucket": "fil",
+      "case": null
+     },
+     {
+      "text": "الطالبُ",
+      "bucket": "fail",
+      "case": "raf"
+     },
+     {
+      "text": "الدرسَ",
+      "bucket": "maful",
+      "case": "nasb"
+     }
+    ],
+    "show": [
+     2,
+     0,
+     1
+    ]
+   }
+  },
+  "cls_animals": {
+   "type": "classify",
+   "body": {
+    "buckets": [
+     {
+      "key": "bird",
+      "label": {
+       "ar": "طائر",
+       "en": "Bird"
+      }
+     },
+     {
+      "key": "fish",
+      "label": {
+       "ar": "سمكة",
+       "en": "Fish"
+      }
+     }
+    ],
+    "cases": null,
+    "tokens": [
+     {
+      "text": "Eagle",
+      "bucket": "bird",
+      "case": null
+     },
+     {
+      "text": "Shark",
+      "bucket": "fish",
+      "case": null
+     },
+     {
+      "text": "Owl",
+      "bucket": "bird",
+      "case": null
+     }
+    ],
+    "show": [
+     1,
+     2,
+     0
+    ]
+   }
+  },
+  "pair_caps": {
+   "type": "pair",
+   "body": {
+    "pairs": [
+     {
+      "a": "Egypt",
+      "b": "Cairo"
+     },
+     {
+      "a": "Jordan",
+      "b": "Amman"
+     },
+     {
+      "a": "Tunisia",
+      "b": "Tunis"
+     }
+    ],
+    "show_a": [
+     1,
+     0,
+     2
+    ],
+    "show_b": [
+     2,
+     1,
+     0
+    ]
+   }
+  },
+  "frac_shape": {
+   "type": "fraction",
+   "body": {
+    "shape": "pizza",
+    "n": 3,
+    "d": 4
+   }
+  },
+  "frac_add": {
+   "type": "fraction",
+   "body": {
+    "op": "add",
+    "a": [
+     1,
+     2
+    ],
+    "b": [
+     1,
+     3
+    ]
+   }
+  },
+  "frac_sub": {
+   "type": "fraction",
+   "body": {
+    "op": "sub",
+    "a": [
+     3,
+     4
+    ],
+    "b": [
+     1,
+     4
+    ]
+   }
+  },
+  "prog_grid": {
+   "type": "program",
+   "body": {
+    "w": 4,
+    "h": 4,
+    "start": [
+     0,
+     3,
+     0
+    ],
+    "goal": [
+     2,
+     1
+    ],
+    "walls": [
+     [
+      0,
+      1
+     ]
+    ],
+    "cmds": [
+     "F",
+     "L",
+     "R",
+     "LOOP"
+    ],
+    "max": 8,
+    "par": 6
+   }
+  },
+  "prog_noloop": {
+   "type": "program",
+   "body": {
+    "w": 3,
+    "h": 3,
+    "start": [
+     0,
+     0,
+     1
+    ],
+    "goal": [
+     2,
+     0
+    ],
+    "walls": [],
+    "cmds": [
+     "F",
+     "L",
+     "R"
+    ],
+    "max": 4,
+    "par": 2
+   }
+  },
+  "comb_volcano": {
+   "type": "combine",
+   "body": {
+    "ingredients": [
+     {
+      "key": "vinegar",
+      "label": {
+       "ar": "خل",
+       "en": "Vinegar"
+      }
+     },
+     {
+      "key": "soda",
+      "label": {
+       "ar": "صودا",
+       "en": "Baking soda"
+      }
+     },
+     {
+      "key": "water",
+      "label": {
+       "ar": "ماء",
+       "en": "Water"
+      }
+     },
+     {
+      "key": "salt",
+      "label": {
+       "ar": "ملح",
+       "en": "Salt"
+      }
+     }
+    ],
+    "answer": [
+     "soda",
+     "vinegar"
+    ],
+    "fx": "fizz",
+    "result": {
+     "ar": "فوران",
+     "en": "Fizzing"
+    }
+   }
+  }
+ },
+ "cases": [
+  {
+   "name": "choose_all_right",
+   "kind": "choose",
+   "items": [
+    "mcq_capital",
+    "mcq_planet",
+    "tf_water",
+    "tf_sun"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 4000
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 9000
+    },
+    {
+     "i": 2,
+     "a": 1,
+     "ms": 13000
+    },
+    {
+     "i": 3,
+     "a": 0,
+     "ms": 17000
+    }
+   ],
+   "valid": true,
+   "score": 4,
+   "max_score": 4,
+   "per_item": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "counted": 4,
+   "duration_ms": 17000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 145,
+   "ghost": [
+    [
+     4000,
+     1
+    ],
+    [
+     9000,
+     1
+    ],
+    [
+     13000,
+     1
+    ],
+    [
+     17000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "choose_wrong_then_retry",
+   "kind": "choose",
+   "items": [
+    "mcq_capital",
+    "mcq_planet",
+    "tf_water",
+    "tf_sun"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 1,
+     "ms": 4000
+    },
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 6000
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 9000
+    },
+    {
+     "i": 2,
+     "a": 1,
+     "ms": 13000
+    },
+    {
+     "i": 3,
+     "a": 1,
+     "ms": 17000
+    },
+    {
+     "i": 3,
+     "a": 0,
+     "ms": 19000
+    }
+   ],
+   "valid": true,
+   "score": 2,
+   "max_score": 4,
+   "per_item": [
+    0,
+    1,
+    1,
+    0
+   ],
+   "counted": 4,
+   "duration_ms": 19000,
+   "end": "done",
+   "stars": 1,
+   "too_fast": false,
+   "rank_points": 72,
+   "ghost": [
+    [
+     4000,
+     0
+    ],
+    [
+     9000,
+     1
+    ],
+    [
+     13000,
+     1
+    ],
+    [
+     17000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "choose_timer_ended",
+   "kind": "choose",
+   "items": [
+    "mcq_capital",
+    "mcq_planet",
+    "tf_water",
+    "tf_sun"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 4000
+    },
+    {
+     "i": 1,
+     "a": 0,
+     "ms": 20000
+    },
+    {
+     "i": -1,
+     "a": "timer",
+     "ms": 30000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 4,
+   "per_item": [
+    1,
+    0,
+    0,
+    0
+   ],
+   "counted": 2,
+   "duration_ms": 30000,
+   "end": "timer",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     4000,
+     1
+    ],
+    [
+     20000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "choose_lives_ended",
+   "kind": "choose",
+   "items": [
+    "mcq_capital",
+    "mcq_planet",
+    "tf_water",
+    "tf_sun"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 3,
+     "ms": 3000
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 6000
+    },
+    {
+     "i": 2,
+     "a": 0,
+     "ms": 9000
+    },
+    {
+     "i": -1,
+     "a": "lives",
+     "ms": 9500
+    }
+   ],
+   "valid": true,
+   "score": 0,
+   "max_score": 4,
+   "per_item": [
+    0,
+    0,
+    0,
+    0
+   ],
+   "counted": 3,
+   "duration_ms": 9500,
+   "end": "lives",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     3000,
+     0
+    ],
+    [
+     6000,
+     0
+    ],
+    [
+     9000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "choose_hint_scores_zero",
+   "kind": "choose",
+   "items": [
+    "mcq_capital",
+    "tf_water"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 5000,
+     "h": true
+    },
+    {
+     "i": 1,
+     "a": 1,
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 2,
+   "per_item": [
+    0,
+    1
+   ],
+   "counted": 2,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 1,
+   "too_fast": false,
+   "rank_points": 72,
+   "ghost": [
+    [
+     5000,
+     0
+    ],
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "choose_any_order",
+   "kind": "choose",
+   "items": [
+    "mcq_capital",
+    "mcq_planet"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 8000
+    }
+   ],
+   "valid": true,
+   "score": 2,
+   "max_score": 2,
+   "per_item": [
+    1,
+    1
+   ],
+   "counted": 2,
+   "duration_ms": 8000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 146,
+   "ghost": [
+    [
+     3000,
+     1
+    ],
+    [
+     8000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "choose_bad_option_index",
+   "kind": "choose",
+   "items": [
+    "mcq_capital"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 4,
+     "ms": 3000
+    }
+   ],
+   "valid": false,
+   "why": "option"
+  },
+  {
+   "name": "choose_bad_tf_value",
+   "kind": "choose",
+   "items": [
+    "tf_water"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 2,
+     "ms": 3000
+    }
+   ],
+   "valid": false,
+   "why": "bool"
+  },
+  {
+   "name": "choose_bad_ms_decreasing",
+   "kind": "choose",
+   "items": [
+    "mcq_capital",
+    "mcq_planet"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 5000
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 4000
+    }
+   ],
+   "valid": false,
+   "why": "ms"
+  },
+  {
+   "name": "choose_bad_item_index",
+   "kind": "choose",
+   "items": [
+    "mcq_capital"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 1,
+     "a": 0,
+     "ms": 3000
+    }
+   ],
+   "valid": false,
+   "why": "i"
+  },
+  {
+   "name": "choose_bad_end_not_last",
+   "kind": "choose",
+   "items": [
+    "mcq_capital",
+    "mcq_planet"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 3000
+    },
+    {
+     "i": -1,
+     "a": "timer",
+     "ms": 4000
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 5000
+    }
+   ],
+   "valid": false,
+   "why": "end"
+  },
+  {
+   "name": "choose_bad_end_value",
+   "kind": "choose",
+   "items": [
+    "mcq_capital"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 3000
+    },
+    {
+     "i": -1,
+     "a": "boom",
+     "ms": 4000
+    }
+   ],
+   "valid": false,
+   "why": "end"
+  },
+  {
+   "name": "choose_bad_only_end",
+   "kind": "choose",
+   "items": [
+    "mcq_capital"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": -1,
+     "a": "timer",
+     "ms": 30000
+    }
+   ],
+   "valid": false,
+   "why": "empty"
+  },
+  {
+   "name": "choose_bad_empty",
+   "kind": "choose",
+   "items": [
+    "mcq_capital"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [],
+   "valid": false,
+   "why": "trace"
+  },
+  {
+   "name": "choose_bad_bool_answer",
+   "kind": "choose",
+   "items": [
+    "mcq_capital"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": true,
+     "ms": 3000
+    }
+   ],
+   "valid": false,
+   "why": "option"
+  },
+  {
+   "name": "select_exact",
+   "kind": "select_all",
+   "items": [
+    "sel_even"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      2,
+      4
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 3,
+   "max_score": 3,
+   "per_item": [
+    3
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 143,
+   "ghost": [
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "select_two_right_one_wrong",
+   "kind": "select_all",
+   "items": [
+    "sel_even"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      2,
+      3
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 3,
+   "per_item": [
+    1
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 1,
+   "too_fast": false,
+   "rank_points": 47,
+   "ghost": [
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "select_more_wrong_than_right",
+   "kind": "select_all",
+   "items": [
+    "sel_even"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      1,
+      3,
+      0
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 0,
+   "max_score": 3,
+   "per_item": [
+    0
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     9000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "select_partial",
+   "kind": "select_all",
+   "items": [
+    "sel_even"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      4
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 3,
+   "per_item": [
+    1
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 1,
+   "too_fast": false,
+   "rank_points": 47,
+   "ghost": [
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "select_retry_ignored",
+   "kind": "select_all",
+   "items": [
+    "sel_even"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      1
+     ],
+     "ms": 5000
+    },
+    {
+     "i": 0,
+     "a": [
+      0,
+      2,
+      4
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 0,
+   "max_score": 3,
+   "per_item": [
+    0
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     5000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "select_timer_nothing_popped",
+   "kind": "select_all",
+   "items": [
+    "sel_even"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [],
+     "ms": 20000
+    },
+    {
+     "i": -1,
+     "a": "timer",
+     "ms": 20000
+    }
+   ],
+   "valid": true,
+   "score": 0,
+   "max_score": 3,
+   "per_item": [
+    0
+   ],
+   "counted": 1,
+   "duration_ms": 20000,
+   "end": "timer",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     20000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "select_bad_duplicate",
+   "kind": "select_all",
+   "items": [
+    "sel_even"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      0
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": false,
+   "why": "options"
+  },
+  {
+   "name": "select_bad_not_a_list",
+   "kind": "select_all",
+   "items": [
+    "sel_even"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 2,
+     "ms": 9000
+    }
+   ],
+   "valid": false,
+   "why": "options"
+  },
+  {
+   "name": "sequence_order_right",
+   "kind": "sequence",
+   "items": [
+    "seq_112_1"
+   ],
+   "template": "verse_builder",
+   "difficulty": "medium",
+   "sacred": true,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      0
+     ],
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      1
+     ],
+     "ms": 5000
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      2
+     ],
+     "ms": 7000
+    },
+    {
+     "i": 0,
+     "a": [
+      3,
+      3
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 4,
+   "max_score": 4,
+   "per_item": [
+    4
+   ],
+   "counted": 4,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 125,
+   "ghost": [
+    [
+     3000,
+     1
+    ],
+    [
+     5000,
+     1
+    ],
+    [
+     7000,
+     1
+    ],
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "sequence_order_wrong_then_retry",
+   "kind": "sequence",
+   "items": [
+    "seq_112_1"
+   ],
+   "template": "verse_builder",
+   "difficulty": "medium",
+   "sacred": true,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      0
+     ],
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      2
+     ],
+     "ms": 5000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      1
+     ],
+     "ms": 6500
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      2
+     ],
+     "ms": 8000
+    },
+    {
+     "i": 0,
+     "a": [
+      3,
+      4
+     ],
+     "ms": 9000
+    },
+    {
+     "i": 0,
+     "a": [
+      3,
+      3
+     ],
+     "ms": 11000
+    }
+   ],
+   "valid": true,
+   "score": 2,
+   "max_score": 4,
+   "per_item": [
+    2
+   ],
+   "counted": 4,
+   "duration_ms": 11000,
+   "end": "done",
+   "stars": 1,
+   "too_fast": false,
+   "rank_points": 63,
+   "ghost": [
+    [
+     3000,
+     1
+    ],
+    [
+     5000,
+     0
+    ],
+    [
+     8000,
+     1
+    ],
+    [
+     9000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "sequence_distractor_is_wrong",
+   "kind": "sequence",
+   "items": [
+    "seq_112_1"
+   ],
+   "template": "word_train",
+   "difficulty": "medium",
+   "sacred": true,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      5
+     ],
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": [
+      0,
+      0
+     ],
+     "ms": 4000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      1
+     ],
+     "ms": 5000
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      2
+     ],
+     "ms": 7000
+    },
+    {
+     "i": 0,
+     "a": [
+      3,
+      3
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 3,
+   "max_score": 4,
+   "per_item": [
+    3
+   ],
+   "counted": 4,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 2,
+   "too_fast": false,
+   "rank_points": 94,
+   "ghost": [
+    [
+     3000,
+     0
+    ],
+    [
+     5000,
+     1
+    ],
+    [
+     7000,
+     1
+    ],
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "sequence_repeated_word_interchangeable",
+   "kind": "sequence",
+   "items": [
+    "seq_repeat"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      2
+     ],
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      1
+     ],
+     "ms": 5000
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      0
+     ],
+     "ms": 7000
+    },
+    {
+     "i": 0,
+     "a": [
+      3,
+      3
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 4,
+   "max_score": 4,
+   "per_item": [
+    4
+   ],
+   "counted": 4,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 143,
+   "ghost": [
+    [
+     3000,
+     1
+    ],
+    [
+     5000,
+     1
+    ],
+    [
+     7000,
+     1
+    ],
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "sequence_complete_right",
+   "kind": "sequence",
+   "items": [
+    "seq_complete"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      1,
+      1
+     ],
+     "ms": 4000
+    },
+    {
+     "i": 0,
+     "a": [
+      5,
+      5
+     ],
+     "ms": 8000
+    }
+   ],
+   "valid": true,
+   "score": 2,
+   "max_score": 2,
+   "per_item": [
+    2
+   ],
+   "counted": 2,
+   "duration_ms": 8000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 138,
+   "ghost": [
+    [
+     4000,
+     1
+    ],
+    [
+     8000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "sequence_complete_distractor",
+   "kind": "sequence",
+   "items": [
+    "seq_complete"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      1,
+      6
+     ],
+     "ms": 4000
+    },
+    {
+     "i": 0,
+     "a": [
+      5,
+      5
+     ],
+     "ms": 8000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 2,
+   "per_item": [
+    1
+   ],
+   "counted": 2,
+   "duration_ms": 8000,
+   "end": "done",
+   "stars": 1,
+   "too_fast": false,
+   "rank_points": 69,
+   "ghost": [
+    [
+     4000,
+     0
+    ],
+    [
+     8000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "sequence_next_word_timer",
+   "kind": "sequence",
+   "items": [
+    "seq_next"
+   ],
+   "template": "car_race",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      2,
+      2
+     ],
+     "ms": 4000
+    },
+    {
+     "i": 0,
+     "a": [
+      3,
+      6
+     ],
+     "ms": 8000
+    },
+    {
+     "i": -1,
+     "a": "timer",
+     "ms": 12000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 3,
+   "per_item": [
+    1
+   ],
+   "counted": 2,
+   "duration_ms": 12000,
+   "end": "timer",
+   "stars": 1,
+   "too_fast": false,
+   "rank_points": 45,
+   "ghost": [
+    [
+     4000,
+     1
+    ],
+    [
+     8000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "sequence_bad_slot_not_blank",
+   "kind": "sequence",
+   "items": [
+    "seq_complete"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      0
+     ],
+     "ms": 4000
+    }
+   ],
+   "valid": false,
+   "why": "slot"
+  },
+  {
+   "name": "sequence_bad_token_range",
+   "kind": "sequence",
+   "items": [
+    "seq_112_1"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": true,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      6
+     ],
+     "ms": 4000
+    }
+   ],
+   "valid": false,
+   "why": "token"
+  },
+  {
+   "name": "sequence_bad_shape",
+   "kind": "sequence",
+   "items": [
+    "seq_112_1"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": true,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0
+     ],
+     "ms": 4000
+    }
+   ],
+   "valid": false,
+   "why": "slot"
+  },
+  {
+   "name": "classify_all_right_with_cases",
+   "kind": "classify",
+   "items": [
+    "cls_irab"
+   ],
+   "template": "irab_hunter",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      1
+     ],
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      0
+     ],
+     "ms": 6000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      0,
+      0
+     ],
+     "ms": 8000
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      2
+     ],
+     "ms": 11000
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      2,
+      1
+     ],
+     "ms": 13000
+    }
+   ],
+   "valid": true,
+   "score": 5,
+   "max_score": 5,
+   "per_item": [
+    5
+   ],
+   "counted": 5,
+   "duration_ms": 13000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 144,
+   "ghost": [
+    [
+     3000,
+     1
+    ],
+    [
+     6000,
+     1
+    ],
+    [
+     8000,
+     1
+    ],
+    [
+     11000,
+     1
+    ],
+    [
+     13000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "classify_wrong_bucket_right_case",
+   "kind": "classify",
+   "items": [
+    "cls_irab"
+   ],
+   "template": "irab_hunter",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      1
+     ],
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      2
+     ],
+     "ms": 6000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      0
+     ],
+     "ms": 7000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      0,
+      0
+     ],
+     "ms": 8000
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      2
+     ],
+     "ms": 11000
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      2,
+      2
+     ],
+     "ms": 13000
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      2,
+      1
+     ],
+     "ms": 14000
+    }
+   ],
+   "valid": true,
+   "score": 3,
+   "max_score": 5,
+   "per_item": [
+    3
+   ],
+   "counted": 5,
+   "duration_ms": 14000,
+   "end": "done",
+   "stars": 2,
+   "too_fast": false,
+   "rank_points": 86,
+   "ghost": [
+    [
+     3000,
+     1
+    ],
+    [
+     6000,
+     0
+    ],
+    [
+     8000,
+     1
+    ],
+    [
+     11000,
+     1
+    ],
+    [
+     13000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "classify_no_cases",
+   "kind": "classify",
+   "items": [
+    "cls_animals"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      0
+     ],
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      0
+     ],
+     "ms": 5000
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      0
+     ],
+     "ms": 7000
+    }
+   ],
+   "valid": true,
+   "score": 2,
+   "max_score": 3,
+   "per_item": [
+    2
+   ],
+   "counted": 3,
+   "duration_ms": 7000,
+   "end": "done",
+   "stars": 2,
+   "too_fast": false,
+   "rank_points": 97,
+   "ghost": [
+    [
+     3000,
+     1
+    ],
+    [
+     5000,
+     0
+    ],
+    [
+     7000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "classify_timer_ended",
+   "kind": "classify",
+   "items": [
+    "cls_irab"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      1
+     ],
+     "ms": 3000
+    },
+    {
+     "i": -1,
+     "a": "timer",
+     "ms": 30000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 5,
+   "per_item": [
+    1
+   ],
+   "counted": 1,
+   "duration_ms": 30000,
+   "end": "timer",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     3000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "classify_bad_case_on_token_without_case",
+   "kind": "classify",
+   "items": [
+    "cls_irab"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      1,
+      0
+     ],
+     "ms": 3000
+    }
+   ],
+   "valid": false,
+   "why": "case"
+  },
+  {
+   "name": "classify_bad_case_without_cases",
+   "kind": "classify",
+   "items": [
+    "cls_animals"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "ms": 3000
+    }
+   ],
+   "valid": false,
+   "why": "case"
+  },
+  {
+   "name": "classify_bad_bucket_range",
+   "kind": "classify",
+   "items": [
+    "cls_animals"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      2
+     ],
+     "ms": 3000
+    }
+   ],
+   "valid": false,
+   "why": "bucket"
+  },
+  {
+   "name": "pair_all_right",
+   "kind": "pair",
+   "items": [
+    "pair_caps"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      0
+     ],
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      1
+     ],
+     "ms": 6000
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      2
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 3,
+   "max_score": 3,
+   "per_item": [
+    3
+   ],
+   "counted": 3,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 144,
+   "ghost": [
+    [
+     3000,
+     1
+    ],
+    [
+     6000,
+     1
+    ],
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "pair_wrong_then_retry",
+   "kind": "pair",
+   "items": [
+    "pair_caps"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      1
+     ],
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": [
+      0,
+      0
+     ],
+     "ms": 4000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      1
+     ],
+     "ms": 6000
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      2
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 2,
+   "max_score": 3,
+   "per_item": [
+    2
+   ],
+   "counted": 3,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 2,
+   "too_fast": false,
+   "rank_points": 96,
+   "ghost": [
+    [
+     3000,
+     0
+    ],
+    [
+     6000,
+     1
+    ],
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "pair_lives_ended",
+   "kind": "pair",
+   "items": [
+    "pair_caps"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      2
+     ],
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      0
+     ],
+     "ms": 5000
+    },
+    {
+     "i": -1,
+     "a": "lives",
+     "ms": 5200
+    }
+   ],
+   "valid": true,
+   "score": 0,
+   "max_score": 3,
+   "per_item": [
+    0
+   ],
+   "counted": 2,
+   "duration_ms": 5200,
+   "end": "lives",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     3000,
+     0
+    ],
+    [
+     5000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "pair_bad_range",
+   "kind": "pair",
+   "items": [
+    "pair_caps"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      3
+     ],
+     "ms": 3000
+    }
+   ],
+   "valid": false,
+   "why": "pair"
+  },
+  {
+   "name": "fraction_shape_exact",
+   "kind": "fraction",
+   "items": [
+    "frac_shape"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      3,
+      4
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 1,
+   "per_item": [
+    1
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 144,
+   "ghost": [
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "fraction_shape_equivalent",
+   "kind": "fraction",
+   "items": [
+    "frac_shape"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      6,
+      8
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 1,
+   "per_item": [
+    1
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 144,
+   "ghost": [
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "fraction_shape_wrong_then_retry",
+   "kind": "fraction",
+   "items": [
+    "frac_shape"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      2,
+      4
+     ],
+     "ms": 9000
+    },
+    {
+     "i": 0,
+     "a": [
+      3,
+      4
+     ],
+     "ms": 12000
+    }
+   ],
+   "valid": true,
+   "score": 0,
+   "max_score": 1,
+   "per_item": [
+    0
+   ],
+   "counted": 1,
+   "duration_ms": 12000,
+   "end": "done",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     9000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "fraction_add",
+   "kind": "fraction",
+   "items": [
+    "frac_add",
+    "frac_sub"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      5,
+      6
+     ],
+     "ms": 9000
+    },
+    {
+     "i": 1,
+     "a": [
+      1,
+      2
+     ],
+     "ms": 18000
+    }
+   ],
+   "valid": true,
+   "score": 2,
+   "max_score": 2,
+   "per_item": [
+    1,
+    1
+   ],
+   "counted": 2,
+   "duration_ms": 18000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 144,
+   "ghost": [
+    [
+     9000,
+     1
+    ],
+    [
+     18000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "fraction_add_wrong",
+   "kind": "fraction",
+   "items": [
+    "frac_add",
+    "frac_sub"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      2,
+      5
+     ],
+     "ms": 9000
+    },
+    {
+     "i": 1,
+     "a": [
+      2,
+      4
+     ],
+     "ms": 18000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 2,
+   "per_item": [
+    0,
+    1
+   ],
+   "counted": 2,
+   "duration_ms": 18000,
+   "end": "done",
+   "stars": 1,
+   "too_fast": false,
+   "rank_points": 72,
+   "ghost": [
+    [
+     9000,
+     0
+    ],
+    [
+     18000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "fraction_bad_zero_denominator",
+   "kind": "fraction",
+   "items": [
+    "frac_shape"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      3,
+      0
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": false,
+   "why": "fraction"
+  },
+  {
+   "name": "fraction_bad_negative",
+   "kind": "fraction",
+   "items": [
+    "frac_shape"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      -3,
+      4
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": false,
+   "why": "fraction"
+  },
+  {
+   "name": "program_at_par",
+   "kind": "program",
+   "items": [
+    "prog_grid"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      "R",
+      "F",
+      "F",
+      "L",
+      {
+       "loop": 2,
+       "do": [
+        "F"
+       ]
+      }
+     ],
+     "ms": 20000
+    }
+   ],
+   "valid": true,
+   "score": 2,
+   "max_score": 2,
+   "per_item": [
+    2
+   ],
+   "counted": 1,
+   "duration_ms": 20000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 145,
+   "ghost": [
+    [
+     20000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "program_grid_over_par",
+   "kind": "program",
+   "items": [
+    "prog_grid"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      "L",
+      "R",
+      "R",
+      "F",
+      "F",
+      "L",
+      "F",
+      "F"
+     ],
+     "ms": 20000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 2,
+   "per_item": [
+    1
+   ],
+   "counted": 1,
+   "duration_ms": 20000,
+   "end": "done",
+   "stars": 1,
+   "too_fast": false,
+   "rank_points": 72,
+   "ghost": [
+    [
+     20000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "program_no_loop_par",
+   "kind": "program",
+   "items": [
+    "prog_noloop"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      "F",
+      "F"
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 2,
+   "max_score": 2,
+   "per_item": [
+    2
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 148,
+   "ghost": [
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "program_goal_over_par",
+   "kind": "program",
+   "items": [
+    "prog_noloop"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      "L",
+      "R",
+      "F",
+      "F"
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 2,
+   "per_item": [
+    1
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 1,
+   "too_fast": false,
+   "rank_points": 74,
+   "ghost": [
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "program_goal_over_max",
+   "kind": "program",
+   "items": [
+    "prog_noloop"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      "L",
+      "R",
+      "L",
+      "R",
+      "F",
+      "F"
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 0,
+   "max_score": 2,
+   "per_item": [
+    0
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     9000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "program_bump_wall",
+   "kind": "program",
+   "items": [
+    "prog_grid"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      "F",
+      "F",
+      "F"
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 0,
+   "max_score": 2,
+   "per_item": [
+    0
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     9000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "program_leave_grid",
+   "kind": "program",
+   "items": [
+    "prog_noloop"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      "L",
+      "F"
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 0,
+   "max_score": 2,
+   "per_item": [
+    0
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     9000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "program_best_of_three_runs",
+   "kind": "program",
+   "items": [
+    "prog_noloop"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      "R",
+      "F"
+     ],
+     "ms": 9000
+    },
+    {
+     "i": 0,
+     "a": [
+      "L",
+      "R",
+      "F",
+      "F"
+     ],
+     "ms": 15000
+    },
+    {
+     "i": 0,
+     "a": [
+      "F",
+      "F"
+     ],
+     "ms": 21000
+    }
+   ],
+   "valid": true,
+   "score": 2,
+   "max_score": 2,
+   "per_item": [
+    2
+   ],
+   "counted": 1,
+   "duration_ms": 21000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 144,
+   "ghost": [
+    [
+     9000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "program_fourth_run_ignored",
+   "kind": "program",
+   "items": [
+    "prog_noloop"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      "R"
+     ],
+     "ms": 9000
+    },
+    {
+     "i": 0,
+     "a": [
+      "L"
+     ],
+     "ms": 12000
+    },
+    {
+     "i": 0,
+     "a": [
+      "R",
+      "R"
+     ],
+     "ms": 15000
+    },
+    {
+     "i": 0,
+     "a": [
+      "F",
+      "F"
+     ],
+     "ms": 21000
+    }
+   ],
+   "valid": true,
+   "score": 0,
+   "max_score": 2,
+   "per_item": [
+    0
+   ],
+   "counted": 1,
+   "duration_ms": 21000,
+   "end": "done",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     9000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "program_stops_at_goal",
+   "kind": "program",
+   "items": [
+    "prog_noloop"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      "F",
+      "F",
+      "F"
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 2,
+   "per_item": [
+    1
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 1,
+   "too_fast": false,
+   "rank_points": 74,
+   "ghost": [
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "program_bad_command",
+   "kind": "program",
+   "items": [
+    "prog_noloop"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      "F",
+      "X"
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": false,
+   "why": "program_cmd"
+  },
+  {
+   "name": "program_bad_loop_not_allowed",
+   "kind": "program",
+   "items": [
+    "prog_noloop"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      {
+       "loop": 2,
+       "do": [
+        "F"
+       ]
+      }
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": false,
+   "why": "program_cmd"
+  },
+  {
+   "name": "program_bad_loop_count",
+   "kind": "program",
+   "items": [
+    "prog_grid"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      {
+       "loop": 1,
+       "do": [
+        "F"
+       ]
+      }
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": false,
+   "why": "program_loop"
+  },
+  {
+   "name": "program_bad_nested_loop",
+   "kind": "program",
+   "items": [
+    "prog_grid"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      {
+       "loop": 2,
+       "do": [
+        {
+         "loop": 2,
+         "do": [
+          "F"
+         ]
+        }
+       ]
+      }
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": false,
+   "why": "program_cmd"
+  },
+  {
+   "name": "combine_right",
+   "kind": "combine",
+   "items": [
+    "comb_volcano"
+   ],
+   "template": "science_lab",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      1
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 1,
+   "per_item": [
+    1
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 143,
+   "ghost": [
+    [
+     9000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "combine_extra_ingredient",
+   "kind": "combine",
+   "items": [
+    "comb_volcano"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      1,
+      2
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 0,
+   "max_score": 1,
+   "per_item": [
+    0
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     9000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "combine_wrong_then_retry",
+   "kind": "combine",
+   "items": [
+    "comb_volcano"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      2,
+      3
+     ],
+     "ms": 5000
+    },
+    {
+     "i": 0,
+     "a": [
+      0,
+      1
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": true,
+   "score": 0,
+   "max_score": 1,
+   "per_item": [
+    0
+   ],
+   "counted": 1,
+   "duration_ms": 9000,
+   "end": "done",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     5000,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "combine_bad_empty",
+   "kind": "combine",
+   "items": [
+    "comb_volcano"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [],
+     "ms": 9000
+    }
+   ],
+   "valid": false,
+   "why": "ingredients"
+  },
+  {
+   "name": "combine_bad_range",
+   "kind": "combine",
+   "items": [
+    "comb_volcano"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      4
+     ],
+     "ms": 9000
+    }
+   ],
+   "valid": false,
+   "why": "ingredients"
+  },
+  {
+   "name": "mixed_lab_round",
+   "kind": "combine",
+   "items": [
+    "comb_volcano",
+    "mcq_planet"
+   ],
+   "template": "science_lab",
+   "difficulty": "hard",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      1,
+      0
+     ],
+     "ms": 9000
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 15000
+    }
+   ],
+   "valid": true,
+   "score": 2,
+   "max_score": 2,
+   "per_item": [
+    1,
+    1
+   ],
+   "counted": 2,
+   "duration_ms": 15000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 172,
+   "ghost": [
+    [
+     9000,
+     1
+    ],
+    [
+     15000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "rank_fast_full_bonus",
+   "kind": "choose",
+   "items": [
+    "mcq_capital",
+    "mcq_planet",
+    "tf_water",
+    "tf_sun"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "hard",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 500
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 1000
+    },
+    {
+     "i": 2,
+     "a": 1,
+     "ms": 1500
+    },
+    {
+     "i": 3,
+     "a": 0,
+     "ms": 2000
+    }
+   ],
+   "valid": true,
+   "score": 4,
+   "max_score": 4,
+   "per_item": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "counted": 4,
+   "duration_ms": 2000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 179,
+   "ghost": [
+    [
+     500,
+     1
+    ],
+    [
+     1000,
+     1
+    ],
+    [
+     1500,
+     1
+    ],
+    [
+     2000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "rank_too_fast",
+   "kind": "choose",
+   "items": [
+    "mcq_capital",
+    "mcq_planet",
+    "tf_water",
+    "tf_sun"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 300
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 600
+    },
+    {
+     "i": 2,
+     "a": 1,
+     "ms": 900
+    },
+    {
+     "i": 3,
+     "a": 0,
+     "ms": 1200
+    }
+   ],
+   "valid": true,
+   "score": 4,
+   "max_score": 4,
+   "per_item": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "counted": 4,
+   "duration_ms": 1200,
+   "end": "done",
+   "stars": 3,
+   "too_fast": true,
+   "rank_points": 150,
+   "ghost": [
+    [
+     300,
+     1
+    ],
+    [
+     600,
+     1
+    ],
+    [
+     900,
+     1
+    ],
+    [
+     1200,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "rank_growing_tree_no_bonus",
+   "kind": "choose",
+   "items": [
+    "mcq_capital",
+    "mcq_planet"
+   ],
+   "template": "growing_tree",
+   "difficulty": "easy",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 0,
+     "ms": 2000
+    },
+    {
+     "i": 1,
+     "a": 2,
+     "ms": 4000
+    }
+   ],
+   "valid": true,
+   "score": 2,
+   "max_score": 2,
+   "per_item": [
+    1,
+    1
+   ],
+   "counted": 2,
+   "duration_ms": 4000,
+   "end": "done",
+   "stars": 3,
+   "too_fast": false,
+   "rank_points": 100,
+   "ghost": [
+    [
+     2000,
+     1
+    ],
+    [
+     4000,
+     1
+    ]
+   ]
+  },
+  {
+   "name": "rank_zero_stars",
+   "kind": "choose",
+   "items": [
+    "mcq_capital",
+    "mcq_planet",
+    "tf_water",
+    "tf_sun"
+   ],
+   "template": "challenge_quiz",
+   "difficulty": "medium",
+   "sacred": false,
+   "trace": [
+    {
+     "i": 0,
+     "a": 1,
+     "ms": 4000
+    },
+    {
+     "i": 1,
+     "a": 0,
+     "ms": 9000
+    },
+    {
+     "i": 2,
+     "a": 0,
+     "ms": 13000
+    },
+    {
+     "i": 3,
+     "a": 0,
+     "ms": 17000
+    }
+   ],
+   "valid": true,
+   "score": 1,
+   "max_score": 4,
+   "per_item": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "counted": 4,
+   "duration_ms": 17000,
+   "end": "done",
+   "stars": 0,
+   "too_fast": false,
+   "rank_points": 0,
+   "ghost": [
+    [
+     4000,
+     0
+    ],
+    [
+     9000,
+     0
+    ],
+    [
+     13000,
+     0
+    ],
+    [
+     17000,
+     1
+    ]
+   ]
+  }
+ ],
+ "program_runs": [
+  {
+   "name": "at_par",
+   "item": "prog_grid",
+   "a": [
+    "R",
+    "F",
+    "F",
+    "L",
+    {
+     "loop": 2,
+     "do": [
+      "F"
+     ]
+    }
+   ],
+   "reached": true,
+   "bumped": false,
+   "steps": 6,
+   "length": 6,
+   "x": 2,
+   "y": 1,
+   "dir": 0,
+   "points": 2
+  },
+  {
+   "name": "bump_wall",
+   "item": "prog_grid",
+   "a": [
+    "F",
+    "F",
+    "F"
+   ],
+   "reached": false,
+   "bumped": true,
+   "steps": 2,
+   "length": 3,
+   "x": 0,
+   "y": 2,
+   "dir": 0,
+   "points": 0
+  },
+  {
+   "name": "turn_only",
+   "item": "prog_grid",
+   "a": [
+    "L",
+    "L",
+    "R"
+   ],
+   "reached": false,
+   "bumped": false,
+   "steps": 3,
+   "length": 3,
+   "x": 0,
+   "y": 3,
+   "dir": 3,
+   "points": 0
+  },
+  {
+   "name": "loop_square",
+   "item": "prog_grid",
+   "a": [
+    {
+     "loop": 4,
+     "do": [
+      "F",
+      "R"
+     ]
+    }
+   ],
+   "reached": false,
+   "bumped": false,
+   "steps": 8,
+   "length": 3,
+   "x": 0,
+   "y": 3,
+   "dir": 0,
+   "points": 0
+  },
+  {
+   "name": "long_way",
+   "item": "prog_grid",
+   "a": [
+    "R",
+    "F",
+    "L",
+    "F",
+    "F",
+    "R",
+    "F"
+   ],
+   "reached": true,
+   "bumped": false,
+   "steps": 7,
+   "length": 7,
+   "x": 2,
+   "y": 1,
+   "dir": 1,
+   "points": 1
+  }
+ ],
+ "age_bands": [
+  {
+   "today": "2026-11-23",
+   "dob": "2019-01-10",
+   "grade": null,
+   "age_band": "6-9",
+   "age_source": "dob"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": "2017-11-23",
+   "grade": null,
+   "age_band": "6-9",
+   "age_source": "dob"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": "2016-11-23",
+   "grade": null,
+   "age_band": "10-13",
+   "age_source": "dob"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": "2016-11-24",
+   "grade": null,
+   "age_band": "6-9",
+   "age_source": "dob"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": "2012-11-24",
+   "grade": null,
+   "age_band": "10-13",
+   "age_source": "dob"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": "2012-11-23",
+   "grade": null,
+   "age_band": "14-17",
+   "age_source": "dob"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": "2008-11-23",
+   "grade": null,
+   "age_band": "18+",
+   "age_source": "dob"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": "2008-11-24",
+   "grade": null,
+   "age_band": "14-17",
+   "age_source": "dob"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": "1996-05-01",
+   "grade": null,
+   "age_band": "18+",
+   "age_source": "dob"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": "2022-03-01",
+   "grade": null,
+   "age_band": "6-9",
+   "age_source": "dob"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": null,
+   "grade": 1,
+   "age_band": "6-9",
+   "age_source": "grade"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": null,
+   "grade": 4,
+   "age_band": "6-9",
+   "age_source": "grade"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": null,
+   "grade": 5,
+   "age_band": "10-13",
+   "age_source": "grade"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": null,
+   "grade": 8,
+   "age_band": "10-13",
+   "age_source": "grade"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": null,
+   "grade": 9,
+   "age_band": "14-17",
+   "age_source": "grade"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": null,
+   "grade": 12,
+   "age_band": "14-17",
+   "age_source": "grade"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": null,
+   "grade": 13,
+   "age_band": "18+",
+   "age_source": "grade"
+  },
+  {
+   "today": "2026-11-23",
+   "dob": null,
+   "grade": null,
+   "age_band": null,
+   "age_source": null
+  }
+ ],
+ "srs": [
+  {
+   "about": "right on first try: the box goes up, due after the box's days",
+   "before": {
+    "box": 1
+   },
+   "right": true,
+   "after": {
+    "box": 2,
+    "due_in_days": 3,
+    "lapses_added": 0
+   }
+  },
+  {
+   "before": {
+    "box": 2
+   },
+   "right": true,
+   "after": {
+    "box": 3,
+    "due_in_days": 7,
+    "lapses_added": 0
+   }
+  },
+  {
+   "before": {
+    "box": 3
+   },
+   "right": true,
+   "after": {
+    "box": 4,
+    "due_in_days": 14,
+    "lapses_added": 0
+   }
+  },
+  {
+   "before": {
+    "box": 4
+   },
+   "right": true,
+   "after": {
+    "box": 5,
+    "due_in_days": 30,
+    "lapses_added": 0
+   }
+  },
+  {
+   "before": {
+    "box": 5
+   },
+   "right": true,
+   "after": {
+    "box": 5,
+    "due_in_days": 30,
+    "lapses_added": 0
+   }
+  },
+  {
+   "about": "wrong (the item's score is below its max): back to box 1, due the next day",
+   "before": {
+    "box": 4
+   },
+   "right": false,
+   "after": {
+    "box": 1,
+    "due_in_days": 1,
+    "lapses_added": 1
+   }
+  },
+  {
+   "about": "no row yet and right: no row is made (only a miss starts the ladder)",
+   "before": null,
+   "right": true,
+   "after": null
+  },
+  {
+   "before": null,
+   "right": false,
+   "after": {
+    "box": 1,
+    "due_in_days": 1,
+    "lapses_added": 1
+   }
+  }
+ ],
+ "coins": [
+  {
+   "about": "coins_reward 9: each star of a level pays once, coins_reward // 3 each, the third takes the rest",
+   "coins_reward": 9,
+   "stars_before": 0,
+   "stars_now": 2,
+   "coins_awarded": 6
+  },
+  {
+   "coins_reward": 9,
+   "stars_before": 2,
+   "stars_now": 3,
+   "coins_awarded": 3
+  },
+  {
+   "coins_reward": 9,
+   "stars_before": 3,
+   "stars_now": 3,
+   "coins_awarded": 0
+  },
+  {
+   "coins_reward": 10,
+   "stars_before": 0,
+   "stars_now": 3,
+   "coins_awarded": 10
+  },
+  {
+   "coins_reward": 10,
+   "stars_before": 1,
+   "stars_now": 2,
+   "coins_awarded": 3
+  },
+  {
+   "coins_reward": 0,
+   "stars_before": 0,
+   "stars_now": 3,
+   "coins_awarded": 0
+  }
+ ]
+}

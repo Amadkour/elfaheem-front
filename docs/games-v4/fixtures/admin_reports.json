@@ -1,0 +1,98 @@
+{
+ "GET /admin/games/v4/analytics/overview": {
+  "response": {
+   "plays": 9120,
+   "players": 1310,
+   "completion_pct": 81,
+   "avg_score_pct": 74,
+   "avg_ms": 61000,
+   "by_day": [
+    {
+     "day": "2026-11-22",
+     "starts": 500,
+     "finishes": 405,
+     "avg_score_pct": 73
+    }
+   ],
+   "by_template": [
+    {
+     "key": "challenge_quiz",
+     "plays": 3100,
+     "completion_pct": 88
+    }
+   ]
+  }
+ },
+ "GET /admin/games/v4/analytics/items/hardest": {
+  "response": {
+   "items": [
+    {
+     "id": 2001,
+     "type": "mcq",
+     "prompt": {
+      "ar": "ما عاصمة مصر؟",
+      "en": "What is the capital of Egypt?"
+     },
+     "subject": "general",
+     "topic": "geography",
+     "shown": 340,
+     "correct": 102,
+     "correct_pct": 30,
+     "avg_ms": 9100
+    }
+   ],
+   "total": 1,
+   "has_more": false
+  }
+ },
+ "GET /admin/games/v4/seed": {
+  "response": {
+   "items": [
+    {
+     "subject": "quran",
+     "key": "quran",
+     "seeded": 1480,
+     "approved": 1480,
+     "pending": 0,
+     "levels": 96,
+     "last_run_at": "2026-11-23T10:00:00"
+    },
+    {
+     "subject": "fiqh",
+     "key": "fiqh",
+     "seeded": 200,
+     "approved": 0,
+     "pending": 200,
+     "levels": 0,
+     "last_run_at": "2026-11-23T10:00:00"
+    }
+   ],
+   "datasets": [
+    {
+     "key": "quran_tanzil_uthmani",
+     "version": "1.1",
+     "sha256": "…",
+     "licence": "CC BY 3.0, verbatim only, link to tanzil.net",
+     "ok": true
+    }
+   ]
+  }
+ },
+ "POST /admin/games/v4/seed/run": {
+  "request": {
+   "subjects": [
+    "math",
+    "science"
+   ],
+   "more": false,
+   "levels": true
+  },
+  "response": {
+   "created": 640,
+   "updated": 0,
+   "skipped": 12,
+   "levels_created": 40,
+   "errors": []
+  }
+ }
+}

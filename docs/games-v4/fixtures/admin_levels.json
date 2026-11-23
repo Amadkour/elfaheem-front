@@ -1,0 +1,71 @@
+{
+ "POST /admin/games (a v4 level)": {
+  "request": {
+   "key": "v4_verse_builder_quran_003",
+   "engine": "verse_builder",
+   "title_ar": "سورة الإخلاص",
+   "title_en": "Surah Al-Ikhlas",
+   "difficulty": "easy",
+   "theme": "night",
+   "status": "draft",
+   "game_subject_id": 1,
+   "topic": "juz_30/112",
+   "level_no": 3,
+   "age_min": 6,
+   "age_max": 99,
+   "template_settings": {
+    "hints": true,
+    "count": 4
+   },
+   "item_source": {
+    "mode": "pool",
+    "topic": "juz_30/112",
+    "types": [
+     "sequence"
+    ],
+    "difficulty": [
+     1,
+     2
+    ],
+    "count": 4
+   },
+   "unlock": {
+    "mode": "prev",
+    "min_stars": 1
+   },
+   "coins_reward": 9
+  },
+  "response_note": "the admin game object + the v4 fields of GET /games?v=4 + item_source, template_settings"
+ },
+ "item_source (fixed)": {
+  "mode": "fixed",
+  "item_ids": [
+   812,
+   813,
+   814,
+   815
+  ]
+ },
+ "POST /admin/games/v4/levels/auto-split": {
+  "request": {
+   "template": "challenge_quiz",
+   "game_subject_id": 9,
+   "topic": "geography",
+   "per_level": 8,
+   "difficulty_steps": true,
+   "title_ar": "جغرافيا: المستوى {n}",
+   "title_en": "Geography: level {n}",
+   "publish": false
+  },
+  "response": {
+   "created": [
+    {
+     "id": 120,
+     "level_no": 1,
+     "items_count": 8
+    }
+   ],
+   "skipped": 3
+  }
+ }
+}

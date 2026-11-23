@@ -1,0 +1,174 @@
+{
+ "GET /games/reciters": {
+  "response": {
+   "items": [
+    {
+     "key": "alafasy",
+     "name_ar": "مشاري العفاسي",
+     "name_en": "Mishary Alafasy",
+     "riwayah": "hafs",
+     "audience": "all",
+     "source_kind": "ayah_files",
+     "coverage": {
+      "surahs": 114,
+      "of": 114
+     },
+     "sample": {
+      "ref": "1:2",
+      "url": "https://everyayah.com/data/Alafasy_64kbps/001002.mp3",
+      "start_ms": 0,
+      "end_ms": null,
+      "reciter": "alafasy"
+     }
+    },
+    {
+     "key": "husary_muallim",
+     "name_ar": "محمود خليل الحصري (المعلّم)",
+     "name_en": "Mahmoud Khalil Al-Husary (Muallim)",
+     "riwayah": "hafs",
+     "audience": "kids",
+     "source_kind": "ayah_files",
+     "coverage": {
+      "surahs": 114,
+      "of": 114
+     },
+     "sample": {
+      "ref": "1:2",
+      "url": "https://everyayah.com/data/Husary_Muallim_128kbps/001002.mp3",
+      "start_ms": 0,
+      "end_ms": null,
+      "reciter": "husary_muallim"
+     }
+    },
+    {
+     "key": "mukhtar_alhaj",
+     "name_ar": "مختار الحاج",
+     "name_en": "Mukhtar Al-Haj",
+     "riwayah": "hafs",
+     "audience": "all",
+     "source_kind": "surah_files",
+     "coverage": {
+      "surahs": 41,
+      "of": 114
+     },
+     "sample": {
+      "ref": "1:2",
+      "url": "https://cdn.mp3quran.net/audio/mukhtar-haj/r1/001.mp3",
+      "start_ms": 5200,
+      "end_ms": 10100,
+      "reciter": "mukhtar_alhaj"
+     }
+    }
+   ],
+   "default_key": "alafasy",
+   "kids_key": "husary_muallim",
+   "mine": null,
+   "effective": "alafasy"
+  }
+ },
+ "GET /games/quran/audio?refs=112:1,18:10&reciter=mukhtar_alhaj": {
+  "response": {
+   "reciter": "mukhtar_alhaj",
+   "items": {
+    "112:1": {
+     "ref": "112:1",
+     "url": "https://cdn.mp3quran.net/audio/mukhtar-haj/r1/112.mp3",
+     "start_ms": 4800,
+     "end_ms": 8300,
+     "reciter": "mukhtar_alhaj"
+    },
+    "18:10": {
+     "ref": "18:10",
+     "url": "https://everyayah.com/data/Alafasy_64kbps/018010.mp3",
+     "start_ms": 0,
+     "end_ms": null,
+     "reciter": "alafasy"
+    }
+   }
+  },
+  "note": "18:10 has no timing row for this reciter yet, so it falls back to the default reciter"
+ },
+ "GET /admin/games/v4/reciters": {
+  "response": {
+   "items": [
+    {
+     "key": "mukhtar_alhaj",
+     "name_ar": "مختار الحاج",
+     "name_en": "Mukhtar Al-Haj",
+     "riwayah": "hafs",
+     "audience": "all",
+     "source_kind": "surah_files",
+     "coverage": {
+      "surahs": 41,
+      "of": 114
+     },
+     "sample": null,
+     "enabled": true,
+     "is_default": false,
+     "sort": 3,
+     "url_pattern": "https://cdn.mp3quran.net/audio/mukhtar-haj/r1/{sss}.mp3",
+     "source_url": "https://www.mp3quran.net/eng/mukhtar-haj",
+     "licence": "Public free stream on mp3quran.net; no formal licence text",
+     "permission_status": "verified",
+     "permission_note": "Owner rule 2026-11-23: public and free to stream. Streamed from the source, never re-hosted."
+    }
+   ]
+  }
+ },
+ "GET /admin/games/v4/reciters/mukhtar_alhaj/timings": {
+  "response": {
+   "items": [
+    {
+     "surah": 112,
+     "name_ar": "الإخلاص",
+     "ayat": 4,
+     "marked": 4
+    },
+    {
+     "surah": 18,
+     "name_ar": "الكهف",
+     "ayat": 110,
+     "marked": 0
+    }
+   ]
+  }
+ },
+ "PUT /admin/games/v4/reciters/mukhtar_alhaj/timings/112": {
+  "request": {
+   "ayat": [
+    {
+     "ayah": 1,
+     "start_ms": 4800,
+     "end_ms": 8300
+    },
+    {
+     "ayah": 2,
+     "start_ms": 8300,
+     "end_ms": 11200
+    },
+    {
+     "ayah": 3,
+     "start_ms": 11200,
+     "end_ms": 15900
+    },
+    {
+     "ayah": 4,
+     "start_ms": 15900,
+     "end_ms": 21700
+    }
+   ]
+  },
+  "response": {
+   "url": "https://cdn.mp3quran.net/audio/mukhtar-haj/r1/112.mp3",
+   "ayat": [
+    {
+     "ayah": 1,
+     "text": "(the ayah text from quran_ayat)",
+     "start_ms": 4800,
+     "end_ms": 8300,
+     "source": "admin"
+    }
+   ]
+  }
+ }
+}

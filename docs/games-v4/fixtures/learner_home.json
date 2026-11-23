@@ -1,0 +1,242 @@
+{
+ "GET /games?v=4&game_subject_id=1": {
+  "response": {
+   "items": [
+    {
+     "id": 31,
+     "key": "v4_verse_builder_quran_003",
+     "engine": "verse_builder",
+     "title_ar": "سورة الإخلاص",
+     "title_en": "Surah Al-Ikhlas",
+     "country_code": null,
+     "stage_id": null,
+     "grade_id": null,
+     "subject_id": null,
+     "points_reward": 0,
+     "category": "quran",
+     "difficulty": "easy",
+     "level": null,
+     "cover_url": null,
+     "theme": "night",
+     "progress": {
+      "game_id": 31,
+      "best_score": 4,
+      "stars": 2,
+      "plays": 1,
+      "last_played_at": "2026-11-23T10:00:00",
+      "attempts": 1,
+      "best_duration_s": 41
+     },
+     "template": "verse_builder",
+     "game_subject_id": 1,
+     "topic": "juz_30/112",
+     "level_no": 3,
+     "age_min": 6,
+     "age_max": 99,
+     "unlock": {
+      "mode": "prev",
+      "min_stars": 1
+     },
+     "locked": false,
+     "sacred": true,
+     "coins_reward": 9,
+     "items_count": 4
+    }
+   ],
+   "total": 1,
+   "country": "EG"
+  }
+ },
+ "GET /games/v4/home": {
+  "response": {
+   "profile": {
+    "age_band": "10-13",
+    "age_source": "dob",
+    "needs_age": false,
+    "coins": 54,
+    "equipped": {
+     "hat": null,
+     "outfit": "explorer_blue",
+     "vehicle": null,
+     "trail": null
+    },
+    "sky": [
+     {
+      "key": "c_112",
+      "at": "2026-11-23T10:00:00"
+     }
+    ],
+    "reciter_key": null,
+    "reciter_effective": "alafasy",
+    "can_review": false
+   },
+   "subjects": [
+    {
+     "id": 1,
+     "key": "quran",
+     "name_ar": "القرآن الكريم",
+     "name_en": "Quran",
+     "icon": "menu_book",
+     "color": "#2E7D6B",
+     "sacred": true,
+     "levels": 42,
+     "done": 5,
+     "stars": 13
+    },
+    {
+     "id": 7,
+     "key": "math",
+     "name_ar": "الرياضيات",
+     "name_en": "Math",
+     "icon": "calculate",
+     "color": "#3B6FB6",
+     "sacred": false,
+     "levels": 30,
+     "done": 0,
+     "stars": 0
+    }
+   ],
+   "templates": [
+    {
+     "key": "verse_builder",
+     "levels": 20
+    },
+    {
+     "key": "challenge_quiz",
+     "levels": 35
+    }
+   ],
+   "continue": {
+    "id": 31,
+    "key": "v4_verse_builder_quran_003",
+    "engine": "verse_builder",
+    "title_ar": "سورة الإخلاص",
+    "title_en": "Surah Al-Ikhlas",
+    "country_code": null,
+    "stage_id": null,
+    "grade_id": null,
+    "subject_id": null,
+    "points_reward": 0,
+    "category": "quran",
+    "difficulty": "easy",
+    "level": null,
+    "cover_url": null,
+    "theme": "night",
+    "progress": {
+     "game_id": 31,
+     "best_score": 4,
+     "stars": 2,
+     "plays": 1,
+     "last_played_at": "2026-11-23T10:00:00",
+     "attempts": 1,
+     "best_duration_s": 41
+    },
+    "template": "verse_builder",
+    "game_subject_id": 1,
+    "topic": "juz_30/112",
+    "level_no": 3,
+    "age_min": 6,
+    "age_max": 99,
+    "unlock": {
+     "mode": "prev",
+     "min_stars": 1
+    },
+    "locked": false,
+    "sacred": true,
+    "coins_reward": 9,
+    "items_count": 4
+   },
+   "review_due": 6,
+   "review_levels": [
+    {
+     "game_id": 31,
+     "due": 4
+    }
+   ],
+   "flags": {
+    "cosmetics": true,
+    "challenges": true,
+    "breaks": true,
+    "champions": true
+   }
+  }
+ },
+ "GET /me/games/profile": {
+  "response": {
+   "age_band": "10-13",
+   "age_source": "dob",
+   "needs_age": false,
+   "coins": 54,
+   "equipped": {
+    "hat": null,
+    "outfit": "explorer_blue",
+    "vehicle": null,
+    "trail": null
+   },
+   "sky": [
+    {
+     "key": "c_112",
+     "at": "2026-11-23T10:00:00"
+    }
+   ],
+   "reciter_key": null,
+   "reciter_effective": "alafasy",
+   "can_review": false
+  }
+ },
+ "PUT /me/games/profile": {
+  "request": {
+   "reciter_key": "husary_muallim",
+   "equipped": {
+    "hat": "hat_star"
+   }
+  },
+  "response": {
+   "age_band": "10-13",
+   "age_source": "dob",
+   "needs_age": false,
+   "coins": 54,
+   "equipped": {
+    "hat": "hat_star",
+    "outfit": "explorer_blue",
+    "vehicle": null,
+    "trail": null
+   },
+   "sky": [
+    {
+     "key": "c_112",
+     "at": "2026-11-23T10:00:00"
+    }
+   ],
+   "reciter_key": "husary_muallim",
+   "reciter_effective": "husary_muallim",
+   "can_review": false
+  }
+ },
+ "PUT /me/games/profile (age asked once)": {
+  "request": {
+   "age_band": "6-9"
+  },
+  "response": {
+   "age_band": "6-9",
+   "age_source": "asked",
+   "needs_age": false,
+   "coins": 54,
+   "equipped": {
+    "hat": null,
+    "outfit": "explorer_blue",
+    "vehicle": null,
+    "trail": null
+   },
+   "sky": [
+    {
+     "key": "c_112",
+     "at": "2026-11-23T10:00:00"
+    }
+   ],
+   "reciter_key": null,
+   "reciter_effective": "husary_muallim",
+   "can_review": false
+  }
+ }
+}
