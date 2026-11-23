@@ -80,7 +80,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('games.v4.node.16')));
     expect(opened, isNull);
     expect(find.byKey(const ValueKey('games.v4.tanzil')), findsOneWidget);
-    expect(find.text('Review · 6'), findsOneWidget);
+    expect(find.text('Review · 4'), findsOneWidget); // what the tap can open (review_levels), not every due item
     expect(find.text('54'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });

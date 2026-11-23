@@ -79,6 +79,10 @@ String? couponErrorText(String? code, [Map<String, dynamic> d = const {}]) {
       return _t('أُلغيت هذه القسيمة من إدارة المنصة', 'The platform cancelled this coupon');
     case 'coupon_not_applicable':
       return _t('لا تنطبق هذه القسيمة على هذا الشراء', 'This coupon does not apply to this purchase');
+    case 'coupon_locked': // a friends reward (Games v4): it opens when the invited friends join
+      return _t('تُفتح هذه المكافأة بعد انضمام أصدقائك', 'This reward opens after your friends join');
+    case 'coupon_wrong_course':
+      return _t('هذه المكافأة لدورة أخرى', 'This reward is for a different course');
     case 'coupon_min_order':
       final m = money(d['min_order']);
       return m.isEmpty

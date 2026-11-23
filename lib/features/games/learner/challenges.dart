@@ -43,7 +43,7 @@ String? challengeCodeFromRoute(String? route) {
 /// When the challenge's week ends: its `closes_at`, else its week start + 7 days (UTC, shown by [AppTime]).
 DateTime? challengeEnds(Map<String, dynamic> raw) {
   final c = DateTime.tryParse('${raw['closes_at'] ?? ''}');
-  if (c != null) return c.isUtc ? c : DateTime.utc(c.year, c.month, c.day, c.hour, c.minute);
+  if (c != null) return c.isUtc ? c : DateTime.utc(c.year, c.month, c.day, c.hour, c.minute, c.second);
   final w = DateTime.tryParse('${raw['week_start'] ?? ''}');
   return w == null ? null : DateTime.utc(w.year, w.month, w.day).add(const Duration(days: 7));
 }

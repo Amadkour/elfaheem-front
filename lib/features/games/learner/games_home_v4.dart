@@ -177,7 +177,11 @@ class _GamesHomeV4State extends State<GamesHomeV4> {
   /// The review round: the level with the most items due.
   Future<void> _review() async {
     final h = _home;
-    if (h == null || h.reviewLevels.isEmpty) return;
+    if (h == null) return;
+    if (h.reviewLevels.isEmpty) {
+      showAppNotice(t('لا توجد مراجعة الآن', 'Nothing to review right now'));
+      return;
+    }
     final due = [...h.reviewLevels.entries]..sort((a, b) => b.value.compareTo(a.value));
     try {
       final all = await _api.levels();
@@ -286,7 +290,8 @@ class GamesHomeV4View extends StatelessWidget {
         }
         final header = _Header(
           coins: (showCoins ?? !AppConfig.disableList.contains('games.cosmetics')) ? p.coins : null,
-          reviewDue: home.reviewDue,
+          // the chip counts only what its tap can open (the levels with items due), so it is never a dead tap
+          reviewDue: home.reviewLevels.values.fold(0, (a, b) => a + b),
           onReview: onReview,
           onSettings: onSettings,
           onWardrobe: onWardrobe,

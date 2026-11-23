@@ -16,9 +16,11 @@
           { "/": "/onboard/*", "comment": "member onboarding intake links (D-1200)" },
           { "/": "/s/*", "comment": "share links of everything: lessons, sessions, meetings, paths, teachers, pages (D-307)" },
           { "/": "/app/live/*", "comment": "a live guest link copied from the web app's address bar (D-843)" },
-          { "/": "/app/s/*", "comment": "a share / guest video link copied from the web app's address bar (D-843)" }
+          { "/": "/app/s/*", "comment": "a share / guest video link copied from the web app's address bar (D-843)" },
+          { "/": "/app/games/challenge/*", "comment": "a friends challenge link (Games v4)" },
+          { "/": "/app/games/c/*", "comment": "a friends challenge copied from the web app's address bar (Games v4)" }
         ],
-        "paths": ["/c/*", "/@*", "/live/*", "/verify/*", "/e/*", "/j/*", "/i/*", "/onboard/*", "/s/*", "/app/live/*", "/app/s/*"]
+        "paths": ["/c/*", "/@*", "/live/*", "/verify/*", "/e/*", "/j/*", "/i/*", "/onboard/*", "/s/*", "/app/live/*", "/app/s/*", "/app/games/challenge/*", "/app/games/c/*"]
       }
     ]
   }
