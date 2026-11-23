@@ -24,6 +24,7 @@ import 'package:flutter_education_app/features/games/game_play_page.dart';
 import 'package:flutter_education_app/features/games/games_api.dart' show gamesErrorText;
 import 'package:flutter_education_app/features/games/games_models.dart';
 import 'package:flutter_education_app/features/games/learner/games_settings_sheet.dart';
+import 'package:flutter_education_app/features/games/learner/challenges.dart';
 import 'package:flutter_education_app/features/games/learner/level_map.dart';
 import 'package:flutter_education_app/features/games/learner/wardrobe.dart';
 
@@ -220,6 +221,7 @@ class _GamesHomeV4State extends State<GamesHomeV4> {
         onContinue: cont == null || cont.locked ? null : () => _play(cont),
         onReview: _review,
         onSettings: _settings,
+        onChallenges: gamesChallengesOff() ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(settings: const RouteSettings(name: '/games/challenges'), builder: (_) => GamesChallengesPage(api: _api, ageBand: h.profile.ageBand))),
         onWardrobe: () => showWardrobe(context, api: _api, ageBand: h.profile.ageBand).then((_) { if (mounted) _load(); }),
         champions: widget.champions,
         onChampions: widget.onChampions,
@@ -245,6 +247,7 @@ class GamesHomeV4View extends StatelessWidget {
     this.champions,
     this.onChampions,
     this.showCoins,
+    this.onChallenges,
   });
 
   final V4Home home;
@@ -263,6 +266,9 @@ class GamesHomeV4View extends StatelessWidget {
 
   /// Null = follow the `games.cosmetics` kill switch.
   final bool? showCoins;
+
+  /// Opens the challenges page (T76); the chip shows while `games.challenges` is on.
+  final VoidCallback? onChallenges;
 
   @override
   Widget build(BuildContext context) {
@@ -284,6 +290,7 @@ class GamesHomeV4View extends StatelessWidget {
           onReview: onReview,
           onSettings: onSettings,
           onWardrobe: onWardrobe,
+          onChallenges: onChallenges,
         );
         final cont = home.continueLevel;
         final contCard = cont == null || cont.locked
@@ -340,10 +347,10 @@ class GamesHomeV4View extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({this.coins, this.reviewDue = 0, this.onReview, this.onSettings, this.onWardrobe});
+  const _Header({this.coins, this.reviewDue = 0, this.onReview, this.onSettings, this.onWardrobe, this.onChallenges});
   final int? coins;
   final int reviewDue;
-  final VoidCallback? onReview, onSettings, onWardrobe;
+  final VoidCallback? onReview, onSettings, onWardrobe, onChallenges;
 
   @override
   Widget build(BuildContext context) {
@@ -361,7 +368,7 @@ class _Header extends StatelessWidget {
           onPressed: onSettings,
         ),
       ]),
-      if (coins != null || reviewDue > 0) ...[
+      if (coins != null || reviewDue > 0 || onChallenges != null) ...[
         const SizedBox(height: AppSpace.xs),
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           if (coins != null)
@@ -400,6 +407,27 @@ class _Header extends StatelessWidget {
                       Icon(Icons.checkroom_rounded, color: age.palette.accent, size: AppIconSize.md),
                       const SizedBox(width: AppSpace.xs),
                       Text(t('خزانتي', 'Wardrobe'), style: AppType.row(context)),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+          if (onChallenges != null)
+            Material(
+              color: Color.alphaBlend(age.palette.accent.withValues(alpha: 0.14), c.cardBg),
+              shape: StadiumBorder(side: BorderSide(color: age.palette.accent, width: AppBorder.strong)),
+              child: InkWell(
+                key: const ValueKey('games.v4.challenges'),
+                customBorder: const StadiumBorder(),
+                onTap: onChallenges,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.emoji_events_rounded, color: age.palette.accent, size: AppIconSize.md),
+                      const SizedBox(width: AppSpace.xs),
+                      Text(t('التحدّيات', 'Challenges'), style: AppType.row(context)),
                     ]),
                   ),
                 ),
