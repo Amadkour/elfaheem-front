@@ -54,6 +54,26 @@ void main() {
     expect(find.textContaining('newer version'), findsOneWidget);
   });
 
+  test('an offline v4 play queues draw_id, picked, trace and calm', () {
+    final sub = V4PlaySubmission(
+      gameId: 31,
+      score: 3,
+      maxScore: 4,
+      trace: [
+        {'i': 0, 'a': 0, 'ms': 900},
+      ],
+      drawId: 'd-1',
+      picked: [3, 1, 0, 2],
+      calm: true,
+      fromPool: true,
+    );
+    expect(sub.payload['draw_id'], 'd-1');
+    expect(sub.payload['picked'], [3, 1, 0, 2]);
+    expect(sub.payload['trace'], hasLength(1));
+    expect(sub.payload['calm'], true);
+    expect(sub.payload['game_id'], 31);
+  });
+
   testWidgets('result extras: no layout errors', (tester) async {
     await expectNoLayoutErrors(tester, () => const GameResultExtras(coinsAwarded: 12, coins: 340, unlocked: 2));
   });

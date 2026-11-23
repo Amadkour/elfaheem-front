@@ -108,6 +108,8 @@ class V4PlaySubmission extends GamePlaySubmission {
   @override
   Map<String, dynamic> get payload => {
         ...super.payload,
+        'round_id': ?roundId,
+        'trace': ?trace,
         'draw_id': ?drawId,
         'picked': ?picked,
         'calm': ?calm,
