@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'game_grade.dart';
+import 'duel.dart';
 import 'game_items.dart';
 
 /// The settings object of a draw (CONTRACT §2 "Settings"), after the sacred override.
@@ -136,6 +137,9 @@ class GameSession extends ChangeNotifier {
   final String difficulty;
   final String? drawId, roundId;
   final int seed;
+
+  /// Ghost Duel only: the recorded opponent the play page fetched (null = the training partner). Set before the template builds.
+  DuelGhost? ghost;
 
   /// The draw's effective reciter (`{key, name_ar, name_en}`) or null.
   final Map<String, dynamic>? reciter;

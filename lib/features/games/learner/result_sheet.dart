@@ -9,7 +9,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/core/plural.dart';
 
 class GameResultExtras extends StatelessWidget {
-  const GameResultExtras({super.key, required this.coinsAwarded, this.coins, this.unlocked = 0});
+  const GameResultExtras({super.key, required this.coinsAwarded, this.coins, this.unlocked = 0, this.duel});
 
   final int coinsAwarded;
 
@@ -19,9 +19,12 @@ class GameResultExtras extends StatelessWidget {
   /// How many levels this play unlocked.
   final int unlocked;
 
+  /// Ghost Duel's end moment (the rope settled on the server's verdict), drawn above the coin lines.
+  final Widget? duel;
+
   @override
   Widget build(BuildContext context) {
-    if (coinsAwarded <= 0 && unlocked <= 0) return const SizedBox.shrink();
+    if (coinsAwarded <= 0 && unlocked <= 0) return duel ?? const SizedBox.shrink();
     final c = context.colors;
     final lines = <(IconData, String)>[
       if (coinsAwarded > 0)
@@ -43,7 +46,7 @@ class GameResultExtras extends StatelessWidget {
               en: 'You unlocked $unlocked new levels'),
         ),
     ];
-    return Padding(
+    final card = Padding(
       padding: const EdgeInsets.only(top: AppSpace.md),
       child: AppCard(
         key: const ValueKey('games.v4.extras'),
@@ -60,5 +63,6 @@ class GameResultExtras extends StatelessWidget {
         ]),
       ),
     );
+    return duel == null ? card : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [duel!, card]);
   }
 }

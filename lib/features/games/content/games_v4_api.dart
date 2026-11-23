@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/features/games/core/duel.dart';
 import 'package:flutter_education_app/features/games/core/game_audio.dart';
 import 'package:flutter_education_app/features/games/games_models.dart';
 
@@ -122,7 +123,7 @@ class V4Home {
 
 /// `POST /games/{id}/plays` with the v4 fields.
 class V4PlayResult {
-  const V4PlayResult({required this.play, this.coinsAwarded = 0, this.coins, this.unlocked = const [], this.srsDue = 0, this.rankedLeft});
+  const V4PlayResult({required this.play, this.coinsAwarded = 0, this.coins, this.unlocked = const [], this.srsDue = 0, this.rankedLeft, this.duel});
   final GamePlayResult play;
   final int coinsAwarded;
 
@@ -134,6 +135,9 @@ class V4PlayResult {
   final int srsDue;
   final int? rankedLeft;
 
+  /// Ghost Duel: the SERVER's verdict (`{won, opponent: ghost|bot}`); null when the play has no duel result.
+  final V4Duel? duel;
+
   factory V4PlayResult.fromJson(Object? r) {
     final m = _m(r);
     return V4PlayResult(
@@ -143,20 +147,35 @@ class V4PlayResult {
       unlocked: [for (final e in (m['unlocked'] as List? ?? const [])) if (e is num) e.toInt()],
       srsDue: _i(m['srs_due']),
       rankedLeft: m['ranked_left'] is num ? _i(m['ranked_left']) : null,
+      duel: m['duel'] is Map ? V4Duel(won: _m(m['duel'])['won'] == true, opponent: '${_m(m['duel'])['opponent'] ?? 'bot'}') : null,
     );
   }
 }
 
+/// The server's Ghost Duel verdict of a play.
+class V4Duel {
+  const V4Duel({required this.won, required this.opponent});
+  final bool won;
+
+  /// `ghost` or `bot`.
+  final String opponent;
+}
+
 /// `GET /games/{id}/ghost`: another learner's finished round (events: `[ms, right]`).
 class V4Ghost {
-  const V4Ghost({required this.name, required this.score, required this.maxScore, required this.durationMs, required this.events});
+  const V4Ghost({this.id, required this.name, required this.score, required this.maxScore, required this.durationMs, required this.events});
+  final int? id;
   final String name;
   final int score, maxScore, durationMs;
   final List<(int, int)> events;
 
+  /// The plain values the Ghost Duel template draws.
+  DuelGhost toDuel() => DuelGhost(id: id, name: name, score: score, maxScore: maxScore, durationMs: durationMs, events: events);
+
   static V4Ghost? from(Object? j) {
     if (j is! Map) return null;
     return V4Ghost(
+      id: j['id'] is num ? (j['id'] as num).toInt() : null,
       name: '${j['name'] ?? ''}',
       score: _i(j['score']),
       maxScore: _i(j['max_score']),
@@ -277,6 +296,7 @@ class GamesV4Api {
     String? drawId,
     List<int>? picked,
     bool? calm,
+    int? ghostPlayId,
   }) async {
     final body = <String, dynamic>{
       'client_id': clientId,
@@ -289,6 +309,7 @@ class GamesV4Api {
       'draw_id': ?drawId,
       'picked': ?picked,
       'calm': ?calm,
+      'ghost_play_id': ?ghostPlayId,
     };
     return V4PlayResult.fromJson(await _api.post('$_g/$gameId/plays', body: body));
   }

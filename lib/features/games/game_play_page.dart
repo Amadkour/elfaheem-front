@@ -40,10 +40,13 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/games/content/games_v4_api.dart';
 import 'package:flutter_education_app/features/games/content/level_cache.dart';
+import 'package:flutter_education_app/features/games/core/age_theme.dart';
+import 'package:flutter_education_app/features/games/core/duel.dart';
 import 'package:flutter_education_app/features/games/core/game_audio.dart';
 import 'package:flutter_education_app/features/games/core/game_session.dart';
 import 'package:flutter_education_app/features/games/core/game_template.dart';
 import 'package:flutter_education_app/features/games/learner/result_sheet.dart';
+import 'package:flutter_education_app/features/games/templates/ghost_duel/duel_scene.dart';
 import 'package:flutter_education_app/features/games/templates/register_all.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/games/engines/game_engine.dart';
@@ -86,6 +89,7 @@ class V4PlaySubmission extends GamePlaySubmission {
     this.drawId,
     this.picked,
     this.calm,
+    this.ghostPlayId,
     this.fromPool = false,
     GamesV4Api? v4,
   }) : _v4 = v4 ?? GamesV4Api();
@@ -100,6 +104,9 @@ class V4PlaySubmission extends GamePlaySubmission {
   final String? drawId;
   final List<int>? picked;
   final bool? calm;
+
+  /// Ghost Duel: the ghost play this round raced (null = the training partner). Never a verdict: the server decides.
+  final int? ghostPlayId;
   final GamesV4Api _v4;
 
   /// The coins / unlocked levels of the answer (null until it came).
@@ -113,6 +120,7 @@ class V4PlaySubmission extends GamePlaySubmission {
         'draw_id': ?drawId,
         'picked': ?picked,
         'calm': ?calm,
+        'ghost_play_id': ?ghostPlayId,
       };
 
   @override
@@ -135,7 +143,8 @@ class V4PlaySubmission extends GamePlaySubmission {
           trace: trace,
           drawId: drawId,
           picked: picked,
-          calm: calm);
+          calm: calm,
+          ghostPlayId: ghostPlayId);
       v4Result = r;
       error = null;
       return result = r.play;
@@ -171,6 +180,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
   /// A Games v4 level: its engine is a registered template. Its round comes from a draw, never from `config`.
   late final bool _isV4 = _registered(widget.game.engine);
   GameSession? _session;
+  int? _ghostPlayId;
   List<int>? _picked, _itemIds;
   bool _fromPool = false;
   bool _unreadable = false;
@@ -232,6 +242,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
     _session?.dispose();
     _session = null;
     _picked = _itemIds = null;
+    _ghostPlayId = null;
     _fromPool = false;
     _unreadable = false;
     setState(() {
@@ -276,6 +287,15 @@ class _GamePlayPageState extends State<GamePlayPage> {
       });
       return;
     }
+    if (session.templateKey == 'ghost_duel' && !_fromPool) {
+      // Ghost Duel: a recorded opponent of this level, or the training partner when there is none / the call fails
+      try {
+        final g = await _v4.ghost(_game.id);
+        session.ghost = g?.toDuel();
+        _ghostPlayId = g?.id;
+      } catch (_) {}
+      if (!mounted) return;
+    }
     _roundId = session.roundId;
     _session = session;
     setState(() => _loading = false);
@@ -309,6 +329,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
       drawId: s.drawId,
       picked: _picked,
       calm: s.calm ? true : null,
+      ghostPlayId: s.templateKey == 'ghost_duel' ? _ghostPlayId : null,
       fromPool: _fromPool,
       v4: _v4,
     );
@@ -441,6 +462,35 @@ class _GamePlayPageState extends State<GamePlayPage> {
     _startRound();
   }
 
+  /// Ghost Duel's end moment: the SERVER's verdict when it answered; for a play that has not reached the server, the
+  /// app's own result by the same rule, marked as not confirmed (no coins are promised either way).
+  Widget? _duelCard(V4PlaySubmission sub, V4Duel? server) {
+    final s = _session;
+    if (s == null || s.templateKey != 'ghost_duel') return null;
+    final ghost = s.ghost ??
+        botDuelGhost(items: s.items.length, parMs: s.items.fold<int>(0, (a, b) => a + b.parSeconds) * 1000);
+    final settled = sub.v4Result != null;
+    if (settled && server == null) return null;
+    final won = server?.won ??
+        duelWins(
+            myScore: sub.score,
+            myMax: sub.maxScore,
+            myMs: (sub.durationS ?? 0) * 1000,
+            theirScore: ghost.score,
+            theirMax: ghost.maxScore,
+            theirMs: ghost.durationMs);
+    final forced = GameAge.values.where((a) => a.name == s.settings.theme).firstOrNull;
+    return DuelResultCard(
+      theme: AgeTheme.of(context, age: forced ?? AgeThemeScope.of(context).age),
+      won: won,
+      opponentName: ghost.name,
+      myShare: sub.maxScore == 0 ? 0 : sub.score / sub.maxScore,
+      theirShare: ghost.maxScore == 0 ? 0 : ghost.score / ghost.maxScore,
+      confirmed: settled,
+      bot: (server?.opponent ?? (ghost.bot ? 'bot' : 'ghost')) == 'bot',
+    );
+  }
+
   void _openBoard() => showAppSheet<void>(
         context,
         (ctx) => AppSheetContent(
@@ -480,8 +530,9 @@ class _GamePlayPageState extends State<GamePlayPage> {
           v4Session: _isV4 ? _session : null,
           unreadable: _unreadable,
           extras: switch (sub) {
-            V4PlaySubmission(v4Result: final r?) =>
-              GameResultExtras(coinsAwarded: r.coinsAwarded, coins: r.coins, unlocked: r.unlocked.length),
+            V4PlaySubmission(v4Result: final r?) => GameResultExtras(
+                coinsAwarded: r.coinsAwarded, coins: r.coins, unlocked: r.unlocked.length, duel: _duelCard(sub, r.duel)),
+            V4PlaySubmission() when _duelCard(sub, null) != null => GameResultExtras(coinsAwarded: 0, duel: _duelCard(sub, null)),
             _ => null,
           },
           rankToday: sub?.result?.ranked == true ? sub?.result?.rankToday : null,
