@@ -450,8 +450,14 @@ class WordFishingViewState extends State<WordFishingView> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: AppSpace.xl),
-              child: Text(t('اختر اللؤلؤة التالية', 'Tap the next pearl'), style: appText(13, w: FontWeight.w600, c: theme.palette.paper.withValues(alpha: 0.92))),
+              padding: const EdgeInsets.only(bottom: AppSpace.lg),
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: theme.palette.paper.withValues(alpha: 0.88), borderRadius: BorderRadius.circular(AppRadius.pill)),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs),
+                  child: Text(t('اختر اللؤلؤة التالية', 'Tap the next pearl'), style: appText(13, w: FontWeight.w700, c: theme.palette.ink)),
+                ),
+              ),
             ),
           ),
       ]),

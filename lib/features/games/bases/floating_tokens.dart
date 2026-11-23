@@ -175,7 +175,7 @@ class FloatingTokensGame extends FlameGame {
       t.fit = math.min(1.0, math.min((t.bw - 44) / math.max(1, t.tp.width), 58 / visH));
       _maxExt = math.max(_maxExt, t.ext);
     }
-    const margin = 10.0;
+    const margin = 14.0;
     final usable = _w - 2 * margin;
     final top = (_topInset ?? _h * 0.26) + 4, bottom = _h - 8;
     var k = _w >= 900 ? 1.3 : 1.0; // a wide screen gets bigger fish
@@ -203,7 +203,6 @@ class FloatingTokensGame extends FlameGame {
     _k = k;
     final pitch = math.min(104 * k * 1.12, (bottom - top) / rows.length);
     final y0 = top + ((bottom - top) - pitch * rows.length) / 2 + pitch / 2;
-    final mx = _maxExt * k;
     _rowOff.clear();
     _rowLen.clear();
     _rowSpeed.clear();
@@ -211,16 +210,17 @@ class FloatingTokensGame extends FlameGame {
     for (var r = 0; r < rows.length; r++) {
       final row = rows[r];
       final sumW = row.fold<double>(0, (a, t) => a + t.ext * k);
-      final s = (usable - sumW) / row.length;
-      var left = margin + s / 2;
+      final s = math.min(40 * k, (usable - sumW) / math.max(1, row.length - 1));
+      var left = 0.0;
       for (final t in row) {
         t.row = r;
         t.ay = y0 + r * pitch;
         t.dir = r.isEven ? 1 : -1;
-        t.x0 = left + mx;
+        t.x0 = left;
         left += t.ext * k + s;
+        t.dir = r.isEven ? 1 : -1;
       }
-      _rowLen.add(_w + mx + 14 * k);
+      _rowLen.add(math.max(0.0, usable - (sumW + s * (row.length - 1)))); // the room the row swims in
       _rowOff.add(0);
       _rowSpeed.add(base * (0.85 + 0.15 * (r % 3)) * (r.isEven ? 1 : -1));
     }
@@ -231,7 +231,7 @@ class FloatingTokensGame extends FlameGame {
 
   void _place(_Token t) {
     final ext = t.ext * _k;
-    final e = (t.x0 + _rowOff[t.row]) % _rowLen[t.row] - _maxExt * _k;
+    final e = 14.0 + t.x0 + _rowLen[t.row] * (0.5 + 0.5 * math.sin(_rowOff[t.row]));
     t.x = e + ext / 2;
     t.y = t.ay + (reduceMotion ? 0.0 : math.sin(_time * 1.3 + t.phase) * 4 * _k * theme.bounce.clamp(0.3, 1.0));
   }
@@ -240,7 +240,13 @@ class FloatingTokensGame extends FlameGame {
     var any = false;
     if (!reduceMotion) {
       for (var r = 0; r < _rowOff.length; r++) {
-        _rowOff[r] += _rowSpeed[r] * dt;
+        if (_rowLen[r] > 4) {
+          _rowOff[r] += _rowSpeed[r] * dt / _rowLen[r] * math.pi;
+          final d = math.cos(_rowOff[r]) * _rowSpeed[r] >= 0 ? 1.0 : -1.0;
+          for (final t in _tokens) {
+            if (t.row == r) t.dir = d;
+          }
+        }
       }
     }
     for (final t in _tokens) {
