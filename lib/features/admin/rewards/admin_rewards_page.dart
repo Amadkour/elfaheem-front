@@ -27,6 +27,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../admin_common.dart' show t;
 import '../admin_page.dart';
 import 'admin_rewards_api.dart';
+import 'reward_course_picker.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Labels
@@ -458,6 +459,7 @@ class _RulesTabState extends State<_RulesTab> with AutomaticKeepAliveClientMixin
               children: [
                 RewardRuleForm(
                   initial: r,
+                  api: widget.api,
                   onSubmit: (draft) async {
                     final out = r?.id == null ? await widget.api.createRule(draft) : await widget.api.updateRule(r!.id!, draft);
                     if (ctx.mounted) Navigator.of(ctx).pop(out);
@@ -664,9 +666,13 @@ class RewardRuleCard extends StatelessWidget {
 
 /// The add / edit form of a rule. [onSubmit] saves (its error shows under the form).
 class RewardRuleForm extends StatefulWidget {
-  const RewardRuleForm({super.key, this.initial, required this.onSubmit});
+  const RewardRuleForm({super.key, this.initial, required this.onSubmit, this.api});
 
   final RewardRule? initial;
+
+  /// The course picker's search and the saved courses' names (null: a default client for the search, and the
+  /// saved courses show "Course #id").
+  final AdminRewardsApi? api;
   final Future<void> Function(RewardRule draft) onSubmit;
 
   @override
@@ -696,7 +702,9 @@ class _RewardRuleFormState extends State<RewardRuleForm> {
   late final _validHours = TextEditingController(text: _r.validHours == null ? '' : '${_r.validHours}');
   late final _unlockReferrals = TextEditingController(text: _r.unlockReferrals == null ? '' : '${_r.unlockReferrals}');
   late final _unlockDays = TextEditingController(text: '${_r.unlockDays}');
-  late final _courseIds = TextEditingController(text: (_r.courseIds ?? const <int>[]).join(', '));
+  late List<int> _courseIds = List.of(_r.courseIds ?? const <int>[]);
+  AdminRewardsApi? _ownApi;
+  AdminRewardsApi get _coursesApi => widget.api ?? (_ownApi ??= AdminRewardsApi());
   late bool _selectedCourses = _r.courseIds != null;
   bool _busy = false;
   String? _error;
@@ -706,7 +714,7 @@ class _RewardRuleFormState extends State<RewardRuleForm> {
 
   @override
   void dispose() {
-    for (final c in [_rankFrom, _rankTo, _threshold, _value, _currency, _maxDiscount, _minOrder, _validDays, _cap, _budget, _country, _validHours, _unlockReferrals, _unlockDays, _courseIds]) {
+    for (final c in [_rankFrom, _rankTo, _threshold, _value, _currency, _maxDiscount, _minOrder, _validDays, _cap, _budget, _country, _validHours, _unlockReferrals, _unlockDays]) {
       c.dispose();
     }
     super.dispose();
@@ -726,11 +734,9 @@ class _RewardRuleFormState extends State<RewardRuleForm> {
       setState(() => _error = t('اكتب العدد المطلوب', 'Enter the number needed'));
       return;
     }
-    final ids = _applies == 'course' && _selectedCourses
-        ? [for (final p in _courseIds.text.split(RegExp(r'[,\s،]+'))) if (int.tryParse(p) != null) int.parse(p)]
-        : null;
+    final ids = _applies == 'course' && _selectedCourses ? List.of(_courseIds) : null;
     if (ids != null && ids.isEmpty) {
-      setState(() => _error = t('اكتب رقم دورة واحدة على الأقل، أو اختر «أي دورة»', 'Enter at least one course number, or choose "Any course"'));
+      setState(() => _error = t('اختر دورة واحدة على الأقل من «إضافة دورات»، أو اختر «أي دورة»', 'Choose at least one course with "Add courses", or pick "Any course"'));
       return;
     }
     final draft = RewardRule(
@@ -851,11 +857,11 @@ class _RewardRuleFormState extends State<RewardRuleForm> {
           ),
           if (_selectedCourses) ...[
             AppSpace.gapSm,
-            AppField(
-              key: const ValueKey('admin.rewards.form.course_ids'),
-              controller: _courseIds,
-              label: t('أرقام الدورات (افصل بفاصلة)', 'Course numbers (comma separated)'),
-              ltr: true,
+            RewardCoursesField(
+              initialIds: _courseIds,
+              onChanged: (ids) => setState(() => _courseIds = ids),
+              search: (q) => _coursesApi.searchCourses(q),
+              resolve: widget.api?.course,
             ),
           ],
           AppSpace.gapSm,

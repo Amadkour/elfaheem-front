@@ -8,6 +8,7 @@
 //   POST   /periods/{id}/void {reason}                                       → {id, status, recomputed_id}
 //   GET    /coupons?q&status&user_id · POST /coupons · POST /coupons/{id}/revoke {reason}
 //   GET    /referrals?status · POST /referrals/{id}/approve|reject {reason?}
+//   GET    /api/v1/admin/courses?search · /api/v1/admin/courses/{id}         the rule form's course picker
 //
 // Lists answer `{items, total, has_more}` with `skip` / `limit`. Datetimes are naive UTC.
 library;
@@ -64,6 +65,31 @@ class RewardsUser {
   factory RewardsUser.fromJson(Object? v) {
     final j = _m(v);
     return RewardsUser(id: _i(j['id']), name: _s(j['name']), username: _sn(j['username']));
+  }
+}
+
+/// A course in the rule form's picker: a row of `GET /api/v1/admin/courses` (`name_ar` / `name_en` /
+/// `teacher_name`).
+class RewardsCourse {
+  const RewardsCourse({required this.id, this.nameAr, this.nameEn, this.teacher});
+
+  final int id;
+  final String? nameAr, nameEn, teacher;
+
+  /// The name in the app language, the other one when it is missing ('' when the course has neither).
+  String get name {
+    final own = t(nameAr ?? '', nameEn ?? '').trim();
+    return own.isNotEmpty ? own : (nameAr ?? nameEn ?? '').trim();
+  }
+
+  factory RewardsCourse.fromJson(Object? v) {
+    final j = _m(v);
+    return RewardsCourse(
+      id: _i(j['id']),
+      nameAr: _sn(j['name_ar']) ?? _sn(j['name']),
+      nameEn: _sn(j['name_en']) ?? _sn(j['name']),
+      teacher: _sn(j['teacher_name']),
+    );
   }
 }
 
@@ -465,4 +491,20 @@ class AdminRewardsApi {
 
   Future<AdminReferral> rejectReferral(int id, {String? reason}) async => AdminReferral.fromJson(
       _m(await _api.post('/api/v1/admin/rewards/referrals/$id/reject', body: {if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim()})));
+
+  /// The rule form's course search (the admin courses list: by name, teacher, access code or course number), live
+  /// courses only, by name.
+  Future<List<RewardsCourse>> searchCourses(String q, {int size = 30}) async => [
+        for (final e in _l(_m(await _api.get('/api/v1/admin/courses', queryParams: {
+          if (q.trim().isNotEmpty) 'search': q.trim(),
+          'archived': false,
+          'sort': 'name_asc',
+          'page': 1,
+          'size': size,
+        }))['items']))
+          RewardsCourse.fromJson(e),
+      ];
+
+  /// One course by id (the names of a saved rule's courses).
+  Future<RewardsCourse> course(int id) async => RewardsCourse.fromJson(await _api.get('/api/v1/admin/courses/$id'));
 }
