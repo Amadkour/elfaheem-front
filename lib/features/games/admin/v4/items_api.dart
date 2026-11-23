@@ -10,6 +10,7 @@
 //   GET    /api/v1/admin/games/v4/quran/surahs · …/quran/ayat?surah&from&to&reciter
 //   GET    /api/v1/admin/games/v4/hadith?collection&number&q&max_words&skip&limit · PUT …/hadith/{id}/matn
 //   GET    /api/v1/admin/games/v4/reciters · PUT …/reciters/{key}
+//   GET    /api/v1/admin/games/v4/reciters/{key}/timings · GET | PUT …/timings/{surah}   (the ayah timing tool, T85)
 library;
 
 import 'package:flutter_education_app/core/api_client.dart';
@@ -214,4 +215,12 @@ class ItemsV4Api {
 
   Future<Json> putReciter(String key, Json body) async =>
       Map<String, dynamic>.from(await _api.put('/api/v1/admin/games/v4/reciters/$key', body: body) as Map);
+
+  Future<List<Json>> timingSurahs(String key) async => _list(await _api.get('/api/v1/admin/games/v4/reciters/$key/timings'));
+
+  Future<Json> timingSurah(String key, int surah) async =>
+      Map<String, dynamic>.from(await _api.get('/api/v1/admin/games/v4/reciters/$key/timings/$surah') as Map);
+
+  Future<Json> putTimingSurah(String key, int surah, List<Json> ayat) async =>
+      Map<String, dynamic>.from(await _api.put('/api/v1/admin/games/v4/reciters/$key/timings/$surah', body: {'ayat': ayat}) as Map);
 }

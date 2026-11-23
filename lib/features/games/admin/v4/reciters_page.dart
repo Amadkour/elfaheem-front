@@ -18,6 +18,7 @@ import 'package:flutter_education_app/features/admin/admin_page.dart';
 import 'package:flutter_education_app/features/games/admin/v4/editors/ed_kit.dart';
 import 'package:flutter_education_app/features/games/admin/v4/items_api.dart';
 import 'package:flutter_education_app/features/games/admin/v4/quran_picker.dart' show AdminAudioCheck;
+import 'package:flutter_education_app/features/games/admin/v4/timing_tool.dart';
 
 String permissionName(String k) => switch (k) {
       'verified' => t('الإذن موثّق', 'Permission verified'),
@@ -200,6 +201,13 @@ class ReciterCard extends StatelessWidget {
             ),
           if (!isDefault && enabled)
             AppButton.tonal(label: t('اجعله الافتراضي', 'Make default'), size: AppButtonSize.sm, onPressed: busy ? null : () => onChange({'is_default': true})),
+          if (r['source_kind'] == 'surah_files')
+            AppButton.tonal(
+              label: t('أزمنة الآيات', 'Ayah timings'),
+              icon: Icons.timer_outlined,
+              size: AppButtonSize.sm,
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TimingSurahsPage(reciterKey: '${r['key']}', reciterName: '${ar ? r['name_ar'] : r['name_en']}'))),
+            ),
           AppButton.ghost(label: t('الإذن', 'Permission'), icon: Icons.edit_outlined, size: AppButtonSize.sm, onPressed: busy ? null : () => _editPermission(context)),
         ]),
       ]),
