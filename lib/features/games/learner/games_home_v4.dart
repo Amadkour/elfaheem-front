@@ -20,6 +20,7 @@ import 'package:flutter_education_app/features/games/champions/champions_models.
 import 'package:flutter_education_app/features/games/champions/champions_strip.dart';
 import 'package:flutter_education_app/features/games/content/games_v4_api.dart';
 import 'package:flutter_education_app/features/games/core/age_theme.dart';
+import 'package:flutter_education_app/features/games/core/game_template.dart' show kGameTemplates;
 import 'package:flutter_education_app/features/games/game_play_page.dart';
 import 'package:flutter_education_app/features/games/games_api.dart' show gamesErrorText;
 import 'package:flutter_education_app/features/games/games_models.dart';
@@ -60,6 +61,13 @@ Color? parseHexColor(String? hex) {
 
 String subjectName(V4Subject s) => t(s.nameAr.isEmpty ? s.nameEn : s.nameAr, s.nameEn.isEmpty ? s.nameAr : s.nameEn);
 
+/// A node's label: the template's name (the number is on the node), else the level's own title.
+String _templateTitle(V4Level l) {
+  final tp = kGameTemplates[l.template];
+  if (tp != null && tp.nameAr != tp.key) return t(tp.nameAr, tp.nameEn);
+  return GameSummary.fromJson(l.raw).title;
+}
+
 /// A subject's levels as map nodes, in play order.
 List<LevelNode> levelNodes(List<V4Level> levels) {
   final sorted = [...levels]..sort((a, b) => a.levelNo != b.levelNo ? a.levelNo.compareTo(b.levelNo) : a.id.compareTo(b.id));
@@ -68,7 +76,8 @@ List<LevelNode> levelNodes(List<V4Level> levels) {
       LevelNode(
         id: sorted[i].id,
         no: sorted[i].levelNo,
-        title: GameSummary.fromJson(sorted[i].raw).title,
+        title: _templateTitle(sorted[i]),
+        icon: kGameTemplates[sorted[i].template]?.icon,
         stars: GameSummary.fromJson(sorted[i].raw).progress?.stars ?? 0,
         locked: sorted[i].locked,
         sacred: sorted[i].sacred,
@@ -287,7 +296,7 @@ class GamesHomeV4View extends StatelessWidget {
       child: LayoutBuilder(builder: (context, box) {
         final wide = box.maxWidth >= 900;
         final gutter = AppSpace.gutter(box.maxWidth);
-        final subjects = home.subjects;
+        final subjects = [for (final s in home.subjects) if (s.levels > 0) s];
         V4Subject? cur;
         for (final s in subjects) {
           if (s.id == subjectId) cur = s;

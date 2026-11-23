@@ -243,7 +243,7 @@ class ReviewItemCard extends StatelessWidget {
           ],
           if (item.sourceRef.isNotEmpty) ...[
             const SizedBox(height: AppSpace.xs),
-            Text('${t('المصدر', 'Source')}: ${reviewSourceText(item.sourceRef)}', style: AppType.meta(context)),
+            Text('${t('المصدر', 'Source')}: ${item.sourceLabel.isNotEmpty ? item.sourceLabel : reviewSourceText(item.sourceRef)}', style: AppType.meta(context)),
           ],
           const SizedBox(height: AppSpace.md),
           Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, children: [

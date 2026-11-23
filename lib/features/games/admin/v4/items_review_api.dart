@@ -54,6 +54,7 @@ class ReviewItem {
     required this.subject,
     required this.sourceRef,
     required this.preview,
+    this.sourceLabel = '',
   });
 
   final int id;
@@ -63,6 +64,9 @@ class ReviewItem {
   final String promptEn;
   final String subject;
   final String sourceRef;
+
+  /// The server's resolved source name (`سورة الإخلاص 1`, `صحيح البخاري 127`); empty when it has none.
+  final String sourceLabel;
 
   /// The answer / reference in one short line (the body, trimmed).
   final String preview;
@@ -80,9 +84,21 @@ class ReviewItem {
       promptEn: '${p['en'] ?? ''}',
       subject: '${j['subject'] ?? ''}',
       sourceRef: '${s['ref'] ?? ''}',
-      preview: reviewBodyPreview(j['body']),
+      // the references (`@quran:112:1`, `@hadith:bukhari:127`) are shown as their text: the server resolves them
+      sourceLabel: _resolvedLabel(j['resolved']),
+      preview: reviewBodyPreview(_resolvedBody(j['resolved']) ?? j['body']),
     );
   }
+}
+
+Object? _resolvedBody(Object? resolved) => resolved is Map ? resolved['body'] : null;
+
+String _resolvedLabel(Object? resolved) {
+  final src = resolved is Map ? resolved['source'] : null;
+  final l = src is Map ? src['label'] : null;
+  if (l is! Map) return '';
+  final ar = '${l['ar'] ?? ''}', en = '${l['en'] ?? ''}';
+  return t(ar.isNotEmpty ? ar : en, en.isNotEmpty ? en : ar);
 }
 
 /// The body of an item as one short line: the options, the tokens or the reference.
@@ -90,7 +106,7 @@ String reviewBodyPreview(Object? body) {
   if (body is! Map) return '';
   final tokens = body['tokens'];
   if (tokens is String) return tokens;
-  if (tokens is List) return tokens.map((e) => e is Map ? '${e['text'] ?? ''}' : '$e').join(' · ');
+  if (tokens is List) return tokens.map((e) => e is Map ? '${e['text'] ?? ''}' : '$e').join(' ');
   final opts = body['options'];
   if (opts is List) {
     return opts.map((e) => e is Map ? '${e['text'] ?? ''}' : '$e').where((s) => s.isNotEmpty).join(' · ');

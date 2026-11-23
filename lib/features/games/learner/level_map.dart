@@ -39,10 +39,14 @@ class LevelNode {
     this.sacred = false,
     this.unlockMinStars = 1,
     this.previousNo,
+    this.icon,
   });
 
   final int id, no;
   final String title;
+
+  /// The template's icon, drawn beside the title.
+  final IconData? icon;
   final int stars;
   final bool locked, sacred;
 
@@ -494,11 +498,19 @@ class _NodeViewState extends State<_NodeView> {
                       Icon(i < d.data.stars ? Icons.star_rounded : Icons.star_outline_rounded,
                           size: AppIconSize.sm, color: i < d.data.stars ? starOn : starIdle),
                   ]),
-                Text(d.data.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: AppType.label(context).copyWith(color: locked ? text.withValues(alpha: 0.62) : text)),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  if (d.data.icon != null) ...[
+                    Icon(d.data.icon, size: AppIconSize.sm, color: locked ? text.withValues(alpha: 0.62) : text),
+                    const SizedBox(width: AppSpace.xxs),
+                  ],
+                  Flexible(
+                    child: Text(d.data.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: AppType.label(context).copyWith(color: locked ? text.withValues(alpha: 0.62) : text)),
+                  ),
+                ]),
               ]),
             ),
           ),
