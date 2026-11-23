@@ -583,7 +583,7 @@ class GameAudio {
   // ---- reciters list and the 3-second sample ----
 
   Future<GameReciterList> loadReciters() async {
-    final j = await ApiClient().get('/games/reciters');
+    final j = await ApiClient().get('/api/v1/games/reciters');
     final m = Map<String, dynamic>.from(j as Map);
     return GameReciterList(
       items: [
@@ -604,7 +604,7 @@ class GameAudio {
   }
 
   static Future<Map<String, RecitationSegment>> _apiFetch(List<String> refs, String reciter) async {
-    final j = await ApiClient().get('/games/quran/audio', queryParams: {'refs': refs.join(','), 'reciter': reciter});
+    final j = await ApiClient().get('/api/v1/games/quran/audio', queryParams: {'refs': refs.join(','), 'reciter': reciter});
     final items = Map<String, dynamic>.from((j as Map)['items'] as Map? ?? const {});
     return {
       for (final e in items.entries)
@@ -613,6 +613,6 @@ class GameAudio {
   }
 
   static Future<void> _apiSave(String key) async {
-    await ApiClient().put('/me/games/profile', body: {'reciter_key': key});
+    await ApiClient().put('/api/v1/me/games/profile', body: {'reciter_key': key});
   }
 }
