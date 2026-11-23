@@ -42,17 +42,24 @@ class RunnerGate {
   int get lanes => labels.length;
 }
 
+/// What the lane runner draws: a road with a car (Car Race) or a lane of space with planets and a rocket (Space Rocket, T46).
+enum RunnerSkin { road, space }
+
 enum RunnerPhase { idle, approach, hold, commit, judging, pass, retry }
 
 /// How a lane sign is drawn.
 enum _Sign { plain, hint, good, bad, dim }
 
 class LaneRunnerGame extends FlameGame {
-  LaneRunnerGame({required this.theme, this.speed = 3, this.equipped = const {}, this.lanes = 3})
+  LaneRunnerGame({required this.theme, this.speed = 3, this.equipped = const {}, this.lanes = 3, this.skin = RunnerSkin.road})
       : calm = theme.calm,
         _carLane = (lanes - 1) ~/ 2;
 
   final AgeTheme theme;
+
+  /// `space`: a starfield, a planet per lane and a rocket with a flame instead of the road and the car (T46).
+  final RunnerSkin skin;
+  bool get _space => skin == RunnerSkin.space;
 
   /// 1..5 (`settings.speed`): how fast the gate comes.
   final int speed;
@@ -104,6 +111,7 @@ class LaneRunnerGame extends FlameGame {
   // ---- caches ----
   ui.Picture? _sky, _hillsFar, _hillsNear, _road, _tree, _tree2;
   final Map<GameMood, ui.Picture> _car = {};
+  final List<ui.Picture?> _planets = [null, null, null, null];
   late final Paint _fill = Paint();
   late final Paint _line = Paint()..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
   final Path _path = Path();
@@ -114,6 +122,12 @@ class LaneRunnerGame extends FlameGame {
   static const int _nLines = 18;
   final List<double> _lineAng = List.generate(_nLines, (i) => (i / _nLines) * math.pi * 2 + (i.isOdd ? 0.11 : -0.05));
   final List<double> _linePh = List.generate(_nLines, (i) => ((i * 0.6180339) % 1.0));
+
+  // ---- stars (space; fixed positions, drift by the scroll) ----
+  static const int _nStars = 44;
+  final List<double> _starX = List.generate(_nStars, (i) => (i * 0.7548776662) % 1.0);
+  final List<double> _starY = List.generate(_nStars, (i) => (i * 0.5698402909 + 0.13) % 1.0);
+  final List<double> _starR = List.generate(_nStars, (i) => 0.7 + ((i * 37) % 11) / 11 * 1.5);
 
   /// How many lines the player sees, tests read it.
   bool get speedLinesOn => !calm && !reduceMotion;
@@ -305,6 +319,21 @@ class LaneRunnerGame extends FlameGame {
   void _buildCaches() {
     final p = theme.palette;
     _asphalt = Color.lerp(p.ink, p.near, theme.calm ? 0.45 : 0.3)!;
+    if (_space) {
+      _sky?.dispose();
+      _road?.dispose();
+      _sky = _record(_paintSpace);
+      _road = _record(_paintLanes);
+      for (var i = 0; i < 4; i++) {
+        _planets[i]?.dispose();
+        _planets[i] = _record((c) => _paintPlanet(c, i), width: 200, height: 200);
+      }
+      for (final c in _car.values) {
+        c.dispose();
+      }
+      _car.clear();
+      return;
+    }
     _sky = _record((c) => _paintSky(c));
     _hillsFar = _record((c) => _paintHills(c, far: true), width: _w * 1.5);
     _hillsNear = _record((c) => _paintHills(c, far: false), width: _w * 1.5);
@@ -319,6 +348,157 @@ class LaneRunnerGame extends FlameGame {
     final c = Canvas(r, Rect.fromLTWH(0, 0, width ?? _w, height ?? _h));
     draw(c);
     return r.endRecording();
+  }
+
+  // ---------------------------------------------------------------------------------------------- space (T46)
+
+  Color get _deep => Color.lerp(theme.palette.ink, theme.palette.skyTop, 0.06)!;
+
+  void _paintSpace(Canvas c) {
+    final p = theme.palette;
+    c.drawRect(
+        Rect.fromLTWH(0, 0, _w, _h),
+        Paint()
+          ..shader = ui.Gradient.linear(Offset.zero, Offset(0, _h), [_deep, Color.lerp(p.ink, p.skyTop, 0.3)!, Color.lerp(p.ink, p.skyTop, 0.16)!], [0, 0.5, 1]));
+    // nebulae
+    final k = theme.calm ? 0.5 : 1.0;
+    void cloud(Offset o, double r, Color col, double a) =>
+        c.drawCircle(o, r, Paint()..shader = ui.Gradient.radial(o, r, [col.withValues(alpha: a * k), col.withValues(alpha: 0)]));
+    cloud(Offset(_w * 0.18, _h * 0.42), _h * 0.42, p.accent, 0.3);
+    cloud(Offset(_w * 0.86, _h * 0.7), _h * 0.4, p.accent2, 0.2);
+    cloud(Offset(_w * 0.7, _h * 0.12), _h * 0.3, p.accent, 0.16);
+    // the glow at the vanishing point: the far side of the lane
+    final vp = Offset(_w / 2, _hy);
+    cloud(vp, _h * 0.42, p.glow, 0.55);
+    c.drawCircle(vp, _h * 0.005, Paint()..color = p.paper.withValues(alpha: 0.85));
+  }
+
+  void _paintLanes(Canvas c) {
+    final p = theme.palette;
+    final b = _yAt(1.3);
+    final hw = _half * 1.3;
+    final lane = Path()
+      ..moveTo(_w / 2, _hy)
+      ..lineTo(_w / 2 + hw, b)
+      ..lineTo(_w / 2 - hw, b)
+      ..close();
+    c.drawPath(
+        lane,
+        Paint()
+          ..shader = ui.Gradient.linear(Offset(0, _hy), Offset(0, _h),
+              [p.paper.withValues(alpha: 0.0), p.paper.withValues(alpha: theme.calm ? 0.05 : 0.09), p.paper.withValues(alpha: theme.calm ? 0.09 : 0.15)], [0, 0.4, 1]));
+    final edge = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = theme.calm ? 1.2 : 2
+      ..shader = ui.Gradient.linear(Offset(0, _hy), Offset(0, _h), [p.accent.withValues(alpha: 0), p.accent.withValues(alpha: theme.calm ? 0.4 : 0.8)]);
+    for (final s in [-1.0, 1.0]) {
+      c.drawLine(Offset(_w / 2, _hy), Offset(_w / 2 + s * hw, b), edge);
+    }
+  }
+
+  void _paintPlanet(Canvas c, int i) {
+    final p = theme.palette;
+    final base = [p.accent, p.accent2, Color.lerp(p.accent, p.accent2, 0.5)!, Color.lerp(p.gold, p.accent, 0.35)!][i % 4];
+    const ctr = Offset(100, 100);
+    const r = 78.0;
+    final ring = i % 4 == 1 || i % 4 == 3;
+    final ringRect = Rect.fromCenter(center: ctr, width: 196, height: 52);
+    void ringHalf(bool front) {
+      c.save();
+      c.translate(100, 100);
+      c.rotate(-0.32);
+      c.translate(-100, -100);
+      c.drawArc(
+          ringRect,
+          front ? 0 : math.pi,
+          math.pi,
+          false,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 9
+            ..color = Color.lerp(base, p.paper, 0.55)!.withValues(alpha: 0.9));
+      c.restore();
+    }
+
+    if (ring) ringHalf(false);
+    final body = Paint()
+      ..shader = ui.Gradient.radial(const Offset(72, 70), 120, [Color.lerp(base, p.paper, 0.4)!, base, Color.lerp(base, p.ink, 0.55)!], [0, 0.5, 1]);
+    c.drawCircle(ctr, r, body);
+    c.save();
+    c.clipPath(Path()..addOval(Rect.fromCircle(center: ctr, radius: r)));
+    final band = Paint()..color = Color.lerp(base, p.paper, 0.35)!.withValues(alpha: 0.35);
+    if (i % 4 == 0 || i % 4 == 3) {
+      for (final y in [62.0, 96.0, 126.0]) {
+        c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(10, y, 180, 12), const Radius.circular(6)), band);
+      }
+    } else {
+      final crater = Paint()..color = Color.lerp(base, p.ink, 0.35)!.withValues(alpha: 0.4);
+      for (final o in const [Offset(64, 70), Offset(126, 62), Offset(112, 128), Offset(70, 132)]) {
+        c.drawCircle(o, 11 + (o.dx % 7), crater);
+      }
+    }
+    // the night side
+    c.drawCircle(const Offset(150, 140), 100, Paint()..color = p.ink.withValues(alpha: 0.22));
+    c.restore();
+    if (theme.outline > 0.4) {
+      c.drawCircle(ctr, r, Paint()..style = PaintingStyle.stroke..strokeWidth = 3 * theme.outline..color = p.ink);
+    }
+    if (ring) ringHalf(true);
+  }
+
+  ui.Picture _rocketPicture(GameMood mood) {
+    return _car.putIfAbsent(mood, () {
+      final p = theme.palette;
+      final r = ui.PictureRecorder();
+      final c = Canvas(r, const Rect.fromLTWH(0, 0, 80, 130));
+      final fin = Color.lerp(p.accent, p.ink, 0.15)!;
+      for (final s in [-1.0, 1.0]) {
+        final f = Path()
+          ..moveTo(40 + s * 20, 66)
+          ..lineTo(40 + s * 38, 102)
+          ..quadraticBezierTo(40 + s * 30, 98, 40 + s * 18, 96)
+          ..close();
+        c.drawPath(f, Paint()..color = fin);
+      }
+      final body = Path()
+        ..moveTo(40, 0)
+        ..quadraticBezierTo(68, 34, 61, 96)
+        ..lineTo(19, 96)
+        ..quadraticBezierTo(12, 34, 40, 0)
+        ..close();
+      c.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(28, 94, 24, 9), const Radius.circular(3)), Paint()..color = Color.lerp(p.ink, p.paper, 0.2)!);
+      c.drawPath(
+          body,
+          Paint()
+            ..shader = ui.Gradient.linear(const Offset(16, 0), const Offset(64, 0), [p.paper, Color.lerp(p.paper, p.skyTop, 0.25)!, Color.lerp(p.paper, p.ink, 0.28)!], [0, 0.45, 1]));
+      c.save();
+      c.clipPath(body);
+      c.drawRect(const Rect.fromLTWH(0, 0, 80, 30), Paint()..color = p.accent);
+      c.drawRect(const Rect.fromLTWH(0, 74, 80, 7), Paint()..color = p.accent);
+      c.restore();
+      if (theme.outline > 0.4) {
+        c.drawPath(body, Paint()..style = PaintingStyle.stroke..strokeWidth = 2 * theme.outline..color = p.ink);
+      }
+      // the porthole; the driver looks out of it unless the round is calm
+      const wc = Offset(40, 52);
+      c.drawCircle(wc, 15, Paint()..color = Color.lerp(p.accent2, p.paper, 0.2)!);
+      c.drawCircle(wc, 11.5, Paint()..color = Color.lerp(_deep, p.skyTop, 0.35)!);
+      if (!theme.calm) {
+        final eq = {...equipped}..remove('vehicle')..remove('trail');
+        final cr = ui.PictureRecorder();
+        CharacterPainter(theme, eq, mood, const AlwaysStoppedAnimation<double>(0)).paint(Canvas(cr), const Size(100, 100));
+        final driver = cr.endRecording();
+        c.save();
+        c.clipPath(Path()..addOval(Rect.fromCircle(center: wc, radius: 11.5)));
+        c.translate(wc.dx - 0.2 * 100, wc.dy - 0.27 * 100);
+        c.scale(0.4);
+        c.drawPicture(driver);
+        c.restore();
+        driver.dispose();
+      }
+      c.drawCircle(wc.translate(-4, -5), 3.2, Paint()..color = p.paper.withValues(alpha: 0.5));
+      return r.endRecording();
+    });
   }
 
   void _paintSky(Canvas c) {
@@ -531,6 +711,18 @@ class LaneRunnerGame extends FlameGame {
     if (_w == 0 || _sky == null) return;
     final p = theme.palette;
     final steer = _carU * theme.parallax;
+    if (_space) {
+      canvas.drawPicture(_sky!);
+      _drawStars(canvas, p);
+      canvas.drawPicture(_road!);
+      _drawStripes(canvas, p);
+      if (speedLinesOn) _drawSpeedLines(canvas, p);
+      final g = _gate;
+      if (g != null) _drawPlanets(canvas, g, p);
+      _drawRocket(canvas, p);
+      if (!reduceMotion) _drawParticles(canvas);
+      return;
+    }
     canvas.drawPicture(_sky!);
     canvas.save();
     canvas.translate(-_w * 0.25 - steer * 14, 0);
@@ -550,12 +742,111 @@ class LaneRunnerGame extends FlameGame {
     if (!reduceMotion) _drawParticles(canvas);
   }
 
+  void _drawStars(Canvas canvas, GamePalette p) {
+    for (var i = 0; i < _nStars; i++) {
+      final layer = 0.3 + 0.7 * ((i % 3) / 2);
+      final y = ((_starY[i] + _scroll * 0.045 * layer) % 1.0) * _h;
+      final tw = theme.calm || reduceMotion ? 0.0 : 0.25 * math.sin(_time * 2 + i);
+      _fill.color = p.paper.withValues(alpha: (0.35 + 0.5 * layer + tw).clamp(0.0, 1.0));
+      canvas.drawCircle(Offset(_starX[i] * _w, y), _starR[i] * (theme.calm ? 0.8 : 1), _fill);
+    }
+  }
+
+  void _drawPlanets(Canvas canvas, RunnerGate g, GamePalette p) {
+    final t = _gateT;
+    final n = g.lanes;
+    final fade = _phase == RunnerPhase.pass ? (1 - ((t - 0.97) / 0.13)).clamp(0.0, 1.0) : 1.0;
+    if (fade <= 0) return;
+    final ground = _yAt(t);
+    final unit = _half * t;
+    if (_phase == RunnerPhase.hold || _phase == RunnerPhase.commit || _phase == RunnerPhase.approach) {
+      final u0 = -1 + 2 * _carLane / n, u1 = -1 + 2 * (_carLane + 1) / n;
+      _path
+        ..reset()
+        ..moveTo(_xAt(u0, t), ground)
+        ..lineTo(_xAt(u1, t), ground)
+        ..lineTo(_xAt(u1, _tCar + 0.1), _yAt(_tCar + 0.1))
+        ..lineTo(_xAt(u0, _tCar + 0.1), _yAt(_tCar + 0.1))
+        ..close();
+      _fill.color = p.paper.withValues(alpha: 0.1 * fade);
+      canvas.drawPath(_path, _fill);
+    }
+    final laneW = 2 * unit / n;
+    final r = laneW * 0.5;
+    final cy = ground - r * 1.02 - unit * 0.12;
+    final dim = _deep;
+    for (var i = 0; i < n; i++) {
+      final plate = _plates[i];
+      final pic = _planets[i];
+      if (plate == null || pic == null) continue;
+      final cx = _xAt(_laneU(i, n), t);
+      final state = _signs[i];
+      if (state == _Sign.good || state == _Sign.hint) {
+        final pulse = state == _Sign.hint && !reduceMotion ? 0.12 * math.sin(_time * 5) : 0.0;
+        _fill.color = (state == _Sign.good ? const Color(0xFF63D6A0) : p.gold).withValues(alpha: (0.3 + pulse) * fade);
+        canvas.drawCircle(Offset(cx, cy), r * 1.2, _fill);
+      }
+      canvas.save();
+      canvas.translate(cx, cy);
+      canvas.scale(r / 78);
+      canvas.translate(-100, -100);
+      canvas.drawPicture(pic);
+      canvas.restore();
+      final veil = math.max(state == _Sign.dim ? 0.5 : 0.0, 1 - fade);
+      if (veil > 0) {
+        _fill.color = dim.withValues(alpha: veil);
+        canvas.drawCircle(Offset(cx, cy), r * 1.02, _fill);
+      }
+      canvas.save();
+      canvas.translate(cx, cy);
+      canvas.scale(r * 1.62 / 120);
+      plate.paint(canvas, state, fade, theme.calm, _time, theme.outline, p);
+      canvas.restore();
+    }
+  }
+
+  void _drawRocket(Canvas canvas, GamePalette p) {
+    final t = _tCar;
+    final n = laneCount;
+    final x = _xAt(_carU, t);
+    final y = _yAt(t) - _half * 0.06;
+    final laneW = 2 * _half * t / n;
+    final cw = math.min(math.min(laneW * 0.6, _half * 0.35), _h * 0.11);
+    final k = cw / 70;
+    final bob = reduceMotion ? 0.0 : math.sin(_time * 3.2) * 2.2 * theme.bounce;
+    final jolt = _shake > 0 ? math.sin(_shake * 38) * _shake * cw * 0.07 : 0.0;
+    canvas.save();
+    canvas.translate(x + jolt, y + bob);
+    canvas.rotate((_carVel * 0.04).clamp(-0.25, 0.25) + (_shake > 0 ? math.sin(_shake * 30) * _shake * 0.05 : 0));
+    canvas.scale(k);
+    canvas.translate(-40, -102);
+    // the flame: three nested teardrops that flicker with the clock (one reused path, no allocation)
+    final flick = reduceMotion ? 0.0 : math.sin(_time * (theme.calm ? 9 : 31));
+    final len = (theme.calm ? 20 : 30) + 5 * flick + _boost * 34;
+    final wide = theme.calm ? 0.8 : 1.0;
+    for (var l = 0; l < 3; l++) {
+      final s = 1 - l * 0.3;
+      final hw = 10 * s * wide;
+      _path
+        ..reset()
+        ..moveTo(40 - hw, 102)
+        ..quadraticBezierTo(40 - hw, 102 + len * s * 0.55, 40, 102 + len * s)
+        ..quadraticBezierTo(40 + hw, 102 + len * s * 0.55, 40 + hw, 102)
+        ..close();
+      _fill.color = (l == 0 ? p.accent2 : l == 1 ? p.gold : p.paper).withValues(alpha: l == 0 ? 0.85 : 1);
+      canvas.drawPath(_path, _fill);
+    }
+    canvas.drawPicture(_rocketPicture(_mood));
+    canvas.restore();
+  }
+
   void _drawStripes(Canvas canvas, GamePalette p) {
     final n = laneCount;
     final scrollIdx = _scroll.floor();
     final frac = _scroll - scrollIdx;
     const gap = 1.0, len = 0.5;
-    final dash = _fill..color = p.paper.withValues(alpha: theme.calm ? 0.6 : 0.88);
+    final da = _space ? (theme.calm ? 0.16 : 0.3) : (theme.calm ? 0.6 : 0.88);
+    final dash = _fill..color = p.paper.withValues(alpha: da);
     for (var k = 16; k >= 0; k--) {
       final d0 = 1.0 + k * gap - frac * gap - 0.2;
       final d1 = d0 + len;
@@ -576,7 +867,7 @@ class LaneRunnerGame extends FlameGame {
         canvas.drawPath(_path, dash);
       }
       // rumble strips on the shoulder: alternate by the stripe's identity
-      if (!theme.calm && ((k + scrollIdx) & 1) == 0) {
+      if (!_space && !theme.calm && ((k + scrollIdx) & 1) == 0) {
         _fill.color = p.accent.withValues(alpha: 0.85);
         for (final s in const [-1.0, 1.0]) {
           _path
@@ -740,6 +1031,9 @@ class LaneRunnerGame extends FlameGame {
     _road?.dispose();
     _tree?.dispose();
     _tree2?.dispose();
+    for (final pl in _planets) {
+      pl?.dispose();
+    }
     for (final c in _car.values) {
       c.dispose();
     }
