@@ -652,6 +652,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
     return BasePage(
       appBar: ScreenAppBar(
         title: _game.title,
+        compact: true,
         helpPageId: 'games.play',
         actions: [
           if (board)

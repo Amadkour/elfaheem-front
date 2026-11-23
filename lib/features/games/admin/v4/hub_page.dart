@@ -109,7 +109,6 @@ class _GamesHubPageState extends State<GamesHubPage> {
       title: t('ألعاب التعلّم', 'Learning games'),
       subtitle: t('نظرة سريعة على اللعب اليوم، وكل صفحات إدارة الألعاب في مكان واحد.',
           'A quick look at today\'s play, and every games admin page in one place.'),
-      icon: Icons.sports_esports_rounded,
       onRefresh: _load,
       updatedAt: _loadedAt,
       body: Padding(

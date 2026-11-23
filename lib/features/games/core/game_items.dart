@@ -40,7 +40,7 @@ class GameText {
   static GameText from(Object? j) => j is Map ? GameText(j['ar'] as String?, j['en'] as String?) : const GameText(null, null);
 
   /// The text in [lang] (`ar` / `en`), falling back to the other side.
-  String of(String lang) => (lang == 'ar' ? (ar ?? en) : (en ?? ar)) ?? '';
+  String of(String lang) => isolateMath((lang == 'ar' ? (ar ?? en) : (en ?? ar)) ?? '');
 }
 
 /// One audio entry of an item's playlist (one per ayah of a Quran reference).
@@ -219,4 +219,14 @@ List<GameItem> parseGameItems(Object? list) {
     if (it != null) out.add(it);
   }
   return out;
+}
+
+final RegExp _mathOnly = RegExp(r'^[\d٠-٩۰-۹\s+\-−×÷*/=<>≤≥≠%.,:^()√²³½¼¾π]+$');
+
+/// A math or number expression ("20 ÷ 4") keeps its left-to-right order inside right-to-left Arabic text: it is
+/// wrapped in a Unicode LTR isolate (LRI ... PDI). Any text with a letter is returned unchanged.
+String isolateMath(String s) {
+  final trimmed = s.trim();
+  if (trimmed.isEmpty || !RegExp(r'[\d٠-٩۰-۹]').hasMatch(trimmed) || !_mathOnly.hasMatch(trimmed)) return s;
+  return '${String.fromCharCode(0x2066)}$trimmed${String.fromCharCode(0x2069)}';
 }

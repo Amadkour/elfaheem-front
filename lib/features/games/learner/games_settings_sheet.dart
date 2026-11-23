@@ -143,7 +143,7 @@ class GamesSettingsBody extends StatelessWidget {
       _Credit(
         icon: Icons.format_quote_rounded,
         title: t('الحديث', 'Hadith'),
-        body: t('صحيح البخاري وصحيح مسلم من مشروع fawazahmed0/hadith-api (مشاع عام).', 'Sahih al-Bukhari and Sahih Muslim from fawazahmed0/hadith-api (public domain).'),
+        body: t('صحيح البخاري وصحيح مسلم من مشروع hadith-api (مشاع عام).', 'Sahih al-Bukhari and Sahih Muslim from the hadith-api project (public domain).'),
       ),
       _Credit(
         icon: Icons.record_voice_over_rounded,

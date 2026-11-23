@@ -725,6 +725,9 @@ class LaneRunnerGame extends FlameGame {
       return;
     }
     canvas.drawPicture(_sky!);
+    // the hills are wider than the scene (they slide with the steering): keep them inside it
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(0, 0, _w, _h));
     canvas.save();
     canvas.translate(-_w * 0.25 - steer * 14, 0);
     canvas.drawPicture(_hillsFar!);
@@ -732,6 +735,7 @@ class LaneRunnerGame extends FlameGame {
     canvas.save();
     canvas.translate(-_w * 0.25 - steer * 34, 0);
     canvas.drawPicture(_hillsNear!);
+    canvas.restore();
     canvas.restore();
     canvas.drawPicture(_road!);
     _drawStripes(canvas, p);
