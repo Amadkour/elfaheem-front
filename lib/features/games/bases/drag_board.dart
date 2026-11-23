@@ -80,6 +80,12 @@ class DragSlotData {
 
 enum DragBoardLayout { line, buckets, board }
 
+/// Draws a slot's content in place of the stock card (Science Lab's flask); [hover] is true while a piece is over it.
+typedef DragSlotBuilder = Widget Function(BuildContext context, DragSlotData slot, bool hover);
+
+/// Draws a tray piece in place of the stock chip (Science Lab's jars); [lifted] while it is being dragged.
+typedef DragTokenBuilder = Widget Function(BuildContext context, DragToken token, bool lifted);
+
 /// Draws the picture at [url] in a [size] square (the board clips it to rounded corners).
 typedef DragImageBuilder = Widget Function(BuildContext context, String url, double size);
 
@@ -129,7 +135,13 @@ class DragBoard extends StatelessWidget {
     this.boardAspect = 1.5,
     this.bucketColumns,
     this.onTapSlot,
+    this.slotBuilder,
+    this.tokenBuilder,
   });
+
+  /// Custom slot / piece drawing (null = the stock card / chip); the drop target and the drag source stay the board's.
+  final DragSlotBuilder? slotBuilder;
+  final DragTokenBuilder? tokenBuilder;
 
   /// A tap on a slot / spot (a piece picked by a tap goes there): the no-drag way to play.
   final ValueChanged<int>? onTapSlot;
@@ -173,8 +185,9 @@ class DragBoard extends StatelessWidget {
       boardAspect: boardAspect,
       bucketColumns: bucketColumns,
       onTapSlot: onTapSlot,
+      slotBuilder: slotBuilder,
     );
-    final tr = _Tray(sf: sf, tray: tray, onTapToken: onTapToken, silent: silent);
+    final tr = _Tray(sf: sf, tray: tray, onTapToken: onTapToken, silent: silent, tokenBuilder: tokenBuilder);
     final Widget body = layout == DragBoardLayout.board
         ? LayoutBuilder(builder: (context, box) {
             // a wide screen: the picture and the tray side by side, not a stretched phone
@@ -289,7 +302,8 @@ class _SnapIn extends StatelessWidget {
 // ── the tray ──────────────────────────────────────────────────────────────────
 
 class _Tray extends StatelessWidget {
-  const _Tray({required this.sf, required this.tray, required this.onTapToken, required this.silent});
+  const _Tray({required this.sf, required this.tray, required this.onTapToken, required this.silent, this.tokenBuilder});
+  final DragTokenBuilder? tokenBuilder;
   final StageSurface sf;
   final List<DragToken> tray;
   final ValueChanged<int>? onTapToken;
@@ -314,8 +328,8 @@ class _Tray extends StatelessWidget {
               KeyedSubtree(
                 key: ValueKey('tray-${tk.id}'),
                 child: tk.used
-                    ? Opacity(opacity: 0.0, child: _Chip(sf: sf, token: tk, maxWidth: maxW))
-                    : _TrayToken(sf: sf, token: tk, maxWidth: maxW, onTap: onTapToken, silent: silent),
+                    ? Opacity(opacity: 0.0, child: tokenBuilder != null ? tokenBuilder!(context, tk, false) : _Chip(sf: sf, token: tk, maxWidth: maxW))
+                    : _TrayToken(sf: sf, token: tk, maxWidth: maxW, onTap: onTapToken, silent: silent, builder: tokenBuilder),
               ),
           ],
         ),
@@ -325,7 +339,8 @@ class _Tray extends StatelessWidget {
 }
 
 class _TrayToken extends StatefulWidget {
-  const _TrayToken({required this.sf, required this.token, required this.onTap, required this.silent, this.maxWidth});
+  const _TrayToken({required this.sf, required this.token, required this.onTap, required this.silent, this.maxWidth, this.builder});
+  final DragTokenBuilder? builder;
   final StageSurface sf;
   final DragToken token;
   final ValueChanged<int>? onTap;
@@ -344,7 +359,8 @@ class _TrayTokenState extends State<_TrayToken> {
     final sf = widget.sf;
     final tk = widget.token;
     final pic = _BoardImages.picture(context, tk.image, _kPieceImage, sf.radius - 8);
-    final chip = _Chip(sf: sf, token: tk, state: tk.hint ? StageTileState.hint : StageTileState.idle, maxWidth: widget.maxWidth, picture: pic);
+    final custom = widget.builder;
+    final chip = custom != null ? custom(context, tk, false) : _Chip(sf: sf, token: tk, state: tk.hint ? StageTileState.hint : StageTileState.idle, maxWidth: widget.maxWidth, picture: pic);
     final pressed = AnimatedScale(
       scale: _down ? 0.95 : 1,
       duration: Duration(milliseconds: appMotionOff(context) ? 0 : 90),
@@ -363,10 +379,10 @@ class _TrayTokenState extends State<_TrayToken> {
           offset: const Offset(-40, -64),
           child: Material(
             color: Colors.transparent,
-            child: _Chip(sf: sf, token: tk, lifted: true, maxWidth: widget.maxWidth, picture: pic),
+            child: custom != null ? custom(context, tk, true) : _Chip(sf: sf, token: tk, lifted: true, maxWidth: widget.maxWidth, picture: pic),
           ),
         ),
-        childWhenDragging: Opacity(opacity: 0.25, child: _Chip(sf: sf, token: tk, maxWidth: widget.maxWidth, picture: pic)),
+        childWhenDragging: Opacity(opacity: 0.25, child: custom != null ? custom(context, tk, false) : _Chip(sf: sf, token: tk, maxWidth: widget.maxWidth, picture: pic)),
         onDragStarted: () {
           HapticFeedback.lightImpact();
           stageTick(sacred: sf.calm, silent: widget.silent);
@@ -401,7 +417,9 @@ class _SlotArea extends StatelessWidget {
     this.boardAspect = 1.5,
     this.bucketColumns,
     this.onTapSlot,
+    this.slotBuilder,
   });
+  final DragSlotBuilder? slotBuilder;
   final ValueChanged<int>? onTapSlot;
   final String? boardImage;
   final int? bucketColumns;
@@ -420,7 +438,7 @@ class _SlotArea extends StatelessWidget {
       Widget slot(DragSlotData s) => StageReact(
             key: ValueKey('slot-${s.id}'),
             shake: s.id == shakeSlot && !sf.calm ? shakeNonce : 0,
-            child: _Slot(sf: sf, slot: s, layout: layout, maxWidth: maxW, onDrop: onDrop, silent: silent, onTap: onTapSlot),
+            child: _Slot(sf: sf, slot: s, layout: layout, maxWidth: maxW, onDrop: onDrop, silent: silent, onTap: onTapSlot, builder: slotBuilder),
           );
       if (layout == DragBoardLayout.board) {
         final aspect = boardAspect <= 0 ? 1.5 : boardAspect;
@@ -542,7 +560,8 @@ class _DotsPainter extends CustomPainter {
 }
 
 class _Slot extends StatefulWidget {
-  const _Slot({required this.sf, required this.slot, required this.layout, required this.onDrop, required this.silent, this.maxWidth, this.onTap});
+  const _Slot({required this.sf, required this.slot, required this.layout, required this.onDrop, required this.silent, this.maxWidth, this.onTap, this.builder});
+  final DragSlotBuilder? builder;
   final ValueChanged<int>? onTap;
   final StageSurface sf;
   final DragSlotData slot;
@@ -586,7 +605,7 @@ class _SlotState extends State<_Slot> {
         widget.onDrop(d.data, s.id);
       },
       builder: (context, cand, rej) {
-        final child = switch (widget.layout) {
+        final child = widget.builder != null ? widget.builder!(context, s, _hover) : switch (widget.layout) {
           DragBoardLayout.buckets => _bucket(),
           DragBoardLayout.board => _spot(),
           DragBoardLayout.line => _line(),

@@ -404,6 +404,17 @@ class CharacterPainter extends CustomPainter {
           ..close();
         shape(dome, Paint()..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color.lerp(p.accent2, p.paper, 0.45)!, p.accent2]).createShader(Rect.fromLTWH(c.dx - 13, top - 14, 26, 16)));
         canvas.drawRect(Rect.fromLTWH(c.dx - 13, top - 4, 26, 4), Paint()..color = Color.lerp(p.accent2, p.ink, 0.45)!);
+      case 'hat_goggles':
+        // safety goggles (Science Lab): a strap round the head, two clear lenses over the eyes
+        final ey = c.dy + 2.2;
+        canvas.drawLine(Offset(c.dx - 19, ey), Offset(c.dx + 19, ey), Paint()..color = p.accent..strokeWidth = 3.4..strokeCap = StrokeCap.round);
+        for (final dx in [-7.2, 7.2]) {
+          final lens = Rect.fromCenter(center: Offset(c.dx + dx, ey), width: 13.5, height: 11.5);
+          canvas.drawOval(lens, Paint()..color = p.paper.withValues(alpha: 0.32));
+          canvas.drawOval(lens, Paint()..style = PaintingStyle.stroke..strokeWidth = 1.7..color = p.ink.withValues(alpha: 0.85));
+          canvas.drawArc(lens.deflate(2.2), 3.5, 1.2, false, Paint()..style = PaintingStyle.stroke..strokeWidth = 1.1..strokeCap = StrokeCap.round..color = p.paper.withValues(alpha: 0.9));
+        }
+        canvas.drawLine(Offset(c.dx - 1.2, ey), Offset(c.dx + 1.2, ey), Paint()..color = p.ink..strokeWidth = 1.7);
       default:
         // an unknown hat: a plain cap
         final dome = Path()
