@@ -11,6 +11,7 @@ import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/admin/admin_page.dart';
+import 'package:flutter_education_app/features/games/admin/v4/hadith_picker.dart' show hadithCollectionName;
 import 'package:flutter_education_app/features/games/admin/v4/items_review_api.dart';
 
 class GamesReviewPage extends StatefulWidget {
@@ -179,7 +180,7 @@ class ReviewQueueBody extends StatelessWidget {
       );
     }
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.sm),
@@ -197,6 +198,21 @@ class ReviewQueueBody extends StatelessWidget {
       ],
     );
   }
+}
+
+/// A source reference in words: `112:1` (or `112:1-4`) is a surah and its ayat, `bukhari:1` a collection and a number.
+String reviewSourceText(String ref) {
+  final q = RegExp(r'^(\d+):(\d+)(?:-(\d+))?$').firstMatch(ref);
+  if (q != null) {
+    final ayat = q.group(3) == null ? q.group(2) : '${q.group(2)}-${q.group(3)}';
+    return t('سورة ${q.group(1)}، الآية $ayat', 'Surah ${q.group(1)}, ayah $ayat');
+  }
+  final h = RegExp(r'^([a-z_]+):(\d+)$').firstMatch(ref);
+  if (h != null) {
+    final name = hadithCollectionName(h.group(1)!);
+    return t('$name، رقم ${h.group(2)}', '$name, no. ${h.group(2)}');
+  }
+  return ref;
 }
 
 class ReviewItemCard extends StatelessWidget {
@@ -226,7 +242,7 @@ class ReviewItemCard extends StatelessWidget {
           ],
           if (item.sourceRef.isNotEmpty) ...[
             const SizedBox(height: AppSpace.xs),
-            Text('${t('المصدر', 'Source')}: ${item.sourceRef}', style: AppType.meta(context)),
+            Text('${t('المصدر', 'Source')}: ${reviewSourceText(item.sourceRef)}', style: AppType.meta(context)),
           ],
           const SizedBox(height: AppSpace.md),
           Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, children: [

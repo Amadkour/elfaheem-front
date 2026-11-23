@@ -13,6 +13,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/admin/admin_page.dart';
+import 'package:flutter_education_app/features/games/admin/v4/admin_grid.dart';
 import 'package:flutter_education_app/features/games/admin/v4/admin_more_api.dart';
 import 'package:flutter_education_app/features/games/admin/v4/items_api.dart' show Json;
 
@@ -49,14 +50,19 @@ class _GamesSeedPageState extends State<GamesSeedPage> {
 
   /// [key] null = every subject.
   Future<void> _run({String? key, required bool more}) async {
-    final what = key ?? t('كل المواد', 'every subject');
+    String? name;
+    for (final i in _maps(_status?['items'])) {
+      final sub = i['subject'];
+      if ('${i['key']}' == key) name = sub is Map ? '${AppConfig.lang == 'ar' ? sub['name_ar'] : sub['name_en']}' : '$sub';
+    }
+    final what = key == null ? t('كل المواد', 'every subject') : (name ?? key);
     final ok = await appConfirm(
       context,
       message: more
           ? t('إضافة دفعة جديدة من الأسئلة لـ $what؟ لن تُمسّ أسئلتك المعدّلة.', 'Add a new batch of questions for $what? Questions you edited are never touched.')
-          : t('تشغيل البذر لـ $what؟ يملأ الناقص فقط، ولا يستبدل أسئلتك المعدّلة ولا يعيد ما حذفته.',
-              'Run the seed for $what? It only fills what is missing, never replaces questions you edited or brings back ones you deleted.'),
-      confirmLabel: more ? t('أضف المزيد', 'Add more') : t('شغّل البذر', 'Run seed'),
+          : t('ملء الأسئلة الناقصة لـ $what؟ يملأ الناقص فقط، ولا يستبدل أسئلتك المعدّلة ولا يعيد ما حذفته.',
+              'Fill the missing questions for $what? It only fills what is missing, never replaces questions you edited or brings back ones you deleted.'),
+      confirmLabel: more ? t('أضف المزيد', 'Add more') : t('املأ الناقص', 'Fill what is missing'),
     );
     if (!ok || !mounted) return;
     setState(() => _busyKey = key ?? '*');
@@ -78,7 +84,8 @@ class _GamesSeedPageState extends State<GamesSeedPage> {
 
   @override
   Widget build(BuildContext context) => AdminPage(
-        title: t('الأسئلة الجاهزة', 'Seed console'),
+        width: AppWidth.content,
+        title: t('الأسئلة الجاهزة', 'Ready-made questions'),
         subtitle: t('املأ البنك بأسئلة جاهزة لكل مادة', 'Fill the bank with ready questions for each subject'),
         icon: Icons.auto_awesome_rounded,
         onRefresh: _load,
@@ -108,15 +115,15 @@ class GamesSeedBody extends StatelessWidget {
           Text(t('تشغيل لكل المواد', 'For every subject'), style: AppType.section(context)),
           AppSpace.gapXs,
           Text(
-            t('«شغّل البذر» يملأ الناقص. «أضف المزيد» يضيف دفعة جديدة. كلاهما آمن: لا يستبدل ما عدّلته ولا يعيد ما حذفته.',
-                '"Run seed" fills what is missing. "Add more" adds a new batch. Both are safe: they never replace what you edited or bring back what you deleted.'),
+            t('«املأ الناقص» يكمل الأسئلة الجاهزة. «أضف المزيد» يضيف دفعة جديدة. كلاهما آمن: لا يستبدل ما عدّلته ولا يعيد ما حذفته.',
+                '"Fill what is missing" completes the ready questions. "Add more" adds a new batch. Both are safe: they never replace what you edited or bring back what you deleted.'),
             style: AppType.meta(context),
           ),
           AppSpace.gapSm,
           Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
             AppButton.primary(
                 key: const ValueKey('games.seed.run'),
-                label: t('شغّل البذر', 'Run seed'),
+                label: t('املأ الناقص', 'Fill what is missing'),
                 icon: Icons.play_arrow_rounded,
                 busy: busyKey == '*',
                 onPressed: busy ? null : () => onRun?.call(null, false)),
@@ -139,7 +146,7 @@ class GamesSeedBody extends StatelessWidget {
       if (items.isEmpty)
         AppEmpty(icon: Icons.auto_awesome_rounded, title: t('لا مواد جاهزة للبذر', 'No seedable subjects'))
       else
-        for (final i in items) _SubjectCard(item: i, busy: busyKey == '${i['key']}', disabled: busy, onRun: onRun),
+        GamesCardGrid(children: [for (final i in items) _SubjectCard(item: i, busy: busyKey == '${i['key']}', disabled: busy, onRun: onRun)]),
     ]);
   }
 }
@@ -159,12 +166,11 @@ class _SubjectCard extends StatelessWidget {
     final key = '${i['key'] ?? ''}';
     final last = DateTime.tryParse('${i['last_run_at'] ?? ''}');
     return AppCard(
-      margin: const EdgeInsets.only(bottom: AppSpace.sm),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(name, style: AppType.section(context), maxLines: 2, overflow: TextOverflow.ellipsis),
+        Text(name, style: AppType.row(context), maxLines: 2, overflow: TextOverflow.ellipsis),
         AppSpace.gapXs,
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          AppStatusBadge(label: t('جاهز ${_n(i['seeded'])}', 'Seeded ${_n(i['seeded'])}'), tone: AppTone.neutral, dense: true),
+          AppStatusBadge(label: t('جاهز ${_n(i['seeded'])}', 'Ready ${_n(i['seeded'])}'), tone: AppTone.neutral, dense: true),
           AppStatusBadge(label: t('معتمد ${_n(i['approved'])}', 'Approved ${_n(i['approved'])}'), tone: AppTone.success, dense: true),
           AppStatusBadge(
               label: t('بانتظار المراجعة ${_n(i['pending'])}', 'Waiting ${_n(i['pending'])}'), tone: _n(i['pending']) > 0 ? AppTone.warning : AppTone.neutral, dense: true),
@@ -177,7 +183,7 @@ class _SubjectCard extends StatelessWidget {
         AppSpace.gapSm,
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           AppButton.tonal(
-              label: t('شغّل البذر', 'Run seed'),
+              label: t('املأ الناقص', 'Fill what is missing'),
               icon: Icons.play_arrow_rounded,
               size: AppButtonSize.sm,
               busy: busy,

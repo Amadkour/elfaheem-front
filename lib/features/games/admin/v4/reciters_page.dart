@@ -26,6 +26,17 @@ String permissionName(String k) => switch (k) {
       _ => k,
     };
 
+/// A riwayah key in words (unknown keys stay as they are).
+String riwayahName(String k) => switch (k) {
+      'hafs' => t('حفص عن عاصم', 'Hafs from Asim'),
+      'warsh' => t('ورش عن نافع', 'Warsh from Nafi'),
+      'qalun' => t('قالون عن نافع', 'Qalun from Nafi'),
+      'duri' => t('الدوري عن أبي عمرو', 'Ad-Duri from Abu Amr'),
+      'susi' => t('السوسي عن أبي عمرو', 'As-Susi from Abu Amr'),
+      'shubah' => t('شعبة عن عاصم', 'Shubah from Asim'),
+      _ => k,
+    };
+
 AppTone permissionTone(String k) => switch (k) {
       'verified' => AppTone.success,
       'denied' => AppTone.danger,
@@ -87,6 +98,7 @@ class _RecitersPageState extends State<RecitersPage> {
 
   @override
   Widget build(BuildContext context) => AdminPage(
+        width: AppWidth.reading,
         title: t('القرّاء', 'Reciters'),
         subtitle: t('الرخصة وحالة الإذن لكل قارئ', 'The licence and permission of every voice'),
         icon: Icons.record_voice_over_rounded,
@@ -145,7 +157,7 @@ class ReciterCard extends StatelessWidget {
               Text('${ar ? r['name_ar'] : r['name_en']}', style: AppType.section(context), maxLines: 2, overflow: TextOverflow.ellipsis),
               Text(
                 [
-                  if ('${r['riwayah'] ?? ''}'.isNotEmpty) '${r['riwayah']}',
+                  if ('${r['riwayah'] ?? ''}'.isNotEmpty) riwayahName('${r['riwayah']}'),
                   r['audience'] == 'kids' ? t('للأطفال', 'For kids') : t('للجميع', 'For everyone'),
                   if (cov['of'] != null) t('${cov['surahs']} من ${cov['of']} سورة', '${cov['surahs']} of ${cov['of']} surahs'),
                 ].join(' · '),

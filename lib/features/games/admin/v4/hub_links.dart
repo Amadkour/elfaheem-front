@@ -114,7 +114,7 @@ List<GamesHubLink> gamesHubBuiltInLinks() => [
       GamesHubLink(
         id: 'seed',
         titleAr: 'الأسئلة الجاهزة',
-        titleEn: 'Seed console',
+        titleEn: 'Ready-made questions',
         subAr: 'املأ البنك بأسئلة جاهزة لكل مادة',
         subEn: 'Fill the bank with ready questions per subject',
         icon: Icons.auto_awesome_rounded,

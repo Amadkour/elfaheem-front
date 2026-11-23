@@ -179,7 +179,7 @@ class ItemEditorForm extends StatelessWidget {
           child: EdSelect<int>(
             label: t('الصعوبة', 'Difficulty'),
             value: jint(item['difficulty'], 1).clamp(1, 5),
-            options: [for (var i = 1; i <= 5; i++) (i, '$i')],
+            options: [for (var i = 1; i <= 5; i++) (i, itemDifficultyName(i))],
             onChanged: (v) => set('difficulty', v),
           ),
         ),

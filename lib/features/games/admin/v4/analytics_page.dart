@@ -73,6 +73,7 @@ class _GamesAnalyticsPageState extends State<GamesAnalyticsPage> {
 
   @override
   Widget build(BuildContext context) => AdminPage(
+        width: AppWidth.content,
         title: t('إحصاءات الألعاب', 'Games analytics'),
         subtitle: t('كم لُعب وكم أنهى الطلاب وأين يتعثرون', 'How much is played, finished, and where learners struggle'),
         icon: Icons.insights_rounded,
@@ -138,7 +139,7 @@ class GamesAnalyticsBody extends StatelessWidget {
       ]),
       AppSpace.gapMd,
       LayoutBuilder(builder: (context, box) {
-        final cols = box.maxWidth >= 900 ? 4 : (box.maxWidth >= 420 ? 2 : 1);
+        final cols = box.maxWidth >= AppWidth.reading.max ? 4 : 2;
         final w = (box.maxWidth - AppSpace.sm * (cols - 1)) / cols;
         return Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [for (final k in kpis) SizedBox(width: w, child: k)]);
       }),
@@ -219,8 +220,14 @@ class _LevelsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget cell(String s, {int flex = 1, TextStyle? style}) =>
-        Expanded(flex: flex, child: Text(s, style: style ?? AppType.body(context), maxLines: 1, overflow: TextOverflow.ellipsis));
+    // the title column reads from the start; every figure lines up at the end of its column
+    Widget cell(String s, {int flex = 1, TextStyle? style}) => Expanded(
+        flex: flex,
+        child: Text(s,
+            style: (style ?? AppType.body(context)).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+            textAlign: flex == 1 ? TextAlign.end : TextAlign.start,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis));
     final h = AppType.meta(context);
     return AppCard(
       child: Column(children: [
@@ -254,12 +261,12 @@ class _LevelCards extends StatelessWidget {
   final List<Json> levels;
 
   @override
-  Widget build(BuildContext context) => Column(children: [
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (final l in levels)
           AppCard(
             margin: const EdgeInsets.only(bottom: AppSpace.sm),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(_title(l), style: AppType.section(context), maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text(_title(l), style: AppType.row(context), maxLines: 2, overflow: TextOverflow.ellipsis),
               _tiny,
               Text(
                 t('بدأ ${_n(l['starts'])} · أنهى ${_n(l['finishes'])} · إنهاء ${_pct(l['completion_pct'])}',

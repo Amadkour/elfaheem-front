@@ -12,6 +12,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/admin/admin_page.dart';
 import 'package:flutter_education_app/features/games/admin/games_admin_api.dart' show gamesAdminOff;
 import 'package:flutter_education_app/features/games/admin/games_admin_page.dart' show GamesAdminPage;
+import 'package:flutter_education_app/features/games/admin/v4/admin_grid.dart';
 import 'package:flutter_education_app/features/games/admin/v4/hub_api.dart';
 import 'package:flutter_education_app/features/games/admin/v4/hub_links.dart';
 import 'package:flutter_education_app/features/games/admin/v4/subjects_page.dart';
@@ -175,10 +176,9 @@ class GamesHubBody extends StatelessWidget {
           ),
         ],
         AppSectionTitle(t('إدارة الألعاب', 'Manage games')),
-        for (final l in links)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpace.sm),
-            child: AppActionCard(
+        GamesCardGrid(children: [
+          for (final l in links)
+            AppActionCard(
               key: ValueKey('games.hub.link.${l.id}'),
               icon: l.icon,
               title: t(l.titleAr, l.titleEn),
@@ -186,7 +186,7 @@ class GamesHubBody extends StatelessWidget {
               badge: l.badge,
               onTap: () => l.open(context),
             ),
-          ),
+        ]),
       ],
     );
   }

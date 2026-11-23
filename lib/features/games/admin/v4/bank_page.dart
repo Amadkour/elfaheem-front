@@ -238,7 +238,7 @@ class BankBody extends StatelessWidget {
     return LayoutBuilder(builder: (context, box) {
       final gap = AppSpace.sm;
       final cols = box.maxWidth >= 900 ? 4 : (box.maxWidth >= 560 ? 3 : 2);
-      final w = (box.maxWidth - AppSpace.md * 2 - gap * (cols - 1)) / cols;
+      final w = (box.maxWidth - AdminPage.bodyPadding(context).horizontal - gap * (cols - 1)) / cols;
       final f = filters;
       return ListView(padding: AdminPage.bodyPadding(context), children: [
         AppSearchField(hint: t('ابحث في نص السؤال', 'Search the question text'), onChanged: (v) => onFilters(f.copy(q: v))),
@@ -265,7 +265,7 @@ class BankBody extends StatelessWidget {
           _cell(context, w, EdSelect<int>(
             label: t('الصعوبة', 'Difficulty'),
             value: f.difficulty ?? 0,
-            options: [(0, t('الكل', 'All')), for (var i = 1; i <= 5; i++) (i, '$i')],
+            options: [(0, t('الكل', 'All')), for (var i = 1; i <= 5; i++) (i, itemDifficultyName(i))],
             onChanged: (v) => onFilters(f.copy(difficulty: v == 0 ? null : v)),
           )),
           _cell(context, w, EdSelect<int>(
@@ -359,7 +359,7 @@ class BankRow extends StatelessWidget {
               Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
                 AppStatusBadge(label: itemTypeName('${item['type']}'), tone: AppTone.info, dense: true),
                 AppStatusBadge(label: itemStatusName(status), tone: _tone(status), dense: true),
-                AppStatusBadge(label: t('صعوبة ${item['difficulty']}', 'Level ${item['difficulty']}'), dense: true),
+                AppStatusBadge(label: t('صعوبة ${item['difficulty']}', 'Difficulty ${item['difficulty']}'), dense: true),
                 if (subject != null) AppStatusBadge(label: '${ar ? subject['name_ar'] : subject['name_en']}', tone: AppTone.brand, dense: true),
               ]),
               if (topic.isNotEmpty) Text(topic, style: AppType.meta(context), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -401,7 +401,7 @@ class _BulkEditSheetState extends State<BulkEditSheet> {
         EdSelect<int>(
           label: t('الصعوبة', 'Difficulty'),
           value: _difficulty,
-          options: [(0, t('بلا تغيير', 'No change')), for (var i = 1; i <= 5; i++) (i, '$i')],
+          options: [(0, t('بلا تغيير', 'No change')), for (var i = 1; i <= 5; i++) (i, itemDifficultyName(i))],
           onChanged: (v) => setState(() => _difficulty = v),
         ),
         AppSpace.gapSm,

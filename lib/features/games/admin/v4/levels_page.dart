@@ -208,9 +208,12 @@ class GamesLevelsBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = levels;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [
-        SizedBox(
-          width: 260,
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
           child: AppDropdown<String?>(
             key: const ValueKey('games.levels.f_template'),
             value: template,
@@ -222,8 +225,8 @@ class GamesLevelsBody extends StatelessWidget {
             onChanged: onTemplate ?? (_) {},
           ),
         ),
-        SizedBox(
-          width: 260,
+        AppSpace.gapSm,
+        Expanded(
           child: AppDropdown<int?>(
             key: const ValueKey('games.levels.f_subject'),
             value: subjectId,
@@ -235,7 +238,9 @@ class GamesLevelsBody extends StatelessWidget {
             onChanged: onSubject ?? (_) {},
           ),
         ),
-      ]),
+          ]),
+        ),
+      ),
       AppSpace.gapSm,
       Expanded(child: _list(context, l)),
     ]);
@@ -263,6 +268,8 @@ class GamesLevelsBody extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: AppSpace.sm),
         child: LevelCard(
           level: l[i],
+          gameName: templates.where((x) => x.key == l[i].template).firstOrNull?.name,
+          subjectName: subjects.where((x) => x.id == l[i].subjectId).firstOrNull?.name,
           index: i,
           reorderable: reorderable,
           busy: busy.contains(l[i].id),
@@ -276,9 +283,23 @@ class GamesLevelsBody extends StatelessWidget {
 }
 
 class LevelCard extends StatelessWidget {
-  const LevelCard({super.key, required this.level, this.index = 0, this.reorderable = true, this.busy = false, this.onToggle, this.onTap, this.onDelete});
+  const LevelCard({
+    super.key,
+    required this.level,
+    this.gameName,
+    this.subjectName,
+    this.index = 0,
+    this.reorderable = true,
+    this.busy = false,
+    this.onToggle,
+    this.onTap,
+    this.onDelete,
+  });
 
   final LevelRow level;
+
+  /// The game and the subject by name (null while their lists load).
+  final String? gameName, subjectName;
   final int index;
   final bool reorderable;
   final bool busy;
@@ -305,7 +326,12 @@ class LevelCard extends StatelessWidget {
             Text('${l.levelNo > 0 ? '${l.levelNo}. ' : ''}${l.title}', style: AppType.row(context).copyWith(color: c.textDark), maxLines: 2, overflow: TextOverflow.ellipsis),
             AppSpace.gapXs,
             Text(
-              t('عمر ${l.ageMin}-${l.ageMax} · ${l.starts} لعبة', 'Ages ${l.ageMin}-${l.ageMax} · ${l.starts} plays'),
+              [
+                ?gameName,
+                ?subjectName,
+                t('عمر ${l.ageMin}-${l.ageMax}', 'Ages ${l.ageMin}-${l.ageMax}'),
+                t('${l.starts} لعبة', '${l.starts} plays'),
+              ].join(' · '),
               style: AppType.meta(context).copyWith(color: c.textMedium),
             ),
             AppSpace.gapXs,
@@ -400,7 +426,7 @@ class _AutoSplitSheetState extends State<AutoSplitSheet> {
           onChanged: (v) => setState(() => _subject = v),
         ),
         AppSpace.gapSm,
-        AppField(key: const ValueKey('games.split.topic'), controller: _topic, label: t('الموضوع (اختياري)', 'Topic (optional)'), ltr: true),
+        AppField(key: const ValueKey('games.split.topic'), controller: _topic, label: t('الموضوع (اختياري)', 'Topic (optional)')),
         AppSpace.gapSm,
         AppNumberField(
           key: const ValueKey('games.split.per'),

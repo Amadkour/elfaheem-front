@@ -54,15 +54,18 @@ String itemStatusName(String k) => switch (k) {
       _ => k,
     };
 
-/// The server's `bad_game_item` answer as one readable line naming the field.
-String itemErrorText(Object e) {
-  final x = ApiException.from(e);
-  if (x.code == 'bad_game_item') {
-    final raw = x.body;
-    final d = raw is Map ? (raw['detail'] is Map ? raw['detail'] as Map : raw) : null;
-    final field = d == null ? '' : '${d['field'] ?? ''}';
-    final why = d == null ? '' : '${d['why'] ?? ''}';
-    final reason = switch (why) {
+/// A difficulty 1..5 in words (the number stays, so it matches the filters and the files).
+String itemDifficultyName(int d) => switch (d) {
+      1 => t('1 · سهل جداً', '1 · very easy'),
+      2 => t('2 · سهل', '2 · easy'),
+      3 => t('3 · متوسط', '3 · medium'),
+      4 => t('4 · صعب', '4 · hard'),
+      5 => t('5 · صعب جداً', '5 · very hard'),
+      _ => '$d',
+    };
+
+/// The server's reason code (`why`) for a bad item or an import row, in words.
+String itemWhyText(String why) => switch (why) {
       'empty' => t('فارغ', 'is empty'),
       'too_long' => t('أطول من الحد', 'is too long'),
       'count_2_6' => t('العدد خارج الحد المسموح', 'has too few or too many entries'),
@@ -71,9 +74,43 @@ String itemErrorText(Object e) {
       'ref' => t('المرجع غير موجود', 'points to nothing'),
       'too_long_for_order' => t('أطول من أن يُرتَّب كلمة كلمة', 'is too long to put in order word by word'),
       'sacred_text' => t('النص الشريف يُختار ولا يُكتب', 'Sacred text is picked, never typed'),
+      'missing' => t('ناقص', 'is missing'),
+      'unknown_type' => t('نوع سؤال غير معروف', 'is not a known question type'),
       _ => t('غير صالح', 'is not valid'),
     };
-    return field.isEmpty ? reason : '$field: $reason';
+
+/// The server's field path (`body.options`, `prompt.ar`, …) as the admin knows it.
+String itemFieldName(String field) {
+  final f = field.replaceAll(RegExp(r'\[\d+\]'), '');
+  return switch (f) {
+    'prompt' || 'prompt.ar' || 'prompt.en' => t('نص السؤال', 'The question'),
+    'explain' || 'explain.ar' || 'explain.en' => t('شرح الإجابة', 'The explanation'),
+    'type' => t('نوع السؤال', 'Question type'),
+    'topic' => t('الموضوع', 'Topic'),
+    'difficulty' => t('الصعوبة', 'Difficulty'),
+    'age_min' || 'age_max' => t('العمر', 'Age'),
+    'subject_id' => t('المادة', 'Subject'),
+    'body.options' => t('الخيارات', 'The options'),
+    'body.answer' || 'body.answers' => t('الإجابة الصحيحة', 'The correct answer'),
+    'body.tokens' => t('الكلمات', 'The words'),
+    'body.pairs' => t('الأزواج', 'The pairs'),
+    'body.buckets' => t('المجموعات', 'The groups'),
+    'body.ingredients' => t('المكوّنات', 'The ingredients'),
+    'source' || 'source.ref' => t('المصدر', 'The source'),
+    _ => field,
+  };
+}
+
+/// The server's `bad_game_item` answer as one readable line naming the field.
+String itemErrorText(Object e) {
+  final x = ApiException.from(e);
+  if (x.code == 'bad_game_item') {
+    final raw = x.body;
+    final d = raw is Map ? (raw['detail'] is Map ? raw['detail'] as Map : raw) : null;
+    final field = d == null ? '' : '${d['field'] ?? ''}';
+    final why = d == null ? '' : '${d['why'] ?? ''}';
+    final reason = itemWhyText(why);
+    return field.isEmpty ? reason : '${itemFieldName(field)}: $reason';
   }
   switch (x.code) {
     case 'reciter_not_verified':

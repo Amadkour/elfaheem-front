@@ -14,6 +14,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/admin/admin_money_p8.dart' show p8SaveBytes;
 import 'package:flutter_education_app/features/admin/admin_page.dart';
+import 'package:flutter_education_app/features/games/admin/v4/items_api.dart' show itemFieldName, itemWhyText;
 import 'package:flutter_education_app/features/games/admin/v4/items_review_api.dart';
 
 const _mimes = {'csv': 'text/csv', 'json': 'application/json', 'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};
@@ -407,9 +408,10 @@ class _ErrorRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(width: AppSpace.xl + AppSpace.md, child: Text('${t('صف', 'Row')} ${e.row}', style: AppType.row(context).copyWith(color: danger))),
+        Text('${t('صف', 'Row')} ${e.row}', style: AppType.row(context).copyWith(color: danger), softWrap: false),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
-          child: Text(e.field.isEmpty ? e.why : '${e.field}: ${e.why}', style: AppType.body(context)),
+          child: Text(e.field.isEmpty ? itemWhyText(e.why) : '${itemFieldName(e.field)}: ${itemWhyText(e.why)}', style: AppType.body(context)),
         ),
       ]),
     );

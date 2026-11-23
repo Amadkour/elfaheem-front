@@ -11,6 +11,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/admin/admin_page.dart';
 import 'package:flutter_education_app/features/admin/edu/edu_admin_api.dart';
+import 'package:flutter_education_app/features/games/admin/v4/admin_grid.dart';
 import 'package:flutter_education_app/features/games/admin/v4/hub_api.dart';
 
 /// A course subject the games can follow (`/admin/edu/catalog`).
@@ -155,20 +156,21 @@ class GamesSubjectsBody extends StatelessWidget {
         message: t('أضف مادة لتبني عليها الأسئلة والمستويات.', 'Add a subject to build questions and levels on.'),
       );
     }
-    return ListView.builder(
+    return ListView(
       key: const ValueKey('games.subjects.list'),
       padding: const EdgeInsets.only(bottom: AppSpace.xl),
-      itemCount: l.length,
-      itemBuilder: (context, i) => Padding(
-        padding: const EdgeInsets.only(bottom: AppSpace.sm),
-        child: SubjectCard(
-          key: ValueKey('games.subject.${l[i].key}'),
-          subject: l[i],
-          busy: busy.contains(l[i].id),
-          onToggle: onToggle == null ? null : (v) => onToggle!(l[i], v),
-          onTap: onEdit == null ? null : () => onEdit!(l[i]),
-        ),
-      ),
+      children: [
+        GamesCardGrid(children: [
+          for (final s in l)
+            SubjectCard(
+              key: ValueKey('games.subject.${s.key}'),
+              subject: s,
+              busy: busy.contains(s.id),
+              onToggle: onToggle == null ? null : (v) => onToggle!(s, v),
+              onTap: onEdit == null ? null : () => onEdit!(s),
+            ),
+        ]),
+      ],
     );
   }
 }
@@ -213,6 +215,12 @@ class SubjectCard extends StatelessWidget {
   }
 }
 
+/// A subject key from an English name: lower case, digits and underscores, at most 24.
+String subjectKeyFrom(String name) {
+  final k = name.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_').replaceAll(RegExp(r'^_+|_+$'), '');
+  return k.length > 24 ? k.substring(0, 24).replaceAll(RegExp(r'_+$'), '') : k;
+}
+
 /// What the subject sheet hands back: a PUT / POST body, or a delete request.
 class SubjectSheetResult {
   const SubjectSheetResult.save(this.body) : delete = false;
@@ -243,6 +251,7 @@ class _SubjectSheetState extends State<SubjectSheet> {
   late bool _sacred = widget.subject?.sacred ?? false;
   late final Set<int> _linked = {...?widget.subject?.eduSubjectIds};
   String? _error;
+  bool _keyTouched = false;
 
   bool get _creating => widget.subject == null;
 
@@ -291,16 +300,28 @@ class _SubjectSheetState extends State<SubjectSheet> {
       children: [
         AppField(controller: _nameAr, label: t('الاسم بالعربية', 'Name in Arabic'), required: true, onChanged: (_) => setState(() => _error = null)),
         AppSpace.gapSm,
-        AppField(controller: _nameEn, label: t('الاسم بالإنجليزية', 'Name in English'), required: true, ltr: true, onChanged: (_) => setState(() => _error = null)),
+        AppField(
+            controller: _nameEn,
+            label: t('الاسم بالإنجليزية', 'Name in English'),
+            required: true,
+            ltr: true,
+            onChanged: (v) => setState(() {
+                  _error = null;
+                  // a new subject's key follows its English name until the admin types one
+                  if (_creating && !_keyTouched) _key.text = subjectKeyFrom(v);
+                })),
         if (_creating) ...[
           AppSpace.gapSm,
           AppField(
             controller: _key,
             label: t('المفتاح (لا يتغير لاحقاً)', 'Key (cannot change later)'),
-            helper: t('مثل: history', 'For example: history'),
+            helper: t('يُملأ من الاسم الإنجليزي، ويمكنك تغييره', 'Filled from the English name; you can change it'),
             ltr: true,
             required: true,
-            onChanged: (_) => setState(() => _error = null),
+            onChanged: (_) => setState(() {
+              _error = null;
+              _keyTouched = true;
+            }),
           ),
           AppSwitchTile(
             title: t('نص مقدّس', 'Sacred text'),

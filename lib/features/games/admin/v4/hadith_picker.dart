@@ -31,6 +31,11 @@ class HadithPick {
 String hadithCollectionName(String k) => switch (k) {
       'bukhari' => t('صحيح البخاري', 'Sahih al-Bukhari'),
       'muslim' => t('صحيح مسلم', 'Sahih Muslim'),
+      'abudawud' || 'abu_dawud' => t('سنن أبي داود', 'Sunan Abi Dawud'),
+      'tirmidhi' => t('جامع الترمذي', 'Jami at-Tirmidhi'),
+      'nasai' => t('سنن النسائي', 'Sunan an-Nasai'),
+      'ibnmajah' || 'ibn_majah' => t('سنن ابن ماجه', 'Sunan Ibn Majah'),
+      'nawawi40' || 'nawawi' => t('الأربعون النووية', 'An-Nawawi\'s Forty'),
       _ => k,
     };
 

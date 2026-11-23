@@ -332,7 +332,6 @@ class _LevelWizardPageState extends State<LevelWizardPage> {
       title: widget.level == null ? t('مستوى جديد', 'New level') : t('تعديل المستوى', 'Edit level'),
       icon: Icons.stairs_rounded,
       dirty: _d.id == null && _step > 0,
-      bottom: tp == null || _loadError != null ? null : _bar(),
       body: _loadError != null
           ? AppErrorState(message: _loadError, onRetry: _load)
           : tp == null
@@ -365,6 +364,8 @@ class _LevelWizardPageState extends State<LevelWizardPage> {
                       AppSpace.gapSm,
                       AppBanner(icon: Icons.error_outline_rounded, text: _stepError!, color: appToneColor(context, AppTone.danger)),
                     ],
+                    AppSpace.gapMd,
+                    _bar(),
                   ]),
                 ),
     );
@@ -372,7 +373,7 @@ class _LevelWizardPageState extends State<LevelWizardPage> {
 
   Widget _bar() {
     return Padding(
-      padding: const EdgeInsets.all(AppSpace.md),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
       child: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, alignment: WrapAlignment.end, children: [
         if (_step > 0)
           AppButton.ghost(key: const ValueKey('games.wiz.back'), label: t('السابق', 'Back'), onPressed: _busy ? null : () => setState(() => _step--)),

@@ -9,6 +9,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/admin/admin_page.dart';
+import 'package:flutter_education_app/features/games/admin/v4/admin_grid.dart';
 import 'package:flutter_education_app/features/games/admin/v4/hub_api.dart';
 
 class GamesTemplatesPage extends StatefulWidget {
@@ -122,20 +123,21 @@ class GamesTemplatesBody extends StatelessWidget {
     if (l.isEmpty) {
       return AppEmpty(icon: Icons.dashboard_customize_rounded, title: t('لا قوالب', 'No templates'));
     }
-    return ListView.builder(
+    return ListView(
       key: const ValueKey('games.templates.list'),
       padding: const EdgeInsets.only(bottom: AppSpace.xl),
-      itemCount: l.length,
-      itemBuilder: (context, i) => Padding(
-        padding: const EdgeInsets.only(bottom: AppSpace.sm),
-        child: TemplateCard(
-          key: ValueKey('games.template.${l[i].key}'),
-          template: l[i],
-          busy: busy.contains(l[i].key),
-          onToggle: onToggle == null ? null : (v) => onToggle!(l[i], v),
-          onTap: onEdit == null ? null : () => onEdit!(l[i]),
-        ),
-      ),
+      children: [
+        GamesCardGrid(children: [
+          for (final tpl in l)
+            TemplateCard(
+              key: ValueKey('games.template.${tpl.key}'),
+              template: tpl,
+              busy: busy.contains(tpl.key),
+              onToggle: onToggle == null ? null : (v) => onToggle!(tpl, v),
+              onTap: onEdit == null ? null : () => onEdit!(tpl),
+            ),
+        ]),
+      ],
     );
   }
 }

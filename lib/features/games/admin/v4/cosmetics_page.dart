@@ -14,6 +14,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/admin/admin_page.dart';
+import 'package:flutter_education_app/features/games/admin/v4/admin_grid.dart';
 import 'package:flutter_education_app/features/games/admin/v4/admin_more_api.dart';
 import 'package:flutter_education_app/features/games/admin/v4/items_api.dart' show Json;
 
@@ -39,7 +40,13 @@ String cosmeticRuleName(String k) => switch (k) {
 String cosmeticHow(Json c) {
   final rule = c['unlock_rule'];
   if (rule is Map && rule['type'] != null) {
-    return t('يُفتح بـ ${rule['count'] ?? 1} ${cosmeticRuleName('${rule['type']}')}', 'Opens with ${rule['count'] ?? 1} · ${cosmeticRuleName('${rule['type']}')}');
+    final n = rule['count'] ?? 1;
+    return switch ('${rule['type']}') {
+      'stars' => t('يُفتح عند جمع $n نجمة', 'Opens at $n stars'),
+      'levels' => t('يُفتح بعد إنهاء $n مستوى', 'Opens after $n finished levels'),
+      'champion' => t('يُفتح بعد الفوز ببطل اليوم $n مرة', 'Opens after $n champion wins'),
+      _ => t('يُفتح بـ $n ${cosmeticRuleName('${rule['type']}')}', 'Opens with $n ${cosmeticRuleName('${rule['type']}')}'),
+    };
   }
   final p = c['price_coins'] is num ? (c['price_coins'] as num).toInt() : 0;
   return p == 0 ? t('مجاني', 'Free') : t('$p عملة', '$p coins');
@@ -109,6 +116,7 @@ class _GamesCosmeticsPageState extends State<GamesCosmeticsPage> {
 
   @override
   Widget build(BuildContext context) => AdminPage(
+        width: AppWidth.content,
         title: t('ملابس اللاعب', 'Outfits'),
         subtitle: t('قبعات وملابس ومركبات يشتريها الطلاب بالعملات', 'Hats, outfits and vehicles learners buy with coins'),
         icon: Icons.checkroom_rounded,
@@ -134,14 +142,15 @@ class GamesCosmeticsBody extends StatelessWidget {
     if (list.isEmpty) return AppEmpty(icon: Icons.checkroom_rounded, title: t('لا عناصر بعد', 'No items yet'), message: t('أضف أول قبعة أو ملابس.', 'Add the first hat or outfit.'));
     final ar = AppConfig.lang == 'ar';
     return ListView(padding: AdminPage.bodyPadding(context), children: [
+      GamesCardGrid(children: [
       for (final c in list)
         AppCard(
-          margin: const EdgeInsets.only(bottom: AppSpace.sm),
           onTap: onEdit == null ? null : () => onEdit!(c),
           child: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${ar ? c['name_ar'] : c['name_en']}', style: AppType.section(context), maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text('${ar ? c['name_ar'] : c['name_en']}', style: AppType.row(context), maxLines: 2, overflow: TextOverflow.ellipsis),
+                AppSpace.gapXs,
                 Text('${cosmeticSlotName('${c['slot']}')} · ${cosmeticHow(c)}', style: AppType.meta(context), maxLines: 2, overflow: TextOverflow.ellipsis),
               ]),
             ),
@@ -153,6 +162,7 @@ class GamesCosmeticsBody extends StatelessWidget {
             ),
           ]),
         ),
+      ]),
     ]);
   }
 }
