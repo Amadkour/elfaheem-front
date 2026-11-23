@@ -341,6 +341,7 @@ Deploy: migrations 0126–0128 are additive, but they run on the production data
 12. The daily winner is per age group by default; the discount unlock reuses the existing referral qualification and anti-fraud.
 13. One agent owns every migration; Fable reviews at three gates.
 14. (Owner) Reciters: Alafasy, Husary muallim, Mukhtar Al-Haj. Starter surahs include Al-Kahf, Ya-Sin, Ar-Rahman.
+17. (Gate G2, 2026-11-23) The Tanzil edition with pause marks is the vendored text; Amiri Quran is wired as the one Quran face; seeded Quran items stay approved (mechanical, checksummed); a learner without an age competes in the open group 18+; the server decides a Ghost Duel win. Details: CONTRACT §14 items 16–20; the polish bar for templates: BRIEFS.
 
 ## 9. Open questions (the default applies if there is no answer)
 

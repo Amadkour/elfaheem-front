@@ -27,7 +27,7 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/games/bases/lane_runner.dart';
-import 'package:flutter_education_app/features/games/bases/stage_kit.dart' show quranTextStyle;
+import 'package:flutter_education_app/features/games/bases/stage_kit.dart' show quranFontGate, quranTextStyle;
 import 'package:flutter_education_app/features/games/core/age_theme.dart';
 import 'package:flutter_education_app/features/games/core/game_audio.dart';
 import 'package:flutter_education_app/features/games/core/game_items.dart';
@@ -454,6 +454,11 @@ class CarRaceViewState extends State<CarRaceView> {
     final g = currentGate;
     final lang = AppConfig.lang;
     final audio = hasAudio;
+    final page = _page(theme, item, g, lang, audio);
+    return s.sacred ? quranFontGate(page) : page;
+  }
+
+  Widget _page(AgeTheme theme, GameItem? item, CarGate? g, String lang, bool audio) {
     return GameSessionShell(
       session: s,
       kinds: kinds,

@@ -139,6 +139,33 @@ Read: C§2, C§5 (`mcq`, `sequence` `next_word`, `select_all`). Car Race Quran m
 Tests: plain-values presentational widgets through the layout harness; trace tests.
 Done: 60 fps on the profile build in the report; Balloon Pop refuses a sacred draw in code.
 
+## The polish bar (gate G2: every template of waves 4–6 meets it before its report)
+
+The four reference templates set the level: `challenge_quiz`, `verse_builder`, `car_race`, `balloon_pop`. Open their goldens first (`flutter test test/visual/games_stage_golden_test.dart test/visual/games_t38_golden_test.dart --update-goldens`, then look at `test/visual/goldens/games_*.png`). Your template adds its own golden test (`test/visual/games_<key>_golden_test.dart`: kids phone, adult desktop, teen (night), and calm when it accepts sacred text), and you LOOK at the PNGs before you report.
+
+Do
+- Build on a base (`QuestionStage`, `DragBoard`, `LaneRunner`, `FloatingTokens`) and the shared kit: `StageFrame` (backdrop + shell), `StageTile`, `StageSurface`, `StageProgress`, `StageReact`, `GameCharacter`, `GameBackdrop`, `GameFxLayer`. A need the base lacks is added TO the base (small, with a test), not copied into the template.
+- One scene per screen, edge to edge. A full-bleed scene (Flame, a painter) takes `GameSessionShell(overlay: true, onScene: theme.onSky)` and keeps its own header `GameSessionShell.barHeight` below the top; a card layout takes `StageFrame`. Never a plain strip above the scene.
+- Colours from `AgeTheme.palette` (`paper`, `ink`, `accent`, `accent2`, `gold`) and `StageSurface` (`right`, `wrong`, `tint`, `lift`). Anything drawn straight on the sky uses `theme.onSky` (the teen theme is a night sky). In a painter, light and shade are `palette.paper` / `palette.ink` with alpha.
+- The three ages must look different on purpose. Kids: vivid, thick outlines, big bouncy pieces, the character reacts to every answer. Teen: the night palette, thinner lines, faster. Adult: quiet, thin edges, small motion, no confetti storm (one soft burst at the end).
+- Sacred rounds (`session.sacred`, or an item of the Quran / Hadith): the calm theme (`stageThemeOf`), no timer, no lives, no red, no shake, no buzzer, no explosion, nothing drawn over the text, no character jumping on it; a wrong try is a soft amber + "try again" + the ayah replayed. The reciter quick switch is in the top bar.
+- Quran and Hadith words are drawn ONLY with `quranTextStyle(size, color:)`: one weight, never bold, never italic, never letter-spaced, never clipped (`maxLines` + ellipsis is forbidden on sacred text: wrap or scale the whole word with `FittedBox`), never split inside a word, never on a tilted, spinning or squashed piece. A waqf mark stays on its word (the server already joins it). In Flame, lay the word out once with a `TextPainter` of that style.
+- Every answer gets feedback within 100 ms: the piece reacts (`StageReact` bump / shake), a sound through `GameFeedback`, a light haptic; a right answer also moves the scene forward (the car speeds up, the tree grows, the rocket climbs): the scene is the progress bar.
+- Pieces are big: touch targets `AppTouch.primary` on phones, text 17+ (Quran 20+), the question readable at arm's length. At most one primary action per screen.
+- Works at 320×640 and 1400×900, `ar` and `en`, text scale 1.3 (`expectNoLayoutErrors`); a desktop layout uses the width (two columns of options, a wider board), it is not a stretched phone.
+- Pictures: an item's `image` is shown (options, pairs, ingredients, `DragToken.image`, `DragSlotData.image`); a template that ignores it is not done.
+- Reduce motion: every loop through `syncMotionLoop`; `appMotionOff(context)` skips bumps, springs and particles; the game still plays.
+- 60 fps: lay text out once, reuse paints and paths, no allocation per frame, no `saveLayer` per piece, at most 24 particles.
+
+Don't
+- No `Colors.white` / `Colors.black` / hex colours, no `context.colors.text*` on the scene, no raw `TextStyle(...)` (use `appText` / `AppType`), no font family name, no pixel `maxWidth` (`AppWidth`), no raw spacing / radius.
+- No `Switch`, `SnackBar`, spinner (`AppListSkeleton` / the scene itself while loading), no dialog for feedback.
+- No religious dress or symbol on the character, no cartoon face next to an ayah, no sacred text on something that pops, burns, falls, is shot or is driven over. `platform_jumper` and `balloon_pop` refuse a sacred draw in code; yours does too when its registry row says `sacred_allowed: false`.
+- No score, coin or duel result promised by the app alone: the server's answer is what the result sheet shows.
+- No second ring, stray outline or debug look: zoom into your golden at 300 % before you report.
+
+Shared code changed at gate G2 (use it, do not work around it): `AgeTheme.onSky`; `GameSessionShell(onScene:, overlay:)` + `barHeight`; `quranTextStyle` is Amiri Quran with no `weight` parameter; `RunnerGate(quran:)`; `DragToken.image`, `DragSlotData.image`, `DragBoard.imageBuilder`; the Quran face loads on demand on the web: `StageFrame` waits for it, a full-bleed sacred template wraps its page in `quranFontGate(page)` (`stage_kit.dart`, as Car Race does); only `stage_kit.dart` names the family (`test/games/v4_quran_font_test.dart` checks).
+
 ## Wave 4
 
 **T40 (B, sonnet): play save.** Files: `games_service.record_play`, `ranked.py`, `features/games/level_stats.py`, `cosmetics.py` (coins award only), learner router (`ghost`).
@@ -151,7 +178,12 @@ Done: a duplicate `client_id` pays no coins twice; a v3 play is unchanged.
 Read: C§4, C§8. Draw → session → play; offline: pool → outbox; the result (stars, coins, unlocked level); the "needs a newer version" fallback for an unknown template.
 
 **T42–T47 (F, sonnet), one agent each:** Map Adventure (`map_adventure`, QuestionStage), Growing Tree (`growing_tree`, QuestionStage, reciter switch), I'rab Hunter (`irab_hunter`, DragBoard, 2-entry then 3-entry), Drag-to-Place (`drag_place`, DragBoard, `board.spots`), Space Rocket (`space_rocket`, LaneRunner), Word Fishing (`word_fishing`, FloatingTokens, pearls when sacred).
-Files: `templates/<key>/`. Read: C§2, C§5 for your item types. Tests: a trace test + layout harness per template.
+Files: `templates/<key>/`. Read: "The polish bar" above, C§2, C§5 for your item types. Tests: a trace test + layout harness + a golden test per template (see the polish bar).
+- Drag-to-Place (T45) owns the third DragBoard layout: `DragBoardLayout.board` (the item's `board.image` with a drop spot at each `spots[key]` = x, y in 0..1 of the picture, the picture fitted whole, spots at least `AppTouch.min`), added to `bases/drag_board.dart` with a layout test; without `board` it plays as buckets with pictures.
+- Growing Tree and Word Fishing with Quran words: segments (`unit: "segment"`) now exist (C§14 item 16): a segment is a multi-word piece, give it a wide tile and never break it.
+
+**T40b (B, sonnet): the duel is decided by the server.** Files: `games_service.record_play`, `api/games_router.py` (drop `duel_won`, add `ghost_play_id`), `ranked.py` or the ghost route (`ghost.id`), `tests/games_v4/e2e_plays.py`.
+Read: C§8 "The duel", C§7 coins. Tests: a faster / better player wins against a stored ghost, loses to a better one, a tie on both is no win, the bot rule at 70 %, a claim with a foreign or old `ghost_play_id` is judged against the bot, `duel_won: true` in the body pays nothing, a second play of the draw pays nothing.
 
 ## Wave 5
 
@@ -179,7 +211,7 @@ Tests: `e2e_profile.py` (the vectors' `age_bands`, reciter fallback to kids / de
 
 **T62 (F, sonnet): Constellation.** `templates/constellation/` (own Flame; `sequence` order + `pair`; the finished picture joins `profile.sky`; reciter switch). Read: C§5.
 
-**T63 (F, sonnet): Ghost Duel.** `templates/ghost_duel/`. Read: C§8 (ghost). The bot when `ghost` is null.
+**T63 (F, sonnet): Ghost Duel.** `templates/ghost_duel/`. Read: the polish bar, C§8 (ghost, "The duel"). The bot when `ghost` is null (70 % right at par pace, the same numbers as the server's). Send `ghost_play_id` (`ghost.id`, null for the bot) with the play; never send or trust a win of your own: the result sheet shows `duel.won` from the answer (offline: your own result of the same rule, marked as not yet confirmed, and no coins shown). The race of the two progress lines uses the contract's comparison (share right, then time), so the picture and the server agree.
 
 **T64 (F, sonnet): admin hub, templates, subjects.** `admin/v4/hub_page.dart`, `templates_page.dart`, `subjects_page.dart`. Read: C§10 first rows. `OrgPageBody`-style cards, `AppSwitchTile`, help ids.
 

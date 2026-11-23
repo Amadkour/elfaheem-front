@@ -55,6 +55,10 @@ TextStyle quranTextStyle(double size, {Color? color}) => TextStyle(
       leadingDistribution: TextLeadingDistribution.even,
     );
 
+/// Shows [child] once the Quran face is loaded (the web fetches it on demand; elsewhere it is there from the start).
+/// Every page that draws sacred text sits under one: StageFrame does it; a full-bleed template wraps its own page.
+Widget quranFontGate(Widget child) => LazyFontGate(families: const [AppFonts.quranFamily], child: child);
+
 /// How much larger than its optical size the Quran face is drawn.
 const double kQuranScale = 1.3;
 
@@ -515,7 +519,7 @@ class StageFrame extends StatelessWidget {
       ),
     );
     // sacred text is drawn in the Quran face, which the web loads on demand
-    return session.sacred ? LazyFontGate(families: const [AppFonts.quranFamily], child: frame) : frame;
+    return session.sacred ? quranFontGate(frame) : frame;
   }
 }
 

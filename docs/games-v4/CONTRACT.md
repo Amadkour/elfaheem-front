@@ -267,7 +267,7 @@ rank_points = 0 when stars == 0, else (base × difficulty × (1000 + bonus) + 50
 
 **Coins** (`game_coin_ledger`, unique on user + reason + ref, so a repeat pays nothing):
 - a level pays each of its three stars once: reason `level_star`, ref `"<game_id>:<star>"`; stars 1 and 2 pay `coins_reward // 3`, star 3 pays the rest. Default `coins_reward` 9;
-- a Ghost Duel win pays 2: reason `duel_win`, ref the `draw_id`;
+- a Ghost Duel win pays 2: reason `duel_win`, ref the `draw_id`. The SERVER decides the win (§8 "The duel", gate G2); nothing the app sends can claim it;
 - a preview or a duplicate play pays nothing; the day's total stops at `coins_daily_cap` (the user's own day, as the champions day);
 - a purchase is a negative row: reason `buy`, ref the cosmetic key. `game_profiles.coins` is the running sum and can never go below 0.
 
@@ -333,7 +333,15 @@ A `preview` draw: steps 1–3 are answered (`play.id: null`, `ranked: false`, `u
 
 ### `GET /games/{id}/ghost`
 
-`{"ghost": {"name": "Sara A.", "score": 6, "max_score": 8, "duration_ms": 41000, "events": [[4000, 1], [9000, 0]]} | null}`: a random ghost of this level from the last 30 days, by another user of the same age band who is not opted out of the leaderboards. Null when there is none: the app then plays a built-in training partner (70 % right, par pace). The duel is between the two progress lines; the items are the learner's own draw.
+`{"ghost": {"name": "Sara A.", "score": 6, "max_score": 8, "duration_ms": 41000, "events": [[4000, 1], [9000, 0]]} | null}`: a random ghost of this level from the last 30 days, by another user of the same age band who is not opted out of the leaderboards. Null when there is none: the app then plays a built-in training partner (70 % right, par pace). The duel is between the two progress lines; the items are the learner's own draw. The ghost carries `"id"`: the ghost play's id, which the app sends back as `ghost_play_id`.
+
+**The duel (gate G2).** A `ghost_duel` play adds `ghost_play_id: int|null` to the request (null = the training partner) and gets `"duel": {"won": bool, "opponent": "ghost" | "bot"} | null` in the answer. The server decides, from what it graded itself:
+- no duel result (`duel: null`, no coins) unless the play was graded against its `round` draw (not `draw_invalid`, `bad_trace`, a preview, a pool play or a duplicate), is not flagged `too_fast`, and has 1+ star;
+- me = `(score, max_score, duration_ms)` of the server's own grading (§6); the ghost = the same three of the stored ghost play. `ghost_play_id` must be a play of this level, by another user, with a stored `ghost`, from the last 30 days; anything else is treated as the bot (never an error);
+- the bot = 70 % right at par pace: `(7, 10, par_ms of my draw)` (§7);
+- `won` = `my_score × their_max > their_score × my_max`, or the two sides equal and `my_duration_ms < their_duration_ms`. A tie on both is not a win;
+- a win pays the 2 coins once per `draw_id`. A client `duel_won` field is not read (T40 shipped one; it is removed).
+The app draws the race with the same rule, shows the server's `duel.won` when it is online, and its own result (no coins promised) for an offline play.
 
 ### Cosmetics (`games.cosmetics`)
 
@@ -440,7 +448,7 @@ Seeded reciters (§13 has the evidence):
 
 ## 11. Rewards and champions
 
-**Champions.** `SCOPE_KINDS` gains `age`; `key` = an age band. Who counts: the `platform` cohort (eligible students in no organization) split by `game_profiles.age_band`; a student with no band counts in none. With `champions_daily_scope: "age"` the daily job closes one period per band instead of the `platform` daily period; weekly periods and the `category` / `org` scopes are unchanged. `GET /games/champions/standings?scope=age` without `key` uses the caller's band (422 `champions_bad_scope` when they have none). A user's home scope (rounds, `rank_today`) is `org`, else `age` when the daily scope is `age` and they have a band, else `platform`.
+**Champions.** `SCOPE_KINDS` gains `age`; `key` = an age band. Who counts: the `platform` cohort (eligible students in no organization) split by age band. Gate G2: nobody is left out for a missing age. The band a learner competes in is the profile's band, else the one their date of birth or grade gives (the daily job writes it into `game_profiles` for every ranked player before it closes the day, so a classic app's players are grouped too), else the open group `18+`: a learner of unknown age never competes among younger children, and the app's one-time age question moves them to their own group. With `champions_daily_scope: "age"` the daily job closes one period per band instead of the `platform` daily period; weekly periods and the `category` / `org` scopes are unchanged. `GET /games/champions/standings?scope=age` without `key` uses the caller's band (the open group when they have none; 422 `champions_bad_scope` only for an unknown `key`). A user's home scope (rounds, `rank_today`) is `org`, else `age` when the daily scope is `age`, else `platform`.
 
 **Rules.** `rule` gains `valid_hours: int|null` (1..720; when set it replaces `valid_days` and counts from the unlock), `unlock_referrals: int|null` (1..50; null = issued active as today), `unlock_days: int` (1..30, default 7), `course_ids: [int]|null` (null = any course; needs `applies_to: "course"`). `scope_kind` accepts `age`. 422 `reward_bad_rule` as today.
 
@@ -503,7 +511,7 @@ Seed rows written by the migrations themselves: the 17 `game_templates` (`defaul
 
 | Dataset | URL | Checked | Licence / terms | How we comply |
 |---|---|---|---|---|
-| Quran text, Tanzil Uthmani 1.1 | `https://tanzil.net/pub/download/index.php?quranType=uthmani&outType=txt-2&agree=true` (pause marks on); metadata `https://tanzil.net/res/text/metadata/quran-data.xml` | 200, the copyright block is in the file | Creative Commons Attribution 3.0. Verbatim copies only: "changing it is not allowed"; the source must be clearly indicated with a link to tanzil.net; the copyright notice stays in every copy and in files derived from it | Vendored unchanged with its notice; `words` / `segments` are indexes over the unchanged text; the app shows "Quran text: Tanzil.net" with the link in the games About sheet; the MANIFEST keeps the notice and the SHA-256 |
+| Quran text, Tanzil Uthmani 1.1 | `https://tanzil.net/pub/download/index.php?quranType=uthmani&marks=true&outType=txt-2&agree=true` (pause marks on: `marks=true`, gate G2; no sajdah or rub marks); metadata `https://tanzil.net/res/text/metadata/quran-data.xml` | 200, the copyright block is in the file | Creative Commons Attribution 3.0. Verbatim copies only: "changing it is not allowed"; the source must be clearly indicated with a link to tanzil.net; the copyright notice stays in every copy and in files derived from it | Vendored unchanged with its notice; `words` / `segments` are indexes over the unchanged text; the app shows "Quran text: Tanzil.net" with the link in the games About sheet; the MANIFEST keeps the notice and the SHA-256 |
 | Quran cross-check, Quran.com API v4 | `https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=<n>` | 200, `verses[].text_uthmani` + `verse_key` | Quran Foundation API terms (public content API; no text is stored from it) | Used once by the dev fetch script to cross-check; nothing from it is stored or shown |
 | Hadith, `fawazahmed0/hadith-api` v1 | `https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/ara-bukhari.min.json`, `…/ara-muslim.min.json` | 200; Bukhari 7,589 rows (9 empty), Muslim 7,563 rows (203 empty); fields `hadithnumber`, `arabicnumber` (Bukhari only), `text`, `grades` (empty), `reference {book, hadith}`; `metadata.sections` | The Unlicense (public domain) | Vendored with the SHA-256; text stored byte for byte; attribution in the About sheet although not required |
 | Recitation, Mishary Alafasy | `https://everyayah.com/data/Alafasy_64kbps/{sss}{aaa}.mp3` | 200 `audio/mpeg`, CORS `*`, ranges | everyayah.com publishes per-ayah files for free download and use in Quran software; no formal licence text; the rights of the recitation stay with the reciter | Streamed from the source, never re-hosted; devices cache for offline play; credit in the reciter card |
@@ -545,3 +553,11 @@ Gate G1 (2026-11-23, after wave 1):
 13. Hadith: the 26 sub-numbered Bukhari rows are skipped, `arabic_number` is whole numbers only, `chapter` is the English section title and stays String(200) (§13).
 14. Seed values of record are the migrations' (§12). Changed at the gate: Al-Husary's full name; `outfit_scholar` → `outfit_traveller` (no scholar's dress on a game character); `trail_rainbow` → `trail_comet`.
 15. App: `GameTemplate.kinds` is a set (a template can play two mechanics, §2); `test/games/` is a CI suite.
+
+Gate G2 (2026-11-23, after wave 3):
+
+16. Quran text: the vendored Tanzil file is the edition WITH pause marks (`marks=true`, sha256 `54ea3b2f…`). It is the earlier file plus 4,359 mark tokens and nothing else (checked: removing them gives the earlier file byte for byte; the cross-check is still 0 differences). §9's `words` / `segments` rule is unchanged and now has marks to cut at: 2,057 of the 2,620 ayat over 12 words split into segments. A database loaded from the earlier file reloads `quran_ayat` (the loader reports `stored_row_changed`).
+17. Quran face: Amiri Quran Regular (OFL), family `uiQuran`, drawn only through `quranTextStyle` (app: `bases/stage_kit.dart` over `AppFonts.quranFamily`), one weight, lazy on the web. Hadith text uses the same role.
+18. Seeded Quran items stay `approved` although the subject requires review: the text is the checksummed ayah (a reference, never typed) and the item is mechanical (order / complete / next word / segments at the text's own marks), so there is nothing for a reviewer to judge. The review rule still holds for anything a person writes: an edit of such an item, or a new item on the subject, lands `pending_review`. Hadith items stay `pending_review` (a person confirms the matn range).
+19. Daily champions by age: no learner is dropped for a missing age (§11).
+20. Ghost Duel: the server decides the win (§8 "The duel"); `ghost.id`, `ghost_play_id`, `duel`.
