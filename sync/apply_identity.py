@@ -517,6 +517,8 @@ def main() -> int:
     edit('pubspec.yaml', pubspec)
     edit('lib/design/boot_splash.dart', boot_splash)
     edit('CLAUDE.md', claude_md)
+    # Games v4: the sample payload the API test reads carries the server's challenge link; the test asserts the Alfaheem host.
+    edit('docs/games-v4/fixtures/learner_extras.json', rename_domain)
     for rel in hook_files():
         edit(rel, lambda text, rel=rel: apply_hooks(rel, text))
     for c in changed:
