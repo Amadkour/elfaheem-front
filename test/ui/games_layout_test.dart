@@ -7,6 +7,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart';
 import 'package:flutter_education_app/features/courses/course_filters.dart';
+import 'package:flutter_education_app/features/games/content/games_v4_api.dart';
 import 'package:flutter_education_app/features/games/game_play_page.dart';
 import 'package:flutter_education_app/features/games/games_models.dart';
 import 'package:flutter_education_app/features/games/games_progress.dart';
@@ -135,7 +136,14 @@ void main() {
       'totals': {'plays': 13, 'stars': 4, 'games': 2, 'perfect': 1},
     });
     await expectNoLayoutErrors(tester, () => GamesProgressView(report: report));
-    await expectNoLayoutErrors(tester, () => GamesProgressView(report: GamesReport.fromJson({'badges': report.badges.isEmpty ? [] : [{'key': 'x', 'name_ar': 'س', 'name_en': 'X', 'rule': {'type': 'perfect', 'count': 2}}]}), forParent: true));
     await expectNoLayoutErrors(tester, () => const GamesProgressView(loading: true));
+  });
+
+  testWidgets('parent summary: two stat cards, 7 / 30 days', (tester) async {
+    const summary = V4ParentGames(minutes7d: 80, finished7d: 3, minutes30d: 1500, finished30d: 27, totals: {'plays': 40});
+    await expectNoLayoutErrors(tester, () => const ParentGamesSummaryView(summary: summary));
+    await expectNoLayoutErrors(tester, () => const ParentGamesSummaryView(summary: V4ParentGames(minutes7d: 0, finished7d: 0, minutes30d: 0, finished30d: 0, totals: {})));
+    await expectNoLayoutErrors(tester, () => const ParentGamesSummaryView(loading: true));
+    await expectNoLayoutErrors(tester, () => const ParentGamesSummaryView(error: 'x'));
   });
 }

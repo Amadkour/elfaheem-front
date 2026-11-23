@@ -14,7 +14,6 @@
 //   PUT  /api/v1/me/games/leaderboard           {visible} "Show me on leaderboards" (default visible; a hidden
 //                                               student still sees their own rank). Kill switch `games.leaderboard`.
 //   GET  /api/v1/me/games/progress              my games, every badge, totals
-//   GET  /api/v1/parent/children/{id}/games     the same for a linked child (404 LINK_NOT_FOUND otherwise)
 //
 // Kill switches: `student_tab_games` (the tab and every games route), `games.rewards` (points for a play: the server
 // decides, the app only shows what it paid).
@@ -131,9 +130,6 @@ class GamesApi {
       _api.put('/api/v1/me/games/leaderboard', body: {'visible': visible});
 
   Future<GamesReport> myProgress() async => GamesReport.fromJson(await _api.get('/api/v1/me/games/progress'));
-
-  Future<GamesReport> childProgress(int studentId) async =>
-      GamesReport.fromJson(await _api.get('/api/v1/parent/children/$studentId/games'));
 }
 
 /// One finished round waiting for the server. Its `client_id` (a UUID v4) is made once, when the round ends, and

@@ -26,6 +26,7 @@ const _refused = FakeResponse(403, {
 
 const _games = {
   'student_id': 7,
+  'summary': {'minutes_7d': 0, 'finished_7d': 0, 'minutes_30d': 0, 'finished_30d': 0},
   'games': [],
   'badges': [],
   'totals': {'plays': 0, 'stars': 0, 'games': 0, 'perfect': 0},
