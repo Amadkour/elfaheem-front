@@ -221,6 +221,8 @@ class BalloonPopViewState extends State<BalloonPopView> {
       kinds: const {MechanicKind.selectAll},
       onHint: _hintPressed,
       silent: widget.silent,
+      onScene: theme.onSky,
+      overlay: true,
       child: Stack(children: [
         Positioned.fill(
           child: FloatingTokensView(game: _game!, semanticLabel: t('فرقعة البالونات: اختر كل الإجابات الصحيحة', 'Balloon pop: pop every right answer')),
@@ -228,7 +230,7 @@ class BalloonPopViewState extends State<BalloonPopView> {
         Align(
           alignment: Alignment.topCenter,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xs, AppSpace.sm, 0),
+            padding: EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xs + GameSessionShell.barHeight + MediaQuery.paddingOf(context).top, AppSpace.sm, 0),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 620),
               child: DecoratedBox(

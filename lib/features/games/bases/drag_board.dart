@@ -3,8 +3,10 @@
 // each template decides what a drop means (Verse Builder: a word in its place; I'rab Hunter and Drag-to-Place: a token
 // in a bucket).
 //
-//   DragToken        one piece (id, text, `quran` = drawn in the Quran role)
-//   DragSlotData     one drop zone: a placeholder / label, the tokens in it, a state, a capacity
+//   DragToken        one piece (id, text, `quran` = drawn in the Quran role, `image` = the item's picture, drawn
+//                    above the text; a piece may be a picture alone)
+//   DragSlotData     one drop zone: a placeholder / label, the tokens in it, a state, a capacity, `image` = the
+//                    picture of a bucket. Pictures are drawn by `DragBoard.imageBuilder` (default: AppNetworkImage).
 //   DragBoard        `line` layout (slots flow like the text, in the reading direction of the text) or `buckets`
 //                    (cards with a label and a wrap of tokens). Drag: the piece lifts (scale, tilt, a deep shadow, a
 //                    light haptic), the hovered slot glows and swells, a drop snaps in with a spring. A tap on a tray
@@ -20,16 +22,20 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show appMotionOff;
 import 'package:flutter_education_app/features/games/core/age_theme.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 
 import 'stage_kit.dart';
 
 enum DragSlotState { open, correct, wrong, fixed, hint }
 
 class DragToken {
-  const DragToken({required this.id, required this.text, this.quran = false, this.used = false, this.hint = false});
+  const DragToken({required this.id, required this.text, this.quran = false, this.used = false, this.hint = false, this.image});
   final int id;
   final String text;
   final bool quran;
+
+  /// The picture of the piece (an item's `image` URL): drawn above the text, or alone when [text] is empty.
+  final String? image;
 
   /// Placed: the tray keeps a faint outline so the layout does not jump.
   final bool used;
@@ -46,8 +52,12 @@ class DragSlotData {
     this.state = DragSlotState.open,
     this.capacity = 1,
     this.number,
+    this.image,
   });
   final int id;
+
+  /// The picture of a bucket (drawn beside its label).
+  final String? image;
 
   /// The placeholder of an empty line slot, or the title of a bucket.
   final String label;
@@ -63,6 +73,34 @@ class DragSlotData {
 
 enum DragBoardLayout { line, buckets }
 
+/// Draws the picture at [url] in a [size] square (the board clips it to rounded corners).
+typedef DragImageBuilder = Widget Function(BuildContext context, String url, double size);
+
+Widget _networkImage(BuildContext context, String url, double size) =>
+    AppNetworkImage(url: url, width: size, height: size, fit: BoxFit.cover);
+
+/// Carries [DragBoard.imageBuilder] to the pieces.
+class _BoardImages extends InheritedWidget {
+  const _BoardImages({required this.builder, required super.child});
+  final DragImageBuilder builder;
+
+  /// The picture of [url] as a rounded square, or null when there is none.
+  static Widget? picture(BuildContext context, String? url, double size, double radius) {
+    if (url == null || url.isEmpty) return null;
+    final b = context.dependOnInheritedWidgetOfExactType<_BoardImages>()?.builder ?? _networkImage;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: SizedBox(width: size, height: size, child: b(context, url, size)),
+    );
+  }
+
+  @override
+  bool updateShouldNotify(_BoardImages old) => old.builder != builder;
+}
+
+/// The side of a piece's picture and of a bucket's picture.
+const double _kPieceImage = AppTouch.primary + AppSpace.md, _kBucketImage = AppTouch.min;
+
 class DragBoard extends StatelessWidget {
   const DragBoard({
     super.key,
@@ -76,7 +114,11 @@ class DragBoard extends StatelessWidget {
     this.shakeNonce = 0,
     this.textDirection,
     this.silent = false,
+    this.imageBuilder,
   });
+
+  /// How a token's / bucket's picture is drawn (tests pass a painted box); null = the app's network image.
+  final DragImageBuilder? imageBuilder;
 
   final AgeTheme theme;
   final List<DragSlotData> slots;
@@ -108,7 +150,8 @@ class DragBoard extends StatelessWidget {
       AppSpace.gapLg,
       _Tray(sf: sf, tray: tray, onTapToken: onTapToken, silent: silent),
     ]);
-    return textDirection == null ? body : Directionality(textDirection: textDirection!, child: body);
+    final board = _BoardImages(builder: imageBuilder ?? _networkImage, child: body);
+    return textDirection == null ? board : Directionality(textDirection: textDirection!, child: board);
   }
 }
 
@@ -122,7 +165,11 @@ class _Chip extends StatelessWidget {
     this.lifted = false,
     this.flat = false,
     this.maxWidth,
+    this.picture,
   });
+
+  /// The token's picture, resolved by the caller (the drag feedback is built outside the board's scope).
+  final Widget? picture;
   final StageSurface sf;
   final DragToken token;
   final StageTileState state;
@@ -144,9 +191,13 @@ class _Chip extends StatelessWidget {
         ? quranTextStyle(20, color: sf.ink)
         : appText(17, w: FontWeight.w600, c: sf.ink);
     final e = sf.edgeWidth;
+    final pic = picture ?? _BoardImages.picture(context, token.image, _kPieceImage, sf.radius - 8);
+    final label = Text(token.text, textAlign: TextAlign.center, style: style, textDirection: textDirectionOf(token.text));
     Widget chip = Container(
       constraints: BoxConstraints(minHeight: AppTouch.primary, minWidth: AppTouch.min, maxWidth: maxWidth ?? double.infinity),
-      padding: EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: token.quran ? 0 : AppSpace.sm),
+      padding: pic != null
+          ? const EdgeInsets.all(AppSpace.xs)
+          : EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: token.quran ? 0 : AppSpace.sm),
       decoration: BoxDecoration(
         color: fill,
         borderRadius: BorderRadius.circular(sf.radius - 4),
@@ -157,7 +208,16 @@ class _Chip extends StatelessWidget {
             ? [BoxShadow(color: sf.ink.withValues(alpha: 0.3), blurRadius: 24, offset: const Offset(0, 14))]
             : [BoxShadow(color: edge, offset: Offset(0, e))],
       ),
-      child: Text(token.text, textAlign: TextAlign.center, style: style, textDirection: textDirectionOf(token.text)),
+      child: pic == null
+          ? label
+          : Column(mainAxisSize: MainAxisSize.min, children: [
+              pic,
+              if (token.text.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpace.xxs),
+                  child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: _kPieceImage + AppSpace.lg), child: label),
+                ),
+            ]),
     );
     if (lifted) {
       chip = Transform.rotate(angle: -0.04, child: Transform.scale(scale: 1.1, child: chip));
@@ -241,7 +301,8 @@ class _TrayTokenState extends State<_TrayToken> {
   Widget build(BuildContext context) {
     final sf = widget.sf;
     final tk = widget.token;
-    final chip = _Chip(sf: sf, token: tk, state: tk.hint ? StageTileState.hint : StageTileState.idle, maxWidth: widget.maxWidth);
+    final pic = _BoardImages.picture(context, tk.image, _kPieceImage, sf.radius - 8);
+    final chip = _Chip(sf: sf, token: tk, state: tk.hint ? StageTileState.hint : StageTileState.idle, maxWidth: widget.maxWidth, picture: pic);
     final pressed = AnimatedScale(
       scale: _down ? 0.95 : 1,
       duration: Duration(milliseconds: appMotionOff(context) ? 0 : 90),
@@ -251,6 +312,7 @@ class _TrayTokenState extends State<_TrayToken> {
     return Semantics(
       button: true,
       label: tk.text,
+      image: tk.image != null,
       child: Draggable<int>(
         data: tk.id,
         maxSimultaneousDrags: 1,
@@ -259,10 +321,10 @@ class _TrayTokenState extends State<_TrayToken> {
           offset: const Offset(-40, -64),
           child: Material(
             color: Colors.transparent,
-            child: _Chip(sf: sf, token: tk, lifted: true, maxWidth: widget.maxWidth),
+            child: _Chip(sf: sf, token: tk, lifted: true, maxWidth: widget.maxWidth, picture: pic),
           ),
         ),
-        childWhenDragging: Opacity(opacity: 0.25, child: _Chip(sf: sf, token: tk, maxWidth: widget.maxWidth)),
+        childWhenDragging: Opacity(opacity: 0.25, child: _Chip(sf: sf, token: tk, maxWidth: widget.maxWidth, picture: pic)),
         onDragStarted: () {
           HapticFeedback.lightImpact();
           stageTick(sacred: sf.calm, silent: widget.silent);
@@ -448,7 +510,11 @@ class _SlotState extends State<_Slot> {
         boxShadow: _hover ? [BoxShadow(color: sf.accent.withValues(alpha: 0.4), blurRadius: 18)] : sf.lift(blur: 12, dy: 4),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(s.label, style: appText(15, w: FontWeight.w700, c: sf.ink)),
+        Builder(builder: (context) {
+          final title = Text(s.label, style: appText(15, w: FontWeight.w700, c: sf.ink));
+          final pic = _BoardImages.picture(context, s.image, _kBucketImage, AppRadius.control);
+          return pic == null ? title : Row(children: [pic, AppSpace.gapSm, Expanded(child: title)]);
+        }),
         AppSpace.gapXs,
         Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (final tk in s.tokens)

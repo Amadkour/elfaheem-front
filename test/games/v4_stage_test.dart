@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/games/bases/drag_board.dart';
-import 'package:flutter_education_app/features/games/bases/stage_kit.dart';
 import 'package:flutter_education_app/features/games/core/age_theme.dart';
 import 'package:flutter_education_app/features/games/core/game_audio.dart';
 import 'package:flutter_education_app/features/games/core/game_items.dart';
@@ -165,6 +164,37 @@ void main() {
             scaffold: false);
       }
     });
+  });
+
+  testWidgets('DragBoard: pieces and buckets with pictures (the builder draws them)', (tester) async {
+    var drawn = 0;
+    for (final layout in DragBoardLayout.values) {
+      await expectNoLayoutErrors(
+          tester,
+          () => Material(
+                child: SingleChildScrollView(
+                  child: DragBoard(
+                    theme: AgeTheme.build(GameAge.kids),
+                    layout: layout,
+                    imageBuilder: (context, url, size) {
+                      drawn++;
+                      return ColoredBox(color: Theme.of(context).colorScheme.primary, child: SizedBox.square(dimension: size));
+                    },
+                    slots: [
+                      for (var i = 0; i < 3; i++)
+                        DragSlotData(id: i, label: 'Bucket $i', image: 'https://x/b$i.png', number: i + 1, capacity: 4, tokens: [DragToken(id: i, text: 'token $i', image: 'https://x/$i.png')]),
+                    ],
+                    tray: [
+                      for (var i = 3; i < 7; i++) DragToken(id: i, text: i.isEven ? '' : 'a longer picture label $i', image: 'https://x/$i.png'),
+                      const DragToken(id: 9, text: 'words only'),
+                    ],
+                    onDrop: (_, _) {},
+                  ),
+                ),
+              ),
+          scaffold: false);
+    }
+    expect(drawn, greaterThan(0));
   });
 
   group('Challenge Quiz play-through', () {

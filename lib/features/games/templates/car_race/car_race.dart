@@ -27,6 +27,7 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/games/bases/lane_runner.dart';
+import 'package:flutter_education_app/features/games/bases/stage_kit.dart' show quranTextStyle;
 import 'package:flutter_education_app/features/games/core/age_theme.dart';
 import 'package:flutter_education_app/features/games/core/game_audio.dart';
 import 'package:flutter_education_app/features/games/core/game_items.dart';
@@ -148,9 +149,13 @@ class CarRaceHeader extends StatelessWidget {
     this.phrase = '',
     this.showBlank = false,
     this.calm = false,
+    this.quran = false,
     this.onReplay,
     this.onReciter,
   });
+
+  /// The phrase is Quran or Hadith text: drawn in the Quran role.
+  final bool quran;
 
   final String prompt, phrase;
 
@@ -205,7 +210,7 @@ class CarRaceHeader extends StatelessWidget {
                           textAlign: TextAlign.center,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: appText(26, w: FontWeight.w800, c: ink, h: 1.9),
+                          style: quran && rtl ? quranTextStyle(24, color: ink) : appText(26, w: FontWeight.w800, c: ink, h: 1.9),
                         ),
                       ),
                     ),
@@ -347,7 +352,7 @@ class CarRaceViewState extends State<CarRaceView> {
     final g = _gates[_gate];
     _hint = false;
     _retrying = false;
-    _game!.showGate(RunnerGate(labels: g.labels));
+    _game!.showGate(RunnerGate(labels: g.labels, quran: g.slot >= 0 && _sacredText(_item >= 0 && _item < s.items.length ? s.items[_item] : null)));
     _refresh();
   }
 
@@ -357,7 +362,7 @@ class CarRaceViewState extends State<CarRaceView> {
     final r = s.answer(_item, g.answer(lane), hint: _hint);
     if (r == null) {
       // the round is over or paused: nothing was recorded; show the same fork again
-      if (!s.finished) _game!.showGate(RunnerGate(labels: g.labels));
+      if (!s.finished) _game!.showGate(RunnerGate(labels: g.labels, quran: g.slot >= 0 && _sacredText(_item >= 0 && _item < s.items.length ? s.items[_item] : null)));
       return;
     }
     _hint = false;
@@ -454,6 +459,8 @@ class CarRaceViewState extends State<CarRaceView> {
       kinds: kinds,
       onHint: _hintPressed,
       silent: widget.silent,
+      onScene: theme.onSky,
+      overlay: true,
       child: Stack(children: [
         Positioned.fill(
           child: LaneRunnerView(
@@ -465,14 +472,19 @@ class CarRaceViewState extends State<CarRaceView> {
         ),
         Align(
           alignment: Alignment.topCenter,
-          child: CarRaceHeader(
-            prompt: item?.prompt.of(lang) ?? '',
-            phrase: g?.phrase ?? '',
-            showBlank: g != null && g.slot >= 0,
-            palette: theme.palette,
-            calm: theme.calm,
-            onReplay: audio ? _play : null,
-            onReciter: audio ? _reciter : null,
+          child: SafeArea(
+            bottom: false,
+            minimum: const EdgeInsets.only(top: GameSessionShell.barHeight),
+            child: CarRaceHeader(
+              prompt: item?.prompt.of(lang) ?? '',
+              phrase: g?.phrase ?? '',
+              showBlank: g != null && g.slot >= 0,
+              palette: theme.palette,
+              calm: theme.calm,
+              quran: _sacredText(item),
+              onReplay: audio ? _play : null,
+              onReciter: audio ? _reciter : null,
+            ),
           ),
         ),
         if (theme.calm)
@@ -487,6 +499,8 @@ class CarRaceViewState extends State<CarRaceView> {
       ]),
     );
   }
+
+  static bool _sacredText(GameItem? it) => it != null && (it.sacred || it.sourceKind == 'quran' || it.sourceKind == 'hadith');
 
   static const Set<MechanicKind> kinds = {MechanicKind.choose, MechanicKind.sequence};
 }

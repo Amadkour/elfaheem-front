@@ -205,7 +205,16 @@ class CharacterPainter extends CustomPainter {
     const r = 18.0;
     final hair = Paint()..color = p.hair;
     // hair behind the face, then the face with a soft light, then the fringe
-    shape(Path()..addOval(Rect.fromCircle(center: c.translate(0, -1.4), radius: r + 1.6)), hair);
+    // (a cap that stops at the ears: a full circle behind the face read as a second ring around the chin)
+    final back = Rect.fromCircle(center: c.translate(0, -1.4), radius: r + 1.6);
+    shape(
+      Path.combine(
+        PathOperation.intersect,
+        Path()..addOval(back),
+        Path()..addRect(Rect.fromLTRB(back.left - 1, back.top - 1, back.right + 1, c.dy + 3.5)),
+      ),
+      hair,
+    );
     final face = Path()..addOval(Rect.fromCenter(center: c, width: r * 2, height: r * 1.94));
     shape(
       face,

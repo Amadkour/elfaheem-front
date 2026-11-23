@@ -685,7 +685,27 @@ bool gameKindsGiveHints(Set<MechanicKind> kinds) => kinds.any((k) => const {
 /// plays no buzzer and no explosion; a wrong answer is a quiet "try again" and costs nothing. The round ends through
 /// `session.finish` (`timer`, `lives`, `quit`, `done`: the end entry is the session's).
 class GameSessionShell extends StatefulWidget {
-  const GameSessionShell({super.key, required this.session, required this.child, this.kinds = const {}, this.onHint, this.silent = false});
+  const GameSessionShell({
+    super.key,
+    required this.session,
+    required this.child,
+    this.kinds = const {},
+    this.onHint,
+    this.silent = false,
+    this.onScene,
+    this.overlay = false,
+  });
+
+  /// The height of the bar: a template whose scene fills the frame ([overlay]) keeps its own header below it.
+  static const double barHeight = AppTouch.min + AppSpace.xs * 2;
+
+  /// The colour of the timer, the icons and the retry line when the bar sits on a painted scene
+  /// (`AgeTheme.onSky`); null = on the page background.
+  final Color? onScene;
+
+  /// True: the bar floats over [child], which fills the whole frame (a full-bleed scene: LaneRunner, FloatingTokens).
+  /// False: the bar takes its own row above [child] (the caller paints one backdrop behind both: StageFrame).
+  final bool overlay;
 
   final GameSession session;
   final Widget child;
@@ -787,8 +807,9 @@ class _GameSessionShellState extends State<GameSessionShell> with SingleTickerPr
       _pulse.stop();
     }
     final c = context.colors;
+    final quiet = widget.onScene ?? c.textMedium;
     final canHint = s.settings.hints && widget.onHint != null && gameKindsGiveHints(widget.kinds) && !s.finished;
-    final bar = Padding(
+    Widget bar = Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
       child: Row(children: [
         Expanded(
@@ -810,9 +831,11 @@ class _GameSessionShellState extends State<GameSessionShell> with SingleTickerPr
             animation: _pulse,
             builder: (_, child) => Opacity(opacity: low ? 1 - 0.35 * _pulse.value : 1, child: child),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.timer_outlined, size: 18, color: low ? c.danger : c.textMedium),
+              Icon(Icons.timer_outlined, size: 18, color: low ? c.danger : quiet),
               AppSpace.gapXs,
-              Text(_clock(s.remainingS), style: TextStyle(color: low ? c.danger : c.textMedium, fontWeight: FontWeight.w600)),
+              Text(_clock(s.remainingS),
+                  textDirection: TextDirection.ltr,
+                  style: AppType.label(context).copyWith(color: low ? c.danger : quiet, fontWeight: FontWeight.w700, fontFeatures: const [FontFeature.tabularFigures()])),
             ]),
           ),
         ],
@@ -831,17 +854,37 @@ class _GameSessionShellState extends State<GameSessionShell> with SingleTickerPr
         IconButton(tooltip: t('إيقاف مؤقت', 'Pause'), onPressed: s.finished ? null : _pause, icon: const Icon(Icons.pause_rounded)),
       ]),
     );
-    return Column(children: [
-      bar,
-      if (_retry)
-        Semantics(
-          liveRegion: true,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: AppSpace.xs),
-            child: Text(t('حاول مرة أخرى', 'Try again'), style: TextStyle(color: c.primary, fontWeight: FontWeight.w600)),
-          ),
+    final on = widget.onScene;
+    if (on != null) {
+      bar = Theme(
+        data: Theme.of(context).copyWith(
+          iconTheme: IconThemeData(color: on),
+          iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(foregroundColor: on, disabledForegroundColor: on.withValues(alpha: 0.4))),
         ),
-      Expanded(child: GameFxLayer(controller: _fx, calm: _calm, child: widget.child)),
-    ]);
+        child: bar,
+      );
+    }
+    final retry = !_retry
+        ? null
+        : Semantics(
+            liveRegion: true,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
+              child: Text(t('حاول مرة أخرى', 'Try again'), style: AppType.label(context).copyWith(color: on ?? c.primary, fontWeight: FontWeight.w700)),
+            ),
+          );
+    final game = GameFxLayer(controller: _fx, calm: _calm, child: widget.child);
+    if (widget.overlay) {
+      return Stack(children: [
+        Positioned.fill(child: game),
+        PositionedDirectional(
+          top: 0,
+          start: 0,
+          end: 0,
+          child: SafeArea(bottom: false, child: Column(mainAxisSize: MainAxisSize.min, children: [bar, ?retry])),
+        ),
+      ]);
+    }
+    return Column(children: [bar, ?retry, Expanded(child: game)]);
   }
 }

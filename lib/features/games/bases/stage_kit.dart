@@ -1,9 +1,9 @@
 // lib/features/games/bases/stage_kit.dart — the shared parts of the Games v4 stage bases (T37): QuestionStage,
 // DragBoard and the templates on them draw with these, so a tap feels the same in every game.
 //
-//   quranTextStyle      the Quran text role: the app's Arabic display face (AppFonts.editorialArabicFamily, Amiri) with
-//                       the text family as fallback, a tall line so tashkeel never clips. There is no dedicated Quran
-//                       font in the app yet; when one is added this is the one place that changes.
+//   quranTextStyle      the Quran text role (decision 6, gate G2): Amiri Quran (AppFonts.quranFamily), one weight,
+//                       on a tall line so tashkeel and the waqf marks never clip. Every Quran / Hadith word in a
+//                       game or an admin picker is drawn with it; nothing else names that family.
 //   StageSurface        the palette of a round: the age theme's paper / ink / accent and the right / wrong colours
 //                       (calm: never red; a wrong answer is a soft amber)
 //   StageTile           a big tactile answer tile: a solid edge that presses in, states idle / selected / correct /
@@ -21,6 +21,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/display/lazy_fonts.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show appMotionOff;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
@@ -41,17 +42,21 @@ bool isArabicText(String s) => _arabic.hasMatch(s);
 TextDirection textDirectionOf(String s, [TextDirection? ambient]) =>
     isArabicText(s) ? TextDirection.rtl : (ambient ?? TextDirection.ltr);
 
-/// The Quran text role (see the library header). [size] is the optical size: the face is drawn a little larger
-/// (Amiri's letters are small on their body) and on a tall line, so shadda + kasra and the waqf marks have room.
-TextStyle quranTextStyle(double size, {Color? color, FontWeight weight = FontWeight.w700}) => TextStyle(
-      fontFamily: AppFonts.editorialArabicFamily,
-      fontFamilyFallback: [AppFonts.family],
-      fontSize: size * 1.15,
-      fontWeight: weight,
-      height: 2.0,
+/// The Quran text role (see the library header). [size] is the optical size: the face is drawn larger (Amiri's
+/// letters are small on their body) and on a tall line, so shadda + kasra and the waqf marks have room. Amiri Quran
+/// has one weight: there is no bold Quran text, emphasis is colour or size.
+TextStyle quranTextStyle(double size, {Color? color}) => TextStyle(
+      fontFamily: AppFonts.quranFamily,
+      fontFamilyFallback: AppFonts.quranFallback,
+      fontSize: size * kQuranScale,
+      fontWeight: FontWeight.w400,
+      height: 2.1,
       color: color,
       leadingDistribution: TextLeadingDistribution.even,
     );
+
+/// How much larger than its optical size the Quran face is drawn.
+const double kQuranScale = 1.3;
 
 /// A text of an item option / label: a plain string or `{ar, en}`.
 String stageText(Object? v) {
@@ -78,6 +83,9 @@ class StageSurface {
 
   Color get paper => p.paper;
   Color get ink => p.ink;
+
+  /// Text drawn straight on the sky (the round counter): see [AgeTheme.onSky].
+  Color get onSky => theme.onSky;
   Color get accent => p.accent;
   Color get gold => p.gold;
   Color get right => _c.success;
@@ -304,7 +312,7 @@ class StageProgress extends StatelessWidget {
         ),
         AppSpace.gapSm,
         Text('${math.min(current ?? done + 1, total)} / $total',
-            textDirection: TextDirection.ltr, style: appText(13, w: FontWeight.w700, c: surface.ink)),
+            textDirection: TextDirection.ltr, style: appText(13, w: FontWeight.w700, c: surface.onSky)),
       ]),
     );
   }
@@ -496,23 +504,18 @@ class StageFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = stageThemeOf(context, calm: session.calm || session.sacred);
-    // the shell's lamp and pause sit on the painted sky: light on a night sky, ink on a day one
-    final bar = theme.night ? theme.palette.paper : theme.palette.ink;
-    return AgeThemeScope(
+    final frame = AgeThemeScope(
       theme: theme,
       child: GameBackdrop(
         theme: theme,
         child: SafeArea(
-          child: Theme(
-            data: Theme.of(context).copyWith(
-              iconTheme: IconThemeData(color: bar),
-              iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(foregroundColor: bar, disabledForegroundColor: bar.withValues(alpha: 0.4))),
-            ),
-            child: GameSessionShell(session: session, kinds: kinds, onHint: onHint, silent: silent, child: child),
-          ),
+          // the shell's timer, lamp and pause sit on the painted sky
+          child: GameSessionShell(session: session, kinds: kinds, onHint: onHint, silent: silent, onScene: theme.onSky, child: child),
         ),
       ),
     );
+    // sacred text is drawn in the Quran face, which the web loads on demand
+    return session.sacred ? LazyFontGate(families: const [AppFonts.quranFamily], child: frame) : frame;
   }
 }
 

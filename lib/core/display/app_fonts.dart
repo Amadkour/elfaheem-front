@@ -185,6 +185,15 @@ abstract final class AppFonts {
   static const editorialArabicFamily = 'uiEditorial';
   static const editorialLatinFamily = 'uiEditorialLatin';
 
+  /// The Quran text face (Games v4 decision 6, gate G2): Amiri Quran Regular (OFL, assets/fonts/quran/), the face
+  /// built for Quranic text; it draws every annotation sign of the Tanzil Uthmani edition (the pause marks too) clear
+  /// of the letters. ONE weight: never ask it for bold (a synthetic bold smears the marks). Lazy on the web: draw
+  /// under `LazyFontGate(families: [AppFonts.quranFamily])` or after [ensureQuran]. Style: `quranTextStyle`
+  /// (lib/features/games/bases/stage_kit.dart), never a TextStyle of your own.
+  static const quranFamily = 'uiQuran';
+  static List<String> get quranFallback => [editorialArabicFamily, ...fallback];
+  static Future<void> ensureQuran() => LazyFonts.ensure(quranFamily);
+
   /// The heading face of [lang] (default: the open language).
   static String editorialFamilyFor([String? lang]) =>
       (lang ?? AppConfig.lang) == 'ar' ? editorialArabicFamily : editorialLatinFamily;

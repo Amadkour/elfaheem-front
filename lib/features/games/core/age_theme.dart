@@ -148,6 +148,10 @@ class AgeTheme {
   /// Dark mode: a night sky, stars.
   final bool night;
 
+  /// Text and icons drawn straight on the painted sky (the shell's timer and buttons, a round counter): light on a
+  /// night sky, ink on a day one. Never `context.colors.text*` there: the scene, not the page, is behind them.
+  Color get onSky => night ? palette.paper : palette.ink;
+
   factory AgeTheme.build(GameAge age, {bool calm = false, bool night = false, Color? primary}) {
     var p = switch (age) { GameAge.kids => _kids, GameAge.teen => _teen, GameAge.adult => _adult };
     if (primary != null && age != GameAge.kids) {

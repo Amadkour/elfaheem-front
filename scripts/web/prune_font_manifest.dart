@@ -26,6 +26,7 @@ const lazyFamilies = <String>{
   'bahji',
   'tajawal',
   'uiInter',
+  'uiQuran', // Amiri Quran: only Quran / Hadith games draw with it (LazyFontGate in StageFrame, AppFonts.ensureQuran)
   'packages/moyasar/ReadexPro',
 };
 

@@ -27,14 +27,18 @@ import 'package:flutter_education_app/features/games/core/age_theme.dart';
 import 'package:flutter_education_app/features/games/core/flame_host.dart';
 import 'package:flutter_education_app/features/games/core/game_character.dart';
 import 'package:flutter_education_app/features/games/core/game_fx.dart';
+import 'package:flutter_education_app/features/games/bases/stage_kit.dart' show quranTextStyle;
 
 /// True when [s] holds a right-to-left letter (Arabic, Hebrew, Syriac, Thaana).
 bool textIsRtl(String s) => s.runes.any((r) => r >= 0x0590 && r <= 0x08FF);
 
 /// One fork of the road: [labels] has one entry per lane (2..4), left to right on the screen.
 class RunnerGate {
-  const RunnerGate({required this.labels});
+  const RunnerGate({required this.labels, this.quran = false});
   final List<String> labels;
+
+  /// The labels are words of the Quran or a Hadith: drawn in the Quran role (`quranTextStyle`).
+  final bool quran;
   int get lanes => labels.length;
 }
 
@@ -161,7 +165,7 @@ class LaneRunnerGame extends FlameGame {
     _chosen = -1;
     for (var i = 0; i < 4; i++) {
       _signs[i] = _Sign.plain;
-      _plates[i] = i < g.lanes ? _Plate(g.labels[i], theme.palette) : null;
+      _plates[i] = i < g.lanes ? _Plate(g.labels[i], theme.palette, quran: g.quran) : null;
     }
     _carLane = _carLane.clamp(0, g.lanes - 1);
   }
@@ -747,10 +751,10 @@ class LaneRunnerGame extends FlameGame {
 
 /// One sign: the plate and its word, laid out once (the Arabic text keeps its marks: a tall line height, no clipping).
 class _Plate {
-  _Plate(this.label, GamePalette p) {
+  _Plate(this.label, GamePalette p, {bool quran = false}) {
     final rtl = textIsRtl(label);
     _tp = TextPainter(
-      text: TextSpan(text: label, style: appText(34, w: FontWeight.w800, c: p.ink, h: 1.75)),
+      text: TextSpan(text: label, style: quran && rtl ? quranTextStyle(30, color: p.ink) : appText(34, w: FontWeight.w800, c: p.ink, h: 1.75)),
       textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
       textAlign: TextAlign.center,
       maxLines: 2,
