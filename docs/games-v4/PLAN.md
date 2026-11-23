@@ -380,4 +380,11 @@ Deploy: migrations 0126–0128 are additive, but they run on the production data
 - T65: reciter cards show the licence and permission.
 - T85 (new, wave 8, sonnet): the timing tool.
 
+**Learner picks the reciter (owner, 2026-11-23)**
+- Stored in `game_profiles.reciter_key`; null = the default, or the kids reciter for the 6–9 band.
+- `GET /games/reciters` lists the enabled reciters; `PUT /me/games/profile` saves the choice; the draw takes a one-round override.
+- Picker with a sample in the games settings, plus a quick switch in the Quran templates' top bar. Switching mid-round replays the ayah in the new voice and never changes the score.
+- An ayah missing for the chosen reciter falls back to the default reciter.
+- Offline audio is cached for the chosen reciter only.
+
 **Decisions 15–16**: the reciter source abstraction with a permission gate per reciter; long ayat split only at the text's own waqf marks.
