@@ -157,7 +157,10 @@ class V4PlaySubmission extends GamePlaySubmission {
 }
 
 class GamePlayPage extends StatefulWidget {
-  const GamePlayPage({super.key, required this.game, this.api, this.v4, this.cache, this.userId});
+  const GamePlayPage({super.key, required this.game, this.api, this.v4, this.cache, this.userId, this.review = false});
+
+  /// Games v4 (T72): a spaced-repetition review round (`draw` with `mode: review`).
+  final bool review;
 
   /// The list's row (its `config` may be empty: then the page loads the game).
   final GameSummary game;
@@ -251,7 +254,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
     });
     Map<String, dynamic>? draw;
     try {
-      draw = (await _v4.draw(_game.id)).raw;
+      draw = (await _v4.draw(_game.id, mode: widget.review ? 'review' : null)).raw;
     } catch (e) {
       if (gamesDefiniteAnswer(e)) {
         if (!mounted) return;

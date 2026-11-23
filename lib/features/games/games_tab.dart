@@ -31,6 +31,7 @@ import 'package:flutter_education_app/features/games/game_play_page.dart';
 import 'package:flutter_education_app/features/games/games_api.dart';
 import 'package:flutter_education_app/features/games/games_models.dart';
 import 'package:flutter_education_app/features/games/games_progress.dart';
+import 'package:flutter_education_app/features/games/learner/games_home_v4.dart';
 import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -78,6 +79,10 @@ class _GamesTabState extends State<GamesTab> {
   String? _engine;
   String? _category, _difficulty;
   bool _rewards = false;
+
+  /// Games v4 (T72): the levels home is the tab's first view unless the kill switch `games.templates_v4` hides it (or
+  /// the server refuses it); the classic list stays one tap away.
+  bool _classic = false, _v4Refused = false;
 
   List<GameSummary> _items = const [];
   ChampionsStripData? _champions;
@@ -193,6 +198,34 @@ class _GamesTabState extends State<GamesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final v4 = !GuestState.active && !gamesV4Off() && !_v4Refused;
+    final classic = GamesBrowseView(
+        filters: _filters,
+        edu: _edu,
+        loadEdu: _loadEdu,
+        onFilters: _onFilters,
+        engine: _engine,
+        onEngine: (e) => setState(() => _engine = e),
+        category: _category,
+        difficulty: _difficulty,
+        onCategory: (v) {
+          setState(() => _category = v);
+          _load();
+        },
+        onDifficulty: (v) {
+          setState(() => _difficulty = v);
+          _load();
+        },
+        items: _items,
+        champions: GuestState.active || championsOff() ? null : _champions,
+        onChampions: () => _openHall(_champions?.scope),
+        loading: _loading,
+        error: _error,
+        rewards: _rewards,
+        onOpen: _open,
+        onRetry: _load,
+        onRefresh: _load,
+      );
     return BasePage(
       width: AppWidth.wide,
       appBar: ScreenAppBar(
@@ -219,33 +252,27 @@ class _GamesTabState extends State<GamesTab> {
         ],
       ),
       child: SafeArea(
-        child: GamesBrowseView(
-          filters: _filters,
-          edu: _edu,
-          loadEdu: _loadEdu,
-          onFilters: _onFilters,
-          engine: _engine,
-          onEngine: (e) => setState(() => _engine = e),
-          category: _category,
-          difficulty: _difficulty,
-          onCategory: (v) {
-            setState(() => _category = v);
-            _load();
-          },
-          onDifficulty: (v) {
-            setState(() => _difficulty = v);
-            _load();
-          },
-          items: _items,
-          champions: GuestState.active || championsOff() ? null : _champions,
-          onChampions: () => _openHall(_champions?.scope),
-          loading: _loading,
-          error: _error,
-          rewards: _rewards,
-          onOpen: _open,
-          onRetry: _load,
-          onRefresh: _load,
-        ),
+        child: !v4
+            ? classic
+            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
+                  child: Row(children: [
+                    AppChoiceChip(key: const ValueKey('games.view.levels'), label: t('المستويات', 'Levels'), icon: Icons.route_rounded, selected: !_classic, onTap: () => setState(() => _classic = false)),
+                    const SizedBox(width: AppSpace.xs),
+                    AppChoiceChip(key: const ValueKey('games.view.classic'), label: t('ألعاب كلاسيكية', 'Classic games'), icon: Icons.extension_rounded, selected: _classic, onTap: () => setState(() => _classic = true)),
+                  ]),
+                ),
+                Expanded(
+                  child: _classic
+                      ? classic
+                      : GamesHomeV4(
+                          champions: GuestState.active || championsOff() ? null : _champions,
+                          onChampions: () => _openHall(_champions?.scope),
+                          onUnavailable: () => setState(() => _v4Refused = true),
+                        ),
+                ),
+              ]),
       ),
     );
   }
