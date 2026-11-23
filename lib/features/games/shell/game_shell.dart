@@ -693,6 +693,7 @@ class GameSessionShell extends StatefulWidget {
     this.onHint,
     this.silent = false,
     this.onScene,
+    this.fxUnder = false,
     this.overlay = false,
   });
 
@@ -706,6 +707,9 @@ class GameSessionShell extends StatefulWidget {
   /// True: the bar floats over [child], which fills the whole frame (a full-bleed scene: LaneRunner, FloatingTokens).
   /// False: the bar takes its own row above [child] (the caller paints one backdrop behind both: StageFrame).
   final bool overlay;
+
+  /// Draw the effects under [child] (a card layout whose cards are opaque), so particles never cover text.
+  final bool fxUnder;
 
   final GameSession session;
   final Widget child;
@@ -873,7 +877,7 @@ class _GameSessionShellState extends State<GameSessionShell> with SingleTickerPr
               child: Text(t('حاول مرة أخرى', 'Try again'), style: AppType.label(context).copyWith(color: on ?? c.primary, fontWeight: FontWeight.w700)),
             ),
           );
-    final game = GameFxLayer(controller: _fx, calm: _calm, child: widget.child);
+    final game = GameFxLayer(controller: _fx, calm: _calm, under: widget.fxUnder, child: widget.child);
     if (widget.overlay) {
       return Stack(children: [
         Positioned.fill(child: game),

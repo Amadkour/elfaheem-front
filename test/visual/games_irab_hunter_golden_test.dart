@@ -102,14 +102,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
   }
 
-  testWidgets('kids phone: a noun placed, its case asked', (tester) async {
-    await shoot(tester, 'kids_phone', size: const Size(390, 844), age: GameAge.kids, act: () async {
-      await tapKey(tester, 'tray-2');
-      await tapKey(tester, 'pick-2');
-      await tapKey(tester, 'tray-1');
-      await tapKey(tester, 'pick-0');
+  for (final (name, size) in [('kids_phone', const Size(360, 740)), ('kids_phone_320', const Size(320, 640))]) {
+    testWidgets('$name: a noun placed, its case asked', (tester) async {
+      await shoot(tester, name, size: size, age: GameAge.kids, act: () async {
+        await tapKey(tester, 'tray-2');
+        await tapKey(tester, 'pick-2');
+        await tapKey(tester, 'tray-1');
+        await tapKey(tester, 'pick-0');
+      });
     });
-  });
+  }
 
   testWidgets('teen night phone: a word picked, the baskets row open', (tester) async {
     await shoot(tester, 'teen_phone', size: const Size(390, 844), age: GameAge.teen, dark: true, act: () async {

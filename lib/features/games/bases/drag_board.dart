@@ -204,6 +204,7 @@ class _Chip extends StatelessWidget {
     this.flat = false,
     this.maxWidth,
     this.picture,
+    this.fit = false,
   });
 
   /// The token's picture, resolved by the caller (the drag feedback is built outside the board's scope).
@@ -216,6 +217,9 @@ class _Chip extends StatelessWidget {
   /// A given word of a "complete" line: no edge, no lift, it is not a piece to move.
   final bool flat;
   final double? maxWidth;
+
+  /// A piece in a narrow basket: the word scales down whole to fit one line instead of breaking letter by letter.
+  final bool fit;
 
   @override
   Widget build(BuildContext context) {
@@ -230,12 +234,12 @@ class _Chip extends StatelessWidget {
         : appText(17, w: FontWeight.w600, c: sf.ink);
     final e = sf.edgeWidth;
     final pic = picture ?? _BoardImages.picture(context, token.image, _kPieceImage, sf.radius - 8);
-    final label = Text(token.text, textAlign: TextAlign.center, style: style, textDirection: textDirectionOf(token.text));
+    final label = _labelOf(token, style, fit);
     Widget chip = Container(
-      constraints: BoxConstraints(minHeight: AppTouch.primary, minWidth: AppTouch.min, maxWidth: maxWidth ?? double.infinity),
+      constraints: BoxConstraints(minHeight: AppTouch.primary, minWidth: fit ? 0 : AppTouch.min, maxWidth: maxWidth ?? double.infinity),
       padding: pic != null
           ? const EdgeInsets.all(AppSpace.xs)
-          : EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: token.quran ? 0 : AppSpace.sm),
+          : EdgeInsets.symmetric(horizontal: fit ? AppSpace.xs : AppSpace.md, vertical: token.quran ? 0 : AppSpace.sm),
       decoration: BoxDecoration(
         color: fill,
         borderRadius: BorderRadius.circular(sf.radius - 4),
@@ -700,12 +704,19 @@ class _SlotState extends State<_Slot> {
           return pic == null ? title : Row(children: [pic, AppSpace.gapSm, Expanded(child: title)]);
         }),
         AppSpace.gapXs,
-        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          for (final tk in s.tokens)
-            _SnapIn(key: ValueKey('b-${s.id}-${tk.id}'), child: _Chip(sf: sf, token: tk, maxWidth: widget.maxWidth)),
-        ]),
+        LayoutBuilder(
+          builder: (context, box) => Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+            for (final tk in s.tokens)
+              _SnapIn(key: ValueKey('b-${s.id}-${tk.id}'), child: _Chip(sf: sf, token: tk, maxWidth: box.maxWidth, fit: true)),
+          ]),
+        ),
       ]),
     );
   }
 }
 
+
+Widget _labelOf(DragToken token, TextStyle style, bool fit) {
+  final text = Text(token.text, textAlign: TextAlign.center, style: style, textDirection: textDirectionOf(token.text), maxLines: fit ? 1 : null);
+  return fit ? FittedBox(fit: BoxFit.scaleDown, child: text) : text;
+}

@@ -142,7 +142,10 @@ class _FxPainter extends CustomPainter {
 
 /// Wraps [child] with the effects of [controller]. See the library header for what it does under Reduce motion and calm.
 class GameFxLayer extends StatefulWidget {
-  const GameFxLayer({super.key, required this.controller, required this.child, this.calm = false});
+  const GameFxLayer({super.key, required this.controller, required this.child, this.calm = false, this.under = false});
+
+  /// True: the particles are drawn UNDER [child] (a card layout: confetti never covers text on an opaque card).
+  final bool under;
 
   final GameFxController controller;
   final Widget child;
@@ -256,6 +259,13 @@ class _GameFxLayerState extends State<GameFxLayer> with TickerProviderStateMixin
       return Stack(
         fit: StackFit.passthrough,
         children: [
+          if (widget.under) ...[
+          Positioned.fill(
+            child: IgnorePointer(
+              child: RepaintBoundary(child: CustomPaint(painter: _FxPainter(_particles, _ring, c.success, _tick), size: Size.infinite)),
+            ),
+          ),
+          ],
           AnimatedBuilder(
             animation: _shake,
             child: widget.child,
@@ -264,11 +274,13 @@ class _GameFxLayerState extends State<GameFxLayer> with TickerProviderStateMixin
               return Transform.translate(offset: Offset(dx, 0), child: child);
             },
           ),
+          if (!widget.under) ...[
           Positioned.fill(
             child: IgnorePointer(
               child: RepaintBoundary(child: CustomPaint(painter: _FxPainter(_particles, _ring, c.success, _tick), size: Size.infinite)),
             ),
           ),
+          ],
         ],
       );
     });

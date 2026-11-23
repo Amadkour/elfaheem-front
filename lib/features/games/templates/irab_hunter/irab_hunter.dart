@@ -114,6 +114,28 @@ class IrabRound {
     return c == null ? null : caseKeys.indexOf(c);
   }
 
+  /// A word of a basket that never takes a case (a particle): drawn as "fixed".
+  bool isFixed(int tok) {
+    if (words[tok].caseKey != null) return false;
+    final b = bucketOf(tok);
+    return b >= 0 && RegExp(r'part|harf|حرف').hasMatch(bucketKeys[b] + buckets[b]);
+  }
+
+  /// The cases to offer for [tok]: the item's own, minus the endings its word type never takes (a noun never has the
+  /// jussive, a verb never the genitive); the right one is always kept. The item body has no per-word list.
+  List<int> casesFor(int tok) {
+    final b = bucketOf(tok);
+    final tag = b < 0 ? '' : bucketKeys[b] + buckets[b];
+    final noun = RegExp(r'noun|ism|اسم').hasMatch(tag), verb = RegExp(r'verb|fi.?l|فعل').hasMatch(tag);
+    final right = caseOf(tok);
+    bool never(int c) {
+      final tg = caseKeys[c] + cases[c];
+      return (noun && RegExp(r'jazm|jussive|مجزوم').hasMatch(tg)) || (verb && RegExp(r'jar|genitive|مجرور').hasMatch(tg));
+    }
+
+    return [for (var c = 0; c < cases.length; c++) if (c == right || !never(c)) c];
+  }
+
   bool needsCase(int tok) => cases.isNotEmpty && words[tok].caseKey != null;
 }
 
@@ -287,6 +309,7 @@ class _IrabHunterGameState extends State<IrabHunterGame> {
   @override
   Widget build(BuildContext context) => StageFrame(
         session: s,
+        fxUnder: true,
         kinds: kIrabHunter.kinds,
         silent: widget.silent,
         onHint: _hint,
@@ -325,6 +348,7 @@ class _IrabHunterGameState extends State<IrabHunterGame> {
 
   // ── the sentence ────────────────────────────────────────────────────────────
 
+  /// One compact card: the prompt (two lines at most) over the words in ONE row that scrolls sideways when it must.
   Widget _sentence(StageSurface sf, TextDirection dir, GameAge age) {
     final prompt = item.prompt.of(AppConfig.lang);
     final cell = <Widget>[];
@@ -332,59 +356,72 @@ class _IrabHunterGameState extends State<IrabHunterGame> {
       final w = _r.words[k];
       final placed = _placed.containsKey(k);
       final focus = k == _pending;
-      final label = placed
-          ? (_cased.containsKey(k) ? '${_r.buckets[_placed[k]!]} · ${_r.cases[_cased[k]!]}' : _r.buckets[_placed[k]!])
-          : '';
+      final label = !placed
+          ? ''
+          : _cased.containsKey(k)
+              ? _r.cases[_cased[k]!]
+              : _r.isFixed(k)
+                  ? t('مبني', 'Fixed')
+                  : _r.buckets[_placed[k]!];
       cell.add(Container(
         key: ValueKey('word-$k'),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+        margin: const EdgeInsetsDirectional.only(end: AppSpace.xs),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
         decoration: BoxDecoration(
           color: focus ? sf.tint(sf.accent, 0.16) : placed ? sf.tint(sf.right, 0.14) : sf.tint(sf.ink, 0.05),
           borderRadius: BorderRadius.circular(sf.radius - 8),
           border: Border.all(color: focus ? sf.accent : placed ? sf.right.withValues(alpha: 0.6) : sf.edge, width: focus ? 2 : 1),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(w.text, textDirection: textDirectionOf(w.text, dir), style: appText(24, w: FontWeight.w700, c: sf.ink, h: 1.9)),
+          Text(w.text, textDirection: textDirectionOf(w.text, dir), style: appText(21, w: FontWeight.w700, c: sf.ink, h: 1.9)),
           SizedBox(
-            height: 20,
-            child: label.isEmpty
-                ? null
-                : Text(label, maxLines: 1, style: appText(12, w: FontWeight.w700, c: sf.ink.withValues(alpha: 0.7))),
+            height: 16,
+            child: label.isEmpty ? null : Text(label, maxLines: 1, style: appText(11, w: FontWeight.w700, c: sf.ink.withValues(alpha: 0.7), h: 1.2)),
           ),
         ]),
       ));
     }
-    final text = Column(mainAxisSize: MainAxisSize.min, children: [
+    final kids = age == GameAge.kids && !sf.calm;
+    final text = Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (prompt.isNotEmpty)
         Padding(
-          padding: const EdgeInsets.only(bottom: AppSpace.sm),
-          child: Text(prompt, textAlign: TextAlign.center, style: appText(17, w: FontWeight.w700, c: sf.ink, h: 1.45)),
+          padding: const EdgeInsets.only(bottom: AppSpace.xs),
+          child: Text(prompt, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w700, c: sf.ink, h: 1.5)),
         ),
       Directionality(
         textDirection: dir,
-        child: Wrap(alignment: WrapAlignment.center, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: cell),
+        child: LayoutBuilder(
+          builder: (context, box) => SingleChildScrollView(
+            key: const ValueKey('sentence-row'),
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: box.maxWidth),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: cell),
+            ),
+          ),
+        ),
       ),
     ]);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpace.md),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(color: sf.paper, borderRadius: BorderRadius.circular(sf.radius + 4), boxShadow: sf.lift(blur: 24, dy: 10)),
-      child: age == GameAge.kids && !sf.calm
+      child: kids
           ? Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              SizedBox.square(dimension: 56, child: GameCharacter(theme: sf.theme, mood: _mood, size: 56)),
-              AppSpace.gapSm,
+              SizedBox.square(dimension: 44, child: GameCharacter(theme: sf.theme, mood: _mood, size: 44)),
+              AppSpace.gapXs,
               Expanded(child: text),
             ])
           : text,
     );
   }
 
-  // ── the case panel and the tap row ──────────────────────────────────────────
+  // ── the bottom sheet over the tray: a case, or a basket for a tapped word ────
 
-  /// Equal tiles in rows of at least 110 px each (never a lone orphan on a phone).
+  /// Equal tiles in rows of at least 76 px each.
   Widget _grid(List<Widget> tiles) => LayoutBuilder(builder: (context, box) {
-        const gap = AppSpace.sm;
-        final cols = ((box.maxWidth + gap) / (110 + gap)).floor().clamp(1, tiles.length);
+        const gap = AppSpace.xs;
+        final cols = ((box.maxWidth + gap) / (76 + gap)).floor().clamp(1, tiles.length);
         final w = (box.maxWidth - (cols - 1) * gap) / cols;
         return Wrap(alignment: WrapAlignment.center, spacing: gap, runSpacing: gap, children: [for (final t in tiles) SizedBox(width: w, child: t)]);
       });
@@ -392,64 +429,59 @@ class _IrabHunterGameState extends State<IrabHunterGame> {
   Widget _fit(String text, TextStyle style) =>
       FittedBox(fit: BoxFit.scaleDown, child: Text(text, textAlign: TextAlign.center, maxLines: 1, style: style));
 
-  Widget _casePanel(StageSurface sf) {
-    final w = _r.words[_pending];
-    final right = _r.caseOf(_pending);
+  Widget _sheet(StageSurface sf, Key key, String title, List<Widget> tiles, {Color? tint}) {
     return Container(
-      key: const ValueKey('case-panel'),
+      key: key,
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpace.md),
+      padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(
-        color: sf.tint(sf.accent, 0.1),
+        color: Color.alphaBlend((tint ?? sf.accent).withValues(alpha: 0.12), sf.paper),
         borderRadius: BorderRadius.circular(sf.radius),
-        border: Border.all(color: sf.accent, width: 2),
+        border: Border.all(color: tint ?? sf.accent, width: 2),
+        boxShadow: sf.lift(blur: 24, dy: -6),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(t('ما حركة إعراب «${w.text}»؟', 'What is the case ending of «${w.text}»?'),
-            textAlign: TextAlign.center, style: appText(17, w: FontWeight.w700, c: sf.ink, h: 1.8)),
-        AppSpace.gapSm,
-        _grid([
-          for (var c = 0; c < _r.cases.length; c++)
-            StageTile(
-              key: ValueKey('case-$c'),
-              surface: sf,
-              state: c == _wrongCase
-                  ? StageTileState.wrong
-                  : (_hintTok == _pending && c == right)
-                      ? StageTileState.hint
-                      : StageTileState.idle,
-              semanticsLabel: _r.cases[c],
-              onTap: () => _pickCase(c),
-              child: _fit(_r.cases[c], appText(17, w: FontWeight.w700, c: sf.ink, h: 1.6)),
-            ),
-        ]),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(title, textAlign: TextAlign.center, maxLines: 2, style: appText(16, w: FontWeight.w700, c: sf.ink, h: 1.7)),
+        AppSpace.gapXs,
+        _grid(tiles),
       ]),
     );
   }
 
+  Widget _casePanel(StageSurface sf) {
+    final w = _r.words[_pending];
+    final right = _r.caseOf(_pending);
+    return _sheet(sf, const ValueKey('case-panel'), t('ما حركة إعراب «${w.text}»؟', 'What is the case ending of «${w.text}»?'), [
+      for (final c in _r.casesFor(_pending))
+        StageTile(
+          key: ValueKey('case-$c'),
+          surface: sf,
+          minHeight: AppTouch.primary,
+          state: c == _wrongCase
+              ? StageTileState.wrong
+              : (_hintTok == _pending && c == right)
+                  ? StageTileState.hint
+                  : StageTileState.idle,
+          semanticsLabel: _r.cases[c],
+          onTap: () => _pickCase(c),
+          child: _fit(_r.cases[c], appText(16, w: FontWeight.w700, c: sf.ink, h: 1.6)),
+        ),
+    ]);
+  }
+
   Widget _bucketRow(StageSurface sf) {
     final w = _r.words[_sel];
-    return Container(
-      key: const ValueKey('bucket-row'),
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpace.md),
-      decoration: BoxDecoration(color: sf.tint(sf.gold, 0.2), borderRadius: BorderRadius.circular(sf.radius)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(t('أين تضع «${w.text}»؟', 'Where does «${w.text}» go?'),
-            textAlign: TextAlign.center, style: appText(16, w: FontWeight.w700, c: sf.ink, h: 1.8)),
-        AppSpace.gapSm,
-        _grid([
-          for (var b = 0; b < _r.buckets.length; b++)
-            StageTile(
-              key: ValueKey('pick-$b'),
-              surface: sf,
-              semanticsLabel: _r.buckets[b],
-              onTap: () => _drop(_sel, b),
-              child: _fit(_r.buckets[b], appText(16, w: FontWeight.w700, c: sf.ink, h: 1.6)),
-            ),
-        ]),
-      ]),
-    );
+    return _sheet(sf, const ValueKey('bucket-row'), t('أين تضع «${w.text}»؟', 'Where does «${w.text}» go?'), [
+      for (var b = 0; b < _r.buckets.length; b++)
+        StageTile(
+          key: ValueKey('pick-$b'),
+          surface: sf,
+          minHeight: AppTouch.primary,
+          semanticsLabel: _r.buckets[b],
+          onTap: () => _drop(_sel, b),
+          child: _fit(_r.buckets[b], appText(16, w: FontWeight.w700, c: sf.ink, h: 1.6)),
+        ),
+    ], tint: sf.gold);
   }
 
   // ── the round ───────────────────────────────────────────────────────────────
@@ -483,36 +515,40 @@ class _IrabHunterGameState extends State<IrabHunterGame> {
             text: r.words[k].text,
             used: _placed.containsKey(k) || (k == _wrongTok && _wrongSlot >= 0),
             hint: k == _sel || (k == _hintTok && _pending < 0),
-            image: null,
           ),
     ];
-    return SingleChildScrollView(
-      key: ValueKey('r$_i'),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppReveal(index: 0, group: 'ih$_i', child: _sentence(sf, dir, theme.age)),
-        AppSpace.gapMd,
-        if (_pending >= 0) ...[_casePanel(sf), AppSpace.gapMd],
-        if (_sel >= 0 && _pending < 0) ...[_bucketRow(sf), AppSpace.gapMd],
-        AppReveal(
-          index: 1,
-          group: 'ib$_i',
-          child: LayoutBuilder(builder: (context, box) => DragBoard(
-            bucketColumns: box.maxWidth >= 640 ? r.buckets.length.clamp(2, 3) : 2,
-            theme: theme,
-            layout: DragBoardLayout.buckets,
-            slots: slots,
-            tray: tray,
-            onDrop: _drop,
-            onTapToken: _onTap,
-            shakeSlot: _wrongSlot,
-            shakeNonce: _shake,
-            textDirection: dir,
-            silent: widget.silent,
-          )),
-        ),
-        AppSpace.gapMd,
-      ]),
-    );
+    final sheet = _pending >= 0
+        ? _casePanel(sf)
+        : _sel >= 0
+            ? _bucketRow(sf)
+            : null;
+    return Stack(key: ValueKey('r$_i'), children: [
+      SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppReveal(index: 0, group: 'ih$_i', child: _sentence(sf, dir, theme.age)),
+          AppSpace.gapSm,
+          AppReveal(
+            index: 1,
+            group: 'ib$_i',
+            child: DragBoard(
+              bucketColumns: r.buckets.length.clamp(1, 3),
+              theme: theme,
+              layout: DragBoardLayout.buckets,
+              slots: slots,
+              tray: tray,
+              onDrop: _drop,
+              onTapToken: _onTap,
+              shakeSlot: _wrongSlot,
+              shakeNonce: _shake,
+              textDirection: dir,
+              silent: widget.silent,
+            ),
+          ),
+          AppSpace.gapMd,
+        ]),
+      ),
+      if (sheet != null) Positioned(left: AppSpace.md, right: AppSpace.md, bottom: AppSpace.sm, child: sheet),
+    ]);
   }
 }

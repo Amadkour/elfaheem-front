@@ -497,10 +497,13 @@ class StageFrame extends StatelessWidget {
     required this.child,
     this.onHint,
     this.silent = false,
+    this.fxUnder = false,
   });
 
   final GameSession session;
   final Set<MechanicKind> kinds;
+  /// Effects under the cards (see GameSessionShell.fxUnder).
+  final bool fxUnder;
   final Widget child;
   final VoidCallback? onHint;
   final bool silent;
@@ -514,7 +517,7 @@ class StageFrame extends StatelessWidget {
         theme: theme,
         child: SafeArea(
           // the shell's timer, lamp and pause sit on the painted sky
-          child: GameSessionShell(session: session, kinds: kinds, onHint: onHint, silent: silent, onScene: theme.onSky, child: child),
+          child: GameSessionShell(session: session, kinds: kinds, onHint: onHint, silent: silent, onScene: theme.onSky, fxUnder: fxUnder, child: child),
         ),
       ),
     );
