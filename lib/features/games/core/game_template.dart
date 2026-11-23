@@ -22,7 +22,8 @@ abstract class GameTemplate {
 
   /// `games.engine` of a level.
   String get key;
-  MechanicKind get kind;
+  /// Every mechanic the template plays (CONTRACT §2 "Kinds": `car_race` is choose + sequence).
+  Set<MechanicKind> get kinds;
   Set<ItemType> get accepts;
 
   /// Fixed in code (CONTRACT §2); no route can change it.

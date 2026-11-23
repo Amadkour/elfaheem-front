@@ -362,6 +362,8 @@ A `preview` draw: steps 1–3 are answered (`play.id: null`, `ranked: false`, `u
 
 **Text.** `quran_ayat.text` is the Tanzil Uthmani text, byte for byte. `words` = the text split on spaces, where a token made only of Quranic annotation signs (U+06D6–U+06ED, the waqf marks, sajdah and rub marks) joins the word before it (a leading U+06DE joins the word after it). `segments` = `[[from, to]]` word ranges cut after every word that carries a waqf mark (U+06D6–U+06DB); an ayah without one has a single segment. No other cut exists.
 
+**The basmala (gate G1).** Tanzil's file writes the basmala in front of ayah 1 of every surah but 1 and 9 (112 lines). It is not part of that ayah: the loader cuts the unchanged line at its fourth space, and only when those four words compare equal to 1:1 (`split_basmala` in `scripts/dev/fetch_games_datasets.py`; 95:1 and 97:1 carry a shadda on the ba). `quran_ayat.text`, `words`, `segments` and `checksum` are of the ayah without it; the vendored file stays byte for byte. A line of the 112 that does not split this way aborts its surah. The basmala is never a game token outside 1:1; in a surah file, the timing of ayah 1 starts after it (T85).
+
 **References.**
 - `@quran:112:1` → the ayah's `words` (unit `word`), its `segments` (unit `segment`).
 - `@quran:112:1-4` → one token per ayah (unit `ayah`).
@@ -495,7 +497,7 @@ A deleted item is a soft delete (`deleted_at`): it leaves every list and draw, a
 | `reward_rules` (alter) | + `valid_hours` Integer null · `unlock_referrals` Integer null · `unlock_days` Integer default 7 · `course_ids` JSON null; + the seeded rule of §11 |
 | `coupons` (alter) | + `unlock_need` Integer null · `unlock_deadline` DateTime null · `unlocked_at` DateTime null · `course_ids` JSON null · `valid_hours` Integer null (`status` String(10) already fits `locked`) |
 
-Seed rows written by the migrations themselves: the 17 `game_templates`, the 10 `game_subjects`, the 3 `quran_reciters`, 8 `game_cosmetics`, the reward rule. The Quran and Hadith text is loaded by the seed runner (T23 / T41), not by a migration.
+Seed rows written by the migrations themselves: the 17 `game_templates` (`defaults {}`, the §2 order), the 10 `game_subjects`, the 3 `quran_reciters`, 8 `game_cosmetics`, the reward rule. The values of record are the migrations' (reviewed at gate G1): reciter names `مشاري العفاسي` / `محمود خليل الحصري (المعلّم)` / `مختار الحاج`, `sort` 0..2 (`data/games_seed/reciters.json` is the evidence copy, never loaded); cosmetics `hat_explorer` 30, `hat_crown` (champion 1), `outfit_traveller` 60, `outfit_astro` (stars 30), `vehicle_rocket` 80, `vehicle_racer` (levels 10), `trail_stars` 40, `trail_comet` 100. No cosmetic borrows religious dress or a symbol. The Quran and Hadith text is loaded by the seed runner (T23 / T41), not by a migration.
 
 ## 13. Datasets and licences (checked 2026-11-23 by HTTP from the dev machine)
 
@@ -515,8 +517,13 @@ Seed rows written by the migrations themselves: the 17 `game_templates`, the 10 
 - The text holds the isnad and the matn together. Only 147 (Bukhari) + 407 (Muslim) rows have 25 words or fewer, isnad included. So: `matn_from` / `matn_to` let a reviewer mark the matn as a slice of the unchanged text; the launch seed makes sequence items only from rows of ≤ 25 words as they are, `pending_review`.
 - Muslim has no `arabicnumber`: `number` is the dataset's `hadithnumber` and `numbering` says so.
 - Empty rows are skipped.
+- Bukhari has 26 sub-numbered rows (`hadithnumber` 402.2, 1390.3, …: a second narration under one number). `hadith.number` is an integer and `@hadith:<collection>:<number>` stays whole: the loader skips them (MANIFEST `sub_numbered`).
+- `arabic_number` is stored only when the dataset's value is a whole number (Bukhari); Muslim's are strings such as `8.01`: null.
+- `chapter` is the dataset's section title (`metadata.sections[reference.book]`), which is English only (longest 98 characters; String(200) stays). The pickers show it as a secondary line; no Arabic title is typed by hand.
 
 **Cross-check rule (T13).** Tanzil is what we store. For every ayah the script compares Tanzil and Quran.com after `normalize` (the v3 function: marks and tatweel dropped, alef forms folded) and with the annotation signs removed. The MANIFEST lists every difference in `crosscheck_diffs`. A surah with a difference is seeded `pending_review` and Fable clears the list at gate G1; no ayah text is ever edited to make the check pass.
+
+**Gate G1 result (2026-11-23).** All 112 differences were one kind: the basmala prefix on ayah 1 (§9), a file format, not an encoding, mark or wording difference. With the prefix split off, 6,236 of 6,236 ayat compare equal: `crosscheck_diffs` is empty, `crosscheck.basmala_prefixed` is 112, and no surah is held back by the cross-check (Quran items still pass review as every sacred item does).
 
 ## 14. What this contract changes in `PLAN.md`
 
@@ -531,3 +538,10 @@ Seed rows written by the migrations themselves: the 17 `game_templates`, the 10 
 9. `@hadith:<collection>:<number>` instead of `@hadith:<id>` (stable across databases).
 10. Mukhtar Al-Haj is seeded `verified` and enabled (owner rule: public and free to stream), not `pending`.
 11. Learner-chosen reciter (owner, 2026-11-23): `GET /games/reciters`, `reciter_key` on the profile, the draw's `reciter`, `GET /games/quran/audio`.
+
+Gate G1 (2026-11-23, after wave 1):
+
+12. The basmala in front of ayah 1 in Tanzil's file is split off by the loader and is not part of `quran_ayat` (§9); the 112 cross-check differences were only this, so the list is empty.
+13. Hadith: the 26 sub-numbered Bukhari rows are skipped, `arabic_number` is whole numbers only, `chapter` is the English section title and stays String(200) (§13).
+14. Seed values of record are the migrations' (§12). Changed at the gate: Al-Husary's full name; `outfit_scholar` → `outfit_traveller` (no scholar's dress on a game character); `trail_rainbow` → `trail_comet`.
+15. App: `GameTemplate.kinds` is a set (a template can play two mechanics, §2); `test/games/` is a CI suite.

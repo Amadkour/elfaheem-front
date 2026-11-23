@@ -42,10 +42,12 @@ Done: seeding needs no network; the diff list is in the report for gate G1.
 
 ## Wave 2
 
+Gate G1 (2026-11-23) changed C§9 (the basmala), C§12 (seed values of record), C§13 (hadith facts, the cross-check result) and C§14 items 12–15: read them before the lines below.
+
 **T20 (B, sonnet): templates, subjects, settings, catalog.**
 Files: `features/games/templates.py`, `api/games_admin_v4_router.py` (new), `games_config.py` (accept template engines with `config {}`), `features/platform/module_settings.py`, `features/platform/feature_catalog.py`, `main.py`.
 Read: C§1, C§2, C§10 (hub, templates, subjects rows; the Levels paragraph).
-Do: the registry (kinds, accepts, `sacred_allowed`, code defaults), settings merge + sacred override, templates / subjects CRUD, the new `GameIn` fields with `bad_item_source` / `template_not_sacred` / `bad_template_settings`, six kill switches, eight module settings.
+Do: the registry (kinds as a list per template, accepts, `sacred_allowed`, code defaults; `game_templates` rows are seeded with `defaults {}`, so every default lives in code), settings merge + sacred override, templates / subjects CRUD, the new `GameIn` fields with `bad_item_source` / `template_not_sacred` / `bad_template_settings`, six kill switches, eight module settings.
 Tests: `tests/games_v4/e2e_templates.py`.
 Done: a v4 level can be created through `/admin/games`; classic games unchanged.
 
@@ -66,8 +68,8 @@ Done: 75 cases + program runs + age bands + srs + coins pass.
 **T23 (B, sonnet): Quran / Hadith load, resolver, pickers, reciters.**
 Files: `features/games/seeds/quran.py`, `hadith.py`, `features/games/texts.py` (token resolver, audio resolver), learner router (`GET /games/reciters`, `GET /games/quran/audio`), admin router (quran, hadith, reciters, timings).
 Read: C§9, C§10 (quran / hadith / reciters rows), C§13.
-Do: load the vendored files (checksum per ayah, abort a surah on mismatch); `words` + `segments`; `@quran` / `@hadith` references; audio entries for both source kinds with the silent fallback; timings GET / PUT; matn marking.
-Tests: `tests/games_v4/texts_unit.py` + `e2e_reciters.py` (fallback, unknown reciter 422, `bad_timings`).
+Do: load the vendored files (checksum per ayah, abort a surah on mismatch); split the basmala off ayah 1 with the fetch script's `split_basmala` rule (C§9: import or mirror it, 112 lines, abort the surah when one does not split); `words` + `segments`; hadith: skip empty and sub-numbered rows, `arabic_number` whole numbers only, `chapter` from `metadata.sections` (C§13); reciter rows come from migration 0127, never from `reciters.json`; `@quran` / `@hadith` references; audio entries for both source kinds with the silent fallback; timings GET / PUT; matn marking.
+Tests: `tests/games_v4/texts_unit.py` (2:1, 95:1 and 97:1 load without the basmala; 1:1 and 9:1 load whole; 6,236 ayat; Bukhari loads 7,554 rows) + `e2e_reciters.py` (fallback, unknown reciter 422, `bad_timings`).
 Done: no text is typed anywhere in code or tests; a disabled reciter never appears.
 
 **T24 (F, sonnet): `game_audio.dart`.**
@@ -79,13 +81,13 @@ Done: a segment of a 32 MB surah file starts without downloading the whole file 
 
 **T25 (F, sonnet): art.** Files: `core/age_theme.dart`, `game_art.dart`, `game_character.dart`.
 Read: C§8 (age band → theme), PLAN §1 (art).
-Do: three themes (kids, teen, adult) and a calm sacred palette, all from `context.colors` + a per-theme palette; procedural backgrounds; the character rig with the four cosmetic slots.
+Do: three themes (kids, teen, adult) and a calm sacred palette, all from `context.colors` + a per-theme palette; procedural backgrounds; the character rig with the four cosmetic slots (draw by `slot` + `key`, with a default look for a key the app does not know; the seeded keys are in C§12; no religious dress or symbol on the character).
 Tests: layout harness + a golden per theme under `test/visual/`.
 Done: no hard-coded colour, no raw size; loops use `syncMotionLoop`.
 
 **T26 (F, sonnet): fx + shell.** Files: `core/game_fx.dart`, `shell/game_shell.dart`.
 Read: C§2 settings, C§5 (end entry, `h`).
-Do: lives, timer, hints, pause and calm mode in the shell; right / wrong / combo / finish effects; sacred rounds: no buzzer, no explosion, no life lost.
+Do: lives, timer, hints, pause and calm mode in the shell (a template names its mechanics in `GameTemplate.kinds`, a set); right / wrong / combo / finish effects; sacred rounds: no buzzer, no explosion, no life lost.
 Tests: `test/games/v4_shell_test.dart` + layout harness.
 Done: the shell writes the end entry (`timer`, `lives`, `quit`, `done`).
 
