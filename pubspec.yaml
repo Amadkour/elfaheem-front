@@ -98,6 +98,9 @@ dependencies:
   local_auth: ^3.0.2
   pdfrx: 3.0.0
   audioplayers: ^6.8.1
+  flame: ^1.38.2
+  flutter_animate: ^4.5.2
+  sensors_plus: ^7.1.1
 dependency_overrides:
   # The fork rebased on upstream v1.6.2+hotfix.4 (the exact version livekit_client 2.13.1 pins, WebRTC-SDK
   # 150.7871.01 on Android and iOS), branch nextbrain/1.6.2-hotfix.4: the single-projection screen-share capturer,
