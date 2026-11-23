@@ -23,6 +23,7 @@ import 'package:flame/extensions.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show appText;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/core/age_theme.dart';
 import 'package:flutter_education_app/features/games/core/flame_host.dart';
 import 'package:flutter_education_app/features/games/core/game_character.dart';
@@ -116,7 +117,7 @@ class LaneRunnerGame extends FlameGame {
   late final Paint _line = Paint()..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
   final Path _path = Path();
   final GameParticles _particles = GameParticles();
-  Color _asphalt = Colors.black;
+  Color _asphalt = const Color(0xFF2A2A2E);
 
   // ---- speed lines (fixed, no per-frame randomness) ----
   static const int _nLines = 18;
@@ -630,15 +631,15 @@ class LaneRunnerGame extends FlameGame {
           cy,
           Paint()
             ..shader = ui.Gradient.linear(const Offset(15, 0), const Offset(55, 0),
-                [Colors.white.withValues(alpha: 0.12), Colors.black.withValues(alpha: 0.14)]));
+                [p.paper.withValues(alpha: 0.12), p.ink.withValues(alpha: 0.14)]));
       return;
     }
     // a round cartoon tree: three lobes, a light side and a dark side
     for (final o in const [Offset(35, 34), Offset(21, 46), Offset(49, 46)]) {
       c.drawCircle(o, 21, Paint()..color = leaf);
     }
-    c.drawCircle(const Offset(28, 28), 9, Paint()..color = Colors.white.withValues(alpha: 0.18));
-    c.drawCircle(const Offset(48, 52), 14, Paint()..color = Colors.black.withValues(alpha: 0.1));
+    c.drawCircle(const Offset(28, 28), 9, Paint()..color = p.paper.withValues(alpha: 0.18));
+    c.drawCircle(const Offset(48, 52), 14, Paint()..color = p.ink.withValues(alpha: 0.1));
     if (kind == 1) {
       for (final o in const [Offset(24, 38), Offset(44, 30), Offset(38, 52)]) {
         c.drawCircle(o, 3, Paint()..color = p.accent);
@@ -683,7 +684,7 @@ class LaneRunnerGame extends FlameGame {
       c.scale(0.52);
       c.drawPicture(driver);
       c.restore();
-      c.drawPath(win, Paint()..shader = ui.Gradient.linear(const Offset(27, 12), const Offset(73, 36), [Colors.white.withValues(alpha: 0.22), Colors.white.withValues(alpha: 0)]));
+      c.drawPath(win, Paint()..shader = ui.Gradient.linear(const Offset(27, 12), const Offset(73, 36), [p.paper.withValues(alpha: 0.22), p.paper.withValues(alpha: 0)]));
       // the lower body
       final lower = RRect.fromRectAndRadius(const Rect.fromLTWH(6, 36, 88, 38), const Radius.circular(12));
       c.drawRRect(lower, Paint()..shader = ui.Gradient.linear(const Offset(0, 36), const Offset(0, 74), [Color.lerp(body, p.paper, 0.18)!, body, dark], [0, 0.45, 1]));
@@ -691,7 +692,7 @@ class LaneRunnerGame extends FlameGame {
       // tail lights, plate, bumper
       for (final x in [12.0, 70.0]) {
         c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x, 46, 18, 9), const Radius.circular(3.5)), Paint()..color = const Color(0xFFE23B3B));
-        c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x + 2, 47.5, 9, 2.5), const Radius.circular(1.2)), Paint()..color = Colors.white.withValues(alpha: 0.55));
+        c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x + 2, 47.5, 9, 2.5), const Radius.circular(1.2)), Paint()..color = p.paper.withValues(alpha: 0.55));
       }
       c.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(36, 54, 28, 11), const Radius.circular(2.5)), Paint()..color = p.paper);
       c.drawRect(const Rect.fromLTWH(36, 54, 28, 3), Paint()..color = p.accent2);
@@ -994,7 +995,7 @@ class LaneRunnerGame extends FlameGame {
     final cw = math.min(laneW * 0.8, _half * 0.5);
     final k = cw / 100;
     // the shadow
-    _fill.color = Colors.black.withValues(alpha: 0.28);
+    _fill.color = p.ink.withValues(alpha: 0.28);
     canvas.drawOval(Rect.fromCenter(center: Offset(x, y - cw * 0.03), width: cw * 1.05, height: cw * 0.2), _fill);
     final bob = reduceMotion ? 0.0 : math.sin(_time * 14) * 0.6 * theme.bounce;
     final jolt = _shake > 0 ? math.sin(_shake * 38) * _shake * cw * 0.07 : 0.0;
@@ -1078,7 +1079,7 @@ class _Plate {
       _ => calm ? Color.lerp(p.paper, p.accent, 0.5)! : p.accent,
     };
     // a soft drop shadow, the plate, its edge, a lip of light at the top
-    _paint.color = Colors.black.withValues(alpha: 0.2 * fade);
+    _paint.color = p.ink.withValues(alpha: 0.2 * fade);
     c.drawRRect(_rr.shift(const Offset(0, 5)), _paint);
     _paint
       ..style = PaintingStyle.fill
@@ -1091,7 +1092,7 @@ class _Plate {
     c.drawRRect(_rr, _paint);
     _paint
       ..style = PaintingStyle.fill
-      ..color = Colors.white.withValues(alpha: 0.35 * fade);
+      ..color = p.paper.withValues(alpha: 0.35 * fade);
     c.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-52, -31, 104, 9), const Radius.circular(5)), _paint);
     c.save();
     c.scale(_fit);
@@ -1102,9 +1103,12 @@ class _Plate {
 
 /// The widget: the game inside a [FlameHost] with swipe, tap and tilt.
 class LaneRunnerView extends StatefulWidget {
-  const LaneRunnerView({super.key, required this.game, required this.semanticLabel, this.tilt = false, this.tiltEvents});
+  const LaneRunnerView({super.key, required this.game, required this.semanticLabel, this.tilt = false, this.tiltEvents, this.laneLabels = const []});
   final LaneRunnerGame game;
   final String semanticLabel;
+
+  /// The answer of each lane (the open gate): a screen reader gets one button per lane to drive through it.
+  final List<String> laneLabels;
 
   /// Steer by tilting the phone (setting `tilt`).
   final bool tilt;
@@ -1155,11 +1159,29 @@ class _LaneRunnerViewState extends State<LaneRunnerView> {
           _drag = 0;
         }
       },
-      child: FlameHost(
-        game: widget.game,
-        semanticLabel: widget.semanticLabel,
-        onReduceMotion: (v) => widget.game.reduceMotion = v,
-      ),
+      child: Stack(fit: StackFit.expand, children: [
+        FlameHost(
+          game: widget.game,
+          semanticLabel: widget.semanticLabel,
+          onReduceMotion: (v) => widget.game.reduceMotion = v,
+        ),
+        if (widget.laneLabels.isNotEmpty)
+          Row(children: [
+            for (var i = 0; i < widget.laneLabels.length; i++)
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  label: t('الطريق ${i + 1} من ${widget.laneLabels.length}: ${widget.laneLabels[i]}',
+                      'Lane ${i + 1} of ${widget.laneLabels.length}: ${widget.laneLabels[i]}'),
+                  onTap: () {
+                    widget.game.moveTo(i);
+                    widget.game.commit(i);
+                  },
+                  child: const SizedBox.expand(),
+                ),
+              ),
+          ]),
+      ]),
     );
   }
 }

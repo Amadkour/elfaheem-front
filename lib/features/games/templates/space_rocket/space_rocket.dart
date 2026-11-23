@@ -334,6 +334,7 @@ class SpaceRocketViewState extends State<SpaceRocketView> {
             tilt: s.settings.tilt,
             tiltEvents: widget.tiltEvents,
             semanticLabel: t('صاروخ الفضاء: مرّ عبر الكوكب الصحيح', 'Space rocket: fly through the right planet'),
+            laneLabels: _gate?.labels ?? const [],
           ),
         ),
         Align(

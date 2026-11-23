@@ -81,6 +81,8 @@ String? couponErrorText(String? code, [Map<String, dynamic> d = const {}]) {
       return _t('لا تنطبق هذه القسيمة على هذا الشراء', 'This coupon does not apply to this purchase');
     case 'coupon_locked': // a friends reward (Games v4): it opens when the invited friends join
       return _t('تُفتح هذه المكافأة بعد انضمام أصدقائك', 'This reward opens after your friends join');
+    case 'challenge_not_joined': // Games v4: a challenge round needs joining first
+      return _t('انضم إلى التحدي أولًا', 'Join the challenge first');
     case 'coupon_wrong_course':
       return _t('هذه المكافأة لدورة أخرى', 'This reward is for a different course');
     case 'coupon_min_order':

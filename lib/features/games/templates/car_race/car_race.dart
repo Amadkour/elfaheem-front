@@ -179,7 +179,7 @@ class CarRaceHeader extends StatelessWidget {
             color: palette.paper.withValues(alpha: calm ? 0.9 : 0.94),
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(color: Color.lerp(palette.paper, palette.accent, 0.45)!, width: calm ? 1 : 2),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.14), blurRadius: 14, offset: const Offset(0, 5))],
+            boxShadow: [BoxShadow(color: palette.ink.withValues(alpha: 0.14), blurRadius: 14, offset: const Offset(0, 5))],
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
@@ -473,6 +473,7 @@ class CarRaceViewState extends State<CarRaceView> {
             tilt: s.settings.tilt,
             tiltEvents: widget.tiltEvents,
             semanticLabel: t('سباق السيارات: اختر الطريق الصحيح', 'Car race: drive through the right road'),
+            laneLabels: g?.labels ?? const [],
           ),
         ),
         Align(

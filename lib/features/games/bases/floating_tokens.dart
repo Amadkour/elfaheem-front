@@ -577,17 +577,17 @@ class FloatingTokensGame extends FlameGame {
           ..cubicTo(-62, 36, -54, -64, 0, -64)
           ..cubicTo(54, -64, 62, 36, 0, 66)
           ..close();
-        c.drawPath(body, Paint()..shader = ui.Gradient.radial(const Offset(-18, -26), 96, [Color.lerp(base, Colors.white, 0.5)!, base, Color.lerp(base, p.ink, 0.28)!], [0, 0.5, 1]));
+        c.drawPath(body, Paint()..shader = ui.Gradient.radial(const Offset(-18, -26), 96, [Color.lerp(base, p.paper, 0.5)!, base, Color.lerp(base, p.ink, 0.28)!], [0, 0.5, 1]));
         // a knot and a shine
         c.drawPath(Path()..moveTo(0, 62)..lineTo(-7, 76)..lineTo(7, 76)..close(), Paint()..color = Color.lerp(base, p.ink, 0.3)!);
-        c.drawOval(Rect.fromCenter(center: const Offset(-28, -34), width: 18, height: 30), Paint()..color = Colors.white.withValues(alpha: 0.38));
+        c.drawOval(Rect.fromCenter(center: const Offset(-28, -34), width: 18, height: 30), Paint()..color = p.paper.withValues(alpha: 0.38));
         if (theme.outline > 0.4) c.drawPath(body, Paint()..style = PaintingStyle.stroke..strokeWidth = 2.4 * theme.outline..color = p.ink);
         // the paper plate the word sits on
         c.drawOval(Rect.fromCenter(center: const Offset(0, -2), width: 80, height: 54), Paint()..color = p.paper.withValues(alpha: 0.9));
       } else {
-        c.drawCircle(Offset.zero, 52, Paint()..shader = ui.Gradient.radial(const Offset(-16, -18), 80, [Colors.white.withValues(alpha: 0.95), Color.lerp(base, p.paper, 0.6)!, base.withValues(alpha: 0.85)], [0, 0.55, 1]));
+        c.drawCircle(Offset.zero, 52, Paint()..shader = ui.Gradient.radial(const Offset(-16, -18), 80, [p.paper.withValues(alpha: 0.95), Color.lerp(base, p.paper, 0.6)!, base.withValues(alpha: 0.85)], [0, 0.55, 1]));
         c.drawCircle(Offset.zero, 52, Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = Color.lerp(base, p.ink, 0.2)!.withValues(alpha: 0.6));
-        c.drawCircle(const Offset(-18, -20), 8, Paint()..color = Colors.white.withValues(alpha: 0.7));
+        c.drawCircle(const Offset(-18, -20), 8, Paint()..color = p.paper.withValues(alpha: 0.7));
       }
       return rec.endRecording();
     });

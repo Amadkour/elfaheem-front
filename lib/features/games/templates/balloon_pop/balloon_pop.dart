@@ -238,7 +238,7 @@ class BalloonPopViewState extends State<BalloonPopView> {
                   color: p.paper.withValues(alpha: 0.94),
                   borderRadius: BorderRadius.circular(AppRadius.card),
                   border: Border.all(color: Color.lerp(p.paper, p.accent, 0.45)!, width: 2),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.14), blurRadius: 14, offset: const Offset(0, 5))],
+                  boxShadow: [BoxShadow(color: p.ink.withValues(alpha: 0.14), blurRadius: 14, offset: const Offset(0, 5))],
                 ),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
