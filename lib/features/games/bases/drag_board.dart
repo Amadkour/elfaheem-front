@@ -7,7 +7,10 @@
 //                    above the text; a piece may be a picture alone)
 //   DragSlotData     one drop zone: a placeholder / label, the tokens in it, a state, a capacity, `image` = the
 //                    picture of a bucket. Pictures are drawn by `DragBoard.imageBuilder` (default: AppNetworkImage).
-//   DragBoard        `line` layout (slots flow like the text, in the reading direction of the text) or `buckets`
+//   DragBoard        `board` layout (T45): `boardImage` fitted whole (aspect `boardAspect`) with a drop spot at each
+//                    slot's `at` (x, y in 0..1 of the picture; a spot is at least AppTouch.min, kept inside the picture;
+//                    no picture = a clean dotted board); on a wide screen the tray sits beside the picture.
+//                    `line` layout (slots flow like the text, in the reading direction of the text) or `buckets`
 //                    (cards with a label and a wrap of tokens). Drag: the piece lifts (scale, tilt, a deep shadow, a
 //                    light haptic), the hovered slot glows and swells, a drop snaps in with a spring. A tap on a tray
 //                    piece calls `onTapToken` (the template places it in the next open slot): the same board works
@@ -53,8 +56,12 @@ class DragSlotData {
     this.capacity = 1,
     this.number,
     this.image,
+    this.at,
   });
   final int id;
+
+  /// The place of a spot on a `board` (x, y in 0..1 of the picture).
+  final Offset? at;
 
   /// The picture of a bucket (drawn beside its label).
   final String? image;
@@ -71,7 +78,7 @@ class DragSlotData {
   bool get full => tokens.length >= capacity;
 }
 
-enum DragBoardLayout { line, buckets }
+enum DragBoardLayout { line, buckets, board }
 
 /// Draws the picture at [url] in a [size] square (the board clips it to rounded corners).
 typedef DragImageBuilder = Widget Function(BuildContext context, String url, double size);
@@ -85,6 +92,9 @@ class _BoardImages extends InheritedWidget {
   final DragImageBuilder builder;
 
   /// The picture of [url] as a rounded square, or null when there is none.
+  static DragImageBuilder builderOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_BoardImages>()?.builder ?? _networkImage;
+
   static Widget? picture(BuildContext context, String? url, double size, double radius) {
     if (url == null || url.isEmpty) return null;
     final b = context.dependOnInheritedWidgetOfExactType<_BoardImages>()?.builder ?? _networkImage;
@@ -115,10 +125,24 @@ class DragBoard extends StatelessWidget {
     this.textDirection,
     this.silent = false,
     this.imageBuilder,
+    this.boardImage,
+    this.boardAspect = 1.5,
+    this.bucketColumns,
+    this.onTapSlot,
   });
+
+  /// A tap on a slot / spot (a piece picked by a tap goes there): the no-drag way to play.
+  final ValueChanged<int>? onTapSlot;
+
+  /// The `board` layout's picture (null = a clean board) and its width / height.
+  final String? boardImage;
+  final double boardAspect;
 
   /// How a token's / bucket's picture is drawn (tests pass a painted box); null = the app's network image.
   final DragImageBuilder? imageBuilder;
+
+  /// `buckets` layout: how many baskets per row; null = 1 on a phone, 2 from 640 px wide (T44: I'rab Hunter asks for 2 / 3).
+  final int? bucketColumns;
 
   final AgeTheme theme;
   final List<DragSlotData> slots;
@@ -137,19 +161,33 @@ class DragBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sf = StageSurface(theme, context);
-    final body = Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _SlotArea(
-        sf: sf,
-        slots: slots,
-        layout: layout,
-        shakeSlot: shakeSlot,
-        shakeNonce: shakeNonce,
-        onDrop: onDrop,
-        silent: silent,
-      ),
-      AppSpace.gapLg,
-      _Tray(sf: sf, tray: tray, onTapToken: onTapToken, silent: silent),
-    ]);
+    final area = _SlotArea(
+      sf: sf,
+      slots: slots,
+      layout: layout,
+      shakeSlot: shakeSlot,
+      shakeNonce: shakeNonce,
+      onDrop: onDrop,
+      silent: silent,
+      boardImage: boardImage,
+      boardAspect: boardAspect,
+      bucketColumns: bucketColumns,
+      onTapSlot: onTapSlot,
+    );
+    final tr = _Tray(sf: sf, tray: tray, onTapToken: onTapToken, silent: silent);
+    final Widget body = layout == DragBoardLayout.board
+        ? LayoutBuilder(builder: (context, box) {
+            // a wide screen: the picture and the tray side by side, not a stretched phone
+            if (box.maxWidth.isFinite && box.maxWidth >= 840) {
+              return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(flex: 3, child: area),
+                AppSpace.gapLg,
+                Expanded(flex: 2, child: tr),
+              ]);
+            }
+            return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [area, AppSpace.gapLg, tr]);
+          })
+        : Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [area, AppSpace.gapLg, tr]);
     final board = _BoardImages(builder: imageBuilder ?? _networkImage, child: body);
     return textDirection == null ? board : Directionality(textDirection: textDirection!, child: board);
   }
@@ -355,7 +393,15 @@ class _SlotArea extends StatelessWidget {
     required this.shakeNonce,
     required this.onDrop,
     required this.silent,
+    this.boardImage,
+    this.boardAspect = 1.5,
+    this.bucketColumns,
+    this.onTapSlot,
   });
+  final ValueChanged<int>? onTapSlot;
+  final String? boardImage;
+  final int? bucketColumns;
+  final double boardAspect;
   final StageSurface sf;
   final List<DragSlotData> slots;
   final DragBoardLayout layout;
@@ -370,10 +416,29 @@ class _SlotArea extends StatelessWidget {
       Widget slot(DragSlotData s) => StageReact(
             key: ValueKey('slot-${s.id}'),
             shake: s.id == shakeSlot && !sf.calm ? shakeNonce : 0,
-            child: _Slot(sf: sf, slot: s, layout: layout, maxWidth: maxW, onDrop: onDrop, silent: silent),
+            child: _Slot(sf: sf, slot: s, layout: layout, maxWidth: maxW, onDrop: onDrop, silent: silent, onTap: onTapSlot),
           );
+      if (layout == DragBoardLayout.board) {
+        final aspect = boardAspect <= 0 ? 1.5 : boardAspect;
+        var w = box.maxWidth.isFinite ? box.maxWidth : 320.0;
+        var h = w / aspect;
+        if (h > _kBoardMaxH) {
+          // a tall picture is fitted whole, not stretched down the page
+          h = _kBoardMaxH;
+          w = h * aspect;
+        }
+        return Center(child: _BoardPicture(
+          sf: sf,
+          image: boardImage,
+          width: w,
+          height: h,
+          spots: [
+            for (final s in slots) _placeSpot(w, h, s.at ?? const Offset(0.5, 0.5), slot(s)),
+          ],
+        ));
+      }
       if (layout == DragBoardLayout.buckets) {
-        final cols = (box.maxWidth.isFinite && box.maxWidth >= 640) ? 2 : 1;
+        final cols = bucketColumns ?? ((box.maxWidth.isFinite && box.maxWidth >= 640) ? 2 : 1);
         return Wrap(
           spacing: AppSpace.md,
           runSpacing: AppSpace.md,
@@ -405,8 +470,76 @@ class _SlotArea extends StatelessWidget {
   }
 }
 
+const double _kBoardMaxH = AppTouch.primary * 8, _kSpotW = 112, _kSpotH = AppTouch.primary + AppSpace.xs + 44;
+
+/// A spot centred on [at] of a [w] x [h] picture, pushed back inside it so it is never clipped or off the edge.
+Widget _placeSpot(double w, double h, Offset at, Widget child) {
+  final left = (at.dx * w - _kSpotW / 2).clamp(0.0, (w - _kSpotW).clamp(0.0, w));
+  final top = (at.dy * h - AppTouch.primary / 2).clamp(0.0, (h - _kSpotH).clamp(0.0, h));
+  return Positioned(left: left, top: top, width: _kSpotW, height: _kSpotH, child: child);
+}
+
+/// The picture of a `board` fitted whole, or a clean dotted board when it has none; the spots sit on top.
+class _BoardPicture extends StatelessWidget {
+  const _BoardPicture({required this.sf, required this.image, required this.width, required this.height, required this.spots});
+  final StageSurface sf;
+  final String? image;
+  final double width, height;
+  final List<Widget> spots;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = image;
+    Widget pic;
+    if (url == null || url.isEmpty) {
+      pic = CustomPaint(painter: _DotsPainter(sf.ink.withValues(alpha: 0.1)), size: Size(width, height));
+    } else if (_BoardImages.builderOf(context) == _networkImage) {
+      pic = AppNetworkImage(url: url, width: width, height: height, fit: BoxFit.contain);
+    } else {
+      pic = OverflowBox(
+        maxWidth: width > height ? width : height,
+        maxHeight: width > height ? width : height,
+        child: _BoardImages.builderOf(context)(context, url, width > height ? width : height),
+      );
+    }
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: sf.paper,
+        borderRadius: BorderRadius.circular(sf.radius),
+        boxShadow: sf.lift(blur: 22, dy: 10),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(sf.radius),
+        child: Stack(children: [Positioned.fill(child: pic), ...spots]),
+      ),
+    );
+  }
+}
+
+class _DotsPainter extends CustomPainter {
+  const _DotsPainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()..color = color;
+    const step = 28.0;
+    for (var y = step / 2; y < size.height; y += step) {
+      for (var x = step / 2; x < size.width; x += step) {
+        canvas.drawCircle(Offset(x, y), 1.6, p);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DotsPainter old) => old.color != color;
+}
+
 class _Slot extends StatefulWidget {
-  const _Slot({required this.sf, required this.slot, required this.layout, required this.onDrop, required this.silent, this.maxWidth});
+  const _Slot({required this.sf, required this.slot, required this.layout, required this.onDrop, required this.silent, this.maxWidth, this.onTap});
+  final ValueChanged<int>? onTap;
   final StageSurface sf;
   final DragSlotData slot;
   final DragBoardLayout layout;
@@ -449,12 +582,18 @@ class _SlotState extends State<_Slot> {
         widget.onDrop(d.data, s.id);
       },
       builder: (context, cand, rej) {
-        final child = widget.layout == DragBoardLayout.buckets ? _bucket() : _line();
+        final child = switch (widget.layout) {
+          DragBoardLayout.buckets => _bucket(),
+          DragBoardLayout.board => _spot(),
+          DragBoardLayout.line => _line(),
+        };
         return AnimatedScale(
           scale: _hover && !off ? 1.07 : 1,
           duration: Duration(milliseconds: off ? 0 : 160),
           curve: Curves.easeOutBack,
-          child: child,
+          child: widget.onTap == null
+              ? child
+              : GestureDetector(behavior: HitTestBehavior.opaque, onTap: () => widget.onTap!(s.id), child: child),
         );
       },
     );
@@ -495,6 +634,51 @@ class _SlotState extends State<_Slot> {
       child: Text(s.number != null ? '${s.number}' : s.label,
           style: appText(15, w: FontWeight.w600, c: sf.ink.withValues(alpha: 0.4))),
     );
+  }
+
+  /// A drop spot of a `board`: a ring (a check when right) with the label under it, or the pieces dropped in it.
+  Widget _spot() {
+    final c = _stateColor;
+    final filled = s.tokens.isNotEmpty;
+    final good = s.state == DragSlotState.correct;
+    final text = filled ? s.tokens.map((t) => t.text).where((t) => t.isNotEmpty).join(' · ') : s.label;
+    final quran = filled && s.tokens.first.quran;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        width: AppTouch.primary,
+        height: AppTouch.primary,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: good ? sf.tint(sf.right, 0.3) : (_hover ? sf.tint(sf.accent, 0.3) : sf.paper.withValues(alpha: 0.9)),
+          border: Border.all(color: c, width: _hover || s.state != DragSlotState.open ? 3 : 2),
+          boxShadow: _hover ? [BoxShadow(color: sf.accent.withValues(alpha: 0.5), blurRadius: 16)] : sf.lift(blur: 8, dy: 3),
+        ),
+        child: good
+            ? Icon(Icons.check_rounded, color: sf.right, size: AppIconSize.lg)
+            : Text(s.number != null ? '${s.number}' : '', style: appText(17, w: FontWeight.w800, c: sf.ink.withValues(alpha: 0.55))),
+      ),
+      if (text.isNotEmpty) ...[
+        AppSpace.gapXs,
+        Container(
+          constraints: const BoxConstraints(maxWidth: _kSpotW),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+          decoration: BoxDecoration(
+            color: filled ? sf.tint(good ? sf.right : sf.wrong, 0.24) : sf.paper.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(color: filled ? c : sf.edge.withValues(alpha: 0.5)),
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(text,
+                maxLines: 1,
+                textDirection: textDirectionOf(text),
+                style: quran ? quranTextStyle(18, color: sf.ink) : appText(13, w: FontWeight.w700, c: sf.ink)),
+          ),
+        ),
+      ],
+    ]);
   }
 
   Widget _bucket() {
