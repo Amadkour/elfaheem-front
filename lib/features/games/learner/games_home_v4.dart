@@ -597,11 +597,15 @@ class _MapCard extends StatelessWidget {
         nodes: nodes,
         currentId: currentNodeId(nodes, preferred: cont),
         tint: tint,
+        equipped: home.profile.equipped,
         onOpen: (n) => onOpen?.call(ls.firstWhere((l) => l.id == n.id)),
         onLocked: (n) => showAppNotice(n.unlockText),
       );
     }
     final quran = s != null && (s.key.contains('quran') || (ls?.any((l) => (l.topic ?? '').startsWith('juz') || (l.topic ?? '').startsWith('surah')) ?? false));
+    final bleed = content is LevelMap;
+    final side = bleed ? 0.0 : AppSpace.md;
+    Widget pad(Widget w) => bleed ? Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.md), child: w) : w;
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: AppRadius.blockAll,
@@ -612,25 +616,29 @@ class _MapCard extends StatelessWidget {
         ),
         border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpace.md),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (s != null) ...[
-            Text(subjectName(s), style: AppType.pageTitle(context)),
-            const SizedBox(height: AppSpace.xxs),
-            Row(children: [
-              Icon(Icons.star_rounded, size: AppIconSize.sm, color: age.palette.gold),
-              const SizedBox(width: AppSpace.xs),
-              Expanded(
-                child: Text(t('${s.done} من ${s.levels} مستوى · ${s.stars} نجمة', '${s.done} of ${s.levels} levels · ${s.stars} stars'),
-                    maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-              ),
-            ]),
-            const SizedBox(height: AppSpace.md),
-          ],
-          content,
-          if (quran) ...[const SizedBox(height: AppSpace.xs), const TanzilCredit()],
-        ]),
+      // the map runs edge to edge (its landscape fills the card); the title and the credit keep the side padding
+      child: ClipRRect(
+        borderRadius: AppRadius.blockAll,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(side, AppSpace.md, side, bleed && !quran ? 0 : AppSpace.md),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (s != null) ...[
+              pad(Text(subjectName(s), style: AppType.pageTitle(context))),
+              const SizedBox(height: AppSpace.xxs),
+              pad(Row(children: [
+                Icon(Icons.star_rounded, size: AppIconSize.sm, color: age.palette.gold),
+                const SizedBox(width: AppSpace.xs),
+                Expanded(
+                  child: Text(t('${s.done} من ${s.levels} مستوى · ${s.stars} نجمة', '${s.done} of ${s.levels} levels · ${s.stars} stars'),
+                      maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                ),
+              ])),
+              const SizedBox(height: AppSpace.md),
+            ],
+            content,
+            if (quran) ...[const SizedBox(height: AppSpace.xs), pad(const TanzilCredit())],
+          ]),
+        ),
       ),
     );
   }

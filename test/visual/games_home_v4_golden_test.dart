@@ -1,4 +1,4 @@
-// VISUAL review renders of the learner's games home v4 (T72): kids and adult, phone and desktop, ar, into
+// VISUAL review renders of the learner's games home v4 (T72): kids, teen and adult, phone and desktop, ar, into
 // test/visual/goldens/games_home_v4_*.png. Not a CI suite; compared by eye.
 //
 //   flutter test test/visual/games_home_v4_golden_test.dart --update-goldens
@@ -57,7 +57,7 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   }
 
-  for (final (band, label) in [('6-9', 'kids'), ('18+', 'adult')]) {
+  for (final (band, label) in [('6-9', 'kids'), ('14-17', 'teen'), ('18+', 'adult')]) {
     testWidgets('home $label phone', (tester) async {
       await shoot(tester, const Size(390, 1500), GamesHomeV4View(home: homeOf(band: band), levels: levelsOf(), subjectId: 1, showCoins: true), '${label}_phone');
     });
