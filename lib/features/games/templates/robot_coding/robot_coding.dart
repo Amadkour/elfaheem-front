@@ -1005,24 +1005,35 @@ class RobotCodingViewState extends State<RobotCodingView> with TickerProviderSta
     final sp = _spec!;
     final full = _len >= sp.max;
     final loopOpen = _toks.any((k) => k.id == _active && k.isLoop);
-    return Row(children: [
-      for (final c in sp.cmds) ...[
-        if (c != sp.cmds.first) const SizedBox(width: AppSpace.xs),
-        Expanded(
-          child: _KeyButton(
-            key: ValueKey('cmd-$c'),
-            color: _cmdColor(sf, c),
-            ink: sf.ink,
-            on: _on(_cmdColor(sf, c), sf),
-            icon: c == 'LOOP' && loopOpen ? Icons.check_rounded : _kCmdIcon[c]!,
-            label: c == 'LOOP' && loopOpen ? t('تم', 'Done') : _cmdWord(c),
-            dim: !_editable || (full && !(c == 'LOOP' && loopOpen)),
-            onTap: () => _add(c),
-            edge: sf.edgeWidth,
-          ),
-        ),
-      ],
-    ]);
+    Widget key(String c) => _KeyButton(
+          key: ValueKey('cmd-$c'),
+          color: _cmdColor(sf, c),
+          ink: sf.ink,
+          on: _on(_cmdColor(sf, c), sf),
+          icon: c == 'LOOP' && loopOpen ? Icons.check_rounded : _kCmdIcon[c]!,
+          label: c == 'LOOP' && loopOpen ? t('تم', 'Done') : _cmdWord(c),
+          dim: !_editable || (full && !(c == 'LOOP' && loopOpen)),
+          onTap: () => _add(c),
+          edge: sf.edgeWidth,
+        );
+    // the keys share one row equally; when a key would get less than a touch target, they wrap into two rows
+    Widget row(List<String> cmds) => Row(children: [
+          for (var i = 0; i < cmds.length; i++) ...[
+            if (i > 0) const SizedBox(width: AppSpace.xs),
+            Expanded(child: key(cmds[i])),
+          ],
+        ]);
+    final cmds = sp.cmds;
+    return LayoutBuilder(builder: (context, box) {
+      final each = (box.maxWidth - AppSpace.xs * (cmds.length - 1)) / cmds.length;
+      if (cmds.length < 2 || each >= AppTouch.min) return row(cmds);
+      final half = (cmds.length + 1) ~/ 2;
+      return Column(mainAxisSize: MainAxisSize.min, children: [
+        row(cmds.sublist(0, half)),
+        const SizedBox(height: AppSpace.xs),
+        row(cmds.sublist(half)),
+      ]);
+    });
   }
 
   Widget _actions(StageSurface sf) {
@@ -1030,10 +1041,13 @@ class RobotCodingViewState extends State<RobotCodingView> with TickerProviderSta
     final last = next && !s.items.skip(_item + 1).any((e) => e.type == ItemType.program);
     final canPrimary = next || _canRun;
     final playing = _phase == _Phase.playing;
-    return Row(children: [
-      _RoundButton(key: const ValueKey('reset'), icon: Icons.restart_alt_rounded, label: t('إعادة', 'Reset'), sf: sf, onTap: _toks.isEmpty && _phase == _Phase.edit && _stepAt == 0 ? null : _reset),
+    // in a very narrow box the two round keys step down to the minimum touch size so Run keeps its room
+    return LayoutBuilder(builder: (context, box) {
+      final round = box.maxWidth < AppTouch.primary * 4 + AppSpace.xs + AppSpace.sm ? AppTouch.min : AppTouch.primary;
+      return Row(children: [
+      _RoundButton(key: const ValueKey('reset'), icon: Icons.restart_alt_rounded, label: t('إعادة', 'Reset'), sf: sf, size: round, onTap: _toks.isEmpty && _phase == _Phase.edit && _stepAt == 0 ? null : _reset),
       const SizedBox(width: AppSpace.xs),
-      _RoundButton(key: const ValueKey('step'), icon: Icons.skip_next_rounded, label: t('خطوة', 'Step'), sf: sf, onTap: _toks.isEmpty || _emptyLoop || playing ? null : _step),
+      _RoundButton(key: const ValueKey('step'), icon: Icons.skip_next_rounded, label: t('خطوة', 'Step'), sf: sf, size: round, onTap: _toks.isEmpty || _emptyLoop || playing ? null : _step),
       const SizedBox(width: AppSpace.sm),
       Expanded(
         child: _KeyButton(
@@ -1049,7 +1063,8 @@ class RobotCodingViewState extends State<RobotCodingView> with TickerProviderSta
           big: true,
         ),
       ),
-    ]);
+      ]);
+    });
   }
 
   void _reset() {
@@ -1117,13 +1132,17 @@ class _KeyButtonState extends State<_KeyButton> {
                   height: h,
                   child: DecoratedBox(
                     decoration: BoxDecoration(color: w.color, borderRadius: BorderRadius.circular(AppRadius.control)),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Icon(w.icon, size: w.big ? 28 : 24, color: w.on),
-                      if (w.big || MediaQuery.sizeOf(context).width >= 360) ...[
-                        const SizedBox(width: 4),
-                        Flexible(child: Text(w.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(w.big ? 17 : 13, w: FontWeight.w800, c: w.on))),
-                      ],
-                    ]),
+                    // the label shows when the key itself has room for it (not the screen width: a key in a
+                    // narrow side panel or at a large text size keeps just its icon, never a cut one)
+                    child: LayoutBuilder(
+                      builder: (context, box) => Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(w.icon, size: w.big ? 28 : 24, color: w.on),
+                        if (box.maxWidth >= AppTouch.primary + AppSpace.lg) ...[
+                          const SizedBox(width: AppSpace.xxs),
+                          Flexible(child: Text(w.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(w.big ? 17 : 13, w: FontWeight.w800, c: w.on))),
+                        ],
+                      ]),
+                    ),
                   ),
                 ),
               ]),
@@ -1137,10 +1156,11 @@ class _KeyButtonState extends State<_KeyButton> {
 
 /// A small secondary round key (Reset, Step).
 class _RoundButton extends StatelessWidget {
-  const _RoundButton({super.key, required this.icon, required this.label, required this.sf, required this.onTap});
+  const _RoundButton({super.key, required this.icon, required this.label, required this.sf, required this.onTap, this.size = AppTouch.primary});
   final IconData icon;
   final String label;
   final StageSurface sf;
+  final double size;
   final VoidCallback? onTap;
 
   @override
@@ -1157,8 +1177,8 @@ class _RoundButton extends StatelessWidget {
           child: Opacity(
             opacity: off ? 0.4 : 1,
             child: Container(
-              width: AppTouch.primary,
-              height: AppTouch.primary,
+              width: size,
+              height: size,
               decoration: BoxDecoration(
                 color: sf.paper,
                 borderRadius: BorderRadius.circular(AppRadius.control),

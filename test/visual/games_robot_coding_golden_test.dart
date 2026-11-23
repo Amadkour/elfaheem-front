@@ -54,8 +54,8 @@ void main() {
   setUpAll(_loadFonts);
   const sizes = {'phone': Size(390, 780), 'desktop': Size(1280, 800)};
 
-  Future<void> shoot(WidgetTester tester, Size size, GameAge age, String name, {List<String> cmds = const [], int runMs = 0, List<String> taps = const []}) async {
-    AppConfig.lang = 'ar';
+  Future<void> shoot(WidgetTester tester, Size size, GameAge age, String name, {List<String> cmds = const [], int runMs = 0, List<String> taps = const [], String lang = 'ar', double scale = 1}) async {
+    AppConfig.lang = lang;
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = size;
     addTearDown(() {
@@ -65,7 +65,7 @@ void main() {
     final s = GameSession(items: [_item()], templateKey: 'robot_coding')..start();
     await tester.pumpWidget(layoutHost(
       RepaintBoundary(key: _shot, child: Material(child: AgeThemeScope(theme: AgeTheme.build(age), child: RobotCodingView(session: s, silent: true, advanceMs: 0)))),
-      scale: 1,
+      scale: scale,
       scaffold: false,
     ));
     for (var i = 0; i < 8; i++) {
@@ -89,6 +89,12 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
       }
     }
+    expect(tester.takeException(), isNull);
+    // every palette key and action key whole, inside the screen
+    for (final k in const ['cmd-F', 'cmd-L', 'cmd-R', 'cmd-LOOP', 'reset', 'step']) {
+      final r = tester.getRect(find.byKey(ValueKey(k)));
+      expect(r.left >= 0 && r.right <= size.width, isTrue, reason: '$k at $r is cut at width ${size.width}');
+    }
     await expectLater(find.byKey(_shot), matchesGoldenFile('goldens/games_robot_$name.png'));
     await tester.pumpWidget(const SizedBox());
   }
@@ -102,6 +108,13 @@ void main() {
         await shoot(tester, s.value, age, 'build_${age.name}_${s.key}', cmds: const ['F', 'F', 'R', 'LOOP', 'F', 'F']);
       });
     }
+  }
+
+  // the smallest phone, text at 130 %: every palette key whole, in both languages
+  for (final lang in const ['ar', 'en']) {
+    testWidgets('building kids 320 $lang', (tester) async {
+      await shoot(tester, const Size(320, 640), GameAge.kids, 'build_kids_320_$lang', cmds: const ['F', 'R', 'LOOP', 'F'], lang: lang, scale: 1.3);
+    });
   }
 
   testWidgets('mid run kids phone', (tester) async {
