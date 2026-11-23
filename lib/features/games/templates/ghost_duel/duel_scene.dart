@@ -102,7 +102,7 @@ class _DuelSceneState extends State<DuelScene> with SingleTickerProviderStateMix
       child: Container(
         height: widget.height,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(sf.radius + 4),
+          borderRadius: BorderRadius.circular(sf.radius + AppSpace.xxs),
           border: Border.all(color: pill.withValues(alpha: 0.18), width: 1.5),
           boxShadow: sf.lift(blur: 20, dy: 8),
         ),
@@ -254,10 +254,10 @@ class _Chip extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.pill),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (ghost) ...[Icon(Icons.blur_on_rounded, size: 14, color: pill), const SizedBox(width: 4)],
+          if (ghost) ...[Icon(Icons.blur_on_rounded, size: AppIconSize.xs, color: pill), const SizedBox(width: AppSpace.xxs)],
           Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: pill))),
           if (total > 0) ...[
-            const SizedBox(width: 6),
+            const SizedBox(width: AppSpace.xxs),
             Text('$count', textDirection: TextDirection.ltr, style: appText(14, w: FontWeight.w800, c: pill)),
           ],
         ]),

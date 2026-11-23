@@ -36,6 +36,9 @@ import 'package:flutter_education_app/features/games/core/game_session.dart';
 import 'package:flutter_education_app/features/games/core/game_template.dart';
 import 'package:flutter_education_app/features/games/shell/game_sounds.dart';
 
+/// Fixed sizes of the program strip and its loop / delete buttons (a tap target, in logical pixels).
+const double _kStripH = 76, _kBtnW = 36, _kBtnWSm = 32, _kBtnH = 46;
+
 const String kRobotCodingKey = 'robot_coding';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -777,7 +780,7 @@ class RobotCodingViewState extends State<RobotCodingView> with TickerProviderSta
         _header(sf),
         Expanded(child: boardArea),
         const SizedBox(height: AppSpace.xs),
-        SizedBox(height: 76, child: strip),
+        SizedBox(height: _kStripH, child: strip),
         const SizedBox(height: AppSpace.xs),
         panel,
       ]),
@@ -827,7 +830,7 @@ class RobotCodingViewState extends State<RobotCodingView> with TickerProviderSta
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(icon, size: 14, color: over ? sf.wrong : sf.accent),
-                const SizedBox(width: 2),
+                const SizedBox(width: AppBorder.focus),
                 Text(text, style: appText(13, w: FontWeight.w800, c: sf.ink)),
               ]),
             ),
@@ -955,13 +958,13 @@ class RobotCodingViewState extends State<RobotCodingView> with TickerProviderSta
         border: Border.all(color: active ? sf.ink : Color.lerp(bg, sf.ink, 0.35)!, width: active ? 3 : sf.edgeWidth * 0.7),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(3),
+        padding: const EdgeInsets.all(AppBorder.line),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           GestureDetector(
             key: ValueKey('loop-open-$i'),
             onTap: () => _toggleActive(i),
             behavior: HitTestBehavior.opaque,
-            child: SizedBox(width: 36, height: 46, child: Icon(Icons.repeat_rounded, size: 26, color: sf.ink)),
+            child: SizedBox(width: _kBtnW, height: _kBtnH, child: Icon(Icons.repeat_rounded, size: 26, color: sf.ink)),
           ),
           GestureDetector(
             key: ValueKey('loop-n-$i'),
@@ -980,7 +983,7 @@ class RobotCodingViewState extends State<RobotCodingView> with TickerProviderSta
             ),
           ),
           for (var j = 0; j < k.body.length; j++) ...[
-            const SizedBox(width: 3),
+            const SizedBox(width: AppBorder.line),
             _chip(sf, k.body[j], i * 100 + j, size: 40, onTap: () => _removeBody(i, j)),
           ],
           if (k.body.isEmpty)
@@ -992,7 +995,7 @@ class RobotCodingViewState extends State<RobotCodingView> with TickerProviderSta
             key: ValueKey('loop-x-$i'),
             onTap: () => _remove(i),
             behavior: HitTestBehavior.opaque,
-            child: SizedBox(width: 32, height: 46, child: Icon(Icons.close_rounded, size: 18, color: sf.ink.withValues(alpha: 0.7))),
+            child: SizedBox(width: _kBtnWSm, height: _kBtnH, child: Icon(Icons.close_rounded, size: 18, color: sf.ink.withValues(alpha: 0.7))),
           ),
         ]),
       ),

@@ -387,7 +387,7 @@ class _FractionsFarmGameState extends State<FractionsFarmGame> {
   }
 
   Widget _image(StageSurface sf, {double h = 96, double w = 160}) => ClipRRect(
-        borderRadius: BorderRadius.circular(sf.radius - 6),
+        borderRadius: BorderRadius.circular(sf.radius - AppSpace.xxs),
         child: AppNetworkImage(url: item.media.image!, width: w, height: h, fit: BoxFit.cover),
       );
 
@@ -444,7 +444,7 @@ class _FractionsFarmGameState extends State<FractionsFarmGame> {
   Widget _board(BuildContext context, StageSurface sf, FractionTask tk) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(sf.radius + 4),
+        borderRadius: BorderRadius.circular(sf.radius + AppSpace.xxs),
         border: Border.all(color: sf.ink.withValues(alpha: 0.18), width: 1.5),
         boxShadow: sf.lift(blur: 22, dy: 8),
       ),
@@ -478,7 +478,7 @@ class _FractionsFarmGameState extends State<FractionsFarmGame> {
     final ans = tk.answer;
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(sf.radius + 4),
+        borderRadius: BorderRadius.circular(sf.radius + AppSpace.xxs),
         border: Border.all(color: sf.ink.withValues(alpha: 0.18), width: 1.5),
         boxShadow: sf.lift(blur: 22, dy: 8),
       ),
@@ -509,7 +509,7 @@ class _FractionsFarmGameState extends State<FractionsFarmGame> {
               ),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 _stepper(sf, numerator: true),
-                Container(height: 4, width: 150, margin: const EdgeInsets.symmetric(vertical: AppSpace.xs), decoration: BoxDecoration(color: sf.ink, borderRadius: BorderRadius.circular(2))),
+                Container(height: 4, width: 150, margin: const EdgeInsets.symmetric(vertical: AppSpace.xs), decoration: BoxDecoration(color: sf.ink, borderRadius: BorderRadius.circular(AppBorder.focus))),
                 _stepper(sf, numerator: false),
               ]),
             ),
@@ -566,7 +566,7 @@ class FractionLabel extends StatelessWidget {
       excludeSemantics: true,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Text('$n', textDirection: TextDirection.ltr, style: style),
-        Container(width: w, height: math.max(3, size * 0.09), margin: const EdgeInsets.symmetric(vertical: 2), decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+        Container(width: w, height: math.max(3, size * 0.09), margin: const EdgeInsets.symmetric(vertical: AppBorder.focus), decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(AppBorder.focus))),
         Text('$d', textDirection: TextDirection.ltr, style: style),
       ]),
     );

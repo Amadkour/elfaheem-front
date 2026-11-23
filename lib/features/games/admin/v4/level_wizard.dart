@@ -19,6 +19,9 @@ import 'package:flutter_education_app/features/games/game_play_page.dart' show G
 import 'package:flutter_education_app/features/games/games_models.dart' show GameSummary;
 import 'package:flutter_education_app/features/games/templates/register_all.dart';
 
+/// The height of the live preview in the last wizard step.
+const double _kPreviewH = 520;
+
 /// What the wizard collects. Plain values + the text controllers; [toBody] is the `POST / PUT /admin/games` body.
 class LevelDraft {
   LevelDraft({
@@ -819,7 +822,7 @@ class PreviewPanel extends StatelessWidget {
       if (session != null && done == null) ...[
         AppSpace.gapSm,
         SizedBox(
-          height: 520,
+          height: _kPreviewH,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.block),
             child: GamePlayView(

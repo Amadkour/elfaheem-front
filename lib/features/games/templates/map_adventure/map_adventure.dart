@@ -294,7 +294,7 @@ class _MapAdventureStripState extends State<MapAdventureStrip> with SingleTicker
       label: label,
       container: true,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(sf.radius + 4),
+        borderRadius: BorderRadius.circular(sf.radius + AppSpace.xxs),
         child: SizedBox(
           height: widget.height,
           child: LayoutBuilder(builder: (context, box) {

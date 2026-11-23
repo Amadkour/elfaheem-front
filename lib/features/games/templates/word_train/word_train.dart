@@ -307,7 +307,7 @@ class _WordTrainHeaderState extends State<WordTrainHeader> with SingleTickerProv
       painter: _WagonPainter(p, _tone(i), done, next, widget.outline),
       child: Container(
         constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-        padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xxs + 4, AppSpace.sm, AppSpace.xxs + 12),
+        padding: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.xs, AppSpace.sm, AppSpace.md),
         child: ExcludeSemantics(
           excluding: !done,
           child: Text(word, textAlign: TextAlign.center, style: done ? style : style.copyWith(color: const Color(0x00000000))),

@@ -369,7 +369,7 @@ class _IrabHunterGameState extends State<IrabHunterGame> {
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
         decoration: BoxDecoration(
           color: focus ? sf.tint(sf.accent, 0.16) : placed ? sf.tint(sf.right, 0.14) : sf.tint(sf.ink, 0.05),
-          borderRadius: BorderRadius.circular(sf.radius - 8),
+          borderRadius: BorderRadius.circular(sf.radius - AppSpace.xs),
           border: Border.all(color: focus ? sf.accent : placed ? sf.right.withValues(alpha: 0.6) : sf.edge, width: focus ? 2 : 1),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -405,7 +405,7 @@ class _IrabHunterGameState extends State<IrabHunterGame> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpace.sm),
-      decoration: BoxDecoration(color: sf.paper, borderRadius: BorderRadius.circular(sf.radius + 4), boxShadow: sf.lift(blur: 24, dy: 10)),
+      decoration: BoxDecoration(color: sf.paper, borderRadius: BorderRadius.circular(sf.radius + AppSpace.xxs), boxShadow: sf.lift(blur: 24, dy: 10)),
       child: kids
           ? Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
               SizedBox.square(dimension: 44, child: GameCharacter(theme: sf.theme, mood: _mood, size: 44)),

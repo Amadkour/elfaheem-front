@@ -376,7 +376,7 @@ class _DragPlaceGameState extends State<DragPlaceGame> {
     final card = Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpace.md),
-      decoration: BoxDecoration(color: sf.paper, borderRadius: BorderRadius.circular(sf.radius + 4), boxShadow: sf.lift(blur: 24, dy: 10)),
+      decoration: BoxDecoration(color: sf.paper, borderRadius: BorderRadius.circular(sf.radius + AppSpace.xxs), boxShadow: sf.lift(blur: 24, dy: 10)),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         if (label.isNotEmpty) ...[
           Container(

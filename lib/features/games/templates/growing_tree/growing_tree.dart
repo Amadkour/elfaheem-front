@@ -192,7 +192,7 @@ class _GrowingTreeCardState extends State<GrowingTreeCard> with SingleTickerProv
       child: Container(
         height: widget.height,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(sf.radius + 4),
+          borderRadius: BorderRadius.circular(sf.radius + AppSpace.xxs),
           border: Border.all(color: pill.withValues(alpha: 0.18), width: 1.5),
           boxShadow: sf.lift(blur: 20, dy: 8),
         ),

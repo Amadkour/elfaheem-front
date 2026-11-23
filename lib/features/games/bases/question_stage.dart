@@ -443,13 +443,13 @@ class _QuestionStageState extends State<QuestionStage> {
       padding: const EdgeInsets.all(AppSpace.lg),
       decoration: BoxDecoration(
         color: sf.paper,
-        borderRadius: BorderRadius.circular(sf.radius + 4),
+        borderRadius: BorderRadius.circular(sf.radius + AppSpace.xxs),
         boxShadow: sf.lift(blur: 24, dy: 10),
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         if ((it.media.image ?? '').isNotEmpty) ...[
           ClipRRect(
-            borderRadius: BorderRadius.circular(sf.radius - 4),
+            borderRadius: BorderRadius.circular(sf.radius - AppSpace.xxs),
             child: AppNetworkImage(url: it.media.image!, width: 200, height: 120, fit: BoxFit.cover),
           ),
           AppSpace.gapMd,
@@ -554,7 +554,7 @@ class _QuestionStageState extends State<QuestionStage> {
             onTap: _locked ? null : () => _onChoose(k),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               if (_optionImage(k) != null) ...[
-                ClipRRect(borderRadius: BorderRadius.circular(10), child: AppNetworkImage(url: _optionImage(k)!, width: 48, height: 48, fit: BoxFit.cover)),
+                ClipRRect(borderRadius: BorderRadius.circular(AppRadius.chip), child: AppNetworkImage(url: _optionImage(k)!, width: 48, height: 48, fit: BoxFit.cover)),
                 AppSpace.gapSm,
               ],
               Flexible(
@@ -633,7 +633,7 @@ class _SentenceChip extends StatelessWidget {
         height: 48,
         decoration: BoxDecoration(
           color: active ? sf.tint(sf.accent, 0.14) : sf.tint(sf.ink, 0.05),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppSpace.sm),
           border: Border.all(color: active ? sf.accent : sf.edge, width: active ? 2.5 : 1.5),
         ),
       );
@@ -643,7 +643,7 @@ class _SentenceChip extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 48),
       alignment: Alignment.center,
       decoration: state == StageTileState.correct
-          ? BoxDecoration(color: sf.tint(sf.right, 0.18), borderRadius: BorderRadius.circular(12))
+          ? BoxDecoration(color: sf.tint(sf.right, 0.18), borderRadius: BorderRadius.circular(AppSpace.sm))
           : null,
       child: Text(text, style: style, textDirection: textDirectionOf(text)),
     );

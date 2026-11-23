@@ -255,7 +255,7 @@ class _Chip extends StatelessWidget {
           : EdgeInsets.symmetric(horizontal: fit ? AppSpace.xs : AppSpace.md, vertical: token.quran ? 0 : AppSpace.sm),
       decoration: BoxDecoration(
         color: fill,
-        borderRadius: BorderRadius.circular(sf.radius - 4),
+        borderRadius: BorderRadius.circular(sf.radius - AppSpace.xxs),
         border: Border.all(color: state == StageTileState.hint ? sf.gold : edge.withValues(alpha: 0.6), width: state == StageTileState.hint ? 2 : 1),
         boxShadow: flat
             ? null
@@ -650,7 +650,7 @@ class _SlotState extends State<_Slot> {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: _hover ? sf.tint(sf.accent, 0.14) : sf.tint(sf.ink, 0.05),
-        borderRadius: BorderRadius.circular(sf.radius - 4),
+        borderRadius: BorderRadius.circular(sf.radius - AppSpace.xxs),
         border: Border.all(color: c.withValues(alpha: _hover || s.state == DragSlotState.hint ? 1 : 0.55), width: _hover ? 2.5 : 1.5),
         boxShadow: _hover ? [BoxShadow(color: sf.accent.withValues(alpha: 0.45), blurRadius: 16)] : null,
       ),

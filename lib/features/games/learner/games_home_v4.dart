@@ -28,6 +28,10 @@ import 'package:flutter_education_app/features/games/learner/challenges.dart';
 import 'package:flutter_education_app/features/games/learner/level_map.dart';
 import 'package:flutter_education_app/features/games/learner/wardrobe.dart';
 
+/// The side column of the wide home (the rail and the strip) and the compact progress tile.
+const double _kRailW = 300;
+const double _kRailTileW = 132;
+
 const kGamesTemplatesV4Key = 'games.templates_v4';
 bool gamesV4Off() => AppConfig.disableList.contains(kGamesTemplatesV4Key);
 
@@ -325,7 +329,7 @@ class GamesHomeV4View extends StatelessWidget {
           body = AppEmpty(key: const ValueKey('games.v4.empty'), icon: Icons.extension_rounded, title: t('لا توجد مواد بعد', 'No subjects yet'));
         } else if (wide) {
           body = Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SizedBox(width: 300, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [rail, if (strip != null) ...[const SizedBox(height: AppSpace.sm), strip]])),
+            SizedBox(width: _kRailW, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [rail, if (strip != null) ...[const SizedBox(height: AppSpace.sm), strip]])),
             const SizedBox(width: AppSpace.lg),
             Expanded(child: map),
           ]);
@@ -566,7 +570,7 @@ class _SubjectTile extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpace.sm),
             child: wide
                 ? Row(children: [icon, const SizedBox(width: AppSpace.sm), Expanded(child: progress)])
-                : SizedBox(width: 132, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [icon, const SizedBox(height: AppSpace.xs), progress])),
+                : SizedBox(width: _kRailTileW, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [icon, const SizedBox(height: AppSpace.xs), progress])),
           ),
         ),
       ),

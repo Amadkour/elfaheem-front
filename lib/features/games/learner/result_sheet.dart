@@ -53,7 +53,7 @@ class GameResultExtras extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           for (final l in lines)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpace.xs / 2),
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
               child: Row(children: [
                 Icon(l.$1, size: AppIconSize.sm, color: c.primary),
                 const SizedBox(width: AppSpace.xs),

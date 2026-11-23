@@ -372,7 +372,7 @@ class _ScienceLabGameState extends State<ScienceLabGame> {
     final char = GameCharacter(theme: theme, equipped: const {'hat': 'hat_goggles'}, mood: _mood, size: column ? 120 : 92);
     final card = Container(
       padding: const EdgeInsets.all(AppSpace.md),
-      decoration: BoxDecoration(color: sf.paper, borderRadius: BorderRadius.circular(sf.radius + 4), boxShadow: sf.lift(blur: 24, dy: 10)),
+      decoration: BoxDecoration(color: sf.paper, borderRadius: BorderRadius.circular(sf.radius + AppSpace.xxs), boxShadow: sf.lift(blur: 24, dy: 10)),
       child: Text(prompt, textAlign: column ? TextAlign.center : TextAlign.start, style: appText(19, w: FontWeight.w700, c: sf.ink, h: 1.45)),
     );
     if (column) {
@@ -593,7 +593,7 @@ class _ScienceLabGameState extends State<ScienceLabGame> {
             onTap: _locked ? null : () => _choose(k),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               if (img != null) ...[
-                ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 48, height: 48, child: pic(context, img, 48))),
+                ClipRRect(borderRadius: BorderRadius.circular(AppRadius.chip), child: SizedBox(width: AppSpace.xxl, height: AppSpace.xxl, child: pic(context, img, 48))),
                 AppSpace.gapSm,
               ],
               Flexible(child: Text(text, textAlign: TextAlign.center, textDirection: textDirectionOf(text, Directionality.of(context)), style: appText(18, w: FontWeight.w600, c: sf.ink, h: 1.3))),

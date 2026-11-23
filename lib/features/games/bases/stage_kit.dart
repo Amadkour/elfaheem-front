@@ -237,7 +237,7 @@ class _StageTileState extends State<StageTile> {
               width: 28,
               height: 28,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: sf.tint(sf.ink, 0.08), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(color: sf.tint(sf.ink, 0.08), borderRadius: BorderRadius.circular(AppSpace.xs)),
               child: Text(widget.badge!, style: appText(13, w: FontWeight.w700, c: sf.ink)),
             ),
             AppSpace.gapSm,

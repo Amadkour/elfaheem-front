@@ -10,7 +10,7 @@ library;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show appText;
+import 'package:flutter_education_app/design/app_kit.dart' show appText, AppSpace;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/features/games/core/age_theme.dart';
@@ -378,13 +378,13 @@ class LabJar extends StatelessWidget {
     );
     Widget w = Column(mainAxisSize: MainAxisSize.min, children: [
       body,
-      const SizedBox(height: 4),
+      const SizedBox(height: AppSpace.xxs),
       Container(
         constraints: const BoxConstraints(maxWidth: labelW, minHeight: 26),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
         decoration: BoxDecoration(
           color: p.paper,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppSpace.xs),
           border: Border.all(color: (hint ? p.gold : p.ink).withValues(alpha: hint ? 1 : .35), width: hint ? 2 : 1),
         ),
         child: Text(label, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: _labelStyle(context, p.ink)),
@@ -392,7 +392,7 @@ class LabJar extends StatelessWidget {
     ]);
     if (hint) {
       w = DecoratedBox(
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: p.gold.withValues(alpha: .7), blurRadius: 16, spreadRadius: 1)]),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppSpace.md), boxShadow: [BoxShadow(color: p.gold.withValues(alpha: .7), blurRadius: 16, spreadRadius: 1)]),
         child: w,
       );
     }

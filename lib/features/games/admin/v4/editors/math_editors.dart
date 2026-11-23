@@ -157,7 +157,7 @@ class _ProgramEditorState extends State<ProgramEditor> {
                             child: GestureDetector(
                               onTap: () => _tap(x, y),
                               child: Container(
-                                margin: const EdgeInsets.all(1),
+                                margin: const EdgeInsets.all(AppBorder.hairline),
                                 decoration: BoxDecoration(
                                   color: walls.any((p) => p[0] == x && p[1] == y)
                                       ? c.textMedium
@@ -166,7 +166,7 @@ class _ProgramEditorState extends State<ProgramEditor> {
                                           : (x == _start[0] && y == _start[1])
                                               ? c.primary
                                               : c.cardBg2,
-                                  borderRadius: BorderRadius.circular(AppRadius.chip / 2),
+                                  borderRadius: BorderRadius.circular(AppRadius.chip / AppBorder.focus),
                                 ),
                                 alignment: Alignment.center,
                                 child: (x == _start[0] && y == _start[1])

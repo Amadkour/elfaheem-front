@@ -26,6 +26,9 @@ import 'package:flutter_education_app/features/games/games_api.dart' show gamesE
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
+/// The fixed width of the wardrobe's stage column on a wide screen.
+const double _kStageW = 380;
+
 const kGamesCosmeticsKey = 'games.cosmetics';
 bool gamesCosmeticsOff() => AppConfig.disableList.contains(kGamesCosmeticsKey);
 
@@ -396,7 +399,7 @@ class WardrobeView extends StatelessWidget {
         return Padding(
           padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, AppSpace.md),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SizedBox(width: 380, child: stage),
+            SizedBox(width: _kStageW, child: stage),
             const SizedBox(width: AppSpace.lg),
             Expanded(
               child: ListView(children: [
@@ -467,7 +470,7 @@ class _Stage extends StatelessWidget {
           ),
           Positioned.fill(
             child: Padding(
-              padding: EdgeInsets.only(top: AppSpace.xl, bottom: h * 0.08),
+              padding: EdgeInsets.only(top: AppSpace.xl).copyWith(bottom: h * 0.08),
               child: Center(child: GameCharacter(theme: theme, equipped: worn, size: compact ? 150 : 210)),
             ),
           ),
