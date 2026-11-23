@@ -13,6 +13,7 @@ import 'package:flutter_education_app/features/admin/admin_page.dart';
 import 'package:flutter_education_app/features/games/admin/games_admin_api.dart' show gamesAdminOff;
 import 'package:flutter_education_app/features/games/admin/games_admin_page.dart' show GamesAdminPage;
 import 'package:flutter_education_app/features/games/admin/v4/hub_api.dart';
+import 'package:flutter_education_app/features/games/admin/v4/hub_links.dart';
 import 'package:flutter_education_app/features/games/admin/v4/subjects_page.dart';
 import 'package:flutter_education_app/features/games/admin/v4/templates_page.dart';
 
@@ -57,7 +58,7 @@ class _GamesHubPageState extends State<GamesHubPage> {
   @override
   Widget build(BuildContext context) {
     final links = <GamesHubLink>[
-      for (final l in kGamesHubExtraLinks)
+      for (final l in [...gamesHubBuiltInLinks(), ...kGamesHubExtraLinks])
         GamesHubLink(
           id: l.id,
           titleAr: l.titleAr,
