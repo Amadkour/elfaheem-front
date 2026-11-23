@@ -29,7 +29,7 @@ import 'package:flutter_education_app/features/games/core/age_theme.dart';
 import 'package:flutter_education_app/features/games/core/flame_host.dart';
 import 'package:flutter_education_app/features/games/core/game_fx.dart';
 
-enum TokenSkin { balloon, pearl, fish }
+enum TokenSkin { balloon, pearl, fish, train }
 
 enum TokenMotion { hover, drift }
 
@@ -92,7 +92,7 @@ class FloatingTokensGame extends FlameGame {
   List<String> _labels = const [];
   final GameParticles _particles = GameParticles();
   final Map<int, ui.Picture> _pics = {};
-  ui.Picture? _bg;
+  ui.Picture? _bg, _rail;
   final Paint _fill = Paint();
   final Paint _ring = Paint()..style = PaintingStyle.stroke;
 
@@ -169,7 +169,7 @@ class FloatingTokensGame extends FlameGame {
     final px = 26 * (_quran ? 1.3 : 1.0);
     for (final t in _tokens) {
       t.bw = (t.tp.width + 44).clamp(120.0, 300.0);
-      t.ext = t.bw + (fish ? 24 : 0);
+      t.ext = t.bw + (fish ? 24 : (skin == TokenSkin.train ? 14 : 0));
       final lines = math.max(1, t.tp.computeLineMetrics().length);
       final visH = lines * px * (_quran ? 1.45 : 1.25);
       t.fit = math.min(1.0, math.min((t.bw - 44) / math.max(1, t.tp.width), 58 / visH));
@@ -201,6 +201,8 @@ class FloatingTokensGame extends FlameGame {
       k -= 0.04;
     }
     _k = k;
+    _rail?.dispose();
+    _rail = null;
     final pitch = math.min(104 * k * 1.12, (bottom - top) / rows.length);
     final y0 = top + ((bottom - top) - pitch * rows.length) / 2 + pitch / 2;
     _rowOff.clear();
@@ -397,6 +399,8 @@ class FloatingTokensGame extends FlameGame {
     _h = size.y;
     _bg?.dispose();
     _bg = _recordBg();
+    _rail?.dispose();
+    _rail = null;
     if (_tokens.isNotEmpty) _layout();
   }
 
@@ -455,7 +459,7 @@ class FloatingTokensGame extends FlameGame {
   }
 
   ui.Picture _recordBg() {
-    if (_rows) return _recordSea();
+    if (_rows && skin != TokenSkin.train) return _recordSea();
     final p = theme.palette;
     final rec = ui.PictureRecorder();
     final c = Canvas(rec, Rect.fromLTWH(0, 0, _w, _h));
@@ -587,6 +591,28 @@ class FloatingTokensGame extends FlameGame {
         c.drawCircle(eye, 7, Paint()..color = p.paper);
         c.drawCircle(eye.translate(1.6, 0.4), 3.6, Paint()..color = p.ink);
         c.drawCircle(eye.translate(2.6, -1), 1.2, Paint()..color = p.paper);
+      } else if (skin == TokenSkin.train) {
+        // a wagon on its wheels: the couplers at both ends, a body in the token's colour, the word on a painted plate
+        final body = RRect.fromRectAndRadius(Rect.fromCenter(center: const Offset(0, -4), width: bw, height: 62), const Radius.circular(12));
+        final edge = Paint()..style = PaintingStyle.stroke..strokeWidth = 2.6 * theme.outline..color = p.ink;
+        final bar = Paint()..color = p.ink.withValues(alpha: 0.7);
+        for (final sx in [-1.0, 1.0]) {
+          c.drawRect(Rect.fromLTWH(sx * (bw / 2 + 6) - 8, 14, 16, 5), bar);
+        }
+        c.drawRRect(body.shift(const Offset(0, 3)), Paint()..color = p.ink.withValues(alpha: 0.14));
+        c.drawRRect(body, Paint()..shader = ui.Gradient.linear(const Offset(0, -35), const Offset(0, 27), [Color.lerp(base, p.paper, 0.3)!, base, Color.lerp(base, p.ink, 0.2)!], [0, 0.55, 1]));
+        // the roof rim and two boards
+        c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(-bw / 2 - 3, -38, bw + 6, 8), const Radius.circular(4)), Paint()..color = Color.lerp(base, p.ink, 0.3)!);
+        final board = Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = p.ink.withValues(alpha: theme.calm ? 0.1 : 0.18);
+        c.drawLine(Offset(-bw / 2 + 6, 17), Offset(bw / 2 - 6, 17), board);
+        if (theme.outline > 0.4) c.drawRRect(body, edge);
+        c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: const Offset(0, -2), width: bw - 30, height: 46), const Radius.circular(10)), Paint()..color = p.paper.withValues(alpha: 0.94));
+        // the wheels
+        final dx = math.max(24.0, bw / 2 - 30);
+        for (final sx in [-dx, dx]) {
+          c.drawCircle(Offset(sx, 30), 11, Paint()..color = p.ink.withValues(alpha: 0.85));
+          c.drawCircle(Offset(sx, 30), 4.5, Paint()..color = p.gold);
+        }
       } else {
         final r = RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: bw, height: 70), const Radius.circular(35));
         final soft = Color.lerp(base, p.paper, 0.62)!;
@@ -599,6 +625,23 @@ class FloatingTokensGame extends FlameGame {
     });
   }
 
+  /// The track under every row of wagons: two rails and the sleepers, one picture the width of the screen.
+  ui.Picture _railPic() {
+    return _rail ??= () {
+      final p = theme.palette;
+      final rec = ui.PictureRecorder();
+      final c = Canvas(rec, Rect.fromLTWH(0, -4, _w, 20));
+      final sleeper = Paint()..style = PaintingStyle.stroke..strokeWidth = 5 * _k..color = Color.lerp(p.ink, p.gold, 0.35)!.withValues(alpha: 0.7);
+      for (var x = 6.0; x < _w; x += 22 * _k) {
+        c.drawLine(Offset(x, 1), Offset(x, 10 * _k), sleeper);
+      }
+      final rail = Paint()..style = PaintingStyle.stroke..strokeWidth = 3.4 * _k..strokeCap = StrokeCap.round..color = p.ink.withValues(alpha: theme.calm ? 0.6 : 0.8);
+      c.drawLine(const Offset(0, 0), Offset(_w, 0), rail);
+      c.drawLine(Offset(0, 6 * _k), Offset(_w, 6 * _k), rail);
+      return rec.endRecording();
+    }();
+  }
+
   Color _fishTone(int i) {
     final p = theme.palette;
     final base = [p.accent2, p.accent, p.gold, Color.lerp(p.accent, p.paper, 0.4)!, Color.lerp(p.accent2, p.accent, 0.5)!][i % 5];
@@ -609,6 +652,18 @@ class FloatingTokensGame extends FlameGame {
     final fish = skin == TokenSkin.fish;
     final calm = theme.calm;
     final topY = (_topInset ?? _h * 0.26) - 30;
+    if (skin == TokenSkin.train && _tokens.isNotEmpty) {
+      final rail = _railPic();
+      var last = -1;
+      for (final t in _tokens) {
+        if (t.row == last) continue;
+        last = t.row;
+        canvas.save();
+        canvas.translate(0, t.ay + 44 * _k);
+        canvas.drawPicture(rail);
+        canvas.restore();
+      }
+    }
     for (final t in _tokens) {
       if (t.state == _TokenState.gone) continue;
       var s = 1.0, cx = t.x, cy = t.y, rot = 0.0;
@@ -725,6 +780,8 @@ class FloatingTokensGame extends FlameGame {
   void onRemove() {
     _bg?.dispose();
     _bg = null;
+    _rail?.dispose();
+    _rail = null;
     for (final v in _pics.values) {
       v.dispose();
     }

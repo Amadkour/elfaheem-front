@@ -13,6 +13,7 @@ import 'package:flutter_education_app/features/games/templates/drag_place/drag_p
 import 'package:flutter_education_app/features/games/templates/space_rocket/space_rocket.dart';
 import 'package:flutter_education_app/features/games/templates/verse_builder/verse_builder.dart';
 import 'package:flutter_education_app/features/games/templates/word_fishing/word_fishing.dart';
+import 'package:flutter_education_app/features/games/templates/word_train/word_train.dart';
 
 /// The templates this app plays.
 final List<GameTemplate> kReadyTemplates = [
@@ -21,6 +22,7 @@ final List<GameTemplate> kReadyTemplates = [
   const CarRaceTemplate(),
   const BalloonPopTemplate(),
   const WordFishingTemplate(),
+  const WordTrainTemplate(),
   const SpaceRocketTemplate(),
   const DragPlaceTemplate(),
   const IrabHunterTemplate(),
