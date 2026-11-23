@@ -1,0 +1,81 @@
+{
+ "shape": {
+  "detail": {
+   "code": "level_locked",
+   "message": "أكمل المستوى السابق أولاً",
+   "message_en": "Finish the previous level first"
+  }
+ },
+ "bad_game_item": {
+  "detail": {
+   "code": "bad_game_item",
+   "message": "محتوى السؤال غير صالح",
+   "message_en": "The item content is not valid",
+   "field": "body.options[2].text",
+   "why": "duplicate"
+  }
+ },
+ "feature_disabled": {
+  "detail": {
+   "code": "feature_disabled",
+   "message": "هذه الميزة متوقفة حالياً",
+   "feature": "games.templates_v4"
+  }
+ },
+ "codes": {
+  "403": [
+   "feature_disabled",
+   "admin_required",
+   "level_locked",
+   "template_off",
+   "review_required",
+   "not_enrolled"
+  ],
+  "404": [
+   "game_not_found",
+   "challenge_not_found",
+   "cosmetic_not_found"
+  ],
+  "409": [
+   "no_items",
+   "age_fixed",
+   "cosmetic_owned",
+   "not_enough_coins",
+   "cosmetic_locked",
+   "challenge_closed",
+   "challenge_full",
+   "subject_key_taken",
+   "subject_in_use",
+   "not_pending",
+   "reciter_not_verified",
+   "default_required",
+   "cosmetic_key_taken",
+   "coupon_locked",
+   "coupon_wrong_course"
+  ],
+  "422": [
+   "not_a_v4_game",
+   "reciter_unknown",
+   "bad_ref",
+   "bad_age_band",
+   "cosmetic_not_owned",
+   "bad_game_item",
+   "bad_template_settings",
+   "bad_subject",
+   "bad_import_file",
+   "bad_timings",
+   "bad_item_source",
+   "template_not_sacred",
+   "champions_bad_scope",
+   "reward_bad_rule"
+  ],
+  "429": [
+   "too_many_attempts",
+   "too_many_challenges"
+  ],
+  "unranked_reason (new values)": [
+   "draw_invalid",
+   "preview"
+  ]
+ }
+}

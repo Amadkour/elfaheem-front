@@ -1,0 +1,482 @@
+{
+ "GET /admin/games/v4/hub?days=7": {
+  "response": {
+   "plays_today": 412,
+   "players_today": 96,
+   "completion_pct": 81,
+   "avg_score_pct": 74,
+   "pending_review": 37,
+   "items_total": 5210,
+   "levels_published": 188,
+   "by_day": [
+    {
+     "day": "2026-11-22",
+     "starts": 500,
+     "finishes": 405
+    }
+   ]
+  }
+ },
+ "PUT /admin/games/v4/templates/car_race": {
+  "request": {
+   "enabled": true,
+   "defaults": {
+    "timer_s": 90,
+    "lives": 3,
+    "speed": 2
+   },
+   "age_min": 6,
+   "age_max": 17,
+   "hidden_subject_ids": [
+    4
+   ]
+  },
+  "response": {
+   "key": "car_race",
+   "name_ar": "سباق السيارات",
+   "name_en": "Car Race",
+   "kinds": [
+    "choose",
+    "sequence"
+   ],
+   "accepts": [
+    "mcq",
+    "true_false",
+    "sequence"
+   ],
+   "sacred_allowed": true,
+   "enabled": true,
+   "defaults": {
+    "timer_s": 90,
+    "lives": 3,
+    "speed": 2
+   },
+   "code_defaults": {
+    "timer_s": 90,
+    "lives": 3,
+    "speed": 3,
+    "penalty": "soft",
+    "theme": "auto",
+    "music": true,
+    "hints": true,
+    "tilt": false,
+    "count": 8
+   },
+   "age_min": 6,
+   "age_max": 17,
+   "hidden_subject_ids": [
+    4
+   ],
+   "sort": 1,
+   "levels": 12
+  }
+ },
+ "POST /admin/games/v4/subjects": {
+  "request": {
+   "key": "history",
+   "name_ar": "التاريخ",
+   "name_en": "History",
+   "icon": "history_edu",
+   "color": "#8A5A2B",
+   "enabled": true,
+   "sacred": false,
+   "requires_review": false,
+   "edu_subject_ids": [
+    12
+   ],
+   "sort": 11
+  },
+  "response": {
+   "id": 11,
+   "key": "history",
+   "name_ar": "التاريخ",
+   "name_en": "History",
+   "icon": "history_edu",
+   "color": "#8A5A2B",
+   "enabled": true,
+   "sacred": false,
+   "requires_review": false,
+   "edu_subject_ids": [
+    12
+   ],
+   "sort": 11,
+   "items": 0,
+   "levels": 0
+  }
+ },
+ "POST /admin/games/v4/items": {
+  "request": {
+   "subject_id": 1,
+   "topic": "juz_30/112",
+   "difficulty": 1,
+   "age_min": 6,
+   "age_max": 30,
+   "lang": "ar",
+   "type": "sequence",
+   "prompt": {
+    "ar": "رتّب كلمات الآية",
+    "en": "Put the words of the ayah in order"
+   },
+   "media": {
+    "image": null,
+    "audio": {
+     "kind": "quran"
+    }
+   },
+   "body": {
+    "mode": "order",
+    "unit": "word",
+    "tokens": "@quran:112:1",
+    "distractors": 2
+   },
+   "source": {
+    "kind": "quran",
+    "ref": "112:1"
+   }
+  },
+  "response": {
+   "id": 812,
+   "rev": 1,
+   "subject_id": 1,
+   "subject": "quran",
+   "topic": "juz_30/112",
+   "difficulty": 1,
+   "age_min": 6,
+   "age_max": 30,
+   "lang": "ar",
+   "status": "pending_review",
+   "type": "sequence",
+   "prompt": {
+    "ar": "رتّب كلمات الآية",
+    "en": "Put the words of the ayah in order"
+   },
+   "media": {
+    "image": null,
+    "audio": {
+     "kind": "quran"
+    }
+   },
+   "body": {
+    "mode": "order",
+    "unit": "word",
+    "tokens": "@quran:112:1",
+    "distractors": 2
+   },
+   "source": {
+    "kind": "quran",
+    "ref": "112:1"
+   },
+   "explain": {
+    "ar": null,
+    "en": null
+   },
+   "tags": [],
+   "seed_key": null,
+   "edited_by_admin": false,
+   "reviewed_by": null,
+   "reviewed_at": null,
+   "review_note": null,
+   "created_at": "2026-11-23T10:00:00",
+   "updated_at": "2026-11-23T10:00:00",
+   "resolved": {
+    "id": 812,
+    "rev": 1,
+    "type": "sequence",
+    "sacred": true,
+    "prompt": {
+     "ar": "رتّب كلمات الآية",
+     "en": "Put the words of the ayah in order"
+    },
+    "media": {
+     "image": null,
+     "audio": [
+      {
+       "ref": "112:1",
+       "url": "https://everyayah.com/data/Alafasy_64kbps/112001.mp3",
+       "start_ms": 0,
+       "end_ms": null,
+       "reciter": "alafasy"
+      }
+     ]
+    },
+    "body": {
+     "mode": "order",
+     "unit": "word",
+     "tokens": [
+      "قُلْ",
+      "هُوَ",
+      "ٱللَّهُ",
+      "أَحَدٌ"
+     ],
+     "eq": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "blanks": [
+      0,
+      1,
+      2,
+      3
+     ],
+     "extra": [
+      "ٱلصَّمَدُ",
+      "كُفُوًا"
+     ],
+     "show": [
+      3,
+      5,
+      0,
+      2,
+      4,
+      1
+     ]
+    },
+    "explain": {
+     "ar": null,
+     "en": null
+    },
+    "source": {
+     "kind": "quran",
+     "ref": "112:1",
+     "label": {
+      "ar": "الإخلاص ١",
+      "en": "Al-Ikhlas 1"
+     }
+    },
+    "max": 4
+   }
+  }
+ },
+ "GET /admin/games/v4/items?subject_id=1&status=approved": {
+  "response": {
+   "items": [
+    {
+     "id": 812,
+     "rev": 1,
+     "subject_id": 1,
+     "subject": "quran",
+     "topic": "juz_30/112",
+     "difficulty": 1,
+     "age_min": 6,
+     "age_max": 30,
+     "lang": "ar",
+     "status": "approved",
+     "type": "sequence",
+     "prompt": {
+      "ar": "رتّب كلمات الآية",
+      "en": "Put the words of the ayah in order"
+     },
+     "media": {
+      "image": null,
+      "audio": {
+       "kind": "quran"
+      }
+     },
+     "body": {
+      "mode": "order",
+      "unit": "word",
+      "tokens": "@quran:112:1",
+      "distractors": 2
+     },
+     "source": {
+      "kind": "quran",
+      "ref": "112:1"
+     },
+     "explain": {
+      "ar": null,
+      "en": null
+     },
+     "tags": [],
+     "seed_key": "quran/112/1/order",
+     "edited_by_admin": false,
+     "reviewed_by": null,
+     "reviewed_at": null,
+     "review_note": null,
+     "created_at": "2026-11-23T10:00:00",
+     "updated_at": "2026-11-23T10:00:00"
+    }
+   ],
+   "total": 1,
+   "has_more": false
+  }
+ },
+ "POST /admin/games/v4/items/bulk": {
+  "request": {
+   "ids": [
+    812,
+    813,
+    900
+   ],
+   "set": {
+    "difficulty": 2,
+    "tags": [
+     "juz_30"
+    ]
+   }
+  },
+  "response": {
+   "changed": 2,
+   "skipped": [
+    {
+     "id": 900,
+     "why": "not_found"
+    }
+   ]
+  }
+ },
+ "POST /admin/games/v4/items/812/review": {
+  "request": {
+   "decision": "approve",
+   "note": "راجعته على المصحف"
+  },
+  "response": {
+   "id": 812,
+   "rev": 1,
+   "subject_id": 1,
+   "subject": "quran",
+   "topic": "juz_30/112",
+   "difficulty": 1,
+   "age_min": 6,
+   "age_max": 30,
+   "lang": "ar",
+   "status": "approved",
+   "type": "sequence",
+   "prompt": {
+    "ar": "رتّب كلمات الآية",
+    "en": "Put the words of the ayah in order"
+   },
+   "media": {
+    "image": null,
+    "audio": {
+     "kind": "quran"
+    }
+   },
+   "body": {
+    "mode": "order",
+    "unit": "word",
+    "tokens": "@quran:112:1",
+    "distractors": 2
+   },
+   "source": {
+    "kind": "quran",
+    "ref": "112:1"
+   },
+   "explain": {
+    "ar": null,
+    "en": null
+   },
+   "tags": [],
+   "seed_key": "quran/112/1/order",
+   "edited_by_admin": false,
+   "reviewed_by": 1,
+   "reviewed_at": "2026-11-23T10:00:00",
+   "review_note": "راجعته على المصحف",
+   "created_at": "2026-11-23T10:00:00",
+   "updated_at": "2026-11-23T10:00:00"
+  }
+ },
+ "POST /admin/games/v4/import?dry_run=true": {
+  "request_note": "multipart: file=questions.xlsx, subject_id=9",
+  "response": {
+   "rows": 120,
+   "ok": 117,
+   "errors": [
+    {
+     "row": 14,
+     "field": "body.answer",
+     "why": "out_of_range"
+    },
+    {
+     "row": 60,
+     "field": "prompt",
+     "why": "empty"
+    },
+    {
+     "row": 61,
+     "field": "body.options",
+     "why": "count_2_6"
+    }
+   ],
+   "created": 0,
+   "pending": 0
+  }
+ },
+ "import file columns": {
+  "common": [
+   "type",
+   "topic",
+   "difficulty",
+   "age_min",
+   "age_max",
+   "lang",
+   "prompt_ar",
+   "prompt_en",
+   "explain_ar",
+   "explain_en",
+   "source_note",
+   "tags",
+   "image"
+  ],
+  "mcq": [
+   "option_1",
+   "option_2",
+   "option_3",
+   "option_4",
+   "option_5",
+   "option_6",
+   "answer (1-based)"
+  ],
+  "true_false": [
+   "answer (true / false)"
+  ],
+  "select_all": [
+   "option_1 … option_8",
+   "answers (1-based, e.g. 1,3,5)"
+  ],
+  "sequence": [
+   "mode",
+   "unit",
+   "tokens (a | between tokens, or @quran:s:a / @hadith:collection:number)",
+   "blanks (1-based)",
+   "given",
+   "distractors",
+   "extra (| between)"
+  ],
+  "classify": [
+   "buckets (key=ar/en | …)",
+   "cases (key=ar/en | …)",
+   "tokens (text=bucket[:case] | …)"
+  ],
+  "pair": [
+   "pairs (a=b | …)"
+  ],
+  "fraction": [
+   "shape",
+   "n",
+   "d",
+   "op",
+   "a (n/d)",
+   "b (n/d)"
+  ],
+  "program": [
+   "w",
+   "h",
+   "start (x,y,dir)",
+   "goal (x,y)",
+   "walls (x,y | …)",
+   "cmds (F,L,R,LOOP)",
+   "max",
+   "par"
+  ],
+  "combine": [
+   "ingredients (key=ar/en | …)",
+   "answer (key,key)",
+   "fx",
+   "result_ar",
+   "result_en"
+  ],
+  "json": "an array of items exactly as POST /items takes them"
+ }
+}

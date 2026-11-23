@@ -8,6 +8,7 @@ import 'package:flutter_education_app/core/routing/app_routes.dart';
 import 'package:flutter_education_app/core/share/app_links.dart';
 import 'package:flutter_education_app/design/export/export_studio_api.dart' show exportLinkTokenFromRoute;
 import 'package:flutter_education_app/features/certificates/issue/cert_issue_logic.dart' show certVerifyTokenFromRoute;
+import 'package:flutter_education_app/features/games/learner/challenges.dart' show challengeCodeFromRoute;
 import 'package:flutter_education_app/features/guest/guest_live_api.dart' show guestLiveTokenFromRoute;
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +25,8 @@ final _cases = <String, (String, bool Function(String))>{
   '/onboard/': ('/onboard/AB12CD', (r) => AppRoutes.match(r)?.id == 'link.onboard' && AppRoutes.match(r)?.params['code'] == 'AB12CD'),
   '/s/': ('/s/meeting/7', (r) => AppLink.parse(r) == const AppLink.meeting(7)),
   '/app/live/': ('/app/live/tok-123', (r) => guestLiveTokenFromRoute(r) == 'tok-123'),
+  '/app/games/challenge/': ('/app/games/challenge/ABC123', (r) => challengeCodeFromRoute(r) == 'ABC123'),
+  '/app/games/c/': ('/app/games/c/ABC123', (r) => challengeCodeFromRoute(r) == 'ABC123'),
   '/app/s/': ('/app/s/meeting/7', (r) => AppLink.parse(r) == const AppLink.meeting(7)),
 };
 

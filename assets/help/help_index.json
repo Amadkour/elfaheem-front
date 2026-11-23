@@ -70,6 +70,38 @@
    "super_admin"
   ],
   [
+   "admin.games.bank",
+   "super_admin"
+  ],
+  [
+   "admin.games.cosmetics",
+   "super_admin"
+  ],
+  [
+   "admin.games.import",
+   "super_admin"
+  ],
+  [
+   "admin.games.levels",
+   "super_admin"
+  ],
+  [
+   "admin.games.reciters",
+   "super_admin"
+  ],
+  [
+   "admin.games.review",
+   "super_admin"
+  ],
+  [
+   "admin.games.timings",
+   "super_admin"
+  ],
+  [
+   "admin.games",
+   "super_admin"
+  ],
+  [
    "admin.help",
    "super_admin"
   ],
@@ -186,7 +218,27 @@
    "student"
   ],
   [
+   "games.challenges",
+   "student"
+  ],
+  [
    "games.champions",
+   "student"
+  ],
+  [
+   "games.home",
+   "student"
+  ],
+  [
+   "games.play",
+   "student"
+  ],
+  [
+   "games.settings",
+   "student"
+  ],
+  [
+   "games.wardrobe",
    "student"
   ],
   [

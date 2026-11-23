@@ -78,6 +78,7 @@ import 'package:flutter_education_app/features/teachers/teacher_review_admin.dar
 import 'package:flutter_education_app/features/teachers/teachers_api.dart' show kTeacherOnboardingFeature;
 import 'package:flutter_education_app/features/nahw/admin/nahw_admin_page.dart' show NahwAdminPage;
 import 'package:flutter_education_app/features/games/admin/games_admin_page.dart' show GamesAdminPage;
+import 'package:flutter_education_app/features/games/admin/v4/hub_page.dart' show GamesHubPage;
 import 'package:flutter_education_app/features/self_learning/admin/sl_admin_page.dart' show SlAdminPage;
 
 // ── model ────────────────────────────────────────────────────────────────────
@@ -452,6 +453,18 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           featureKey: 'admin.nahw',
           visible: isSuper,
           onTap: () => push(const NahwAdminPage()),
+        ),
+        // Games v4 hub: templates, subjects, content, review, levels, analytics + the classic editor (T64); kill switch admin.games_content
+        AdminService(
+          labelKey: 'admin_games_hub',
+          descKey: 'admin_games_hub_d',
+          label: t('مركز الألعاب', 'Games hub'),
+          desc: t('القوالب والمواد والأسئلة والمراجعة والمستويات والتحليلات', 'Templates, subjects, questions, review, levels and analytics'),
+          icon: Icons.sports_esports_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: 'admin.games_content',
+          visible: isSuper,
+          onTap: () => push(const GamesHubPage()),
         ),
         // educational games editor (Learning Hub v2 §3, D-1589); super admin only, kill switch admin.games
         AdminService(

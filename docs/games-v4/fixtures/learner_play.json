@@ -1,0 +1,606 @@
+{
+ "POST /games/31/draw": {
+  "request": {
+   "mode": "play"
+  },
+  "response": {
+   "draw_id": "9f1c2d3e-0000-4000-8000-000000000001",
+   "seed": 482913,
+   "kind": "round",
+   "sacred": true,
+   "template": "verse_builder",
+   "settings": {
+    "timer_s": 0,
+    "lives": 0,
+    "speed": 3,
+    "penalty": "soft",
+    "theme": "auto",
+    "music": true,
+    "hints": true,
+    "tilt": false,
+    "count": 8,
+    "calm": true
+   },
+   "items": [
+    {
+     "n": 0,
+     "id": 812,
+     "rev": 1,
+     "type": "sequence",
+     "sacred": true,
+     "prompt": {
+      "ar": "رتّب كلمات الآية",
+      "en": "Put the words of the ayah in order"
+     },
+     "media": {
+      "image": null,
+      "audio": [
+       {
+        "ref": "112:1",
+        "url": "https://everyayah.com/data/Alafasy_64kbps/112001.mp3",
+        "start_ms": 0,
+        "end_ms": null,
+        "reciter": "alafasy"
+       }
+      ]
+     },
+     "body": {
+      "mode": "order",
+      "unit": "word",
+      "tokens": [
+       "قُلْ",
+       "هُوَ",
+       "ٱللَّهُ",
+       "أَحَدٌ"
+      ],
+      "eq": [
+       0,
+       1,
+       2,
+       3
+      ],
+      "blanks": [
+       0,
+       1,
+       2,
+       3
+      ],
+      "extra": [
+       "ٱلصَّمَدُ",
+       "كُفُوًا"
+      ],
+      "show": [
+       3,
+       5,
+       0,
+       2,
+       4,
+       1
+      ]
+     },
+     "explain": {
+      "ar": null,
+      "en": null
+     },
+     "source": {
+      "kind": "quran",
+      "ref": "112:1",
+      "label": {
+       "ar": "الإخلاص ١",
+       "en": "Al-Ikhlas 1"
+      }
+     },
+     "max": 4
+    },
+    {
+     "n": 1,
+     "id": 813,
+     "rev": 1,
+     "type": "sequence",
+     "sacred": true,
+     "prompt": {
+      "ar": "أكمل الآية",
+      "en": "Complete the ayah"
+     },
+     "media": {
+      "image": null,
+      "audio": [
+       {
+        "ref": "112:2",
+        "url": "https://everyayah.com/data/Alafasy_64kbps/112002.mp3",
+        "start_ms": 0,
+        "end_ms": null,
+        "reciter": "alafasy"
+       }
+      ]
+     },
+     "body": {
+      "mode": "complete",
+      "unit": "word",
+      "tokens": [
+       "ٱللَّهُ",
+       "ٱلصَّمَدُ"
+      ],
+      "eq": [
+       0,
+       1
+      ],
+      "blanks": [
+       1
+      ],
+      "extra": [
+       "أَحَدٌ",
+       "كُفُوًا"
+      ],
+      "show": [
+       3,
+       1,
+       2
+      ]
+     },
+     "explain": {
+      "ar": null,
+      "en": null
+     },
+     "source": {
+      "kind": "quran",
+      "ref": "112:2",
+      "label": {
+       "ar": "الإخلاص ٢",
+       "en": "Al-Ikhlas 2"
+      }
+     },
+     "max": 1
+    }
+   ],
+   "max_score": 5,
+   "round_id": "5b0e2d3e-0000-4000-8000-000000000002",
+   "ranked_left": 2,
+   "reciter": {
+    "key": "alafasy",
+    "name_ar": "مشاري العفاسي",
+    "name_en": "Mishary Alafasy"
+   },
+   "issued_at": "2026-11-23T10:00:00"
+  }
+ },
+ "POST /games/44/draw": {
+  "request": {},
+  "response": {
+   "draw_id": "9f1c2d3e-0000-4000-8000-000000000003",
+   "seed": 77120,
+   "kind": "round",
+   "sacred": false,
+   "template": "challenge_quiz",
+   "settings": {
+    "timer_s": 120,
+    "lives": 0,
+    "speed": 3,
+    "penalty": "soft",
+    "theme": "auto",
+    "music": true,
+    "hints": true,
+    "tilt": false,
+    "count": 2
+   },
+   "items": [
+    {
+     "n": 0,
+     "id": 2001,
+     "rev": 2,
+     "type": "mcq",
+     "sacred": false,
+     "prompt": {
+      "ar": "ما عاصمة مصر؟",
+      "en": "What is the capital of Egypt?"
+     },
+     "media": {
+      "image": null,
+      "audio": null
+     },
+     "body": {
+      "options": [
+       {
+        "text": "القاهرة"
+       },
+       {
+        "text": "الرياض"
+       },
+       {
+        "text": "عمّان"
+       },
+       {
+        "text": "تونس"
+       }
+      ],
+      "answer": 0,
+      "show": [
+       2,
+       0,
+       3,
+       1
+      ]
+     },
+     "explain": {
+      "ar": "القاهرة عاصمة مصر",
+      "en": "Cairo is the capital of Egypt"
+     },
+     "source": {
+      "kind": "curated",
+      "note": "General knowledge bank v1"
+     },
+     "max": 1
+    },
+    {
+     "n": 1,
+     "id": 2002,
+     "rev": 1,
+     "type": "true_false",
+     "sacred": false,
+     "prompt": {
+      "ar": "الماء يغلي عند ١٠٠ درجة مئوية عند سطح البحر",
+      "en": "Water boils at 100 °C at sea level"
+     },
+     "media": {
+      "image": null,
+      "audio": null
+     },
+     "body": {
+      "answer": true
+     },
+     "explain": {
+      "ar": null,
+      "en": null
+     },
+     "source": {
+      "kind": "curated",
+      "note": "Science bank v1"
+     },
+     "max": 1
+    }
+   ],
+   "max_score": 2,
+   "round_id": null,
+   "ranked_left": 0,
+   "reciter": null,
+   "issued_at": "2026-11-23T10:00:00"
+  }
+ },
+ "GET /games/31/pool": {
+  "response": {
+   "draw_id": "9f1c2d3e-0000-4000-8000-000000000004",
+   "kind": "pool",
+   "seed": 9911,
+   "sacred": true,
+   "template": "verse_builder",
+   "settings": {
+    "timer_s": 0,
+    "lives": 0,
+    "speed": 3,
+    "penalty": "soft",
+    "theme": "auto",
+    "music": true,
+    "hints": true,
+    "tilt": false,
+    "count": 8,
+    "calm": true
+   },
+   "items": [
+    {
+     "n": 0,
+     "id": 812,
+     "rev": 1,
+     "type": "sequence",
+     "sacred": true,
+     "prompt": {
+      "ar": "رتّب كلمات الآية",
+      "en": "Put the words of the ayah in order"
+     },
+     "media": {
+      "image": null,
+      "audio": [
+       {
+        "ref": "112:1",
+        "url": "https://everyayah.com/data/Alafasy_64kbps/112001.mp3",
+        "start_ms": 0,
+        "end_ms": null,
+        "reciter": "alafasy"
+       }
+      ]
+     },
+     "body": {
+      "mode": "order",
+      "unit": "word",
+      "tokens": [
+       "قُلْ",
+       "هُوَ",
+       "ٱللَّهُ",
+       "أَحَدٌ"
+      ],
+      "eq": [
+       0,
+       1,
+       2,
+       3
+      ],
+      "blanks": [
+       0,
+       1,
+       2,
+       3
+      ],
+      "extra": [
+       "ٱلصَّمَدُ",
+       "كُفُوًا"
+      ],
+      "show": [
+       3,
+       5,
+       0,
+       2,
+       4,
+       1
+      ]
+     },
+     "explain": {
+      "ar": null,
+      "en": null
+     },
+     "source": {
+      "kind": "quran",
+      "ref": "112:1",
+      "label": {
+       "ar": "الإخلاص ١",
+       "en": "Al-Ikhlas 1"
+      }
+     },
+     "max": 4
+    },
+    {
+     "n": 1,
+     "id": 813,
+     "rev": 1,
+     "type": "sequence",
+     "sacred": true,
+     "prompt": {
+      "ar": "أكمل الآية",
+      "en": "Complete the ayah"
+     },
+     "media": {
+      "image": null,
+      "audio": [
+       {
+        "ref": "112:2",
+        "url": "https://everyayah.com/data/Alafasy_64kbps/112002.mp3",
+        "start_ms": 0,
+        "end_ms": null,
+        "reciter": "alafasy"
+       }
+      ]
+     },
+     "body": {
+      "mode": "complete",
+      "unit": "word",
+      "tokens": [
+       "ٱللَّهُ",
+       "ٱلصَّمَدُ"
+      ],
+      "eq": [
+       0,
+       1
+      ],
+      "blanks": [
+       1
+      ],
+      "extra": [
+       "أَحَدٌ",
+       "كُفُوًا"
+      ],
+      "show": [
+       3,
+       1,
+       2
+      ]
+     },
+     "explain": {
+      "ar": null,
+      "en": null
+     },
+     "source": {
+      "kind": "quran",
+      "ref": "112:2",
+      "label": {
+       "ar": "الإخلاص ٢",
+       "en": "Al-Ikhlas 2"
+      }
+     },
+     "max": 1
+    }
+   ],
+   "count": 8,
+   "reciter": {
+    "key": "alafasy",
+    "name_ar": "مشاري العفاسي",
+    "name_en": "Mishary Alafasy"
+   },
+   "expires_at": "2026-12-23T10:00:00"
+  }
+ },
+ "POST /games/31/plays": {
+  "request": {
+   "client_id": "a1b2c3d4-0001",
+   "score": 4,
+   "max_score": 5,
+   "duration_s": 15,
+   "played_at": "2026-11-23T10:00:00",
+   "draw_id": "9f1c2d3e-0000-4000-8000-000000000001",
+   "round_id": "5b0e2d3e-0000-4000-8000-000000000002",
+   "calm": true,
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      0,
+      0
+     ],
+     "ms": 3000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      2
+     ],
+     "ms": 5000
+    },
+    {
+     "i": 0,
+     "a": [
+      1,
+      1
+     ],
+     "ms": 6500
+    },
+    {
+     "i": 0,
+     "a": [
+      2,
+      2
+     ],
+     "ms": 8000
+    },
+    {
+     "i": 0,
+     "a": [
+      3,
+      3
+     ],
+     "ms": 11000
+    },
+    {
+     "i": 1,
+     "a": [
+      1,
+      1
+     ],
+     "ms": 15000
+    },
+    {
+     "i": -1,
+     "a": "done",
+     "ms": 15000
+    }
+   ]
+  },
+  "response": {
+   "play": {
+    "id": 9001,
+    "game_id": 31,
+    "client_id": "a1b2c3d4-0001",
+    "score": 4,
+    "max_score": 5,
+    "stars": 2,
+    "duration_s": 15,
+    "played_at": "2026-11-23T10:00:00"
+   },
+   "progress": {
+    "game_id": 31,
+    "best_score": 4,
+    "stars": 2,
+    "plays": 1,
+    "last_played_at": "2026-11-23T10:00:00",
+    "attempts": 1,
+    "best_duration_s": 15
+   },
+   "new_badges": [],
+   "points_awarded": 0,
+   "duplicate": false,
+   "ranked": true,
+   "rank_points": 80,
+   "rank_today": 4,
+   "unranked_reason": null,
+   "ranked_left": 2,
+   "coins_awarded": 6,
+   "coins": 60,
+   "unlocked": [
+    32
+   ],
+   "srs_due": 1
+  }
+ },
+ "POST /games/31/plays (offline pool)": {
+  "request": {
+   "client_id": "a1b2c3d4-0002",
+   "score": 1,
+   "max_score": 1,
+   "duration_s": 6,
+   "played_at": "2026-11-23T10:00:00",
+   "draw_id": "9f1c2d3e-0000-4000-8000-000000000004",
+   "picked": [
+    1
+   ],
+   "trace": [
+    {
+     "i": 0,
+     "a": [
+      1,
+      1
+     ],
+     "ms": 6000
+    }
+   ]
+  },
+  "response_note": "as above with ranked false, unranked_reason no_round"
+ },
+ "POST /games/31/plays (preview)": {
+  "response": {
+   "play": {
+    "id": null,
+    "game_id": 31,
+    "client_id": "a1b2c3d4-0001",
+    "score": 4,
+    "max_score": 5,
+    "stars": 2,
+    "duration_s": 15,
+    "played_at": "2026-11-23T10:00:00"
+   },
+   "progress": null,
+   "new_badges": [],
+   "points_awarded": 0,
+   "duplicate": false,
+   "ranked": false,
+   "rank_points": 0,
+   "rank_today": null,
+   "unranked_reason": "preview",
+   "ranked_left": 0,
+   "coins_awarded": 0,
+   "coins": 54,
+   "unlocked": [],
+   "srs_due": 0
+  }
+ },
+ "GET /games/44/ghost": {
+  "response": {
+   "ghost": {
+    "name": "Sara A.",
+    "score": 6,
+    "max_score": 8,
+    "duration_ms": 41000,
+    "events": [
+     [
+      4000,
+      1
+     ],
+     [
+      9000,
+      0
+     ],
+     [
+      15000,
+      1
+     ]
+    ]
+   }
+  }
+ }
+}

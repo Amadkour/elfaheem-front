@@ -1,0 +1,91 @@
+{
+ "coupon (locked)": {
+  "id": 9,
+  "code": "K7M2PQ4XTH",
+  "status": "locked",
+  "kind": "percent",
+  "value": 20.0,
+  "currency": "EGP",
+  "max_discount": 200.0,
+  "applies_to": "course",
+  "min_order": 0.0,
+  "source": "champion_daily",
+  "issued_at": "2026-11-23T10:00:00",
+  "expires_at": null,
+  "redeemed_at": null,
+  "target": null,
+  "unlock": {
+   "need": 3,
+   "have": 1,
+   "deadline": "2026-11-30T10:00:00",
+   "unlocked_at": null
+  },
+  "course_ids": null,
+  "valid_hours": 24
+ },
+ "coupon (unlocked)": {
+  "id": 9,
+  "code": "K7M2PQ4XTH",
+  "status": "active",
+  "kind": "percent",
+  "value": 20.0,
+  "currency": "EGP",
+  "max_discount": 200.0,
+  "applies_to": "course",
+  "min_order": 0.0,
+  "source": "champion_daily",
+  "issued_at": "2026-11-23T10:00:00",
+  "expires_at": "2026-11-26T09:30:00",
+  "redeemed_at": null,
+  "target": null,
+  "unlock": {
+   "need": 3,
+   "have": 3,
+   "deadline": "2026-11-30T10:00:00",
+   "unlocked_at": "2026-11-25T09:30:00"
+  },
+  "course_ids": null,
+  "valid_hours": 24
+ },
+ "rule (seeded, inactive)": {
+  "id": 12,
+  "trigger": "champion_daily",
+  "scope_kind": "age",
+  "rank_from": 1,
+  "rank_to": 1,
+  "threshold": null,
+  "window": null,
+  "reward_kind": "coupon_percent",
+  "value": 20.0,
+  "currency": "EGP",
+  "max_discount": 200.0,
+  "applies_to": "course",
+  "min_order": 0.0,
+  "valid_days": 30,
+  "valid_hours": 24,
+  "unlock_referrals": 3,
+  "unlock_days": 7,
+  "course_ids": null,
+  "per_user_month_cap": 4,
+  "month_budget": null,
+  "country_code": null,
+  "active": false,
+  "created_at": "2026-11-23T10:00:00",
+  "updated_at": "2026-11-23T10:00:00"
+ },
+ "LiveEvent rewards": [
+  {
+   "kind": "coupon_progress",
+   "coupon_id": 9,
+   "have": 2,
+   "need": 3
+  },
+  {
+   "kind": "coupon_unlocked",
+   "coupon_id": 9
+  }
+ ],
+ "GET /games/champions/standings?scope=age&key=10-13": {
+  "response_note": "the v3 standings object; scope_kind age, scope_key 10-13"
+ }
+}

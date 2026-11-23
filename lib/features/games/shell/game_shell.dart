@@ -24,9 +24,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/games/core/game_fx.dart';
+import 'package:flutter_education_app/features/games/core/game_session.dart';
+import 'package:flutter_education_app/features/games/core/game_template.dart' show MechanicKind;
 import 'package:flutter_education_app/features/games/shell/game_motion.dart';
 import 'package:flutter_education_app/features/games/shell/game_sounds.dart';
 import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
@@ -659,5 +663,232 @@ class GameStarsFill extends StatelessWidget {
       excludeSemantics: true,
       child: Row(mainAxisSize: MainAxisSize.min, children: [for (var i = 0; i < 3; i++) star(i)]),
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Games v4 (T26): the session shell
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// True when a template with these [kinds] can give a hint (a program or a combine round has nothing to point at).
+bool gameKindsGiveHints(Set<MechanicKind> kinds) => kinds.any((k) => const {
+      MechanicKind.choose,
+      MechanicKind.selectAll,
+      MechanicKind.sequence,
+      MechanicKind.classify,
+      MechanicKind.pair,
+      MechanicKind.fraction,
+    }.contains(k));
+
+/// The frame of a Games v4 round: lives, the timer, pause, quit and a hint button over the template's game, with the
+/// effects of [GameFxLayer] (sound through [GameFeedback]). A calm session (sacred content) shows no timer, no red,
+/// plays no buzzer and no explosion; a wrong answer is a quiet "try again" and costs nothing. The round ends through
+/// `session.finish` (`timer`, `lives`, `quit`, `done`: the end entry is the session's).
+class GameSessionShell extends StatefulWidget {
+  const GameSessionShell({
+    super.key,
+    required this.session,
+    required this.child,
+    this.kinds = const {},
+    this.onHint,
+    this.silent = false,
+    this.onScene,
+    this.fxUnder = false,
+    this.overlay = false,
+  });
+
+  /// The height of the bar: a template whose scene fills the frame ([overlay]) keeps its own header below it.
+  static const double barHeight = AppTouch.min + AppSpace.xs * 2;
+
+  /// The colour of the timer, the icons and the retry line when the bar sits on a painted scene
+  /// (`AgeTheme.onSky`); null = on the page background.
+  final Color? onScene;
+
+  /// True: the bar floats over [child], which fills the whole frame (a full-bleed scene: LaneRunner, FloatingTokens).
+  /// False: the bar takes its own row above [child] (the caller paints one backdrop behind both: StageFrame).
+  final bool overlay;
+
+  /// Draw the effects under [child] (a card layout whose cards are opaque), so particles never cover text.
+  final bool fxUnder;
+
+  final GameSession session;
+  final Widget child;
+
+  /// The template's mechanics ([GameTemplate.kinds]); decides whether the hint button is offered.
+  final Set<MechanicKind> kinds;
+
+  /// Called when the player asks for a hint; the template marks the next answer with `hint: true`.
+  final VoidCallback? onHint;
+  final bool silent;
+
+  @override
+  State<GameSessionShell> createState() => _GameSessionShellState();
+}
+
+class _GameSessionShellState extends State<GameSessionShell> with SingleTickerProviderStateMixin {
+  final GameFxController _fx = GameFxController();
+  late final GameFxSession _bind;
+  late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+  bool _retry = false;
+  int _hintsUsed = 0;
+
+  GameSession get s => widget.session;
+  bool get _calm => s.calm || s.sacred;
+
+  @override
+  void initState() {
+    super.initState();
+    _bind = GameFxSession(s, _fx);
+    _fx.addListener(_onFx);
+    s.addListener(_onSession);
+  }
+
+  void _onFx() {
+    final k = _fx.last?.kind;
+    if (k == null) return;
+    final sound = GameFeedback.instance;
+    switch (k) {
+      case GameFxKind.correct:
+      case GameFxKind.combo:
+        sound.answer(true, streak: _bind.streak, sacred: s.sacred, silent: widget.silent);
+      case GameFxKind.wrong:
+        if (_calm) {
+          // sacred: no buzzer, no shake; the gentle retry line only
+          setState(() => _retry = true);
+          Future<void>.delayed(const Duration(milliseconds: 1600), () {
+            if (mounted) setState(() => _retry = false);
+          });
+        } else {
+          sound.answer(false, sacred: false, silent: widget.silent);
+        }
+      case GameFxKind.finish:
+        if (!_calm) sound.play(GameSound.finish, sacred: s.sacred, silent: widget.silent);
+      case GameFxKind.levelUp:
+        sound.play(GameSound.champion, sacred: s.sacred, silent: widget.silent);
+    }
+  }
+
+  void _onSession() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    s.removeListener(_onSession);
+    _fx.removeListener(_onFx);
+    _bind.dispose();
+    _fx.dispose();
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  String _clock(int sec) => '${sec ~/ 60}:${(sec % 60).toString().padLeft(2, '0')}';
+
+  Future<void> _pause() async {
+    s.pause();
+    final quit = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(t('إيقاف مؤقت', 'Paused')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(t('إنهاء', 'Quit'))),
+          FilledButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t('متابعة', 'Resume'))),
+        ],
+      ),
+    );
+    s.resume();
+    if (quit == true) s.finish('quit');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final low = s.hasTimer && !_calm && s.remainingS <= 10 && !s.finished;
+    // the low-time pulse is a decorative loop: syncMotionLoop parks it under Reduce motion
+    if (low) {
+      syncMotionLoop(context, _pulse, reverse: true, rest: 0);
+    } else if (_pulse.isAnimating) {
+      _pulse.stop();
+    }
+    final c = context.colors;
+    final quiet = widget.onScene ?? c.textMedium;
+    final canHint = s.settings.hints && widget.onHint != null && gameKindsGiveHints(widget.kinds) && !s.finished;
+    Widget bar = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+      child: Row(children: [
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (s.hasLives)
+          Semantics(
+            label: t('الأرواح ${s.lives}', 'Lives ${s.lives}'),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              for (var i = 0; i < s.settings.lives; i++)
+                Icon(i < s.lives ? Icons.favorite_rounded : Icons.favorite_border_rounded, size: 20, color: c.danger),
+            ]),
+          ),
+        if (s.hasTimer && !_calm) ...[
+          if (s.hasLives) AppSpace.gapSm,
+          AnimatedBuilder(
+            animation: _pulse,
+            builder: (_, child) => Opacity(opacity: low ? 1 - 0.35 * _pulse.value : 1, child: child),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.timer_outlined, size: 18, color: low ? c.danger : quiet),
+              AppSpace.gapXs,
+              Text(_clock(s.remainingS),
+                  textDirection: TextDirection.ltr,
+                  style: AppType.label(context).copyWith(color: low ? c.danger : quiet, fontWeight: FontWeight.w700, fontFeatures: const [FontFeature.tabularFigures()])),
+            ]),
+          ),
+        ],
+            ]),
+          ),
+        ),
+        if (canHint)
+          IconButton(
+            tooltip: t('تلميح', 'Hint'),
+            onPressed: () {
+              setState(() => _hintsUsed++);
+              widget.onHint!();
+            },
+            icon: Badge(isLabelVisible: _hintsUsed > 0, label: Text('$_hintsUsed'), child: const Icon(Icons.lightbulb_outline_rounded)),
+          ),
+        IconButton(tooltip: t('إيقاف مؤقت', 'Pause'), onPressed: s.finished ? null : _pause, icon: const Icon(Icons.pause_rounded)),
+      ]),
+    );
+    final on = widget.onScene;
+    if (on != null) {
+      bar = Theme(
+        data: Theme.of(context).copyWith(
+          iconTheme: IconThemeData(color: on),
+          iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(foregroundColor: on, disabledForegroundColor: on.withValues(alpha: 0.4))),
+        ),
+        child: bar,
+      );
+    }
+    final retry = !_retry
+        ? null
+        : Semantics(
+            liveRegion: true,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
+              child: Text(t('حاول مرة أخرى', 'Try again'), style: AppType.label(context).copyWith(color: on ?? c.primary, fontWeight: FontWeight.w700)),
+            ),
+          );
+    final game = GameFxLayer(controller: _fx, calm: _calm, under: widget.fxUnder, child: widget.child);
+    if (widget.overlay) {
+      return Stack(children: [
+        Positioned.fill(child: game),
+        PositionedDirectional(
+          top: 0,
+          start: 0,
+          end: 0,
+          child: SafeArea(bottom: false, child: Column(mainAxisSize: MainAxisSize.min, children: [bar, ?retry])),
+        ),
+      ]);
+    }
+    return Column(children: [bar, ?retry, Expanded(child: game)]);
   }
 }

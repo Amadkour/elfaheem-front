@@ -7,6 +7,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/games/breaks/study_tracker.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 import 'package:flutter/services.dart';
 import 'package:floating/floating.dart';
@@ -1555,9 +1556,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       onPopInvokedWithResult: (popped, _) {
         if (!popped && _isFullScreen) _exitFullScreen();
       },
-      child: Scaffold(
-        backgroundColor: VodInk.letterbox,
-        body: _buildBody(),
+      child: StudyTracker(
+        courseId: int.tryParse(_progressProvider?.course.id.toString() ?? ''),
+        child: Scaffold(
+          backgroundColor: VodInk.letterbox,
+          body: _buildBody(),
+        ),
       ),
     );
   }

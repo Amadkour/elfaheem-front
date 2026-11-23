@@ -1,9 +1,11 @@
 // lib/features/games/games_progress.dart — stars, badges and games played (D-1346), for the student and for a parent.
 //
 //   GamesProgressPage      the student's page: GET /api/v1/me/games/progress (reloads after a saved play)
-//   ParentChildGamesPage   a parent's view of one linked child: GET /api/v1/parent/children/{id}/games
-//   GamesProgressView      the body with plain values (test/ui/games_layout_test.dart): totals, every badge (earned in
-//                          gold, the rest locked with what earns them), and each game's best score and stars
+//   ParentChildGamesPage   a parent's view of one linked child: GET /api/v1/parent/children/{id}/games (the light
+//                          summary, CONTRACT §8: time and games finished for 7 / 30 days; no game list, no badges)
+//   GamesProgressView      the student's body with plain values (test/ui/games_layout_test.dart): totals, every badge
+//                          (earned in gold, the rest locked with what earns them), and each game's best score and stars
+//   ParentGamesSummaryView the parent's body with plain values (test/ui/games_layout_test.dart)
 library;
 
 import 'package:flutter/material.dart';
@@ -14,8 +16,10 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/engines/game_engine.dart';
 import 'package:flutter_education_app/features/games/game_play_page.dart';
 import 'package:flutter_education_app/features/games/games_api.dart';
+import 'package:flutter_education_app/features/games/content/games_v4_api.dart';
 import 'package:flutter_education_app/features/games/games_models.dart';
 import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/features/parent/parent_consent.dart' show ParentConsentRequired, isConsentRequired;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -97,23 +101,27 @@ class _GamesProgressPageState extends State<GamesProgressPage> {
       );
 }
 
-/// A parent's view of one linked child's games.
+/// A parent's view of one linked child's games: the light summary only (CONTRACT §8). A 403 (the kill switch or the
+/// `parent_summary` setting off) hides the section; a minor without consent gets the consent state.
 class ParentChildGamesPage extends StatefulWidget {
   const ParentChildGamesPage({super.key, required this.studentId, required this.studentName, this.api});
 
   final int studentId;
   final String studentName;
-  final GamesApi? api;
+  final GamesV4Api? api;
 
   @override
   State<ParentChildGamesPage> createState() => _ParentChildGamesPageState();
 }
 
 class _ParentChildGamesPageState extends State<ParentChildGamesPage> {
-  late final GamesApi _api = widget.api ?? GamesApi();
-  GamesReport? _report;
+  late final GamesV4Api _api = widget.api ?? GamesV4Api();
+  V4ParentGames? _summary;
   String? _error;
   bool _loading = true;
+
+  /// 403 without `consent_required`: the summary is switched off, so the section is not drawn at all.
+  bool _hidden = false;
 
   /// 403 `consent_required`: a minor whose parent has not consented yet (D-1371).
   bool _consent = false;
@@ -129,19 +137,21 @@ class _ParentChildGamesPageState extends State<ParentChildGamesPage> {
       _loading = true;
       _error = null;
       _consent = false;
+      _hidden = false;
     });
     try {
-      final r = await _api.childProgress(widget.studentId);
+      final r = await _api.parentGames(widget.studentId);
       if (!mounted) return;
       setState(() {
-        _report = r;
+        _summary = r;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _consent = isConsentRequired(e);
-        _error = gamesErrorText(e);
+        _hidden = !_consent && e is ApiException && e.statusCode == 403;
+        _error = _hidden ? null : gamesErrorText(e);
         _loading = false;
       });
     }
@@ -158,16 +168,97 @@ class _ParentChildGamesPageState extends State<ParentChildGamesPage> {
         child: SafeArea(
           child: _consent
               ? ParentConsentRequired(studentId: widget.studentId, childName: widget.studentName, onGranted: _load)
-              : GamesProgressView(
-            report: _report,
-            loading: _loading,
-            error: _error,
-            onRetry: _load,
-            onRefresh: _load,
-            forParent: true,
-          ),
+              : _hidden
+                  ? const SizedBox.shrink()
+                  : ParentGamesSummaryView(summary: _summary, loading: _loading, error: _error, onRetry: _load, onRefresh: _load),
         ),
       );
+}
+
+/// The parent's light summary with plain values: time played and games finished, for the last 7 or 30 days.
+class ParentGamesSummaryView extends StatefulWidget {
+  const ParentGamesSummaryView({super.key, this.summary, this.loading = false, this.error, this.onRetry, this.onRefresh});
+
+  final V4ParentGames? summary;
+  final bool loading;
+  final String? error;
+  final VoidCallback? onRetry;
+  final Future<void> Function()? onRefresh;
+
+  @override
+  State<ParentGamesSummaryView> createState() => _ParentGamesSummaryViewState();
+}
+
+class _ParentGamesSummaryViewState extends State<ParentGamesSummaryView> {
+  /// 0 = the last 7 days, 1 = the last 30 days.
+  int _range = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.summary;
+    final Widget body;
+    if (widget.loading && s == null) {
+      body = const AppListSkeleton(items: 2, padding: EdgeInsets.zero);
+    } else if (widget.error != null && s == null) {
+      body = AppErrorState(message: widget.error, onRetry: widget.onRetry);
+    } else if (s == null) {
+      body = AppEmpty(
+        key: const ValueKey('games.summary.empty'),
+        icon: Icons.emoji_events_rounded,
+        title: t('لم يلعب أي لعبة بعد', 'No games played yet'),
+        message: t('تظهر هنا مدة اللعب والألعاب المنجزة.', 'Time played and games finished show here.'),
+      );
+    } else {
+      final long = _range == 1;
+      final minutes = long ? s.minutes30d : s.minutes7d;
+      final finished = long ? s.finished30d : s.finished7d;
+      body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppTabs(
+          key: const ValueKey('games.summary.range'),
+          items: [AppTabItem(t('آخر 7 أيام', 'Last 7 days')), AppTabItem(t('آخر 30 يومًا', 'Last 30 days'))],
+          index: _range,
+          onChanged: (i) => setState(() => _range = i),
+          expand: true,
+        ),
+        const SizedBox(height: AppSpace.sm),
+        AppGrid(
+          minTile: 150,
+          padding: EdgeInsets.zero,
+          children: [
+            AppStatTile(
+              key: const ValueKey('games.summary.time'),
+              icon: Icons.timer_rounded,
+              label: t('وقت اللعب', 'Time played'),
+              value: gamesMinutesText(minutes),
+            ),
+            AppStatTile(
+              key: const ValueKey('games.summary.finished'),
+              icon: Icons.extension_rounded,
+              label: t('ألعاب منجزة', 'Games finished'),
+              value: finished,
+            ),
+          ],
+        ),
+      ]);
+    }
+    final list = ListView(
+      padding: const EdgeInsets.all(AppSpace.md),
+      children: [body, const SizedBox(height: AppSpace.lg)],
+    );
+    return widget.onRefresh == null ? list : AppRefresh(onRefresh: widget.onRefresh!, child: list);
+  }
+}
+
+/// A play time in words: "50 min" · "2 h" · "1 h 20 min" (Arabic plural forms through countText).
+String gamesMinutesText(int minutes) {
+  final h = minutes ~/ 60, m = minutes % 60;
+  if (h == 0) {
+    return countText(m, ar1: 'دقيقة', ar2: 'دقيقتان', arFew: '$m دقائق', arMany: '$m دقيقة', en1: '1 min', en: '$m min');
+  }
+  if (m == 0) {
+    return countText(h, ar1: 'ساعة', ar2: 'ساعتان', arFew: '$h ساعات', arMany: '$h ساعة', en1: '1 h', en: '$h h');
+  }
+  return t('$h س $m د', '$h h $m min');
 }
 
 /// The progress body with plain values.
@@ -179,7 +270,6 @@ class GamesProgressView extends StatelessWidget {
     this.error,
     this.onRetry,
     this.onRefresh,
-    this.forParent = false,
   });
 
   final GamesReport? report;
@@ -187,9 +277,6 @@ class GamesProgressView extends StatelessWidget {
   final String? error;
   final VoidCallback? onRetry;
   final Future<void> Function()? onRefresh;
-
-  /// Words for a parent ("hasn't played yet") instead of the student's own ("Play your first game").
-  final bool forParent;
 
   @override
   Widget build(BuildContext context) {
@@ -204,10 +291,8 @@ class GamesProgressView extends StatelessWidget {
         AppEmpty(
           key: const ValueKey('games.progress.empty'),
           icon: Icons.emoji_events_rounded,
-          title: forParent ? t('لم يلعب أي لعبة بعد', 'No games played yet') : t('لم تلعب أي لعبة بعد', 'You have not played a game yet'),
-          message: forParent
-              ? t('تظهر هنا النجوم والشارات بعد أول لعبة.', 'Stars and badges show here after the first game.')
-              : t('العب لعبة من تبويب الألعاب لتجمع النجوم والشارات.', 'Play a game from the Games tab to collect stars and badges.'),
+          title: t('لم تلعب أي لعبة بعد', 'You have not played a game yet'),
+          message: t('العب لعبة من تبويب الألعاب لتجمع النجوم والشارات.', 'Play a game from the Games tab to collect stars and badges.'),
         ),
         if (r != null && r.badges.isNotEmpty) _Badges(badges: r.badges),
       ]);

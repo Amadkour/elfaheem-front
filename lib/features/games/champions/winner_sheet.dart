@@ -19,6 +19,10 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPopIn, appMotionOff;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/champions/champions_models.dart';
+import 'package:flutter_education_app/features/games/champions/trophy.dart';
+import 'package:flutter_education_app/features/games/core/age_theme.dart';
+import 'package:flutter_education_app/features/games/learner/coupon_unlock_card.dart';
+import 'package:flutter_education_app/main.dart' show navigatorKey;
 import 'package:flutter_education_app/features/rewards/rewards_api.dart';
 import 'package:flutter_education_app/features/rewards/rewards_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -173,7 +177,9 @@ class WinnerSheetBody extends StatelessWidget {
       AppSpace.gapXs,
       Text(winnerScopeLine(win), textAlign: TextAlign.center, style: AppType.meta(context)),
       AppSpace.gapMd,
-      if (issued)
+      if (issued && coupon != null && coupon!.hasUnlock && coupon!.status == 'locked')
+        CouponUnlockCard(coupon: coupon!)
+      else if (issued)
         AppCard(
           key: const ValueKey('champions.winner.coupon'),
           child: Row(children: [
@@ -196,8 +202,8 @@ class WinnerSheetBody extends StatelessWidget {
       if (issued && onUse != null)
         AppButton.primary(
           key: const ValueKey('champions.winner.use'),
-          label: t('استخدمها', 'Use it'),
-          icon: Icons.local_offer_rounded,
+          label: coupon?.status == 'locked' ? t('ادعُ أصدقاءك لفتحها', 'Invite friends to unlock it') : t('استخدمها', 'Use it'),
+          icon: coupon?.status == 'locked' ? Icons.person_add_alt_1_rounded : Icons.local_offer_rounded,
           expand: true,
           onPressed: onUse,
         ),
@@ -295,7 +301,19 @@ class _HomeChampionLineState extends State<HomeChampionLine> {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || ModalRoute.of(context)?.isCurrent == false) return;
-      showWinnerSheet(context, widget.win, onUse: widget.onUse, onHall: widget.onOpen);
+      // the trophy first (once per win), then the sheet with the reward
+      final w = widget.win;
+      WinnerSeen.mark(w.championId);
+      showWinTrophy(
+        context,
+        theme: AgeTheme.of(context, band: w.scope.scope == 'age' ? w.scope.key : null),
+        headline: winnerHeadline(w),
+        line: winnerScopeLine(w),
+        onContinue: () {
+          final ctx = navigatorKey.currentContext;
+          if (ctx != null && ctx.mounted) showWinnerSheet(ctx, w, onUse: widget.onUse, onHall: widget.onOpen);
+        },
+      );
     });
   }
 

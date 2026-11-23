@@ -18,6 +18,8 @@ import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter_education_app/design/app_states.dart' show AppNeedsConnection;
 import 'package:flutter_education_app/core/offline/sync/offline_reads.dart' show offlineBlocked;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/games/breaks/play_now_card.dart';
+import 'package:flutter_education_app/features/games/breaks/study_tracker.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:provider/provider.dart';
@@ -463,6 +465,8 @@ class _CoursePageState extends State<_CoursePage> {
 
     // ── spotlight ──────────────────────────────────────────────────────────
     final spotlight = <Widget>[
+      // Games v4 T75: a short game break (shown only when the super admin turns Play now on)
+      if (c.isEnrolled && courseId != null) PlayNowCard(courseId: courseId),
       // the plan ends within a week, or has ended: one calm line (D-210)
       if (accessBannerText(c.access) != null) CourseAccessBanner(access: c.access),
       CourseArchiveSpot(hub: _hub, onOpenTab: (id) => _openTab(p, id)),
@@ -605,7 +609,10 @@ class _CoursePageState extends State<_CoursePage> {
       ),
     ];
 
-    return SafeArea(
+    return StudyTracker(
+      courseId: courseId,
+      enabled: c.isEnrolled,
+      child: SafeArea(
       top: false,
       child: CourseSpace(
         hero: hero,
@@ -663,6 +670,7 @@ class _CoursePageState extends State<_CoursePage> {
         bottomBar: c.isEnrolled || archived
             ? null
             : CourseBuyBar(course: c, status: status, refusal: _quranRefusal, onEnroll: () => _openEnrollment(context, c)),
+      ),
       ),
     );
   }

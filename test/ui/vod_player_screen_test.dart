@@ -113,6 +113,7 @@ void main() {
       'POST /api/v1/sessions/4/materials/13/play': (_) => _refused('VIEW_LIMIT_REACHED'),
       'POST /api/v1/sessions/4/materials/14/play': (_) => _refused('DEVICE_MISMATCH'),
       'POST /api/v1/sessions/4/materials/15/play': (_) => _play(15),
+      'GET /api/v1/games/breaks/config': (_) => {'play_now': false, 'break_reminders': false, 'study_minutes': 0, 'break_max_minutes': 0},
       'GET /api/v1/devices/status': (_) => {'allowed': false, 'can_request': false},
     }, latency: const Duration(milliseconds: 100))
       ..install();

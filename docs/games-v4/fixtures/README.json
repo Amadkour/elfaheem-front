@@ -1,0 +1,4 @@
+{
+ "about": "Example payloads per route of CONTRACT.md. Keys are '<METHOD> <path>'; each value has request and/or response. Quran words here are illustrations of the shape only: tests and seeds read the text from the vendored Tanzil file, never from a fixture. No hadith text is written in any fixture.",
+ "files": "learner_play.json, learner_home.json, learner_extras.json, reciters.json, admin_content.json, admin_levels.json, admin_texts.json, admin_reports.json, rewards.json, errors.json, items_stored.json"
+}

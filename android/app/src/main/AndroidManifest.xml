@@ -136,6 +136,16 @@
                     android:host="alfheemacademy.com"
                     android:pathPrefix="/app/s/"
                     android:scheme="https" />
+                <!-- friends challenge links https://alfheemacademy.com/app/games/challenge/<code> (the server's link) and
+                     /app/games/c/<code> (the web app's own address bar), Games v4 -->
+                <data
+                    android:host="alfheemacademy.com"
+                    android:pathPrefix="/app/games/challenge/"
+                    android:scheme="https" />
+                <data
+                    android:host="alfheemacademy.com"
+                    android:pathPrefix="/app/games/c/"
+                    android:scheme="https" />
             </intent-filter>
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"

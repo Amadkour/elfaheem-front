@@ -8,6 +8,7 @@
 //   POST   /periods/{id}/void {reason}                                       → {id, status, recomputed_id}
 //   GET    /coupons?q&status&user_id · POST /coupons · POST /coupons/{id}/revoke {reason}
 //   GET    /referrals?status · POST /referrals/{id}/approve|reject {reason?}
+//   GET    /api/v1/admin/courses?search · /api/v1/admin/courses/{id}         the rule form's course picker
 //
 // Lists answer `{items, total, has_more}` with `skip` / `limit`. Datetimes are naive UTC.
 library;
@@ -67,6 +68,31 @@ class RewardsUser {
   }
 }
 
+/// A course in the rule form's picker: a row of `GET /api/v1/admin/courses` (`name_ar` / `name_en` /
+/// `teacher_name`).
+class RewardsCourse {
+  const RewardsCourse({required this.id, this.nameAr, this.nameEn, this.teacher});
+
+  final int id;
+  final String? nameAr, nameEn, teacher;
+
+  /// The name in the app language, the other one when it is missing ('' when the course has neither).
+  String get name {
+    final own = t(nameAr ?? '', nameEn ?? '').trim();
+    return own.isNotEmpty ? own : (nameAr ?? nameEn ?? '').trim();
+  }
+
+  factory RewardsCourse.fromJson(Object? v) {
+    final j = _m(v);
+    return RewardsCourse(
+      id: _i(j['id']),
+      nameAr: _sn(j['name_ar']) ?? _sn(j['name']),
+      nameEn: _sn(j['name_en']) ?? _sn(j['name']),
+      teacher: _sn(j['teacher_name']),
+    );
+  }
+}
+
 /// A reward rule (`reward_rules` row).
 class RewardRule {
   const RewardRule({
@@ -89,7 +115,17 @@ class RewardRule {
     this.countryCode,
     this.active = false,
     this.updatedAt,
+    this.validHours,
+    this.unlockReferrals,
+    this.unlockDays = 7,
+    this.courseIds,
   });
+
+  /// Games v4 (CONTRACT §11): hours of validity counted from the unlock (replaces [validDays]), the referrals that
+  /// unlock the coupon and the days to get them, and the courses it works on (null = any).
+  final int? validHours, unlockReferrals;
+  final int unlockDays;
+  final List<int>? courseIds;
 
   final int? id;
   final String trigger;
@@ -132,6 +168,10 @@ class RewardRule {
         countryCode: _sn(j['country_code']),
         active: j['active'] == true,
         updatedAt: rewardsUtc(j['updated_at']),
+        validHours: _in(j['valid_hours']),
+        unlockReferrals: _in(j['unlock_referrals']),
+        unlockDays: _i(j['unlock_days'], 7),
+        courseIds: j['course_ids'] is List ? [for (final x in j['course_ids'] as List) _i(x)] : null,
       );
 
   /// Every field (PUT replaces the rule).
@@ -153,6 +193,10 @@ class RewardRule {
         'month_budget': monthBudget,
         'country_code': countryCode,
         'active': active,
+        'valid_hours': validHours,
+        'unlock_referrals': rewardKind == 'points' ? null : unlockReferrals,
+        'unlock_days': unlockDays,
+        'course_ids': appliesTo == 'course' ? courseIds : null,
       };
 
   RewardRule copyWith({bool? active}) => RewardRule.fromJson({...toJson(), 'id': id, 'active': active ?? this.active});
@@ -248,8 +292,15 @@ class AdminCoupon {
     this.user,
     this.issueKey,
     this.revokeReason,
+    this.unlock,
+    this.courseIds,
+    this.validHours,
   });
 
+  /// A locked coupon waits for referrals: `{need, have, deadline, unlocked_at}` (Games v4, CONTRACT §11).
+  final Map<String, dynamic>? unlock;
+  final List<int>? courseIds;
+  final int? validHours;
   final int id;
   final String code, status, kind, appliesTo, source;
   final double value, minOrder;
@@ -275,6 +326,9 @@ class AdminCoupon {
         user: j['user'] is Map ? RewardsUser.fromJson(j['user']) : null,
         issueKey: _sn(j['issue_key']),
         revokeReason: _sn(j['revoke_reason']),
+        unlock: j['unlock'] is Map ? Map<String, dynamic>.from(j['unlock'] as Map) : null,
+        courseIds: j['course_ids'] is List ? [for (final x in j['course_ids'] as List) _i(x)] : null,
+        validHours: _in(j['valid_hours']),
       );
 }
 
@@ -437,4 +491,20 @@ class AdminRewardsApi {
 
   Future<AdminReferral> rejectReferral(int id, {String? reason}) async => AdminReferral.fromJson(
       _m(await _api.post('/api/v1/admin/rewards/referrals/$id/reject', body: {if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim()})));
+
+  /// The rule form's course search (the admin courses list: by name, teacher, access code or course number), live
+  /// courses only, by name.
+  Future<List<RewardsCourse>> searchCourses(String q, {int size = 30}) async => [
+        for (final e in _l(_m(await _api.get('/api/v1/admin/courses', queryParams: {
+          if (q.trim().isNotEmpty) 'search': q.trim(),
+          'archived': false,
+          'sort': 'name_asc',
+          'page': 1,
+          'size': size,
+        }))['items']))
+          RewardsCourse.fromJson(e),
+      ];
+
+  /// One course by id (the names of a saved rule's courses).
+  Future<RewardsCourse> course(int id) async => RewardsCourse.fromJson(await _api.get('/api/v1/admin/courses/$id'));
 }

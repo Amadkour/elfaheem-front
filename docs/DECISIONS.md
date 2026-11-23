@@ -6034,3 +6034,18 @@ Admin page (built by S2's fork; recorded here):
 - **The rule switch sends the whole rule on PUT.** The form clears the fields that do not belong to the chosen trigger.
 - **"Give a coupon" finds people through `GET /admin/points/users`.** With `admin.points` off, only a typed user id works.
 - **Reasons and confirms.** Revoke and void always ask for a reason, and void asks for a confirm first. Approve and reject take an optional reason. The Champions tab opens on weekly, Referrals on "To review".
+
+## D-1800 – D-1809 — Games v4: 17 templates, Quran content, age bands, rewards · 2026-11-23 · accepted
+
+Source: `docs/games-v4/PLAN.md` §8–§10 and the owner's choices. The backend half is in `../back/docs/DECISIONS.md` (same numbers).
+
+- **D-1800 Reciters.** Alafasy (default), Husary muallim (kids) and Mukhtar Al-Haj. The learner chooses the reciter in the games settings sheet (name plus a 3 s sample); an ayah with no audio for that reciter silently falls back to the default. Mukhtar Al-Haj is seeded disabled until his publisher's permission is `verified`.
+- **D-1801 Quran in the templates.** Car Race and Word Fishing may carry Quran and Hadith words, with calm skins (words on signs, pearls, no crash or loss effects). Platform Jumper and Balloon Pop never do, locked in code (`sacred` lock shared by every template, route and kill switch). Hadith gets the same calm rules as Quran.
+- **D-1802 Quran text and font.** Tanzil Uthmani with pause marks, one face (Amiri Quran, OFL), a render test over hard ayat guards the tashkeel. An ayah of more than 12 words is never a full word-ordering item; it is cut only at the stored waqf marks.
+- **D-1803 Locked friends coupon.** The champion's discount unlocks when the invited friends qualify (the existing referral rule and anti-fraud): 7 days to gather friends, then 24 hours to use it. Until then the coupon answers `coupon_locked`; for another course `coupon_wrong_course`.
+- **D-1804 Champions per age band.** The daily and weekly champion is per age group. A learner with an unknown band competes in the open group 18+. Age comes from `dob`, else from the grade, else it is asked once.
+- **D-1805 Ghost Duel is decided by the server.** The client sends its answers; the server grades the race against the ghost and says who won, so a modified app cannot win.
+- **D-1806 Characters are drawn in code.** No Rive or Lottie until real assets exist; every character is a `CustomPainter` over the game palette (`GamePalette`, never `Colors.white` / `Colors.black`).
+- **D-1807 Break reminders stay in the app.** Local notifications from the device only: no server push, no quiet-hours logic on the server.
+- **D-1808 Challenges need joining.** A challenge round without joining answers `challenge_not_joined` (bilingual text in `apiErrorText`); a challenge link opens from a cold start.
+- **D-1809 Screen readers drive lanes.** Car Race and Space Rocket expose one button per lane ("Lane 2 of 3: answer") over the canvas; activating it moves the car and commits that lane.

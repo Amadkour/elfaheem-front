@@ -58,4 +58,14 @@ void main() {
     expect(r('/notifications'), isNull);
     expect(r('/live/abc'), (route: '/live/abc', overHome: false));
   });
+
+  test('Games v4: a challenge link opens over the home signed in, and after the sign-in signed out', () {
+    for (final path in ['/games/challenge/AB12CD', '/games/c/AB12CD']) {
+      expect(resolveWebEntry(path, signedIn: true, home: '/dashboard', isLink: link), (route: path, overHome: true));
+      expect(resolveWebEntry(path, signedIn: false, home: '/dashboard', isLink: link), isNull); // the login first
+      expect(needsSignInFirst(path), isTrue, reason: path); // … then the challenge (SignInReturn)
+    }
+    expect(webEntryRouteFromUri(Uri.parse('https://alfheemacademy.com/app/games/challenge/AB12CD'), basePath: '/app/'),
+        '/games/challenge/AB12CD');
+  });
 }

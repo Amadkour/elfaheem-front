@@ -134,6 +134,8 @@ void main() {
       'coupon_not_applicable',
       'coupon_min_order',
       'coupon_currency',
+      'coupon_locked',
+      'coupon_wrong_course',
     ];
     for (final lang in ['ar', 'en']) {
       AppConfig.lang = lang;

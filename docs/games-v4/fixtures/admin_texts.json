@@ -1,0 +1,74 @@
+{
+ "GET /admin/games/v4/quran/surahs": {
+  "response": {
+   "items": [
+    {
+     "number": 112,
+     "name_ar": "الإخلاص",
+     "name_en": "Al-Ikhlas",
+     "ayat": 4,
+     "juz_from": 30,
+     "revelation": "meccan"
+    }
+   ]
+  }
+ },
+ "GET /admin/games/v4/quran/ayat?surah=112&from=1&to=1": {
+  "response": {
+   "items": [
+    {
+     "surah": 112,
+     "ayah": 1,
+     "text": "قُلْ هُوَ ٱللَّهُ أَحَدٌ",
+     "words": [
+      "قُلْ",
+      "هُوَ",
+      "ٱللَّهُ",
+      "أَحَدٌ"
+     ],
+     "word_count": 4,
+     "segments": [
+      [
+       0,
+       3
+      ]
+     ],
+     "audio": {
+      "ref": "112:1",
+      "url": "https://everyayah.com/data/Alafasy_64kbps/112001.mp3",
+      "start_ms": 0,
+      "end_ms": null,
+      "reciter": "alafasy"
+     }
+    }
+   ]
+  }
+ },
+ "GET /admin/games/v4/hadith?collection=muslim&max_words=25": {
+  "response": {
+   "items": [
+    {
+     "id": 9001,
+     "collection": "muslim",
+     "number": 55,
+     "book": 1,
+     "chapter": "(the section name from the dataset)",
+     "text_ar": "(the text from the dataset, never written in a fixture)",
+     "word_count": 21,
+     "matn_from": null,
+     "matn_to": null,
+     "grade": "sahih",
+     "grade_source": "Sahih Muslim"
+    }
+   ],
+   "total": 407,
+   "has_more": true
+  }
+ },
+ "PUT /admin/games/v4/hadith/9001/matn": {
+  "request": {
+   "matn_from": 9,
+   "matn_to": 21
+  }
+ }
+}

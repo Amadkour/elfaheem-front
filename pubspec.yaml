@@ -98,6 +98,9 @@ dependencies:
   local_auth: ^3.0.2
   pdfrx: 3.0.0
   audioplayers: ^6.8.1
+  flame: ^1.38.2
+  flutter_animate: ^4.5.2
+  sensors_plus: ^7.1.1
 dependency_overrides:
   # The fork rebased on upstream v1.6.2+hotfix.4 (the exact version livekit_client 2.13.1 pins, WebRTC-SDK
   # 150.7871.01 on Android and iOS), branch nextbrain/1.6.2-hotfix.4: the single-projection screen-share capturer,
@@ -195,6 +198,12 @@ flutter:
           weight: 600
         - asset: assets/fonts/editorial/PlayfairDisplay-700.ttf
           weight: 700
+    # the Quran text face (Games v4 decision 6): Amiri Quran Regular, unchanged (OFL, assets/fonts/quran/OFL.txt;
+    # NOT subset: the Quranic annotation signs must stay). One weight. Lazy on the web (prune_font_manifest.dart).
+    # Never named in a TextStyle: quranTextStyle (games/bases/stage_kit.dart) over AppFonts.quranFamily.
+    - family: uiQuran
+      fonts:
+        - asset: assets/fonts/quran/AmiriQuran-Regular.ttf
     - family: NotoSansSC
       fonts:
         - asset: assets/fonts/Tajawal-Regular.ttf

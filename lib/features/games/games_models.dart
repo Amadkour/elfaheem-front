@@ -304,7 +304,7 @@ class GameProgressRow {
   String get title => learnText(titleAr, titleEn);
 }
 
-/// `GET /me/games/progress` and `GET /parent/children/{id}/games`.
+/// `GET /me/games/progress` (the student's own report).
 class GamesReport {
   const GamesReport({this.games = const [], this.badges = const [], this.plays = 0, this.stars = 0, this.gamesPlayed = 0, this.perfect = 0});
 

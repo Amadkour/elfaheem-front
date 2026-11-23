@@ -1,0 +1,352 @@
+{
+ "about": "One stored item per type (the request body of POST /admin/games/v4/items without subject_id / topic / difficulty / ages).",
+ "items": [
+  {
+   "type": "mcq",
+   "prompt": {
+    "ar": "ما عاصمة مصر؟",
+    "en": "What is the capital of Egypt?"
+   },
+   "body": {
+    "options": [
+     {
+      "text": "القاهرة"
+     },
+     {
+      "text": "الرياض"
+     },
+     {
+      "text": "عمّان"
+     },
+     {
+      "text": "تونس"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "type": "true_false",
+   "prompt": {
+    "ar": "الشمس كوكب",
+    "en": "The Sun is a planet"
+   },
+   "body": {
+    "answer": false
+   }
+  },
+  {
+   "type": "select_all",
+   "prompt": {
+    "ar": "اختر الأعداد الزوجية",
+    "en": "Pick the even numbers"
+   },
+   "body": {
+    "options": [
+     {
+      "text": "2"
+     },
+     {
+      "text": "3"
+     },
+     {
+      "text": "4"
+     },
+     {
+      "text": "7"
+     },
+     {
+      "text": "8"
+     }
+    ],
+    "answers": [
+     0,
+     2,
+     4
+    ]
+   }
+  },
+  {
+   "type": "sequence",
+   "prompt": {
+    "ar": "رتّب كلمات الآية",
+    "en": "Put the words of the ayah in order"
+   },
+   "media": {
+    "image": null,
+    "audio": {
+     "kind": "quran"
+    }
+   },
+   "body": {
+    "mode": "order",
+    "unit": "word",
+    "tokens": "@quran:112:1",
+    "distractors": 2
+   },
+   "source": {
+    "kind": "quran",
+    "ref": "112:1"
+   }
+  },
+  {
+   "type": "sequence",
+   "prompt": {
+    "ar": "رتّب آيات السورة",
+    "en": "Put the ayat of the surah in order"
+   },
+   "body": {
+    "mode": "order",
+    "unit": "ayah",
+    "tokens": "@quran:112:1-4",
+    "distractors": 0
+   },
+   "source": {
+    "kind": "quran",
+    "ref": "112:1-4"
+   }
+  },
+  {
+   "type": "sequence",
+   "prompt": {
+    "ar": "ما الكلمة التالية؟",
+    "en": "What is the next word?"
+   },
+   "body": {
+    "mode": "next_word",
+    "unit": "word",
+    "tokens": [
+     "one",
+     "two",
+     "three",
+     "four",
+     "five"
+    ],
+    "given": 2,
+    "extra": [
+     "six",
+     "nine"
+    ]
+   }
+  },
+  {
+   "type": "classify",
+   "prompt": {
+    "ar": "أعرب الجملة",
+    "en": "Parse the sentence"
+   },
+   "body": {
+    "buckets": [
+     {
+      "key": "fail",
+      "label": {
+       "ar": "فاعل",
+       "en": "Subject"
+      }
+     },
+     {
+      "key": "fil",
+      "label": {
+       "ar": "فعل",
+       "en": "Verb"
+      }
+     },
+     {
+      "key": "maful",
+      "label": {
+       "ar": "مفعول به",
+       "en": "Object"
+      }
+     }
+    ],
+    "cases": [
+     {
+      "key": "raf",
+      "label": {
+       "ar": "رفع",
+       "en": "Raf"
+      }
+     },
+     {
+      "key": "nasb",
+      "label": {
+       "ar": "نصب",
+       "en": "Nasb"
+      }
+     },
+     {
+      "key": "jarr",
+      "label": {
+       "ar": "جرّ",
+       "en": "Jarr"
+      }
+     }
+    ],
+    "tokens": [
+     {
+      "text": "كتبَ",
+      "bucket": "fil",
+      "case": null
+     },
+     {
+      "text": "الطالبُ",
+      "bucket": "fail",
+      "case": "raf"
+     },
+     {
+      "text": "الدرسَ",
+      "bucket": "maful",
+      "case": "nasb"
+     }
+    ]
+   },
+   "source": {
+    "kind": "curated",
+    "note": "Nahw bank v1, sentence 12"
+   }
+  },
+  {
+   "type": "pair",
+   "prompt": {
+    "ar": "صِل كل دولة بعاصمتها",
+    "en": "Match each country to its capital"
+   },
+   "body": {
+    "pairs": [
+     {
+      "a": "Egypt",
+      "b": "Cairo"
+     },
+     {
+      "a": "Jordan",
+      "b": "Amman"
+     },
+     {
+      "a": "Tunisia",
+      "b": "Tunis"
+     }
+    ]
+   }
+  },
+  {
+   "type": "fraction",
+   "prompt": {
+    "ar": "لوّن ثلاثة أرباع البيتزا",
+    "en": "Colour three quarters of the pizza"
+   },
+   "body": {
+    "shape": "pizza",
+    "n": 3,
+    "d": 4
+   },
+   "source": {
+    "kind": "generated",
+    "ref": "math/frac/shape/7"
+   }
+  },
+  {
+   "type": "fraction",
+   "prompt": {
+    "ar": "اجمع الكسرين",
+    "en": "Add the fractions"
+   },
+   "body": {
+    "op": "add",
+    "a": [
+     1,
+     2
+    ],
+    "b": [
+     1,
+     3
+    ]
+   },
+   "source": {
+    "kind": "generated",
+    "ref": "math/frac/add/3"
+   }
+  },
+  {
+   "type": "program",
+   "prompt": {
+    "ar": "أوصل الروبوت إلى النجمة",
+    "en": "Guide the robot to the star"
+   },
+   "body": {
+    "w": 4,
+    "h": 4,
+    "start": [
+     0,
+     3,
+     0
+    ],
+    "goal": [
+     2,
+     1
+    ],
+    "walls": [
+     [
+      0,
+      1
+     ]
+    ],
+    "cmds": [
+     "F",
+     "L",
+     "R",
+     "LOOP"
+    ],
+    "max": 8,
+    "par": 6
+   }
+  },
+  {
+   "type": "combine",
+   "prompt": {
+    "ar": "اصنع بركاناً",
+    "en": "Make a volcano"
+   },
+   "body": {
+    "ingredients": [
+     {
+      "key": "vinegar",
+      "label": {
+       "ar": "خل",
+       "en": "Vinegar"
+      }
+     },
+     {
+      "key": "soda",
+      "label": {
+       "ar": "صودا",
+       "en": "Baking soda"
+      }
+     },
+     {
+      "key": "water",
+      "label": {
+       "ar": "ماء",
+       "en": "Water"
+      }
+     },
+     {
+      "key": "salt",
+      "label": {
+       "ar": "ملح",
+       "en": "Salt"
+      }
+     }
+    ],
+    "answer": [
+     "soda",
+     "vinegar"
+    ],
+    "fx": "fizz",
+    "result": {
+     "ar": "فوران",
+     "en": "Fizzing"
+    }
+   }
+  }
+ ]
+}

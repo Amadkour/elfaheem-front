@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppFill;
@@ -28,6 +29,7 @@ import 'package:flutter_education_app/design/app_share_sheet.dart' show showAppS
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/champions/champions_models.dart';
 import 'package:flutter_education_app/features/games/champions/winner_sheet.dart' show winnerScopeLine;
+import 'package:flutter_education_app/features/games/learner/coupon_unlock_card.dart';
 import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/features/rewards/rewards_api.dart';
 import 'package:flutter_education_app/features/rewards/rewards_models.dart';
@@ -65,6 +67,52 @@ Future<void> openCouponUse(Coupon c) async {
   navigatorKey.currentState?.popUntil((r) => r.isFirst);
   AppNavigator.requestedTab.value = null;
   AppNavigator.requestedTab.value = tab;
+}
+
+/// "Choose your course" on an unlocked coupon: any course goes where the coupon works (the catalogue); an allowed
+/// list opens a sheet of those courses, and the pick opens that course with the code copied.
+Future<void> chooseCouponCourse(BuildContext context, Coupon c) async {
+  final ids = c.courseIds;
+  if (ids == null || ids.isEmpty) return openCouponUse(c);
+  final titles = <int, String>{};
+  await Future.wait([
+    for (final id in ids)
+      Future(() async {
+        try {
+          final r = await ApiClient().get('/api/v1/courses/$id');
+          final name = r is Map ? '${r['title'] ?? r['name'] ?? ''}'.trim() : '';
+          titles[id] = name.isEmpty ? t('كورس رقم $id', 'Course #$id') : name;
+        } catch (_) {
+          titles[id] = t('كورس رقم $id', 'Course #$id');
+        }
+      }),
+  ]);
+  if (!context.mounted) return;
+  final pick = await showAppSheet<int>(
+    context,
+    (ctx) => AppSheetContent(
+      title: t('اختر كورسك', 'Choose your course'),
+      icon: Icons.school_rounded,
+      tone: AppTone.gold,
+      children: [
+        for (final id in ids) ...[
+          AppCard(
+            key: ValueKey('rewards.coupon.${c.id}.course.$id'),
+            onTap: () => Navigator.of(ctx).pop(id),
+            child: Row(children: [
+              Expanded(child: Text(titles[id] ?? '', style: AppType.row(ctx))),
+              const Icon(Icons.chevron_right_rounded),
+            ]),
+          ),
+          const SizedBox(height: AppSpace.xs),
+        ],
+      ],
+    ),
+  );
+  if (pick == null) return;
+  await Clipboard.setData(ClipboardData(text: c.code));
+  showAppNotice(t('نُسخ الرمز ${c.code}: الصقه عند الدفع', 'Code ${c.code} copied: paste it at checkout'));
+  await AppNavigator.openCourse(pick);
 }
 
 class MyRewardsPage extends StatefulWidget {
@@ -168,6 +216,7 @@ class _MyRewardsPageState extends State<MyRewardsPage> {
                 inviteKey: _inviteKey,
                 now: DateTime.now().toUtc(),
                 onUse: openCouponUse,
+                onChooseCourse: (c) => chooseCouponCourse(context, c),
                 onShare: (link) => showAppShareSheet(
                   context,
                   url: link,
@@ -194,6 +243,8 @@ class MyRewardsView extends StatelessWidget {
     this.inviteKey,
     this.onUse,
     this.onShare,
+    this.onChooseCourse,
+    this.fixedClock = false,
     this.onRefresh,
   });
 
@@ -205,6 +256,10 @@ class MyRewardsView extends StatelessWidget {
   final DateTime now;
   final ValueChanged<Coupon>? onUse;
   final ValueChanged<String>? onShare;
+  final ValueChanged<Coupon>? onChooseCourse;
+
+  /// Tests and goldens: [now] stays still (the page passes the real clock and the unlock cards tick on their own).
+  final bool fixedClock;
   final Future<void> Function()? onRefresh;
 
   @override
@@ -246,7 +301,15 @@ class MyRewardsView extends StatelessWidget {
           )
         else
           for (final c in current) ...[
-            CouponCard(coupon: c, now: now, focused: c.id == focusCouponId, onUse: onUse == null ? null : () => onUse!(c)),
+            if (c.hasUnlock && c.sectionAt(now) == 'active')
+              CouponUnlockCard(
+                coupon: c,
+                now: fixedClock ? now : null,
+                onShare: referral == null || onShare == null ? null : () => onShare!(referral.link),
+                onChooseCourse: onChooseCourse == null ? null : () => onChooseCourse!(c),
+              )
+            else
+              CouponCard(coupon: c, now: now, focused: c.id == focusCouponId, onUse: onUse == null ? null : () => onUse!(c)),
             const SizedBox(height: AppSpace.xs),
           ],
         const SizedBox(height: AppSpace.lg),

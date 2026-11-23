@@ -63,12 +63,19 @@ class Coupon {
     this.redeemedAt,
     this.targetType,
     this.targetId,
+    this.unlockNeed,
+    this.unlockHave = 0,
+    this.unlockDeadline,
+    this.unlockedAt,
+    this.courseIds,
+    this.validHours,
   });
 
   final int id;
   final String code;
 
-  /// `active` / `reserved` / `redeemed` / `expired` / `revoked`.
+  /// `locked` (Games v4, CONTRACT §11: waits for [unlockNeed] friends) / `active` / `reserved` / `redeemed` /
+  /// `expired` / `revoked`.
   final String status;
 
   /// `percent` / `fixed`.
@@ -85,12 +92,28 @@ class Coupon {
   final String? targetType;
   final int? targetId;
 
+  /// The unlock block of a daily-winner coupon: friends needed and counted, the deadline, when it unlocked.
+  final int? unlockNeed;
+  final int unlockHave;
+  final DateTime? unlockDeadline, unlockedAt;
+
+  /// The only courses it works for (null = any course); [validHours] = how long it lives after the unlock.
+  final List<int>? courseIds;
+  final int? validHours;
+
+  /// Waiting for friends and the deadline has not passed.
+  bool lockedAt(DateTime nowUtc) => status == 'locked' && (unlockDeadline == null || unlockDeadline!.isAfter(nowUtc));
+
+  /// Came from the unlock rule (locked now, or unlocked after waiting): drawn by `CouponUnlockCard`.
+  bool get hasUnlock => unlockNeed != null;
+
   /// Can still be used (the server decides; this only says what to offer).
   bool usableAt(DateTime nowUtc) => status == 'active' && (expiresAt == null || expiresAt!.isAfter(nowUtc));
 
   /// The section of My rewards: active · used · expired (revoked joins expired: it can no longer be used).
   String sectionAt(DateTime nowUtc) {
     if (status == 'redeemed' || status == 'reserved') return 'used';
+    if (status == 'locked') return lockedAt(nowUtc) ? 'active' : 'expired';
     if (status == 'active' && (expiresAt == null || expiresAt!.isAfter(nowUtc))) return 'active';
     return 'expired';
   }
@@ -142,6 +165,12 @@ class Coupon {
       redeemedAt: championsUtc(j['redeemed_at']),
       targetType: _s(target['type']),
       targetId: _iOrNull(target['id']),
+      unlockNeed: _iOrNull(_m(j['unlock'])['need']),
+      unlockHave: _i(_m(j['unlock'])['have']),
+      unlockDeadline: championsUtc(_m(j['unlock'])['deadline']),
+      unlockedAt: championsUtc(_m(j['unlock'])['unlocked_at']),
+      courseIds: j['course_ids'] is List ? [for (final x in j['course_ids'] as List) ?_iOrNull(x)] : null,
+      validHours: _iOrNull(j['valid_hours']),
     );
   }
 }
