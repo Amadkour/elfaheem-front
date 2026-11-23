@@ -19,6 +19,13 @@
 // no network, a guest or `games.champions` off = the round is played unranked exactly as before. A ranked play
 // carries `round_id` + the engine's trace and is posted directly (the outbox keeps it, unranked, only when the
 // network lost it); the finish view shows `rank_today` when the server ranked it.
+//
+// Games v4 (T48, CONTRACT §4, §8): a game whose `engine` is a registered template (templates/register_all.dart) opens
+// a level through POST /games/{id}/draw, plays it on a [GameSession] (core/game_session.dart) drawn by the template,
+// and posts the play with `draw_id` (+ `round_id`, `trace`). Offline (phones / desktop) a cached pool gives the round
+// (`LevelCache.pickRound`) and the play goes to the outbox with `picked`. The result adds coins and unlocked levels
+// (learner/result_sheet.dart). The right music starts with the round (none for sacred content). Every other game
+// plays exactly as before.
 library;
 
 import 'dart:math';
@@ -28,7 +35,17 @@ import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/core/offline/sync/outbox.dart';
 import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/games/content/games_v4_api.dart';
+import 'package:flutter_education_app/features/games/content/level_cache.dart';
+import 'package:flutter_education_app/features/games/core/game_audio.dart';
+import 'package:flutter_education_app/features/games/core/game_session.dart';
+import 'package:flutter_education_app/features/games/core/game_template.dart';
+import 'package:flutter_education_app/features/games/learner/result_sheet.dart';
+import 'package:flutter_education_app/features/games/templates/register_all.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/games/engines/game_engine.dart';
 import 'package:flutter_education_app/features/games/game_leaderboard.dart';
 import 'package:flutter_education_app/features/games/games_api.dart';
@@ -47,6 +64,7 @@ abstract final class GamesBus {
 
   /// Once: a play the outbox saved bumps [revision], whichever page is open.
   static void wireSync([SyncEngine? engine]) {
+    registerGameTemplates();
     if (_wired) return;
     _wired = true;
     (engine ?? SyncEngine.instance).listen(SyncKinds.gamePlay, (r) {
@@ -55,12 +73,89 @@ abstract final class GamesBus {
   }
 }
 
+/// A Games v4 play: the v3 fields plus `draw_id`, `picked` (an offline round) and `calm`; the answer also carries the
+/// coins and the unlocked levels.
+class V4PlaySubmission extends GamePlaySubmission {
+  V4PlaySubmission({
+    required super.gameId,
+    required super.score,
+    required super.maxScore,
+    super.durationS,
+    super.roundId,
+    super.trace,
+    this.drawId,
+    this.picked,
+    this.calm,
+    this.fromPool = false,
+    GamesV4Api? v4,
+  }) : _v4 = v4 ?? GamesV4Api();
+
+  /// An offline round (from the cached pool): it waits in the outbox; a live draw is posted straight to the plays
+  /// route, which knows `draw_id`.
+  final bool fromPool;
+
+  @override
+  bool get ranked => !fromPool;
+
+  final String? drawId;
+  final List<int>? picked;
+  final bool? calm;
+  final GamesV4Api _v4;
+
+  /// The coins / unlocked levels of the answer (null until it came).
+  V4PlayResult? v4Result;
+
+  @override
+  Map<String, dynamic> get payload => {
+        ...super.payload,
+        'draw_id': ?drawId,
+        'picked': ?picked,
+        'calm': ?calm,
+      };
+
+  @override
+  void settle(SyncResult r) {
+    super.settle(r);
+    if (r.accepted && r.entity != null) v4Result = V4PlayResult.fromJson(r.entity);
+  }
+
+  @override
+  Future<GamePlayResult?> send(GamesApi api) async {
+    if (result != null) return result;
+    try {
+      final r = await _v4.play(gameId,
+          clientId: clientId,
+          score: score,
+          maxScore: maxScore,
+          durationS: durationS ?? 0,
+          playedAt: playedAt.toUtc().toIso8601String(),
+          roundId: roundId,
+          trace: trace,
+          drawId: drawId,
+          picked: picked,
+          calm: calm);
+      v4Result = r;
+      error = null;
+      return result = r.play;
+    } catch (e) {
+      error = gamesErrorText(e);
+      settledWithError = gamesDefiniteAnswer(e) && (e as ApiException).statusCode < 500;
+      return null;
+    }
+  }
+}
+
 class GamePlayPage extends StatefulWidget {
-  const GamePlayPage({super.key, required this.game, this.api});
+  const GamePlayPage({super.key, required this.game, this.api, this.v4, this.cache, this.userId});
 
   /// The list's row (its `config` may be empty: then the page loads the game).
   final GameSummary game;
   final GamesApi? api;
+
+  /// Tests: the v4 routes, the offline pool cache and the signed-in user.
+  final GamesV4Api? v4;
+  final LevelCache? cache;
+  final int? userId;
 
   @override
   State<GamePlayPage> createState() => _GamePlayPageState();
@@ -68,6 +163,15 @@ class GamePlayPage extends StatefulWidget {
 
 class _GamePlayPageState extends State<GamePlayPage> {
   late final GamesApi _api = widget.api ?? GamesApi();
+  late final GamesV4Api _v4 = widget.v4 ?? GamesV4Api();
+  late final LevelCache _cache = widget.cache ?? LevelCache.instance;
+
+  /// A Games v4 level: its engine is a registered template. Its round comes from a draw, never from `config`.
+  late final bool _isV4 = _registered(widget.game.engine);
+  GameSession? _session;
+  List<int>? _picked, _itemIds;
+  bool _fromPool = false;
+  bool _unreadable = false;
   late GameSummary _game = widget.game;
   bool _loading = false;
   String? _error;
@@ -89,7 +193,9 @@ class _GamePlayPageState extends State<GamePlayPage> {
     super.initState();
     GamesBus.wireSync();
     SyncEngine.instance.listen(SyncKinds.gamePlay, _onSync);
-    if (_game.config.isEmpty) {
+    if (_isV4) {
+      _startV4();
+    } else if (_game.config.isEmpty) {
       _load();
     } else {
       _clock.start();
@@ -110,8 +216,115 @@ class _GamePlayPageState extends State<GamePlayPage> {
     } catch (_) {}
   }
 
+  int? _uid() {
+    if (widget.userId != null) return widget.userId;
+    try {
+      return context.read<MyAuthProvider>().currentUser?.id;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Opens a level: a draw online; when the network is gone, a round from the cached pool.
+  Future<void> _startV4() async {
+    _session?.dispose();
+    _session = null;
+    _picked = _itemIds = null;
+    _fromPool = false;
+    _unreadable = false;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    Map<String, dynamic>? draw;
+    try {
+      draw = (await _v4.draw(_game.id)).raw;
+    } catch (e) {
+      if (gamesDefiniteAnswer(e)) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = gamesErrorText(e);
+        });
+        return;
+      }
+      final uid = _uid();
+      final r = uid == null ? null : await _cache.pickRound(uid, _game.id);
+      if (r != null) {
+        draw = r.draw;
+        _picked = r.picked;
+        _itemIds = r.itemIds;
+        _fromPool = true;
+      }
+    }
+    if (!mounted) return;
+    if (draw == null) {
+      setState(() {
+        _loading = false;
+        _error = t('تحتاج هذه اللعبة إلى اتصال بالإنترنت.', 'This game needs an internet connection.');
+      });
+      return;
+    }
+    final session = GameSession.fromDraw(draw, onFinished: _v4Finished);
+    if (session == null) {
+      // an empty or unreadable draw: a newer server than this app
+      setState(() {
+        _loading = false;
+        _unreadable = true;
+      });
+      return;
+    }
+    _roundId = session.roundId;
+    _session = session;
+    setState(() => _loading = false);
+    _clock
+      ..reset()
+      ..start();
+    session.start();
+    _playMusic(session);
+  }
+
+  /// Kids or calm music; none for sacred content or when the level turns it off.
+  void _playMusic(GameSession s) {
+    final a = GameAudio.instance;
+    if (s.sacred || !s.settings.music) {
+      a.stopMusic();
+      return;
+    }
+    a.playMusic(s.calm || s.settings.theme == 'adult' ? GameMusic.calm : GameMusic.kids);
+  }
+
+  void _v4Finished(GameSession s) {
+    _clock.stop();
+    GameAudio.instance.stopMusic();
+    final sub = V4PlaySubmission(
+      gameId: _game.id,
+      score: s.score,
+      maxScore: s.maxScore,
+      durationS: _clock.elapsed.inSeconds,
+      roundId: _fromPool ? null : s.roundId,
+      trace: [for (final e in s.trace) Map<String, Object>.from(e)],
+      drawId: s.drawId,
+      picked: _picked,
+      calm: s.calm ? true : null,
+      fromPool: _fromPool,
+      v4: _v4,
+    );
+    if (mounted) setState(() => _sub = sub);
+    GameFeedback.instance.play(GameSound.finish);
+    if (_fromPool) {
+      final uid = _uid(), ids = _itemIds;
+      if (uid != null && ids != null) _cache.markPlayed(uid, _game.id, ids);
+    }
+    if (!GuestState.active) _send();
+  }
+
   @override
   void dispose() {
+    if (_isV4) {
+      _session?.dispose();
+      GameAudio.instance.stopMusic();
+    }
     SyncEngine.instance.unlisten(SyncKinds.gamePlay, _onSync);
     super.dispose();
   }
@@ -216,6 +429,10 @@ class _GamePlayPageState extends State<GamePlayPage> {
       _sub = null;
       _round++;
     });
+    if (_isV4) {
+      _startV4();
+      return;
+    }
     _clock
       ..reset()
       ..start();
@@ -258,6 +475,13 @@ class _GamePlayPageState extends State<GamePlayPage> {
           onRetryLoad: _load,
           onFinished: _finished,
           onTrace: (t) => _trace = t,
+          v4Session: _isV4 ? _session : null,
+          unreadable: _unreadable,
+          extras: switch (sub) {
+            V4PlaySubmission(v4Result: final r?) =>
+              GameResultExtras(coinsAwarded: r.coinsAwarded, coins: r.coins, unlocked: r.unlocked.length),
+            _ => null,
+          },
           rankToday: sub?.result?.ranked == true ? sub?.result?.rankToday : null,
           finished: sub == null
               ? null
@@ -307,7 +531,19 @@ class GamePlayView extends StatelessWidget {
     this.leaderboard,
     this.onTrace,
     this.rankToday,
+    this.v4Session,
+    this.unreadable = false,
+    this.extras,
   });
+
+  /// Games v4: the round in progress, drawn by the game's template (instead of the v1-v3 engine).
+  final GameSession? v4Session;
+
+  /// The draw was empty or unreadable: "needs a newer version".
+  final bool unreadable;
+
+  /// Drawn under the finish view (coins, unlocked levels).
+  final Widget? extras;
 
   final GameSummary game;
   final int round;
@@ -344,7 +580,7 @@ class GamePlayView extends StatelessWidget {
       body = const AppListSkeleton(items: 4, padding: EdgeInsets.zero);
     } else if (error != null) {
       body = AppErrorState(message: error, onRetry: onRetryLoad);
-    } else if (spec == null) {
+    } else if (spec == null || unreadable) {
       body = AppEmpty(
         icon: Icons.system_update_rounded,
         title: t('هذه اللعبة تحتاج إصداراً أحدث من التطبيق', 'This game needs a newer version of the app'),
@@ -372,8 +608,17 @@ class GamePlayView extends StatelessWidget {
           onDone: onDone,
           rankToday: rankToday,
         ),
+        ?extras,
         if (leaderboard != null) ...[const SizedBox(height: AppSpace.lg), leaderboard!],
       ]);
+    } else if (v4Session != null && kGameTemplates[game.engine] != null) {
+      // a template fills the space it is given (a Flame stage, a board): bounded height, never inside a ListView
+      return AppWidthBox(
+        width: AppWidth.content,
+        child: KeyedSubtree(key: ValueKey('games.v4.$round'), child: kGameTemplates[game.engine]!.build(v4Session!)),
+      );
+    } else if (v4Session == null && kGameTemplates.containsKey(game.engine)) {
+      body = const AppListSkeleton(items: 4, padding: EdgeInsets.zero);
     } else {
       body = GameRound(
         key: ValueKey('games.round.$round'),
@@ -394,4 +639,9 @@ class GamePlayView extends StatelessWidget {
       ),
     );
   }
+}
+
+bool _registered(String engine) {
+  registerGameTemplates();
+  return kGameTemplates.containsKey(engine);
 }
