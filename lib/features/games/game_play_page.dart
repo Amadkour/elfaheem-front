@@ -55,6 +55,7 @@ import 'package:flutter_education_app/features/games/games_api.dart';
 import 'package:flutter_education_app/features/games/games_models.dart';
 import 'package:flutter_education_app/features/games/shell/game_round.dart';
 import 'package:flutter_education_app/features/games/shell/game_shell.dart';
+import 'package:flutter_education_app/features/games/learner/challenges.dart' show challengeAFriend, gamesChallengesOff;
 import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -157,7 +158,10 @@ class V4PlaySubmission extends GamePlaySubmission {
 }
 
 class GamePlayPage extends StatefulWidget {
-  const GamePlayPage({super.key, required this.game, this.api, this.v4, this.cache, this.userId, this.review = false});
+  const GamePlayPage({super.key, required this.game, this.api, this.v4, this.cache, this.userId, this.review = false, this.challenge});
+
+  /// Games v4 (T76): a friends challenge's code: the draw takes the challenge's seed (same items, same order).
+  final String? challenge;
 
   /// Games v4 (T72): a spaced-repetition review round (`draw` with `mode: review`).
   final bool review;
@@ -254,7 +258,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
     });
     Map<String, dynamic>? draw;
     try {
-      draw = (await _v4.draw(_game.id, mode: widget.review ? 'review' : null)).raw;
+      draw = (await _v4.draw(_game.id, mode: widget.review ? 'review' : null, challenge: widget.challenge)).raw;
     } catch (e) {
       if (gamesDefiniteAnswer(e)) {
         if (!mounted) return;
@@ -518,6 +522,14 @@ class _GamePlayPageState extends State<GamePlayPage> {
               tooltip: t('لوحة المتصدرين', 'Leaderboard'),
               icon: const Icon(Icons.leaderboard_rounded),
               onPressed: _openBoard,
+            ),
+          // Games v4 T76: challenge a friend on this level (one seed for everyone); not on a challenge or review play
+          if (_isV4 && !GuestState.active && !widget.review && widget.challenge == null && !gamesChallengesOff())
+            IconButton(
+              key: const ValueKey('games.challenge.create'),
+              tooltip: t('تحدَّ صديقاً', 'Challenge a friend'),
+              icon: const Icon(Icons.emoji_events_rounded),
+              onPressed: () => challengeAFriend(context, _game.id, api: _v4),
             ),
         ],
       ),

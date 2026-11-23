@@ -111,6 +111,7 @@ import 'package:flutter_education_app/features/store/store_item_page.dart';
 import 'package:flutter_education_app/features/games/game_play_page.dart' show GamePlayPage;
 import 'package:flutter_education_app/features/games/games_models.dart' show GameSummary;
 import 'package:flutter_education_app/features/games/games_progress.dart' show GamesProgressPage;
+import 'package:flutter_education_app/features/games/learner/challenges.dart' show ChallengePage, gamesChallengesOff;
 import 'package:flutter_education_app/features/nahw/nahw_lesson_page.dart' show NahwLessonPage;
 import 'package:flutter_education_app/features/self_learning/sl_api.dart' show slOff;
 import 'package:flutter_education_app/features/self_learning/self_learning_page.dart' show SelfLearningPage;
@@ -919,6 +920,11 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
       // learning hub pages by URL / a reload (D-1350): the tab's kill switch still hides each one
       case 'games.progress':
         if (!AppConfig.disableList.contains('student_tab_games')) return _fade(const _Guard(child: GamesProgressPage()), settings);
+      case 'games.challenge': // a friends challenge by link (Games v4 T76)
+        final chCode = page!.params['code'];
+        if (chCode != null && !AppConfig.disableList.contains('student_tab_games') && !gamesChallengesOff()) {
+          return _fade(_Guard(child: ChallengePage(code: chCode)), settings);
+        }
       case 'games.play':
         final gameId = page!.intParam('gameId');
         if (gameId != null && !AppConfig.disableList.contains('student_tab_games')) {

@@ -63,6 +63,7 @@ import '../../features/admin/app_releases/app_releases_page.dart' show AppReleas
 import 'package:flutter_education_app/core/home/me_home.dart' show MeHomeService;
 import 'package:flutter_education_app/features/games/champions/champions_models.dart' show ChampionScope, HomeChampion, championsOff;
 import 'package:flutter_education_app/features/games/champions/champions_page.dart' show HallOfChampionsPage;
+import 'package:flutter_education_app/features/games/learner/challenges.dart' show ChallengePage, gamesChallengesOff;
 import 'package:flutter_education_app/features/games/champions/winner_sheet.dart' show WinnerSeen, showWinnerSheet;
 import 'package:flutter_education_app/features/rewards/my_rewards_page.dart' show MyRewardsPage;
 import 'package:flutter_education_app/features/rewards/rewards_models.dart' show rewardsOff;
@@ -456,6 +457,15 @@ class AppNavigator {
           return;
         }
         await nav.push(MaterialPageRoute(settings: const RouteSettings(name: '/learn/daily'), builder: (_) => const SelfLearningPage()));
+        return;
+      case 'games_challenge': // Games v4 T76: a friends challenge (`code` in the data) → its page
+        final chCode = '${data['code'] ?? (data['data'] is Map ? (data['data'] as Map)['code'] : null) ?? ''}';
+        if (chCode.isEmpty || chCode == 'null' || gamesChallengesOff()) {
+          await nav.pushNamed('/notifications');
+          return;
+        }
+        await nav.push(MaterialPageRoute(
+            settings: RouteSettings(name: '/games/c/$chCode'), builder: (_) => ChallengePage(code: chCode)));
         return;
       case 'games_champions': // Games v3 (CONTRACT §1): a champions period was computed → the Hall on that board;
         // my own win (the push names its champion id) → the winner sheet on top, once per win
