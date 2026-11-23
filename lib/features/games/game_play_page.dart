@@ -25,7 +25,15 @@
 // and posts the play with `draw_id` (+ `round_id`, `trace`). Offline (phones / desktop) a cached pool gives the round
 // (`LevelCache.pickRound`) and the play goes to the outbox with `picked`. The result adds coins and unlocked levels
 // (learner/result_sheet.dart). The right music starts with the round (none for sacred content). Every other game
-// plays exactly as before.
+// plays exactly as before. Whether a game is v4 is read from the LOADED game: a page opened by URL starts from a stub
+// with an empty engine, loads the game, then draws. A challenge draw that fails never falls back to the pool (the
+// pool has no challenge seed): it shows the error with Retry.
+//
+// Offline pools (G3, CONTRACT §4 `pool`, phones / desktop only: `LevelCache.enabled` is `kDownloadsAvailable`): after
+// an online draw the level's pool is fetched and stored in the background when it is missing (once per level per
+// half hour, never for a guest, a review or a challenge); when it is stored for another reciter,
+// `LevelCache.refreshForReciter` re-resolves the stored levels' audio (Wi-Fi only). The app bar's "Download for
+// offline" button does the same on demand with its progress, and shows "Saved offline" once the pool is kept.
 library;
 
 import 'dart:math';
@@ -185,8 +193,9 @@ class _GamePlayPageState extends State<GamePlayPage> {
   late final GamesV4Api _v4 = widget.v4 ?? GamesV4Api();
   late final LevelCache _cache = widget.cache ?? LevelCache.instance;
 
-  /// A Games v4 level: its engine is a registered template. Its round comes from a draw, never from `config`.
-  late final bool _isV4 = _registered(widget.game.engine);
+  /// A Games v4 level: its engine is a registered template. Its round comes from a draw, never from `config`. Read
+  /// from the loaded game, never frozen from the stub a URL opens with (engine '').
+  bool get _isV4 => _registered(_game.engine);
   GameSession? _session;
   int? _ghostPlayId;
   List<int>? _picked, _itemIds;
@@ -210,6 +219,16 @@ class _GamePlayPageState extends State<GamePlayPage> {
 
   /// The learner's games profile, for a template that draws from it (Constellation's "my sky"); null = not loaded.
   V4Profile? _profile;
+
+  /// The level's pool is kept on this device; a pool download's progress (done, total files), null = none running.
+  bool _savedOffline = false;
+  (int, int)? _dl;
+
+  /// One pool download per user and level at a time, and a quiet one at most once per [_poolGap] (no retry storm).
+  static final Map<String, Future<void>> _poolJobs = {};
+  static final Map<String, DateTime> _poolTried = {};
+  static const Duration _poolGap = Duration(minutes: 30);
+  static bool _refreshing = false;
 
   @override
   void initState() {
@@ -268,7 +287,8 @@ class _GamePlayPageState extends State<GamePlayPage> {
     try {
       draw = (await _v4.draw(_game.id, mode: widget.review ? 'review' : null, challenge: widget.challenge)).raw;
     } catch (e) {
-      if (gamesDefiniteAnswer(e)) {
+      // a challenge draw never falls back to the pool: the pool has no challenge seed (Retry draws again)
+      if (gamesDefiniteAnswer(e) || widget.challenge != null) {
         if (!mounted) return;
         setState(() {
           _loading = false;
@@ -286,6 +306,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
       }
     }
     if (!mounted) return;
+    if (_fromPool) _savedOffline = true;
     if (draw == null) {
       setState(() {
         _loading = false;
@@ -324,6 +345,101 @@ class _GamePlayPageState extends State<GamePlayPage> {
       ..start();
     session.start();
     _playMusic(session);
+    if (!_fromPool) _keepPoolFresh(session.reciter?['key'] as String?);
+  }
+
+  /// Offline pools are kept only on phones / desktop, for a signed-in learner's normal draws.
+  bool get _offlineOk => _cache.enabled && _isV4 && !GuestState.active && !widget.review && widget.challenge == null;
+
+  /// After an online draw: fetch the level's pool when the device has none (quiet), or bring the stored pools to the
+  /// learner's reciter when it changed (`staleFor` / `refreshForReciter`, Wi-Fi only).
+  Future<void> _keepPoolFresh(String? reciter) async {
+    final uid = _uid();
+    if (!_offlineOk || uid == null) return;
+    try {
+      final has = await _cache.hasPool(uid, _game.id);
+      if (mounted && has != _savedOffline) setState(() => _savedOffline = has);
+      if (!has) {
+        await _fetchPool(uid);
+      } else if (reciter != null && !_refreshing && (await _cache.staleFor(uid, reciter)).isNotEmpty) {
+        _refreshing = true;
+        try {
+          await _cache.refreshForReciter(uid, reciter);
+        } finally {
+          _refreshing = false;
+        }
+      }
+    } catch (e) {
+      debugPrint('games: offline pool of ${_game.id}: $e');
+    }
+  }
+
+  /// GET /pool and keep it with its audio. A quiet call ([manual] false) is skipped when one ran in the last
+  /// [_poolGap]; a running download is joined, never started twice.
+  Future<void> _fetchPool(int uid, {bool manual = false}) {
+    final gameId = _game.id;
+    final key = '$uid:$gameId';
+    final running = _poolJobs[key];
+    if (running != null) return running;
+    final last = _poolTried[key];
+    if (!manual && last != null && DateTime.now().difference(last) < _poolGap) return Future.value();
+    _poolTried[key] = DateTime.now();
+    Future<void> job() async {
+      final pool = await _v4.pool(gameId);
+      await _cache.storePool(uid, gameId, pool, onProgress: (done, total) {
+        if (mounted && _dl != null && _game.id == gameId) setState(() => _dl = (done, total));
+      });
+      final has = await _cache.hasPool(uid, gameId);
+      if (mounted && _game.id == gameId) setState(() => _savedOffline = has);
+    }
+
+    return _poolJobs[key] = job().whenComplete(() => _poolJobs.remove(key));
+  }
+
+  /// The app bar's "Download for offline".
+  Future<void> _downloadOffline() async {
+    final uid = _uid();
+    if (uid == null || _dl != null) return;
+    setState(() => _dl = (0, 0));
+    try {
+      await _fetchPool(uid, manual: true);
+      if (!mounted) return;
+      setState(() => _dl = null);
+      showAppNotice(
+          _savedOffline
+              ? t('حُفظ المستوى، يمكنك لعبه دون اتصال', 'Saved: you can play this level offline')
+              : t('تعذّر حفظ المستوى', 'Could not save this level'),
+          error: !_savedOffline);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _dl = null);
+      showAppNotice(gamesErrorText(e), error: true);
+    }
+  }
+
+  Widget _offlineButton() {
+    final dl = _dl;
+    final String label = dl != null
+        ? t('جارٍ الحفظ للعب دون اتصال', 'Saving for offline play')
+        : _savedOffline
+            ? t('محفوظ للعب دون اتصال', 'Saved offline')
+            : t('تنزيل للعب دون اتصال', 'Download for offline');
+    return IconButton(
+      key: const ValueKey('games.v4.offline'),
+      tooltip: label,
+      onPressed: dl != null
+          ? null
+          : _savedOffline
+              ? () => showAppNotice(
+                  t('هذا المستوى محفوظ على جهازك ويُلعب دون اتصال', 'This level is saved on your device and plays offline'))
+              : _downloadOffline,
+      icon: dl != null
+          ? SizedBox.square(
+              dimension: AppIconSize.md,
+              child: CircularProgressIndicator(strokeWidth: 2.2, value: dl.$2 == 0 ? null : dl.$1 / dl.$2),
+            )
+          : Icon(_savedOffline ? Icons.offline_pin_rounded : Icons.download_for_offline_outlined, semanticLabel: label),
+    );
   }
 
   /// Kids or calm music; none for sacred content or when the level turns it off.
@@ -398,6 +514,11 @@ class _GamePlayPageState extends State<GamePlayPage> {
         _game = g.withProgress(g.progress ?? _game.progress);
         _loading = false;
       });
+      // opened by URL: the stub had no engine; a v4 level draws now
+      if (_isV4) {
+        _startV4();
+        return;
+      }
       _clock
         ..reset()
         ..start();
@@ -410,6 +531,9 @@ class _GamePlayPageState extends State<GamePlayPage> {
       });
     }
   }
+
+  /// Retry after a failed load or draw: a v4 level draws again; anything else loads the game again.
+  void _retryLoad() => _isV4 ? _startV4() : _load();
 
   void _finished(int score, int max) {
     _clock.stop();
@@ -544,6 +668,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
               icon: const Icon(Icons.emoji_events_rounded),
               onPressed: () => challengeAFriend(context, _game.id, api: _v4),
             ),
+          if (_offlineOk) _offlineButton(),
         ],
       ),
       child: SafeArea(
@@ -552,7 +677,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
           round: _round,
           loading: _loading,
           error: _error,
-          onRetryLoad: _load,
+          onRetryLoad: _retryLoad,
           onFinished: _finished,
           onTrace: (t) => _trace = t,
           v4Session: _isV4 ? _session : null,
@@ -704,7 +829,8 @@ class GamePlayView extends StatelessWidget {
         child: KeyedSubtree(key: ValueKey('games.v4.$round'), child: templateWithProfile(kGameTemplates[game.engine]!, profile).build(v4Session!)),
       );
     } else if (v4Session == null && kGameTemplates.containsKey(game.engine)) {
-      body = const AppListSkeleton(items: 4, padding: EdgeInsets.zero);
+      // a v4 level with no round, not loading and no error: never an endless skeleton, offer to start again
+      body = AppErrorState(message: t('تعذّر بدء اللعبة.', 'The game could not start.'), onRetry: onRetryLoad);
     } else {
       body = GameRound(
         key: ValueKey('games.round.$round'),

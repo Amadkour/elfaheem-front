@@ -1,10 +1,18 @@
 // Games v4 T48: the play page opens a level through /draw and draws its template; an unreadable draw shows "needs a
 // newer version"; the registry holds the four ready templates; the result extras fit every size.
+// G3: Retry after a failed draw draws again; a page opened by URL (empty engine) loads the game and draws; an online
+// draw stores the level's pool; offline, a stored pool plays and the play waits in the outbox with `picked`.
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/offline/sync/local_db.dart';
+import 'package:flutter_education_app/core/offline/sync/outbox.dart';
+import 'package:flutter_education_app/core/offline/sync/sync_status.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/games/content/level_cache.dart';
 import 'package:flutter_education_app/features/games/content/games_v4_api.dart';
 import 'package:flutter_education_app/features/games/core/game_template.dart';
 import 'package:flutter_education_app/features/games/game_play_page.dart';
@@ -24,11 +32,24 @@ void main() {
   final draw = Map<String, dynamic>.from((play['POST /games/31/draw'] as Map)['response'] as Map);
   FakeApi? fake;
 
+  final poolAnswer = Map<String, dynamic>.from((play['GET /games/31/pool'] as Map)['response'] as Map);
+  // no audio files in these tests (the file cache has its own tests)
+  for (final it in poolAnswer['items'] as List) {
+    (it as Map)['media'] = {'image': null, 'audio': null};
+  }
   GameSummary game() => const GameSummary(id: 31, key: 'vb', engine: 'verse_builder', titleAr: 'لعبة', titleEn: 'Game');
+  LevelCache memCache() =>
+      LevelCache(store: MemoryLevelStore(), enabled: true, now: () => DateTime.utc(2026, 11, 23, 12), onWifi: () async => false);
+
+  Future<void> settle(WidgetTester tester) async {
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+  }
 
   Future<void> pumpPage(WidgetTester tester, Object? answer) async {
     fake = FakeApi({'POST /api/v1/games/31/draw': (_) => answer}, latency: Duration.zero)..install();
-    await tester.pumpWidget(layoutHost(GamePlayPage(game: game(), userId: 1), scaffold: false));
+    await tester.pumpWidget(layoutHost(GamePlayPage(game: game(), userId: 1, cache: memCache()), scaffold: false));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
   }
@@ -62,7 +83,7 @@ void main() {
     }, latency: Duration.zero)
       ..install();
     const g = GameSummary(id: 31, key: 'cn', engine: 'constellation', titleAr: 'كوكبة', titleEn: 'Constellation');
-    await tester.pumpWidget(layoutHost(GamePlayPage(game: g, userId: 1), scaffold: false));
+    await tester.pumpWidget(layoutHost(GamePlayPage(game: g, userId: 1, cache: memCache()), scaffold: false));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     expect(tester.widget<ConstellationView>(find.byType(ConstellationView)).skyBase, 2);
@@ -104,6 +125,84 @@ void main() {
     expect(sub.payload['trace'], hasLength(1));
     expect(sub.payload['calm'], true);
     expect(sub.payload['game_id'], 31);
+  });
+
+  testWidgets('G3: Retry after a failed draw draws again', (tester) async {
+    var n = 0;
+    fake = FakeApi({
+      'POST /api/v1/games/31/draw': (_) => n++ == 0
+          ? const FakeResponse(409, {
+              'detail': {'code': 'no_items'},
+            })
+          : draw,
+    }, latency: Duration.zero)
+      ..install();
+    await tester.pumpWidget(layoutHost(GamePlayPage(game: game(), userId: 4, cache: memCache()), scaffold: false));
+    await settle(tester);
+    expect(find.byType(VerseBuilderGame), findsNothing);
+    tester.widget<AppErrorState>(find.byType(AppErrorState)).onRetry!();
+    await settle(tester);
+    expect(find.byType(VerseBuilderGame), findsOneWidget);
+    expect(fake!.calls.where((c) => c.key.startsWith('POST /api/v1/games/31/draw')), hasLength(2));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('G3: a page opened by URL (empty engine) loads the game, then draws and plays', (tester) async {
+    fake = FakeApi({
+      'GET /api/v1/games/31': (_) =>
+          {'id': 31, 'key': 'vb', 'engine': 'verse_builder', 'title_ar': 'لعبة', 'title_en': 'Game', 'config': {}},
+      'POST /api/v1/games/31/draw': (_) => draw,
+    }, latency: Duration.zero)
+      ..install();
+    const stub = GameSummary(id: 31, key: '', engine: '', titleAr: '', titleEn: '');
+    await tester.pumpWidget(layoutHost(GamePlayPage(game: stub, userId: 5, cache: memCache()), scaffold: false));
+    await settle(tester);
+    expect(find.byType(VerseBuilderGame), findsOneWidget);
+    expect(fake!.calls.where((c) => c.key.startsWith('POST /api/v1/games/31/draw')), hasLength(1));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('G3: an online draw stores the level pool for offline play', (tester) async {
+    final cache = memCache();
+    fake = FakeApi({
+      'POST /api/v1/games/31/draw': (_) => draw,
+      'GET /api/v1/games/31/pool': (_) => poolAnswer,
+    }, latency: Duration.zero)
+      ..install();
+    await tester.pumpWidget(layoutHost(GamePlayPage(game: game(), userId: 2, cache: cache), scaffold: false));
+    await settle(tester);
+    expect(fake!.calls.where((c) => c.key.startsWith('GET /api/v1/games/31/pool')), hasLength(1));
+    expect(await cache.hasPool(2, 31), isTrue);
+    expect(find.byIcon(Icons.offline_pin_rounded), findsOneWidget, reason: 'the app bar marks the level saved offline');
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('G3: offline, a stored pool plays and the play waits in the outbox with picked', (tester) async {
+    final cache = memCache();
+    await cache.storePool(3, 31, V4Draw(Map<String, dynamic>.from(poolAnswer)));
+    final db = MemoryLocalDb();
+    final before = Outbox.instance;
+    Outbox.instance = Outbox(open: () async => db, userId: () async => 3, available: () => true, status: SyncStatus());
+    addTearDown(() => Outbox.instance = before);
+    fake = FakeApi({
+      'POST /api/v1/games/31/draw': (_) =>
+          throw const ApiException(statusCode: 0, message: 'offline', type: ApiErrorType.network),
+    }, latency: Duration.zero)
+      ..install();
+    await tester.pumpWidget(layoutHost(GamePlayPage(game: game(), userId: 3, cache: cache), scaffold: false));
+    await settle(tester);
+    final vb = find.byType(VerseBuilderGame);
+    expect(vb, findsOneWidget);
+    tester.widget<VerseBuilderGame>(vb).session.finish();
+    await settle(tester);
+    final rows = await db.outboxRows(userId: 3);
+    expect(rows, hasLength(1));
+    expect(rows.single.kind, SyncKinds.gamePlay);
+    final body = jsonDecode(rows.single.payload) as Map;
+    expect(body['draw_id'], poolAnswer['draw_id']);
+    expect(body['picked'], isNotEmpty);
+    expect(fake!.calls.where((c) => c.key.startsWith('POST /api/v1/games/31/plays')), isEmpty);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('result extras: no layout errors', (tester) async {
