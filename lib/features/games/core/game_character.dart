@@ -88,6 +88,7 @@ class CharacterPainter extends CustomPainter {
   final Animation<double> anim;
 
   GamePalette get p => t.palette;
+  Map<String, String?> get _eq => t.calm ? const {} : equipped;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -99,7 +100,7 @@ class CharacterPainter extends CustomPainter {
     final bob = math.sin(turn * 2) * 1.8 * t.bounce;
     final breath = 1 + math.sin(turn * 2 + 0.6) * 0.012 * t.bounce;
     final sway = math.sin(turn) * 3.5 * t.bounce;
-    final vehicle = equipped['vehicle'];
+    final vehicle = _eq['vehicle'];
     final hasRide = vehicle != null && vehicle.isNotEmpty;
     final outline = t.outline * 1.6; // units
     Paint stroke() => Paint()
@@ -109,21 +110,55 @@ class CharacterPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..color = p.ink;
 
+    // A shape: the fill, a shade on the side away from the sun (the sun is on the right), a thin rim light on the
+    // sun's edge, and an outline in a darker tone of the fill.
     void shape(Path path, Paint fill, {bool line = true}) {
       canvas.drawPath(path, fill);
-      if (t.outline > 0 && line) canvas.drawPath(path, stroke());
+      final b = path.getBounds();
+      if (b.width > 6) {
+        canvas.save();
+        canvas.clipPath(path);
+        canvas.drawRect(
+          b,
+          Paint()
+            ..shader = LinearGradient(
+              begin: Alignment.centerRight,
+              end: Alignment.centerLeft,
+              colors: [p.ink.withValues(alpha: 0), p.ink.withValues(alpha: 0), p.ink.withValues(alpha: 0.26)],
+              stops: const [0, 0.45, 1],
+            ).createShader(b),
+        );
+        canvas.drawPath(
+          path.shift(const Offset(-1.3, 0.2)),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.2
+            ..color = p.paper.withValues(alpha: 0.3),
+        );
+        canvas.restore();
+      }
+      if (t.outline > 0 && line) {
+        final base = fill.shader == null ? fill.color : Color.lerp(p.skin, p.ink, 0.5)!;
+        canvas.drawPath(path, stroke()..color = Color.lerp(base, p.ink, 0.62)!);
+      }
     }
 
-    // ground shadow, smaller when the character is up on a ride
+    // contact shadow: a soft wide one and a tight dark core under the feet or the ride
     final shadowW = hasRide ? 66.0 : 40.0;
     canvas.drawOval(
-      Rect.fromCenter(center: const Offset(50, 94), width: shadowW - bob.abs() * 2, height: 7),
+      Rect.fromCenter(center: const Offset(50, 94.5), width: shadowW * 1.15 - bob.abs() * 2, height: 9),
       Paint()
-        ..color = p.ink.withValues(alpha: 0.2)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.4),
+        ..color = p.ink.withValues(alpha: 0.22)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: const Offset(50, 94), width: shadowW * 0.8 - bob.abs() * 2, height: 4),
+      Paint()
+        ..color = p.ink.withValues(alpha: 0.38)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2),
     );
 
-    _trail(canvas, equipped['trail'], turn, hasRide ? 62 : 56);
+    _trail(canvas, _eq['trail'], turn, hasRide ? 62 : 56);
 
     canvas.save();
     canvas.translate(0, bob);
@@ -154,13 +189,13 @@ class CharacterPainter extends CustomPainter {
     canvas.translate(50, 66);
     canvas.scale(1, breath);
     canvas.translate(-50, -66);
-    _outfit(canvas, equipped['outfit'], shape);
+    _outfit(canvas, _eq['outfit'], shape);
     canvas.restore();
 
     // head
     final headC = Offset(50, 37 + math.sin(turn * 2 + 0.3) * 0.5 * t.bounce);
     _head(canvas, headC, turn, shape);
-    _hat(canvas, equipped['hat'], headC, shape);
+    _hat(canvas, _eq['hat'], headC, shape);
     _arm(canvas, back: false, sway: sway, shape: shape);
     canvas.restore();
     canvas.restore();
@@ -293,7 +328,7 @@ class CharacterPainter extends CustomPainter {
   }
 
   Color _sleeve() {
-    switch (equipped['outfit']) {
+    switch (_eq['outfit']) {
       case 'outfit_astro':
         return p.paper;
       case 'outfit_traveller':

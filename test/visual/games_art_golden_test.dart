@@ -41,10 +41,10 @@ void main() {
             child: GameBackdrop(
               theme: th.value,
               child: Align(
-                alignment: const Alignment(0, 0.35),
+                alignment: const Alignment(0, 0.62),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   for (final c in _sets)
-                    SizedBox.square(dimension: s.value.width < 600 ? 112 : 240, child: GameCharacter(theme: th.value, mood: c.$2, equipped: c.$3)),
+                    Align(widthFactor: 0.72, child: SizedBox.square(dimension: s.value.width < 600 ? 160 : 336, child: GameCharacter(theme: th.value, mood: c.$2, equipped: c.$3))),
                 ]),
               ),
             ),

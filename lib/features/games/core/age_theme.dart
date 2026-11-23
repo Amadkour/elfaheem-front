@@ -99,6 +99,16 @@ final GamePalette _teen = GamePalette(
   skin: _hsl(24, 0.55, 0.7), hair: _hsl(250, 0.3, 0.16),
 );
 
+final GamePalette _calmPalette = GamePalette(
+  skyTop: _hsl(184, 0.34, 0.8), skyMid: _hsl(46, 0.62, 0.9), skyBottom: _hsl(38, 0.78, 0.84),
+  glow: _hsl(40, 0.9, 0.74),
+  far: _hsl(160, 0.2, 0.76), mid: _hsl(150, 0.24, 0.62), near: _hsl(142, 0.28, 0.44),
+  cloud: _hsl(42, 0.7, 0.97),
+  accent: _hsl(172, 0.34, 0.36), accent2: _hsl(38, 0.68, 0.58),
+  ink: _hsl(190, 0.3, 0.2), paper: _hsl(44, 0.7, 0.97), gold: _hsl(40, 0.7, 0.58),
+  skin: _hsl(24, 0.46, 0.72), hair: _hsl(24, 0.3, 0.24),
+);
+
 final GamePalette _adult = GamePalette(
   skyTop: _hsl(212, 0.2, 0.72), skyMid: _hsl(26, 0.26, 0.86), skyBottom: _hsl(36, 0.34, 0.93),
   glow: _hsl(38, 0.5, 0.82),
@@ -148,16 +158,18 @@ class AgeTheme {
       p = p.map((c) => sky.contains(c) ? _tune(c, sat: 0.9, light: 0.42) : c);
     }
     if (calm) {
-      p = p.map((c) => _tune(c, sat: 0.62, light: 0.97, lift: 0.04));
+      // a warm dawn: the same for every age, with the person's own skin and hair kept
+      p = _calmPalette.copyWith(accent: primary == null ? null : Color.lerp(_calmPalette.accent, primary, 0.25));
+      night = false;
     }
     return AgeTheme._(
       age: age,
       palette: p,
-      outline: calm ? 0 : switch (age) { GameAge.kids => 1, GameAge.teen => 0.45, GameAge.adult => 0 },
+      outline: calm ? 0.3 : switch (age) { GameAge.kids => 1, GameAge.teen => 0.45, GameAge.adult => 0.3 },
       bounce: calm ? 0.35 : switch (age) { GameAge.kids => 1, GameAge.teen => 0.7, GameAge.adult => 0.45 },
       parallax: calm ? 0.3 : switch (age) { GameAge.kids => 1, GameAge.teen => 0.8, GameAge.adult => 0.5 },
       calm: calm,
-      night: night || age == GameAge.teen,
+      night: !calm && (night || age == GameAge.teen),
     );
   }
 
