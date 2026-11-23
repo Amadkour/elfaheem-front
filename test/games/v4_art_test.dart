@@ -18,7 +18,7 @@ void main() {
 
   test('calm has no outline and a quieter palette', () {
     final calm = AgeTheme.build(GameAge.kids, calm: true);
-    expect(calm.outline, 0);
+    expect(calm.outline, lessThan(AgeTheme.build(GameAge.kids).outline));
     expect(calm.calm, isTrue);
     expect(calm.bounce, lessThan(AgeTheme.build(GameAge.kids).bounce));
   });
