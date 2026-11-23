@@ -29,7 +29,7 @@ import 'package:flutter_education_app/features/games/core/age_theme.dart';
 import 'package:flutter_education_app/features/games/core/flame_host.dart';
 import 'package:flutter_education_app/features/games/core/game_fx.dart';
 
-enum TokenSkin { balloon, pearl, fish, train }
+enum TokenSkin { balloon, pearl, fish, train, platforms }
 
 enum TokenMotion { hover, drift }
 
@@ -51,6 +51,8 @@ class _Token {
   double x0 = 0, ext = 100, bw = 100, dir = 1, markT = 99;
   bool good = true;
   bool hinted = false;
+  bool done = false; // platforms: the jumper has landed on it
+  double landT = 99;
   _TokenState state = _TokenState.rising;
   bool get alive => state == _TokenState.rising;
 }
@@ -73,6 +75,19 @@ class FloatingTokensGame extends FlameGame {
     _topInset = v;
     if (_w > 0 && _tokens.isNotEmpty) _layout();
   }
+
+  /// Rows layout: this many px at the bottom are kept free (the platforms' ground the jumper starts on).
+  double _bottomInset = 0;
+  void setBottomInset(double v) {
+    if ((v - _bottomInset).abs() < 2) return;
+    _bottomInset = v;
+    if (_w > 0 && _tokens.isNotEmpty) _layout();
+  }
+
+  /// Platforms: the distance between two rows of islands, in px.
+  double get pitch => _pitch;
+  double _pitch = 100;
+  bool get _islands => skin == TokenSkin.platforms;
 
   bool get _rows => motion == TokenMotion.drift;
   bool _quran = false;
@@ -169,7 +184,7 @@ class FloatingTokensGame extends FlameGame {
     final px = 26 * (_quran ? 1.3 : 1.0);
     for (final t in _tokens) {
       t.bw = (t.tp.width + 44).clamp(120.0, 300.0);
-      t.ext = t.bw + (fish ? 24 : (skin == TokenSkin.train ? 14 : 0));
+      t.ext = t.bw + (fish ? 24 : (skin == TokenSkin.train ? 14 : (_islands ? 10 : 0)));
       final lines = math.max(1, t.tp.computeLineMetrics().length);
       final visH = lines * px * (_quran ? 1.45 : 1.25);
       t.fit = math.min(1.0, math.min((t.bw - 44) / math.max(1, t.tp.width), 58 / visH));
@@ -177,7 +192,7 @@ class FloatingTokensGame extends FlameGame {
     }
     const margin = 14.0;
     final usable = _w - 2 * margin;
-    final top = (_topInset ?? _h * 0.26) + 4, bottom = _h - 8;
+    final top = (_topInset ?? _h * 0.26) + 4, bottom = _h - 8 - _bottomInset;
     var k = _w >= 900 ? 1.3 : 1.0; // a wide screen gets bigger fish
     var rows = <List<_Token>>[];
     while (true) {
@@ -204,6 +219,7 @@ class FloatingTokensGame extends FlameGame {
     _rail?.dispose();
     _rail = null;
     final pitch = math.min(104 * k * 1.12, (bottom - top) / rows.length);
+    _pitch = pitch;
     final y0 = top + ((bottom - top) - pitch * rows.length) / 2 + pitch / 2;
     _rowOff.clear();
     _rowLen.clear();
@@ -222,7 +238,15 @@ class FloatingTokensGame extends FlameGame {
         left += t.ext * k + s;
         t.dir = r.isEven ? 1 : -1;
       }
-      _rowLen.add(math.max(0.0, usable - (sumW + s * (row.length - 1)))); // the room the row swims in
+      final room = math.max(0.0, usable - (sumW + s * (row.length - 1))); // the room the row swims in
+      if (_islands) {
+        // islands hold still: a row is centred and every other row leans a little the other way
+        final shift = room / 2 + (r.isEven ? 1 : -1) * math.min(room / 2, 22 * k);
+        for (final t in row) {
+          t.x0 += shift;
+        }
+      }
+      _rowLen.add(_islands ? 0.0 : room);
       _rowOff.add(0);
       _rowSpeed.add(base * (0.85 + 0.15 * (r % 3)) * (r.isEven ? 1 : -1));
     }
@@ -254,6 +278,7 @@ class FloatingTokensGame extends FlameGame {
     for (final t in _tokens) {
       t.age += dt;
       t.markT += dt;
+      t.landT += dt;
       switch (t.state) {
         case _TokenState.rising:
           any = true;
@@ -290,6 +315,36 @@ class FloatingTokensGame extends FlameGame {
   void mark(int i) {
     if (isAlive(i)) _tokens[i].markT = 0;
   }
+
+  /// Platforms: the jumper has landed on island [i]: it dips and a check badge shows.
+  void land(int i) {
+    if (i < 0 || i >= _tokens.length) return;
+    final t = _tokens[i];
+    t.done = true;
+    t.landT = 0;
+  }
+
+  /// Platforms: where a jumper's feet stand on island [i] (the top of its grass).
+  Offset platformTop(int i) => Offset(_tokens[i].x, _tokens[i].y - 27 * _k);
+
+  /// A burst of cheer at [at] (the round's end), at most the particles of game_fx.
+  void cheer(Offset at) {
+    if (reduceMotion) return;
+    final p = theme.palette;
+    _particles.emit(GameFxKind.correct, at, Size(_w, _h), [p.gold, p.accent, p.accent2, p.paper], calm: theme.calm, seed: _tokens.length * 31);
+  }
+
+  /// Platforms: a dust puff at [at] (a landing): soft ovals that widen and fade. Nothing under Reduce motion.
+  void dust(Offset at) {
+    if (reduceMotion) return;
+    _dustAt[_dustNext] = at;
+    _dustAge[_dustNext] = 0;
+    _dustNext = (_dustNext + 1) % _dustAge.length;
+  }
+
+  final List<Offset> _dustAt = List.filled(4, Offset.zero);
+  final List<double> _dustAge = List.filled(4, 99);
+  int _dustNext = 0;
 
   /// The centre of token [i] on the screen (tests and the template's hint).
   Offset tokenCenter(int i) => Offset(_tokens[i].x, _tokens[i].y);
@@ -352,6 +407,9 @@ class FloatingTokensGame extends FlameGame {
     _time += dt;
     var any = false;
     if (_rows) any = _updateRows(dt);
+    for (var i = 0; i < _dustAge.length; i++) {
+      _dustAge[i] += dt;
+    }
     for (final t in (_rows ? const <_Token>[] : _tokens)) {
       t.age += dt;
       switch (t.state) {
@@ -459,7 +517,7 @@ class FloatingTokensGame extends FlameGame {
   }
 
   ui.Picture _recordBg() {
-    if (_rows && skin != TokenSkin.train) return _recordSea();
+    if (_rows && (skin == TokenSkin.fish || skin == TokenSkin.pearl)) return _recordSea();
     final p = theme.palette;
     final rec = ui.PictureRecorder();
     final c = Canvas(rec, Rect.fromLTWH(0, 0, _w, _h));
@@ -543,9 +601,37 @@ class FloatingTokensGame extends FlameGame {
       final base = _fishTone(t.color);
       final bw = t.bw, ext = t.ext;
       final rec = ui.PictureRecorder();
-      final c = Canvas(rec, Rect.fromLTWH(-ext / 2 - 6, -60, ext + 12, 120));
+      final c = Canvas(rec, Rect.fromLTWH(-ext / 2 - 6, -70, ext + 12, 150));
       final line = Paint()..style = PaintingStyle.stroke..strokeWidth = 2.6 * theme.outline..color = p.ink;
-      if (skin == TokenSkin.fish) {
+      if (_islands) {
+        // a floating island: the grass top (seen from a little above), an earth body that tapers to a point, a few roots
+        final earth = Color.lerp(p.ink, p.gold, 0.55)!;
+        final grass = Color.lerp(p.mid, base, 0.16)!;
+        final w = bw / 2;
+        final body = Path()
+          ..moveTo(-w + 2, -22)
+          ..quadraticBezierTo(-w + 8, 14, -w * 0.5, 30)
+          ..quadraticBezierTo(-w * 0.18, 48, 0, 56)
+          ..quadraticBezierTo(w * 0.18, 48, w * 0.5, 30)
+          ..quadraticBezierTo(w - 8, 14, w - 2, -22)
+          ..close();
+        c.drawOval(Rect.fromCenter(center: Offset(0, 70), width: bw * 0.62, height: 16), Paint()..color = p.ink.withValues(alpha: 0.13));
+        c.drawPath(body, Paint()..shader = ui.Gradient.linear(const Offset(0, -22), const Offset(0, 56), [Color.lerp(earth, p.paper, 0.18)!, earth, Color.lerp(earth, p.ink, 0.3)!], [0, 0.5, 1]));
+        if (theme.outline > 0.4) c.drawPath(body, line);
+        c.drawLine(Offset(-w * 0.3, 18), Offset(-w * 0.12, 26), Paint()..strokeWidth = 3..strokeCap = StrokeCap.round..color = p.ink.withValues(alpha: 0.2));
+        c.drawLine(Offset(w * 0.22, 10), Offset(w * 0.4, 18), Paint()..strokeWidth = 3..strokeCap = StrokeCap.round..color = p.ink.withValues(alpha: 0.2));
+        final top = Rect.fromCenter(center: const Offset(0, -26), width: bw, height: 34);
+        c.drawOval(top, Paint()..shader = ui.Gradient.linear(top.topCenter, top.bottomCenter, [Color.lerp(grass, p.paper, 0.35)!, grass], [0, 1]));
+        if (theme.outline > 0.4) c.drawOval(top, line);
+        // tufts on the grass edge and the plate the word sits on
+        final tuft = Paint()..style = PaintingStyle.stroke..strokeWidth = 2.4..strokeCap = StrokeCap.round..color = Color.lerp(grass, p.ink, 0.3)!;
+        for (final fx in [-0.62, -0.3, 0.34, 0.66]) {
+          final x = w * fx;
+          c.drawLine(Offset(x, -17), Offset(x - 3, -23), tuft);
+          c.drawLine(Offset(x, -17), Offset(x + 3, -24), tuft);
+        }
+        c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: const Offset(0, 6), width: bw - 34, height: 44), const Radius.circular(16)), Paint()..color = p.paper.withValues(alpha: 0.94));
+      } else if (skin == TokenSkin.fish) {
         const cx = 12.0, h = 34.0;
         final bl = cx - bw / 2, br = cx + bw / 2;
         final fin = Color.lerp(base, p.ink, 0.12)!;
@@ -685,6 +771,11 @@ class FloatingTokensGame extends FlameGame {
         case _TokenState.gone:
           break;
       }
+      if (_islands && !reduceMotion) {
+        // a landing presses the island down and it springs back; a wrong try wobbles it (gently)
+        if (t.landT < 0.5) cy += math.sin(t.landT / 0.5 * math.pi) * 7 * _k * math.exp(-t.landT * 3);
+        if (t.markT < 0.6) rot = math.sin(t.markT * 26) * (calm ? 0.035 : 0.06) * (1 - t.markT / 0.6);
+      }
       if (!calm && !reduceMotion && fish) {
         rot = t.markT < 0.5 ? math.sin(t.markT * 34) * 0.2 * (1 - t.markT / 0.5) : math.sin(_time * 1.4 + t.phase) * 0.035;
       }
@@ -704,11 +795,21 @@ class FloatingTokensGame extends FlameGame {
       canvas.drawPicture(_rowPic(t));
       canvas.restore();
       canvas.save();
-      canvas.translate(fish ? 8.0 * t.dir : 0, 0);
+      canvas.translate(fish ? 8.0 * t.dir : 0, _islands ? 6 : 0);
       canvas.scale(t.fit);
       t.tp.paint(canvas, Offset(-t.tp.width / 2, -t.tp.height / 2));
       canvas.restore();
-      if (t.markT < 0.6) {
+      if (_islands && t.done) {
+        // reached: a gold check badge on the corner of the grass
+        final b = Offset(ext / 2 - 14, -34);
+        canvas.drawCircle(b, 15, Paint()..color = theme.palette.paper);
+        canvas.drawCircle(b, 12, Paint()..color = theme.palette.gold);
+        canvas.drawPath(
+          Path()..moveTo(b.dx - 5.5, b.dy)..lineTo(b.dx - 1.5, b.dy + 4.5)..lineTo(b.dx + 6, b.dy - 4),
+          Paint()..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round..strokeJoin = StrokeJoin.round..color = theme.palette.ink,
+        );
+      }
+      if (t.markT < 0.6 && !_islands) {
         final f = reduceMotion ? 0.3 : t.markT / 0.6;
         _ring
           ..strokeWidth = calm ? 5 : 3.5
@@ -763,6 +864,18 @@ class FloatingTokensGame extends FlameGame {
           ..strokeWidth = 3
           ..color = theme.palette.ink.withValues(alpha: 0.35 * (1 - f));
         canvas.drawCircle(Offset(t.x, t.y), _r * (1 + f), _ring);
+      }
+    }
+    if (_islands && !reduceMotion) {
+      for (var i = 0; i < _dustAge.length; i++) {
+        final a = _dustAge[i];
+        if (a > 0.5) continue;
+        final f = a / 0.5, at = _dustAt[i];
+        _fill.color = theme.palette.paper.withValues(alpha: 0.75 * (1 - f));
+        for (final sx in [-1.0, 1.0]) {
+          final r = (5 + 9 * f) * _k;
+          canvas.drawOval(Rect.fromCenter(center: Offset(at.dx + sx * (10 + 34 * f) * _k, at.dy - 3 * _k - 8 * f * _k), width: r * 2.2, height: r * 1.4), _fill);
+        }
       }
     }
     if (!reduceMotion) {
