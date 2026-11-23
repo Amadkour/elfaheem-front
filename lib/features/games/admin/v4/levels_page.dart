@@ -120,6 +120,7 @@ class _GamesLevelsPageState extends State<GamesLevelsPage> {
   @override
   Widget build(BuildContext context) {
     return AdminPage(
+      helpPageId: 'admin.games.levels',
       width: AppWidth.content,
       title: t('المستويات', 'Levels'),
       subtitle: t('رتّب مستويات كل لعبة وكل مادة، وانشر ما اكتمل.', 'Order each game\'s levels by subject, and publish what is ready.'),

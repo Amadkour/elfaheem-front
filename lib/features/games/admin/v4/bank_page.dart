@@ -162,6 +162,7 @@ class _BankPageState extends State<BankPage> {
   Widget build(BuildContext context) {
     final shown = _f.age == null ? _items : [for (final x in _items) if (jint(x['age_min'], 4) <= _f.age! && _f.age! <= jint(x['age_max'], 99)) x];
     return AdminPage(
+      helpPageId: 'admin.games.bank',
       title: t('بنك الأسئلة', 'Question bank'),
       subtitle: t('$_total سؤالاً', '$_total questions'),
       icon: Icons.quiz_rounded,

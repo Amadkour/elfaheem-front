@@ -230,6 +230,7 @@ class _GamesTabState extends State<GamesTab> {
       width: AppWidth.wide,
       appBar: ScreenAppBar(
         title: t('الألعاب', 'Games'),
+        helpPageId: 'games.home',
         showBack: false,
         actions: [
           if (!GuestState.active)

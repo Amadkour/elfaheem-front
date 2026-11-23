@@ -107,6 +107,7 @@ class _GamesReviewPageState extends State<GamesReviewPage> {
   @override
   Widget build(BuildContext context) {
     return AdminPage(
+      helpPageId: 'admin.games.review',
       width: AppWidth.reading,
       title: t('مراجعة الأسئلة', 'Review questions'),
       subtitle: t('أسئلة بانتظار اعتمادك قبل أن تظهر للطلاب.', 'Questions waiting for your approval before students see them.'),

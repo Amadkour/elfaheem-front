@@ -184,6 +184,7 @@ class _TimingSurahsPageState extends State<TimingSurahsPage> {
 
   @override
   Widget build(BuildContext context) => AdminPage(
+        helpPageId: 'admin.games.timings',
         width: AppWidth.reading,
         title: t('أزمنة الآيات', 'Ayah timings'),
         subtitle: widget.reciterName,

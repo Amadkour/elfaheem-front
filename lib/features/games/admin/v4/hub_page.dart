@@ -104,6 +104,7 @@ class _GamesHubPageState extends State<GamesHubPage> {
         ),
     ]..sort((a, b) => a.sort.compareTo(b.sort));
     return AdminPage(
+      helpPageId: 'admin.games',
       width: AppWidth.content,
       title: t('ألعاب التعلّم', 'Learning games'),
       subtitle: t('نظرة سريعة على اللعب اليوم، وكل صفحات إدارة الألعاب في مكان واحد.',

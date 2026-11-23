@@ -310,7 +310,7 @@ class _WardrobePageState extends State<WardrobePage> {
     return BasePage(
       key: const ValueKey(kGamesCosmeticsKey),
       width: AppWidth.wide,
-      appBar: ScreenAppBar(title: t('خزانتي', 'My wardrobe')),
+      appBar: ScreenAppBar(title: t('خزانتي', 'My wardrobe'), helpPageId: 'games.wardrobe'),
       child: SafeArea(child: body),
     );
   }

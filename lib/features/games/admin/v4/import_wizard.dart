@@ -131,6 +131,7 @@ class _GamesImportPageState extends State<GamesImportPage> {
   @override
   Widget build(BuildContext context) {
     return AdminPage(
+      helpPageId: 'admin.games.import',
       width: AppWidth.reading,
       title: t('استيراد أسئلة', 'Import questions'),
       subtitle: t('أضف عشرات الأسئلة دفعة واحدة من ملف.', 'Add many questions at once from a file.'),

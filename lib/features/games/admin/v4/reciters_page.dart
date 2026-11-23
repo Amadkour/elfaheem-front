@@ -99,6 +99,7 @@ class _RecitersPageState extends State<RecitersPage> {
 
   @override
   Widget build(BuildContext context) => AdminPage(
+      helpPageId: 'admin.games.reciters',
         width: AppWidth.reading,
         title: t('القرّاء', 'Reciters'),
         subtitle: t('الرخصة وحالة الإذن لكل قارئ', 'The licence and permission of every voice'),

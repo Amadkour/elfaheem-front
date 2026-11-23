@@ -9,6 +9,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'package:flutter_education_app/core/share/external_link.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/help/help_info_button.dart';
 import 'package:flutter_education_app/features/games/games_api.dart' show gamesErrorText;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/content/games_v4_api.dart';
@@ -299,6 +300,7 @@ class _SettingsHostState extends State<_SettingsHost> {
     final editable = _p.ageSource == null || _p.ageSource == 'asked';
     return AppSheetContent(
       title: t('إعدادات الألعاب', 'Games settings'),
+      headerTrailing: const HelpInfoButton(pageId: 'games.settings'),
       icon: Icons.tune_rounded,
       children: [
         GamesSettingsBody(

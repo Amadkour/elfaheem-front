@@ -116,6 +116,7 @@ class _GamesCosmeticsPageState extends State<GamesCosmeticsPage> {
 
   @override
   Widget build(BuildContext context) => AdminPage(
+      helpPageId: 'admin.games.cosmetics',
         width: AppWidth.content,
         title: t('ملابس اللاعب', 'Outfits'),
         subtitle: t('قبعات وملابس ومركبات يشتريها الطلاب بالعملات', 'Hats, outfits and vehicles learners buy with coins'),

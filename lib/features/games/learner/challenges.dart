@@ -340,7 +340,7 @@ class _ChallengePageState extends State<ChallengePage> {
     final c = _c;
     return BasePage(
       width: AppWidth.reading,
-      appBar: ScreenAppBar(title: t('التحدّي', 'Challenge')),
+      appBar: ScreenAppBar(title: t('التحدّي', 'Challenge'), helpPageId: 'games.challenges'),
       child: SafeArea(
         child: c == null
             ? (_error != null
@@ -609,7 +609,7 @@ class _GamesChallengesPageState extends State<GamesChallengesPage> {
     }
     return BasePage(
       width: AppWidth.reading,
-      appBar: ScreenAppBar(title: t('التحدّيات', 'Challenges')),
+      appBar: ScreenAppBar(title: t('التحدّيات', 'Challenges'), helpPageId: 'games.challenges'),
       child: SafeArea(
         child: LayoutBuilder(builder: (context, box) {
           final gutter = AppSpace.gutter(box.maxWidth);
