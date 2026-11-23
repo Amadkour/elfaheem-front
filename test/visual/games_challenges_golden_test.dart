@@ -66,7 +66,7 @@ void main() {
               child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Column(children: [
-                    MyChallengesView(items: [challengeOf(), challengeOf(open: false, joined: false)], ageBand: band),
+                    MyChallengesView(items: [challengeOf(), challengeOf(open: false, joined: false, code: 'Q4WZ8RTL')], ageBand: band),
                     const SizedBox(height: 16),
                     ClassBoardView(board: boardOf(), ageBand: band),
                   ]))),
