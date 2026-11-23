@@ -89,7 +89,17 @@ class RewardRule {
     this.countryCode,
     this.active = false,
     this.updatedAt,
+    this.validHours,
+    this.unlockReferrals,
+    this.unlockDays = 7,
+    this.courseIds,
   });
+
+  /// Games v4 (CONTRACT §11): hours of validity counted from the unlock (replaces [validDays]), the referrals that
+  /// unlock the coupon and the days to get them, and the courses it works on (null = any).
+  final int? validHours, unlockReferrals;
+  final int unlockDays;
+  final List<int>? courseIds;
 
   final int? id;
   final String trigger;
@@ -132,6 +142,10 @@ class RewardRule {
         countryCode: _sn(j['country_code']),
         active: j['active'] == true,
         updatedAt: rewardsUtc(j['updated_at']),
+        validHours: _in(j['valid_hours']),
+        unlockReferrals: _in(j['unlock_referrals']),
+        unlockDays: _i(j['unlock_days'], 7),
+        courseIds: j['course_ids'] is List ? [for (final x in j['course_ids'] as List) _i(x)] : null,
       );
 
   /// Every field (PUT replaces the rule).
@@ -153,6 +167,10 @@ class RewardRule {
         'month_budget': monthBudget,
         'country_code': countryCode,
         'active': active,
+        'valid_hours': validHours,
+        'unlock_referrals': rewardKind == 'points' ? null : unlockReferrals,
+        'unlock_days': unlockDays,
+        'course_ids': appliesTo == 'course' ? courseIds : null,
       };
 
   RewardRule copyWith({bool? active}) => RewardRule.fromJson({...toJson(), 'id': id, 'active': active ?? this.active});
@@ -248,8 +266,15 @@ class AdminCoupon {
     this.user,
     this.issueKey,
     this.revokeReason,
+    this.unlock,
+    this.courseIds,
+    this.validHours,
   });
 
+  /// A locked coupon waits for referrals: `{need, have, deadline, unlocked_at}` (Games v4, CONTRACT §11).
+  final Map<String, dynamic>? unlock;
+  final List<int>? courseIds;
+  final int? validHours;
   final int id;
   final String code, status, kind, appliesTo, source;
   final double value, minOrder;
@@ -275,6 +300,9 @@ class AdminCoupon {
         user: j['user'] is Map ? RewardsUser.fromJson(j['user']) : null,
         issueKey: _sn(j['issue_key']),
         revokeReason: _sn(j['revoke_reason']),
+        unlock: j['unlock'] is Map ? Map<String, dynamic>.from(j['unlock'] as Map) : null,
+        courseIds: j['course_ids'] is List ? [for (final x in j['course_ids'] as List) _i(x)] : null,
+        validHours: _in(j['valid_hours']),
       );
 }
 

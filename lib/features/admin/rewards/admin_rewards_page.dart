@@ -33,7 +33,7 @@ import 'admin_rewards_api.dart';
 // ═════════════════════════════════════════════════════════════════════════════
 
 const kRewardTriggers = ['champion_daily', 'champion_weekly', 'referrals', 'shares', 'referee_welcome'];
-const kRewardScopes = <String?>[null, 'platform', 'category', 'org'];
+const kRewardScopes = <String?>[null, 'platform', 'age', 'category', 'org'];
 const kRewardWindows = ['month', 'lifetime'];
 const kRewardKinds = ['coupon_percent', 'coupon_fixed', 'points'];
 const kRewardAppliesTo = ['any', 'course', 'package', 'store'];
@@ -50,6 +50,7 @@ String rewardTriggerName(String v) => switch (v) {
 String rewardScopeName(String? v) => switch (v) {
       null => t('أي نطاق', 'Any scope'),
       'platform' => t('الجميع', 'Everyone'),
+      'age' => t('كل فئة عمرية على حدة', 'Per age group'),
       'category' => t('تصنيف', 'A category'),
       'org' => t('مؤسسة', 'An organization'),
       _ => v,
@@ -108,11 +109,12 @@ String championFlagName(String v) => switch (v) {
       _ => v,
     };
 
-const kCouponStatuses = <String?>[null, 'active', 'reserved', 'redeemed', 'expired', 'revoked'];
+const kCouponStatuses = <String?>[null, 'locked', 'active', 'reserved', 'redeemed', 'expired', 'revoked'];
 
 String couponStatusName(String? v) => switch (v) {
       null => t('الكل', 'All'),
       'active' => t('نشطة', 'Active'),
+      'locked' => t('مقفلة بانتظار الدعوات', 'Locked, waiting for referrals'),
       'reserved' => t('محجوزة', 'Held'),
       'redeemed' => t('مستخدمة', 'Used'),
       'expired' => t('منتهية', 'Expired'),
@@ -122,7 +124,7 @@ String couponStatusName(String? v) => switch (v) {
 
 AppTone couponStatusTone(String v) => switch (v) {
       'active' => AppTone.success,
-      'reserved' => AppTone.warning,
+      'reserved' || 'locked' => AppTone.warning,
       'redeemed' => AppTone.brand,
       'revoked' => AppTone.danger,
       _ => AppTone.neutral,
@@ -593,8 +595,16 @@ String rewardRuleGives(RewardRule r) {
   final v = rewardValueText(kind: r.rewardKind, value: r.value, currency: r.currency);
   if (r.rewardKind == 'points') return v;
   final cap = r.maxDiscount == null ? '' : t(' · حتى ${_num(r.maxDiscount!)} ${r.currency ?? ''}', ' · up to ${_num(r.maxDiscount!)} ${r.currency ?? ''}');
-  final days = countText(r.validDays, ar1: 'يوم واحد', ar2: 'يومان', arFew: '${r.validDays} أيام', arMany: '${r.validDays} يوماً', en1: '1 day', en: '${r.validDays} days');
-  return '$v$cap · ${rewardAppliesName(r.appliesTo)} · $days';
+  final days = r.validHours != null
+      ? t('${r.validHours} ساعة من الفتح', '${r.validHours} hours once unlocked')
+      : countText(r.validDays, ar1: 'يوم واحد', ar2: 'يومان', arFew: '${r.validDays} أيام', arMany: '${r.validDays} يوماً', en1: '1 day', en: '${r.validDays} days');
+  final courses = r.appliesTo == 'course' && r.courseIds != null
+      ? ' · ${countText(r.courseIds!.length, ar1: 'دورة واحدة', ar2: 'دورتان', arFew: '${r.courseIds!.length} دورات', arMany: '${r.courseIds!.length} دورة', en1: '1 course', en: '${r.courseIds!.length} courses')}'
+      : '';
+  final unlock = r.unlockReferrals == null
+      ? ''
+      : ' · ${t('تُفتح بـ ${r.unlockReferrals} دعوات خلال ${r.unlockDays} أيام', 'Unlocks with ${r.unlockReferrals} referrals in ${r.unlockDays} days')}';
+  return '$v$cap · ${rewardAppliesName(r.appliesTo)}$courses · $days$unlock';
 }
 
 class RewardRuleCard extends StatelessWidget {
@@ -682,6 +692,12 @@ class _RewardRuleFormState extends State<RewardRuleForm> {
   late final _cap = TextEditingController(text: _r.perUserMonthCap == null ? '' : '${_r.perUserMonthCap}');
   late final _budget = TextEditingController(text: _r.monthBudget == null ? '' : _num(_r.monthBudget!));
   late final _country = TextEditingController(text: _r.countryCode ?? '');
+  // Games v4 (CONTRACT §11): validity in hours, referrals that unlock the coupon, the days to get them, the courses
+  late final _validHours = TextEditingController(text: _r.validHours == null ? '' : '${_r.validHours}');
+  late final _unlockReferrals = TextEditingController(text: _r.unlockReferrals == null ? '' : '${_r.unlockReferrals}');
+  late final _unlockDays = TextEditingController(text: '${_r.unlockDays}');
+  late final _courseIds = TextEditingController(text: (_r.courseIds ?? const <int>[]).join(', '));
+  late bool _selectedCourses = _r.courseIds != null;
   bool _busy = false;
   String? _error;
 
@@ -690,7 +706,7 @@ class _RewardRuleFormState extends State<RewardRuleForm> {
 
   @override
   void dispose() {
-    for (final c in [_rankFrom, _rankTo, _threshold, _value, _currency, _maxDiscount, _minOrder, _validDays, _cap, _budget, _country]) {
+    for (final c in [_rankFrom, _rankTo, _threshold, _value, _currency, _maxDiscount, _minOrder, _validDays, _cap, _budget, _country, _validHours, _unlockReferrals, _unlockDays, _courseIds]) {
       c.dispose();
     }
     super.dispose();
@@ -710,7 +726,18 @@ class _RewardRuleFormState extends State<RewardRuleForm> {
       setState(() => _error = t('اكتب العدد المطلوب', 'Enter the number needed'));
       return;
     }
+    final ids = _applies == 'course' && _selectedCourses
+        ? [for (final p in _courseIds.text.split(RegExp(r'[,\s،]+'))) if (int.tryParse(p) != null) int.parse(p)]
+        : null;
+    if (ids != null && ids.isEmpty) {
+      setState(() => _error = t('اكتب رقم دورة واحدة على الأقل، أو اختر «أي دورة»', 'Enter at least one course number, or choose "Any course"'));
+      return;
+    }
     final draft = RewardRule(
+      validHours: _kind == 'points' ? null : _int(_validHours),
+      unlockReferrals: _kind == 'points' ? null : _int(_unlockReferrals),
+      unlockDays: _int(_unlockDays) ?? 7,
+      courseIds: ids,
       id: _r.id,
       trigger: _trigger,
       scopeKind: _champion ? _scope : null,
@@ -811,6 +838,37 @@ class _RewardRuleFormState extends State<RewardRuleForm> {
           AppNumberField(controller: _minOrder, label: t('أقل قيمة للطلب', 'Minimum order'), min: 0, decimals: 2),
         ),
         AppSpace.gapSm,
+        if (_applies == 'course') ...[
+          AppDropdown<bool>(
+            key: const ValueKey('admin.rewards.form.courses'),
+            decoration: InputDecoration(labelText: t('الدورات', 'Courses')),
+            value: _selectedCourses,
+            items: [
+              DropdownMenuItem(value: false, child: Text(t('أي دورة', 'Any course'), overflow: TextOverflow.ellipsis)),
+              DropdownMenuItem(value: true, child: Text(t('دورات محددة', 'Selected courses'), overflow: TextOverflow.ellipsis)),
+            ],
+            onChanged: (v) => setState(() => _selectedCourses = v ?? false),
+          ),
+          if (_selectedCourses) ...[
+            AppSpace.gapSm,
+            AppField(
+              key: const ValueKey('admin.rewards.form.course_ids'),
+              controller: _courseIds,
+              label: t('أرقام الدورات (افصل بفاصلة)', 'Course numbers (comma separated)'),
+              ltr: true,
+            ),
+          ],
+          AppSpace.gapSm,
+        ],
+        _pair(
+          AppNumberField(controller: _validHours, label: t('صالحة لعدد ساعات (اختياري)', 'Valid for hours (optional)'), min: 1, max: 720),
+          AppNumberField(controller: _unlockReferrals, label: t('دعوات لفتحها (اختياري)', 'Referrals to unlock (optional)'), min: 1, max: 50, onChanged: (_) => setState(() {})),
+        ),
+        if (_unlockReferrals.text.trim().isNotEmpty) ...[
+          AppSpace.gapSm,
+          AppNumberField(controller: _unlockDays, label: t('أيام لجمع الدعوات', 'Days to get the referrals'), min: 1, max: 30),
+        ],
+        AppSpace.gapSm,
       ],
       _pair(
         AppNumberField(controller: _validDays, label: t('صالحة لعدد أيام', 'Valid for days'), min: 1, max: 365),
@@ -861,7 +919,7 @@ class _ChampionsTab extends StatefulWidget {
 
 class _ChampionsTabState extends State<_ChampionsTab> with AutomaticKeepAliveClientMixin {
   String _period = 'weekly';
-  bool _flagged = false;
+  bool _flagged = false, _scopeAge = false;
   String? _status;
   List<AdminChampion> _items = const [];
   List<RewardRule> _rules = const [];
@@ -889,7 +947,7 @@ class _ChampionsTabState extends State<_ChampionsTab> with AutomaticKeepAliveCli
       _error = null;
     });
     try {
-      final r = await widget.api.champions(period: _period, status: _status, flagged: _flagged);
+      final r = await widget.api.champions(period: _period, scope: _scopeAge ? 'age' : null, status: _status, flagged: _flagged);
       if (!mounted || seq != _seq) return;
       setState(() {
         _items = r.items;
@@ -978,6 +1036,11 @@ class _ChampionsTabState extends State<_ChampionsTab> with AutomaticKeepAliveCli
           setState(() => _period = v);
           _load();
         },
+        scopeAge: _scopeAge,
+        onScopeAge: (v) {
+          setState(() => _scopeAge = v);
+          _load();
+        },
         flagged: _flagged,
         onFlagged: (v) {
           setState(() => _flagged = v);
@@ -1007,6 +1070,8 @@ class AdminChampionsView extends StatelessWidget {
     this.onPeriod,
     this.flagged = false,
     this.onFlagged,
+    this.scopeAge = false,
+    this.onScopeAge,
     this.status,
     this.onStatus,
     this.selectedId,
@@ -1021,6 +1086,10 @@ class AdminChampionsView extends StatelessWidget {
   final ValueChanged<String>? onPeriod;
   final bool flagged;
   final ValueChanged<bool>? onFlagged;
+
+  /// Only the per-age-group winners (the `age` scope, Games v4).
+  final bool scopeAge;
+  final ValueChanged<bool>? onScopeAge;
 
   /// The reward status filter (null = every one).
   final String? status;
@@ -1038,6 +1107,13 @@ class AdminChampionsView extends StatelessWidget {
         _ChipRow(children: [
           AppChoiceChip(label: t('يومي', 'Daily'), selected: period == 'daily', onTap: () => onPeriod?.call('daily')),
           AppChoiceChip(label: t('أسبوعي', 'Weekly'), selected: period == 'weekly', onTap: () => onPeriod?.call('weekly')),
+          AppChoiceChip(
+            key: const ValueKey('admin.rewards.champions.age'),
+            icon: Icons.cake_rounded,
+            label: t('حسب الفئة العمرية', 'By age group'),
+            selected: scopeAge,
+            onTap: () => onScopeAge?.call(!scopeAge),
+          ),
           AppChoiceChip(
             key: const ValueKey('admin.rewards.champions.flagged'),
             icon: Icons.flag_rounded,
@@ -1461,6 +1537,12 @@ class AdminCouponDetail extends StatelessWidget {
       Directionality(textDirection: TextDirection.ltr, child: Text(c.code, style: AppType.section(context))),
       AppSpace.gapSm,
       _Fact(t('الحالة', 'Status'), couponStatusName(c.status)),
+      if (c.unlock != null)
+        _Fact(t('الدعوات', 'Referrals'), t('${c.unlock!['have'] ?? 0} من ${c.unlock!['need'] ?? 0}', '${c.unlock!['have'] ?? 0} of ${c.unlock!['need'] ?? 0}')),
+      if (c.unlock != null && c.unlock!['deadline'] != null && rewardsUtc(c.unlock!['deadline']) != null)
+        _Fact(t('آخر موعد للفتح', 'Unlock deadline'), AppTime.dateTime(rewardsUtc(c.unlock!['deadline'])!)),
+      if (c.validHours != null) _Fact(t('صالحة بعد الفتح', 'Valid once unlocked'), t('${c.validHours} ساعة', '${c.validHours} hours')),
+      if (c.courseIds != null) _Fact(t('الدورات', 'Courses'), c.courseIds!.join(', ')),
       _Fact(t('القيمة', 'Value'), rewardValueText(kind: c.kind, value: c.value, currency: c.currency)),
       if (c.maxDiscount != null) _Fact(t('أقصى خصم', 'Max discount'), '${_num(c.maxDiscount!)} ${c.currency ?? ''}'),
       _Fact(t('تصلح لـ', 'Works on'), rewardAppliesName(c.appliesTo)),

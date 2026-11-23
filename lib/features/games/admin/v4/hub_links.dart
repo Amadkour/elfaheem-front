@@ -5,7 +5,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/games/admin/v4/analytics_page.dart';
+import 'package:flutter_education_app/features/admin/rewards/admin_rewards_page.dart';
 import 'package:flutter_education_app/features/games/admin/v4/bank_page.dart';
+import 'package:flutter_education_app/features/games/admin/v4/breaks_page.dart';
+import 'package:flutter_education_app/features/games/admin/v4/cosmetics_page.dart';
+import 'package:flutter_education_app/features/games/admin/v4/seed_page.dart';
 import 'package:flutter_education_app/features/games/admin/v4/hub_api.dart';
 import 'package:flutter_education_app/features/games/admin/v4/import_wizard.dart';
 import 'package:flutter_education_app/features/games/admin/v4/levels_page.dart';
@@ -65,5 +70,55 @@ List<GamesHubLink> gamesHubBuiltInLinks() => [
         icon: Icons.stairs_rounded,
         sort: 50,
         open: (c) => _push(c, const GamesLevelsPage()),
+      ),
+      GamesHubLink(
+        id: 'analytics',
+        titleAr: 'إحصاءات الألعاب',
+        titleEn: 'Games analytics',
+        subAr: 'اللعب والإنهاء وأصعب الأسئلة',
+        subEn: 'Plays, completion and the hardest questions',
+        icon: Icons.insights_rounded,
+        sort: 60,
+        open: (c) => _push(c, const GamesAnalyticsPage()),
+      ),
+      GamesHubLink(
+        id: 'rewards',
+        titleAr: 'جوائز الألعاب',
+        titleEn: 'Game rewards',
+        subAr: 'بطل اليوم لكل فئة عمرية والقسائم والدعوات',
+        subEn: 'Daily winners per age group, coupons and referrals',
+        icon: Icons.emoji_events_rounded,
+        sort: 70,
+        open: (c) => _push(c, const AdminRewardsPage()),
+      ),
+      GamesHubLink(
+        id: 'breaks',
+        titleAr: 'الاستراحات وأولياء الأمور',
+        titleEn: 'Breaks & parents',
+        subAr: 'العب الآن وتذكير الاستراحة وملخص ولي الأمر',
+        subEn: 'Play now, break reminders and the parent summary',
+        icon: Icons.self_improvement_rounded,
+        sort: 80,
+        open: (c) => _push(c, const GamesBreaksPage()),
+      ),
+      GamesHubLink(
+        id: 'cosmetics',
+        titleAr: 'ملابس اللاعب',
+        titleEn: 'Outfits',
+        subAr: 'القبعات والملابس وأسعارها بالعملات',
+        subEn: 'Hats, outfits and their coin prices',
+        icon: Icons.checkroom_rounded,
+        sort: 90,
+        open: (c) => _push(c, const GamesCosmeticsPage()),
+      ),
+      GamesHubLink(
+        id: 'seed',
+        titleAr: 'الأسئلة الجاهزة',
+        titleEn: 'Seed console',
+        subAr: 'املأ البنك بأسئلة جاهزة لكل مادة',
+        subEn: 'Fill the bank with ready questions per subject',
+        icon: Icons.auto_awesome_rounded,
+        sort: 100,
+        open: (c) => _push(c, const GamesSeedPage()),
       ),
     ];
