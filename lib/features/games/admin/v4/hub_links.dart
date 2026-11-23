@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/games/admin/v4/bank_page.dart';
 import 'package:flutter_education_app/features/games/admin/v4/hub_api.dart';
 import 'package:flutter_education_app/features/games/admin/v4/import_wizard.dart';
+import 'package:flutter_education_app/features/games/admin/v4/levels_page.dart';
 import 'package:flutter_education_app/features/games/admin/v4/reciters_page.dart';
 import 'package:flutter_education_app/features/games/admin/v4/review_page.dart';
 
@@ -54,5 +55,15 @@ List<GamesHubLink> gamesHubBuiltInLinks() => [
         icon: Icons.record_voice_over_rounded,
         sort: 40,
         open: (c) => _push(c, const RecitersPage()),
+      ),
+      GamesHubLink(
+        id: 'levels',
+        titleAr: 'المستويات',
+        titleEn: 'Levels',
+        subAr: 'رتّب المستويات وأنشئها وجرّبها وانشرها',
+        subEn: 'Order, build, try and publish levels',
+        icon: Icons.stairs_rounded,
+        sort: 50,
+        open: (c) => _push(c, const GamesLevelsPage()),
       ),
     ];
