@@ -104,3 +104,7 @@ tools/runner/runner.env
 !.agents/skills/extension-to-functions-codebase/
 !.agents/skills/firebase-*/
 !.agents/skills/xcode-project-setup/
+
+# redesign reference screenshots
+docs/redesign/ref/
+tool/redesign/node_modules/
