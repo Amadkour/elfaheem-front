@@ -128,3 +128,18 @@ re-applies them (idempotent); `check_identity.py` fails on a missing hook, on a 
 `landing/src`, and on a `global.css` `:root` variable the runtime does not set. The Alfaheem files are in
 `sync/keep_paths.txt`. When an upstream edit moves a hook's anchor, apply_identity prints `! ... update sync/hooks.py`
 and the gate fails: update the anchor there.
+
+## A-008 The redesign and the NextBrain sync (2026-11-25) — PENDING OWNER, default (a)
+
+The approved Alfaheem redesign (`docs/redesign/`) rebuilds most of `lib/` UI and the kit. Applied in place, every later
+`sync/sync.sh` from NextBrain would conflict on the same screens. Options (START.md):
+- **(a) Alfaheem diverges from NextBrain's UI from now on.** The sync keeps merging NextBrain, but UI files the
+  redesign owns resolve to Alfaheem's side (listed in `sync/keep_paths.txt` or a new `sync/redesign_paths.txt`); only
+  non-UI work (services, providers, models, API calls, backend) is taken. Cost: NextBrain UI fixes after today must be
+  ported by hand.
+- (b) Build the redesign upstream in NextBrain, then sync. Not compatible with the NextBrain/Alfaheem separation rule
+  (no Alfaheem design in NextBrain) unless the owner wants NextBrain to wear it too.
+- (c) Put the new UI in Alfaheem-only files behind `sync/hooks.py`. Workable for a few hooks; at about 570 screen
+  states the hook list would be the size of the app.
+
+Default if the owner does not answer: **(a)**. Status: waiting for the owner's choice (asked at the end of phase 0).
