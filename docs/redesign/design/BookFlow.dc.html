@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>احجز المادة</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* BookFlow — subject booking (area a-learn). Signature: step change = M6 curtain wipe; option tiles = M3 pop on select + M9 jelly;
+   footer/side price = M10 ticker roll (re-rolls when the choice changes); seats fill with a staggered pop; success = M2 ink check + M11 burst + M10 date.
+   Loops: two hero shapes + the map pulse only. Flutter: see kit.css / PLAN §1.3 table. */
+.bk{font-family:'Noto Naskh Arabic',serif;color:#0E2350;background:#F3F8FD;min-height:var(--vh,100vh);display:flex;flex-direction:column;overflow-x:hidden}
+.bk button{font-family:inherit;line-height:1.3;cursor:pointer}
+.bk button:focus-visible,.bk a:focus-visible{outline:3px solid #07B8EE;outline-offset:2px}
+.bk-head{position:sticky;top:0;z-index:7;background:rgba(0,20,64,.92);backdrop-filter:blur(12px);color:#FFFFFF;border-bottom:1px solid rgba(255,255,255,.1)}
+.bk-head-in{display:flex;align-items:center;gap:14px;height:64px;padding:0 24px;box-sizing:border-box;max-width:1240px;margin:0 auto}
+.bk-back{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#FFFFFF;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.bk-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:18px}
+.bk-mstep{font-size:13px;opacity:.75;font-weight:600}
+/* hero band: a-learn gradient + three shapes (two drift) */
+.bk-hero{position:relative;overflow:hidden;background:radial-gradient(120% 160% at 85% -30%,#FF8A4C 0%,#7A2E5E 45%,#001440 100%);color:#FFFFFF;padding:26px 0 92px}
+.bk-shapes{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.bk-hero-in{position:relative;max-width:1240px;margin:0 auto;padding:0 24px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px}
+.bk-subj{display:flex;align-items:center;gap:14px}
+.bk-cover{width:54px;height:72px;border-radius:8px 3px 3px 8px;flex-shrink:0;background:linear-gradient(160deg,#FFB08F,var(--sub-math,#FF7A59) 55%,#E4573A);box-shadow:-3px 3px 0 rgba(255,255,255,.25),0 10px 20px rgba(0,0,0,.35);position:relative;overflow:hidden;transform:rotate(-3deg)}
+.bk-cover::before{content:"";position:absolute;top:0;bottom:0;right:0;width:7px;background:rgba(0,0,0,.22)}
+.bk-cover::after{content:"";position:absolute;top:14px;right:14px;left:9px;height:3px;border-radius:2px;background:rgba(255,255,255,.75);box-shadow:0 7px 0 rgba(255,255,255,.45)}
+.bk-steps{display:flex;gap:10px;list-style:none;margin:0;padding:0}
+.bk-st{flex:1;display:flex;flex-direction:column;gap:8px;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);transition:color .3s}
+.bk-st i{height:6px;border-radius:3px;background:rgba(255,255,255,.16);display:block;overflow:hidden}
+.bk-st i b{display:block;height:100%;border-radius:3px;background:linear-gradient(270deg,#FFFFFF,var(--s-sun,#FFC53D));transform-origin:100% 50%;transition:transform .6s cubic-bezier(.2,.8,.2,1);animation:bkFill .8s cubic-bezier(.6,0,.2,1) .2s backwards}
+@keyframes bkFill{from{transform:scaleX(0)}}
+.bk-st.on{color:#FFFFFF}
+.bk-body{position:relative;z-index:2;flex:1;width:100%;max-width:1240px;margin:-70px auto 0;padding:0 24px 48px;box-sizing:border-box;display:flex;gap:26px;align-items:flex-start}
+.bk-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px}
+.bk-main{min-width:0;display:flex;flex-direction:column;gap:18px;background:#FFFFFF;border-radius:28px;padding:28px;box-shadow:0 24px 50px -18px rgba(0,20,64,.35)}
+.bk-side{width:350px;flex-shrink:0;position:sticky;top:88px}
+/* M6: every step enters with the curtain wipe */
+.bk-pane{display:flex;flex-direction:column;gap:18px}
+.bk-h{margin:0;font-size:29px;font-weight:700;line-height:1.45}
+.bk-p{margin:0;font-size:15.5px;line-height:1.7;color:#4A5878}
+.bk-opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.bk-opt{position:relative;text-align:right;border-radius:22px;border:2px solid #E2EAF4;background:#FFFFFF;padding:20px;display:flex;flex-direction:column;gap:10px;color:#0E2350;transition:border-color .25s,box-shadow .25s,transform .18s cubic-bezier(.3,1.6,.5,1);overflow:hidden}
+.bk-opt::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 100% 0%,rgba(255,159,90,.2),transparent 60%);opacity:0;transition:opacity .3s}
+.bk-opt:hover{box-shadow:0 16px 30px rgba(163,72,10,.12)}
+.bk-opt[aria-checked="true"]{border-color:#FF8A4C;box-shadow:0 16px 34px -6px rgba(242,84,91,.25)}
+.bk-opt[aria-checked="true"]::before{opacity:1}
+.bk-opt[aria-checked="true"] .bk-ico{animation:mPop .45s cubic-bezier(.3,1.4,.5,1)}
+.bk-ico{position:relative;width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center}
+.bk-ot{position:relative;font-size:19px;font-weight:700}
+.bk-od{position:relative;font-size:14px;line-height:1.65;color:#4A5878}
+.bk-chk{position:absolute;top:16px;left:16px;width:26px;height:26px;border-radius:50%;border:2px solid #D5E3F2;background:#FFFFFF;display:flex;align-items:center;justify-content:center;color:#FFFFFF;transition:background .2s,border-color .2s}
+.bk-chk svg{transform:scale(0);transition:transform .35s cubic-bezier(.3,1.7,.5,1)}
+[aria-checked="true"] > .bk-chk,[aria-pressed="true"] > .bk-chk{background:linear-gradient(140deg,#FF9F5A,#F2545B);border-color:transparent;animation:mPop .45s cubic-bezier(.3,1.4,.5,1)}
+[aria-checked="true"] > .bk-chk svg,[aria-pressed="true"] > .bk-chk svg{transform:scale(1)}
+.bk-price{position:relative;display:flex;align-items:baseline;gap:6px;margin-top:4px}
+.bk-price b{font-size:23px;color:#00205E}
+.bk-price span{font-size:13px;color:#4A5878}
+.bk-per{position:relative;align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:14px;background:#F3F8FD;font-size:12.5px;font-weight:700;color:#4A5878}
+.bk-card{border-radius:22px;border:1.5px solid #E2EAF4;background:#F8FBFE;padding:18px;display:flex;flex-direction:column;gap:14px}
+.bk-unfold{transform-origin:50% 0;animation:bkUnfold .45s cubic-bezier(.3,1.3,.5,1) backwards}
+@keyframes bkUnfold{from{opacity:0;transform:translateY(-10px) scaleY(.9)}}
+.bk-lbl{font-size:15px;font-weight:700}
+.bk-chips{display:flex;flex-wrap:wrap;gap:8px}
+.bk-chip{height:44px;padding:0 16px;border-radius:22px;border:1.5px solid #D5E3F2;background:#FFFFFF;color:#0E2350;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;transition:background .2s,color .2s,border-color .2s,transform .18s cubic-bezier(.3,1.6,.5,1)}
+.bk-chip[aria-checked="true"],.bk-chip[aria-pressed="true"]{background:#00205E;border-color:#00205E;color:#FFFFFF;animation:mPop .4s cubic-bezier(.3,1.4,.5,1)}
+.bk-seg{display:flex;gap:4px;padding:4px;border-radius:22px;background:#EAF0F6}
+.bk-seg button{flex:1;height:40px;border:none;border-radius:19px;background:transparent;color:#4A5878;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:color .2s}
+.bk-seg.m-pill > .m-pill-bg{--w:calc((100% - 12px) / 2);--x:calc(4px + var(--i,0) * ((100% - 12px) / 2 + 4px))}
+.bk-seg button[aria-selected="true"]{color:#00205E}
+.bk-map{position:relative;height:240px;border-radius:18px;overflow:hidden;border:1.5px solid #D5E3F2}
+.bk-pin{position:absolute;left:50%;top:50%;margin:-46px 0 0 -20px;animation:bkDrop .7s cubic-bezier(.3,1.5,.5,1) .2s both}
+@keyframes bkDrop{from{transform:translateY(-60px);opacity:0}to{transform:none;opacity:1}}
+.bk-pulse{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:rgba(242,84,91,.35);animation:bkPulse 1.8s ease-out infinite}
+@keyframes bkPulse{from{transform:scale(.6);opacity:1}to{transform:scale(3.4);opacity:0}}
+.bk-me{position:absolute;left:12px;bottom:12px;height:44px;padding:0 16px;border-radius:22px;border:none;background:#FFFFFF;color:#135F9A;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;box-shadow:0 6px 16px rgba(0,32,94,.18);cursor:pointer}
+.bk-addr{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:14.5px;font-weight:700}
+.bk-addr small{flex-basis:100%;font-size:12.5px;font-weight:500;color:#7C8AA5;padding-right:22px}
+.bk-sub{font-size:13.5px;font-weight:700;color:#0E2350}
+.bk-field{height:50px;border-radius:14px;border:1.5px solid #D5E3F2;background:#FFFFFF;padding:0 14px;font-family:inherit;font-size:14.5px;color:#0E2350;outline:none;transition:border-color .2s,box-shadow .2s}
+.bk-field:focus{border-color:#FF8A4C;box-shadow:0 0 0 4px rgba(255,159,90,.18)}
+.bk-chip small{font-size:12px;font-weight:500;opacity:.75}
+/* groups */
+.bk-grps{display:flex;flex-direction:column;gap:12px}
+.bk-grp{position:relative;text-align:right;border-radius:20px;border:2px solid #E2EAF4;background:#FFFFFF;padding:16px 18px;display:flex;align-items:center;gap:16px;color:#0E2350;transition:border-color .25s,box-shadow .25s,transform .18s cubic-bezier(.3,1.6,.5,1)}
+.bk-grp:hover{box-shadow:0 12px 26px rgba(163,72,10,.1)}
+.bk-grp[aria-checked="true"]{border-color:#FF8A4C;background:linear-gradient(160deg,#FFFFFF 40%,#FFF1E6);box-shadow:0 14px 30px -6px rgba(242,84,91,.22)}
+.bk-grp[aria-disabled="true"]{opacity:.6;background:#F7F9FC}
+.bk-grp[aria-disabled="true"]:active{transform:none}
+.bk-grp .bk-chk{position:static;flex-shrink:0}
+.bk-gl{width:56px;height:56px;border-radius:16px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;line-height:1.2;font-size:18px}
+.bk-gl small{font-size:11px;font-weight:600;opacity:.8}
+.bk-gi{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.bk-gt{font-size:16.5px;font-weight:700}
+.bk-gm{font-size:13.5px;color:#4A5878;display:flex;flex-wrap:wrap;gap:4px 14px}
+.bk-seats{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:4px}
+.bk-seat{width:12px;height:12px;border-radius:4px;background:#E2EAF4}
+.bk-seat.f{background:var(--sc,#FF8A4C);animation:bkSeat .4s cubic-bezier(.3,1.6,.5,1) backwards;animation-delay:var(--d)}
+@keyframes bkSeat{from{transform:scale(0) rotate(-30deg)}}
+.bk-left{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;margin-right:6px}
+.bk-one{display:flex;flex-direction:column;gap:14px;border-radius:24px;padding:22px;background:radial-gradient(120% 140% at 100% 0%,#FF8A4C,#7A2E5E 55%,#00205E);color:#FFFFFF;position:relative;overflow:hidden}
+.bk-one::after{content:"";position:absolute;width:220px;height:220px;border-radius:50%;border:2px solid rgba(255,255,255,.15);left:-60px;top:-90px}
+/* solo slots */
+.bk-slots{display:flex;flex-direction:column;gap:10px}
+.bk-day{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:#F8FBFE;border:1.5px solid #E2EAF4}
+.bk-dayn{width:74px;flex-shrink:0;font-size:15px;font-weight:700}
+.bk-slot{height:44px;padding:0 16px;border-radius:22px;border:1.5px solid #D5E3F2;background:#FFFFFF;color:#0E2350;font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;transition:background .2s,color .2s,border-color .2s,transform .18s cubic-bezier(.3,1.6,.5,1)}
+.bk-slot[aria-pressed="true"]{background:linear-gradient(120deg,#FF8A4C,#F2545B);border-color:transparent;color:#FFFFFF;box-shadow:0 8px 18px -4px rgba(242,84,91,.4);animation:mPop .4s cubic-bezier(.3,1.4,.5,1)}
+.bk-slot[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
+.bk-link{align-self:flex-start;min-height:44px;background:none;border:none;padding:0;color:#A3480A;font-size:14px;font-weight:700;text-decoration:underline;text-underline-offset:4px}
+.bk-status{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:700}
+.bk-note{display:flex;gap:10px;align-items:center;border-radius:16px;background:#FFF4EA;color:#8A4310;padding:12px 14px;font-size:13.5px;line-height:1.65}
+/* phone: what you picked so far (fills the space under the card, taps go back to that step) */
+.bk-picks{display:none}
+.bk-pick{height:44px;padding:0 6px 0 14px;border-radius:22px;border:1.5px dashed #F5C3A2;background:#FFFFFF;color:#A3480A;font-size:13.5px;font-weight:700;display:inline-flex;align-items:center;gap:8px}
+.bk-pick > span:first-child{width:32px;height:32px;border-radius:50%;background:#FFE8D6;display:flex;align-items:center;justify-content:center}
+/* summary (web side) */
+.bk-sum{background:#FFFFFF;border-radius:24px;overflow:hidden;box-shadow:0 24px 50px -18px rgba(0,20,64,.35)}
+.bk-sum-top{position:relative;overflow:hidden;padding:18px 20px;background:linear-gradient(150deg,#FF9F5A,#F2545B);color:#FFFFFF;display:flex;flex-direction:column;gap:2px}
+.bk-sum-top::after{content:"";position:absolute;width:120px;height:120px;border-radius:38px;background:#FFC53D;opacity:.22;left:-30px;top:-50px;transform:rotate(18deg)}
+.bk-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 20px;border-top:1px solid #EDF2F8;font-size:14px}
+.bk-row > span:first-child{color:#4A5878;flex-shrink:0}
+.bk-row > span:last-child{font-weight:700;text-align:left;display:flex;align-items:center;gap:6px}
+.bk-row.fresh > span:last-child{animation:bkFresh .8s ease-out}
+@keyframes bkFresh{0%{color:#FF8A4C}100%{color:inherit}}
+.bk-edit{position:relative;flex-shrink:0;height:30px;padding:0 12px;border-radius:15px;border:none;background:#FFE8D6;color:#A3480A;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+.bk-edit::after{content:"";position:absolute;top:50%;left:50%;width:max(100%,48px);height:48px;transform:translate(-50%,-50%)}
+.bk-total{display:flex;justify-content:space-between;align-items:baseline;padding:16px 20px;border-top:1.5px dashed #D5E3F2}
+.bk-total b{font-size:24px;color:#00205E;display:inline-flex;align-items:baseline;gap:6px}
+.bk-total b small{font-size:15px}
+.bk-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:4px}
+.bk-next{position:relative;overflow:hidden;height:56px;padding:0 30px;border:none;border-radius:28px;background:linear-gradient(120deg,#FF8A4C,#F2545B);color:#FFFFFF;font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px;box-shadow:0 12px 24px -6px rgba(242,84,91,.45);transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.bk-next:hover{transform:translateY(-2px)}
+.bk-next[aria-disabled="true"]{background:#C9D6E6;box-shadow:none;cursor:not-allowed}
+.bk-next.go{background:linear-gradient(120deg,#FF9F5A,#F2545B)}
+.bk-prev{height:56px;padding:0 22px;border-radius:28px;border:1.5px solid #D5E3F2;background:#FFFFFF;color:#A3480A;font-size:15px;font-weight:700}
+/* M9 jelly press on every tile and button */
+.bk-opt:active,.bk-grp:active,.bk-chip:active,.bk-slot:active,.bk-pm:active,.bk-next:active,.bk-prev:active,.bk-pick:active,.bk-g:active{transform:scale(.94,1.04)}
+/* review + payment */
+.bk-rev{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
+.bk-who{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;height:34px;padding:0 12px 0 6px;border-radius:17px;background:#D9F7EE;color:#0C6B55;font-size:13px;font-weight:700}
+.bk-who > span:first-child{width:24px;height:24px;border-radius:50%;background:#19C29B;color:#FFFFFF;display:flex;align-items:center;justify-content:center}
+.bk-pay{display:flex;flex-direction:column;gap:10px}
+.bk-pm{height:54px;border-radius:16px;border:1.5px solid #D5E3F2;background:#FFFFFF;font-size:14.5px;font-weight:700;color:#0E2350;display:flex;align-items:center;gap:12px;padding:0 14px;text-align:right;transition:border-color .2s,background .2s,box-shadow .2s,transform .18s cubic-bezier(.3,1.6,.5,1)}
+.bk-pm > span:first-child{width:40px;height:28px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.bk-pm .bk-radio{margin-right:auto;width:22px;height:22px;border-radius:50%;border:2px solid #D5E3F2;flex-shrink:0;transition:border-width .2s,border-color .2s}
+.bk-pm[aria-checked="true"]{border-color:#FF8A4C;background:#FFF6EF;box-shadow:0 0 0 4px rgba(255,159,90,.16)}
+.bk-pm[aria-checked="true"] .bk-radio{border:7px solid #F2545B;animation:mPop .4s cubic-bezier(.3,1.4,.5,1)}
+.bk-safe{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#0C6B55}
+/* login mini sheet (only when not signed in) */
+.bk-dim{position:fixed;inset:0;z-index:40;background:rgba(0,16,48,.5);backdrop-filter:blur(4px);animation:kFade .3s both}
+.bk-modal{position:fixed;inset:0;z-index:41;display:flex;align-items:center;justify-content:center;padding:20px;pointer-events:none}
+.bk-sheet{pointer-events:auto;position:relative;width:440px;max-width:100%;background:#FFFFFF;border-radius:28px;padding:28px 24px 24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 30px 70px -20px rgba(0,16,48,.55);animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards}
+.bk-grab{display:none}
+.bk-x{position:absolute;top:14px;left:14px;width:44px;height:44px;border-radius:50%;border:none;background:#F3F8FD;color:#4A5878;display:flex;align-items:center;justify-content:center}
+.bk-lock{width:60px;height:60px;border-radius:20px 20px 20px 6px;background:#FFE8D6;color:#A3480A;display:flex;align-items:center;justify-content:center}
+.bk-g{height:52px;border-radius:26px;border:1.5px solid #D5E3F2;background:#FFFFFF;font-size:15px;font-weight:700;color:#0E2350;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.bk-or{display:flex;align-items:center;gap:10px;font-size:12.5px;font-weight:700;color:#7C8AA5}
+.bk-or::before,.bk-or::after{content:"";flex:1;height:1px;background:#E2EAF4}
+.bk-tel{height:52px;border-radius:14px;border:1.5px solid #D5E3F2;background:#FFFFFF;display:flex;align-items:center;overflow:hidden}
+.bk-tel input{flex:1;min-width:0;height:100%;border:none;outline:none;background:transparent;padding:0 14px;font-family:inherit;font-size:15px;color:#0E2350;text-align:left}
+.bk-tel span{height:100%;display:flex;align-items:center;padding:0 14px;border-left:1.5px solid #E2EAF4;background:#F8FBFE;font-weight:700;font-size:14.5px}
+/* success */
+.bk-done{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:center}
+.bk-done .k-success{padding:12px 8px}
+.bk-done .k-success-mark{width:112px;height:112px}
+.bk-done .k-success-mark svg{width:80px;height:80px}
+.bk-done .k-success h3{font-size:28px}
+.bk-done .k-success p{font-size:15px}
+.bk-done .bk-next{align-self:stretch;justify-content:center;margin-top:10px}
+.bk-tix{position:relative;display:flex;border-radius:24px;background:#FFFFFF;border:1.5px solid #F5D3BC;box-shadow:0 18px 40px -20px rgba(163,72,10,.45);animation:mDeal .55s cubic-bezier(.2,.9,.3,1.1) .35s backwards;--r:-4deg}
+.bk-cal{width:118px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;border-radius:22px 0 0 22px;overflow:hidden;background:#FFF6EF;border-left:2px dashed #F5C3A2}
+.bk-cal > span:first-child{align-self:stretch;text-align:center;padding:6px 0;background:linear-gradient(120deg,#FF8A4C,#F2545B);color:#FFFFFF;font-size:13.5px;font-weight:700}
+.bk-cal b{font-size:46px;line-height:1.3;color:#00205E;margin-top:4px}
+.bk-cal small{font-size:13px;font-weight:700;color:#A3480A;padding-bottom:10px}
+.bk-tinfo{flex:1;min-width:0;padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.bk-tinfo > small{font-size:12.5px;font-weight:700;color:#A3480A}
+.bk-tinfo > b{font-size:18px;line-height:1.5}
+.bk-tmeta{display:flex;align-items:center;gap:8px;font-size:13.5px;color:#4A5878}
+.bk-av{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-size:12px;font-weight:700;background:linear-gradient(150deg,#FFB37A,#F2545B)}
+.bk-after{display:flex;flex-direction:column;gap:14px}
+.bk-after .k-rules > li{animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d)}
+.bk-after .k-rules .k-ico{background:#FFE8D6;color:#A3480A}
+.bk-bar{display:none}
+.bk .m-roll.r1 i{animation-name:bkR1}.bk .m-roll.r2 i{animation-name:bkR2}.bk .m-roll.r3 i{animation-name:bkR3}.bk .m-roll.r4 i{animation-name:bkR4}
+@keyframes bkR1{from{transform:translateY(0)}to{transform:translateY(calc(var(--v,0)*-1.3em))}}
+@keyframes bkR2{from{transform:translateY(0)}to{transform:translateY(calc(var(--v,0)*-1.3em))}}
+@keyframes bkR3{from{transform:translateY(0)}to{transform:translateY(calc(var(--v,0)*-1.3em))}}
+@keyframes bkR4{from{transform:translateY(0)}to{transform:translateY(calc(var(--v,0)*-1.3em))}}
+/* mobile (dev="m") */
+.bk-m .bk-head-in{height:58px;padding:0 14px}
+.bk-m .bk-hero{padding:16px 0 78px}
+.bk-m .bk-hero-in{padding:0 16px;gap:16px}
+.bk-m .bk-cover{width:42px;height:56px}
+.bk-m .bk-st span{display:none}
+.bk-m .bk-steps{gap:6px}
+.bk-m .bk-body{padding:0 12px 20px;margin-top:-64px;flex-direction:column;align-items:stretch;gap:0}
+.bk-m .bk-col{flex:none}
+.bk-m .bk-main{padding:18px 16px;border-radius:24px;gap:16px}
+.bk-m .bk-side{display:none}
+.bk-m .bk-h{font-size:22px}
+.bk-m .bk-p{font-size:14px}
+.bk-m .bk-opts{grid-template-columns:1fr;gap:10px}
+.bk-m .bk-opt{padding:14px;flex-direction:row;align-items:flex-start;gap:12px}
+.bk-m .bk-opt .bk-ico{width:44px;height:44px;flex-shrink:0}
+.bk-m .bk-ot{font-size:16.5px}
+.bk-m .bk-od{font-size:13px}
+.bk-m .bk-chk{top:12px;left:12px}
+.bk-m .bk-nav{display:none}
+.bk-m .bk-grp{padding:12px;gap:10px;align-items:flex-start}
+.bk-m .bk-gl{width:46px;height:46px;font-size:16px}
+.bk-m .bk-gt{font-size:15px}
+.bk-m .bk-gm{font-size:12.5px}
+.bk-m .bk-chip{height:44px;padding:0 14px;font-size:13.5px}
+.bk-m .bk-day{gap:8px;padding:8px 12px}
+.bk-m .bk-dayn{width:62px;font-size:14px}
+.bk-m .bk-slot{padding:0 14px;font-size:13.5px}
+.bk-m .bk-picks{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:16px 6px 0}
+.bk-m .bk-picks > small{font-size:12.5px;font-weight:700;color:#7C8AA5;margin-left:2px}
+.bk-m .bk-rev{grid-template-columns:1fr;gap:14px}
+.bk-m .bk-row{padding:11px 16px}
+.bk-m .bk-total{padding:14px 16px}
+.bk-m .bk-bar{display:flex;position:sticky;bottom:0;z-index:6;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px 16px;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid #D5E3F2}
+.bk-m .bk-next{height:52px;padding:0 22px;font-size:15.5px}
+.bk-m .bk-done{grid-template-columns:1fr;gap:18px}
+.bk-m .bk-done .k-success{padding:6px 0 0}
+.bk-m .bk-done .k-success-mark{width:96px;height:96px}
+.bk-m .bk-done .k-success-mark svg{width:70px;height:70px}
+.bk-m .bk-done .k-success h3{font-size:23px}
+.bk-m .bk-done .k-success p{font-size:14px}
+.bk-m .bk-done .bk-next{display:none}
+.bk-m .bk-cal{width:96px}
+.bk-m .bk-cal b{font-size:38px}
+.bk-m .bk-tinfo{padding:12px 14px}
+.bk-m .bk-tinfo > b{font-size:16px}
+.bk-m .bk-modal{align-items:flex-end;padding:0}
+.bk-m .bk-sheet{width:100%;border-radius:28px 28px 0 0;padding:12px 18px 22px;animation:mSheet .5s cubic-bezier(.2,.8,.2,1) both}
+.bk-m .bk-grab{display:block;align-self:center;width:44px;height:5px;border-radius:3px;background:#D5E3F2;margin-bottom:6px}
+.bk-m .bk-x{top:14px}
+@media (prefers-reduced-motion: reduce){.bk *,.bk *::before,.bk *::after{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div class="{{rootCls}}" dir="rtl">
+  <header class="bk-head">
+    <div class="bk-head-in">
+      <button type="button" class="bk-back" onClick="{{goBack}}" aria-label="{{backL}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
+      <span style="display: flex; flex-direction: column; line-height: 1.35; min-width: 0">
+        <span style="font-size: 16px; font-weight: 700">{{headT}}</span>
+        <span class="bk-mstep">{{stepLine}}</span>
+      </span>
+      <span style="flex: 1"></span>
+      <span class="bk-logo"><img src="./logo.png" alt="" width="30" height="34" style="width: 30px; height: auto">ALFaheem</span>
+    </div>
+  </header>
+
+  <sc-if value="{{inFlow}}" hint-placeholder-val="{{ true }}">
+  <section class="bk-hero">
+    <span class="bk-shapes k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></span>
+    <div class="bk-hero-in">
+      <div class="bk-subj">
+        <span class="bk-cover" aria-hidden="true"></span>
+        <span style="display: flex; flex-direction: column; line-height: 1.45"><span style="font-size: 13px; opacity: .8">{{kicker}}</span><span style="font-size: 22px; font-weight: 700">{{subj}}، {{grade}}</span></span>
+      </div>
+      <sc-if value="{{showSteps}}" hint-placeholder-val="{{ true }}">
+        <ol class="bk-steps" aria-label="خطوات الحجز">
+          <sc-for list="{{steps}}" as="t" hint-placeholder-count="4">
+            <li class="bk-st {{t.cls}}" aria-current="{{t.cur}}"><i><b style="transform: scaleX({{t.fill}})"></b></i><span>{{t.n}}. {{t.l}}</span></li>
+          </sc-for>
+        </ol>
+      </sc-if>
+    </div>
+  </section>
+
+  <div class="bk-body">
+    <div class="bk-col">
+    <main class="bk-main">
+      <!-- step 1 -->
+      <sc-if value="{{s1}}" hint-placeholder-val="{{ true }}">
+        <section class="bk-pane m-wipe">
+          <div style="display: flex; flex-direction: column; gap: 6px"><h1 class="bk-h">كيف تبي تدرس؟</h1></div>
+          <div class="bk-opts" role="radiogroup" aria-label="كيف تبي تدرس؟">
+            <sc-for list="{{attOpts}}" as="o" hint-placeholder-count="2">
+              <button type="button" role="radio" class="bk-opt" aria-checked="{{o.on}}" onClick="{{o.go}}">
+                <span class="bk-chk" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"></path></svg></span>
+                <span class="bk-ico" style="background: {{o.bg}}; color: {{o.fg}}"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{o.icon}}"></path></svg></span>
+                <span style="position: relative; display: flex; flex-direction: column; gap: 6px"><span class="bk-ot">{{o.t}}</span><span class="bk-od">{{o.d}}</span></span>
+              </button>
+            </sc-for>
+          </div>
+          <sc-if value="{{needBranch}}" hint-placeholder-val="{{ false }}">
+            <div class="bk-card bk-unfold">
+              <span class="bk-lbl">وين موقعك؟</span>
+              <div class="bk-seg m-pill" role="tablist"><span class="m-pill-bg" style="--i: {{lmIdx}}"></span><button type="button" role="tab" aria-selected="{{lmList}}" onClick="{{toList}}">اختر من القائمة</button><button type="button" role="tab" aria-selected="{{lmMap}}" onClick="{{toMap}}"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"></path></svg>حدد على الخريطة</button></div>
+              <sc-if value="{{isMap}}" hint-placeholder-val="{{ false }}">
+                <div class="bk-map bk-unfold">
+                  <svg viewBox="0 0 600 260" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                    <rect width="600" height="260" fill="#EAF0F6"></rect>
+                    <path d="M0 210 C 120 190, 200 230, 320 205 S 520 170, 600 190 L600 260 L0 260 Z" fill="#CFE6F5"></path>
+                    <rect x="380" y="30" width="120" height="70" rx="14" fill="#D5EDD9"></rect>
+                    <g fill="#FFFFFF"><rect x="0" y="118" width="600" height="16"></rect><rect x="250" y="0" width="16" height="260"></rect><rect x="0" y="48" width="600" height="8"></rect><rect x="110" y="0" width="8" height="260"></rect><rect x="420" y="0" width="8" height="200"></rect><rect x="0" y="178" width="600" height="8"></rect></g>
+                    <g fill="#DCE5EF"><rect x="128" y="64" width="110" height="46" rx="6"></rect><rect x="276" y="64" width="134" height="46" rx="6"></rect><rect x="18" y="64" width="84" height="46" rx="6"></rect><rect x="128" y="142" width="110" height="28" rx="6"></rect><rect x="276" y="142" width="134" height="28" rx="6"></rect><rect x="436" y="142" width="150" height="28" rx="6"></rect><rect x="18" y="142" width="84" height="28" rx="6"></rect></g>
+                    <text x="440" y="70" font-size="13" fill="#3E8A55" font-weight="700">حديقة</text>
+                    <text x="300" y="40" font-size="12" fill="#7C8AA5" font-weight="700">طريق الأمير سعود</text>
+                  </svg>
+                  <span class="bk-pulse" aria-hidden="true"></span>
+                  <span class="bk-pin" aria-hidden="true"><svg width="40" height="48" viewBox="0 0 24 28"><path d="M12 27s-9-8-9-15a9 9 0 0 1 18 0c0 7-9 15-9 15z" fill="#F2545B" stroke="#FFFFFF" stroke-width="1.6"></path><circle cx="12" cy="12" r="3.4" fill="#FFFFFF"></circle></svg></span>
+                  <button type="button" class="bk-me"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path></svg>موقعي الحالي</button>
+                </div>
+                <span class="bk-addr"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2545B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path></svg>الرياض، حي النرجس، طريق الأمير سعود<small>حرّك الخريطة لين الدبوس يكون على مكانك</small></span>
+              </sc-if>
+              <sc-if value="{{isList}}" hint-placeholder-val="{{ true }}">
+              <span class="bk-sub">المنطقة</span>
+              <div class="bk-chips" role="radiogroup" aria-label="المنطقة">
+                <sc-for list="{{cities}}" as="b" hint-placeholder-count="5"><button type="button" role="radio" class="bk-chip" aria-checked="{{b.on}}" onClick="{{b.go}}">{{b.t}}</button></sc-for>
+              </div>
+              <sc-if value="{{hasCity}}" hint-placeholder-val="{{ false }}">
+                <span class="bk-sub bk-unfold">الحي</span>
+                <div class="bk-chips bk-unfold" role="radiogroup" aria-label="الحي">
+                  <sc-for list="{{dists}}" as="b" hint-placeholder-count="6"><button type="button" role="radio" class="bk-chip" aria-checked="{{b.on}}" onClick="{{b.go}}"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path></svg>{{b.t}}</button></sc-for>
+                </div>
+              </sc-if>
+              </sc-if>
+              <sc-if value="{{hasDist}}" hint-placeholder-val="{{ false }}">
+                <label class="bk-unfold" style="display: flex; flex-direction: column; gap: 6px"><span class="bk-sub">تفاصيل إضافية <small style="font-weight: 500; color: #7C8AA5">(اختياري)</small></span><input class="bk-field" type="text" value="{{det}}" onInput="{{detIn}}" placeholder="مثلًا: الشارع، أو علامة قريبة، أو رقم البيت"></label>
+              </sc-if>
+            </div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <!-- step 2 -->
+      <sc-if value="{{s2}}" hint-placeholder-val="{{ false }}">
+        <section class="bk-pane m-wipe">
+          <div style="display: flex; flex-direction: column; gap: 6px"><h1 class="bk-h">مع مجموعة ولا فردي؟</h1></div>
+          <div class="bk-opts" role="radiogroup" aria-label="نوع الحصص">
+            <sc-for list="{{typOpts}}" as="o" hint-placeholder-count="2">
+              <button type="button" role="radio" class="bk-opt" aria-checked="{{o.on}}" onClick="{{o.go}}">
+                <span class="bk-chk" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"></path></svg></span>
+                <span class="bk-ico" style="background: {{o.bg}}; color: {{o.fg}}"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{o.icon}}"></path></svg></span>
+                <span style="position: relative; display: flex; flex-direction: column; gap: 6px">
+                  <span class="bk-ot">{{o.t}}</span><span class="bk-od">{{o.d}}</span>
+                  <span class="bk-price"><b>{{o.price}}</b><span>ريال في الشهر</span></span>
+                  <span class="bk-per"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"></path></svg>{{o.per}}</span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+        </section>
+      </sc-if>
+
+      <!-- step 3, group with several schedules -->
+      <sc-if value="{{s3g}}" hint-placeholder-val="{{ false }}">
+        <section class="bk-pane m-wipe">
+          <div style="display: flex; flex-direction: column; gap: 4px"><h1 class="bk-h">اختر مجموعتك</h1><p class="bk-p">{{grpP}}</p></div>
+          <div class="bk-grps" role="radiogroup" aria-label="المجموعات">
+            <sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+              <button type="button" role="radio" class="bk-grp" aria-checked="{{g.on}}" aria-disabled="{{g.full}}" onClick="{{g.go}}">
+                <span class="bk-chk" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"></path></svg></span>
+                <span class="bk-gl" style="background: {{g.bg}}; color: {{g.fg}}"><small>مجموعة</small>{{g.k}}</span>
+                <span class="bk-gi">
+                  <span class="bk-gt">{{g.days}}</span>
+                  <span class="bk-gm"><span>{{g.time}}</span><span>{{g.teacher}}</span><span>تبدأ {{g.start}}</span></span>
+                  <span class="bk-seats" aria-label="{{g.seatsL}}" style="--sc: {{g.sc}}"><sc-for list="{{g.seats}}" as="x" hint-placeholder-count="10"><span class="bk-seat {{x.c}}" style="--d: {{x.d}}"></span></sc-for><span class="bk-left" style="color: {{g.leftC}}"><sc-if value="{{g.isFull}}" hint-placeholder-val="{{ false }}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg></sc-if>{{g.left}}</span></span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+        </section>
+      </sc-if>
+
+      <!-- step 3, group with a single schedule -->
+      <sc-if value="{{s3one}}" hint-placeholder-val="{{ false }}">
+        <section class="bk-pane m-wipe">
+          <div style="display: flex; flex-direction: column; gap: 4px"><h1 class="bk-h">هذا موعد المجموعة</h1><p class="bk-p">مكانك محجوز لك لين تأكد.</p></div>
+          <div class="bk-one">
+            <span style="position: relative; display: flex; align-items: center; gap: 10px"><span class="bk-gl" style="background: rgba(255, 255, 255, 0.16); color: #FFFFFF"><small>مجموعة</small>{{one.k}}</span><span style="display: flex; flex-direction: column; line-height: 1.45"><span style="font-size: 20px; font-weight: 700">{{one.days}}</span><span style="font-size: 14px; opacity: .85">{{one.time}}</span></span></span>
+            <span style="position: relative; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; opacity: .92"><span>{{one.teacher}}</span><span>تبدأ {{one.start}}</span><span>{{attWord}}</span></span>
+            <span class="bk-seats" style="position: relative; --sc: #FFFFFF"><sc-for list="{{one.seats}}" as="x" hint-placeholder-count="10"><span class="bk-seat {{x.c}}" style="--d: {{x.d}}; background: {{x.bg}}"></span></sc-for><span class="bk-left" style="color: #FFE3B8">{{one.left}}</span></span>
+          </div>
+          <button type="button" class="bk-link" onClick="{{toggleOne}}" aria-pressed="{{notifyOneP}}">{{notifyOneL}}</button>
+        </section>
+      </sc-if>
+
+      <!-- step 3, solo: pick from the teacher's open slots -->
+      <sc-if value="{{s3s}}" hint-placeholder-val="{{ false }}">
+        <section class="bk-pane m-wipe">
+          <div style="display: flex; flex-direction: column; gap: 6px"><h1 class="bk-h">اختر مواعيد حصصك</h1></div>
+          <div class="bk-slots">
+            <sc-for list="{{slots}}" as="d" hint-placeholder-count="5">
+              <div class="bk-day"><span class="bk-dayn">{{d.day}}</span><span class="bk-chips"><sc-for list="{{d.items}}" as="x" hint-placeholder-count="2"><button type="button" class="bk-slot" aria-pressed="{{x.on}}" aria-disabled="{{x.off}}" onClick="{{x.go}}">{{x.t}}</button></sc-for></span></div>
+            </sc-for>
+          </div>
+          <span class="bk-status" style="color: {{pickedC}}"><sc-if value="{{hasPicked}}" hint-placeholder-val="{{ true }}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"></path></svg></sc-if>{{pickedL}}</span>
+          <button type="button" class="bk-link" onClick="{{toPref}}">ما فيه وقت يناسبك؟ اقترح أوقاتك</button>
+        </section>
+      </sc-if>
+
+      <!-- step 3, solo: suggest preferred times -->
+      <sc-if value="{{s3p}}" hint-placeholder-val="{{ false }}">
+        <section class="bk-pane m-wipe">
+          <div style="display: flex; flex-direction: column; gap: 4px"><h1 class="bk-h">وش الأوقات اللي تناسبك؟</h1><p class="bk-p">اختر الأيام والفترة، ونثبّت لك الموعد خلال ٢٤ ساعة.</p></div>
+          <div class="bk-card">
+            <span class="bk-lbl">الأيام</span>
+            <div class="bk-chips"><sc-for list="{{dayOpts}}" as="d" hint-placeholder-count="6"><button type="button" class="bk-chip" aria-pressed="{{d.on}}" onClick="{{d.go}}">{{d.t}}</button></sc-for></div>
+          </div>
+          <div class="bk-card">
+            <span class="bk-lbl">الفترة</span>
+            <div class="bk-chips"><sc-for list="{{timeOpts}}" as="d" hint-placeholder-count="4"><button type="button" class="bk-chip" aria-pressed="{{d.on}}" onClick="{{d.go}}">{{d.t}} <small>{{d.h}}</small></button></sc-for></div>
+          </div>
+          <button type="button" class="bk-link" onClick="{{toSlots}}">رجوع للمواعيد الفاضية</button>
+        </section>
+      </sc-if>
+
+      <!-- step 4: summary + payment + one button (login is its own mini sheet) -->
+      <sc-if value="{{s4}}" hint-placeholder-val="{{ false }}">
+        <section class="bk-pane m-wipe">
+          <div style="display: flex; flex-direction: column; gap: 8px"><h1 class="bk-h">راجع حجزك</h1><sc-if value="{{signed}}" hint-placeholder-val="{{ false }}"><span class="bk-who m-pop"><span><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"></path></svg></span>مسجّل باسم فيصل العنزي</span></sc-if></div>
+          <div class="bk-rev">
+            <div class="bk-card" style="padding: 0; gap: 0; overflow: hidden; background: #FFFFFF">
+              <sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+                <div class="bk-row"><span>{{r.k}}</span><span>{{r.v}}<sc-if value="{{r.edit}}" hint-placeholder-val="{{ false }}"><button type="button" class="bk-edit" onClick="{{r.edit}}" aria-label="{{r.editL}}">تعديل</button></sc-if></span></div>
+              </sc-for>
+              <div class="bk-total"><span style="font-size: 14px; color: #4A5878">المبلغ الشهري</span><b>{{price}} <small>ريال</small></b></div>
+            </div>
+            <div class="bk-card">
+              <span class="bk-lbl">طريقة الدفع</span>
+              <div class="bk-pay" role="radiogroup" aria-label="طريقة الدفع">
+                <sc-for list="{{payOpts}}" as="m" hint-placeholder-count="3"><button type="button" role="radio" class="bk-pm" aria-checked="{{m.on}}" onClick="{{m.go}}"><span style="background: {{m.bg}}; color: {{m.fg}}">{{m.mark}}</span>{{m.t}}<span class="bk-radio" aria-hidden="true"></span></button></sc-for>
+              </div>
+              <span class="bk-safe"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3zM9 12l2 2 4-4"></path></svg>دفعك آمن، والإيصال يوصلك على الجوال</span>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+
+      <!-- step 5: success -->
+      <sc-if value="{{s5}}" hint-placeholder-val="{{ false }}">
+        <section class="bk-pane bk-done">
+          <div class="k-success">
+            <span class="k-success-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"></circle><path d="M20 33l8 8 16-17"></path></svg><span class="m-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></span>
+            <h3>تم، حجزك تأكد</h3>
+            <p>{{doneP}}</p>
+            <button type="button" class="bk-next go" onClick="{{toSubject}}">افتح المادة<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg></button>
+          </div>
+          <div class="bk-after">
+            <div class="bk-tix">
+              <div class="bk-tinfo">
+                <small>{{tix.label}}</small>
+                <b>{{tix.time}}</b>
+                <span class="bk-tmeta"><span class="bk-av">{{tix.init}}</span>{{tix.teacher}}</span>
+                <span class="bk-tmeta">{{tix.mode}}</span>
+              </div>
+              <sc-if value="{{tix.hasDate}}" hint-placeholder-val="{{ true }}">
+                <div class="bk-cal" aria-label="{{tix.dateL}}"><span>{{tix.month}}</span><b><span class="m-roll" style="--d: .9s"><sc-for list="{{tix.day}}" as="x" hint-placeholder-count="1"><i style="--v: {{x.v}}; --i: {{x.i}}" aria-hidden="true"></i></sc-for></span></b><small>{{tix.wd}}</small></div>
+              </sc-if>
+              <sc-if value="{{tix.noDate}}" hint-placeholder-val="{{ false }}">
+                <div class="bk-cal"><span>الموعد</span><b style="font-size: 30px; padding: 8px 0 2px">٢٤</b><small>ساعة بالكثير</small></div>
+              </sc-if>
+            </div>
+            <ul class="k-rules">
+              <sc-for list="{{after}}" as="a" hint-placeholder-count="3">
+                <li style="--d: {{a.d}}"><span class="k-ico"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{a.icon}}"></path></svg></span>{{a.t}}</li>
+              </sc-for>
+            </ul>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{showNav}}" hint-placeholder-val="{{ true }}">
+        <div class="bk-nav">
+          <button type="button" class="bk-next {{nextCls}}" aria-disabled="{{nextOff}}" onClick="{{next}}">{{nextL}}<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg></button>
+          <sc-if value="{{hasPrev}}" hint-placeholder-val="{{ false }}"><button type="button" class="bk-prev" onClick="{{goBack}}">رجوع</button></sc-if>
+        </div>
+      </sc-if>
+    </main>
+    <sc-if value="{{showPicks}}" hint-placeholder-val="{{ false }}">
+      <div class="bk-picks"><small>اخترت</small><sc-for list="{{picks}}" as="p" hint-placeholder-count="2"><button type="button" class="bk-pick m-pop" style="--d: {{p.d}}" onClick="{{p.go}}" aria-label="{{p.l}}"><span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{p.icon}}"></path></svg></span>{{p.t}}<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity: .7"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"></path></svg></button></sc-for></div>
+    </sc-if>
+    </div>
+
+    <sc-if value="{{showSide}}" hint-placeholder-val="{{ true }}">
+    <aside class="bk-side" aria-label="ملخص الحجز">
+      <div class="bk-sum">
+        <div class="bk-sum-top"><span style="font-size: 13px; opacity: .85">ملخص الحجز</span><span style="font-size: 20px; font-weight: 700">{{subj}}</span><span style="font-size: 13.5px; opacity: .9">{{grade}}</span></div>
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+          <div class="bk-row {{r.fresh}}"><span>{{r.k}}</span><span>{{r.v}}</span></div>
+        </sc-for>
+        <div class="bk-total"><span style="font-size: 14px; color: #4A5878">في الشهر</span><b><sc-if value="{{hasPrice}}" hint-placeholder-val="{{ true }}"><span class="m-roll {{rollCls}}" aria-label="{{price}}"><sc-for list="{{priceDigits}}" as="x" hint-placeholder-count="3"><i style="--v: {{x.v}}; --i: {{x.i}}" aria-hidden="true"></i></sc-for></span><small>ريال</small></sc-if><sc-if value="{{noPrice}}" hint-placeholder-val="{{ false }}">—</sc-if></b></div>
+      </div>
+    </aside>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{ true }}">
+    <div class="bk-bar">
+      <span style="display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 12px; color: #4A5878">في الشهر</span><span style="font-size: 19px; font-weight: 700; color: #00205E; display: inline-flex; align-items: baseline; gap: 5px"><sc-if value="{{hasPrice}}" hint-placeholder-val="{{ true }}"><span class="m-roll {{rollCls}}" aria-label="{{price}}"><sc-for list="{{priceDigits}}" as="x" hint-placeholder-count="3"><i style="--v: {{x.v}}; --i: {{x.i}}" aria-hidden="true"></i></sc-for></span><span style="font-size: 15px">ريال</span></sc-if><sc-if value="{{noPrice}}" hint-placeholder-val="{{ false }}">—</sc-if></span></span>
+      <button type="button" class="bk-next {{nextCls}}" aria-disabled="{{nextOff}}" onClick="{{next}}">{{nextL}}<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg></button>
+    </div>
+  </sc-if>
+  <sc-if value="{{showDoneBar}}" hint-placeholder-val="{{ false }}">
+    <div class="bk-bar"><button type="button" class="bk-next go" onClick="{{toSubject}}" style="flex: 1; justify-content: center">افتح المادة<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg></button></div>
+  </sc-if>
+
+  <!-- login mini sheet: only when the student is not signed in and taps "أكّد وادفع" -->
+  <sc-if value="{{showLogin}}" hint-placeholder-val="{{ false }}">
+    <div class="bk-dim" onClick="{{closeSheet}}"></div>
+    <div class="bk-modal">
+      <div class="bk-sheet" role="dialog" aria-modal="true" aria-label="سجّل دخولك">
+        <span class="bk-grab" aria-hidden="true"></span>
+        <button type="button" class="bk-x" onClick="{{closeSheet}}" aria-label="إغلاق"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+        <span class="bk-lock m-pop" style="--d: .2s"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a8 8 0 0 1 16 0v1"></path></svg></span>
+        <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 21px; font-weight: 700; line-height: 1.45">سجّل دخولك عشان نثبّت حجزك</span><span style="font-size: 14px; color: #4A5878">حجزك محفوظ لين تكمّل.</span></span>
+        <button type="button" class="bk-g" onClick="{{signIn}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"></path><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"></path><path fill="#FBBC05" d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2z"></path><path fill="#EA4335" d="M12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10C7.2 7.7 9.4 6 12 6z"></path></svg>كمّل بحساب جوجل</button>
+        <span class="bk-or">أو برقم جوالك</span>
+        <label class="bk-tel"><span dir="ltr">+966</span><input type="tel" dir="ltr" inputmode="tel" placeholder="5XXXXXXXX" aria-label="رقم الجوال"></label>
+        <button type="button" class="bk-next go" onClick="{{signIn}}" style="justify-content: center">أرسل رمز التحقق</button>
+      </div>
+    </div>
+  </sc-if>
+  </sc-if>
+
+  <!-- enrolled subject page (step 6): the subject content belongs to SubjectProfile -->
+  <sc-if value="{{s6}}" hint-placeholder-val="{{ false }}">
+    <dc-import name="SubjectProfile" bare="1" enrolled="1" typ="{{typP}}" att="{{attP}}" hint-size="100%,1400px"></dc-import>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"step":"1","dev":"w","att":"","typ":"","$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state, P = this.props || {};
+    const pick = (k, d) => (s[k] !== undefined ? s[k] : (P[k] !== undefined && P[k] !== '' ? P[k] : d));
+    const step = +pick('step', 1) || 1;
+    const att = pick('att', '');
+    const city = pick('city', '');
+    const dist = pick('dist', '');
+    const det = s.det !== undefined ? s.det : (P.det || '');
+    const lmode = pick('lmode', 'list');
+    const branch = city && dist ? city + '، حي ' + dist : '';
+    const typ = pick('typ', '');
+    const grp = pick('grp', '');
+    const one = pick('one', '') === '1';
+    const pref = pick('pref', '') === '1' || s.pref === true;
+    const days = s.days || (P.days ? String(P.days).split(',') : []);
+    const times = s.times || (P.times ? String(P.times).split(',') : []);
+    // no class may start between ٥ and ٧ م (Maghrib); an older prop value ٧:٠٠ م maps to ٧:٣٠ م
+    const picked = s.slots || (P.slots ? String(P.slots).split(',').map((x) => x.replace('|٧:٠٠ م', '|٧:٣٠ م')) : []);
+    const pay = pick('pay', 'mada');
+    const sheet = pick('sheet', '');
+    const notify = s.notify === true, notifyOne = s.notifyOne === true;
+    const signed = s.signed === true || P.signed === '1';
+    const dev = P.dev || 'w';
+    const set = (o) => this.setState(o);
+    const ar = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+    const top = () => { try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) {} };
+
+    const PR = { online: { group: 199, solo: 449 }, center: { group: 299, solo: 599 } };
+    const price = att && typ ? PR[att][typ] : 0;
+    const ICON = {
+      online: 'M3 5h18v11H3zM1 19h22',
+      center: 'M4 21V5l8-3 8 3v16M9 21v-5h6v5M8 9h2M14 9h2M8 13h2M14 13h2',
+      group: 'M8 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 21v-3a6 6 0 0 1 12 0v3M17.5 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM14.5 21v-2a3 3 0 0 1 6 0v2',
+      solo: 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a8 8 0 0 1 16 0v1'
+    };
+    const CITIES = { 'الرياض': ['النرجس', 'الملقا', 'الياسمين', 'العليا', 'الروضة', 'قرطبة'], 'جدة': ['الروضة', 'الشاطئ', 'السلامة', 'الحمراء', 'النعيم', 'المروة'], 'مكة المكرمة': ['العزيزية', 'الشوقية', 'النسيم', 'العوالي'], 'المدينة المنورة': ['قباء', 'العزيزية', 'الحرة الشرقية', 'شوران'], 'الشرقية': ['الدمام: الشاطئ', 'الخبر: العقربية', 'الظهران: الدوحة', 'الدمام: الفيصلية'] };
+    // key, days, time (50 minutes), teacher, start date, seats taken (of 10), tint, ink, seat colour, start weekday, start day number
+    const GRPS = [
+      ['أ', 'الأحد والثلاثاء', '٧:٣٠ إلى ٨:٢٠ م', 'أ. ماجد الشهري', '١ ديسمبر', 5, '#E2EFFA', '#135F9A', '#3DA5FF', 'الثلاثاء', 1],
+      ['ب', 'الاثنين والأربعاء', '٤:٠٠ إلى ٤:٥٠ العصر', 'أ. سلطان العمري', '٢ ديسمبر', 7, '#ECE5FF', '#4A28B8', '#7A4DF0', 'الأربعاء', 2],
+      ['ج', 'الاثنين والخميس', '٨:٣٠ إلى ٩:٢٠ م', 'أ. تركي الشمري', '٣ ديسمبر', 3, '#D9F7EE', '#0C6B55', '#19C29B', 'الخميس', 3],
+      ['د', 'الأحد والأربعاء', '٩:٠٠ إلى ٩:٥٠ م', 'أ. نايف الحارثي', '٦ ديسمبر', 10, '#FFE8D6', '#A3480A', '#FF9F5A', 'الأحد', 6]
+    ];
+    const gKey = one ? 'أ' : grp;
+    const G = GRPS.find((g) => g[0] === gKey);
+    const SLOTS = [['الأحد', ['٤:٠٠ م', '٨:٠٠ م']], ['الاثنين', ['٧:٣٠ م']], ['الثلاثاء', ['٤:٠٠ م', '٧:٣٠ م']], ['الأربعاء', ['٨:٠٠ م']], ['الخميس', ['٤:٠٠ م', '٩:٠٠ م']]];
+    const SLOT_DAY = { 'الثلاثاء': 1, 'الأربعاء': 2, 'الخميس': 3, 'الأحد': 6, 'الاثنين': 7 }; // first date in December 2026
+    const DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
+    const TIMES = [['الصباح', '٩ إلى ١٢'], ['العصر', '٣ إلى ٥'], ['المساء', '٧:٣٠ إلى ٩'], ['الليل', '٩ إلى ١١']];
+    const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : arr.concat([v]));
+    const pickedDays = picked.map((x) => x.split('|')[0]);
+
+    const ok3 = typ === 'group' ? !!G && G[5] < 10 : (pref ? days.length >= 2 && times.length >= 1 : picked.length >= 1);
+    const okStep = { 1: !!att && (att === 'online' || !!branch), 2: !!typ, 3: ok3, 4: true }[step];
+    const go = (n) => (e) => { if (e && e.preventDefault) e.preventDefault(); set({ step: n, sheet: '' }); top(); };
+    const next = () => {
+      if (!okStep) return;
+      if (step === 4 && !signed) { set({ sheet: 'login' }); return; }
+      set({ step: Math.min(5, step + 1) }); top();
+    };
+    const attL = att === 'online' ? 'عن بعد' : att === 'center' ? 'حضوري، ' + branch : '';
+    const typL = typ === 'group' ? 'مجموعة' : typ === 'solo' ? 'فردي' : '';
+    const soloWhen = pref ? (days.length ? days.join(' و') + (times.length ? '، ' + times.join(' أو ') : '') : '') : picked.map((x) => x.replace('|', ' ')).join(' و');
+    const whenL = typ === 'group' ? (G ? 'مجموعة ' + G[0] + ': ' + G[1] + '، ' + G[2] : '') : soloWhen;
+    const teacher = typ === 'group' ? (G ? G[3] : 'حسب المجموعة') : (typ === 'solo' ? 'أ. ماجد الشهري' : '—');
+
+    const STEPS = ['طريقة الدراسة', 'نوع الحصص', 'الموعد', 'التأكيد'];
+    const rows = [
+      ['المادة', 'الرياضيات', null, 0],
+      [STEPS[0], attL || 'ما اخترت للحين', step > 1 ? go(1) : null, 1],
+      [STEPS[1], typL || 'ما اخترت للحين', step > 2 ? go(2) : null, 2],
+      [STEPS[2], whenL || 'ما اخترت للحين', step > 3 ? go(3) : null, 3],
+      ['المعلم', teacher, null, 3]
+    ].map(([k, v, edit, at]) => ({ k, v, edit, editL: 'تعديل ' + k, fresh: step === at + 1 ? 'fresh' : '' }));
+
+    const seatList = (taken, onDark) => Array.from({ length: 10 }, (_, i) => ({ c: i < taken ? 'f' : '', d: (0.3 + i * 0.06).toFixed(2) + 's', bg: onDark ? (i < taken ? '#FFFFFF' : 'rgba(255,255,255,.22)') : '' }));
+    const rollIdx = { 199: 1, 449: 2, 299: 3, 599: 4 }[price] || 1;
+    const digits = (n) => String(n).split('').map((v, i) => ({ v: +v, i }));
+
+    // first class "ticket" on the success screen
+    let tix;
+    if (typ === 'group' && G) {
+      tix = { label: 'أول حصة', time: G[2], teacher: G[3], wd: G[9], day: digits(G[10]), month: 'ديسمبر', dateL: G[9] + ' ' + G[4] };
+    } else if (typ === 'solo' && !pref) {
+      const first = picked.slice().sort((a, b) => (SLOT_DAY[a.split('|')[0]] || 9) - (SLOT_DAY[b.split('|')[0]] || 9))[0] || 'الأحد|٤:٠٠ م';
+      const [wd, t] = first.split('|');
+      const AD = '٠١٢٣٤٥٦٧٨٩', toN = (x) => +[...x].map((c) => AD.indexOf(c)).join('');
+      const [hh, mm] = t.split(' ')[0].split(':').map(toN), endM = hh * 60 + mm + 50;
+      const h2 = (n) => ar(Math.floor(n / 60)) + ':' + ar(String(n % 60).padStart(2, '0'));
+      const dn = SLOT_DAY[wd] || 6;
+      tix = { label: 'أول حصة', time: h2(hh * 60 + mm) + ' إلى ' + h2(endM) + ' ' + (t.indexOf('م') > -1 ? 'م' : 'ص'), teacher: 'أ. ماجد الشهري', wd, day: digits(dn), month: 'ديسمبر', dateL: wd + ' ' + ar(dn) + ' ديسمبر' };
+    } else {
+      tix = { label: 'أوقاتك المقترحة', time: soloWhen || 'الأحد والثلاثاء، المساء', teacher: 'أ. ماجد الشهري', wd: '', day: [], month: '', dateL: '' };
+    }
+    tix.hasDate = tix.day.length > 0; tix.noDate = !tix.hasDate;
+    tix.init = tix.teacher.replace('أ. ', '').trim().charAt(0);
+    tix.mode = (typ === 'solo' ? 'فردي' : 'مجموعة ' + (G ? G[0] : 'أ')) + '، ' + (att === 'center' ? 'حضوري في ' + branch : 'عن بعد') + '، الحصة ٥٠ دقيقة';
+
+    const picks = [];
+    if (step >= 2 && att) picks.push({ t: att === 'online' ? 'عن بعد' : 'حضوري، ' + dist, icon: ICON[att], go: go(1), l: 'غيّر طريقة الدراسة' });
+    if (step >= 3 && typ) picks.push({ t: typL, icon: ICON[typ], go: go(2), l: 'غيّر نوع الحصص' });
+    picks.forEach((p, i) => { p.d = (0.35 + i * 0.1).toFixed(2) + 's'; });
+
+    return {
+      dev, subj: 'الرياضيات', grade: 'الصف الثاني الثانوي', typP: typ || 'group', attP: att || 'online',
+      rootCls: (step === 6 ? 'bk bk-' : 'k a-learn bk bk-') + dev,
+      inFlow: step < 6, s6: step === 6,
+      kicker: step === 5 ? 'اشتركت في' : 'تحجز الحين',
+      headT: step === 6 ? 'الرياضيات' : 'احجز الرياضيات',
+      s1: step === 1, s2: step === 2,
+      s3g: step === 3 && typ === 'group' && !one, s3one: step === 3 && typ === 'group' && one,
+      s3s: step === 3 && typ === 'solo' && !pref, s3p: step === 3 && typ === 'solo' && pref,
+      s4: step === 4, s5: step === 5, signed,
+      showSteps: step < 5, showNav: step < 5, hasPrev: step > 1, showSide: step < 4,
+      showDoneBar: step === 5 && dev === 'm',
+      showPicks: dev === 'm' && (step === 2 || step === 3) && picks.length > 0, picks,
+      showLogin: step === 4 && sheet === 'login' && !signed,
+      closeSheet: () => set({ sheet: '' }),
+      signIn: () => set({ signed: true, sheet: '' }),
+      stepLine: step < 5 ? 'خطوة ' + ar(step) + ' من ٤' : step === 5 ? 'تم الحجز' : 'مشترك',
+      backL: step > 1 && step < 5 ? 'الخطوة اللي قبل' : 'رجوع',
+      goBack: () => { if (step > 1 && step < 5) { set({ step: step - 1, sheet: '' }); top(); } },
+      steps: STEPS.map((l, i) => ({ l, n: ar(i + 1), fill: i + 1 < step ? 1 : i + 1 === step ? 0.55 : 0, cls: i + 1 <= step ? 'on' : '', cur: i + 1 === step ? 'step' : 'false' })),
+      attOpts: [
+        ['online', 'عن بعد', 'شرح مباشر ويتم حفظ الشرح للرجوع إليه.', '#E0F0FF', '#0F5CA8'],
+        ['center', 'حضوري', 'يكون وجهًا لوجه مع المعلم.', '#FFE8D6', '#A3480A']
+      ].map(([k, t, d, bg, fg]) => ({ t, d, bg, fg, icon: ICON[k], on: att === k ? 'true' : 'false', go: () => set({ att: k, grp: '', slots: [] }) })),
+      needBranch: att === 'center',
+      cities: Object.keys(CITIES).map((t) => ({ t, on: city === t ? 'true' : 'false', go: () => set({ city: t, dist: '' }) })),
+      hasCity: !!city, hasDist: !!city && !!dist, isMap: lmode === 'map', isList: lmode !== 'map', lmMap: lmode === 'map' ? 'true' : 'false', lmList: lmode !== 'map' ? 'true' : 'false', lmIdx: lmode === 'map' ? 1 : 0,
+      toMap: () => set({ lmode: 'map', city: 'الرياض', dist: 'النرجس' }), toList: () => set({ lmode: 'list' }),
+      dists: (CITIES[city] || []).map((t) => ({ t, on: dist === t ? 'true' : 'false', go: () => set({ dist: t }) })),
+      det, detIn: (e) => this.setState({ det: e && e.target ? e.target.value : '' }),
+      attWord: att === 'center' ? 'حضوري في ' + branch : 'عن بعد',
+      typOpts: [
+        ['group', 'مع مجموعة', 'من ٥ إلى ١٠ طلاب أو طالبات من نفس صفك، بمواعيد ثابتة يحددها فريقنا.', 'الحصة ٥٠ دقيقة', '#E0F0FF', '#0F5CA8'],
+        ['solo', 'فردي مع المعلم', 'الشرح على قدّك، وتختار مواعيدك من الأوقات الفاضية عند المعلم.', 'الحصة ٥٠ دقيقة', '#ECE5FF', '#4A28B8']
+      ].map(([k, t, d, per, bg, fg]) => ({ t, d, per, bg, fg, icon: ICON[k], price: ar(att ? PR[att][k] : PR.online[k]), on: typ === k ? 'true' : 'false', go: () => set({ typ: k, grp: '', slots: [] }) })),
+      grpP: att === 'center' ? 'في ' + branch + '، والمواعيد ثابتة طول الفصل.' : 'المواعيد ثابتة طول الفصل.',
+      groups: GRPS.map(([k, d, t, tch, start, taken, bg, fg, sc]) => {
+        const full = taken >= 10, left = 10 - taken;
+        return { k, days: d, time: t, teacher: tch, start, bg, fg, sc, on: grp === k ? 'true' : 'false', full: full ? 'true' : 'false', isFull: full,
+          seats: seatList(taken),
+          left: full ? (notify ? 'تم، بننبّهك أول ما يفضى مقعد' : 'مكتملة، نبّهني إذا فضى مقعد') : left === 1 ? 'باقي مقعد واحد' : 'باقي ' + ar(left) + ' مقاعد',
+          leftC: full ? (notify ? '#0C6B55' : '#4A5878') : left <= 2 ? '#C2410C' : '#0C6B55', seatsL: ar(taken) + ' من ١٠ مقاعد محجوزة',
+          go: () => { if (full) set({ notify: !notify }); else set({ grp: k }); } };
+      }),
+      one: { k: 'أ', days: GRPS[0][1], time: GRPS[0][2], teacher: GRPS[0][3], start: GRPS[0][4], left: 'باقي ٤ مقاعد', seats: seatList(6, true) },
+      slots: SLOTS.map(([day, items]) => ({ day, items: items.map((t) => {
+        const key = day + '|' + t; const on = picked.includes(key);
+        const off = !on && pickedDays.includes(day);
+        return { t, on: on ? 'true' : 'false', off: off ? 'true' : 'false', go: () => { if (off) return; set({ slots: toggle(picked, key) }); } };
+      }) })),
+      hasPicked: picked.length > 0,
+      toggleOne: () => set({ notifyOne: !notifyOne }), notifyOneP: notifyOne ? 'true' : 'false',
+      notifyOneL: notifyOne ? 'تم، بننبّهك أول ما نفتح موعد ثاني' : 'الموعد ما يناسبك؟ نبّهني بموعد ثاني',
+      pickedL: picked.length ? 'اخترت ' + (picked.length === 1 ? 'موعد واحد' : picked.length === 2 ? 'موعدين' : ar(picked.length) + ' مواعيد') : 'اختر الأوقات اللي تناسبك',
+      pickedC: picked.length ? '#0C6B55' : '#4A5878',
+      toPref: () => set({ pref: true }), toSlots: () => set({ pref: false }),
+      dayOpts: DAYS.map((t) => ({ t, on: days.includes(t) ? 'true' : 'false', go: () => set({ days: toggle(days, t) }) })),
+      timeOpts: TIMES.map(([t, h]) => ({ t, h, on: times.includes(t) ? 'true' : 'false', go: () => set({ times: toggle(times, t) }) })),
+      rows,
+      price: ar(price), hasPrice: price > 0, noPrice: !price, priceDigits: digits(price), rollCls: 'r' + rollIdx,
+      payOpts: [['mada', 'مدى', 'mada', '#E0F0FF', '#0F5CA8'], ['apple', 'Apple Pay', 'Pay', '#0E2350', '#FFFFFF'], ['card', 'بطاقة ائتمان', 'VISA', '#FFF4CC', '#7A5200']]
+        .map(([k, t, mark, bg, fg]) => ({ t, mark, bg, fg, on: pay === k ? 'true' : 'false', go: () => set({ pay: k }) })),
+      next, nextOff: okStep ? 'false' : 'true', nextCls: step === 4 ? 'go' : '',
+      nextL: step === 4 ? 'أكّد وادفع ' + ar(price) + ' ريال' : 'التالي',
+      doneP: typ === 'group'
+        ? 'مكانك في المجموعة ' + (G ? G[0] : '') + ' محجوز.'
+        : (pref ? 'استلمنا أوقاتك، ونثبّت الموعد خلال ٢٤ ساعة.' : 'مواعيدك ثابتة كل أسبوع.'),
+      tix,
+      after: [
+        ['إيصال الدفع وصل جوالك', 'M6 3h12v18l-3-2-3 2-3-2-3 2V3zM9 8h6M9 12h6'],
+        [att === 'center' ? 'موقع الفرع في جدولك' : 'رابط الحصة في جدولك', att === 'center' ? 'M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z' : 'M3 5h18v11H3zM1 19h22'],
+        ['نذكّرك قبلها بساعة', 'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0']
+      ].map(([t, icon], i) => ({ t, icon, d: (1.0 + i * 0.12).toFixed(2) + 's' })),
+      toSubject: () => { set({ step: 6 }); top(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الطالب: دوراتي والاستكشاف</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* d1 = student: دوراتي + discover (area a-learn).
+   Signature: M5 tilt-stack deal on every course card (fixed subject colours from --sub-*), M13 morph pill on filters,
+   M2 ink on progress rings and on the learning path line, M4 slap on "why" stickers, M14 peek sheets on phone.
+   Flutter: card = Container(gradient: subject colour + white radial glow + dark linear overlay) with a rotated faint glyph Icon. */
+.k .k-btn.ghost.d1-hb{background:rgba(255,255,255,.12);color:#FFFFFF;border-color:rgba(255,255,255,.28)}
+.d1-hrow{display:flex;align-items:flex-end;gap:18px}
+.d1-hrow > .k-col{flex:1 1 auto;gap:4px;min-width:0}
+.d1-kick{font-size:19px;color:#FFD9A8}
+.d1-hsearch{margin-top:16px;max-width:640px;height:54px;border-radius:27px;border:none;box-shadow:0 14px 30px -12px rgba(0,0,0,.5);color:#6B7A93}
+.d1-hsearch svg{color:var(--k-coral)}
+.d1-stat{flex-direction:row;align-items:center;gap:12px}
+.d1-stat .k-ico{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12)}
+.d1-stat > span:last-child{display:flex;flex-direction:column}
+.d1-stat b{white-space:nowrap}
+/* section heading on the page background */
+.d1-sh{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:4px 4px 0}
+.d1-sh h3{margin:0;font-size:18px;font-weight:700;line-height:1.4}
+.d1-sh a{font-size:13.5px;font-weight:700;color:var(--area-ink)}
+/* course card */
+.d1-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.d1-cc{position:relative;display:flex;flex-direction:column;min-width:0;border-radius:22px;background:#FFFFFF;border:1.5px solid var(--k-line);overflow:hidden;cursor:pointer;text-align:right;color:var(--k-text);box-shadow:0 14px 30px -22px rgba(0,20,64,.35);transition:transform .25s cubic-bezier(.3,1.4,.5,1),box-shadow .25s}
+.d1-cc:hover{transform:translateY(-6px) rotate(-.8deg);box-shadow:0 24px 40px -20px rgba(0,20,64,.4)}
+.d1-cv{position:relative;height:136px;flex-shrink:0;overflow:hidden;color:var(--sub-fg);display:flex;align-items:flex-end;padding:12px 14px;
+  background:radial-gradient(120% 130% at 100% 0%,rgba(255,255,255,.32),rgba(255,255,255,0) 55%),linear-gradient(165deg,rgba(0,20,64,0) 35%,rgba(0,20,64,.26)),var(--sub)}
+.d1-cv::before{content:"";position:absolute;inset:0;pointer-events:none}
+.d1-cv.pv0::before{width:150px;height:150px;inset:-60px auto auto 30%;border-radius:50%;border:18px solid rgba(255,255,255,.13)}
+.d1-cv.pv1::before{background:repeating-linear-gradient(135deg,rgba(255,255,255,.1) 0 10px,rgba(255,255,255,0) 10px 24px)}
+.d1-cv.pv2::before{background:radial-gradient(rgba(255,255,255,.26) 2px,rgba(255,255,255,0) 2.6px) 0 0/16px 16px}
+.d1-glyph{position:absolute;left:-16px;bottom:-26px;width:124px;height:124px;opacity:.2;transform:rotate(-14deg);transition:transform .5s cubic-bezier(.3,1.4,.5,1)}
+.d1-cc:hover .d1-glyph{transform:rotate(0deg) scale(1.12)}
+.d1-cvi{position:absolute;top:12px;left:12px;width:46px;height:46px;border-radius:15px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center}
+.d1-cvt{position:relative;font-family:'Aref Ruqaa',serif;font-size:27px;line-height:1.2;text-shadow:0 2px 10px rgba(0,0,0,.15);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%}
+.d1-ov{position:absolute;top:12px;right:12px;display:flex;flex-wrap:wrap;gap:6px;z-index:2;max-width:62%}
+.d1-ov .k-tag{background:rgba(255,255,255,.94);color:var(--k-text)}
+.d1-ov .k-tag.r{color:#B23A2E}
+.d1-ld{width:7px;height:7px;border-radius:50%;background:var(--k-coral);animation:kPing 1.6s ease-out infinite;display:inline-block}
+.d1-why{position:absolute;bottom:12px;left:12px;z-index:2;height:28px;padding:0 12px;border-radius:9px;background:#FFFFFF;color:var(--k-text);font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px;box-shadow:0 6px 14px -6px rgba(0,0,0,.35)}
+.d1-why svg{color:var(--s-grape)}
+.d1-whym{display:none;align-self:flex-start;align-items:center;gap:4px;height:24px;padding:0 9px;margin-top:2px;border-radius:8px;background:var(--s-grape-tint);color:var(--s-grape-ink);font-size:11.5px;font-weight:700}
+.d1-heart{position:absolute;bottom:10px;left:10px;z-index:2;width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.94);color:#8A97AE;display:flex;align-items:center;justify-content:center;transition:transform .2s cubic-bezier(.3,1.6,.5,1)}
+.d1-heart:active{transform:scale(.85)}
+.d1-heart.on{color:var(--k-coral)}
+.d1-heart.on svg{fill:currentColor;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards}
+.d1-cb{display:flex;flex-direction:column;gap:4px;padding:12px 14px 14px;flex:1;min-width:0}
+.d1-ct{font-size:15.5px;font-weight:700;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.d1-foot{display:flex;align-items:center;gap:10px;margin-top:auto;padding-top:8px}
+.d1-price{font-size:17px;font-weight:700;color:var(--k-navy);white-space:nowrap}
+.d1-price small{font-size:12px;color:var(--k-muted);font-weight:600}
+.d1-star{display:inline-flex;align-items:center;gap:3px;font-size:13px;font-weight:700;color:#7A5200}
+.d1-ring{position:relative;width:46px;height:46px;flex-shrink:0}
+.d1-ring svg{width:46px;height:46px;transform:rotate(-90deg)}
+.d1-ring circle{fill:none;stroke-width:5;stroke-linecap:round}
+.d1-ring .trk{stroke:var(--sub-t)}
+.d1-ring .ink{stroke:var(--sub)}
+.d1-cc.done .d1-ring .ink{stroke:var(--s-mint)}
+.d1-ring > b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--sub-i)}
+.d1-nx{display:flex;flex-direction:column;min-width:0;line-height:1.4}
+.d1-nx small{font-size:11.5px;color:var(--k-muted);font-weight:700}
+.d1-nx b{font-size:13.5px;color:var(--sub-i);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.d1-cc.done .d1-nx b{color:var(--s-mint-ink)}
+.d1-not{height:34px;border-radius:17px;border:1.5px dashed #C9D6E6;background:#FFFFFF;color:var(--k-muted);font-family:inherit;font-size:12.5px;font-weight:700;padding:0 12px;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.d1-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:250px;border-radius:22px;border:2px dashed #F3C3A2;background:linear-gradient(160deg,#FFF6EE,#FFFFFF);color:var(--area-ink);font-size:15px;font-weight:700;text-align:center;padding:16px}
+.d1-add .d1-addi{width:58px;height:58px;border-radius:20px;background:var(--area-tint);display:flex;align-items:center;justify-content:center;transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+.d1-add:hover .d1-addi{transform:rotate(90deg) scale(1.08)}
+.d1-add small{font-size:12.5px;color:var(--k-muted);font-weight:600}
+/* continue strip (one main action) */
+.d1-cont{flex-direction:row;align-items:center;gap:14px;padding:16px 18px;background:linear-gradient(110deg,#FFFFFF 45%,var(--sub-t));border:1.5px solid var(--sub-t)}
+.d1-cont .k-ico{width:52px;height:52px;border-radius:16px;background:var(--sub);color:var(--sub-fg);box-shadow:0 10px 18px -8px var(--sub)}
+.d1-cont-tx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.45}
+.d1-cont-tx small{font-size:12.5px;font-weight:700;color:var(--sub-i)}
+.d1-cont-tx b{font-size:17px}
+.d1-cont .d1-ring{width:52px;height:52px}.d1-cont .d1-ring svg{width:52px;height:52px}
+/* toolbar */
+.d1-tool{flex-direction:row;align-items:center;gap:12px;padding:12px;flex-wrap:wrap}
+.d1-tool .k-in{flex:1 1 260px;height:44px}
+.d1-tool .k-seg{flex:0 1 380px}
+.d1-cnt{display:inline-flex;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--area-tint);color:var(--area-ink);font-size:11px;font-weight:700;align-items:center;justify-content:center;margin-right:6px}
+.d1-count{display:flex;align-items:center;gap:8px;width:100%;font-size:13px;color:var(--k-muted)}
+.d1-count b{color:var(--k-text)}
+/* categories */
+.d1-cats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.d1-cat{position:relative;display:flex;flex-direction:column;gap:6px;padding:16px;min-height:128px;border-radius:20px;overflow:hidden;color:var(--sub-fg);
+  background:radial-gradient(120% 130% at 100% 0%,rgba(255,255,255,.3),rgba(255,255,255,0) 55%),var(--sub);transition:transform .25s cubic-bezier(.3,1.4,.5,1)}
+.d1-cat:hover{transform:translateY(-5px) rotate(-1deg)}
+.d1-cat .k-ico{width:40px;height:40px;border-radius:13px;background:rgba(255,255,255,.22)}
+.d1-cat b{font-size:16.5px;line-height:1.35;position:relative}
+.d1-cat small{font-size:12.5px;opacity:.88;font-weight:600;position:relative}
+.d1-cat .d1-glyph{width:96px;height:96px;bottom:-22px;left:-12px}
+.d1-cat:hover .d1-glyph{transform:rotate(0deg) scale(1.12)}
+.d1-cta{flex-direction:row;align-items:center;gap:14px;flex-wrap:wrap;background:linear-gradient(120deg,#FFFFFF 40%,#FFE8D6);border:1.5px solid #FFD9BD}
+.d1-cta .k-ico{width:52px;height:52px;border-radius:16px;background:linear-gradient(150deg,#FF9F5A,#F2545B);color:#FFFFFF}
+/* journey path: dashed track + ink line (M2) */
+.d1-path{position:relative;display:flex;flex-direction:column;gap:16px;padding:4px 0}
+.d1-trk{position:absolute;top:30px;bottom:30px;right:27px;border-right:4px dashed #E3D9CF}
+.d1-inkl{position:absolute;top:30px;bottom:30px;right:27px;width:4px}
+.d1-inkl svg{display:block;width:4px;height:100%}
+.d1-inkl line{stroke:url(#d1g);stroke-width:4;stroke-linecap:round}
+.d1-jgrid > section{align-self:start}
+.d1-step{position:relative;display:grid;grid-template-columns:58px minmax(0,1fr);align-items:center;gap:14px}
+.d1-node{position:relative;z-index:1;width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;border:4px solid #FFFFFF;box-shadow:0 10px 22px -10px rgba(0,32,94,.45)}
+.d1-node.done{background:var(--s-mint);color:#FFFFFF}
+.d1-node.now{background:linear-gradient(150deg,#FF9F5A,#F2545B);color:#FFFFFF;--halo:#FF9F5A}
+.d1-node.todo{background:#EEF2F7;color:#8A97AE}
+.d1-sc{padding:12px 16px;border-radius:18px;background:#F8FBFE;border:1.5px solid var(--k-line);display:flex;flex-direction:column;gap:4px;min-width:0}
+.d1-sc.now{border-color:#FFB37A;background:linear-gradient(120deg,#FFFFFF,#FFF1E6)}
+.d1-sc.done{background:#FFFFFF}
+.d1-sc .k-bar i{background:linear-gradient(90deg,#FF9F5A,#F2545B)}
+.d1-next{gap:10px}
+.d1-next .k-bar{background:rgba(255,255,255,.18)}
+.d1-int{display:flex;flex-wrap:wrap;gap:8px}
+.d1-int .k-chip{height:40px;padding:0 14px}
+.d1-int .k-chip.on{background:var(--area-tint);border-color:#FFC59A;color:var(--area-ink)}
+.d1-int .k-chip.on svg{animation:mPop .4s cubic-bezier(.3,1.4,.5,1) backwards}
+.d1-mini{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;background:#F8FBFE;border:1.5px solid var(--k-line);transition:transform .2s}
+.d1-mini:hover{transform:translateX(-4px)}
+.d1-mini .k-ico{width:40px;height:40px;border-radius:12px;background:var(--sub);color:var(--sub-fg)}
+.d1-mini b{font-size:14px;color:var(--k-navy);white-space:nowrap}
+/* hidden recs */
+.d1-hid{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;background:#F8FBFE;border:1.5px solid var(--k-line)}
+.d1-hid .k-ico{width:38px;height:38px;border-radius:12px;background:var(--sub-t);color:var(--sub-i)}
+.d1-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:14px;height:50px;padding:0 8px 0 20px;border-radius:25px;background:#0E2350;color:#FFFFFF;font-size:14px;font-weight:600;box-shadow:0 16px 34px rgba(0,0,0,.3);animation:d1Toast .5s cubic-bezier(.2,.8,.2,1) both;white-space:nowrap}
+.d1-toast button{height:36px;padding:0 14px;border-radius:18px;border:none;background:rgba(255,255,255,.14);color:#FFC59A;font-family:inherit;font-weight:700;font-size:13.5px}
+@keyframes d1Toast{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+.d1-more{display:flex;justify-content:center}
+.d1-mo{display:none}
+@media (max-width:760px){
+  .d1-hrow{display:block}
+  .d1-hrow > .k-btn,.d1-hrow > button{display:none}
+  .d1-kick{font-size:16px}
+  .d1-hsearch{height:46px;margin-top:10px}
+  .d1-hsearch .k-tag{display:none}
+  .k-hero p{display:none}
+  .d1-grid{grid-template-columns:1fr;gap:12px}
+  .d1-cc{flex-direction:row;align-items:stretch;border-radius:20px}
+  .d1-cc:hover{transform:none}
+  .d1-cv{width:104px;height:auto;min-height:118px;padding:8px;justify-content:center;align-items:center}
+  .d1-cvt{display:none}
+  .d1-cvi{position:relative;top:auto;left:auto;width:44px;height:44px}
+  .d1-glyph{width:84px;height:84px;bottom:-18px;left:-18px}
+  .d1-ov{top:auto;bottom:8px;right:6px;left:6px;max-width:none;justify-content:center}
+  .d1-ov .k-tag{height:20px;font-size:10px;padding:0 7px}
+  .d1-ov .k-tag.hw{display:none}
+  .d1-heart{top:8px;bottom:auto;left:auto;right:8px;width:30px;height:30px}
+  .d1-why{display:none}
+  .d1-whym{display:inline-flex}
+  .d1-cb{padding:10px 12px;gap:2px}
+  .d1-ct{font-size:14.5px}
+  .d1-foot{padding-top:6px}
+  .d1-ring{width:40px;height:40px}.d1-ring svg{width:40px;height:40px}
+  .d1-add{min-height:0;flex-direction:row;padding:14px;justify-content:flex-start}
+  .d1-add .d1-addi{width:44px;height:44px;border-radius:14px}
+  .d1-cont{padding:12px 14px;gap:10px;flex-wrap:wrap}
+  .d1-cont .d1-ring{display:none}
+  .d1-cont .k-btn{width:100%}
+  .d1-cont-tx b{font-size:15.5px}
+  .d1-tool{padding:6px;background:transparent;box-shadow:none}
+  .d1-tool .k-in{display:none}
+  .d1-tool .k-seg{flex:1 1 100%;background:#FFFFFF;box-shadow:0 10px 24px -16px rgba(0,20,64,.35)}
+  .d1-tool .d1-fbtn{flex:0 0 auto}
+  .d1-tool.cat .k-seg{flex:1 1 0}
+  .d1-count{padding:0 6px}
+  .d1-cats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .d1-cat{min-height:104px;padding:12px}
+  .d1-cat b{font-size:15px}
+  .d1-cta .k-btn{width:100%}
+  .d1-jcols{display:contents}
+  .d1-o1{order:1}.d1-o2{order:2}.d1-o3{order:3}.d1-o4{order:4}
+  .d1-jgrid{display:flex;flex-direction:column}
+  .d1-step{grid-template-columns:50px minmax(0,1fr);gap:10px}
+  .d1-node{width:50px;height:50px;font-size:17px}
+  .d1-trk,.d1-inkl{right:23px}
+  .d1-toast{bottom:86px;font-size:13px}
+  .d1-sh{padding:0 6px}
+  .k-drawer{height:auto;max-height:calc(var(--vh,100vh)*0.9)}
+}
+</style>
+</helmet>
+<div class="k a-learn" dir="rtl">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">طالب</span></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+        <a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a>
+      </sc-for>
+      <div class="k-me"><span class="k-av sm">ف</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">فيصل العنزي</b><small style="font-size: 11.5px; opacity: .7">الصف الثاني الثانوي</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <span><small>{{crumb}}</small><h1>{{title}}</h1></span>
+        <span class="k-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن دورة أو معلم أو درس<kbd>Ctrl K</kbd></span>
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="3"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av">ف</span>
+      </header>
+      <header class="k-mtop">
+        <sc-if value="{{back}}" hint-placeholder-val="{{ true }}"><a href="#" class="k-ib" aria-label="رجوع"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a></sc-if>
+        <sc-if value="{{noBack}}" hint-placeholder-val="{{ false }}"><img src="./logo.png" alt="" width="28" height="31" style="width: 28px; height: auto"></sc-if>
+        <h1>{{title}}</h1><sc-for list="{{mtools}}" as="t" hint-placeholder-count="2"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for></header>
+
+      <main class="k-page">
+        <!-- ============ HERO (one markup, per-screen text) ============ -->
+        <section class="k-hero">
+          <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+          <div class="d1-hrow">
+            <div class="k-col">
+              <span class="k-ruqaa d1-kick">{{hero.k}}</span>
+              <h2>{{hero.h}}</h2>
+              <sc-if value="{{hero.p}}" hint-placeholder-val="{{ true }}"><p>{{hero.p}}</p></sc-if>
+            </div>
+            <sc-if value="{{hero.btn}}" hint-placeholder-val="{{ false }}"><button type="button" class="k-btn ghost d1-hb" onClick="{{hero.go}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{hero.bi}}"></path></svg>{{hero.btn}}</button></sc-if>
+          </div>
+          <sc-if value="{{hero.search}}" hint-placeholder-val="{{ false }}"><div class="k-in d1-hsearch"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن مادة أو معلم…<span class="k-sp"></span><span class="k-tag o">ثاني ثانوي</span></div></sc-if>
+          <sc-if value="{{hero.hasStats}}" hint-placeholder-val="{{ false }}">
+            <div class="k-stats"><sc-for list="{{hero.stats}}" as="s" hint-placeholder-count="4"><span class="k-stat d1-stat"><span class="k-ico" style="color: {{s.c}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{s.i}}"></path></svg></span><span><b aria-label="{{s.n}}"><span class="m-roll"><sc-for list="{{s.digs}}" as="g" hint-placeholder-count="1"><i aria-hidden="true" style="--v: {{g.v}}; --i: {{g.i}}"></i></sc-for></span>{{s.suf}}</b><small>{{s.l}}</small></span></span></sc-for></div>
+          </sc-if>
+        </section>
+
+        <div class="k-body">
+<!-- ============ MY COURSES: continue + filters ============ -->
+<sc-if value="{{mc.has}}" hint-placeholder-val="{{ true }}">
+          <section class="k-card d1-cont sub-math" style="--d: .1s">
+            <span class="k-ico"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.math}}"></path></svg></span>
+            <span class="d1-cont-tx"><small>كمّل من وين وقفت</small><b>الرياضيات: الدوال اللوغاريتمية</b><span class="k-m">الدرس ٨ من ٢٤، باقي لك ٢٠ دقيقة</span></span>
+            <span class="d1-ring" role="img" aria-label="تقدّمك ٣٨٪"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="trk" cx="22" cy="22" r="18"></circle><circle class="ink m-ink" cx="22" cy="22" r="18" pathLength="100" style="--len: 100; --to: 62; --d: .3s"></circle></svg><b>٣٨٪</b></span>
+            <a href="Stu1Learn.dc.html?screen=material" class="k-btn hot"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" transform="matrix(-1 0 0 1 24 0)"></path></svg>كمّل الدرس</a>
+          </section>
+          <div class="k-card d1-tool" style="--d: .15s">
+            <span class="k-in"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث في دوراتك</span>
+            <div class="k-seg m-pill" style="--n: 3" role="tablist" aria-label="عرض"><span class="m-pill-bg" style="--i: {{mc.segI}}"></span><sc-for list="{{mc.segs}}" as="g" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{g.on}}" onClick="{{g.go}}">{{g.l}}<span class="d1-cnt">{{g.n}}</span></button></sc-for></div>
+          </div>
+</sc-if>
+
+<!-- ============ EXPLORE: subjects ============ -->
+<sc-if value="{{is.explore}}" hint-placeholder-val="{{ false }}">
+          <section class="k-card" style="--d: .05s">
+            <div class="k-ch"><h3>المواد</h3><a href="#">كل المواد</a></div>
+            <div class="d1-cats"><sc-for list="{{ex.cats}}" as="c" hint-placeholder-count="8"><a href="Stu1Discover.dc.html?screen=category" class="d1-cat m-deal {{c.sub}}" style="--i: {{c.k}}; --d: .1s"><svg class="d1-glyph" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg><span class="k-ico"><svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg></span><b>{{c.t}}</b><small>{{c.n}} دورة</small></a></sc-for></div>
+          </section>
+</sc-if>
+
+<!-- ============ CATEGORY: filters ============ -->
+<sc-if value="{{is.category}}" hint-placeholder-val="{{ false }}">
+          <div class="k-card d1-tool cat" style="--d: .05s">
+            <span class="k-in"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث في الرياضيات</span>
+            <div class="k-seg m-pill" style="--n: 3" role="tablist" aria-label="طريقة الدراسة"><span class="m-pill-bg" style="--i: {{cat.segI}}"></span><sc-for list="{{cat.segs}}" as="g" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{g.on}}" onClick="{{g.go}}">{{g.l}}</button></sc-for></div>
+            <button type="button" class="k-btn ghost sm d1-fbtn" style="height: 46px" onClick="{{openFilter}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>تصفية<span class="d1-cnt">١</span></button>
+          </div>
+          <div class="d1-count"><b>{{cat.n}} دورة</b> لصفّك، الأنسب لك أول</div>
+</sc-if>
+
+<!-- ============ SHARED COURSE GRID ============ -->
+<sc-if value="{{grid.on}}" hint-placeholder-val="{{ true }}">
+          <sc-if value="{{grid.h}}" hint-placeholder-val="{{ false }}"><div class="d1-sh"><h3>{{grid.h}}</h3><sc-if value="{{grid.a}}" hint-placeholder-val="{{ false }}"><a href="#">{{grid.a}}</a></sc-if></div></sc-if>
+          <div class="d1-grid">
+            <sc-for list="{{grid.list}}" as="c" hint-placeholder-count="5">
+              <div class="d1-cc m-deal {{c.sub}} {{c.cls}}" style="--i: {{c.k}}; --d: .2s" role="link" tabindex="0">
+                <span class="d1-cv {{c.pv}}">
+                  <svg class="d1-glyph" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg>
+                  <span class="d1-cvi"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg></span>
+                  <span class="d1-cvt">{{c.s}}</span>
+                  <span class="d1-ov"><sc-if value="{{c.live}}" hint-placeholder-val="{{ false }}"><span class="k-tag r"><i class="d1-ld"></i>{{c.live}}</span></sc-if><sc-if value="{{c.how}}" hint-placeholder-val="{{ false }}"><span class="k-tag hw">{{c.how}}</span></sc-if></span>
+                  <sc-if value="{{c.hasHeart}}" hint-placeholder-val="{{ false }}"><button type="button" class="d1-heart {{c.fav}}" aria-label="{{c.hl}}" aria-pressed="{{c.favP}}" onClick="{{c.heart}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path></svg></button></sc-if>
+                  <sc-if value="{{c.why}}" hint-placeholder-val="{{ false }}"><span class="d1-why m-slap" style="--d: {{c.wd}}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"></path></svg>{{c.why}}</span></sc-if>
+                </span>
+                <span class="d1-cb">
+                  <b class="d1-ct">{{c.t}}</b><span class="k-m">{{c.m}}</span>
+                  <sc-if value="{{c.why}}" hint-placeholder-val="{{ false }}"><span class="d1-whym">{{c.why}}</span></sc-if>
+                  <sc-if value="{{c.prog}}" hint-placeholder-val="{{ false }}"><span class="d1-foot"><span class="d1-ring" role="img" aria-label="{{c.pl}}"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="trk" cx="22" cy="22" r="18"></circle><circle class="ink m-ink" cx="22" cy="22" r="18" pathLength="100" style="--len: 100; --to: {{c.to}}; --d: {{c.dd}}"></circle></svg><b>{{c.p}}</b></span><span class="d1-nx"><small>{{c.nl}}</small><b>{{c.n}}</b></span></span></sc-if>
+                  <sc-if value="{{c.price}}" hint-placeholder-val="{{ true }}"><span class="d1-foot"><span class="d1-star"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="#FFB020"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z"></path></svg>{{c.r}}</span><span class="k-sp"></span><span class="d1-price">{{c.price}} <small>ريال / شهر</small></span></span></sc-if>
+                  <sc-if value="{{c.rec}}" hint-placeholder-val="{{ false }}"><span class="d1-foot"><button type="button" class="d1-not" onClick="{{c.hide}}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>مو مهتم</button><span class="k-sp"></span><span class="d1-price">{{c.rp}} <small>ريال / شهر</small></span></span></sc-if>
+                </span>
+              </div>
+            </sc-for>
+            <sc-if value="{{grid.add}}" hint-placeholder-val="{{ false }}"><a href="Stu1Discover.dc.html?screen=explore" class="d1-add m-deal" style="--i: 5; --d: .2s"><span class="d1-addi"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span><span class="k-col" style="gap: 0; align-items: inherit">ضيف دورة جديدة<small>تصفّح المواد والمعلمين</small></span></a></sc-if>
+          </div>
+</sc-if>
+
+<!-- ============ EMPTY STATES ============ -->
+<sc-if value="{{empty.on}}" hint-placeholder-val="{{ false }}">
+          <section class="k-card" style="--d: .1s"><div class="k-empty"><span class="k-empty-art"><svg aria-hidden="true" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{empty.i}}"></path></svg></span><h4>{{empty.h}}</h4><p>{{empty.p}}</p><a href="{{empty.href}}" class="k-btn {{empty.cls}}" onClick="{{empty.go}}">{{empty.btn}}</a></div></section>
+</sc-if>
+
+<!-- ============ EXPLORE / CATEGORY: after the grid ============ -->
+<sc-if value="{{is.explore}}" hint-placeholder-val="{{ false }}">
+          <section class="k-card d1-cta" style="--d: .3s">
+            <span class="k-ico"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19c4-1 6-5 8-9s4-6 8-6M4 19h4M20 4v4"></path></svg></span>
+            <span class="k-col" style="gap: 0; flex: 1 1 240px"><b style="font-size: 16px">ما تدري من وين تبدأ؟</b><span class="k-sub">قل لنا وش يهمك، ونرتّب لك الطريق</span></span>
+            <a href="Stu1Discover.dc.html?screen=journey" class="k-btn">ابنِ مساري</a>
+          </section>
+</sc-if>
+<sc-if value="{{is.category}}" hint-placeholder-val="{{ false }}">
+          <div class="d1-more"><a href="#" class="k-btn ghost">اعرض دورات أكثر</a></div>
+</sc-if>
+
+<!-- ============ RECS: hidden list ============ -->
+<sc-if value="{{rc.on}}" hint-placeholder-val="{{ false }}">
+          <section class="k-card flat" style="--d: .3s">
+            <div class="k-ch"><h3>دورات خفيتها</h3><a href="#">رجّعها كلها</a></div>
+            <sc-for list="{{rc.hidden}}" as="c" hint-placeholder-count="2"><div class="d1-hid {{c.sub}}"><span class="k-ico"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1; min-width: 0"><b style="font-size: 14px">{{c.t}}</b><span class="k-m">{{c.m}}</span></span><a href="#" class="k-link">رجّعها</a></div></sc-for>
+            <div class="d1-hid" style="background: #FFFFFF"><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 14.5px">أظهر الاقتراحات</b><span class="k-m">إذا قفلتها ما نقترح عليك شي</span></span><button type="button" class="k-tog on" style="border: none" aria-label="الاقتراحات" aria-pressed="true" onClick="{{recOff}}"><i></i></button></div>
+          </section>
+</sc-if>
+
+<!-- ============ JOURNEY ============ -->
+<sc-if value="{{is.journey}}" hint-placeholder-val="{{ false }}">
+          <div class="k-grid k-side2 d1-jgrid">
+            <section class="k-card d1-o2" style="--d: .1s">
+              <div class="k-ch"><h3>خطوات المسار</h3><span class="k-tag g">٢ من ٦ خلّصتها</span></div>
+              <div class="d1-path">
+                <span class="d1-trk" aria-hidden="true"></span>
+                <span class="d1-inkl" aria-hidden="true"><svg viewBox="0 0 4 100" preserveAspectRatio="none"><defs><linearGradient id="d1g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop offset="0" stop-color="#19C29B"></stop><stop offset="1" stop-color="#FF9F5A"></stop></linearGradient></defs><line class="m-ink" x1="2" y1="0" x2="2" y2="100" pathLength="100" style="--len: 100; --to: 58; --d: .3s"></line></svg></span>
+                <sc-for list="{{jr.steps}}" as="s" hint-placeholder-count="6">
+                  <div class="d1-step m-deal" style="--i: {{s.k}}; --d: .15s">
+                    <span class="d1-node {{s.st}} {{s.br}}"><sc-if value="{{s.ok}}" hint-placeholder-val="{{ false }}"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></sc-if>{{s.n}}</span>
+                    <div class="d1-sc {{s.st}}"><span class="k-row" style="justify-content: space-between; gap: 8px"><b style="font-size: 15px">{{s.t}}</b><span class="k-tag {{s.tc}}">{{s.tag}}</span></span><span class="k-m">{{s.m}}</span><sc-if value="{{s.bar}}" hint-placeholder-val="{{ false }}"><span class="k-bar"><i style="width: {{s.w}}%"></i></span></sc-if></div>
+                  </div>
+                </sc-for>
+              </div>
+            </section>
+            <div class="k-col d1-jcols" style="gap: 18px">
+              <section class="k-card dark d1-next d1-o1" style="--d: .05s">
+                <span class="k-ruqaa" style="font-size: 17px; color: #FFD9A8">خطوتك الجاية</span>
+                <b style="font-size: 20px; line-height: 1.45">الفيزياء: قوانين نيوتن</b>
+                <span style="font-size: 13.5px; opacity: .85">أ. فهد المطيري، باقي لك ٧ دروس</span>
+                <span class="k-bar"><i style="width: 64%"></i></span>
+                <a href="Stu1Learn.dc.html?screen=material" class="k-btn hot">كمّل الخطوة</a>
+              </section>
+              <section class="k-card d1-o3" style="--d: .15s">
+                <div class="k-ch"><h3>اهتماماتي</h3><button type="button" class="k-link" style="border: none; background: none; font-family: inherit; cursor: pointer" onClick="{{openInterests}}">عدّل</button></div>
+                <div class="d1-int"><sc-for list="{{jr.mine}}" as="x" hint-placeholder-count="4"><span class="k-chip on">{{x}}</span></sc-for></div>
+              </section>
+              <section class="k-card d1-o4" style="--d: .2s">
+                <div class="k-ch"><h3>تناسب مسارك</h3><a href="Stu1Discover.dc.html?screen=recs">الكل</a></div>
+                <sc-for list="{{jr.sugg}}" as="c" hint-placeholder-count="3"><a href="#" class="d1-mini m-deal {{c.sub}}" style="--i: {{c.k}}; --d: .3s"><span class="k-ico"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1; min-width: 0"><span class="k-t" style="font-size: 14px">{{c.t}}</span><span class="k-m">{{c.m}}</span></span><b>{{c.p}}</b></a></sc-for>
+              </section>
+            </div>
+          </div>
+</sc-if>
+        </div>
+      </main>
+
+      <sc-if value="{{rc.toast}}" hint-placeholder-val="{{ false }}"><div class="d1-toast" role="status">ما راح نقترحها عليك مرة ثانية<button type="button" onClick="{{recUndo}}">تراجع</button></div></sc-if>
+
+      <sc-if value="{{sheetFilter}}" hint-placeholder-val="{{ false }}">
+        <div class="k-dim" onClick="{{closeSheet}}"></div>
+        <aside class="k-drawer m-sheet" role="dialog" aria-label="تصفية">
+          <div class="k-dh"><h2>تصفية الدورات</h2><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+          <div class="k-db">
+            <sc-for list="{{cat.groups}}" as="g" hint-placeholder-count="4"><div class="k-col" style="gap: 8px"><span class="k-lbl">{{g.t}}</span><div class="d1-int"><sc-for list="{{g.o}}" as="o" hint-placeholder-count="4"><button type="button" class="k-chip {{o.on}}" aria-pressed="{{o.p}}" onClick="{{o.tg}}"><sc-if value="{{o.sel}}" hint-placeholder-val="{{ false }}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></sc-if>{{o.l}}</button></sc-for></div></div></sc-for>
+          </div>
+          <div class="k-df"><a href="#" class="k-btn" style="flex: 1" onClick="{{closeSheet}}">اعرض {{cat.n}} دورة</a><button type="button" class="k-btn ghost" onClick="{{clearF}}">مسح</button></div>
+        </aside>
+      </sc-if>
+      <sc-if value="{{sheetInterests}}" hint-placeholder-val="{{ false }}">
+        <div class="k-dim" onClick="{{closeSheet}}"></div>
+        <aside class="k-drawer m-sheet" role="dialog" aria-label="اهتماماتي">
+          <div class="k-dh"><h2>وش يهمك؟</h2><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+          <div class="k-db">
+            <sc-for list="{{jr.groups}}" as="g" hint-placeholder-count="3"><div class="k-col" style="gap: 8px"><span class="k-lbl">{{g.t}}</span><div class="d1-int"><sc-for list="{{g.o}}" as="o" hint-placeholder-count="5"><button type="button" class="k-chip {{o.on}}" aria-pressed="{{o.p}}" onClick="{{o.tg}}"><sc-if value="{{o.sel}}" hint-placeholder-val="{{ false }}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></sc-if>{{o.l}}</button></sc-for></div></div></sc-for>
+          </div>
+          <div class="k-df"><button type="button" class="k-btn" style="flex: 1" onClick="{{closeSheet}}">احفظ</button></div>
+        </aside>
+      </sc-if>
+      <nav class="k-bnav m-pill" aria-label="القائمة" style="--n: 5"><span class="m-pill-bg" style="--i: {{bi}}"></span><sc-for list="{{bnav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a></sc-for></nav>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screen":"mycourses","sheet":"","empty":"","off":"","$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {}, P = this.props || {};
+    const set = (o) => this.setState(o);
+    const ar = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+    const digs = (n) => String(n).split('').map((d, i) => ({ v: Number(d), i }));
+    const I = {
+      home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', courses: 'M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14',
+      play: 'M6 9h12a4 4 0 0 1 0 8c-2 0-3-2-6-2s-4 2-6 2a4 4 0 0 1 0-8zM8 11v4M6 13h4M16 12h.01M18 14h.01',
+      schedule: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4', profile: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0',
+      chat: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z', ai: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z', bell: 'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
+      math: 'M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2', atom: 'M12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 3c2.5 0 4.5 4 4.5 9s-2 9-4.5 9-4.5-4-4.5-9 2-9 4.5-9z', en: 'M4 6h9M8.5 4v2M6 6c0 4 3 7 6 8M11 6c0 3-3 7-7 8M13 20l4-9 4 9M14.5 17h5',
+      chem: 'M9 3h6M10 3v6L5 19a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2L14 9V3', bio: 'M5 19c0-8 6-14 14-14 0 8-6 14-14 14zM5 19l7-7', brain: 'M12 4a3 3 0 0 0-3 3 3 3 0 0 0-3 5 3 3 0 0 0 3 5 3 3 0 0 0 6 0 3 3 0 0 0 3-5 3 3 0 0 0-3-5 3 3 0 0 0-3-3zM12 4v16',
+      code: 'M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14', ar: 'M4 18c3 0 5-2 5-6V6M9 12h6c3 0 5 2 5 6M15 6h.01', pen: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4', stats: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+      search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3', heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z', target: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z',
+      book: 'M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14', live: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8', check: 'M5 12l5 5 9-10', clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2', flag: 'M5 21V4h11l-2 4 2 4H5'
+    };
+    // ---- screens: [title, crumb, nav key, back]
+    const META = {
+      mycourses: ['دوراتي', 'دوراتي', 'courses', false], explore: ['استكشف', 'دوراتي', 'courses', true], category: ['الرياضيات', 'استكشف › المواد', 'courses', true],
+      journey: ['مسار تعلّمي', 'دوراتي', 'courses', true], recs: ['مقترح لك', 'حسابي', 'profile', true], favs: ['المفضلة', 'حسابي', 'profile', true]
+    };
+    const sc = META[P.screen] ? P.screen : 'mycourses';
+    const [title, crumb, cur, back] = META[sc];
+    const is = {}; Object.keys(META).forEach((k) => { is[k] = k === sc; });
+    const sheet = s.sheet !== undefined ? s.sheet : (P.sheet || '');
+    const MAP = [['home', 'الرئيسية', '٣'], ['courses', 'دوراتي', ''], ['schedule', 'جدولي', ''], ['play', 'العب وتعلّم', ''], ['profile', 'حسابي', '']];
+    const bi = Math.max(0, MAP.findIndex(([k]) => k === cur));
+    const stat = (n, suf, l, ic, c) => ({ n: ar(n) + suf, suf, l, c, i: I[ic], digs: digs(n) });
+    // one card builder: every course card on every screen comes from here (same subject = same colour)
+    const card = (o, k) => Object.assign({ k: String(k), pv: 'pv' + (k % 3), cls: '', live: '', how: '', hasHeart: false, why: '', prog: false, price: '', rec: false, wd: (0.55 + k * 0.08).toFixed(2) + 's' }, o);
+
+    // ---- my courses
+    const MY = [
+      ['الرياضيات ٢ ثانوي، الفصل الأول', 'الرياضيات', 'أ. ماجد الشهري، ٢٤ درس', 'sub-math', 'math', 38, 'active', 'التالي', 'الدوال اللوغاريتمية', 'مباشر اليوم'],
+      ['الفيزياء: الحركة والقوى', 'الفيزياء', 'أ. فهد المطيري، ١٨ درس', 'sub-physics', 'atom', 64, 'active', 'التالي', 'قوانين نيوتن', ''],
+      ['الإنجليزي من الصفر', 'الإنجليزي', 'أ. خالد العتيبي، ٣٠ درس', 'sub-english', 'en', 81, 'active', 'التالي', 'Unit 4: Daily routines', ''],
+      ['القدرات: القسم الكمي', 'القدرات', 'أ. خالد المطيري، ٢٠ درس', 'sub-qudurat', 'brain', 20, 'active', 'التالي', 'النسبة والتناسب', ''],
+      ['الكيمياء: أساسيات المادة', 'الكيمياء', 'أ. ماهر السبيعي، ١٦ درس', 'sub-chem', 'chem', 100, 'done', 'خلّصتها', 'شهادتك جاهزة', '']
+    ];
+    const filter = s.filter !== undefined ? s.filter : 'all';
+    const SEG = [['all', 'الكل', 5], ['active', 'شغّالة', 4], ['done', 'خلّصتها', 1]];
+    const emptyMy = P.empty === '1';
+    const myList = MY.filter((c) => filter === 'all' || c[6] === filter).map((c, k) => card({
+      t: c[0], s: c[1], m: c[2], sub: c[3], i: I[c[4]], cls: c[6] === 'done' ? 'done' : '', live: c[9], prog: true,
+      p: c[5] === 100 ? '' : ar(c[5]) + '٪', to: String(100 - c[5]), dd: (0.45 + k * 0.08).toFixed(2) + 's', pl: 'تقدّمك ' + ar(c[5]) + '٪', nl: c[7], n: c[8]
+    }, k)).map((c) => Object.assign(c, { p: c.p || '✓' }));
+    const mc = {
+      has: is.mycourses && !emptyMy,
+      segI: String(SEG.findIndex(([k]) => k === filter)),
+      segs: SEG.map(([k, l, n]) => ({ l, n: ar(n), on: k === filter ? 'true' : 'false', go: () => set({ filter: k }) }))
+    };
+
+    // ---- catalogue
+    const C = {
+      m2: ['الرياضيات ٢ ثانوي، الفصل الأول', 'الرياضيات', 'أ. ماجد الشهري، ٢٤ درس', 'sub-math', 'math', '٤٫٨', '١٩٩', 'مباشر', 'عن بعد'],
+      qd: ['القدرات الكمي: تأسيس كامل', 'القدرات', 'أ. خالد المطيري، ٢٠ درس', 'sub-qudurat', 'brain', '٤٫٩', '٢٤٩', 'مباشر', 'عن بعد'],
+      ch: ['الكيمياء: المحاليل والأحماض', 'الكيمياء', 'أ. ماهر السبيعي، ١٤ درس', 'sub-chem', 'chem', '٤٫٧', '١٧٩', '', 'عن بعد'],
+      ph: ['الفيزياء: الكهرباء والمغناطيسية', 'الفيزياء', 'أ. فهد المطيري، ١٦ درس', 'sub-physics', 'atom', '٤٫٨', '١٩٩', '', 'عن بعد'],
+      py: ['البرمجة بلغة Python للمبتدئين', 'Python', 'أ. ريان الحربي، ١٤ درس', 'sub-code', 'code', '٤٫٧', '١٤٩', '', 'عن بعد'],
+      bi: ['الأحياء: الخلية والوراثة', 'الأحياء', 'أ. فهد العتيبي، ١٢ درس', 'sub-bio', 'bio', '٤٫٦', '١٧٩', '', 'حضوري'],
+      en: ['الإنجليزي: المحادثة', 'الإنجليزي', 'أ. خالد العتيبي، ٢٠ درس', 'sub-english', 'en', '٤٫٨', '١٩٩', 'مباشر', 'عن بعد'],
+      ar: ['لغتي: الكتابة الإبداعية', 'لغتي', 'أ. ناصر الشمري، ٨ دروس', 'sub-arabic', 'ar', '٤٫٥', '١٢٩', '', 'عن بعد']
+    };
+    const shop = (c, k, extra) => card(Object.assign({ t: c[0], s: c[1], m: c[2], sub: c[3], i: I[c[4]], r: c[5], price: c[6], live: c[7], how: c[8] }, extra || {}), k);
+
+    // ---- explore
+    const ex = {
+      cats: [['الرياضيات', 24, 'sub-math', 'math'], ['الفيزياء', 16, 'sub-physics', 'atom'], ['الكيمياء', 14, 'sub-chem', 'chem'], ['الأحياء', 11, 'sub-bio', 'bio'], ['اللغة الإنجليزية', 18, 'sub-english', 'en'], ['لغتي', 12, 'sub-arabic', 'ar'], ['القدرات والتحصيلي', 22, 'sub-qudurat', 'brain'], ['البرمجة', 9, 'sub-code', 'code']]
+        .map(([t, n, sub, ic], k) => ({ t, n: ar(n), sub, i: I[ic], k: String(k) }))
+    };
+    // ---- category (math)
+    const catHow = s.how !== undefined ? s.how : 'all';
+    const CAT = [
+      C.m2,
+      ['التفاضل والتكامل للمبتدئين', 'التفاضل', 'أ. عبدالله الغامدي، ١٦ درس', 'sub-math', 'stats', '٤٫٦', '١٧٩', '', 'عن بعد'],
+      ['مراجعة نهائية: الرياضيات ٢', 'مراجعة', 'أ. ماجد الشهري، ٨ دروس', 'sub-math', 'flag', '٤٫٩', '٩٩', 'مباشر', 'عن بعد'],
+      ['الهندسة التحليلية', 'الهندسة', 'أ. سلمان الحربي، ١٢ درس', 'sub-math', 'target', '٤٫٥', '١٦٩', '', 'حضوري'],
+      ['الإحصاء والاحتمالات', 'الإحصاء', 'أ. منير السبيعي، ١٠ دروس', 'sub-math', 'stats', '٤٫٧', '١٤٩', '', 'عن بعد'],
+      ['رياضيات القدرات المكثّفة', 'القدرات', 'أ. خالد المطيري، ١٥ درس', 'sub-math', 'brain', '٤٫٨', '٢٤٩', '', 'حضوري']
+    ];
+    const HOWS = [['all', 'الكل'], ['remote', 'عن بعد'], ['inperson', 'حضوري']];
+    const catList = CAT.filter((c) => catHow === 'all' || (catHow === 'remote' ? c[8] === 'عن بعد' : c[8] === 'حضوري')).map((c, k) => shop(c, k));
+    const fsel = s.fsel || { 'الثاني ثانوي': 1, 'عن بعد': 1, 'مجموعة طلاب': 1 };
+    const cat = {
+      segI: String(HOWS.findIndex(([k]) => k === catHow)),
+      segs: HOWS.map(([k, l]) => ({ l, on: k === catHow ? 'true' : 'false', go: () => set({ how: k }) })),
+      n: ar(catHow === 'all' ? 24 : catHow === 'remote' ? 17 : 7),
+      groups: [['الصف', ['الأول ثانوي', 'الثاني ثانوي', 'الثالث ثانوي']], ['طريقة الدراسة', ['عن بعد', 'حضوري']], ['نوع الدراسة', ['مجموعة طلاب', 'فردي']], ['المعلم', ['معلم', 'معلمة']], ['المدينة (للحضوري)', ['الرياض', 'جدة', 'مكة المكرمة', 'المدينة المنورة', 'الدمام', 'الخبر']]]
+        .map(([t, o]) => ({ t, o: o.map((l) => ({ l, on: fsel[l] ? 'on' : '', p: fsel[l] ? 'true' : 'false', sel: !!fsel[l], tg: () => { const x = Object.assign({}, fsel); x[l] = !x[l]; set({ fsel: x }); } })) }))
+    };
+    // ---- journey
+    const intSel = s.ints || { 'الرياضيات': 1, 'الفيزياء': 1, 'القدرات': 1, 'البرمجة': 1 };
+    const jr = {
+      steps: [['الرياضيات: الدوال', 'أ. ماجد الشهري، خلّصتها', 'done', 'خلّصتها', 'g', 100], ['الكيمياء: أساسيات المادة', 'أ. ماهر السبيعي، خلّصتها', 'done', 'خلّصتها', 'g', 100], ['الفيزياء: قوانين نيوتن', 'أ. فهد المطيري، ٦٤٪', 'now', 'الحين', 'o', 64], ['الأحياء: الخلية', '١٢ درس، ما بدأتها', 'todo', 'الجاية', 'n', 0], ['القدرات: الكمي', '٢٠ درس، ما بدأتها', 'todo', 'الجاية', 'n', 0], ['اختبار تجريبي للتحصيلي', 'آخر خطوة قبل الاختبار', 'todo', 'الأخيرة', 'n', 0]]
+        .map(([t, m, st, tag, tc, w], k) => ({ t, m, st, tag, tc, w, k: String(k), bar: st === 'now', ok: st === 'done', br: st === 'now' ? 'm-breathe' : '', n: st === 'done' ? '' : ar(k + 1) })),
+      mine: Object.keys(intSel).filter((k) => intSel[k]),
+      sugg: [[C.bi, '١٧٩ ر'], [C.qd, '٢٤٩ ر'], [C.py, '١٤٩ ر']].map(([c, p], k) => ({ t: c[0], m: c[2], sub: c[3], i: I[c[4]], p, k: String(k) })),
+      groups: [['المواد', ['الرياضيات', 'الفيزياء', 'الكيمياء', 'الأحياء', 'الإنجليزي', 'لغتي', 'التفكير الناقد']], ['الاختبارات', ['القدرات', 'التحصيلي', 'STEP']], ['مهارات', ['البرمجة', 'المهارات الرقمية', 'الخط العربي']]]
+        .map(([t, o]) => ({ t, o: o.map((l) => ({ l, on: intSel[l] ? 'on' : '', p: intSel[l] ? 'true' : 'false', sel: !!intSel[l], tg: () => { const x = Object.assign({}, intSel); x[l] = !x[l]; set({ ints: x }); } })) }))
+    };
+    // ---- recs
+    const hidden = s.hidden || {};
+    const recOn = s.recOn !== undefined ? s.recOn : P.off !== '1';
+    const REC = [[C.qd, 'لأنك تبي القدرات'], [C.ph, 'بعد دورتك الحالية'], [C.py, 'من اهتماماتك'], [C.bi, 'ضمن مسارك'], [C.ar, 'يناسب صفّك'], [C.en, 'بعد دورتك الحالية']];
+    const recList = REC.map((r, i) => ({ r, i })).filter(({ i }) => !hidden[i]).map(({ r, i }, k) => card({ t: r[0][0], s: r[0][1], m: r[0][2], sub: r[0][3], i: I[r[0][4]], rp: r[0][6], why: r[1], rec: true,
+      hide: () => { const h = Object.assign({}, hidden); h[i] = true; set({ hidden: h, toast: true, last: i }); } }, k));
+    const rc = {
+      on: is.recs && recOn, toast: is.recs && !!s.toast,
+      hidden: [['التحصيلي: الكيمياء', 'أ. ماهر السبيعي', 'sub-chem', 'chem'], ['الرسم الرقمي', 'أ. داود العمري', 'sub-code', 'pen']].map(([t, m, sub, ic]) => ({ t, m, sub, i: I[ic] }))
+    };
+    // ---- favs
+    const unf = s.unf || {};
+    const FV = [C.m2, C.qd, C.py, C.en];
+    const favList = FV.map((c, i) => ({ c, i })).filter(({ i }) => !unf[i]).map(({ c, i }, k) => shop(c, k, { hasHeart: true, fav: 'on', favP: 'true', hl: 'شيلها من المفضلة',
+      heart: (e) => { if (e && e.stopPropagation) e.stopPropagation(); const u = Object.assign({}, unf); u[i] = true; set({ unf: u }); } }));
+    const favN = favList.length;
+
+    // ---- per-screen hero
+    const H = {
+      mycourses: emptyMy ? { k: 'دوراتي', h: 'ما عندك دورات للحين', p: 'اختر مادة وابدأ أول درس اليوم' }
+        : { k: 'دوراتي', h: 'عندك ٤ دورات شغّالة', p: 'حصة الرياضيات شغّالة الحين', btn: 'تصفّح دورات جديدة', bi: I.search, go: () => {},
+          stats: [stat(4, '', 'شغّالة', 'book', '#FFC59A'), stat(1, '', 'خلّصتها', 'check', '#8FF0D2'), stat(62, '٪', 'متوسط تقدّمك', 'stats', '#FFD66B'), stat(2, '', 'حصص اليوم', 'live', '#FF9AA0')] },
+      explore: { k: 'وش تبي تتعلّم اليوم؟', h: 'استكشف المواد', p: '', search: true },
+      category: { k: 'قسم الرياضيات', h: 'دورات الرياضيات', p: '٢٤ دورة لطلاب صفّك، عن بعد وحضوري' },
+      journey: { k: 'مسار تعلّمي', h: 'طريقك للتحصيلي، خطوة بخطوة', p: 'خلّصت ٢ من ٦ خطوات', btn: 'اهتماماتي', bi: I.pen, go: () => set({ sheet: 'interests' }),
+        stats: [stat(2, '', 'خطوات خلّصتها', 'check', '#8FF0D2'), stat(33, '٪', 'من المسار', 'flag', '#FFD66B'), stat(41, '', 'ساعة تعلّم', 'clock', '#FFC59A'), stat(4, '', 'شهور للتحصيلي', 'target', '#FF9AA0')] },
+      recs: recOn ? { k: 'مقترح لك', h: 'دورات اخترناها لك', p: 'على حسب صفّك واهتماماتك' } : { k: 'مقترح لك', h: 'الاقتراحات مقفلة', p: '' },
+      favs: favN ? { k: 'المفضلة', h: 'الدورات اللي حفظتها', p: ar(favN) + ' دورات في مفضلتك' } : { k: 'المفضلة', h: 'مفضلتك فاضية', p: '' }
+    }[sc];
+    const hero = Object.assign({ p: '', btn: '', search: false, stats: [] }, H);
+    hero.hasStats = hero.stats.length > 0;
+
+    // ---- shared grid per screen
+    const GRID = {
+      mycourses: { on: !emptyMy, list: myList, add: filter !== 'done' },
+      explore: { on: true, h: 'الأكثر طلبًا لصفّك', a: 'كل الدورات', list: [shop(C.qd, 0), shop(C.m2, 1), shop(C.ch, 2)] },
+      category: { on: true, list: catList },
+      journey: { on: false, list: [] },
+      recs: { on: recOn && recList.length > 0, list: recList },
+      favs: { on: favN > 0, list: favList }
+    }[sc];
+    const grid = Object.assign({ h: '', a: '', add: false }, GRID);
+    const EMPTY = {
+      mycourses: { h: 'دوراتك بتطلع هنا', p: 'أول ما تشترك في دورة تلقاها هنا مع تقدّمك.', btn: 'تصفّح الدورات', href: 'Stu1Discover.dc.html?screen=explore', cls: 'hot', i: I.book },
+      recs: { h: 'نقترح عليك دورات تناسبك', p: 'شغّل الاقتراحات ونختار لك على حسب صفّك.', btn: 'شغّل الاقتراحات', href: '#', cls: '', i: I.ai, go: () => set({ recOn: true }) },
+      favs: { h: 'اضغط القلب على أي دورة', p: 'وترجع لها من هنا بسرعة.', btn: 'تصفّح الدورات', href: 'Stu1Discover.dc.html?screen=explore', cls: '', i: I.heart }
+    };
+    const emptyOn = (is.mycourses && emptyMy) || (is.recs && !recOn) || (is.favs && favN === 0);
+    const empty = Object.assign({ on: emptyOn, go: () => {} }, emptyOn ? EMPTY[sc] : { h: '', p: '', btn: '', href: '#', cls: '', i: '' });
+
+    return {
+      I, title, crumb, back, noBack: !back, is, hero, mc, ex, cat, jr, rc, grid, empty, bi: String(bi),
+      sheetFilter: is.category && sheet === 'filter', sheetInterests: is.journey && sheet === 'interests',
+      openFilter: () => set({ sheet: 'filter' }), openInterests: () => set({ sheet: 'interests' }), closeSheet: () => set({ sheet: '' }), clearF: () => set({ fsel: {} }),
+      recOff: () => set({ recOn: false, toast: false }), recUndo: () => { const h = Object.assign({}, hidden); delete h[s.last]; set({ hidden: h, toast: false }); },
+      nav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === cur ? 'page' : 'false' })),
+      bnav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === cur ? 'page' : 'false' })),
+      tools: [['chat', 'الرسائل', '٢'], ['ai', 'المساعد الذكي', ''], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] })),
+      mtools: [['chat', 'الرسائل', '٢'], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] }))
+    };
+  }
+}
+</script>
+</body>
+</html>

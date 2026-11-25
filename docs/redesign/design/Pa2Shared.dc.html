@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ولي الأمر: التواصل</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* parent shell additions: child switcher, toast, modal, shared bits (prefix pa-) */
+.pa-meav{background:linear-gradient(150deg,#2FB5A8,#0B8FB8)}
+.pa-tt{display:flex;flex-direction:column;flex-shrink:0;line-height:1.3}
+.k-top .pa-search{width:150px;margin-right:0;flex-shrink:0}
+.pa-kids{margin-right:auto;display:flex;align-items:center;gap:6px;min-width:0}
+.pa-kid{position:relative;height:38px;padding:0 4px 0 12px;border-radius:19px;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-text);font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;flex-shrink:0;transition:background .25s,border-color .25s,box-shadow .25s,transform .2s}
+.pa-kid:hover{transform:translateY(-1px)}
+.pa-kid[aria-pressed="true"]{border-color:var(--kc);background:var(--kt);box-shadow:0 8px 16px -8px var(--kc)}
+.pa-kav{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-size:12.5px;font-weight:700;flex-shrink:0}
+.pa-kav svg{display:block}
+.pa-kst{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:2px}
+.pa-kst.g{background:#1D9A63}.pa-kst.y{background:#E89B00}.pa-kst.r{background:#F2545B;animation:kPing 1.6s ease-out infinite}.pa-kst.n{background:#A7B3C6}
+.pa-kadd{height:38px;min-width:38px;padding:0 10px;border-radius:19px;border:1.5px dashed #BFD3E8;color:var(--k-acc);display:inline-flex;align-items:center;justify-content:center;gap:4px;font-size:12.5px;font-weight:700;flex-shrink:0}
+.pa-kadd span:empty{display:none}
+.pa-mkids{display:none}
+
+/* WP12: child switcher = morph pill (M13); buttons share one width so the pill can slide between them */
+.pa-kids,.pa-mkids{--kw:94px}
+.pa-kid{width:var(--kw);justify-content:flex-start}
+.pa-kids.m-pill > .m-pill-bg{top:0;bottom:0;right:calc(var(--i,0) * (var(--kw) + 6px));width:var(--kw);border-radius:19px;background:var(--kt,#E3F4F6);border:1.5px solid var(--kc,#0B8FB8);box-shadow:0 8px 16px -8px var(--kc,#0B8FB8)}
+.pa-kids .pa-kid[aria-pressed="true"]{background:transparent;border-color:transparent;box-shadow:none}
+.pa-mkids.m-pill > .m-pill-bg{display:none}
+.k-db > *{flex-shrink:0}
+.k a.k-btn{color:#FFFFFF}
+.k a.k-btn.ghost{color:var(--k-acc)}
+.k a.k-btn.danger{color:#C2410C}
+/* toast */
+.pa-toast{position:fixed;z-index:60;bottom:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:22px;background:#0E2350;color:#FFFFFF;font-size:14px;font-weight:600;box-shadow:0 16px 34px rgba(0,16,48,.35);animation:paToast .4s cubic-bezier(.2,.8,.2,1) both;white-space:nowrap}
+.pa-toast svg{color:#5BE0A6}
+.pa-toast button{border:none;background:transparent;color:#7FD8F5;font-weight:700;font-size:14px;padding:0 4px}
+@keyframes paToast{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+/* modal */
+.pa-mwrap{position:fixed;inset:0;z-index:41;display:flex;align-items:flex-start;justify-content:center;padding:110px 16px 16px;pointer-events:none}
+.pa-modal{pointer-events:auto;width:470px;max-width:100%;background:#FFFFFF;border-radius:26px;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 30px 70px rgba(0,16,48,.4);animation:paPop .45s cubic-bezier(.2,.9,.3,1.2) both}
+@keyframes paPop{from{opacity:0;transform:scale(.92) translateY(14px)}to{opacity:1;transform:none}}
+.pa-modal h2{margin:0;font-size:20px;line-height:1.4}
+.pa-modal p{margin:0;font-size:14.5px;line-height:1.8;color:var(--k-muted)}
+.pa-mico{width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center}
+.pa-check{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;border:1.5px solid var(--k-line);background:#F8FBFE;font-size:14.5px;font-weight:700;cursor:pointer;text-align:right;color:var(--k-text);width:100%}
+.pa-check i{width:24px;height:24px;border-radius:8px;border:2px solid #BFD3E8;background:#FFFFFF;display:flex;align-items:center;justify-content:center;color:#FFFFFF;flex-shrink:0;transition:background .2s,border-color .2s}
+.pa-check[aria-checked="true"]{border-color:var(--k-acc);background:#E6F6F8}
+.pa-check[aria-checked="true"] i{background:var(--k-acc);border-color:var(--k-acc)}
+.pa-check svg{opacity:0;transform:scale(.4);transition:opacity .2s,transform .3s cubic-bezier(.3,1.6,.5,1)}
+.pa-check[aria-checked="true"] svg{opacity:1;transform:none}
+.k-btn[aria-disabled="true"]{opacity:.45;filter:grayscale(.4);box-shadow:none;animation:none;pointer-events:none}
+/* small shared pieces */
+.pa-ring{--p:50;--c:var(--k-acc);position:relative;width:64px;height:64px;border-radius:50%;flex-shrink:0;background:conic-gradient(var(--c) calc(var(--p)*1%),#E6EEF7 0);display:flex;align-items:center;justify-content:center;animation:paRing 1.1s cubic-bezier(.2,.8,.2,1) both}
+.pa-ring::before{content:"";position:absolute;inset:7px;border-radius:50%;background:#FFFFFF}
+.pa-ring b{position:relative;font-size:15px;font-weight:700;color:var(--k-navy)}
+@keyframes paRing{from{transform:rotate(-90deg) scale(.7);opacity:0}to{transform:none;opacity:1}}
+.pa-sec{display:flex;align-items:center;gap:10px}
+.pa-sec .k-ico{width:38px;height:38px;border-radius:12px;background:#E3F4F6;color:var(--k-acc)}
+.pa-sec h3{margin:0;font-size:18px;font-weight:700;line-height:1.4}
+.pa-sec small{display:block;font-size:12.5px;color:var(--k-muted);font-weight:500;line-height:1.5}
+.pa-pill{min-width:52px;height:28px;padding:0 10px;border-radius:14px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.pa-pill.g{background:#DDF5E9;color:#1D7A50}.pa-pill.y{background:#FFF3C4;color:#855700}.pa-pill.r{background:#FFE3E0;color:#B23A2E}
+.pa-hint{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--k-muted);line-height:1.6;padding:10px 12px;border-radius:14px;background:#F4F8FC}
+.pa-hint svg{flex-shrink:0;margin-top:2px;color:var(--k-acc)}
+.pa-heroav{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-size:26px;font-weight:700;box-shadow:0 0 0 4px rgba(255,255,255,.18);flex-shrink:0}
+.td-bar2{position:relative;display:block;height:10px;border-radius:5px;background:#EAF0F6}
+.td-bar2 i{display:block;height:100%;border-radius:5px;transform-origin:100% 50%;animation:kGrow 1s cubic-bezier(.2,.8,.2,1) .3s both}
+.td-bar2 b{position:absolute;top:-4px;width:3px;height:18px;border-radius:2px;background:var(--k-navy);box-shadow:0 0 0 2px #FFFFFF}
+@media (max-width:760px){
+.pa-mkids{display:flex;position:sticky;top:58px;z-index:19;gap:6px;padding:4px 12px 10px;background:rgba(0,26,78,.94);backdrop-filter:blur(12px);overflow-x:auto;scrollbar-width:none}
+.pa-mkids::-webkit-scrollbar{display:none}
+.pa-mkids .pa-kid{height:36px;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#FFFFFF;padding:0 4px 0 11px}
+.pa-mkids .pa-kav{width:26px;height:26px}
+.pa-mkids .pa-kid[aria-pressed="true"]{background:#FFFFFF;color:var(--k-navy);border-color:#FFFFFF;box-shadow:0 6px 14px -6px rgba(0,0,0,.4)}
+.pa-mkids .pa-kadd{height:36px;min-width:36px;border-color:rgba(255,255,255,.3);color:#FFFFFF}
+.pa-toast{bottom:86px;font-size:13px;max-width:calc(100% - 24px)}
+.pa-mwrap{align-items:flex-end;padding:0;top:auto;bottom:0;height:auto}
+.pa-mwrap{inset:auto 0 0 0}
+.pa-modal{width:100%;border-radius:26px 26px 0 0;padding:20px 18px 26px}
+.pa-mkids{--kw:88px}
+.pa-mkids.m-pill > .m-pill-bg{display:block;top:4px;bottom:10px;right:calc(12px + var(--i,0) * (var(--kw) + 6px));width:var(--kw);border-radius:18px;background:#FFFFFF;border:none;box-shadow:0 6px 14px -6px rgba(0,0,0,.4)}
+.pa-mkids .pa-kid[aria-pressed="true"]{background:transparent;border-color:transparent;box-shadow:none}
+.pa-modal{animation:mSheet .5s cubic-bezier(.2,.8,.2,1) both}
+.pa-heroav{width:54px;height:54px;font-size:22px}
+}
+
+.sh2-ruq{font-size:19px;color:#FFC9A1}
+.sh2-glass{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.28);box-shadow:none;animation:none}
+.sh2-chat{flex-direction:row;padding:0;gap:0;overflow:hidden;min-height:620px}
+.sh2-list{width:350px;flex-shrink:0;border-left:1px solid var(--k-line);padding:16px;display:flex;flex-direction:column;gap:8px;background:#FBFDFF}
+.sh2-cv{display:flex;align-items:center;gap:10px;padding:10px;border-radius:16px;color:var(--k-text);transition:background .2s;animation:kRise .45s ease both;animation-delay:var(--d)}
+.sh2-cv:hover{background:#F1F6FB}
+.sh2-cv[aria-current="true"]{background:#E6F6F8;box-shadow:inset 0 0 0 1.5px #BFE3EA}
+.sh2-cn{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh2-last{flex:1;min-width:0;font-size:12.5px;color:var(--k-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh2-kd{flex-shrink:0;height:20px;padding:0 8px;border-radius:10px;background:var(--kt);color:var(--kc);font-size:11px;font-weight:700;display:inline-flex;align-items:center;border:1px solid var(--kc)}
+.sh2-kd.big{height:28px;padding:0 12px;font-size:12.5px;border-radius:14px}
+.sh2-conv{flex:1;min-width:0;display:flex;flex-direction:column}
+.sh2-ch{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--k-line)}
+.sh2-on{color:#1D9A63;font-weight:700}
+.sh2-msgs{flex:1;display:flex;flex-direction:column;gap:8px;padding:18px;background:linear-gradient(180deg,#F6FAFD,#FFFFFF)}
+.sh2-sys{align-self:center;font-size:12px;color:var(--k-muted);padding:4px 12px;border-radius:12px;background:#EEF4FA}
+.sh2-day{align-self:center;font-size:12px;font-weight:700;color:var(--k-muted)}
+.sh2-b{max-width:72%;display:flex;flex-direction:column;gap:2px;padding:10px 14px;border-radius:18px;font-size:14.5px;line-height:1.7;animation:kRise .45s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d)}
+.sh2-b small{font-size:11px;opacity:.65}
+.sh2-b.me{align-self:flex-start;background:linear-gradient(135deg,#0B8FB8,#2FB5A8);color:#FFFFFF;border-bottom-right-radius:6px}
+.sh2-b.them{align-self:flex-end;background:#FFFFFF;border:1.5px solid var(--k-line);border-bottom-left-radius:6px}
+.sh2-comp{display:flex;align-items:center;gap:8px;padding:12px 14px;border-top:1px solid var(--k-line)}
+.sh2-in{flex:1;height:46px;border-radius:23px;border:1.5px solid #D5E3F2;padding:0 16px;font-family:inherit;font-size:14px;outline:none;min-width:0}
+.sh2-in:focus{border-color:var(--k-acc)}
+.sh2-send{width:46px;height:46px;border-radius:50%;border:none;background:linear-gradient(135deg,#0B8FB8,#2FB5A8);color:#FFFFFF;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.al-tg{display:inline-flex;align-items:center;gap:8px;border:none;background:none;font-size:13.5px;font-weight:700;color:var(--k-text)}
+.sh2-wd,.sh2-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.sh2-wd span{text-align:center;font-size:12px;font-weight:700;color:var(--k-muted)}
+.sh2-d{min-height:84px;border-radius:14px;background:#F8FBFE;border:1.5px solid var(--k-line);padding:6px 8px;display:flex;flex-direction:column;gap:4px;animation:kFade .4s both;animation-delay:var(--d)}
+.sh2-d b{font-size:13px}
+.sh2-d.out{background:transparent;border-color:transparent}
+.sh2-d.past b{color:#A7B3C6}
+.sh2-d.today{border-color:var(--k-acc);background:#E6F6F8;box-shadow:0 0 0 3px rgba(11,143,184,.12)}
+.sh2-d.today b{color:var(--k-acc)}
+.sh2-ev{font-size:11px;font-weight:700;line-height:1.4;padding:2px 6px;border-radius:6px;background:var(--k-acc);color:#FFFFFF}
+.sh2-dots{display:flex;gap:3px;margin-top:auto;flex-wrap:wrap}
+.sh2-dots i{width:7px;height:7px;border-radius:50%}
+.sh2-leg{gap:14px;font-size:12.5px;color:var(--k-muted);font-weight:600}
+.sh2-leg span{display:inline-flex;align-items:center;gap:5px}
+.sh2-leg i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.td-ev2{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--k-line);font-size:14px}
+.td-ev2:last-child{border-bottom:none}
+.td-ev2 time{width:58px;font-weight:700;color:var(--k-navy);flex-shrink:0}
+.td-ev2 i{width:4px;align-self:stretch;border-radius:2px;flex-shrink:0}
+.sh2-mine{display:flex;align-items:center;gap:12px;padding:8px 0}
+.sh2-date{width:52px;height:56px;border-radius:14px;background:linear-gradient(160deg,#0B8FB8,#00205E);color:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;flex-shrink:0}
+.sh2-date b{font-size:20px}.sh2-date small{font-size:11px;opacity:.8}
+.sh2-tabs{overflow-x:auto;scrollbar-width:none}
+.sh2-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.sh2-tc{min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--k-coral);color:#FFFFFF;font-size:11px;display:inline-flex;align-items:center;justify-content:center}
+.sh2-it{align-items:flex-start}
+.sh2-it:hover{transform:none}
+.sh2-it .k-btn{align-self:center}
+.td-day{font-size:13px;font-weight:700;color:var(--k-acc);padding:6px 0 0}
+.sh2-nt{display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;color:var(--k-text);border:1.5px solid transparent;animation:kRise .45s ease both;animation-delay:var(--d)}
+.sh2-nt:hover{background:#F8FBFE}
+.sh2-nt.u{background:#F1FAFC;border-color:#CDE9EF}
+.sh2-ta{height:auto;min-height:110px;align-items:flex-start;padding:12px 14px;line-height:1.8;color:var(--k-text)}
+.mo-doc2{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;border:1.5px dashed #BFD3E8;font-size:13.5px;color:var(--k-muted)}
+.sh2-cp{display:flex;flex-direction:column;gap:3px;padding:12px 0;border-bottom:1px solid #EDF2F8}
+.sh2-cp:last-child{border-bottom:none}
+.py-no2{font-size:12.5px;font-family:ui-monospace,Menlo,monospace;color:var(--k-muted)}
+.sh2-rep{font-size:13px;padding:8px 10px;border-radius:12px;background:#F1FAFC;color:#0B6E8E;line-height:1.6;margin-top:4px}
+@media (max-width:760px){
+.sh2-chat{min-height:0}
+.sh2-chat.conv .sh2-list{display:none}
+.sh2-chat.list .sh2-conv{display:none}
+.sh2-list{width:100%;border-left:none}
+.sh2-ch{padding:12px}
+.sh2-ch .sh2-kd.big{display:none}
+.sh2-msgs{padding:14px 12px}
+.sh2-b{max-width:86%}
+.sh2-d{min-height:52px;padding:4px;border-radius:10px}
+.sh2-ev{font-size:0;padding:0;width:8px;height:8px;border-radius:50%}
+.sh2-month,.sh2-wd{gap:4px}
+.sh2-it{flex-wrap:wrap}
+.sh2-it .k-btn{margin-right:54px}
+.sh2-tabs button{flex:1 1 0;min-width:0;padding:0 4px;font-size:12.5px}
+.sh2-tabs .sh2-tc{min-width:18px;height:18px;padding:0 4px}
+}
+@media (max-width:760px){.sh2-it > .k-col{flex:1 1 200px !important}}
+
+</style>
+</helmet>
+<div class="k parent" dir="rtl">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">ولي أمر</span></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="12">
+        <sc-if value="{{n.g}}" hint-placeholder-val="{{ false }}"><span class="k-navg">{{n.g}}</span></sc-if>
+        <a href="{{n.href}}" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{n.c}}</span></sc-if></a>
+      </sc-for>
+      <div class="k-me"><span class="k-av sm pa-meav">أ</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">أحمد العنزي</b><small style="font-size: 11.5px; opacity: .7">ولي أمر، {{kidsCount}}</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <sc-if value="{{back}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-ib" aria-label="رجوع"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a></sc-if>
+        <span class="pa-tt"><small>{{sub}}</small><h1>{{title}}</h1></span>
+        <div class="pa-kids m-pill" role="group" aria-label="اختر الابن"><span class="m-pill-bg" style="--i: {{kp.i}}; --kc: {{kp.c}}; --kt: {{kp.t}}; display: {{kp.d}}"></span>
+          <sc-for list="{{kidsBar}}" as="c" hint-placeholder-count="4"><button type="button" class="pa-kid" aria-pressed="{{c.on}}" style="--kc: {{c.c}}; --kt: {{c.t}}" onClick="{{c.pick}}"><span class="pa-kav" style="background: {{c.bg}}">{{c.ini}}</span>{{c.n}}<sc-if value="{{c.st}}" hint-placeholder-val="{{ true }}"><i class="pa-kst {{c.st}}" title="{{c.stl}}"></i></sc-if></button></sc-for>
+          <a href="Pa2More.dc.html?screen=link" class="pa-kadd" aria-label="ربط ابن"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg><span>{{addL}}</span></a>
+        </div>
+        <span class="k-search pa-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث<kbd>Ctrl K</kbd></span>
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="3"><a href="{{t.href}}" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av pa-meav">أ</span>
+      </header>
+      <header class="k-mtop">
+        <sc-if value="{{back}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-ib" aria-label="رجوع"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a></sc-if>
+        <sc-if value="{{noBack}}" hint-placeholder-val="{{ true }}"><img src="./logo.png" alt="" width="28" height="31" style="width: 28px; height: auto"></sc-if>
+        <h1>{{title}}</h1>
+        <sc-for list="{{mtools}}" as="t" hint-placeholder-count="2"><a href="{{t.href}}" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+      </header>
+      <div class="pa-mkids m-pill" role="group" aria-label="اختر الابن"><span class="m-pill-bg" style="--i: {{kp.i}}; display: {{kp.dm}}"></span>
+        <sc-for list="{{kidsBar}}" as="c" hint-placeholder-count="4"><button type="button" class="pa-kid" aria-pressed="{{c.on}}" style="--kc: {{c.c}}; --kt: {{c.t}}" onClick="{{c.pick}}"><span class="pa-kav" style="background: {{c.bg}}">{{c.ini}}</span>{{c.n}}<sc-if value="{{c.st}}" hint-placeholder-val="{{ true }}"><i class="pa-kst {{c.st}}"></i></sc-if></button></sc-for>
+        <a href="Pa2More.dc.html?screen=link" class="pa-kadd" aria-label="ربط ابن"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></a>
+      </div>
+
+      <main class="k-page">
+        <section class="k-hero sh2-hero">
+          <div class="k-row" style="align-items: flex-end; gap: 16px">
+            <div class="k-col" style="gap: 4px; flex: 1 1 340px">
+              <span class="k-ruqaa sh2-ruq">{{H.k}}</span>
+              <h2>{{H.h}}</h2>
+              <p>{{H.p}}</p>
+            </div>
+            <sc-if value="{{H.btn}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-btn sh2-glass" onClick="{{H.go}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{H.bi}}"></path></svg>{{H.btn}}</a></sc-if>
+          </div>
+        </section>
+        <div class="k-body">
+          <sc-if value="{{isChat}}" hint-placeholder-val="{{ true }}">
+            <section class="k-card sh2-chat {{chatMode}}" style="--d: .04s">
+              <div class="sh2-list">
+                <div class="k-in" style="height: 42px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="{{I.search}}"></path></svg>ابحث في المحادثات</div>
+                <div class="k-seg m-pill" style="--n: 3"><span class="m-pill-bg" style="--i: {{csI}}"></span><sc-for list="{{cseg}}" as="t" hint-placeholder-count="3"><button type="button" aria-selected="{{t.on}}" onClick="{{t.go}}">{{t.l}}</button></sc-for></div>
+                <sc-for list="{{convs}}" as="c" hint-placeholder-count="5"><a href="Pa2Shared.dc.html?screen=chat" class="sh2-cv" aria-current="{{c.cur}}" style="--d: {{c.d}}"><span class="k-av" style="background: {{c.bg}}">{{c.ini}}</span><span class="k-col" style="gap: 1px; flex: 1; min-width: 0"><span class="k-row" style="gap: 6px; flex-wrap: nowrap"><b class="sh2-cn">{{c.n}}</b><span class="k-sp"></span><span class="k-m" style="flex-shrink: 0">{{c.t}}</span></span><span class="k-row" style="gap: 6px; flex-wrap: nowrap"><sc-if value="{{c.kn}}" hint-placeholder-val="{{ true }}"><span class="sh2-kd" style="--kc: {{c.kc}}; --kt: {{c.kt}}">{{c.kn}}</span></sc-if><span class="sh2-last">{{c.last}}</span><sc-if value="{{c.u}}" hint-placeholder-val="{{ false }}"><span class="k-cnt" style="margin: 0">{{c.u}}</span></sc-if></span></span></a></sc-for>
+                <div class="pa-hint"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.shield}}"></path></svg>تراسل معلمي أبنائك مباشرة. أي أحد ثاني توصله رسالتك كطلب محادثة.</div>
+              </div>
+              <div class="sh2-conv">
+                <sc-if value="{{openConv}}" hint-placeholder-val="{{ true }}">
+                  <div class="sh2-ch"><span class="k-av" style="background: linear-gradient(150deg,#2FB5A8,#0B8FB8)">ن</span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 16px">أ. نورة القحطاني</b><span class="k-m">الرياضيات، مجموعة أ، <span class="sh2-on">متصلة الحين</span></span></span><span class="sh2-kd big" style="--kc: #F2545B; --kt: #FFEDE4">بخصوص ريم</span><a href="#" class="k-ib" aria-label="اجتماع سريع"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.meet}}"></path></svg></a></div>
+                  <div class="sh2-msgs">
+                    <span class="sh2-sys">تشوف أ. نورة إنك ولي أمر ريم العنزي</span>
+                    <span class="sh2-day">أمس</span>
+                    <sc-for list="{{msgs}}" as="m" hint-placeholder-count="5"><div class="sh2-b {{m.k}}" style="--d: {{m.d}}"><span>{{m.t}}</span><small>{{m.time}}</small></div></sc-for>
+                  </div>
+                  <div class="sh2-comp"><button type="button" class="k-ib" aria-label="إرفاق"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.clip}}"></path></svg></button><input class="sh2-in" placeholder="اكتب رسالتك لأ. نورة" value="{{draft}}" onInput="{{onDraft}}"><button type="button" class="sh2-send" aria-label="إرسال" onClick="{{send}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.send}}"></path></svg></button></div>
+                </sc-if>
+                <sc-if value="{{noConv}}" hint-placeholder-val="{{ false }}"><div class="k-empty" style="margin: auto"><span class="k-ico" style="background: #E3F4F6; color: var(--k-acc)"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.chat}}"></path></svg></span><b style="font-size: 17px; color: var(--k-text)">اختر محادثة</b><span>أو اضغط «راسل المعلم» من صفحة أي ابن.</span></div></sc-if>
+              </div>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{isCal}}" hint-placeholder-val="{{ false }}">
+            <div class="k-grid k-side2" style="align-items: start">
+              <section class="k-card" style="--d: .04s">
+                <div class="k-ch"><div class="k-row" style="gap: 8px"><button type="button" class="k-ib" aria-label="الشهر اللي قبل" style="width: 36px; height: 36px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.chevR}}"></path></svg></button><h3>نوفمبر ٢٠٢٦</h3><button type="button" class="k-ib" aria-label="الشهر اللي بعد" style="width: 36px; height: 36px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.chevL}}"></path></svg></button></div><button type="button" class="al-tg" onClick="{{togKids}}"><span class="k-tog {{kidsOn}}"><i></i></span>حصص أبنائي</button></div>
+                <div class="sh2-wd"><sc-for list="{{wdays}}" as="w" hint-placeholder-count="7"><span>{{w}}</span></sc-for></div>
+                <div class="sh2-month"><sc-for list="{{days}}" as="d" hint-placeholder-count="35"><div class="sh2-d {{d.k}}" style="--d: {{d.dl}}"><b>{{d.n}}</b><sc-if value="{{d.ev}}" hint-placeholder-val="{{ false }}"><span class="sh2-ev">{{d.ev}}</span></sc-if><span class="sh2-dots"><sc-for list="{{d.dots}}" as="x" hint-placeholder-count="2"><i style="background: {{x}}"></i></sc-for></span></div></sc-for></div>
+                <div class="k-row sh2-leg"><span><i style="background: var(--k-acc)"></i>مواعيدي</span><sc-for list="{{kleg}}" as="k" hint-placeholder-count="3"><span><i style="background: {{k.c}}"></i>{{k.n}}</span></sc-for></div>
+              </section>
+              <div class="k-col" style="gap: 18px">
+                <section class="k-card" style="--d: .1s">
+                  <div class="k-ch"><h3>اليوم، الثلاثاء ٢٤</h3></div>
+                  <sc-for list="{{todayEv}}" as="e" hint-placeholder-count="3"><div class="td-ev2"><time>{{e.time}}</time><i style="background: {{e.c}}"></i><span class="k-col" style="gap: 0; flex: 1"><b>{{e.t}}</b><span class="k-m">{{e.s}}</span></span></div></sc-for>
+                </section>
+                <section class="k-card" style="--d: .16s">
+                  <div class="k-ch"><h3>مواعيدي الجاية</h3></div>
+                  <sc-for list="{{mine}}" as="e" hint-placeholder-count="2"><div class="sh2-mine"><span class="sh2-date"><b>{{e.dn}}</b><small>{{e.mn}}</small></span><span class="k-col" style="gap: 2px; flex: 1"><b style="font-size: 14.5px">{{e.t}}</b><span class="k-m">{{e.s}}</span></span><a href="#" class="k-btn sm ghost">{{e.b}}</a></div></sc-for>
+                </section>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isInbox}}" hint-placeholder-val="{{ false }}">
+            <section class="k-card" style="--d: .04s">
+              <div class="k-seg sh2-tabs m-pill" style="--n: 4" role="tablist"><span class="m-pill-bg" style="--i: {{itI}}"></span><sc-for list="{{itabs}}" as="t" hint-placeholder-count="4"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.go}}">{{t.l}}<sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="sh2-tc">{{t.c}}</span></sc-if></button></sc-for></div>
+              <sc-for list="{{items}}" as="x" hint-placeholder-count="4">
+                <div class="k-tile sh2-it" style="--d: {{x.d}}"><span class="k-ico" style="background: {{x.bg}}; color: {{x.fg}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span><span class="k-col" style="gap: 2px; flex: 1"><span class="k-row" style="gap: 8px"><span class="k-tag {{x.tc}}">{{x.kind}}</span><span class="k-m">{{x.time}}</span></span><b class="k-t">{{x.t}}</b><span class="k-m">{{x.m}}</span></span><sc-if value="{{x.b}}" hint-placeholder-val="{{ true }}"><a href="{{x.href}}" class="k-btn sm {{x.bc}}">{{x.b}}</a></sc-if></div>
+              </sc-for>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{isNotifs}}" hint-placeholder-val="{{ false }}">
+            <section class="k-card" style="--d: .04s">
+              <div class="k-ch"><h3>كل الإشعارات</h3><a href="#" onClick="{{readNotifs}}">تحديد الكل كمقروء</a></div>
+              <sc-for list="{{ngroups}}" as="gp" hint-placeholder-count="3">
+                <div class="td-day">{{gp.d}}</div>
+                <sc-for list="{{gp.rows}}" as="x" hint-placeholder-count="3"><a href="{{x.href}}" class="sh2-nt {{x.u}}" style="--d: {{x.d}}"><span class="k-ico" style="background: {{x.bg}}; color: {{x.fg}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span><span class="k-col" style="gap: 2px; flex: 1"><b style="font-size: 14.5px">{{x.t}}</b><span class="k-m">{{x.m}}</span></span><span class="k-col" style="gap: 4px; align-items: flex-end"><span class="k-m">{{x.time}}</span><sc-if value="{{x.kn}}" hint-placeholder-val="{{ true }}"><span class="sh2-kd" style="--kc: {{x.kc}}; --kt: {{x.kt}}">{{x.kn}}</span></sc-if></span></a></sc-for>
+              </sc-for>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{isComp}}" hint-placeholder-val="{{ false }}">
+            <div class="k-grid k-side2" style="align-items: start">
+              <section class="k-card" style="--d: .04s">
+                <div class="k-ch"><h3>شكوى جديدة</h3></div>
+                <span class="k-lbl">وش نوعها؟</span>
+                <div class="k-row" style="gap: 8px"><sc-for list="{{ctypes}}" as="t" hint-placeholder-count="5"><button type="button" class="k-chip" aria-pressed="{{t.on}}" onClick="{{t.go}}">{{t.l}}</button></sc-for></div>
+                <span class="k-lbl">بخصوص مين؟</span>
+                <div class="k-row" style="gap: 8px"><sc-for list="{{cabout}}" as="t" hint-placeholder-count="4"><button type="button" class="k-chip" aria-pressed="{{t.on}}" onClick="{{t.go}}">{{t.l}}</button></sc-for></div>
+                <label class="k-col" style="gap: 6px"><span class="k-lbl">العنوان</span><span class="k-in" style="color: var(--k-text)">الحصة اتأجلت بدون ما يوصلني إشعار</span></label>
+                <label class="k-col" style="gap: 6px"><span class="k-lbl">التفاصيل</span><span class="k-in sh2-ta">حصة العلوم يوم الأحد ٢٢ نوفمبر تأجلت لساعة ثانية، وريم دخلت في الموعد القديم ولقت الحصة مقفلة. أبي أعرف وش صار وهل فيه حصة تعويضية.</span></label>
+                <div class="mo-doc2"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.clip}}"></path></svg><span style="flex: 1">أرفق صورة أو ملف (اختياري)</span><span class="k-btn ghost sm">اختيار</span></div>
+                <button type="button" class="k-btn" onClick="{{sendComp}}">أرسل الشكوى</button>
+              </section>
+              <section class="k-card" style="--d: .1s">
+                <div class="k-ch"><h3>شكاواي</h3><span class="k-tag n">{{compN}}</span></div>
+                <sc-for list="{{comps}}" as="c" hint-placeholder-count="3"><div class="sh2-cp"><div class="k-row" style="gap: 8px"><b dir="ltr" class="py-no2">{{c.no}}</b><span class="k-sp"></span><span class="k-tag {{c.sc}}">{{c.st}}</span></div><b style="font-size: 14.5px">{{c.t}}</b><span class="k-m">{{c.m}}</span><sc-if value="{{c.r}}" hint-placeholder-val="{{ false }}"><span class="sh2-rep">رد الدعم: {{c.r}}</span></sc-if></div></sc-for>
+              </section>
+            </div>
+          </sc-if>
+        </div>
+
+      </main>
+      <nav class="k-bnav m-pill" style="--n: 5" aria-label="القائمة"><span class="m-pill-bg" style="--i: {{bidx}}; display: {{bpd}}"></span><sc-for list="{{bnav}}" as="n" hint-placeholder-count="5"><a href="{{n.href}}" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{n.c}}</span></sc-if></a></sc-for></nav>
+    </div>
+  </div>
+
+  <sc-if value="{{toast}}" hint-placeholder-val="{{ false }}"><div class="pa-toast" role="status"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg><span>{{toast}}</span><sc-if value="{{undo}}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{undo}}">تراجع</button></sc-if></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screen":"chat","$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = this.props || {}, S = this.state || {};
+    const set = (o) => this.setState(o);
+    const ar = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+    const stop = (e) => { if (e && e.preventDefault) e.preventDefault(); };
+    const I = {
+      today: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+      kids: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a7 7 0 0 1 14 0v1M17 11a3 3 0 1 0 0-6M22 21v-1a5 5 0 0 0-4-4.9',
+      reports: 'M4 20V10M10 20V4M16 20v-7M22 20H2', bell: 'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
+      more: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', link: 'M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1',
+      book: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5', receipt: 'M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h4',
+      chat: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z', cal: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4', inbox: 'M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5',
+      search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3', back: 'M5 12h14M13 6l6 6-6 6', chevL: 'M15 6l-6 6 6 6', chevR: 'M9 6l6 6-6 6', chevD: 'M6 9l6 6 6-6',
+      check: 'M5 12l5 5L20 7', lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4', shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
+      games: 'M6 9h12a4 4 0 0 1 0 8c-2 0-3-2-6-2s-4 2-6 2a4 4 0 0 1 0-8zM8 11v4M6 13h4M16 12h.01M18 14h.01', quran: 'M12 6c-2-1.5-5-2-8-1v14c3-1 6-.5 8 1 2-1.5 5-2 8-1V5c-3-1-6-.5-8 1zM12 6v14',
+      nahw: 'M4 6h16M4 12h10M4 18h7', star: 'M12 3l2.7 5.6 6.3.9-4.5 4.4 1 6.1L12 17l-5.5 3 1-6.1L3 9.5l6.3-.9z', clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
+      warn: 'M12 3l10 18H2zM12 10v4M12 17h.01', x: 'M6 6l12 12M18 6L6 18', plus: 'M12 5v14M5 12h14', download: 'M12 4v12M6 10l6 6 6-6M4 20h16',
+      share: 'M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4', upload: 'M12 20V8M6 14l6-6 6 6M4 4h16',
+      card: 'M2 6h20v12H2zM2 10h20M6 15h4', user: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0', video: 'M3 6h12v12H3zM15 10l6-3v10l-6-3',
+      phone: 'M5 3h4l2 5-3 2a11 11 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A17 17 0 0 1 3 5a2 2 0 0 1 2-2z', dots: 'M12 5h.01M12 12h.01M12 19h.01', mail: 'M3 5h18v14H3zM3 6l9 7 9-7',
+      eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', trophy: 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H4a3 3 0 0 0 4 4M16 6h4a3 3 0 0 1-4 4M12 13v4M8 21h8M10 17h4v4h-4z',
+      flame: 'M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-3-1-6 1-9z', logout: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11', trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+      globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18', moon: 'M20 14A8 8 0 1 1 10 4a6 6 0 0 0 10 10z',
+      help: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01', doc: 'M6 2h9l5 5v15H6zM14 2v6h6',
+      key: 'M15 7a4 4 0 1 1-3.5 6L4 20.5V17h3v-3h3l1.5-1.5', ai: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z', edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
+      filter: 'M3 5h18l-7 8v6l-4 2v-8z', school: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5', pin: 'M12 21s7-6 7-12a7 7 0 0 0-14 0c0 6 7 12 7 12zM12 7a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
+      math: 'M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2', atom: 'M12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 3c2.5 0 4.5 4 4.5 9s-2 9-4.5 9-4.5-4-4.5-9 2-9 4.5-9z',
+      en: 'M4 6h9M8.5 4v2M6 6c0 4 3 7 6 8M11 6c0 3-3 7-7 8M13 20l4-9 4 9M14.5 17h5', flask: 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7.5 15h9', pen: 'M4 20l4-1L19 8l-3-3L5 16zM14 7l3 3',
+      cert: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.5 14L7 22l5-3 5 3-1.5-8', grid2: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z', group: 'M8 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 21v-3a6 6 0 0 1 12 0v3M17.5 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM14.5 21v-2a3 3 0 0 1 6 0v2',
+      up: 'M7 14l5-5 5 5', down: 'M7 10l5 5 5-5', meet: 'M15 10l5-3v10l-5-3M3 6h12v12H3z', heart: 'M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z', send: 'M21 3L3 11l7 3 3 7zM10 14l11-11', clip: 'M20 11l-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7'
+    };
+    const KIDS = [
+      { id: 'reem', n: 'ريم', full: 'ريم العنزي', ini: 'ر', g: 'الصف الثاني المتوسط', bg: 'linear-gradient(150deg,#FFB37A,#F2545B)', c: '#F2545B', t: '#FFEDE4', st: 'g', stl: 'على المسار الصحيح' },
+      { id: 'faisal', n: 'فيصل', full: 'فيصل العنزي', ini: 'ف', g: 'الصف الثاني الثانوي', bg: 'linear-gradient(150deg,#07B8EE,#1979C1)', c: '#1979C1', t: '#E2EFFA', st: 'y', stl: 'يحتاج متابعة' },
+      { id: 'sara', n: 'سارة', full: 'سارة العنزي', ini: 'س', g: 'الصف الرابع الابتدائي', bg: 'linear-gradient(150deg,#8B6CF0,#5F3DC4)', c: '#5F3DC4', t: '#EFE9FD', st: 'n', stl: 'أسبوع هادئ' }
+    ];
+    const KID = (id) => KIDS.find((k) => k.id === id) || KIDS[0];
+    const kidRaw = S.kid || P.kid || 'reem';
+    const shell = (o) => {
+      const allowAll = o.allowAll !== false;
+      const k0 = o.kid || kidRaw; const kid = !allowAll && k0 === 'all' ? 'reem' : k0;
+      const list = o.noKids ? [] : (allowAll ? [{ id: 'all', n: 'الكل', ini: '', bg: 'linear-gradient(150deg,#2FB5A8,#0B8FB8)', c: '#0B8FB8', t: '#E3F4F6', st: '' }] : []).concat(KIDS);
+      const NAV = [
+        ['today', 'اليوم', '', '', 'Pa2Today.dc.html'], ['kids', 'الأبناء', '', '', 'Pa2Kids.dc.html'], ['reports', 'التقارير', '', '', 'Pa2Reports.dc.html'], ['bell', 'التنبيهات', '', '٤', 'Pa2Alerts.dc.html'],
+        ['book', 'احجز لابنك', 'لأبنائي', '', 'Pa2Pay.dc.html?screen=book'], ['receipt', 'المدفوعات والفواتير', '', '', 'Pa2Pay.dc.html?screen=payments'], ['link', 'ربط ابن', '', '١', 'Pa2More.dc.html?screen=link'],
+        ['chat', 'الرسائل', 'التواصل', '٢', 'Pa2Shared.dc.html?screen=chat'], ['cal', 'التقويم', '', '', 'Pa2Shared.dc.html?screen=calendar'], ['inbox', 'الوارد', '', '٣', 'Pa2Shared.dc.html?screen=inbox'],
+        ['more', 'المزيد', 'حسابي', '', 'Pa2More.dc.html']
+      ];
+      const BN = [['today', 'اليوم', '', 'Pa2Today.dc.html'], ['kids', 'الأبناء', '', 'Pa2Kids.dc.html'], ['reports', 'التقارير', '', 'Pa2Reports.dc.html'], ['bell', 'التنبيهات', '٤', 'Pa2Alerts.dc.html'], ['more', 'المزيد', '١', 'Pa2More.dc.html']];
+      const bcur = o.btab || o.nav;
+      return {
+        title: o.title, sub: o.sub || 'ولي أمر', back: !!o.back, noBack: !o.back, kidsCount: ar(KIDS.length) + ' أبناء', addL: o.noKids ? 'ربط ابن' : '',
+        nav: NAV.map(([k, l, g, c, href]) => ({ l, g, c, href, i: I[k], cur: k === o.nav ? 'page' : 'false' })),
+        bnav: BN.map(([k, l, c, href]) => ({ l, c, href, i: I[k], cur: k === bcur ? 'page' : 'false' })),
+        tools: [['cal', 'التقويم', '', 'Pa2Shared.dc.html?screen=calendar'], ['chat', 'الرسائل', '٢', 'Pa2Shared.dc.html?screen=chat'], ['bell', 'الإشعارات', '٥', 'Pa2Shared.dc.html?screen=notifs']].map(([k, l, c, href]) => ({ l, c, href, i: I[k] })),
+        mtools: [['chat', 'الرسائل', '٢', 'Pa2Shared.dc.html?screen=chat'], ['bell', 'الإشعارات', '٥', 'Pa2Shared.dc.html?screen=notifs']].map(([k, l, c, href]) => ({ l, c, href, i: I[k] })),
+        kidsBar: list.map((c) => ({ ...c, ini: c.id === 'all' ? ar(KIDS.length) : c.ini, on: c.id === kid ? 'true' : 'false', pick: () => set({ kid: c.id }) })),
+        kp: (() => { const i = list.findIndex((c) => c.id === kid); const c = list[i] || {}; return { i, c: c.c || '', t: c.t || '', d: i < 0 ? 'none' : 'block', dm: i < 0 ? 'none' : '' }; })(),
+        bidx: Math.max(0, BN.findIndex((b) => b[0] === bcur)), bpd: BN.some((b) => b[0] === bcur) ? '' : 'none',
+        toast: S.toast || '', undo: S.undo || null
+      };
+    };
+    const flash = (msg, undo) => { set({ toast: msg, undo: undo || null }); clearTimeout(this.__t); this.__t = setTimeout(() => set({ toast: '', undo: null }), 3200); };
+
+    const scr = P.screen || 'chat';
+    const NAVK = { chat: 'chat', chats: 'chat', calendar: 'cal', inbox: 'inbox', notifs: 'inbox', complaints: 'more' };
+    const TITLE = { chat: 'الرسائل', chats: 'الرسائل', calendar: 'التقويم', inbox: 'الوارد', notifs: 'الإشعارات', complaints: 'الشكاوى والدعم' };
+    const kf = kidRaw;
+    const KT = (id) => (id ? KID(id) : null);
+    const TN = { r: ['#FFE3E0', '#B23A2E'], o: ['#FFE8D6', '#A3480A'], y: ['#FFF3C4', '#855700'], b: ['#E2EFFA', '#135F9A'], g: ['#DDF5E9', '#1D7A50'], p: ['#EFE9FD', '#5F3DC4'], t: ['#E3F4F6', '#0B8FB8'] };
+    const H = {
+      chat: { k: 'الرسائل', h: 'محادثاتك مع معلمي أبنائك', p: 'كل محادثة مربوطة بابن، والمعلم يشوف إنك ولي أمره.' },
+      calendar: { k: 'تقويمي', h: 'عندك لقاء واحد هالأسبوع', p: 'مواعيدك أنت، ومعها حصص أبنائك بألوانهم لو بغيت تشوفها.', btn: 'اجتماع سريع', bi: I.meet },
+      inbox: { k: 'الوارد', h: '٣ أشياء تنتظر ردّك', p: 'المطلوب منك، والإشعارات، والعروض، كلها هنا.' },
+      notifs: { k: 'الإشعارات', h: '٥ إشعارات جديدة', p: 'آخر اللي صار مع أبنائك ومعلميهم ومدفوعاتك.' },
+      complaints: { k: 'الشكاوى والدعم', h: 'وش اللي صار؟ نسمعك', p: 'نرد عليك عادة خلال يوم عمل، وتتابع الشكوى من هنا.' }
+    }[scr === 'chats' ? 'chat' : scr];
+    const cs = S.cs || 'all';
+    const CONV = [['أ. نورة القحطاني', 'ن', 'reem', 'تمام، بأرسل لك ملخص الوحدة بكرة.', '٤:١٢ م', '', 't'], ['أ. ماجد الشهري', 'م', 'faisal', 'فيصل يحتاج يراجع الوحدة الثانية قبل الاختبار.', '١:٠٥ م', '٢', 'b'], ['د. سلمى الغامدي', 'س', 'reem', 'أنت: وصلني الواجب، شكرًا لك.', 'أمس', '', 'o'], ['أ. منيرة السبيعي', 'م', 'sara', 'ما شاء الله، تسميع سارة اليوم ممتاز.', 'الأحد', '', 'p'], ['دعم الفهيم', 'د', '', 'حلّينا شكواك عن حصة سارة', 'السبت', '', 'g']];
+    const GR = { t: 'linear-gradient(150deg,#2FB5A8,#0B8FB8)', b: 'linear-gradient(150deg,#07B8EE,#1979C1)', o: 'linear-gradient(150deg,#FFB37A,#F2545B)', p: 'linear-gradient(150deg,#8B6CF0,#5F3DC4)', g: 'linear-gradient(150deg,#5BD69A,#1D9A63)' };
+    const sent = S.sent || [];
+    const draft = S.draft || '';
+    const msgs = [['them', 'السلام عليكم أبو فيصل، ريم مستواها ممتاز في الكسور، بس أبيها تركّز على المعادلات قبل اختبار الأحد.', '٧:٤٠ م'], ['me', 'وعليكم السلام أستاذة، الله يعطيك العافية. وش تنصحين تراجع بالضبط؟', '٧:٥٢ م'], ['them', 'الدرس ٣ و٤ من الوحدة، وفيه ١٠ أسئلة تدريبية في المنصة.', '٨:٠٥ م'], ['me', 'أبشري، بأتابعها معها اليوم.', '٤:٠٨ م'], ['them', 'تمام، بأرسل لك ملخص الوحدة بكرة.', '٤:١٢ م']].concat(sent.map((t) => ['me', t, 'الحين']));
+    const isCal = scr === 'calendar';
+    const kidsOn = S.kidsOn !== undefined ? S.kidsOn : true;
+    const KD = { reem: [1, 3, 4, 8, 10, 11, 15, 17, 18, 22, 24, 25, 29], faisal: [2, 3, 4, 9, 10, 11, 16, 17, 18, 23, 24, 25, 30], sara: [5, 12, 19, 26] };
+    const days = []; for (let i = 0; i < 35; i++) { const n = i + 1; if (n < 1 || n > 30) { days.push({ n: '', k: 'out', ev: '', dots: [], dl: '0s' }); continue; } const dots = kidsOn ? KIDS.filter((k) => (kf === 'all' || kf === k.id) && KD[k.id].includes(n)).map((k) => k.c) : []; days.push({ n: ar(n), k: n === 24 ? 'today' : n < 24 ? 'past' : '', ev: n === 26 ? 'لقاء أولياء الأمور' : n === 18 ? 'اجتماع مع المرشد' : '', dots, dl: (i * 0.012).toFixed(2) + 's' }); }
+    const it = S.it || 'todo';
+    const ITEMS = {
+      todo: [['shield', 'p', 'موافقة', 'r', 'أعطِ موافقتك على متابعة سارة', 'سارة دون السن النظامية، وما نعرض ألعابها وحفظها إلا بعد موافقتك.', 'Pa2Kids.dc.html?screen=consent', 'أعطِ الموافقة', '', 'اليوم'], ['link', 'o', 'طلب ربط', 'o', 'طلب ربط عبدالله العنزي مرفوض', 'صورة الهوية مو واضحة. أرسل المستند من جديد من صفحة «ربط ابن».', 'Pa2More.dc.html?screen=linkadv', 'افتح ربط ابن', 'ghost', 'أمس'], ['receipt', 'y', 'اشتراك', 'y', 'اشتراك ريم في الإنجليزي ينتهي بعد ٥ أيام', 'جدّده عشان ما تنقطع حصصها. نفس المجموعة ونفس المعلمة.', 'BookFlow.dc.html', 'جدّد', 'hot', 'قبل يومين']],
+      notif: [['x', 'r', 'تنبيه', 'r', 'فيصل رسب في اختبار الفيزياء', 'جاب ٤٨٪ في «اختبار الوحدة ٢».', 'Pa2Alerts.dc.html', 'عرض', 'ghost', 'قبل ساعتين'], ['chat', 't', 'رسالة', '', 'رد جديد من أ. نورة القحطاني', 'بخصوص ريم، الرياضيات', 'Pa2Shared.dc.html?screen=chat', 'افتح', 'ghost', '٤:١٢ م']],
+      offers: [['star', 'y', 'عرض', 'g', 'دورة القدرات المكثفة قبل الاختبار', 'لطلاب الأول والثاني الثانوي، تبدأ ١ ديسمبر، من ٢٤٩ ريال', 'BookFlow.dc.html', 'احجز لفيصل', 'ghost', 'أمس'], ['bell', 'b', 'إعلان', '', 'إجازة نهاية الأسبوع المطوّلة', 'ما فيه حصص من الخميس ١٠ إلى السبت ١٢ ديسمبر، وترجع الحصص الأحد ١٣ ديسمبر.', '#', '', '', 'قبل ٣ أيام']],
+      done: [['check', 'g', 'منتهي', 'n', 'وافقت على ربط فيصل', 'تم في ١٢ سبتمبر ٢٠٢٦', '#', '', '', 'سبتمبر'], ['check', 'g', 'منتهي', 'n', 'دفعت رسوم تفعيل الحساب', '٤٩ ريال، ١٠ سبتمبر ٢٠٢٦', 'Pa2Pay.dc.html?screen=payments', 'الفاتورة', 'ghost', 'سبتمبر']]
+    };
+    const NG = [['اليوم', [['x', 'r', 'فيصل رسب في اختبار الفيزياء', '٤٨٪ في «اختبار الوحدة ٢». النجاح من ٥٠٪.', 'قبل ساعتين', 'faisal', 1, 'Pa2Alerts.dc.html'], ['chat', 't', 'رد جديد من أ. نورة القحطاني', '«تمام، بأرسل لك ملخص الوحدة بكرة.»', '٤:١٢ م', 'reem', 1, 'Pa2Shared.dc.html?screen=chat'], ['video', 'b', 'حصة الرياضيات بدأت الحين', 'ريم دخلت الحصة الساعة ٤:٠٢', '٤:٠٢ م', 'reem', 1, 'Pa2Today.dc.html']]], ['أمس', [['clock', 'o', 'فيصل غاب عن حصة الكيمياء', 'حصة «الروابط» الساعة ٨ المساء.', '٨:٣٠ م', 'faisal', 1, 'Pa2Alerts.dc.html'], ['receipt', 'g', 'وصلتنا دفعتك', '٤٤٩ ريال، الفيزياء ١ لفيصل', '٦:١٠ م', 'faisal', 1, 'Pa2Pay.dc.html?screen=invoice']]], ['هالأسبوع', [['star', 'y', 'سارة خلّصت سورة عبس', 'تسميع ممتاز مع أ. منيرة السبيعي', 'الأحد', 'sara', 0, 'Pa2Kids.dc.html?screen=quran&kid=sara'], ['mail', 'b', 'تقريرك الأسبوعي جاهز', 'ملخص أبنائك الثلاثة لأسبوع ١٥ – ٢١ نوفمبر', 'الخميس', '', 0, 'Pa2Reports.dc.html']]]];
+    const ctype = S.ctype || 'حصة', cabout = S.cabout || 'reem';
+    const nread = !!S.nread;
+    return Object.assign(shell({ nav: NAVK[scr], btab: scr === 'complaints' ? 'more' : 'more', title: TITLE[scr], sub: scr === 'complaints' ? 'المزيد' : 'التواصل', back: true }), {
+      I, H: { ...H, go: (e) => { stop(e); flash('جهّزنا رابط الاجتماع'); } },
+      isChat: scr === 'chat' || scr === 'chats', chatMode: scr === 'chats' ? 'list' : 'conv', openConv: scr === 'chat', noConv: scr === 'chats', isCal, isInbox: scr === 'inbox', isNotifs: scr === 'notifs', isComp: scr === 'complaints',
+      csI: ['all', 't', 's'].indexOf(cs), itI: ['todo', 'notif', 'offers', 'done'].indexOf(it),
+      cseg: [['all', 'الكل'], ['t', 'المعلمين'], ['s', 'الدعم']].map(([k, l]) => ({ l, on: cs === k ? 'true' : 'false', go: () => set({ cs: k }) })),
+      convs: CONV.filter((c) => (cs === 'all' || (cs === 's' ? !c[2] : !!c[2])) && (kf === 'all' || !c[2] || c[2] === kf)).map(([n, ini, kd, last, t, u, g], i) => { const k = KT(kd); return { n, ini, last, t, u, bg: GR[g], kn: k ? k.n : '', kc: k ? k.c : '', kt: k ? k.t : '', cur: scr === 'chat' && i === 0 ? 'true' : 'false', d: (0.05 + i * 0.05).toFixed(2) + 's' }; }),
+      msgs: msgs.map(([k, t, time], i) => ({ k, t, time, d: (0.1 + i * 0.06).toFixed(2) + 's' })), draft,
+      onDraft: (e) => set({ draft: e.target.value }), send: () => { if (!draft.trim()) return; set({ sent: sent.concat([draft.trim()]), draft: '' }); },
+      wdays: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'], days, kidsOn: kidsOn ? 'on' : '', togKids: () => set({ kidsOn: !kidsOn }),
+      kleg: kidsOn ? KIDS.map((k) => ({ n: k.n, c: k.c })) : [],
+      todayEv: [['٤:٠٠ م', 'ريم، الرياضيات', 'عن بعد، مباشر الحين', '#F2545B'], ['٧:٣٠ م', 'ريم، الإنجليزي', 'عن بعد', '#F2545B'], ['٨:٠٠ م', 'فيصل، الفيزياء', 'عن بعد', '#1979C1']].filter((e) => kidsOn).map(([time, t, s, c]) => ({ time, t, s, c })),
+      mine: [['٢٦', 'نوفمبر', 'لقاء أولياء الأمور', 'أ. نورة القحطاني، الخميس ٧:٠٠ م، عن بعد', 'انضم'], ['٣', 'ديسمبر', 'متابعة مستوى فيصل', 'أ. ماجد الشهري، الخميس ٨:٣٠ م، عن بعد', 'التفاصيل']].map(([dn, mn, t, s, b]) => ({ dn: ar(dn), mn, t, s, b })),
+      itabs: [['todo', 'المطلوب', '٣'], ['notif', 'الإشعارات', ''], ['offers', 'الإعلانات', ''], ['done', 'المنتهية', '']].map(([k, l, c]) => ({ l, c, on: it === k ? 'true' : 'false', go: () => set({ it: k }) })),
+      items: ITEMS[it].map(([ic, tn, kind, tc, t, m, href, b, bc, time], i) => ({ i: I[ic], bg: TN[tn][0], fg: TN[tn][1], kind, tc, t, m, href, b, bc, time, d: (0.06 + i * 0.06).toFixed(2) + 's' })),
+      ngroups: NG.map(([d, rows], gi) => ({ d, rows: rows.filter((r) => kf === 'all' || !r[5] || r[5] === kf).map(([ic, tn, t, m, time, kd, u, href], i) => { const k = KT(kd); return { i: I[ic], bg: TN[tn][0], fg: TN[tn][1], t, m, time, href, u: u && !nread ? 'u' : '', kn: k ? k.n : '', kc: k ? k.c : '', kt: k ? k.t : '', d: (0.05 + (gi * 3 + i) * 0.04).toFixed(2) + 's' }; }) })).filter((g) => g.rows.length),
+      readNotifs: (e) => { stop(e); set({ nread: true }); flash('كل الإشعارات صارت مقروءة'); },
+      ctypes: ['حصة', 'معلم', 'دفع واسترداد', 'التطبيق', 'غير ذلك'].map((l) => ({ l, on: ctype === l ? 'true' : 'false', go: () => set({ ctype: l }) })),
+      cabout: KIDS.map((k) => [k.id, k.n]).concat([['me', 'حسابي']]).map(([id, l]) => ({ l, on: cabout === id ? 'true' : 'false', go: () => set({ cabout: id }) })),
+      sendComp: () => flash('وصلتنا شكواك، ونرد عليك خلال يوم عمل'),
+      compN: '٣', comps: [['٢٠٢٦-٣٤١', 'قيد المعالجة', 'y', 'استرداد رسوم الأحياء لفيصل', 'دفع واسترداد، ٢٠ نوفمبر', ''], ['٢٠٢٦-٣١٨', 'محلولة', 'g', 'الحصة ما فتحت عند سارة', 'حصة، ١٤ نوفمبر', 'رجّعنا الحصة كتعويض يوم الأحد، والسبب كان تحديث في التطبيق.'], ['٢٠٢٦-٢٧٥', 'مغلقة', 'n', 'تغيير رقم الجوال', 'التطبيق، ٢ أكتوبر', '']].map(([no, st, sc, t, m, r]) => ({ no, st, sc, t, m, r }))
+    });
+
+  }
+}
+</script>
+</body>
+</html>

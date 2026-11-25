@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الطالب: الدخول والتسجيل</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* a1 = student auth & onboarding (area a-home). Motion: M6 slide/step wipe, M3+M9 option tiles, M14 sheets, M15 error shake, M2 success check, M8 fingerprint, M10 price.
+   Flutter: split layout = Row(brand 44% | form); phone = Column(brand band, card overlapping -62). Step change = ClipPath wipe; tiles = ScaleTransition easeOutBack. */
+.k a.k-link{color:var(--area-ink)}
+.k .a1-m{display:none}
+.a1{min-height:var(--vh,100vh);display:grid;grid-template-columns:44% minmax(0,1fr)}
+/* brand panel */
+.a1-brand{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:22px;padding:34px 44px;color:#FFFFFF;background:radial-gradient(120% 90% at 90% -10%,var(--hero-a) 0%,var(--hero-b) 48%,#001440 100%)}
+.a1-shp{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.a1-shp i{position:absolute;display:block}
+.a1-shp i:nth-child(1){width:300px;height:300px;border-radius:50%;background:var(--k-acc2);opacity:.2;top:-120px;left:-80px}
+.a1-shp i:nth-child(2){width:150px;height:150px;border-radius:46px;border:3px solid var(--s-sun);opacity:.3;bottom:110px;left:10%}
+.a1-shp i:nth-child(3){width:70px;height:70px;opacity:.12;top:16%;left:34%;background:linear-gradient(#FFFFFF,#FFFFFF) center/100% 20px no-repeat,linear-gradient(#FFFFFF,#FFFFFF) center/20px 100% no-repeat;transform:rotate(14deg)}
+.a1-brand > :not(.a1-shp){position:relative;z-index:1}
+.a1-bh{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700}
+.a1-bh img{width:36px;height:auto}
+.a1-btools{display:none;align-items:center;gap:6px}
+.a1-st{display:flex;flex-direction:column;gap:8px;margin-top:auto}
+.a1-st h2{margin:0;font-size:38px;line-height:1.45}
+.a1-st p{margin:0;font-size:16px;opacity:.82;line-height:1.7;max-width:420px}
+.a1-k{font-size:21px;color:#FFD9A8}
+/* stickers on the brand panel (web): pop in once, one floats */
+.a1-stk{position:relative;height:230px;margin-bottom:auto}
+.a1-fc{position:absolute;display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:18px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(12px);font-size:13px;box-shadow:0 20px 40px -18px rgba(0,0,0,.6)}
+.a1-fc b{display:block;font-size:14px}
+.a1-fc .k-ico{width:38px;height:38px;border-radius:12px}
+.a1-fc1{top:6px;right:0;--d:.35s}
+.a1-fc2{top:92px;left:0;--d:.5s}
+.a1-fc3{top:170px;right:18%;--d:.65s}
+.a1-fl{animation:kFloat 6s ease-in-out 1.2s infinite}
+.a1-copy{font-size:12px;opacity:.55}
+/* form side */
+.a1-side{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:76px 40px 40px;background:var(--k-page)}
+.a1-tools{position:absolute;top:20px;left:24px;right:24px;display:flex;align-items:center;gap:8px}
+.a1-card{position:relative;width:100%;max-width:470px;display:flex;flex-direction:column;gap:16px;padding:32px;border-radius:28px;background:#FFFFFF;box-shadow:0 30px 60px -28px rgba(0,20,64,.35);animation:kIn .5s cubic-bezier(.2,.8,.2,1) both}
+.a1-card.wide{max-width:540px}
+.a1-h{display:flex;flex-direction:column;gap:4px}
+.a1-h h1{margin:0;font-size:26px;line-height:1.4}
+.a1-h p{margin:0;font-size:14.5px;color:var(--k-muted);line-height:1.7}
+.a1-h.c{text-align:center;align-items:center}
+.a1-f{display:flex;flex-direction:column;gap:6px}
+.a1-f .k-in{color:var(--k-text);flex-shrink:0}
+.a1-f .k-in.err{border-color:var(--k-coral);background:#FFF8F8}
+.a1-f .k-in.focus{border-color:var(--k-acc);box-shadow:0 0 0 4px rgba(25,121,193,.12)}
+.a1-f .k-in.ok{border-color:var(--s-mint)}
+.a1-lr{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.a1-eye{width:36px;height:36px;margin-left:-8px;border:none;background:transparent;color:#8A97AE;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0}
+.a1-hint{font-size:12.5px;color:var(--k-muted);display:flex;align-items:center;gap:6px}
+.a1-or{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#8A97AE}
+.a1-or::before,.a1-or::after{content:"";flex:1;height:1px;background:var(--k-line)}
+.a1-soc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.a1-g{height:48px;border-radius:24px;border:1.5px solid var(--k-line);background:#FFFFFF;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14.5px;font-weight:700;color:var(--k-text);transition:transform .18s cubic-bezier(.3,1.6,.5,1),border-color .2s}
+.a1-g:hover{border-color:#C9DBEE}
+.a1-links{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 14px;font-size:13.5px;font-weight:700;color:var(--k-muted)}
+.a1-links a{color:var(--area-ink)}
+.a1-links i{width:4px;height:4px;border-radius:50%;background:#C9D6E6}
+.a1-alert{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:16px;font-size:13.5px;line-height:1.7;font-weight:700}
+.a1-alert svg{flex-shrink:0;margin-top:3px}
+.a1-alert.r{background:var(--k-coral-tint);color:var(--k-coral-ink)}
+.a1-alert.y{background:var(--s-sun-tint);color:var(--s-sun-ink)}
+.a1-alert.b{background:var(--k-blue-tint);color:var(--k-blue-ink)}
+/* progress: 3 segments; the current one draws itself */
+.a1-prog{display:flex;align-items:center;gap:10px}
+.a1-prog > span{display:flex;gap:6px;flex:1}
+.a1-prog > span i{flex:1;height:6px;border-radius:3px;background:#E2EAF4;position:relative;overflow:hidden}
+.a1-prog > span i.done::after,.a1-prog > span i.on::after{content:"";position:absolute;inset:0;border-radius:3px;background:linear-gradient(90deg,var(--k-acc2),var(--k-acc))}
+.a1-prog > span i.on::after{transform-origin:100% 50%;animation:kGrow .7s cubic-bezier(.2,.8,.2,1) .25s both}
+.a1-prog small{font-size:12.5px;font-weight:700;color:var(--k-muted);white-space:nowrap}
+.a1-prog a{font-size:13px;font-weight:700;color:var(--area-ink)}
+/* option tiles: M3 pop in, M9 press, check badge pops when chosen */
+.a1-opt{position:relative;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:20px;border:2px solid var(--k-line);background:#FFFFFF;cursor:pointer;text-align:right;font-family:inherit;color:var(--k-text);width:100%;transition:border-color .2s,box-shadow .2s,transform .18s cubic-bezier(.3,1.6,.5,1)}
+.a1-opt:hover{border-color:#C9DBEE}
+.a1-opt:active{transform:scale(.96,1.03)}
+.a1-opt.on{border-color:var(--k-acc);background:linear-gradient(120deg,#FFFFFF 40%,var(--area-tint));box-shadow:0 14px 26px -16px rgba(25,121,193,.7)}
+.a1-opt .k-ico{width:50px;height:50px;border-radius:16px}
+.a1-ok{width:26px;height:26px;border-radius:50%;flex-shrink:0;border:2px solid #C9D6E6;display:flex;align-items:center;justify-content:center;color:#FFFFFF}
+.a1-opt.on .a1-ok{border-color:var(--k-acc);background:var(--k-acc)}
+.a1-optg{display:grid;grid-template-columns:1fr;gap:10px}
+.a1-gr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.a1-gr .a1-opt{flex-direction:column;justify-content:center;gap:2px;padding:14px 6px 12px;text-align:center;font-size:13.5px;font-weight:700}
+.a1-gr .a1-opt b{font-size:30px;line-height:1.2;color:var(--k-navy)}
+.a1-gr .a1-opt.on b{color:var(--k-acc)}
+.a1-gr .a1-ok{position:absolute;top:8px;left:8px;width:22px;height:22px;border:none;background:var(--k-acc)}
+.a1-gr .a1-opt:not(.on) .a1-ok{display:none}
+/* step body: wipe in when the step changes */
+.a1-step{display:flex;flex-direction:column;gap:14px}
+.a1-acts{display:flex;gap:10px;flex-wrap:nowrap}
+.a1-acts .k-btn:last-child{flex:1}
+.a1-big{height:52px}
+/* terms check */
+.a1-agree{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;border:none;background:none;padding:0;color:var(--k-text);text-align:right}
+.a1-box{width:24px;height:24px;border-radius:8px;border:2px solid #C5D1E0;background:#FFFFFF;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#FFFFFF;transition:background .2s,border-color .2s}
+.a1-box.on{background:var(--k-acc);border-color:var(--k-acc)}
+.a1-str{display:flex;align-items:center;gap:8px}
+.a1-str > span{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;flex:1}
+.a1-str > span i{height:5px;border-radius:3px;background:#E2EAF4}
+.a1-str > span i.on{background:var(--s-mint);transform-origin:100% 50%;animation:kGrow .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d)}
+.a1-str b{font-size:12.5px;color:var(--s-mint-ink)}
+/* chips */
+.a1-chips{display:flex;flex-wrap:wrap;gap:8px}
+.a1-sc{height:40px;padding:0 14px;border-radius:20px;border:1.5px solid var(--k-line);background:#FFFFFF;display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:700;color:var(--k-text);transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.a1-sc:active{transform:scale(.94,1.04)}
+.a1-sc i{width:10px;height:10px;border-radius:50%;background:var(--sub,var(--k-acc))}
+.a1-sc.on{background:var(--sub,var(--k-navy));border-color:var(--sub,var(--k-navy));color:var(--sub-fg,#FFFFFF)}
+.a1-sc.on i{display:none}
+.a1-sum{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:16px;background:var(--area-tint);color:var(--area-ink);font-size:14px;font-weight:700}
+.a1-sum a{margin-right:auto;font-size:13px}
+/* code boxes */
+.a1-otp{display:flex;gap:9px;direction:ltr;justify-content:center}
+.a1-otp span{width:50px;height:58px;border-radius:16px;border:2px solid #D5E3F2;background:#F8FBFE;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--k-navy)}
+.a1-otp span.f{border-color:#9CC8EC;background:#FFFFFF}
+.a1-otp span.c{border-color:var(--k-acc);box-shadow:0 0 0 4px rgba(25,121,193,.15)}
+.a1-otp span.c::after{content:"";width:2px;height:24px;background:var(--k-acc);animation:a1Blink 1s steps(1) infinite}
+@keyframes a1Blink{50%{opacity:0}}
+.a1-qr{display:grid;grid-template-columns:repeat(21,1fr);width:168px;height:168px;padding:10px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;margin:0 auto;direction:ltr}
+.a1-wa{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:6px 0}
+.a1-wa .k-ico{width:76px;height:76px;border-radius:26px;background:linear-gradient(150deg,#3CD37A,#1D9A63);color:#FFFFFF;box-shadow:0 18px 30px -14px rgba(29,154,99,.7)}
+.a1-wait{display:flex;justify-content:center}
+.a1-btn-wa{--btn-a:#25B862;--btn-b:#1D9A63;--btn-sh:rgba(29,154,99,.45)}
+/* hero icon of a card */
+.a1-icon{width:72px;height:72px;border-radius:24px;display:flex;align-items:center;justify-content:center;color:#FFFFFF;align-self:center}
+/* fingerprint */
+.k .a1-fp{--halo:var(--k-cyan);width:104px;height:104px;border-radius:50%;border:none;align-self:center;display:flex;align-items:center;justify-content:center;color:#FFFFFF;background:linear-gradient(150deg,var(--k-acc),var(--k-acc2));box-shadow:0 22px 40px -16px rgba(25,121,193,.7)}
+/* approval timeline: connector draws down */
+.a1-tl{display:flex;flex-direction:column}
+.a1-tli{display:flex;align-items:center;gap:12px;padding:8px 0;font-size:14px;position:relative}
+.a1-tli > i{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-style:normal;z-index:1;background:var(--c)}
+.a1-tli:not(:last-child)::after{content:"";position:absolute;right:14px;top:38px;bottom:-8px;width:2px;background:var(--c2,#E2EAF4);transform-origin:50% 0;animation:a1Down .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d)}
+@keyframes a1Down{from{transform:scaleY(0)}}
+.a1-tli.now > i{box-shadow:0 0 0 5px var(--s-sun-tint)}
+/* payment */
+.a1-price{position:relative;overflow:hidden;display:flex;align-items:center;gap:12px;padding:16px 18px;border-radius:22px;color:#FFFFFF;background:radial-gradient(120% 160% at 90% -40%,var(--hero-a),var(--hero-b) 55%,#001440)}
+.a1-price b{font-size:34px;line-height:1.2}
+.a1-price b small{font-size:16px}
+.a1-pay{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.a1-pay .a1-opt{padding:12px 14px;gap:10px;font-size:14.5px;font-weight:700}
+.a1-pay .a1-ok{width:22px;height:22px}
+.a1-brandmark:empty{display:none}
+.a1-pay3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.a1-pay3 .a1-opt{padding:12px 10px;gap:8px}
+.a1-brandmark{margin-right:auto;height:26px;padding:0 9px;border-radius:8px;background:#EEF2F7;color:var(--k-navy);font-size:12px;font-weight:800;display:inline-flex;align-items:center;direction:ltr;letter-spacing:.3px}
+.a1-more{display:flex;align-items:center;gap:8px;border:none;background:none;padding:2px 0;font-size:13.5px;font-weight:700;color:var(--area-ink)}
+.a1-more svg{transition:transform .25s}
+.a1-more.open svg{transform:rotate(180deg)}
+.a1-up{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;border:2px dashed #C9DBEE;background:#F6FAFE;font-size:13.5px}
+/* onboarding */
+.a1-ob{position:relative;overflow:hidden;min-height:var(--vh,100vh);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:84px 20px 34px;color:#FFFFFF;text-align:center;background:#001440}
+.a1-obbg{position:absolute;inset:0;pointer-events:none}
+.a1-obbg i{position:absolute;inset:0;opacity:0;transition:opacity .6s ease}
+.a1-obbg i.on{opacity:1}
+.a1-obtop{position:absolute;top:18px;left:18px;right:18px;display:flex;align-items:center;gap:10px;z-index:2}
+.a1-obtop img{width:30px;height:auto}
+.a1-ob > :not(.a1-obbg):not(.a1-obtop){position:relative;z-index:1}
+.a1-sl{display:none;flex-direction:column;align-items:center;gap:22px}
+.a1-sl.on{display:flex}
+.a1-vis{position:relative;width:300px;height:300px;display:flex;align-items:center;justify-content:center}
+.a1-ring{position:absolute;border-radius:50%;border:1.5px dashed rgba(255,255,255,.28);animation:a1Rot linear infinite}
+.a1-ring b{position:absolute;top:-7px;left:50%;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--c);box-shadow:0 0 14px var(--c)}
+@keyframes a1Rot{to{transform:rotate(360deg)}}
+.a1-core{width:124px;height:124px;border-radius:40px;display:flex;align-items:center;justify-content:center;color:#FFFFFF;background:linear-gradient(150deg,rgba(255,255,255,.26),rgba(255,255,255,.08));border:1px solid rgba(255,255,255,.3);box-shadow:0 30px 60px -20px rgba(0,0,0,.6)}
+.a1-tg{position:absolute;display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px 0 9px;border-radius:19px;background:#FFFFFF;color:var(--k-text);font-size:13.5px;font-weight:700;box-shadow:0 14px 28px -12px rgba(0,0,0,.55);white-space:nowrap}
+.a1-tg i{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#FFFFFF;background:var(--c)}
+.a1-tg:nth-child(3){top:24px;right:-6px;transform:rotate(4deg)}
+.a1-tg:nth-child(4){bottom:58px;left:-18px;transform:rotate(-5deg)}
+.a1-tg:nth-child(5){bottom:4px;right:22px;transform:rotate(2deg)}
+.a1-obt{display:flex;flex-direction:column;gap:6px;max-width:440px}
+.a1-obt h1{margin:0;font-size:32px;line-height:1.4}
+.a1-obt p{margin:0;font-size:16px;opacity:.85;line-height:1.7}
+.a1-dots{display:flex;gap:8px;justify-content:center}
+.a1-dots i{width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,.3);transition:width .35s cubic-bezier(.3,1.3,.5,1),background .3s}
+.a1-dots i.on{width:30px;background:var(--s-sun)}
+.a1-obb{display:flex;gap:12px;width:100%;max-width:440px}
+.a1-obb .k-btn:last-child{flex:1}
+.k .k-btn.a1-glass{background:transparent;color:#FFFFFF;border-color:rgba(255,255,255,.32)}
+/* guest sentence */
+.a1-sent{font-size:24px;line-height:2.35;font-weight:700;color:var(--k-text)}
+.a1-pick{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 14px;margin:0 4px;border-radius:22px;border:2px solid var(--sub);background:var(--sub-t);color:var(--sub-i);font-size:20px;vertical-align:middle;font-family:inherit;font-weight:700;transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.a1-pick:active{transform:scale(.94,1.04)}
+.a1-pick.p1{--sub:var(--s-grape);--sub-t:var(--s-grape-tint);--sub-i:var(--s-grape-ink)}
+.a1-pick.p2{--sub:var(--k-cyan);--sub-t:var(--k-cyan-tint);--sub-i:var(--k-cyan-ink)}
+/* subject sheet */
+.a1-search{flex-shrink:0;height:46px}
+.a1-subs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.a1-subs .a1-opt{flex-direction:column;gap:8px;padding:14px 6px;text-align:center;font-size:14px;font-weight:700}
+.a1-subs .a1-opt.on{border-color:var(--sub);background:linear-gradient(160deg,var(--sub-t),#FFFFFF);box-shadow:0 14px 26px -16px var(--sub)}
+.a1-subs .k-ico{width:46px;height:46px;border-radius:15px;background:var(--sub);color:var(--sub-fg)}
+.a1-subs .a1-ok{position:absolute;top:8px;left:8px;width:22px;height:22px;border:none;background:var(--sub)}
+.a1-subs .a1-opt:not(.on) .a1-ok{display:none}
+/* terms sheet */
+.a1-tsec{display:flex;gap:12px;align-items:flex-start}
+.a1-tsec .k-ico{width:38px;height:38px;border-radius:12px;background:var(--area-tint);color:var(--area-ink)}
+.a1-tsec p{margin:2px 0 0;font-size:14px;line-height:1.8;color:#34466B}
+/* kid code: login entry tile + code screen (parent made the account). Flutter: InkWell tile; 6 OTP boxes in a Row (gap after 3rd); confirm card = Container + Row */
+.a1-kc{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;border:1.5px dashed #9CC8EC;background:var(--area-tint);color:var(--k-text);text-align:right}
+.a1-kc .k-ico{width:42px;height:42px;border-radius:14px;background:#FFFFFF;color:var(--area-ink);flex-shrink:0}
+.a1-kc b{font-size:14.5px;line-height:1.5}
+.a1-kc small{font-size:12.5px;color:var(--k-muted);line-height:1.5}
+.a1-kc > svg{color:var(--area-ink);flex-shrink:0}
+.a1-otp.g3 span:nth-child(3){margin-right:14px}
+.a1-me{display:flex;align-items:center;gap:14px;padding:16px;border-radius:22px;border:2px solid var(--k-acc);background:linear-gradient(120deg,#FFFFFF 40%,var(--area-tint));box-shadow:0 14px 26px -16px rgba(25,121,193,.7)}
+.a1-me .k-av{width:62px;height:62px;font-size:25px;flex-shrink:0}
+.a1-me b{font-size:18px;line-height:1.4}
+.a1-par{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:13px;font-weight:700;color:var(--area-ink)}
+.a1-notme{align-self:center;border:none;background:none;padding:4px 10px;font-family:inherit}
+.a1-uname{display:flex;align-items:center;justify-content:center;width:100%;height:60px;border-radius:18px;border:2px dashed #9CC8EC;background:var(--area-tint);font-size:21px;font-weight:700;color:var(--k-navy)}
+@media (max-width:760px){
+.k .a1-w{display:none !important}
+.k .a1-m{display:flex}
+.k-drawer{height:auto;max-height:calc(var(--vh,100vh)*0.9)}
+.a1{grid-template-columns:1fr;align-content:start}
+.a1-brand{padding:14px 16px 78px;gap:8px}
+.a1-bh{font-size:17px}.a1-bh img{width:28px}
+.a1-btools{display:flex;margin-right:auto}
+.a1-btools .k-chip{height:32px;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22);color:#FFFFFF;font-size:12px}
+.a1-btools .k-ib{width:32px;height:32px;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22);color:#FFFFFF}
+.a1-st{margin-top:6px;gap:2px}
+.a1-st h2{font-size:23px;line-height:1.5}
+.a1-st p,.a1-stk,.a1-copy,.a1-tools{display:none}
+.a1-k{font-size:16px}
+.a1-shp i:nth-child(1){width:170px;height:170px;top:-80px;left:-40px}
+.a1-shp i:nth-child(2){width:64px;height:64px;border-radius:22px;border-width:2.5px;top:58px;left:30%;bottom:auto}
+.a1-shp i:nth-child(3){width:34px;height:34px;top:86px;left:8%;background-size:100% 10px,10px 100%}
+.a1-side{padding:0 12px 28px;justify-content:flex-start}
+.a1-card{margin-top:-62px;padding:20px 16px;border-radius:24px;gap:14px}
+.a1-h h1{font-size:22px}
+.a1-otp{gap:6px}.a1-otp span{width:44px;height:54px;font-size:21px}
+.a1-vis{width:250px;height:250px}
+.a1-vis .a1-ring:first-child{width:250px !important;height:250px !important}
+.a1-core{width:104px;height:104px;border-radius:34px}
+.a1-tg{font-size:12.5px;height:34px}
+.a1-tg:nth-child(4){left:-6px}
+.a1-obt h1{font-size:25px}
+.a1-obt p{font-size:14.5px}
+.a1-ob{gap:18px;padding:70px 18px 26px}
+.a1-sent{font-size:19px;line-height:2.45}
+.a1-pick{font-size:16px;height:40px;padding:0 12px}
+.a1-gr{gap:8px}
+.a1-pay{grid-template-columns:1fr 1fr}
+.a1-pay3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.a1-pay3 .a1-opt{flex-direction:column;gap:6px;padding:12px 4px;text-align:center}
+.a1-pay .a1-opt{padding:12px 10px;font-size:13.5px}
+.a1-brandmark:empty{display:none}
+.a1-pay3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.a1-pay3 .a1-opt{padding:12px 10px;gap:8px}
+.a1-brandmark{display:none}
+}
+</style>
+</helmet>
+<div class="k a-home" dir="rtl">
+
+<!-- ============ ONBOARDING (3 slides, dots only) ============ -->
+<sc-if value="{{is.onboard}}" hint-placeholder-val="{{ false }}">
+  <div class="a1-ob">
+    <div class="a1-obbg" aria-hidden="true"><sc-for list="{{ob.slides}}" as="x" hint-placeholder-count="3"><i class="{{x.on}}" style="background: {{x.bg}}"></i></sc-for></div>
+    <div class="a1-obtop"><img src="./logo.png" alt="" width="30" height="33"><b style="font-size: 17px">ALFaheem</b><span class="k-sp"></span><button type="button" class="k-btn sm ghost a1-glass" onClick="{{ob.skip}}">تخطَّ</button></div>
+    <sc-for list="{{ob.slides}}" as="x" hint-placeholder-count="3">
+      <div class="a1-sl {{x.on}}">
+        <div class="a1-vis" aria-hidden="true">
+          <span class="a1-ring" style="width: 300px; height: 300px; animation-duration: 26s; --c: var(--s-sun)"><b></b></span>
+          <span class="a1-ring" style="width: 200px; height: 200px; animation-duration: 16s; animation-direction: reverse; --c: {{x.dot}}"><b></b></span>
+          <sc-for list="{{x.tags}}" as="t" hint-placeholder-count="3"><span class="a1-tg m-pop" style="--d: {{t.d}}; --c: {{t.c}}"><i><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg></i>{{t.l}}</span></sc-for>
+          <span class="a1-core m-pop" style="--d: .1s"><svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.icon}}"></path></svg></span>
+        </div>
+        <div class="a1-obt m-wipe" style="--d: .05s"><span class="k-ruqaa" style="font-size: 19px; color: #FFD9A8">{{x.k}}</span><h1>{{x.t}}</h1><p>{{x.b}}</p></div>
+      </div>
+    </sc-for>
+    <div class="a1-dots" role="img" aria-label="{{ob.al}}"><sc-for list="{{ob.slides}}" as="x" hint-placeholder-count="3"><i class="{{x.on}}"></i></sc-for></div>
+    <div class="a1-obb"><sc-if value="{{ob.notFirst}}" hint-placeholder-val="{{ false }}"><button type="button" class="k-btn ghost a1-glass" onClick="{{ob.prev}}">رجوع</button></sc-if><button type="button" class="k-btn {{ob.cls}}" onClick="{{ob.next}}">{{ob.cta}}</button></div>
+  </div>
+</sc-if>
+
+<sc-if value="{{split}}" hint-placeholder-val="{{ true }}">
+  <div class="a1">
+    <aside class="a1-brand m-wipe">
+      <div class="a1-shp" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+      <div class="a1-bh"><img src="./logo.png" alt="" width="36" height="40">ALFaheem
+        <span class="a1-btools"><span class="k-chip">English</span><button type="button" class="k-ib" aria-label="مساعدة"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5h.01"></path></svg></button></span>
+      </div>
+      <div class="a1-st"><span class="k-ruqaa a1-k">{{brand.k}}</span><h2>{{brand.a}}<span class="m-squig">{{brand.kw}}<svg viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true"><path pathLength="240" d="M2 6 Q 17 0 32 6 T 62 6 T 92 6 T 118 5"></path></svg></span>{{brand.b}}</h2><p>{{brand.p}}</p></div>
+      <div class="a1-stk" aria-hidden="true">
+        <div class="a1-fc a1-fc1 m-pop"><span class="k-av sm">م</span><span><b>أ. ماجد الشهري</b><span class="k-live" style="color: #FFC2BF"><i></i>مباشر الحين، الرياضيات</span></span></div>
+        <div class="a1-fc a1-fc2 m-pop"><span class="k-ico" style="background: rgba(25,194,155,.25); color: #8FF0C0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span><span><b>اجتزت اختبار الدوال</b>٩٠٪، انفتح الدرس الجاي</span></div>
+        <div class="a1-fc a1-fc3 m-pop"><span class="k-ico a1-fl" style="background: rgba(155,215,40,.25); color: #D5F59A"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .3 1.6 1 2.5 2 3 .5-3-.5-5.5.5-8z"></path></svg></span><span><b>٥ أيام ورا بعض</b>كمّل وخذ نجمة</span></div>
+      </div>
+      <span class="a1-copy">الفهيم، منصة تعليمية سعودية</span>
+    </aside>
+    <div class="a1-side">
+      <div class="a1-tools"><sc-if value="{{showBack}}" hint-placeholder-val="{{ false }}"><button type="button" class="k-ib" aria-label="رجوع" onClick="{{goBack}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button></sc-if><span class="k-sp"></span><span class="k-chip">English</span><button type="button" class="k-ib" aria-label="مساعدة"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5h.01"></path></svg></button></div>
+
+<!-- GUEST SEARCH -->
+<sc-if value="{{is.guestsearch}}" hint-placeholder-val="{{ false }}">
+      <div class="a1-card wide">
+        <div class="a1-h"><h1>وش تبي تتعلّم؟</h1><p>كمّل الجملة ونوريك الدورات.</p></div>
+        <div class="a1-sent">أبي أتعلّم<button type="button" class="a1-pick sub-math" onClick="{{openSubject}}">الرياضيات<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button>لصف<button type="button" class="a1-pick p1">ثاني ثانوي<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button>وأدرس<button type="button" class="a1-pick p2">عن بعد<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button></div>
+        <a href="#" class="k-btn a1-big" style="font-size: 16px">اعرض الدورات<span class="k-tag" style="background: rgba(255,255,255,.22); color: #FFFFFF"><span class="m-roll" aria-label="٢٤"><i aria-hidden="true" style="--v: 2"></i><i aria-hidden="true" style="--v: 4; --i: 1"></i></span> دورة</span></a>
+        <div class="a1-links"><span>عندك حساب؟</span><a href="#">سجّل دخولك</a><i></i><a href="#">أنشئ حساب</a></div>
+      </div>
+</sc-if>
+
+<!-- JOIN: 3 steps (who, grade, name + phone) -->
+<sc-if value="{{is.join}}" hint-placeholder-val="{{ false }}">
+      <div class="a1-card wide">
+        <div class="a1-prog"><span><sc-for list="{{jn.segs}}" as="g" hint-placeholder-count="3"><i class="{{g}}"></i></sc-for></span><small>خطوة {{jn.n}} من ٣</small></div>
+        <sc-if value="{{jn.isRole}}" hint-placeholder-val="{{ true }}">
+          <div class="a1-step m-wipe">
+            <div class="a1-h"><h1>هلا! مين أنت؟</h1></div>
+            <div class="a1-optg"><sc-for list="{{jn.roles}}" as="o" hint-placeholder-count="4"><button type="button" class="a1-opt m-pop {{o.on}}" style="--d: {{o.d}}" aria-pressed="{{o.pr}}" onClick="{{o.go}}"><span class="k-ico" style="background: {{o.bg}}; color: {{o.fg}}"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{o.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 16px">{{o.l}}</b><span class="k-m">{{o.s}}</span></span><span class="a1-ok"><sc-if value="{{o.sel}}" hint-placeholder-val="{{ false }}"><svg class="m-pop" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></sc-if></span></button></sc-for></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{jn.isGrade}}" hint-placeholder-val="{{ false }}">
+          <div class="a1-step m-wipe">
+            <div class="a1-h"><h1>في أي صف؟</h1></div>
+            <div class="k-seg m-pill" style="--n: 4"><span class="m-pill-bg" style="--i: {{jn.stI}}"></span><sc-for list="{{jn.stages}}" as="t" hint-placeholder-count="4"><button type="button" aria-selected="{{t.on}}" onClick="{{t.go}}">{{t.l}}</button></sc-for></div>
+            <div class="a1-gr"><sc-for list="{{jn.grades}}" as="o" hint-placeholder-count="3"><button type="button" class="a1-opt m-pop {{o.on}}" style="--d: {{o.d}}" aria-pressed="{{o.pr}}" onClick="{{o.go}}"><span class="a1-ok"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span><b>{{o.n}}</b>{{o.l}}</button></sc-for></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{jn.isContact}}" hint-placeholder-val="{{ false }}">
+          <div class="a1-step m-wipe">
+            <div class="a1-h"><h1>وش اسمك وجوالك؟</h1></div>
+            <div class="a1-f"><span class="k-lbl">اسمك</span><span class="k-in focus">فيصل</span></div>
+            <div class="a1-f"><span class="k-lbl">جوالك</span><span class="k-in"><bdi dir="ltr">+٩٦٦٥٥١٢٣٤٥٦٧</bdi></span><span class="a1-hint">نرسل لك رمز تأكيد عليه</span></div>
+          </div>
+        </sc-if>
+        <div class="a1-acts"><sc-if value="{{jn.hasPrev}}" hint-placeholder-val="{{ false }}"><button type="button" class="k-btn ghost" onClick="{{jn.prev}}">رجوع</button></sc-if><button type="button" class="k-btn a1-big" onClick="{{jn.next}}">{{jn.cta}}</button></div>
+        <div class="a1-links"><span>عندك حساب؟</span><a href="#">سجّل دخولك</a></div>
+      </div>
+</sc-if>
+
+<!-- LOGIN -->
+<sc-if value="{{is.login}}" hint-placeholder-val="{{ true }}">
+      <div class="a1-card">
+        <sc-if value="{{lg.bio}}" hint-placeholder-val="{{ false }}">
+          <div class="k-col" style="align-items: center; text-align: center; gap: 8px"><span class="k-av lg m-pop" style="width: 72px; height: 72px; font-size: 28px">ف</span><div class="a1-h c"><h1>هلا فيك يا فيصل</h1><p>ادخل ببصمتك أو وجهك</p></div></div>
+          <button type="button" class="a1-fp m-breathe m-jelly" aria-label="ادخل بالبصمة"><svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11v3M8.5 8.5A5 5 0 0 1 17 12v2a12 12 0 0 1-1 5M7 12a5 5 0 0 1 .3-1.7M7 15a12 12 0 0 0 1.2 4M12 17v3M4 12a8 8 0 0 1 14-5.3M20 12v2"></path></svg></button>
+          <a href="#" class="k-btn ghost">ادخل بكلمة المرور</a>
+          <div class="a1-links"><a href="#">مو أنت؟ ادخل بحساب ثاني</a></div>
+        </sc-if>
+        <sc-if value="{{lg.form}}" hint-placeholder-val="{{ true }}">
+          <div class="a1-h"><h1>هلا بعودتك</h1></div>
+          <sc-if value="{{lg.err}}" hint-placeholder-val="{{ false }}"><div class="a1-alert r m-shake" role="alert"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01"></path></svg>الجوال أو كلمة المرور غلط، جرّب مرة ثانية.</div></sc-if>
+          <div class="a1-f"><span class="k-lbl">جوالك أو اسم المستخدم</span><span class="k-in {{lg.c1}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8A97AE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0"></path></svg><bdi dir="ltr">٠٥٥١٢٣٤٥٦٧</bdi></span></div>
+          <div class="a1-f"><div class="a1-lr"><span class="k-lbl">كلمة المرور</span><a href="#" class="k-link">نسيتها؟</a></div><span class="k-in {{lg.c2}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8A97AE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4"></path></svg><span style="flex: 1; letter-spacing: {{pw.ls}}"><bdi dir="ltr">{{pw.v}}</bdi></span><button type="button" class="a1-eye" aria-label="{{pw.al}}" onClick="{{pw.toggle}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{pw.i}}"></path></svg></button></span></div>
+          <a href="#" class="k-btn a1-big">ادخل</a>
+          <div class="a1-or">أو</div>
+          <div class="a1-soc"><a href="#" class="a1-g m-jelly"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"></path><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"></path><path fill="#FBBC05" d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2z"></path><path fill="#EA4335" d="M12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10C7.2 7.7 9.4 6 12 6z"></path></svg>Google</a><a href="#" class="a1-g m-jelly"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="#0E2350"><path d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.9-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.6s-2.5-1-2.5-3.8zM14.1 5.8c.6-.8 1.1-1.9 1-3-.9 0-2.1.6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2.1-.5 2.7-1.3z"></path></svg>Apple</a></div>
+          <a href="Stu1Auth.dc.html?screen=kidcode" class="a1-kc m-jelly"><span class="k-ico"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.key}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1; min-width: 0"><b>عندك كود من ولي أمرك؟</b><small>ادخل فيه أول مرة، بدون كلمة مرور</small></span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></a>
+          <div class="a1-links"><span>جديد هنا؟</span><a href="#">أنشئ حساب</a><i></i><a href="#">كمّل كضيف</a></div>
+        </sc-if>
+      </div>
+</sc-if>
+
+<!-- KID CODE: parent made the account and sent a 6-digit code (state: '' code | found | pass) -->
+<sc-if value="{{is.kidcode}}" hint-placeholder-val="{{ false }}">
+      <div class="a1-card">
+        <sc-if value="{{kc.code}}" hint-placeholder-val="{{ true }}">
+          <div class="a1-step m-wipe">
+            <div class="a1-icon m-pop" style="background: linear-gradient(150deg, var(--s-sun), var(--k-apricot)); color: #5A3400"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.key}}"></path></svg></div>
+            <div class="a1-h c"><h1>ادخل بكود ولي أمرك</h1><p>اكتب الكود اللي أرسله لك، ٦ أرقام.</p></div>
+            <div class="a1-otp g3" role="group" aria-label="كود ولي الأمر"><sc-for list="{{otp3}}" as="d" hint-placeholder-count="6"><span class="{{d.c}}" style="--d: {{d.d}}">{{d.v}}</span></sc-for></div>
+            <span class="a1-hint" style="justify-content: center">ما عندك كود؟ اطلبه من ولي أمرك</span>
+            <button type="button" class="k-btn a1-big a1-kgo" onClick="{{kc.go}}">ادخل</button>
+            <div class="a1-links"><a href="Stu1Auth.dc.html?screen=login">عندك حساب؟ ارجع للدخول</a></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{kc.found}}" hint-placeholder-val="{{ false }}">
+          <div class="a1-step m-wipe">
+            <div class="a1-h c"><h1>هذا حسابك؟</h1><p>تأكد إنه أنت قبل ما تكمل.</p></div>
+            <div class="a1-me"><span class="k-av lg m-pop" style="--d: .2s; background: linear-gradient(150deg,#07B8EE,#1979C1)">ف</span><span class="k-col" style="gap: 0; flex: 1; min-width: 0"><b>فيصل العنزي</b><span class="k-m">الثاني ثانوي</span><span class="a1-par"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.parent}}"></path></svg>ولي أمرك: أحمد العنزي</span></span><span class="a1-ok m-pop" style="--d: .45s; border-color: var(--k-acc); background: var(--k-acc)"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span></div>
+            <button type="button" class="k-btn a1-big a1-yes" onClick="{{kc.yes}}">إيه، هذا أنا</button>
+            <button type="button" class="k-link a1-notme" onClick="{{kc.no}}">مو أنا</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{kc.pass}}" hint-placeholder-val="{{ false }}">
+          <div class="a1-step m-wipe">
+            <div class="a1-icon m-pop" style="background: linear-gradient(150deg, var(--s-mint), #0F8F78)"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4M12 15v2"></path></svg></div>
+            <div class="a1-h c"><h1>اختر كلمة مرور</h1><p>عشان تدخل بعدين بدون كود.</p></div>
+            <div class="a1-f"><span class="k-lbl">كلمة المرور</span><span class="k-in focus a1-kpw"><span style="flex: 1; letter-spacing: {{pw.ls}}"><bdi dir="ltr">{{pw.v}}</bdi></span><button type="button" class="a1-eye" aria-label="{{pw.al}}" onClick="{{pw.toggle}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{pw.i}}"></path></svg></button></span>
+              <div class="a1-str"><span><i class="on" style="--d: .3s"></i><i class="on" style="--d: .45s"></i><i class="on" style="--d: .6s"></i><i></i></span><b>قوية</b></div></div>
+            <button type="button" class="k-btn a1-big a1-kin">ادخل حسابي</button>
+          </div>
+        </sc-if>
+      </div>
+</sc-if>
+
+<!-- REGISTER: social first, then name + phone + password -->
+<sc-if value="{{is.register}}" hint-placeholder-val="{{ false }}">
+      <div class="a1-card">
+        <div class="a1-prog"><span><i class="on"></i><i></i><i></i></span><small>خطوة ١ من ٣</small></div>
+        <div class="a1-h"><h1>أنشئ حسابك</h1><p>ياخذ أقل من دقيقة</p></div>
+        <div class="a1-soc"><a href="#" class="a1-g m-jelly"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"></path><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"></path><path fill="#FBBC05" d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2z"></path><path fill="#EA4335" d="M12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10C7.2 7.7 9.4 6 12 6z"></path></svg>Google</a><a href="#" class="a1-g m-jelly"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="#0E2350"><path d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9-.7 0-1.8-.9-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.6s-2.5-1-2.5-3.8zM14.1 5.8c.6-.8 1.1-1.9 1-3-.9 0-2.1.6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2.1-.5 2.7-1.3z"></path></svg>Apple</a></div>
+        <div class="a1-or">أو بجوالك</div>
+        <div class="a1-f"><span class="k-lbl">اسمك</span><span class="k-in">فيصل العنزي</span></div>
+        <div class="a1-f"><span class="k-lbl">جوالك</span><span class="k-in"><bdi dir="ltr">+٩٦٦٥٥١٢٣٤٥٦٧</bdi></span></div>
+        <div class="a1-f"><span class="k-lbl">كلمة المرور</span><span class="k-in focus"><span style="flex: 1; letter-spacing: {{pw.ls}}"><bdi dir="ltr">{{pw.v}}</bdi></span><button type="button" class="a1-eye" aria-label="{{pw.al}}" onClick="{{pw.toggle}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{pw.i}}"></path></svg></button></span>
+          <div class="a1-str"><span><i class="on" style="--d: .3s"></i><i class="on" style="--d: .45s"></i><i class="on" style="--d: .6s"></i><i></i></span><b>قوية</b></div></div>
+        <div class="a1-agree"><button type="button" class="a1-box {{agree.on}}" aria-label="أوافق على الشروط" aria-pressed="{{agree.pr}}" onClick="{{agree.toggle}}"><sc-if value="{{agree.yes}}" hint-placeholder-val="{{ true }}"><svg class="m-pop" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></sc-if></button><span>أوافق على <a href="#" class="k-link" onClick="{{openTerms}}">الشروط والخصوصية</a></span></div>
+        <button type="button" class="k-btn a1-big" style="opacity: {{agree.op}}" aria-disabled="{{agree.dis}}">أنشئ حسابي</button>
+        <div class="a1-links"><span>عندك حساب؟</span><a href="#">سجّل دخولك</a></div>
+      </div>
+</sc-if>
+
+<!-- STUDY: only what join did not ask -->
+<sc-if value="{{is.study}}" hint-placeholder-val="{{ false }}">
+      <div class="a1-card wide">
+        <div class="a1-prog"><span><i class="done"></i><i class="on"></i><i></i></span><small>خطوة ٢ من ٣</small><a href="#">تخطَّ</a></div>
+        <div class="a1-h"><h1>سؤالين ونرتّب لك</h1></div>
+        <div class="a1-sum"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5"></path></svg>صفّك: الثاني ثانوي<a href="#" class="k-link">غيّر</a></div>
+        <div class="a1-f"><span class="k-lbl">مسارك</span><div class="a1-chips"><sc-for list="{{tracks}}" as="c" hint-placeholder-count="4"><button type="button" class="a1-sc {{c.on}}" aria-pressed="{{c.pr}}" onClick="{{c.go}}">{{c.l}}</button></sc-for></div></div>
+        <div class="a1-f"><span class="k-lbl">وش تبي تقوّي؟</span><div class="a1-chips"><sc-for list="{{favs}}" as="c" hint-placeholder-count="6"><button type="button" class="a1-sc {{c.sub}} {{c.on}} m-pop" style="--d: {{c.d}}" aria-pressed="{{c.pr}}" onClick="{{c.go}}"><i></i><sc-if value="{{c.sel}}" hint-placeholder-val="{{ false }}"><svg class="m-pop" aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></sc-if>{{c.l}}</button></sc-for></div></div>
+        <a href="#" class="k-btn a1-big">كمّل</a>
+      </div>
+</sc-if>
+
+<!-- VERIFY -->
+<sc-if value="{{is.verify}}" hint-placeholder-val="{{ false }}">
+      <div class="a1-card">
+        <div class="a1-prog"><span><i class="done"></i><i class="done"></i><i class="on"></i></span><small>آخر خطوة</small></div>
+        <div class="a1-h"><h1>أكّد جوالك</h1><p>{{vf.p}}<bdi dir="ltr">+٩٦٦٥٥&#x200E;•••&#x200E;٤٥٦٧</bdi></p></div>
+        <div class="k-seg m-pill" style="--n: 3"><span class="m-pill-bg" style="--i: {{vf.i}}"></span><sc-for list="{{ways}}" as="o" hint-placeholder-count="3"><button type="button" aria-selected="{{o.on}}" onClick="{{o.go}}">{{o.l}}</button></sc-for></div>
+        <sc-if value="{{vf.code}}" hint-placeholder-val="{{ true }}">
+          <div class="a1-step m-wipe">
+            <div class="a1-otp" role="group" aria-label="رمز التأكيد"><sc-for list="{{otp}}" as="d" hint-placeholder-count="6"><span class="{{d.c}}" style="--d: {{d.d}}">{{d.v}}</span></sc-for></div>
+            <span class="a1-hint" style="justify-content: center">ما وصلك؟ نعيد الإرسال بعد ٠:٤٥</span>
+            <a href="#" class="k-btn a1-big">أكّد</a>
+          </div>
+        </sc-if>
+        <sc-if value="{{vf.link}}" hint-placeholder-val="{{ false }}">
+          <div class="a1-step m-wipe">
+            <div class="a1-wa a1-m"><span class="k-ico m-pop"><svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.6-4.6A9 9 0 1 1 8 19.6zM9 9c0 3 3 6 6 6l1.5-1.5-2-1-1 1c-1 0-2.5-1.5-2.5-2.5l1-1-1-2z"></path></svg></span><b style="font-size: 16px">نفتح لك واتساب برسالة جاهزة</b><span class="k-sub" style="font-size: 14px">أرسلها بس، ونأكد حسابك على طول.</span></div>
+            <a href="#" class="k-btn a1-big a1-btn-wa a1-m">افتح واتساب وأرسل</a>
+            <div class="a1-w" style="display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center"><div class="a1-qr" role="img" aria-label="رمز للمسح"><sc-for list="{{qr}}" as="q" hint-placeholder-count="40"><i style="background: {{q}}"></i></sc-for></div><b style="font-size: 15px">امسح الرمز بكاميرا جوالك</b><span class="k-sub">يفتح لك واتساب برسالة جاهزة، أرسلها بس.</span></div>
+            <div class="a1-wait"><span class="k-live" style="color: var(--k-blue-ink)"><i style="background: var(--k-acc)"></i>ننتظر رسالتك…</span></div>
+          </div>
+        </sc-if>
+      </div>
+</sc-if>
+
+<!-- FORGOT -->
+<sc-if value="{{is.forgot}}" hint-placeholder-val="{{ false }}">
+      <div class="a1-card">
+        <sc-if value="{{fg.id}}" hint-placeholder-val="{{ true }}">
+          <div class="a1-icon m-pop" style="background: linear-gradient(150deg, var(--s-sun), var(--k-apricot)); color: #5A3400"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7a4 4 0 1 1-3.9 4.9L4 19v2h3l1-1v-2h2l1.6-1.6M16 7h.01"></path></svg></div>
+          <div class="a1-h c"><h1>نسيت كلمة المرور؟</h1><p>عادي، نرسل لك رمز على جوالك.</p></div>
+          <div class="a1-f"><span class="k-lbl">جوالك أو إيميلك</span><span class="k-in focus"><bdi dir="ltr">٠٥٥١٢٣٤٥٦٧</bdi></span></div>
+          <a href="#" class="k-btn a1-big">أرسل الرمز</a>
+          <div class="a1-links"><a href="#">تذكّرتها؟ ارجع للدخول</a></div>
+        </sc-if>
+        <sc-if value="{{fg.newp}}" hint-placeholder-val="{{ false }}">
+          <div class="a1-icon m-pop" style="background: linear-gradient(150deg, var(--s-mint), #0F8F78)"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4M12 15v2"></path></svg></div>
+          <div class="a1-h c"><h1>كلمة مرور جديدة</h1><p>اختر وحدة ما استخدمتها قبل.</p></div>
+          <div class="a1-f"><span class="k-lbl">كلمة المرور الجديدة</span><span class="k-in focus"><span style="flex: 1; letter-spacing: {{pw.ls}}"><bdi dir="ltr">{{pw.v}}</bdi></span><button type="button" class="a1-eye" aria-label="{{pw.al}}" onClick="{{pw.toggle}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{pw.i}}"></path></svg></button></span>
+            <div class="a1-str"><span><i class="on" style="--d: .3s"></i><i class="on" style="--d: .42s"></i><i class="on" style="--d: .54s"></i><i class="on" style="--d: .66s"></i></span><b>قوية جدًا</b></div></div>
+          <a href="#" class="k-btn a1-big">احفظ وادخل</a>
+        </sc-if>
+      </div>
+</sc-if>
+
+<!-- MFA: SMS code -->
+<sc-if value="{{is.mfa}}" hint-placeholder-val="{{ false }}">
+      <div class="a1-card">
+        <div class="a1-icon m-pop" style="background: linear-gradient(150deg, var(--s-grape), var(--k-acc))"><svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7zM9 12l2 2 4-4"></path></svg></div>
+        <div class="a1-h c"><h1>اكتب الرمز</h1><p>أرسلناه برسالة لجوالك المنتهي بـ <bdi dir="ltr">٤٥٦٧</bdi></p></div>
+        <div class="a1-otp" role="group" aria-label="رمز الدخول"><sc-for list="{{otp2}}" as="d" hint-placeholder-count="6"><span class="{{d.c}}" style="--d: {{d.d}}">{{d.v}}</span></sc-for></div>
+        <span class="a1-hint" style="justify-content: center">ما وصلك؟ نعيد الإرسال بعد ٠:٣٠</span>
+        <a href="#" class="k-btn a1-big">ادخل</a>
+      </div>
+</sc-if>
+
+<!-- APPROVAL (state via props only) -->
+<sc-if value="{{is.approval}}" hint-placeholder-val="{{ false }}">
+      <div class="a1-card">
+        <sc-if value="{{ap.done}}" hint-placeholder-val="{{ false }}">
+          <div class="k-success" style="padding: 4px 0 0"><span class="k-success-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"></circle><path d="M20 33l8 8 16-17"></path></svg></span><h3>حسابك جاهز</h3><p>حيّاك الله، ابدأ أول دورة لك.</p></div>
+        </sc-if>
+        <sc-if value="{{ap.notDone}}" hint-placeholder-val="{{ true }}">
+          <div class="a1-icon m-pop" style="background: {{ap.bg}}; color: {{ap.fg}}"><svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ap.i}}"></path></svg></div>
+          <div class="a1-h c"><h1>{{ap.t}}</h1><p>{{ap.p}}</p></div>
+        </sc-if>
+        <sc-if value="{{ap.reason}}" hint-placeholder-val="{{ false }}"><div class="a1-alert r m-shake"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01"></path></svg><span>{{ap.reason}}</span></div></sc-if>
+        <div class="a1-tl"><sc-for list="{{ap.tl}}" as="t" hint-placeholder-count="3"><div class="a1-tli {{t.now}}" style="--c: {{t.c}}; --c2: {{t.c2}}; --d: {{t.d}}"><i><sc-if value="{{t.ok}}" hint-placeholder-val="{{ false }}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.ic}}"></path></svg></sc-if></i><span class="k-col" style="gap: 0"><b>{{t.t}}</b><span class="k-m">{{t.m}}</span></span></div></sc-for></div>
+        <a href="#" class="k-btn a1-big">{{ap.cta}}</a>
+        <div class="a1-links"><a href="#">تواصل معنا</a><i></i><a href="#" style="color: var(--st-err)">اطلع من الحساب</a></div>
+      </div>
+</sc-if>
+
+<!-- ACCOUNT FEE: mada / Apple Pay first, other ways folded -->
+<sc-if value="{{is.fee}}" hint-placeholder-val="{{ false }}">
+      <div class="a1-card">
+        <div class="a1-h"><h1>فعّل حسابك</h1><p>تدفعها مرة وحدة بس، شامل الضريبة.</p></div>
+        <div class="a1-price"><span class="k-col" style="gap: 0; flex: 1"><span style="font-size: 13px; opacity: .85">رسوم التفعيل</span><b><span class="m-roll" aria-label="٤٩"><i aria-hidden="true" style="--v: 4"></i><i aria-hidden="true" style="--v: 9; --i: 1"></i></span> <small>ريال</small></b></span><span class="k-tag m-slap" style="background: var(--s-sun); color: #3D2700">مرة وحدة</span></div>
+        <div class="a1-pay a1-pay3"><sc-for list="{{pays}}" as="o" hint-placeholder-count="3"><button type="button" class="a1-opt m-pop {{o.on}}" style="--d: {{o.d}}" aria-pressed="{{o.pr}}" onClick="{{o.go}}"><span class="a1-ok"><sc-if value="{{o.sel}}" hint-placeholder-val="{{ false }}"><svg class="m-pop" aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></sc-if></span>{{o.l}}<span class="a1-brandmark">{{o.b}}</span></button></sc-for></div>
+        <button type="button" class="a1-more {{more.cls}}" aria-expanded="{{more.ex}}" onClick="{{more.toggle}}">طرق ثانية<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button>
+        <sc-if value="{{more.open}}" hint-placeholder-val="{{ false }}">
+          <div class="a1-pay m-wipe"><sc-for list="{{pays2}}" as="o" hint-placeholder-count="2"><button type="button" class="a1-opt {{o.on}}" aria-pressed="{{o.pr}}" onClick="{{o.go}}"><span class="a1-ok"><sc-if value="{{o.sel}}" hint-placeholder-val="{{ false }}"><svg class="m-pop" aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></sc-if></span>{{o.l}}<span class="a1-brandmark">{{o.b}}</span></button></sc-for></div>
+        </sc-if>
+        <sc-if value="{{feeTransfer}}" hint-placeholder-val="{{ false }}">
+          <div class="a1-alert b m-wipe" style="flex-direction: column; gap: 2px"><b>حوّل على: مصرف الراجحي</b><bdi dir="ltr">SA03 8000 0000 6080 1016 7519</bdi></div>
+          <div class="a1-up"><span class="k-ico" style="background: var(--k-blue-tint); color: var(--k-blue-ink)"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><b>ارفع صورة الإيصال</b><span class="k-m">نراجعه خلال ساعات</span></span></div>
+        </sc-if>
+        <a href="#" class="k-btn hot a1-big">{{feeCta}}</a>
+        <div class="a1-links"><a href="#" style="color: var(--st-err)">اطلع من الحساب</a></div>
+      </div>
+</sc-if>
+
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ SHEETS (M14 on phone) ============ -->
+<sc-if value="{{sheetSubject}}" hint-placeholder-val="{{ false }}">
+  <div class="k-dim" onClick="{{closeSheet}}"></div>
+  <aside class="k-drawer m-sheet" role="dialog" aria-label="المادة">
+    <div class="k-dh"><h2>وش المادة؟</h2><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+    <div class="k-db"><span class="k-in a1-search"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن مادة</span>
+      <div class="a1-subs"><sc-for list="{{subjects}}" as="o" hint-placeholder-count="9"><button type="button" class="a1-opt m-pop {{o.sub}} {{o.on}}" style="--d: {{o.d}}" aria-pressed="{{o.pr}}" onClick="{{o.go}}"><span class="a1-ok"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span><span class="k-ico"><svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{o.i}}"></path></svg></span>{{o.l}}</button></sc-for></div>
+    </div>
+    <div class="k-df"><button type="button" class="k-btn" style="flex: 1" onClick="{{closeSheet}}">تم</button></div>
+  </aside>
+</sc-if>
+<sc-if value="{{sheetUser}}" hint-placeholder-val="{{ false }}">
+  <div class="k-dim" onClick="{{closeSheet}}"></div>
+  <aside class="k-drawer m-sheet" role="dialog" aria-label="تم تأكيد حسابك" style="width: 440px">
+    <div class="k-dh"><h2>اسم المستخدم</h2><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+    <div class="k-db" style="align-items: center; text-align: center">
+      <div class="k-success" style="padding: 4px 0 0"><span class="k-success-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"></circle><path d="M20 33l8 8 16-17"></path></svg></span><h3>تم تأكيد حسابك</h3><p>هذا اسمك في الفهيم. معلمينك يلقونك بهالاسم.</p></div>
+      <span class="a1-uname m-pop" style="--d: .9s"><bdi dir="ltr">@faisal.anazi</bdi></span>
+      <a href="#" class="k-btn a1-big" style="width: 100%">تمام</a>
+      <a href="#" class="k-link">غيّره</a>
+    </div>
+  </aside>
+</sc-if>
+<sc-if value="{{sheetTerms}}" hint-placeholder-val="{{ false }}">
+  <div class="k-dim" onClick="{{closeSheet}}"></div>
+  <aside class="k-drawer m-sheet" role="dialog" aria-label="الشروط والخصوصية">
+    <div class="k-dh"><h2>الشروط والخصوصية</h2><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+    <div class="k-db"><sc-for list="{{terms}}" as="t" hint-placeholder-count="4"><div class="a1-tsec m-flip" style="--i: {{t.k}}"><span class="k-ico"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg></span><span class="k-col" style="gap: 0"><b style="font-size: 15px">{{t.t}}</b><p>{{t.p}}</p></span></div></sc-for>
+      <a href="#" class="k-link" style="text-align: center">اقرأ النص الكامل</a></div>
+    <div class="k-df"><button type="button" class="k-btn" style="flex: 1" onClick="{{closeSheet}}">تمام</button></div>
+  </aside>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screen":"login","state":"","step":"","sheet":"","mode":"","$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {}, P = this.props || {};
+    const set = (o) => this.setState(o);
+    const ar = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+    const dl = (i, b = 0.08, st = 0.06) => (b + i * st).toFixed(2) + 's';
+    const I = {
+      student: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5', parent: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a7 7 0 0 1 14 0v1M17 3a4 4 0 0 1 0 8M22 21v-1a7 7 0 0 0-4-6.3', teacher: 'M3 4h18v12H3zM8 20h8M12 16v4M7 9h6M7 12h4',
+      live: 'M15 10l5-3v10l-5-3zM3 6h12v12H3z', shield: 'M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z', star: 'M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z', check: 'M5 12l5 5 9-10', x: 'M6 6l12 12M18 6 6 18',
+      phone: 'M7 2h10v20H7zM11 18h2', laptop: 'M4 5h16v11H4zM2 19h20', play: 'M7 4l13 8-13 8z', trophy: 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H4.5a3 3 0 0 0 3.5 4M16 6h3.5a3 3 0 0 1-3.5 4M12 13v4M8 21h8M9.5 17h5v4h-5z',
+      math: 'M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2', atom: 'M12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 3c2.5 0 4.5 4 4.5 9s-2 9-4.5 9-4.5-4-4.5-9 2-9 4.5-9z', en: 'M4 6h9M8.5 4v2M6 6c0 4 3 7 6 8M11 6c0 3-3 7-7 8M13 20l4-9 4 9M14.5 17h5',
+      chem: 'M9 3h6M10 3v6L5 19a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2L14 9V3', bio: 'M5 19c0-8 6-14 14-14 0 8-6 14-14 14zM5 19l7-7', brain: 'M12 4a3 3 0 0 0-3 3 3 3 0 0 0-3 5 3 3 0 0 0 3 5 3 3 0 0 0 6 0 3 3 0 0 0 3-5 3 3 0 0 0-3-5 3 3 0 0 0-3-3zM12 4v16', code: 'M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14', ar: 'M4 18c3 0 5-2 5-6V6M9 12h6c3 0 5 2 5 6M15 6h.01', quran: 'M12 6c-2-1.5-5-2-8-1v14c3-1 6-.5 8 1 2-1.5 5-2 8-1V5c-3-1-6-.5-8 1zM12 6v14',
+      hour: 'M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9', edit: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4', dot: 'M12 12h.01',
+      eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', eyeOff: 'M3 3l18 18M10.6 6.1A10 10 0 0 1 12 6c6 0 10 6 10 6a17 17 0 0 1-3 3.6M6.6 6.6C3.9 8.4 2 12 2 12s4 7 10 7a9.6 9.6 0 0 0 4.4-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2',
+      key: 'M7 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM11 12h10M17.5 12v3M21 12v3.5',
+      user: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0', card: 'M3 6h18v12H3zM3 10h18M7 15h3', back: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5'
+    };
+    // brand panel text per screen: [ruqaa, before, key word (squiggle), after, line]
+    const BR = {
+      onboard: ['', '', '', '', ''],
+      guestsearch: ['هلا فيك', 'جرّب أول، وسجّل ', 'لما تقتنع', '', 'تصفّح الدورات والمعلمين بدون حساب.'],
+      join: ['ابدأ صح', 'نرتّب لك كل شي ', 'من أول يوم', '', 'ثلاث أسئلة سريعة بس.'],
+      login: ['حيّاك الله', '', 'دروسك', ' تنتظرك', 'حصصك ودوراتك واختباراتك في مكان واحد.'],
+      kidcode: ['هلا فيك', 'ولي أمرك جهّز لك ', 'حسابك', '', 'اكتب الكود اللي وصلك منه وادخل على طول.'],
+      register: ['حساب جديد', 'تعلّم مع ', 'أقوى', ' المعلمين', 'حصص مباشرة، ودروس، واختبار بعد كل درس.'],
+      study: ['خطوة صغيرة', 'خلّنا ', 'نعرفك', ' أكثر', 'نقترح لك الدورات على حسب مسارك.'],
+      verify: ['قربت توصل', 'نتأكد إن الحساب ', 'لك', '', 'عشان رسائل معلمينك توصلك.'],
+      forgot: ['ولا يهمك', 'نرجّع لك حسابك ', 'بخطوتين', '', 'رمز على جوالك، وكلمة مرور جديدة.'],
+      mfa: ['حماية زيادة', 'حسابك ', 'محمي', ' بخطوتين', 'رمز صغير يوصل جوالك.'],
+      approval: ['شوي بس', 'حسابك ', 'قريب', ' يتفعّل', 'نراجع الحسابات الجديدة عشان بيئة آمنة.'],
+      fee: ['آخر خطوة', 'فعّل حسابك ', 'وابدأ', '', 'وبعدها كل الدورات قدامك.']
+    };
+    const sc = BR[P.screen] ? P.screen : 'login';
+    const is = {}; Object.keys(BR).forEach((k) => { is[k] = k === sc; });
+    const sheet = s.sheet !== undefined ? s.sheet : (P.sheet || '');
+    const b = BR[sc];
+    const st = P.state || '';
+
+    // onboarding: 3 slides, each with its own colour
+    const OB = [
+      ['أهلًا فيك', 'تعلّم مع أقوى المعلمين', 'حصص مباشرة ودروس تشوفها وقت ما تبي.', I.live, 'radial-gradient(110% 80% at 50% 0%, #1979C1 0%, #093F81 45%, #001440 100%)', '#07B8EE',
+        [['مباشر الحين', I.live, '#F2545B'], ['٤٫٩ تقييم', I.star, '#E89B00'], ['الرياضيات', I.math, '#FF7A59']]],
+      ['في أي مكان', 'جوالك صار فصلك', 'ادرس من الجوال أو اللابتوب، وحسابك بأمان.', I.phone, 'radial-gradient(110% 80% at 50% 0%, #19C29B 0%, #0A5C6E 45%, #001440 100%)', '#9BD728',
+        [['الجوال', I.phone, '#1979C1'], ['اللابتوب', I.laptop, '#7A4DF0'], ['حسابك محمي', I.shield, '#19C29B']]],
+      ['على راحتك', 'جرّب أول، وبعدين قرّر', 'شوف أول درس من أي دورة قبل ما تشترك.', I.play, 'radial-gradient(110% 80% at 50% 0%, #FF9F5A 0%, #8C2F5A 45%, #001440 100%)', '#FF5FA2',
+        [['أول درس', I.play, '#F2545B'], ['اختبار قصير', I.check, '#19C29B'], ['شهادة', I.trophy, '#E89B00']]]
+    ];
+    const obI = Math.max(0, Math.min(2, s.ob !== undefined ? s.ob : (parseInt(P.step || '1', 10) - 1) || 0));
+    const ob = {
+      slides: OB.map(([k, t, bb, icon, bg, dot, tags], i) => ({ k, t, b: bb, icon, bg, dot, on: i === obI ? 'on' : '', tags: tags.map(([l, ic, c], j) => ({ l, i: ic, c, d: dl(j, 0.3, 0.12) })) })),
+      al: 'الشريحة ' + ar(obI + 1) + ' من ٣', notFirst: obI > 0, cta: obI === 2 ? 'يلا نبدأ' : 'التالي', cls: obI === 2 ? 'hot' : '',
+      next: () => set({ ob: Math.min(2, obI + 1) }), prev: () => set({ ob: Math.max(0, obI - 1) }), skip: () => set({ ob: 2 })
+    };
+
+    // join: role -> grade -> name + phone
+    const JS = ['role', 'grade', 'contact'];
+    const jk = s.js || (JS.indexOf(P.step) >= 0 ? P.step : 'role');
+    const ji = JS.indexOf(jk);
+    const role = s.role !== undefined ? s.role : 0;
+    const stage = s.stage !== undefined ? s.stage : 2;
+    const grade = s.grade !== undefined ? s.grade : 1;
+    const GR = [
+      [['١', 'الأول ابتدائي'], ['٢', 'الثاني ابتدائي'], ['٣', 'الثالث ابتدائي'], ['٤', 'الرابع ابتدائي'], ['٥', 'الخامس ابتدائي'], ['٦', 'السادس ابتدائي']],
+      [['١', 'الأول متوسط'], ['٢', 'الثاني متوسط'], ['٣', 'الثالث متوسط']],
+      [['١', 'الأول ثانوي'], ['٢', 'الثاني ثانوي'], ['٣', 'الثالث ثانوي']],
+      [['١', 'سنة أولى'], ['٢', 'سنة ثانية'], ['٣', 'سنة ثالثة'], ['٤', 'سنة رابعة']]
+    ];
+    const jn = {
+      n: ar(ji + 1), segs: [0, 1, 2].map((i) => (i < ji ? 'done' : i === ji ? 'on' : '')),
+      isRole: jk === 'role', isGrade: jk === 'grade', isContact: jk === 'contact',
+      roles: [['طالب', 'مع مجموعات الطلاب', 'student', 'var(--k-blue-tint)', 'var(--k-blue-ink)'], ['طالبة', 'مع مجموعات الطالبات', 'student', 'var(--s-pink-tint)', 'var(--s-pink-ink)'], ['ولي أمر', 'أتابع عيالي وأحجز لهم', 'parent', 'var(--s-mint-tint)', 'var(--s-mint-ink)'], ['معلم أو معلمة', 'أبي أدرّس على الفهيم', 'teacher', 'var(--s-grape-tint)', 'var(--s-grape-ink)']]
+        .map(([l, sub, ic, bg, fg], i) => ({ l, s: sub, i: I[ic], bg, fg, d: dl(i, 0.12, 0.08), on: i === role ? 'on' : '', sel: i === role, pr: i === role ? 'true' : 'false', go: () => set({ role: i }) })),
+      stI: String(stage),
+      stages: ['ابتدائي', 'متوسط', 'ثانوي', 'جامعي'].map((l, i) => ({ l, on: i === stage ? 'true' : 'false', go: () => set({ stage: i, grade: 0 }) })),
+      grades: GR[stage].map(([n, l], i) => ({ n, l, d: dl(i, 0.12, 0.06), on: i === grade ? 'on' : '', pr: i === grade ? 'true' : 'false', go: () => set({ grade: i }) })),
+      hasPrev: ji > 0, cta: jk === 'contact' ? 'أرسل الرمز' : 'التالي',
+      next: () => set({ js: JS[Math.min(2, ji + 1)] }), prev: () => set({ js: JS[Math.max(0, ji - 1)] })
+    };
+
+    // login
+    const lg = { bio: st === 'bio', form: st !== 'bio', err: st === 'error', c1: st === 'error' ? 'err m-shake' : '', c2: st === 'error' ? 'err m-shake' : 'focus' };
+    const showPw = !!s.pw;
+    const pw = { v: showPw ? 'Faisal2026' : '••••••••••', ls: showPw ? '0' : '3px', i: showPw ? I.eyeOff : I.eye, al: showPw ? 'خبّ كلمة المرور' : 'اعرض كلمة المرور', toggle: () => set({ pw: !showPw }) };
+    const agreed = s.agree !== undefined ? s.agree : true;
+    const agree = { on: agreed ? 'on' : '', yes: agreed, pr: agreed ? 'true' : 'false', op: agreed ? '1' : '.45', dis: agreed ? 'false' : 'true', toggle: () => set({ agree: !agreed }) };
+
+    // study
+    const trk = s.trk !== undefined ? s.trk : 1;
+    const tracks = ['المسار العام', 'علوم الحاسب والهندسة', 'الصحة والحياة', 'إدارة الأعمال', 'الشرعي'].map((l, i) => ({ l, on: i === trk ? 'on' : '', pr: i === trk ? 'true' : 'false', go: () => set({ trk: i }) }));
+    const fv = s.fv || { 0: 1, 2: 1 };
+    const favs = [['الرياضيات', 'sub-math'], ['الفيزياء', 'sub-physics'], ['الإنجليزية', 'sub-english'], ['الكيمياء', 'sub-chem'], ['القدرات', 'sub-qudurat'], ['المهارات الرقمية', 'sub-code']]
+      .map(([l, sub], i) => ({ l, sub, d: dl(i, 0.15, 0.05), on: fv[i] ? 'on' : '', sel: !!fv[i], pr: fv[i] ? 'true' : 'false', go: () => { const n = Object.assign({}, fv); n[i] = n[i] ? 0 : 1; set({ fv: n }); } }));
+
+    // verify
+    const wayK = s.way || (P.mode === 'link' ? 'wa' : 'sms');
+    const WK = ['sms', 'wa', 'mail'];
+    const ways = [['sms', 'رسالة SMS'], ['wa', 'واتساب'], ['mail', 'الإيميل']].map(([k, l]) => ({ l, on: k === wayK ? 'true' : 'false', go: () => set({ way: k }) }));
+    const vf = { code: wayK !== 'wa', link: wayK === 'wa', i: String(WK.indexOf(wayK)), p: wayK === 'mail' ? 'أرسلنا رمز لإيميلك المربوط بـ ' : wayK === 'wa' ? 'نأكد رقمك ' : 'أرسلنا رمز من ٦ أرقام إلى ' };
+    const mkOtp = (vals) => vals.map((v, i) => ({ v, c: v ? 'f m-pop' : (i === vals.indexOf('') ? 'c' : ''), d: dl(i, 0.2, 0.08) }));
+    const otp = mkOtp(['٥', '٢', '٨', '', '', '']);
+    const otp2 = mkOtp(['٤', '٩', '١', '٣', '', '']);
+    // kid code (same code the parent got on Pa2Gate done kid=new: ٤٨٢ ٩١٧)
+    const otp3 = mkOtp(['٤', '٨', '٢', '٩', '١', '٧']);
+    const ksRaw = s.ks !== undefined ? s.ks : (sc === 'kidcode' ? st : '');
+    const kc = { code: ksRaw !== 'found' && ksRaw !== 'pass', found: ksRaw === 'found', pass: ksRaw === 'pass',
+      go: () => set({ ks: 'found' }), yes: () => set({ ks: 'pass' }), no: () => set({ ks: '' }) };
+    let seed = 11; const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    const qr = []; for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) {
+      const fin = (a, c) => a < 7 && c < 7; let on;
+      if (fin(x, y) || fin(20 - x, y) || fin(x, 20 - y)) { const fx = x < 7 ? x : 20 - x, fy = y < 7 ? y : 20 - y; on = fx === 0 || fx === 6 || fy === 0 || fy === 6 || (fx >= 2 && fx <= 4 && fy >= 2 && fy <= 4); } else on = rnd() > 0.52;
+      qr.push(on ? '#00205E' : 'transparent');
+    }
+    // forgot
+    const fstep = P.step === 'new' ? 'new' : 'id';
+    const fg = { id: fstep === 'id', newp: fstep === 'new' };
+    // approval (pending | rejected | approved) — props only, no picker on screen
+    const apK = ['rejected', 'approved'].indexOf(st) >= 0 ? st : 'pending';
+    const OK = '#19C29B', NOW = '#FFC53D', WAIT = '#C9D6E6', BAD = '#F2545B';
+    const AP = {
+      pending: ['linear-gradient(150deg, #FFC53D, #FF9F5A)', '#5A3400', I.hour, 'نراجع حسابك', 'عادة أقل من يوم، ونرسل لك إشعار.', '', 'تصفّح الدورات', [['سجّلت حسابك', 'الأحد ٢٢ نوفمبر', OK, I.check, OK], ['نراجع بياناتك', 'الحين', NOW, I.dot, WAIT, 'now'], ['نفعّل حسابك', 'قريب', WAIT, '', WAIT]]],
+      rejected: ['linear-gradient(150deg, #FF7A59, #F2545B)', '#FFFFFF', I.edit, 'نحتاج تعديل بسيط', 'عدّل بياناتك وأرسلها مرة ثانية.', 'اكتب اسمك الثلاثي كامل.', 'عدّل بياناتك', [['سجّلت حسابك', 'الأحد ٢٢ نوفمبر', OK, I.check, OK], ['راجعنا بياناتك', 'الإثنين ٢٣ نوفمبر', BAD, I.x, WAIT], ['نفعّل حسابك', 'بعد التعديل', WAIT, '', WAIT]]],
+      approved: ['', '', I.check, 'حسابك جاهز', '', '', 'ادخل الحين', [['سجّلت حسابك', 'الأحد ٢٢ نوفمبر', OK, I.check, OK], ['راجعنا بياناتك', 'الإثنين ٢٣ نوفمبر', OK, I.check, OK], ['تفعّل حسابك', 'الحين', OK, I.check, OK]]]
+    };
+    const a = AP[apK];
+    const ap = { done: apK === 'approved', notDone: apK !== 'approved', bg: a[0], fg: a[1], i: a[2], t: a[3], p: a[4], reason: a[5], cta: a[6],
+      tl: a[7].map(([t, m, c, ic, c2, now], i) => ({ t, m, c, c2, ok: !!ic, ic, now: now || '', d: dl(i, 0.4, 0.25) })) };
+    // fee
+    const payK = s.pay !== undefined ? s.pay : 0;
+    const mkPay = (arr, off) => arr.map(([l, bb], j) => { const i = j + off; return { l, b: bb, d: dl(j, 0.25, 0.08), on: i === payK ? 'on' : '', sel: i === payK, pr: i === payK ? 'true' : 'false', go: () => set({ pay: i }) }; });
+    const moreOpen = s.more !== undefined ? s.more : false;
+    const more = { open: moreOpen || payK > 2, cls: moreOpen || payK > 2 ? 'open' : '', ex: moreOpen || payK > 2 ? 'true' : 'false', toggle: () => set({ more: !(moreOpen || payK > 2), pay: payK > 2 ? 0 : payK }) };
+
+    const subj = s.subj !== undefined ? s.subj : 0;
+    const subjects = [['الرياضيات', 'math', 'sub-math'], ['الفيزياء', 'atom', 'sub-physics'], ['الإنجليزية', 'en', 'sub-english'], ['الكيمياء', 'chem', 'sub-chem'], ['الأحياء', 'bio', 'sub-bio'], ['القدرات', 'brain', 'sub-qudurat'], ['المهارات الرقمية', 'code', 'sub-code'], ['لغتي', 'ar', 'sub-arabic'], ['القرآن الكريم', 'quran', 'sub-quran']]
+      .map(([l, ic, sub], j) => ({ l, sub, i: I[ic], d: dl(j, 0.1, 0.04), on: j === subj ? 'on' : '', pr: j === subj ? 'true' : 'false', go: () => set({ subj: j }) }));
+    const terms = [['حسابك لك بس', 'تستخدمه للتعلّم، وما تعطيه أحد.', I.user], ['الدروس لمعلميها', 'لا تصوّرها ولا تنشرها برّا المنصة.', I.live], ['تقدر تسترجع فلوسك', 'خلال ٧ أيام إذا ما حضرت أكثر من حصتين.', I.back], ['بياناتك بأمان', 'نشاركها مع معلمينك وولي أمرك بس.', I.shield]]
+      .map(([t, p, i], k) => ({ t, p, i, k: String(k) }));
+
+    return {
+      I, is, split: sc !== 'onboard', ob, jn, lg, pw, agree, tracks, favs, ways, vf, otp, otp2, otp3, kc, qr, fg, ap,
+      pays: mkPay([['مدى', ''], ['Apple Pay', ''], ['STC Pay', '']], 0), pays2: mkPay([['بطاقة ائتمان', 'VISA'], ['تحويل بنكي', 'IBAN']], 3), more,
+      feeTransfer: payK === 4, feeCta: payK === 4 ? 'أرسل الإيصال' : 'ادفع ٤٩ ريال',
+      brand: { k: b[0], a: b[1], kw: b[2], b: b[3], p: b[4] }, subjects, terms,
+      showBack: sc !== 'login' && sc !== 'guestsearch', goBack: () => {},
+      sheetSubject: sc === 'guestsearch' && sheet === 'subject', sheetUser: sc === 'verify' && sheet === 'username', sheetTerms: sc === 'register' && sheet === 'terms',
+      openSubject: () => set({ sheet: 'subject' }), openTerms: () => set({ sheet: 'terms' }), closeSheet: () => set({ sheet: '' })
+    };
+  }
+}
+</script>
+</body>
+</html>

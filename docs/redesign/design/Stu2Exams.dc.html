@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الطالب: الاختبارات</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* Stu2Exams — area a-exam (grape → blue). ONE exam look for every course.
+   Signature: questions are dealt like cards from a deck (M5 single), option pick = M3 pop + M9 jelly, timer ring = M2 ink,
+   submit sheet = M14, pass = M4 stamp + M10 score + M11 burst, fail = calm M6 wipe. Flutter: see PLAN §1.3 table. */
+.k-grid > *{min-width:0}
+.k-side2{align-items:start}
+.ex-mute{color:var(--k-muted)}
+/* hero */
+.ex-hrow{display:flex;align-items:flex-end;justify-content:space-between;gap:18px}
+.ex-hlinks{display:flex;gap:8px;flex-wrap:wrap}
+.ex-hb{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 16px;border-radius:20px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.24);color:#FFFFFF;font-size:13.5px;font-weight:700;white-space:nowrap;transition:background .2s,transform .18s cubic-bezier(.3,1.6,.5,1)}
+.ex-hb:hover{background:rgba(255,255,255,.2)}
+.ex-hb:active{transform:scale(.94,1.04)}
+.ex-hb b{min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--s-sun);color:#3D2700;font-size:12px;display:inline-flex;align-items:center;justify-content:center}
+.ex-htag{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:13px;background:rgba(255,255,255,.14);color:#FFFFFF;font-size:12.5px;font-weight:700}
+.ex-htag.sun{background:var(--s-sun);color:#3D2700}
+/* list */
+.ex-tabs{align-self:stretch}
+.ex-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 8px}
+.ex-tabs button i{font-style:normal;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:rgba(0,32,94,.08);font-size:11.5px;display:inline-flex;align-items:center;justify-content:center}
+.ex-tabs button[aria-selected="true"] i{background:var(--s-grape);color:#FFFFFF}
+.ex-list{display:flex;flex-direction:column;gap:12px;animation:kIn .35s both}
+.ex-ex{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:14px 16px;border-radius:20px;background:#FFFFFF;border:1.5px solid var(--k-line);overflow:hidden;transition:transform .25s cubic-bezier(.3,1.4,.5,1),box-shadow .25s}
+.ex-ex::before{content:"";position:absolute;top:0;bottom:0;right:0;width:5px;background:var(--sub)}
+.ex-ex:hover{transform:translateY(-3px);box-shadow:0 16px 30px -18px rgba(0,20,64,.4)}
+.ex-ex.hot{border-color:#FFCBC2;background:linear-gradient(110deg,#FFFFFF 55%,#FFF1EC)}
+.ex-exi{width:48px;height:48px;border-radius:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--sub-fg);background:var(--sub);box-shadow:0 8px 16px -8px var(--sub)}
+.ex-ext{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ex-ext .k-t{font-size:15.5px}
+.ex-meta{display:flex;flex-wrap:wrap;gap:6px}
+.ex-mc{height:24px;padding:0 9px;border-radius:12px;background:#F2F6FB;color:var(--k-muted);font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.ex-exa{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.ex-st{font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.ex-st.hot{color:#B23A2E}.ex-st.ok{color:var(--s-mint-ink)}.ex-st.wait{color:var(--s-sun-ink)}.ex-st.bad{color:#B23A2E}.ex-st.mute{color:var(--k-muted)}
+.ex-st.hot i{width:8px;height:8px;border-radius:50%;background:var(--k-coral);animation:kPing 1.6s ease-out infinite}
+.ex-off{opacity:.6}
+.ex-off .k-btn{pointer-events:none}
+/* side cards */
+.ex-rb{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ex-rbn{display:flex;flex-direction:column;gap:0;padding:12px 14px;border-radius:18px;line-height:1.35}
+.ex-rbn b{font-size:26px}
+.ex-rbn small{font-size:12.5px;font-weight:700}
+.ex-rbn.sun{background:var(--s-sun-tint);color:var(--s-sun-ink)}
+.ex-rbn.grape{background:var(--s-grape-tint);color:var(--s-grape-ink)}
+.ex-mini{display:flex;align-items:center;gap:12px}
+.ex-mini .k-ico{background:var(--s-mint-tint);color:var(--s-mint-ink)}
+/* consent: the exam as a deck of paper */
+.ex-cw{width:100%;max-width:600px;margin:0 auto;position:relative}
+.ex-deckc{position:relative}
+.ex-deckc::before,.ex-deckc::after{content:"";position:absolute;inset:0;border-radius:26px;background:#FFFFFF;border:1.5px solid #E4DCFB;box-shadow:0 18px 40px -26px rgba(43,48,145,.45)}
+.ex-deckc::before{transform:rotate(-3.5deg) translate(-10px,10px);background:#F4F0FF}
+.ex-deckc::after{transform:rotate(2deg) translate(8px,6px);background:#FAF8FF}
+.ex-paper{position:relative;z-index:1;display:flex;flex-direction:column;gap:16px;padding:24px;border-radius:26px;background:#FFFFFF;box-shadow:0 24px 50px -26px rgba(0,20,64,.45)}
+.ex-paper h3{margin:0;font-size:22px;font-weight:700;line-height:1.4}
+.ex-cchips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ex-cc{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 6px;border-radius:18px;background:var(--cc-t);color:var(--cc-i);line-height:1.3;text-align:center}
+.ex-cc svg{margin-bottom:4px}
+.ex-cc b{font-size:20px}
+.ex-cc small{font-size:12px;font-weight:700}
+.ex-paper .k-rules > li{font-size:15px}
+.ex-paper .k-btn{width:100%;height:54px;font-size:16.5px}
+.ex-close{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--k-muted)}
+/* taking */
+.ex-tk{position:relative;min-height:var(--vh,100vh);display:flex;flex-direction:column;background:var(--k-page)}
+.ex-tkh{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;padding:12px 24px;color:#FFFFFF;background:radial-gradient(120% 220% at 85% -60%,var(--hero-a) 0%,var(--hero-b) 50%,#001440 100%)}
+.ex-x{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#FFFFFF}
+.ex-tt{display:flex;flex-direction:column;gap:0;flex:1;min-width:0;line-height:1.35}
+.ex-tt h1{margin:0;font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ex-tt small{font-size:13px;font-weight:700;color:#D9CCFF}
+.ex-timer{display:flex;align-items:center;gap:10px;padding:5px 6px 5px 16px;border-radius:26px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);flex-shrink:0}
+.ex-tring{position:relative;width:38px;height:38px}
+.ex-tring svg{width:38px;height:38px;transform:rotate(-90deg)}
+.ex-tring circle{fill:none;stroke-width:4.5;stroke-linecap:round}
+.ex-tring .trk{stroke:rgba(255,255,255,.18)}
+.ex-tring .ink{stroke:var(--s-sun)}
+.ex-tring > svg + svg{position:absolute;inset:9px;width:20px;height:20px;transform:none}
+.ex-timer b{font-size:19px;font-weight:700;line-height:1.2}
+.ex-prog{height:5px;background:rgba(122,77,240,.14)}
+.ex-prog i{display:block;height:100%;border-radius:0 3px 3px 0;margin-right:0;background:linear-gradient(270deg,var(--s-grape),var(--k-cyan));transform-origin:100% 50%;animation:kGrow .9s cubic-bezier(.2,.8,.2,1) .2s both}
+.ex-toast{position:absolute;z-index:12;top:76px;right:0;left:0;margin:0 auto;width:max-content;max-width:calc(100% - 24px);display:flex;align-items:center;gap:10px;padding:10px 16px 10px 12px;border-radius:18px;background:#00205E;color:#FFFFFF;font-size:14px;font-weight:700;box-shadow:0 18px 36px -14px rgba(0,20,64,.6);animation:exToast .5s cubic-bezier(.3,1.3,.5,1) .3s backwards}
+.ex-toast span:first-child{width:30px;height:30px;border-radius:10px;background:var(--s-sun);color:#3D2700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+@keyframes exToast{from{opacity:0;transform:translateY(-24px) scale(.92)}}
+.ex-tkb{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;padding:22px 24px 26px;align-items:start;width:100%;max-width:1220px;margin:0 auto;box-sizing:border-box}
+.ex-deck{position:relative;padding-bottom:12px}
+.ex-deck::before,.ex-deck::after{content:"";position:absolute;right:16px;left:16px;top:14px;bottom:0;border-radius:24px;background:#FFFFFF;border:1.5px solid #E6DEFB}
+.ex-deck::before{transform:rotate(-1.6deg);background:#F3EEFF}
+.ex-deck::after{right:8px;left:8px;bottom:6px;transform:rotate(.8deg);background:#FAF8FF}
+.ex-q{position:relative;z-index:1;background:#FFFFFF;border-radius:24px;padding:24px;box-shadow:0 22px 44px -26px rgba(0,20,64,.4);display:flex;flex-direction:column;gap:16px}
+.ex-qh{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ex-qk{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--area-ink)}
+.ex-qk b{width:34px;height:34px;border-radius:12px;background:var(--area-tint);display:flex;align-items:center;justify-content:center;font-size:15px}
+.ex-qt{margin:0;font-size:20px;font-weight:700;line-height:2}
+.k sup{unicode-bidi:isolate}
+.ex-qt sup,.ex-math sup{font-size:.68em;line-height:0;position:relative;top:-.1em;color:var(--s-grape-ink)}
+.ex-flag{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 13px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-muted);font-size:12.5px;font-weight:700;white-space:nowrap;transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.ex-flag:active{transform:scale(.94,1.04)}
+.ex-flag.on{background:var(--s-sun-tint);border-color:#FFE08A;color:var(--s-sun-ink)}
+.ex-opts{display:flex;flex-direction:column;gap:10px}
+.ex-opt{display:flex;align-items:center;gap:14px;width:100%;min-height:60px;padding:10px 14px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;font-size:18px;font-weight:700;text-align:right;color:var(--k-text);transition:border-color .2s,background .2s,transform .18s cubic-bezier(.3,1.6,.5,1)}
+.ex-opt:hover{border-color:#C9B8FA}
+.ex-opt > b{width:38px;height:38px;border-radius:13px;background:#F2EEFE;color:var(--s-grape-ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+.ex-opt > span{flex:1}
+.ex-opt > i{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:2px solid #D8CEF5;color:#FFFFFF}
+.ex-opt.on{border-color:var(--s-grape);background:var(--s-grape-tint);box-shadow:0 10px 22px -14px rgba(122,77,240,.8)}
+.ex-opt.on > b{background:var(--s-grape);color:#FFFFFF}
+.ex-opt.on > i{background:var(--s-grape);border-color:var(--s-grape)}
+.ex-opt > i svg{opacity:0}
+.ex-opt.on > i svg{opacity:1}
+.ex-tf{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ex-tf .ex-opt{flex-direction:column;justify-content:center;min-height:110px;gap:8px;font-size:20px;text-align:center}
+.ex-tf .ex-opt > b{width:48px;height:48px;border-radius:16px}
+.ex-tf .ex-opt.t > b{background:var(--s-mint-tint);color:var(--s-mint-ink)}
+.ex-tf .ex-opt.f > b{background:var(--k-coral-tint);color:var(--k-coral-ink)}
+.ex-tf .ex-opt.on > b{background:var(--s-grape);color:#FFFFFF}
+.ex-blank{display:inline-flex;align-items:center;justify-content:center;min-width:86px;height:42px;margin:0 4px;padding:0 12px;border-radius:12px;border:2px dashed #BBA6F7;background:#F8F5FF;font-size:16px;color:#7E6BB8;vertical-align:middle;line-height:1}
+.ex-blank.f{border-style:solid;border-color:var(--s-grape);background:var(--s-grape-tint);color:var(--s-grape-ink);font-weight:700}
+.ex-blank.cur{border-color:var(--s-grape)}
+.ex-blank.cur::after{content:"";width:2px;height:22px;margin-right:4px;background:var(--s-grape);animation:exBlink 1s steps(1) infinite}
+@keyframes exBlink{50%{opacity:0}}
+.ex-bank{display:flex;flex-wrap:wrap;gap:8px}
+.ex-bank button{height:44px;min-width:56px;padding:0 14px;border-radius:14px;border:1.5px solid var(--k-line);background:#FFFFFF;font-size:17px;font-weight:700;color:var(--k-text)}
+.ex-bank button.used{opacity:.35}
+.ex-hint{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--k-muted)}
+.ex-pairs{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}
+.ex-pcol{display:flex;flex-direction:column;gap:10px}
+.ex-pcol > small{font-size:12.5px;font-weight:700;color:var(--k-muted)}
+.ex-pc{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;height:56px;border-radius:16px;border:1.5px solid var(--k-line);background:#FFFFFF;font-size:19px;font-weight:700;color:var(--k-text);transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.ex-pc:active{transform:scale(.94,1.04)}
+.ex-pc > i{position:absolute;top:-8px;left:-8px;width:24px;height:24px;border-radius:50%;background:var(--pc);color:#FFFFFF;font-size:12px;font-style:normal;display:flex;align-items:center;justify-content:center;border:2px solid #FFFFFF}
+.ex-pc.p{border-color:var(--pc);background:var(--pt)}
+.ex-pc.sel{border-color:var(--s-grape);background:var(--s-grape-tint);animation:exSel 1.8s ease-out infinite}
+@keyframes exSel{0%{box-shadow:0 0 0 0 rgba(122,77,240,.45)}100%{box-shadow:0 0 0 10px rgba(122,77,240,0)}}
+.ex-num{display:flex;align-items:center;gap:10px;max-width:360px}
+.ex-numin{flex:1;height:60px;border-radius:18px;border:2px solid var(--s-grape);background:#FFFFFF;display:flex;align-items:center;justify-content:flex-end;gap:2px;padding:0 16px;font-size:24px;font-weight:700;color:var(--k-navy);box-shadow:0 0 0 4px rgba(122,77,240,.12)}
+.ex-numin::after{content:"";width:2px;height:28px;background:var(--s-grape);animation:exBlink 1s steps(1) infinite;margin-right:2px;order:-1}
+.ex-unit{height:60px;padding:0 16px;border-radius:18px;background:var(--area-tint);color:var(--area-ink);font-size:16px;font-weight:700;display:flex;align-items:center}
+.ex-ta{min-height:150px;border-radius:18px;border:1.5px solid #D8CEF5;padding:14px 16px;font-size:16px;line-height:1.9;color:var(--k-text);background:#FFFFFF}
+.ex-ta i{display:inline-block;width:2px;height:20px;background:var(--s-grape);vertical-align:middle;animation:exBlink 1s steps(1) infinite}
+.ex-fig{border-radius:18px;background:#FAF8FF;border:1.5px solid #ECE5FF;padding:10px;display:flex;justify-content:center}
+.ex-fig svg{max-width:100%;height:auto}
+.ex-drop{display:flex;flex-direction:column;align-items:center;gap:8px;padding:24px;border-radius:20px;border:2px dashed #C9B8FA;background:#FAF8FF;text-align:center;color:var(--k-muted);font-size:14px}
+.ex-drop .k-ico{background:var(--area-tint);color:var(--area-ink);width:52px;height:52px;border-radius:17px}
+.ex-file{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:var(--s-mint-tint);color:var(--s-mint-ink)}
+.ex-file .k-ico{width:40px;height:40px;background:#FFFFFF;color:var(--s-mint-ink)}
+.ex-paperq{display:flex;align-items:center;gap:14px;padding:18px;border-radius:20px;background:var(--s-sun-tint);color:var(--s-sun-ink);font-size:15.5px;font-weight:700;line-height:1.7}
+.ex-paperq .k-ico{width:52px;height:52px;border-radius:17px;background:#FFFFFF;color:var(--s-sun-ink)}
+.ex-map{background:#FFFFFF;border-radius:24px;padding:18px;box-shadow:0 22px 44px -26px rgba(0,20,64,.35);display:flex;flex-direction:column;gap:14px;position:sticky;top:90px}
+.ex-map h3{margin:0;font-size:16px;font-weight:700}
+.ex-ng{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.ex-n{position:relative;height:40px;min-width:40px;border-radius:13px;border:1.5px solid var(--k-line);background:#FFFFFF;font-size:14px;font-weight:700;color:var(--k-muted);transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.ex-n:active{transform:scale(.9,1.06)}
+.ex-n.a{background:var(--s-grape-tint);border-color:#D9CCFF;color:var(--s-grape-ink)}
+.ex-n.c{background:var(--s-grape);border-color:var(--s-grape);color:#FFFFFF;box-shadow:0 8px 16px -6px rgba(122,77,240,.7)}
+.ex-n.fl::after{content:"";position:absolute;top:-4px;left:-4px;width:12px;height:12px;border-radius:50%;background:var(--s-sun);border:2px solid #FFFFFF}
+.ex-lg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;font-weight:700;color:var(--k-muted)}
+.ex-lg span{display:inline-flex;align-items:center;gap:6px}
+.ex-lg i{width:12px;height:12px;border-radius:4px;display:inline-block}
+.ex-tkf{position:sticky;bottom:0;z-index:9;display:flex;align-items:center;gap:10px;padding:12px max(24px,calc((100% - 1172px) / 2));background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid var(--k-line)}
+.ex-tkf .k-btn{min-width:120px}
+.ex-dis{opacity:.45;pointer-events:none}
+.ex-mstrip{display:none}
+.ex-segs{display:none}
+/* sheets */
+.ex-sheet .k-db{gap:16px}
+.ex-otp{display:flex;gap:8px;justify-content:center;direction:ltr}
+.ex-otp span{width:50px;height:60px;border-radius:16px;border:1.5px solid #D8CEF5;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:var(--k-navy);background:#FFFFFF}
+.ex-otp span.on{border-color:var(--s-grape);background:var(--s-grape-tint);color:var(--s-grape-ink)}
+.ex-otp span.cur{border-color:var(--s-grape);box-shadow:0 0 0 4px rgba(122,77,240,.15)}
+.ex-otp span.cur::after{content:"";width:2px;height:28px;background:var(--s-grape);animation:exBlink 1s steps(1) infinite}
+.ex-sh-art{align-self:center;width:84px;height:84px;border-radius:28px;display:flex;align-items:center;justify-content:center;background:var(--area-tint);color:var(--area-ink)}
+.ex-sh-p{margin:0;text-align:center;font-size:16px;line-height:1.8;font-weight:600}
+.ex-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ex-sum span{display:flex;flex-direction:column;align-items:center;gap:0;padding:14px 6px;border-radius:18px;line-height:1.3}
+.ex-sum b{font-size:26px}
+.ex-sum small{font-size:12.5px;font-weight:700}
+.ex-sum .g{background:var(--s-grape-tint);color:var(--s-grape-ink)}
+.ex-sum .r{background:var(--k-coral-tint);color:var(--k-coral-ink)}
+.ex-sum .y{background:var(--s-sun-tint);color:var(--s-sun-ink)}
+.ex-line{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;font-size:14px;font-weight:700;line-height:1.6}
+.ex-line.r{background:#FFF1EE;color:#9B2C22}
+.ex-line.b{background:var(--area-tint);color:var(--area-ink)}
+.ex-line svg{flex-shrink:0}
+.ex-qchips{display:flex;flex-wrap:wrap;gap:8px}
+.ex-qchips .k-chip.on{background:var(--s-grape);border-color:var(--s-grape)}
+/* result */
+.ex-score{display:flex;align-items:center;gap:26px}
+.ex-big{position:relative;width:150px;height:150px;flex-shrink:0}
+.ex-big > svg{width:150px;height:150px;transform:rotate(-90deg)}
+.ex-big circle{fill:none;stroke-width:12;stroke-linecap:round}
+.ex-big .trk{stroke:#EFEAFB}
+.ex-big .ink{stroke:var(--rc)}
+.ex-big .trk.dash{stroke:#E6DFF8;stroke-dasharray:3 9}
+.ex-bign{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15;color:var(--k-navy)}
+.ex-bign b{font-size:38px;font-weight:700;display:inline-flex;align-items:baseline}
+.ex-bign small{font-size:12.5px;font-weight:700;color:var(--k-muted)}
+.ex-bign .k-ico{width:46px;height:46px;border-radius:16px;background:var(--s-sun-tint);color:var(--s-sun-ink);margin-bottom:4px}
+.ex-stamp{position:absolute;top:-6px;left:-18px;z-index:2;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:12px;border:3px solid var(--s-mint);background:#FFFFFF;color:var(--s-mint-ink);font-size:17px;font-weight:700;box-shadow:0 10px 20px -10px rgba(12,107,85,.6)}
+.ex-big .m-burst{inset:50% auto auto 50%}
+.ex-sci{display:flex;flex-direction:column;gap:12px;flex:1;min-width:0}
+.ex-sci h3{margin:0;font-size:20px;font-weight:700;line-height:1.45}
+.ex-chips2{display:flex;flex-wrap:wrap;gap:8px}
+.ex-chip2{height:32px;padding:0 13px;border-radius:16px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;background:#F2F6FB;color:var(--k-text)}
+.ex-chip2.g{background:var(--s-mint-tint);color:var(--s-mint-ink)}
+.ex-chip2.y{background:var(--s-sun-tint);color:var(--s-sun-ink)}
+.ex-chip2.p{background:var(--s-grape-tint);color:var(--s-grape-ink)}
+.ex-acts{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.ex-ans{display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-bottom:1px dashed var(--k-line)}
+.ex-ans:last-child{border-bottom:none}
+.ex-ai{width:32px;height:32px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ex-at{font-size:15px;font-weight:700;line-height:1.9}
+.ex-cmp{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.ex-cmp span{padding:6px 12px;border-radius:12px;font-size:13.5px;font-weight:700;line-height:1.6}
+.ex-cmp .my{background:#FFF1EE;color:#9B2C22}
+.ex-cmp .okk{background:var(--s-mint-tint);color:var(--s-mint-ink)}
+.ex-cmp .pd{background:var(--s-sun-tint);color:var(--s-sun-ink)}
+.ex-cmp .nt{background:#F2F6FB;color:var(--k-muted)}
+.ex-pts{flex-shrink:0;font-size:13px;font-weight:700;color:var(--k-muted);white-space:nowrap;padding-top:4px}
+.ex-steps{display:flex;flex-direction:column}
+.ex-step{display:flex;gap:12px;position:relative;padding-bottom:16px}
+.ex-step:last-child{padding-bottom:0}
+.ex-step::before{content:"";position:absolute;right:15px;top:34px;bottom:2px;width:2px;background:var(--k-line)}
+.ex-step:last-child::before{display:none}
+.ex-sn{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:#EEF2F7;color:var(--k-muted)}
+.ex-step.done .ex-sn{background:var(--s-mint);color:#FFFFFF}
+.ex-step.now .ex-sn{background:var(--s-grape);color:#FFFFFF;box-shadow:0 0 0 5px rgba(122,77,240,.18)}
+.ex-bankc{display:flex;align-items:center;gap:12px}
+.ex-bankc .k-ico{background:var(--s-sun-tint);color:var(--s-sun-ink)}
+/* offline: 3 plain steps */
+.ex-path{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding:8px 0 4px}
+.ex-pst{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:0 10px}
+.ex-pst::before,.ex-pst::after{content:"";position:absolute;top:30px;left:50%;width:100%;height:4px;border-radius:2px;background:#E7EDF5;z-index:0}
+.ex-pst::after{background:var(--s-mint);transform:scaleX(0);transform-origin:0 50%;transition:none}
+.ex-pst:first-child::before,.ex-pst:first-child::after{display:none}
+.ex-pst.ln::after{animation:exLine .6s cubic-bezier(.6,0,.2,1) both;animation-delay:calc(.3s + var(--i,0)*.35s)}
+@keyframes exLine{to{transform:scaleX(1)}}
+.ex-pi{position:relative;z-index:1;width:62px;height:62px;border-radius:21px;display:flex;align-items:center;justify-content:center;background:#EEF2F7;color:#8A97AE}
+.ex-pst.done .ex-pi{background:var(--s-mint);color:#FFFFFF;box-shadow:0 10px 20px -10px rgba(25,194,155,.8)}
+.ex-pst.now .ex-pi{--halo:var(--s-grape);background:var(--s-grape);color:#FFFFFF;box-shadow:0 10px 22px -10px rgba(122,77,240,.9)}
+.ex-pi > i{position:absolute;bottom:-6px;left:-6px;width:24px;height:24px;border-radius:50%;background:#FFFFFF;color:var(--s-mint-ink);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.ex-pst b{font-size:16px;line-height:1.45}
+.ex-pst > span:last-child{display:flex;flex-direction:column;gap:2px}
+.ex-pst small{font-size:13px;color:var(--k-muted);font-weight:600;line-height:1.5}
+.ex-pst.now b{color:var(--s-grape-ink)}
+.ex-offact{display:flex;flex-direction:column;align-items:center;gap:12px;padding:18px;border-radius:20px;background:linear-gradient(160deg,var(--area-tint),#FFFFFF 70%);text-align:center}
+.ex-offact > b{font-size:16px}
+.ex-offact .k-count > span{background:#FFFFFF;border:1.5px solid #E1D7FB}
+.ex-offact .k-count .m-roll{height:1.3em}
+.ex-offact .k-success{padding:6px 0 0}
+/* review */
+.ex-rhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ex-rseg{flex:0 1 380px}
+.ex-cf{display:flex;gap:6px;flex-wrap:wrap}
+.ex-cf .k-chip i{width:9px;height:9px;border-radius:50%;background:var(--sub,var(--s-grape))}
+.ex-cf .k-chip.on i{background:#FFFFFF}
+.ex-rg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;animation:kIn .35s both}
+.ex-rc{position:relative;display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:20px;background:#FFFFFF;border:1.5px solid var(--k-line);overflow:hidden;transition:transform .25s cubic-bezier(.3,1.4,.5,1),box-shadow .25s}
+.ex-rc:hover{transform:translateY(-3px) rotate(-.4deg);box-shadow:0 16px 30px -18px rgba(0,20,64,.4)}
+.ex-rc::after{content:"";position:absolute;top:0;left:0;width:56px;height:56px;background:linear-gradient(225deg,transparent 50%,var(--sub-t) 50%);border-radius:0 0 0 0}
+.ex-rct{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--sub-i)}
+.ex-rct i{width:10px;height:10px;border-radius:50%;background:var(--sub)}
+.ex-rct span{color:var(--k-muted);font-weight:600}
+.ex-rc > b{font-size:16px;line-height:1.85}
+.ex-rcf{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ex-rcf .k-link{display:inline-flex;align-items:center;gap:5px}
+.ex-hero-empty .k-hero{padding-bottom:84px}
+@media (max-width:760px){
+  .ex-hrow{display:block}
+  .ex-hlinks{display:none}
+  .ex-hide-m{display:none}
+  .ex-hrow > .k-btn{margin-top:10px}
+  .ex-tabs button{font-size:12.5px;padding:0 4px;gap:4px}
+  .ex-tabs button i{min-width:18px;height:18px;padding:0 4px;font-size:11px}
+  .ex-ex{grid-template-columns:auto minmax(0,1fr);padding:14px;gap:12px}
+  .ex-exi{width:44px;height:44px;border-radius:14px}
+  .ex-exa{grid-column:1 / -1;flex-direction:row;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px dashed var(--k-line)}
+  .ex-paper{padding:18px;gap:14px}
+  .ex-paper h3{font-size:19px}
+  .ex-cc{padding:10px 4px}
+  .ex-cc b{font-size:18px}
+  .ex-paper .k-rules{gap:6px}
+  .ex-paper .k-rules > li{font-size:14.5px}
+  .ex-paper .k-btn{height:52px}
+  .ex-deckc::before{transform:rotate(-2.5deg) translate(-6px,8px)}
+  .ex-deckc::after{transform:rotate(1.5deg) translate(5px,5px)}
+  .ex-tkh{padding:10px 12px;gap:10px}
+  .ex-x{width:36px;height:36px}
+  .ex-tt h1{font-size:15px}
+  .ex-tt small{font-size:12px}
+  .ex-timer{padding:4px 4px 4px 12px;gap:8px}
+  .ex-timer b{font-size:17px}
+  .ex-tring,.ex-tring svg{width:34px;height:34px}
+  .ex-tring > svg + svg{inset:8px;width:18px;height:18px}
+  .ex-toast{top:66px;font-size:13px}
+  .ex-tkb{grid-template-columns:1fr;padding:12px;gap:12px}
+  .ex-map{display:none}
+  .ex-prog{display:none}
+  .ex-segs{display:flex;gap:3px;padding:12px 12px 0}
+  .ex-segs i{flex:1;height:8px;border-radius:4px;background:#DFE6F0;transition:transform .2s}
+  .ex-segs i.a{background:#CDBDFB}
+  .ex-segs i.c{background:var(--s-grape);transform:scaleY(1.5)}
+  .ex-segs i.fl{background:var(--s-sun)}
+  .ex-q{padding:18px;border-radius:22px;gap:14px}
+  .ex-qt{font-size:17.5px;line-height:1.95}
+  .ex-opt{font-size:16.5px;min-height:56px}
+  .ex-tf .ex-opt{min-height:100px}
+  .ex-pairs{gap:8px 10px}
+  .ex-pc{height:52px;font-size:17px}
+  .ex-numin,.ex-unit{height:56px}
+  .ex-ta{min-height:120px;font-size:15px}
+  .ex-tkf{padding:10px 12px}
+  .ex-tkf .k-btn{min-width:0;flex:1}
+  .ex-tkf .k-sp{display:none}
+  .ex-tkf .k-btn.ghost{flex:0 0 auto;padding:0 18px}
+  .ex-sheet.k-drawer{height:auto;max-height:calc(var(--vh,100vh)*0.92)}
+  .ex-otp span{width:44px;height:54px;font-size:23px}
+  .ex-score{flex-direction:column;align-items:stretch;gap:16px}
+  .ex-big{align-self:center;width:136px;height:136px}
+  .ex-big > svg{width:136px;height:136px}
+  .ex-bign b{font-size:34px}
+  .ex-sci{align-items:center;text-align:center}
+  .ex-sci h3{font-size:18px}
+  .ex-chips2,.ex-acts{justify-content:center}
+  .ex-acts .k-btn{width:100%}
+  .ex-path{grid-template-columns:1fr;gap:18px;padding:4px 0}
+  .ex-pst{flex-direction:row;align-items:center;text-align:right;gap:14px;padding:0}
+  .ex-pst::before,.ex-pst::after{top:auto;bottom:62px;left:auto;right:29px;width:4px;height:18px}
+  .ex-pst::after{transform:scaleY(0);transform-origin:50% 0}
+  @keyframes exLineV{to{transform:scaleY(1)}}
+  .ex-pst.ln::after{animation-name:exLineV}
+  .ex-pi{width:58px;height:58px;border-radius:19px;flex-shrink:0}
+  .ex-rhead{flex-direction:column;align-items:stretch;flex-wrap:nowrap}
+  .ex-rseg{flex:none}
+  .ex-cf{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .ex-rg{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){.k .ex-pst.ln::after{transform:none}}
+</style>
+</helmet>
+<div class="k a-exam" dir="rtl">
+  <div class="k-shell">
+    <sc-if value="{{chrome}}" hint-placeholder-val="{{ true }}">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">طالب</span></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+        <a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a>
+      </sc-for>
+      <div class="k-me"><span class="k-av sm">ف</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">فيصل العنزي</b><small style="font-size: 11.5px; opacity: .7">الصف الثاني الثانوي</small></span></div>
+    </aside>
+    </sc-if>
+    <div class="k-main">
+      <sc-if value="{{chrome}}" hint-placeholder-val="{{ true }}">
+      <header class="k-top">
+        <sc-if value="{{back}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-ib" aria-label="رجوع" onClick="{{goBack}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a></sc-if>
+        <span><small>{{crumb}}</small><h1>{{title}}</h1></span>
+        <span class="k-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن دورة أو معلم أو درس<kbd>Ctrl K</kbd></span>
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="3"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av">ف</span>
+      </header>
+      <header class="k-mtop"><sc-if value="{{back}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-ib" aria-label="رجوع" onClick="{{goBack}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a></sc-if><sc-if value="{{noback}}" hint-placeholder-val="{{ true }}"><img src="./logo.png" alt="" width="28" height="31" style="width: 28px; height: auto"></sc-if><h1>{{title}}</h1><sc-for list="{{mtools}}" as="t" hint-placeholder-count="2"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for></header>
+      </sc-if>
+      <main class="k-page">
+
+<!-- ============ LIST ============ -->
+<sc-if value="{{is.list}}" hint-placeholder-val="{{ true }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+  <div class="ex-hrow">
+    <div class="k-col" style="gap: 2px">
+      <span class="k-ruqaa" style="font-size: 18px; color: #FFD9A8">بالتوفيق يا فيصل</span>
+      <h2>عندك ٣ اختبارات مفتوحة</h2>
+    </div>
+    <div class="ex-hlinks"><a href="#" class="ex-hb" onClick="{{goReview}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>أسئلة للمراجعة<b>١٤</b></a><a href="#" class="ex-hb" onClick="{{goOffline}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h10v20H7zM11 18h2"></path></svg>اختبار بدون نت</a></div>
+  </div>
+</section>
+<div class="k-body">
+  <div class="k-grid k-side2">
+    <section class="k-card" style="--d: .1s">
+      <div class="k-seg m-pill ex-tabs" role="tablist" style="--n: 4"><span class="m-pill-bg" style="--i: {{ti}}"></span><sc-for list="{{tabs}}" as="t" hint-placeholder-count="4"><button role="tab" aria-selected="{{t.sel}}" onClick="{{t.go}}">{{t.l}}<i>{{t.n}}</i></button></sc-for></div>
+      <div class="ex-list"><sc-for list="{{exams}}" as="e" hint-placeholder-count="3"><article class="ex-ex m-deal {{e.sub}} {{e.cls}}" style="--i: {{e.k}}; --d: .2s">
+        <span class="ex-exi"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{e.i}}"></path></svg></span>
+        <div class="ex-ext">
+          <span class="k-t">{{e.t}}</span>
+          <span class="k-m">{{e.course}}، {{e.teacher}}</span>
+          <div class="ex-meta"><sc-for list="{{e.meta}}" as="m" hint-placeholder-count="3"><span class="ex-mc">{{m}}</span></sc-for></div>
+        </div>
+        <div class="ex-exa"><span class="ex-st {{e.sc}}"><i></i>{{e.st}}</span><sc-if value="{{e.bl}}" hint-placeholder-val="{{ true }}"><a href="#" class="{{e.bc}}" onClick="{{e.go}}">{{e.bl}}</a></sc-if></div>
+      </article></sc-for></div>
+    </section>
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card" style="--d: .2s">
+        <div class="k-ch"><h3>للمراجعة</h3><a href="#" onClick="{{goReview}}">افتحها</a></div>
+        <div class="ex-rb"><span class="ex-rbn sun m-pop" style="--d: .45s"><b>١٤</b><small>حفظتها بنفسك</small></span><span class="ex-rbn grape m-pop" style="--d: .55s"><b>٩</b><small>غلطت فيها</small></span></div>
+      </section>
+      <section class="k-card" style="--d: .25s">
+        <div class="ex-mini"><span class="k-ico"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h10v20H7zM11 18h2M10 9l2 2 3-3"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><span class="k-t" style="font-size: 14.5px">اختبار الفصل الأول نازل على جوالك</span><span class="k-m">ينحل بدون نت، الأحد ١٠:٠٠ ص</span></span></div>
+        <a href="#" class="k-btn ghost sm" onClick="{{goOffline}}">التفاصيل</a>
+      </section>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ CONSENT (one screen, no checkbox) ============ -->
+<sc-if value="{{is.consent}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+  <span class="ex-htag sun">يقفل بكرة ٩:٠٠ م</span>
+  <h2 style="margin-top: 6px">اختبار الدوال الأسية</h2>
+  <p>الرياضيات، أ. ماجد الشهري</p>
+</section>
+<div class="k-body">
+  <div class="ex-cw">
+    <div class="ex-deckc">
+      <section class="ex-paper m-deal" style="--d: .2s">
+        <h3>جاهز يا فيصل؟</h3>
+        <div class="ex-cchips"><sc-for list="{{cchips}}" as="c" hint-placeholder-count="3"><span class="ex-cc m-pop" style="--d: {{c.d}}; --cc-t: {{c.t}}; --cc-i: {{c.c}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg><b>{{c.n}}</b><small>{{c.l}}</small></span></sc-for></div>
+        <ul class="k-rules"><sc-for list="{{crules}}" as="r" hint-placeholder-count="3"><li><span class="k-ico"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.i}}"></path></svg></span>{{r.t}}</li></sc-for></ul>
+        <a href="#" class="k-btn hot m-jelly" onClick="{{goTake}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg>ابدأ الاختبار</a>
+        <span class="ex-close"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"></path></svg>وقتك يبدأ أول ما تضغط</span>
+      </section>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ TAKE ============ -->
+<sc-if value="{{is.take}}" hint-placeholder-val="{{ false }}">
+<div class="ex-tk">
+  <header class="ex-tkh">
+    <a href="#" class="ex-x" aria-label="اطلع من الاختبار" onClick="{{goList}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></a>
+    <div class="ex-tt"><h1>اختبار الدوال الأسية</h1><small>{{qn}} من ٢٠</small></div>
+    <div class="ex-timer" role="timer" aria-label="باقي ٣٢ دقيقة"><span class="k-col" style="gap: 0; line-height: 1.2; align-items: flex-end"><b>٣٢:١٤</b></span><span class="ex-tring"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="trk" cx="22" cy="22" r="18"></circle><circle class="ink m-ink" cx="22" cy="22" r="18" pathLength="100" style="--len: 100; --to: 29"></circle></svg><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v5l3 2"></path></svg></span></div>
+  </header>
+  <div class="ex-prog" aria-hidden="true"><i style="width: {{progW}}%"></i></div>
+  <sc-if value="{{toast}}" hint-placeholder-val="{{ false }}"><div class="ex-toast" role="status"><span><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"></path></svg></span><span>رجعت؟ كمّل، وقتك ماشي</span></div></sc-if>
+  <div class="ex-segs" role="img" aria-label="جاوبت {{answeredN}} من ٢٠"><sc-for list="{{qnav}}" as="n" hint-placeholder-count="20"><i class="{{n.c}}"></i></sc-for></div>
+  <div class="ex-tkb">
+    <div class="ex-deck">
+      <section class="ex-q m-deal" aria-live="polite" style="--d: .15s">
+        <div class="ex-qh"><span class="ex-qk"><b>{{qn}}</b>{{q.kind}}، {{q.pts}}</span><button class="ex-flag {{flagCls}}" onClick="{{toggleFlag}}"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>{{flagLbl}}</button></div>
+        <p class="ex-qt"><sc-for list="{{q.tx}}" as="g" hint-placeholder-count="1"><span>{{g.t}}</span><sc-if value="{{g.s}}" hint-placeholder-val="{{ false }}"><sup>{{g.s}}</sup></sc-if></sc-for></p>
+        <sc-if value="{{q.fig}}" hint-placeholder-val="{{ false }}"><div class="ex-fig"><svg viewBox="0 0 320 170" width="320" height="170" role="img" aria-label="منحنى دالة أسية يمر بالنقطة (٠، ١)"><g stroke="#E6DFF8" stroke-width="1"><path d="M40 10v150M70 10v150M100 10v150M130 10v150M190 10v150M220 10v150M250 10v150M280 10v150"></path></g><g stroke="#B9AEDB" stroke-width="1.5"><path d="M20 150H310M160 10V160"></path></g><path class="m-ink" pathLength="100" style="--len: 100; --d: .4s" d="M20 147 C 90 145, 140 135, 175 110 S 240 40, 262 12" fill="none" stroke="#7A4DF0" stroke-width="3.5" stroke-linecap="round"></path><circle cx="160" cy="125" r="6" fill="#FFC53D" stroke="#FFFFFF" stroke-width="2"></circle><text x="168" y="142" font-size="13" fill="#4A5878" font-family="Noto Naskh Arabic, serif">(٠، ١)</text></svg></div></sc-if>
+        <sc-if value="{{q.choice}}" hint-placeholder-val="{{ true }}"><div class="ex-opts"><sc-for list="{{q.opts}}" as="o" hint-placeholder-count="4"><button class="ex-opt m-jelly {{o.c}}" onClick="{{o.go}}"><b class="{{o.pc}}">{{o.k}}</b><span>{{o.t}}</span><i><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg></i></button></sc-for></div></sc-if>
+        <sc-if value="{{q.tf}}" hint-placeholder-val="{{ false }}"><div class="ex-tf"><sc-for list="{{q.opts}}" as="o" hint-placeholder-count="2"><button class="ex-opt m-jelly {{o.k}} {{o.c}}" onClick="{{o.go}}"><b class="{{o.pc}}"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{o.i}}"></path></svg></b>{{o.t}}</button></sc-for></div></sc-if>
+        <sc-if value="{{q.blank}}" hint-placeholder-val="{{ false }}"><p class="ex-math" style="margin: 0; font-size: 18px; line-height: 2.7; font-weight: 600">إذا كان ٣<sup>س</sup> = ٨١ فإن س = <span class="ex-blank f">٤</span><br>وإذا كان ٢<sup>ص</sup> = ٣٢ فإن ص = <span class="ex-blank cur"></span></p><div class="ex-hint"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6M11 10V4a1.5 1.5 0 0 1 3 0v6M14 10V5.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7c-3 0-4.5-1.5-6-4l-1.5-3a1.5 1.5 0 0 1 2.6-1.5L8 15"></path></svg>اضغط رقم يروح للفراغ</div><div class="ex-bank"><sc-for list="{{bank}}" as="b" hint-placeholder-count="5"><button class="m-jelly {{b.c}}">{{b.t}}</button></sc-for></div></sc-if>
+        <sc-if value="{{q.match}}" hint-placeholder-val="{{ false }}"><div class="ex-hint"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6M11 10V4a1.5 1.5 0 0 1 3 0v6M14 10V5.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7c-3 0-4.5-1.5-6-4l-1.5-3a1.5 1.5 0 0 1 2.6-1.5L8 15"></path></svg>اضغط قوة، وبعدها قيمتها</div><div class="ex-pairs"><div class="ex-pcol"><small>القوة</small><sc-for list="{{q.lefts}}" as="m" hint-placeholder-count="4"><button class="ex-pc ex-math {{m.c}}" style="--pc: {{m.pc}}; --pt: {{m.pt}}"><sc-if value="{{m.n}}" hint-placeholder-val="{{ false }}"><i class="m-pop">{{m.n}}</i></sc-if><span>{{m.b}}<sup>{{m.s}}</sup></span></button></sc-for></div><div class="ex-pcol"><small>القيمة</small><sc-for list="{{q.rights}}" as="m" hint-placeholder-count="4"><button class="ex-pc {{m.c}}" style="--pc: {{m.pc}}; --pt: {{m.pt}}"><sc-if value="{{m.n}}" hint-placeholder-val="{{ false }}"><i class="m-pop">{{m.n}}</i></sc-if>{{m.t}}</button></sc-for></div></div></sc-if>
+        <sc-if value="{{q.num}}" hint-placeholder-val="{{ false }}"><div class="ex-num"><span class="ex-numin">١١٠٫٢٥</span><span class="ex-unit">ريال</span></div></sc-if>
+        <sc-if value="{{q.written}}" hint-placeholder-val="{{ false }}"><div class="ex-ta">تكون الدالة ص = أ<sup style="font-size: .7em">س</sup> تزايدية إذا كان الأساس أ أكبر من ١، مثل ص = ٢<sup style="font-size: .7em">س</sup> لأن قيمتها تتضاعف كل ما زادت س<i></i></div><span class="k-m">٢٤ كلمة، محفوظة</span></sc-if>
+        <sc-if value="{{q.file}}" hint-placeholder-val="{{ false }}"><div class="ex-drop"><span class="k-ico"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v12H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path></svg></span><b style="color: var(--k-navy); font-size: 15.5px">صوّر حلّك أو ارفعه</b><a href="#" class="k-btn sm ghost">اختر صورة أو ملف</a></div><div class="ex-file m-pop" style="--d: .5s"><span class="k-ico"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 14px">حل المسألة ٧.jpg</b><span style="font-size: 12.5px; font-weight: 600">ارتفع ✓</span></span><a href="#" class="k-link">غيّره</a></div></sc-if>
+        <sc-if value="{{q.paper}}" hint-placeholder-val="{{ false }}"><div class="ex-paperq"><span class="k-ico"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h4"></path></svg></span><span>هذا السؤال تحلّه على الورق في الفصل. ما تحتاج تسوي شي هنا.</span></div></sc-if>
+      </section>
+    </div>
+    <aside class="ex-map">
+      <div class="k-ch"><h3>الأسئلة</h3><span class="k-m">جاوبت {{answeredN}} من ٢٠</span></div>
+      <div class="ex-ng"><sc-for list="{{qnav}}" as="n" hint-placeholder-count="20"><button class="ex-n {{n.c}}" aria-label="{{n.al}}" onClick="{{n.go}}">{{n.l}}</button></sc-for></div>
+      <div class="ex-lg"><span><i style="background: #ECE5FF; border: 1px solid #D9CCFF"></i>جاوبته</span><span><i style="background: #FFFFFF; border: 1px solid #E2EAF4"></i>باقي</span><span><i style="background: #FFC53D; border-radius: 50%"></i>للمراجعة</span></div>
+      <a href="#" class="k-btn ghost sm" onClick="{{openSubmit}}">سلّم الاختبار</a>
+    </aside>
+  </div>
+  <footer class="ex-tkf">
+    <a href="#" class="k-btn ghost {{prevCls}}" onClick="{{prevQ}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>السابق</a>
+    <span class="k-sp"></span>
+    <sc-if value="{{notLast}}" hint-placeholder-val="{{ true }}"><a href="#" class="k-btn" onClick="{{nextQ}}">التالي<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></a></sc-if>
+    <sc-if value="{{isLast}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-btn hot" onClick="{{openSubmit}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>سلّم الاختبار</a></sc-if>
+  </footer>
+</div>
+</sc-if>
+
+<!-- ============ RESULT ============ -->
+<sc-if value="{{is.result}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero {{r.heroMove}}">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+  <span class="ex-htag">اختبار الدوال الأسية، الرياضيات</span>
+  <sc-if value="{{r.squig}}" hint-placeholder-val="{{ false }}"><h2 style="margin-top: 6px"><span class="m-squig">مبروك<svg viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true"><path pathLength="240" d="M2 6 Q 17 0 32 6 T 62 6 T 92 6 T 118 5"></path></svg></span> يا فيصل، نجحت</h2></sc-if>
+  <sc-if value="{{r.plain}}" hint-placeholder-val="{{ true }}"><h2 style="margin-top: 6px">{{r.h}}</h2></sc-if>
+  <p>{{r.p2}}</p>
+</section>
+<div class="k-body">
+  <div class="k-grid k-side2">
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card" style="--d: .1s">
+        <div class="ex-score {{r.wipe}}">
+          <div class="ex-big" style="--rc: {{r.rc}}">
+            <svg viewBox="0 0 150 150" aria-hidden="true"><circle class="trk {{r.trk}}" cx="75" cy="75" r="62"></circle><sc-if value="{{r.num}}" hint-placeholder-val="{{ true }}"><circle class="ink m-ink" cx="75" cy="75" r="62" pathLength="100" style="--len: 100; --to: {{r.to}}; --d: .25s"></circle></sc-if></svg>
+            <sc-if value="{{r.num}}" hint-placeholder-val="{{ true }}"><span class="ex-bign"><b aria-label="{{r.big}}"><span class="m-roll"><sc-for list="{{r.digs}}" as="g" hint-placeholder-count="2"><i aria-hidden="true" style="--v: {{g.v}}; --i: {{g.i}}; --d: .35s"></i></sc-for></span>٪</b><small>{{r.bigl}}</small></span></sc-if>
+            <sc-if value="{{r.wait}}" hint-placeholder-val="{{ false }}"><span class="ex-bign"><span class="k-ico m-pop" style="--d: .3s"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"></path></svg></span><small>عند المعلم</small></span></sc-if>
+            <sc-if value="{{r.stamp}}" hint-placeholder-val="{{ false }}"><span class="ex-stamp m-slap" style="--d: 1.05s"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>ناجح</span><span class="m-burst" aria-hidden="true" style="--d: 1.1s"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></sc-if>
+          </div>
+          <div class="ex-sci">
+            <h3>{{r.t}}</h3>
+            <div class="ex-chips2"><sc-for list="{{r.chips}}" as="c" hint-placeholder-count="2"><span class="ex-chip2 {{c.c}}">{{c.l}}</span></sc-for></div>
+            <div class="ex-acts"><a href="#" class="{{r.btnC}}" onClick="{{r.btnGo}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.btnI}}"></path></svg>{{r.btnL}}</a><sc-if value="{{r.link}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-link" onClick="{{r.linkGo}}">{{r.link}}</a></sc-if></div>
+          </div>
+        </div>
+      </section>
+      <section class="k-card" style="--d: .2s">
+        <div class="k-ch"><h3>إجاباتك</h3><span class="k-m">{{r.ansNote}}</span></div>
+        <div class="k-row" style="gap: 6px"><sc-for list="{{afilters}}" as="f" hint-placeholder-count="4"><button class="k-chip {{f.c}}" onClick="{{f.go}}">{{f.l}}</button></sc-for></div>
+        <div style="animation: kIn .35s both"><sc-for list="{{answers}}" as="a" hint-placeholder-count="5"><div class="ex-ans"><span class="ex-ai" style="background: {{a.bg}}; color: {{a.fg}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{a.i}}"></path></svg></span><div class="k-col" style="gap: 2px; flex: 1"><span class="ex-at ex-math">{{a.n}}. <sc-for list="{{a.tx}}" as="g" hint-placeholder-count="1"><span>{{g.t}}</span><sc-if value="{{g.s}}" hint-placeholder-val="{{ false }}"><sup>{{g.s}}</sup></sc-if></sc-for></span><div class="ex-cmp"><span class="{{a.mc}}">إجابتك: {{a.my}}</span><sc-if value="{{a.ok}}" hint-placeholder-val="{{ false }}"><span class="okk">الصح: {{a.ok}}</span></sc-if></div></div><span class="ex-pts">{{a.pts}}</span></div></sc-for></div>
+      </section>
+    </div>
+    <div class="k-col" style="gap: 18px">
+      <sc-if value="{{r.canAppeal}}" hint-placeholder-val="{{ true }}">
+      <section class="k-card" style="--d: .25s">
+        <div class="k-ch"><h3>تشوف خطأ في التصحيح؟</h3><sc-if value="{{appealOn}}" hint-placeholder-val="{{ false }}"><span class="k-tag y m-slap" style="--d: .5s">عند المعلم</span></sc-if></div>
+        <sc-if value="{{appealOff}}" hint-placeholder-val="{{ true }}"><a href="#" class="k-btn sm ghost" onClick="{{openAppeal}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.9-4M4 4v4h4M4 13a8 8 0 0 0 14.9 4M20 20v-4h-4"></path></svg>اطلب مراجعة سؤال</a></sc-if>
+        <sc-if value="{{appealOn}}" hint-placeholder-val="{{ false }}"><div class="ex-steps"><sc-for list="{{asteps}}" as="s" hint-placeholder-count="3"><div class="ex-step {{s.c}}"><span class="ex-sn">{{s.n}}</span><div class="k-col" style="gap: 0"><b style="font-size: 14.5px">{{s.t}}</b><span class="k-m">{{s.m}}</span></div></div></sc-for></div></sc-if>
+      </section>
+      </sc-if>
+      <section class="k-card" style="--d: .3s">
+        <div class="ex-bankc"><span class="k-ico"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><span class="k-t" style="font-size: 14.5px">حطّينا {{r.wrongN}} في المراجعة</span><a href="#" class="k-link" onClick="{{goReview}}">راجعها الحين</a></span></div>
+      </section>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ OFFLINE (3 plain steps) ============ -->
+<sc-if value="{{is.offline}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+  <span class="ex-htag"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2h10v20H7zM11 18h2"></path></svg>اختبار بدون نت</span>
+  <h2 style="margin-top: 6px">{{off.h}}</h2>
+  <p>اختبار الفصل الأول، الرياضيات</p>
+</section>
+<div class="k-body">
+  <div class="k-grid k-side2">
+    <section class="k-card" style="--d: .1s">
+      <div class="ex-path"><sc-for list="{{off.steps}}" as="s" hint-placeholder-count="3"><div class="ex-pst {{s.c}}" style="--i: {{s.k}}"><span class="ex-pi {{s.pc}}"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{s.i}}"></path></svg><sc-if value="{{s.ok}}" hint-placeholder-val="{{ false }}"><i class="m-pop" style="--d: {{s.d}}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg></i></sc-if></span><span><b>{{s.t}}</b><small>{{s.m}}</small></span></div></sc-for></div>
+      <div class="ex-offact">
+        <sc-if value="{{off.isReady}}" hint-placeholder-val="{{ true }}"><b>يفتح بعد</b><div class="k-count" aria-label="يوم و١٤ ساعة و٣٢ دقيقة"><sc-for list="{{off.cd}}" as="u" hint-placeholder-count="3"><span><b><span class="m-roll"><sc-for list="{{u.digs}}" as="g" hint-placeholder-count="2"><i aria-hidden="true" style="--v: {{g.v}}; --i: {{g.i}}"></i></sc-for></span></b><small>{{u.l}}</small></span></sc-for></div><a href="#" class="k-btn">ذكّرني قبلها بساعة</a></sc-if>
+        <sc-if value="{{off.isSealed}}" hint-placeholder-val="{{ false }}"><b>إجاباتك محفوظة على جوالك</b><span class="k-m" style="font-size: 14px">أول ما يرجع النت نرسلها لحالها</span><a href="#" class="k-btn"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.9-4M4 4v4h4M4 13a8 8 0 0 0 14.9 4M20 20v-4h-4"></path></svg>جرّب ترسلها الحين</a></sc-if>
+        <sc-if value="{{off.isSent}}" hint-placeholder-val="{{ false }}"><div class="k-success"><span class="k-success-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"></circle><path d="M20 33l8 8 16-17"></path></svg></span><h3>وصلت للمعلم</h3><p>الثلاثاء ٢٤ نوفمبر، ١٠:٤٨ ص</p><a href="#" class="k-btn" onClick="{{goList}}">ارجع لاختباراتي</a></div></sc-if>
+      </div>
+    </section>
+    <sc-if value="{{off.isReady}}" hint-placeholder-val="{{ true }}">
+    <section class="k-card" style="--d: .2s">
+      <div class="k-ch"><h3>قبل الموعد</h3></div>
+      <ul class="k-rules"><sc-for list="{{otips}}" as="r" hint-placeholder-count="3"><li><span class="k-ico"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.i}}"></path></svg></span>{{r.t}}</li></sc-for></ul>
+    </section>
+    </sc-if>
+    <sc-if value="{{off.notReady}}" hint-placeholder-val="{{ false }}">
+    <section class="k-card" style="--d: .2s">
+      <div class="k-ch"><h3>اختبارك</h3><span class="k-tag {{off.tc}}">{{off.tag}}</span></div>
+      <div class="ex-chips2"><span class="ex-chip2 p">٢٠ سؤال</span><span class="ex-chip2 p">٩٠ دقيقة</span><span class="ex-chip2">أ. ماجد الشهري</span></div>
+    </section>
+    </sc-if>
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ REVIEW ============ -->
+<sc-if value="{{is.review}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+  <sc-if value="{{rfull}}" hint-placeholder-val="{{ true }}">
+  <div class="ex-hrow">
+    <div class="k-col" style="gap: 2px"><h2>٢٣ سؤال تستاهل نظرة</h2><p class="ex-hide-m">خمس دقايق مراجعة تفرق في الاختبار</p></div>
+    <a href="#" class="k-btn hot m-jelly ex-rgo"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l13 8-13 8z"></path></svg>ابدأ المراجعة</a>
+  </div>
+  </sc-if>
+  <sc-if value="{{rempty}}" hint-placeholder-val="{{ false }}"><h2>ما عندك أسئلة للمراجعة</h2><p>احفظ أي سؤال وقت الاختبار ويوصل هنا</p></sc-if>
+</section>
+<div class="k-body">
+  <sc-if value="{{rfull}}" hint-placeholder-val="{{ true }}">
+  <section class="k-card" style="--d: .1s">
+    <div class="ex-rhead">
+      <div class="k-seg m-pill ex-rseg" role="tablist" style="--n: 2"><span class="m-pill-bg" style="--i: {{rti}}"></span><sc-for list="{{rtabs}}" as="t" hint-placeholder-count="2"><button role="tab" aria-selected="{{t.sel}}" onClick="{{t.go}}">{{t.l}}، {{t.n}}</button></sc-for></div>
+      <div class="ex-cf"><sc-for list="{{rcourses}}" as="c" hint-placeholder-count="4"><button class="k-chip {{c.c}} {{c.sub}}" onClick="{{c.go}}"><i></i>{{c.l}}</button></sc-for></div>
+    </div>
+    <div class="ex-rg"><sc-for list="{{ritems}}" as="q" hint-placeholder-count="4"><article class="ex-rc m-deal {{q.sub}}" style="--i: {{q.k}}; --d: .2s">
+      <span class="ex-rct"><i></i>{{q.course}}<span>، {{q.from}}</span></span>
+      <b class="ex-math"><sc-for list="{{q.tx}}" as="g" hint-placeholder-count="1"><span>{{g.t}}</span><sc-if value="{{g.s}}" hint-placeholder-val="{{ false }}"><sup>{{g.s}}</sup></sc-if></sc-for></b>
+      <sc-if value="{{q.wrong}}" hint-placeholder-val="{{ false }}"><div class="ex-cmp" style="margin: 0"><span class="my">إجابتك: {{q.my}}</span><span class="okk">الصح: {{q.ok}}</span></div></sc-if>
+      <div class="ex-rcf"><span class="k-m">{{q.when}}</span><a href="#" class="k-link" style="font-size: 13px"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>فهمته</a></div>
+    </article></sc-for></div>
+  </section>
+  </sc-if>
+  <sc-if value="{{rempty}}" hint-placeholder-val="{{ false }}">
+  <section class="k-card" style="--d: .1s">
+    <div class="k-empty"><span class="k-empty-art"><svg aria-hidden="true" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4zM10 9l2 2 3-3"></path></svg></span><h4>كل شي واضح عندك</h4><p>اضغط «احفظه للمراجعة» على أي سؤال يحيّرك</p><a href="#" class="k-btn" onClick="{{goList}}">ارجع لاختباراتي</a></div>
+  </section>
+  </sc-if>
+</div>
+</sc-if>
+      </main>
+      <sc-if value="{{chrome}}" hint-placeholder-val="{{ true }}">
+      <nav class="k-bnav m-pill" aria-label="القائمة" style="--n: 5"><span class="m-pill-bg" style="--i: {{bi}}"></span><sc-for list="{{bnav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a></sc-for></nav>
+      </sc-if>
+    </div>
+  </div>
+
+<sc-if value="{{sh.any}}" hint-placeholder-val="{{ false }}">
+<div class="k-dim" onClick="{{closeSheet}}"></div>
+<aside class="k-drawer m-sheet ex-sheet" role="dialog" aria-label="{{sh.title}}">
+  <div class="k-dh"><h2>{{sh.title}}</h2><button class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+  <sc-if value="{{sh.code}}" hint-placeholder-val="{{ false }}">
+  <div class="k-db">
+    <span class="ex-sh-art m-pop" style="--d: .25s"><svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4M12 15v2"></path></svg></span>
+    <p class="ex-sh-p">اكتب الرمز اللي عطاك إياه<br><b>أ. ماجد الشهري</b></p>
+    <div class="ex-otp" aria-label="رمز من ٦ أرقام"><span class="on m-pop" style="--d: .35s">٤</span><span class="on m-pop" style="--d: .42s">٧</span><span class="on m-pop" style="--d: .49s">٢</span><span class="cur"></span><span></span><span></span></div>
+  </div>
+  <div class="k-df"><a href="#" class="k-btn" style="flex: 1" onClick="{{goConsent}}">تمام، كمّل</a></div>
+  </sc-if>
+  <sc-if value="{{sh.submit}}" hint-placeholder-val="{{ false }}">
+  <div class="k-db">
+    <div class="ex-sum"><span class="g m-pop" style="--d: .3s"><b>١٨</b><small>جاوبتها</small></span><span class="r m-pop" style="--d: .38s"><b>١</b><small>باقي</small></span><span class="y m-pop" style="--d: .46s"><b>٢</b><small>للمراجعة</small></span></div>
+    <div class="ex-line r"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2zM12 10v4M12 17.5h.01"></path></svg>سؤال ١٩ ما جاوبته، ينحسب صفر</div>
+    <div class="ex-line b"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"></path></svg>باقي لك ٣٢ دقيقة</div>
+  </div>
+  <div class="k-df"><a href="#" class="k-btn hot" style="flex: 1" onClick="{{goResult}}">إيه، سلّم</a><a href="#" class="k-btn ghost" onClick="{{closeSheet}}">ارجع للأسئلة</a></div>
+  </sc-if>
+  <sc-if value="{{sh.appeal}}" hint-placeholder-val="{{ false }}">
+  <div class="k-db">
+    <span class="k-lbl">أي سؤال؟</span>
+    <div class="ex-qchips"><button class="k-chip on m-pop" style="--d: .3s">سؤال ٤</button><button class="k-chip">سؤال ٢</button><button class="k-chip">سؤال ٦</button></div>
+    <span class="k-lbl">وش اللي تشوفه غلط؟</span>
+    <div class="ex-ta" style="min-height: 110px; font-size: 15px">كتبت الخطوات كاملة والجواب صح، بس انحسب لي ٣ من ٤.<i></i></div>
+    <a href="#" class="k-btn ghost sm" style="align-self: flex-start"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v12H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path></svg>أرفق صورة (لو تبي)</a>
+  </div>
+  <div class="k-df"><a href="#" class="k-btn" style="flex: 1" onClick="{{sendAppeal}}">أرسل للمعلم</a><a href="#" class="k-btn ghost" onClick="{{closeSheet}}">إلغاء</a></div>
+  </sc-if>
+</aside>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = this.props || {}, S = this.state || {};
+    const D = '٠١٢٣٤٥٦٧٨٩', ar = (x) => String(x).replace(/\d/g, (d) => D[d]);
+    const digs = (n) => String(n).split('').map((d, i) => ({ v: Number(d), i: String(i) }));
+    // math text: "٢^{س}" → base + real superscript (Saudi textbook style)
+    const MX = (s) => s.split(/(\^\{[^}]*\})/).filter(Boolean).map((p) => p.indexOf('^{') === 0 ? { t: '', s: p.slice(2, -1) } : { t: p, s: '' });
+    const I = {
+      home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', courses: 'M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14',
+      play: 'M6 9h12a4 4 0 0 1 0 8c-2 0-3-2-6-2s-4 2-6 2a4 4 0 0 1 0-8zM8 11v4M6 13h4M16 12h.01M18 14h.01',
+      schedule: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4', profile: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0',
+      chat: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z', ai: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z', bell: 'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
+      math: 'M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2', atom: 'M12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 3c2.5 0 4.5 4 4.5 9s-2 9-4.5 9-4.5-4-4.5-9 2-9 4.5-9z',
+      en: 'M4 6h9M8.5 4v2M6 6c0 4 3 7 6 8M11 6c0 3-3 7-7 8M13 20l4-9 4 9M14.5 17h5', flask: 'M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3M7 15h10',
+      target: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z',
+      clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2', check: 'M5 12l5 5L20 7', x: 'M6 6l12 12M18 6L6 18', list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+      repeat: 'M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3', pause: 'M8 5v14M16 5v14', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+      send: 'M22 2L11 13M22 2l-7 20-4-9-9-4z', fwd: 'M15 6l-6 6 6 6', phone: 'M7 2h10v20H7zM11 18h2', unlock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 7.5-2', wifi: 'M2 8.8a15 15 0 0 1 20 0M5 12.6a10 10 0 0 1 14 0M8.5 16.4a5 5 0 0 1 7 0M12 20h.01',
+      battery: 'M3 7h15v10H3zM21 10v4M6 10v4M9 10v4', trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3', download: 'M12 4v12M7 11l5 5 5-5M4 20h16',
+      bookmark: 'M6 3h12v18l-6-4-6 4z', msg: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z'
+    };
+    const set = (o) => () => this.setState(o);
+    // ONE student nav map (kit.css "shell"): exams live under دوراتي
+    const MAP = [['home', 'الرئيسية', '٣'], ['courses', 'دوراتي', ''], ['schedule', 'جدولي', ''], ['play', 'العب وتعلّم', ''], ['profile', 'حسابي', '']];
+    const shell = (title, back, chrome) => ({
+      chrome: chrome !== false, title, crumb: 'دوراتي · الاختبارات', back: !!back, noback: !back,
+      goBack: back ? () => this.setState(back) : null,
+      nav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === 'courses' ? 'page' : 'false' })),
+      bnav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === 'courses' ? 'page' : 'false' })), bi: '1',
+      tools: [['chat', 'الرسائل', '٢'], ['ai', 'المساعد الذكي', ''], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] })),
+      mtools: [['chat', 'الرسائل', '٢'], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] }))
+    });
+    const scr = S.scr || P.screen || 'list';
+    const sheet = S.sheet !== undefined ? S.sheet : (P.sheet || '');
+    const go = (s, extra) => () => this.setState(Object.assign({ scr: s, sheet: '' }, extra || {}));
+
+    // ---------- list ----------
+    const BTN = { start: ['k-btn sm ghost', 'ابدأ'], resume: ['k-btn sm hot', 'كمّل'], again: ['k-btn sm ghost', 'جرّب مرة ثانية'], view: ['k-btn sm ghost', 'شوف النتيجة'], off: ['k-btn sm ghost', 'التفاصيل'], none: ['', ''] };
+    const EX = {
+      open: [
+        ['اختبار قصير: قوانين نيوتن', 'الفيزياء', 'أ. فهد المطيري', 'sub-physics', 'atom', ['٢٠ دقيقة', '١٠ أسئلة', 'المحاولة ٢ من ٣'], 'باقي ١٢ دقيقة', 'hot', 'resume', ['take', {}], 'hot'],
+        ['اختبار الدوال الأسية', 'الرياضيات', 'أ. ماجد الشهري', 'sub-math', 'math', ['٤٥ دقيقة', '٢٠ سؤال', 'محاولتين'], 'يقفل بكرة ٩:٠٠ م', 'wait', 'start', ['code', {}], ''],
+        ['Unit 4 Quiz: Daily routines', 'الإنجليزي', 'أ. خالد العتيبي', 'sub-english', 'en', ['٣٠ دقيقة', '١٥ سؤال', 'أفضل نتيجة ٧٠٪'], 'يقفل الخميس', 'mute', 'again', ['consent', {}], '']],
+      soon: [
+        ['اختبار الفصل الأول', 'الرياضيات', 'أ. ماجد الشهري', 'sub-math', 'math', ['٩٠ دقيقة', '٢٠ سؤال', 'ينحل بدون نت'], 'الأحد ١٠:٠٠ ص', 'mute', 'off', ['offline', {}], ''],
+        ['اختبار منتصف الفصل', 'الكيمياء', 'أ. ماهر السبيعي', 'sub-chem', 'flask', ['٦٠ دقيقة', 'على الورق في الفصل'], 'الأحد ١٠:٠٠ ص', 'mute', 'none', null, 'ex-off'],
+        ['قدرات تجريبي ٣', 'القدرات', 'أ. سلطان المطيري', 'sub-qudurat', 'target', ['٥٠ دقيقة', '٤٠ سؤال'], 'يفتح الأحد ٤:٠٠ م', 'mute', 'none', null, 'ex-off']],
+      done: [
+        ['اختبار الدوال الأسية', 'الرياضيات', 'أ. ماجد الشهري', 'sub-math', 'math', ['٤٤ من ٥٠'], 'نجحت ٨٨٪', 'ok', 'view', ['result', { rs: 'pass' }], ''],
+        ['مقال: My weekend', 'الإنجليزي', 'أ. خالد العتيبي', 'sub-english', 'en', ['٣ أسئلة'], 'عند المعلم', 'wait', 'view', ['result', { rs: 'pending' }], ''],
+        ['اختبار الحركة الدائرية', 'الفيزياء', 'أ. فهد المطيري', 'sub-physics', 'atom', ['٢٤ من ٥٠'], 'قربت ٤٨٪', 'bad', 'view', ['result', { rs: 'fail' }], '']],
+      closed: [
+        ['اختبار المتتابعات', 'الرياضيات', 'أ. ماجد الشهري', 'sub-math', 'math', ['آخر نتيجة ٥٥٪'], 'خلصت محاولاتك', 'mute', 'view', ['result', { rs: 'frozen' }], ''],
+        ['Unit 2 Quiz', 'الإنجليزي', 'أ. خالد العتيبي', 'sub-english', 'en', ['١٠ أسئلة'], 'قفل ٢ نوفمبر', 'mute', 'none', null, 'ex-off']]
+    };
+    const TABS = [['open', 'مفتوحة'], ['soon', 'جاية'], ['done', 'سلّمتها'], ['closed', 'مقفلة']];
+    const tabKey = EX[S.tab || P.tab] ? (S.tab || P.tab) : 'open';
+    const examTo = (t) => !t ? null : t[0] === 'code' ? set({ sheet: 'code' }) : go(t[0], Object.assign({ q: 0 }, t[1]));
+
+    // ---------- result ----------
+    const st = S.rs || P.state || 'pass';
+    const R = {
+      pass: { num: true, p: 88, rc: '#19C29B', big: '٨٨٪', bigl: 'درجتك', squig: true, stamp: true, heroMove: 'm-wipe', t: 'أداءك ممتاز في أسئلة الرسوم', p2: '٤٤ من ٥٠، المحاولة ٢ من ٢', chips: [['٤٤ من ٥٠', 'g'], ['النجاح من ٦٠٪', '']], btn: ['k-btn hot', 'كمّل الدورة', I.play, null], link: 'راجع أخطاءك', linkTo: 'review', wrongN: '٣ أسئلة', ansNote: '٤ صح من ٦', canAppeal: true },
+      pending: { wait: true, p: 0, rc: '#FFC53D', h: 'إجاباتك وصلت للمعلم', p2: 'نعلمك أول ما تطلع النتيجة', heroMove: 'm-wipe', t: 'انرسل لحاله لما خلص الوقت', chips: [['٣٢ من ٤٠ في الاختيارات', 'p'], ['سؤال مكتوب ينتظر', 'y']], btn: ['k-btn', 'ارجع للدورة', I.courses, null], wrongN: 'سؤالين', ansNote: 'سؤال ينتظر المعلم', canAppeal: false },
+      fail: { num: true, p: 48, rc: '#FF9F5A', big: '٤٨٪', bigl: 'درجتك', heroMove: 'm-wipe', wipe: 'm-wipe', h: 'قربت، وباقي لك محاولتين', p2: 'تحتاج ٦٠٪ عشان تنجح', t: 'راجع الدوال الأسية وجرّب مرة ثانية', chips: [['٢٤ من ٥٠', 'y'], ['باقي محاولتين', 'p']], btn: ['k-btn hot', 'جرّب مرة ثانية', I.repeat, 'consent'], link: 'راجع الدرس أول', linkTo: null, wrongN: '٦ أسئلة', ansNote: '٢ صح من ٦', canAppeal: true },
+      frozen: { num: true, p: 55, rc: '#8FA3C0', big: '٥٥٪', bigl: 'آخر نتيجة', heroMove: 'm-wipe', wipe: 'm-wipe', h: 'خلصت محاولاتك في هذا الاختبار', p2: 'تقدر تراجع إجاباتك أو تكلّم المعلم', t: 'ما يقبل محاولة جديدة', chips: [['٢٢ من ٤٠', ''], ['٣ من ٣ محاولات', '']], btn: ['k-btn', 'راسل المعلم', I.msg, null], link: 'راجع أخطاءك', linkTo: 'review', wrongN: '٥ أسئلة', ansNote: '٣ صح من ٦', canAppeal: true }
+    }[st] || {};
+    R.plain = !R.squig;
+    R.trk = R.wait ? 'dash' : '';
+    R.to = String(100 - (R.p || 0));
+    R.digs = digs(R.p || 0);
+    R.chips = (R.chips || []).map(([l, c]) => ({ l, c }));
+    R.btn = R.btn || ['', '', '', null];
+    R.btnC = R.btn[0]; R.btnL = R.btn[1]; R.btnI = R.btn[2]; R.btnGo = R.btn[3] ? go(R.btn[3]) : null;
+    R.linkGo = R.linkTo ? go(R.linkTo) : null;
+    const AF = S.af || 'all';
+    const ANS = [
+      ['إذا كانت د(س) = ٢^{س}، فما قيمة د(٣)؟', '٨', '', 'ok', '٢ من ٢'],
+      ['الدالة ص = (٠٫٥)^{س} تزايدية.', 'صح', 'خطأ', 'bad', '٠ من ١'],
+      ['حل المعادلة ٣^{س} = ٨١', 'س = ٤', '', 'ok', '٢ من ٢'],
+      ['متى تكون الدالة الأسية تزايدية؟ وضّح مع مثال.', 'إجابة مكتوبة', '', st === 'pending' ? 'pend' : st === 'pass' ? 'part' : 'bad', st === 'pending' ? 'ينتظر' : st === 'pass' ? '٣ من ٤' : '١ من ٤'],
+      ['احسب ١٠٠ × (١٫٠٥)^{٢}', '١١٠٫٢٥', '', st === 'fail' ? 'bad' : 'ok', st === 'fail' ? '٠ من ٢' : '٢ من ٢'],
+      ['وصّل كل قوة بقيمتها', '٢ من ٤', 'كلها', 'bad', '١ من ٢']];
+    const AK = { ok: ['#D9F7EE', '#0C6B55', I.check, 'nt'], bad: ['#FFE3E0', '#B23A2E', I.x, 'my'], part: ['#FFF4CC', '#7A5200', I.check, 'nt'], pend: ['#FFF4CC', '#7A5200', I.clock, 'pd'] };
+    const answers = ANS.map(([t, my, ok, k, pts], i) => ({ n: ar(i + 1), tx: MX(t), my, ok: k === 'bad' ? ok : '', pts, bg: AK[k][0], fg: AK[k][1], i: AK[k][2], mc: AK[k][3], k }))
+      .filter((a) => AF === 'all' || (AF === 'ok' && a.k === 'ok') || (AF === 'bad' && a.k === 'bad') || (AF === 'pend' && (a.k === 'pend' || a.k === 'part')));
+
+    // ---------- take ----------
+    const qi = Math.max(0, Math.min(7, S.q !== undefined ? S.q : Number(P.q || 0)));
+    const QNUM = [1, 4, 7, 9, 12, 15, 18, 20];
+    const QS = [
+      { kind: 'اختر', pts: '٢ درجة', t: 'إذا كانت د(س) = ٢^{س}، فما قيمة د(٣)؟', choice: true, opts: [['أ', '٦'], ['ب', '٨'], ['ج', '٩'], ['د', '١٦']], def: 1 },
+      { kind: 'صح أو خطأ', pts: '١ درجة', t: 'الدالة ص = (٠٫٥)^{س} تزايدية.', tf: true, opts: [['t', 'صح', I.check], ['f', 'خطأ', I.x]], def: 1 },
+      { kind: 'أكمل', pts: '٢ درجة', t: 'أكمل الفراغ:', blank: true },
+      { kind: 'وصّل', pts: '٢ درجة', t: 'وصّل كل قوة بقيمتها:', match: true },
+      { kind: 'اكتب الرقم', pts: '٢ درجة', t: 'حط سعد ١٠٠ ريال بربح ٥٪ كل سنة يتراكم. كم تصير بعد سنتين؟', num: true },
+      { kind: 'اكتب إجابتك', pts: '٤ درجات', t: 'من الرسم: متى تكون الدالة الأسية تزايدية؟ وضّح مع مثال.', written: true, fig: true },
+      { kind: 'ارفع حلّك', pts: '٣ درجات', t: 'حل المسألة ٧ من ورقة العمل بخط يدك، وصوّر الحل.', file: true },
+      { kind: 'على الورق', pts: '٥ درجات', t: 'ارسم منحنى ص = ٢^{س} على ورقة المربعات.', paper: true }];
+    const q = Object.assign({}, QS[qi]);
+    q.tx = MX(q.t);
+    const pick = S.pick || {};
+    q.opts = (q.opts || []).map(([k, t, ic], j) => { const on = pick[qi] === j || (pick[qi] === undefined && q.def === j); return { k, t, i: ic, c: on ? 'on' : '', pc: on ? 'm-pop' : '', go: () => this.setState({ pick: Object.assign({}, pick, { [qi]: j }) }) }; });
+    const PC = [['#FFC53D', '#FFF4CC'], ['#19C29B', '#D9F7EE']];
+    q.lefts = [['٢', '٠', 1], ['٢', '٣', 2], ['٣', '٢', 0], ['١٠', '٢', 0]].map(([b, s, n], j) => ({ b, s, n: n ? ar(n) : '', c: n ? 'p' : (j === 2 ? 'sel' : ''), pc: n ? PC[n - 1][0] : '', pt: n ? PC[n - 1][1] : '' }));
+    q.rights = [['١٠٠', 0], ['١', 1], ['٩', 0], ['٨', 2]].map(([t, n]) => ({ t, n: n ? ar(n) : '', c: n ? 'p' : '', pc: n ? PC[n - 1][0] : '', pt: n ? PC[n - 1][1] : '' }));
+    const flags = S.flags || { 3: 1, 14: 1 };
+    const cur = QNUM[qi] - 1;
+    const answered = (j) => j !== cur && (j < 18 || j === 19);
+    const qnav = Array.from({ length: 20 }, (_, j) => ({ l: ar(j + 1), al: 'سؤال ' + ar(j + 1), c: [j === cur ? 'c' : answered(j) ? 'a' : '', flags[j] ? 'fl' : ''].join(' '), go: () => { const k = QNUM.indexOf(j + 1); if (k >= 0) this.setState({ q: k }); } }));
+    const isLast = qi === 7;
+
+    // ---------- offline ----------
+    const os = S.os || (P.state === 'sealed' || P.state === 'sent' ? P.state : 'ready');
+    const ocur = { ready: 1, sealed: 2, sent: 3 }[os];
+    const OST = [['نزّلناه على جوالك', '٢٢ نوفمبر', 'download'], ['يفتح الأحد ١٠:٠٠ ص', 'تحلّه ولو ما فيه نت', 'unlock'], ['نرسل إجاباتك', 'أول ما يرجع النت', 'send']];
+    const OFF = {
+      h: { ready: 'اختبارك نازل على جوالك', sealed: 'خلّصت! ننتظر النت بس', sent: 'وصلت إجاباتك' }[os],
+      tag: { ready: 'جاهز', sealed: 'ينتظر النت', sent: 'انرسل' }[os], tc: { ready: 'g', sealed: 'y', sent: 'g' }[os],
+      isReady: os === 'ready', isSealed: os === 'sealed', isSent: os === 'sent', notReady: os !== 'ready',
+      steps: OST.map(([t, m, ic], j) => ({ t, m, i: I[ic], k: String(j), c: [j < ocur ? 'done' : j === ocur ? 'now' : '', j > 0 && j <= ocur ? 'ln' : ''].join(' '), pc: j === ocur ? 'm-breathe' : '', ok: j < ocur, d: (0.5 + j * 0.35).toFixed(2) + 's' })),
+      cd: [[1, 'يوم'], [14, 'ساعة'], [32, 'دقيقة']].map(([n, l]) => ({ l, digs: digs(l === 'يوم' ? String(n) : String(n).padStart(2, '0')) }))
+    };
+
+    // ---------- review ----------
+    const RT = S.rt || (P.tab === 'wrong' ? 'wrong' : 'flag');
+    const RC = S.rc || 'all';
+    const RI = [
+      ['flag', 'math', 'الرياضيات', 'اختبار الدوال', 'إذا كانت د(س) = ٣^{س}، فما قيمة د(٢)؟', '', '', 'حفظته أمس'],
+      ['flag', 'physics', 'الفيزياء', 'قوانين نيوتن', 'جسم كتلته ٤ كجم يتحرك بتسارع ٢ م/ث^{٢}. كم القوة؟', '', '', 'حفظته قبل ٣ أيام'],
+      ['wrong', 'math', 'الرياضيات', 'الأعداد المركبة', 'ما قيمة ت^{٢}؟', '١', 'سالب ١', 'غلطت فيه أمس'],
+      ['wrong', 'english', 'الإنجليزي', 'Unit 4 Quiz', 'She ___ to school every day.', 'go', 'goes', 'غلطت فيه الأحد'],
+      ['flag', 'english', 'الإنجليزي', 'Unit 4 Quiz', 'وش معنى كلمة routine؟', '', '', 'حفظته الأسبوع اللي فات'],
+      ['wrong', 'physics', 'الفيزياء', 'الحركة الدائرية', 'التسارع المركزي يتجه دايم…', 'مع الحركة', 'نحو المركز', 'غلطت فيه الاثنين'],
+      ['wrong', 'math', 'الرياضيات', 'المتتابعات', 'الحد العاشر في ٢، ٥، ٨، … هو', '٣٠', '٢٩', 'غلطت فيه قبل أسبوع'],
+      ['flag', 'math', 'الرياضيات', 'اختبار الدوال', 'متى يكون منحنى ص = أ^{س} متناقص؟', '', '', 'حفظته أمس']];
+    const rempty = P.state === 'empty' && !S.rt;
+    const ritems = rempty ? [] : RI.filter((r) => r[0] === RT && (RC === 'all' || r[1] === RC)).map(([k, c, course, from, t, my, ok, when], j) => ({ course, from, tx: MX(t), my, ok, when, wrong: k === 'wrong', sub: 'sub-' + c, k: String(j) }));
+
+    const titles = { list: 'الاختبارات', consent: 'قبل الاختبار', take: 'الاختبار', result: 'النتيجة', offline: 'اختبار بدون نت', review: 'المراجعة' };
+    const shTitle = { code: 'رمز الاختبار', submit: 'تسلّم الحين؟', appeal: 'مراجعة سؤال' };
+    const appealOn = !!(S.appealSent || P.appeal === 'sent');
+    const tIdx = TABS.findIndex(([k]) => k === tabKey);
+    const rtIdx = RT === 'wrong' ? 1 : 0;
+    return Object.assign(shell(titles[scr] || 'الاختبارات', scr === 'list' ? false : { scr: 'list', sheet: '' }, scr !== 'take'), {
+      is: { list: scr === 'list', consent: scr === 'consent', take: scr === 'take', result: scr === 'result', offline: scr === 'offline', review: scr === 'review' },
+      sh: { any: !!shTitle[sheet], title: shTitle[sheet] || '', code: sheet === 'code', submit: sheet === 'submit', appeal: sheet === 'appeal' },
+      closeSheet: set({ sheet: '' }), openSubmit: set({ sheet: 'submit' }), openAppeal: set({ sheet: 'appeal' }), sendAppeal: set({ sheet: '', appealSent: true }),
+      goReview: go('review'), goOffline: go('offline'), goConsent: go('consent'), goTake: go('take', { q: 0 }), goResult: go('result', { rs: 'pending' }), goList: go('list'),
+      ti: String(tIdx),
+      tabs: TABS.map(([k, l]) => ({ l, n: ar(EX[k].length), sel: k === tabKey ? 'true' : 'false', go: set({ tab: k }) })),
+      exams: EX[tabKey].map(([t, course, teacher, sub, ic, meta, stt, sc, b, to, cls], j) => ({ t, course, teacher, sub, i: I[ic], meta, st: stt, sc, bc: BTN[b][0], bl: BTN[b][1], go: examTo(to), cls, k: String(j) })),
+      cchips: [['٢٠', 'سؤال', I.list, '#ECE5FF', '#4A28B8'], ['٤٥', 'دقيقة', I.clock, '#FFF4CC', '#7A5200'], ['٢', 'محاولتين', I.repeat, '#D9F7EE', '#0C6B55']].map(([n, l, i, t, c], j) => ({ n, l, i, t, c, d: (0.45 + j * 0.08).toFixed(2) + 's' })),
+      crules: [[I.pause, 'ما تقدر توقفه'], [I.eye, 'خلّك في الشاشة'], [I.send, 'ينرسل لحاله إذا خلص الوقت']].map(([i, t]) => ({ i, t })),
+      q, qn: ar(QNUM[qi]), qnav, answeredN: ar(qnav.filter((n) => n.c.indexOf('a') === 0).length), progW: String(Math.round(QNUM[qi] / 20 * 100)),
+      flagCls: flags[cur] ? 'on' : '', flagLbl: flags[cur] ? 'محفوظ للمراجعة' : 'احفظه للمراجعة', toggleFlag: () => this.setState({ flags: Object.assign({}, flags, { [cur]: !flags[cur] }) }),
+      nextQ: () => this.setState({ q: Math.min(qi + 1, 7) }), prevQ: () => this.setState({ q: Math.max(qi - 1, 0) }), prevCls: qi === 0 ? 'ex-dis' : '',
+      isLast, notLast: !isLast, toast: P.toast === '1' && !S.q,
+      bank: [['٣', ''], ['٤', 'used'], ['٥', ''], ['٦', ''], ['٨', '']].map(([t, c]) => ({ t, c })),
+      r: R, answers,
+      afilters: [['all', 'الكل'], ['ok', 'الصح'], ['bad', 'الغلط'], ['pend', st === 'pending' ? 'ينتظر' : 'جزئي']].map(([k, l]) => ({ l, c: k === AF ? 'on' : '', go: set({ af: k }) })),
+      appealOn, appealOff: !appealOn,
+      asteps: [['أرسلت الطلب', 'سؤال ٤، اليوم ١١:٢٠ ص', 'done'], ['عند المعلم الحين', 'غالبًا يرد خلال يومين', 'now'], ['الرد', 'نعلمك بدرجتك الجديدة', '']].map(([t, m, c], j) => ({ t, m, c, n: c === 'done' ? '✓' : ar(j + 1) })),
+      off: OFF,
+      otips: [[I.battery, 'اشحن جوالك'], [I.wifi, 'افتح التطبيق مرة بالنت'], [I.trash, 'لا تحذف التطبيق']].map(([i, t]) => ({ i, t })),
+      rfull: !rempty, rempty, rti: String(rtIdx),
+      rtabs: [['flag', 'حفظتها', '١٤'], ['wrong', 'غلطت فيها', '٩']].map(([k, l, n]) => ({ l, n, sel: k === RT ? 'true' : 'false', go: set({ rt: k }) })),
+      rcourses: [['all', 'الكل', ''], ['math', 'الرياضيات', 'sub-math'], ['physics', 'الفيزياء', 'sub-physics'], ['english', 'الإنجليزي', 'sub-english']].map(([k, l, sub]) => ({ l, sub, c: k === RC ? 'on' : '', go: set({ rc: k }) })),
+      ritems
+    });
+  }
+}
+</script>
+</body>
+</html>

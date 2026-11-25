@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الطالب: الدروس والحصص</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* l1 = student learning (area a-learn). Lessons list (same look as SubjectProfile "مسارك"), lesson content + quiz, player,
+   private-course code, attendance, live prejoin, class recordings.
+   Signature: M1 page flip-in on rows/tiles, M2 ink on rings and the attendance check, M8 breathing halo on live things,
+   M15 shake on a wrong code, M11 burst only when attendance is done, M14 peek sheets on phone.
+   Privacy: the student never sees other students (no counts, avatars or names) — only the teacher and himself. */
+.l1-kick{font-size:18px;color:#FFD9A8}
+.l1-hrow{display:flex;align-items:center;gap:20px}
+.l1-hrow > .k-col{flex:1 1 auto;gap:4px;min-width:0}
+.l1-hring{position:relative;width:92px;height:92px;flex-shrink:0}
+.l1-hring svg{width:92px;height:92px;transform:rotate(-90deg)}
+.l1-hring circle{fill:none;stroke-width:7;stroke-linecap:round}
+.l1-hring .trk{stroke:rgba(255,255,255,.16)}
+.l1-hring .ink{stroke:#FFC59A}
+.l1-hring > b{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:20px;line-height:1.1}
+.l1-hring small{font-size:10.5px;font-weight:600;opacity:.75}
+.l1-hbar{margin-top:14px;max-width:520px;background:rgba(255,255,255,.16)}
+.l1-hbar i{background:linear-gradient(90deg,#FFC59A,#FFFFFF)}
+.k .k-btn.ghost.l1-hb{background:rgba(255,255,255,.12);color:#FFFFFF;border-color:rgba(255,255,255,.28)}
+/* lessons list = SubjectProfile "مسارك" look */
+.l1-ph{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.l1-ph h3{margin:0;font-size:19px;font-weight:700;line-height:1.4}
+.l1-pr{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--area-ink)}
+.l1-pr svg{width:38px;height:38px;transform:rotate(-90deg)}
+.l1-pr circle{fill:none;stroke-width:5}
+.l1-steps{display:flex;flex-direction:column;gap:10px}
+.l1-step{display:flex;align-items:center;gap:14px;min-height:64px;padding:10px 14px;border-radius:18px;background:#F8FBFE;border:1.5px solid #E2EAF4;color:var(--k-text);cursor:pointer;transition:transform .2s,box-shadow .2s}
+.l1-step:hover{transform:translateX(-4px);box-shadow:0 10px 22px rgba(242,84,91,.1)}
+.l1-step.cur{background:linear-gradient(120deg,#FFFFFF,#FFF1E6);border-color:#FFB37A}
+.l1-step.now{background:linear-gradient(120deg,#FFFFFF,#FFECEA);border-color:#FFB1AA}
+.l1-step.lock{background:#FFFFFF;border-style:dashed}
+.l1-step.lock .l1-tx b{color:#4A5878}
+.l1-num{width:38px;height:38px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;background:var(--sub-math-tint);color:var(--sub-math-ink)}
+.l1-step.done .l1-num{background:var(--s-mint-tint);color:var(--s-mint-ink)}
+.l1-step.cur .l1-num,.l1-step.now .l1-num{background:linear-gradient(140deg,#FF9F5A,#F2545B);color:#FFFFFF}
+.l1-step.lock .l1-num{background:#EEF2F7;color:#8A97AE}
+.l1-step.exam .l1-num{background:var(--s-grape-tint);color:var(--s-grape-ink)}
+.l1-tx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.45}
+.l1-tx b{font-size:15px}
+.l1-tx span{font-size:12.5px;color:var(--k-muted)}
+.l1-chip{flex-shrink:0;height:30px;padding:0 12px;border-radius:15px;background:var(--s-mint-tint);color:var(--s-mint-ink);display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;white-space:nowrap}
+.l1-chip.y{background:var(--s-sun-tint);color:var(--s-sun-ink)}
+.l1-go{flex-shrink:0;height:34px;padding:0 16px;border-radius:17px;background:linear-gradient(120deg,#FF9F5A,#F2545B);color:#FFFFFF;display:flex;align-items:center;font-size:13px;font-weight:700}
+.k .l1-live{height:40px;padding:0 16px;font-size:14px;--halo:#F2545B;flex-shrink:0}
+/* M8 on a wide pill: halo grows mostly in height so it reads as a ring, not a slab (same as SubjectProfile) */
+.k .l1-live.m-breathe,.k .l1-open .k-btn.m-breathe{animation-name:l1Breathe}
+.k .l1-live.m-breathe::before,.k .l1-live.m-breathe::after,.k .l1-open .k-btn.m-breathe::before,.k .l1-open .k-btn.m-breathe::after{animation-name:l1Halo}
+@keyframes l1Breathe{50%{transform:scale(1.015,1.04)}}
+@keyframes l1Halo{0%{opacity:.55;transform:none}100%{opacity:0;transform:scale(1.05,1.45)}}
+.l1-fold{display:flex;align-items:center;gap:10px;min-height:50px;padding:8px 14px;border-radius:16px;border:1.5px dashed #A8E6D4;background:#F1FBF7;color:var(--s-mint-ink);font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;width:100%}
+.l1-fold .l1-num{width:32px;height:32px;background:var(--s-mint);color:#FFFFFF}
+.l1-att{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px;padding:18px;border-radius:22px;color:#FFFFFF;background:radial-gradient(120% 140% at 90% 0%,#3FE0B6,#13A583 50%,#0C6B55);box-shadow:0 18px 36px -16px rgba(12,107,85,.6)}
+.l1-att::after{content:"";position:absolute;width:200px;height:200px;border-radius:50%;border:26px solid rgba(255,255,255,.1);top:-100px;left:-70px}
+.l1-att > *{position:relative;z-index:1}
+.l1-dot{width:12px;height:12px;border-radius:50%;background:#FFFFFF;--halo:#FFFFFF;display:inline-block;flex-shrink:0}
+.k .l1-att .k-btn{background:#FFFFFF;color:#0C6B55;box-shadow:0 10px 20px -10px rgba(0,40,30,.6)}
+.l1-tool{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 12px;border-radius:16px;background:#F8FBFE;font-size:14.5px;font-weight:700;color:var(--k-text);border:1.5px solid #E2EAF4;transition:transform .2s,box-shadow .2s}
+.l1-tool:hover{transform:translateX(-4px);box-shadow:0 10px 22px rgba(242,84,91,.1)}
+.l1-tool > span:first-child{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.l1-tool small{margin-right:auto;font-size:12.5px;color:var(--k-muted);font-weight:600}
+.l1-toast{position:fixed;top:84px;left:50%;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:10px;min-height:46px;padding:8px 18px;border-radius:23px;background:#0E2350;color:#FFFFFF;font-size:13.5px;font-weight:700;box-shadow:0 16px 34px rgba(0,0,0,.3);animation:l1T .45s cubic-bezier(.2,.8,.2,1) both;max-width:92%}
+@keyframes l1T{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
+/* lesson content */
+.l1-feat{position:relative;overflow:hidden;display:flex;align-items:center;gap:16px;padding:18px;border-radius:20px;color:#FFFFFF;
+  background:radial-gradient(120% 140% at 100% 0%,rgba(255,255,255,.28),rgba(255,255,255,0) 55%),linear-gradient(160deg,rgba(0,20,64,0) 30%,rgba(0,20,64,.3)),var(--sub-math)}
+.l1-feat::before{content:"";position:absolute;width:170px;height:170px;border-radius:50%;border:22px solid rgba(255,255,255,.12);top:-80px;left:14%}
+.l1-feat > *{position:relative}
+.l1-fplay{width:62px;height:62px;border-radius:50%;background:#FFFFFF;color:#F2545B;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 12px 24px -10px rgba(80,0,20,.6);--halo:#FFFFFF}
+.l1-ftx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.45}
+.l1-ftx b{font-size:18px}
+.l1-ftx span{font-size:13px;opacity:.9}
+.l1-fbar{height:6px;border-radius:3px;background:rgba(255,255,255,.28);overflow:hidden;margin-top:6px;max-width:260px}
+.l1-fbar i{display:block;height:100%;width:32%;background:#FFFFFF;border-radius:3px;transform-origin:100% 50%;animation:kGrow 1s cubic-bezier(.2,.8,.2,1) .4s both}
+.l1-mg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.l1-mt{position:relative;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:18px;background:#F8FBFE;border:1.5px solid var(--k-line);color:var(--k-text);transition:transform .2s,box-shadow .2s}
+.l1-mt:hover{transform:translateY(-3px);box-shadow:0 14px 26px -14px rgba(0,32,94,.3)}
+.l1-mt .k-ico{width:44px;height:44px;border-radius:14px}
+.l1-st{position:absolute;top:12px;left:12px}
+.l1-ok{width:24px;height:24px;border-radius:50%;background:var(--s-mint);color:#FFFFFF;display:flex;align-items:center;justify-content:center}
+.l1-dl{position:relative;width:28px;height:28px}
+.l1-dl svg{width:28px;height:28px;transform:rotate(-90deg)}
+.l1-dl circle{fill:none;stroke-width:4}
+.l1-quiz{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:18px;border-radius:22px;border:2px solid var(--qb);background:linear-gradient(120deg,#FFFFFF 40%,var(--qt))}
+.l1-quiz .k-ico{width:56px;height:56px;border-radius:18px;background:var(--qb);color:#FFFFFF}
+.l1-quiz .k-col{flex:1 1 220px}
+.l1-quiz .k-btn{min-width:170px}
+.l1-left{font-size:12.5px;font-weight:700;color:var(--k-muted)}
+/* attendance */
+.l1-one{max-width:820px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.l1-open{padding:24px;gap:14px}
+.l1-open h3{margin:0;font-size:22px;line-height:1.4}
+.k .l1-open .k-btn{height:56px;font-size:17px;--halo:#FFFFFF}
+.l1-hist{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px dashed var(--k-line);font-size:14px}
+.l1-hist:last-child{border-bottom:none}
+.l1-hist time{width:110px;flex-shrink:0;white-space:nowrap;font-weight:700;color:var(--k-navy);font-size:13.5px}
+.l1-hist span{flex:1;min-width:0}
+.l1-busy{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:26px 10px}
+.l1-busy h3{margin:0;font-size:21px}
+.l1-bring{position:relative;width:120px;height:120px}
+.l1-bring > svg{width:120px;height:120px;transform:rotate(-90deg)}
+.l1-bring circle{fill:none;stroke-width:8;stroke-linecap:round}
+.l1-bring .trk{stroke:var(--s-mint-tint)}
+.l1-bring .ink{stroke:var(--s-mint)}
+.l1-bring .spin{position:absolute;inset:14px;border-radius:50%;border:4px solid transparent;border-top-color:#9BE7D2;animation:mSpinSlow 1.1s linear infinite}
+.l1-bring > b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--s-mint-ink)}
+.l1-res{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:20px 10px}
+.l1-res h3{margin:0;font-size:21px}
+.l1-res p{margin:0;color:var(--k-muted);font-size:14px;line-height:1.6}
+.l1-resi{width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:6px}
+/* private code */
+.l1-blur{filter:blur(6px);pointer-events:none}
+.l1-skel{height:12px;border-radius:6px;background:#E2EAF4}
+.l1-modal{position:fixed;z-index:41;top:50%;left:50%;transform:translate(-50%,-50%);width:460px;max-width:calc(100% - 32px);background:#FFFFFF;border-radius:28px;padding:28px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;box-shadow:0 40px 80px -20px rgba(0,16,48,.55);animation:l1Pop .5s cubic-bezier(.3,1.3,.5,1) both}
+@keyframes l1Pop{from{opacity:0;transform:translate(-50%,-46%) scale(.94)}to{opacity:1;transform:translate(-50%,-50%)}}
+.l1-modal h2{margin:0;font-size:22px}
+.l1-lock{width:76px;height:76px;border-radius:24px;background:linear-gradient(150deg,#FF9F5A,#F2545B);color:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 30px -10px rgba(242,84,91,.6)}
+.l1-otp{display:flex;gap:10px;direction:ltr;justify-content:center}
+.l1-otp span{width:52px;height:62px;border-radius:16px;border:2px solid #D5E3F2;background:#F8FBFE;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:var(--k-navy)}
+.l1-otp span.f{border-color:#FFC59A;background:#FFFFFF}
+.l1-otp span.c{border-color:var(--k-apricot);box-shadow:0 0 0 4px rgba(255,159,90,.18)}
+.l1-otp span.c::after{content:"";width:2px;height:26px;background:var(--k-coral);animation:l1Blink 1s steps(1) infinite}
+@keyframes l1Blink{50%{opacity:0}}
+.l1-otp.bad span{border-color:#F2545B;background:#FFF5F5;color:#B23A2E}
+.l1-otp.off span{background:#EEF2F7;border-color:#E2EAF4;color:#B4C0D3}
+.l1-msg{width:100%;display:flex;align-items:center;gap:8px;justify-content:center;padding:10px 14px;border-radius:14px;font-size:13.5px;font-weight:700}
+/* records */
+.l1-rc{position:relative;display:flex;flex-direction:column;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;overflow:hidden;color:var(--k-text);transition:transform .2s,box-shadow .2s}
+.l1-rc:hover{transform:translateY(-4px);box-shadow:0 16px 30px -16px rgba(0,20,64,.35)}
+.l1-rth{position:relative;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:var(--sub-fg);overflow:hidden;
+  background:radial-gradient(120% 130% at 100% 0%,rgba(255,255,255,.3),rgba(255,255,255,0) 55%),linear-gradient(160deg,rgba(0,20,64,0) 35%,rgba(0,20,64,.3)),var(--sub)}
+.l1-rth::before{content:"";position:absolute;width:120px;height:120px;border-radius:50%;border:16px solid rgba(255,255,255,.12);top:-50px;left:-30px}
+.l1-rth .dur{position:absolute;bottom:8px;left:8px;background:rgba(0,10,30,.6);color:#FFFFFF;border-radius:8px;padding:1px 8px;font-size:12px;font-weight:700}
+.l1-rth .pb{position:relative;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.94);color:#F2545B;display:flex;align-items:center;justify-content:center;transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+.l1-rc:hover .pb{transform:scale(1.12)}
+.l1-rb{display:flex;align-items:center;gap:8px;padding:10px 12px}
+.l1-ia{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--area-ink);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.l1-ia.ok{border-color:#A8E6D4;background:var(--s-mint-tint);color:var(--s-mint-ink)}
+/* full-screen dark pages (player, prejoin) */
+.l1-pl{min-height:var(--vh,100vh);background:#05091C;color:#FFFFFF;display:flex;flex-direction:column}
+.l1-ptop{display:flex;align-items:center;gap:12px;padding:14px 24px;background:linear-gradient(#0B1530,rgba(11,21,48,0))}
+.l1-gp{height:38px;padding:0 14px;border-radius:19px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);backdrop-filter:blur(8px);color:#FFFFFF;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;white-space:nowrap}
+.l1-gi{width:40px;height:40px;padding:0;justify-content:center;flex-shrink:0}
+.l1-pgrid{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;padding:8px 24px 28px}
+.l1-vid{position:relative;aspect-ratio:16/9;border-radius:22px;overflow:hidden;background:radial-gradient(120% 140% at 80% 0%,#FF8A4C,#7A2E5E 50%,#1A0F35);box-shadow:0 30px 60px -20px rgba(0,0,0,.7)}
+.l1-board{position:absolute;inset:7% 7% 24%;border-radius:16px;background:#FFFDF8;color:#0E2350;padding:4% 5%;display:flex;flex-direction:column;gap:6%;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.l1-bt{font-family:'Aref Ruqaa',serif;font-size:30px;color:#A8381C;line-height:1.2}
+.l1-eq1{font-size:36px;font-weight:700;line-height:1.3}
+.l1-eq2{font-size:26px;font-weight:600;opacity:.72;line-height:1.3}
+.l1-board sub,.l1-board sup{font-size:.6em;line-height:0}
+.l1-cam{position:absolute;left:18px;bottom:80px;width:140px;aspect-ratio:4/3;border-radius:14px;background:linear-gradient(160deg,#FFB37A,#F2545B);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:12px;gap:2px;box-shadow:0 8px 20px rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.6)}
+.l1-ctl{position:absolute;left:0;right:0;bottom:0;padding:30px 18px 12px;background:linear-gradient(rgba(0,8,20,0),rgba(0,8,20,.85));display:flex;flex-direction:column;gap:8px}
+.l1-seek{position:relative;height:6px;border-radius:3px;background:rgba(255,255,255,.2)}
+.l1-seek .buf{position:absolute;top:0;bottom:0;right:0;width:62%;border-radius:3px;background:rgba(255,255,255,.3)}
+.l1-seek .pos{position:absolute;top:0;bottom:0;right:0;width:48%;border-radius:3px;background:linear-gradient(270deg,#FF9F5A,#F2545B);transform-origin:100% 50%;animation:kGrow .9s cubic-bezier(.2,.8,.2,1) .3s both}
+.l1-seek .knob{position:absolute;top:50%;right:48%;width:16px;height:16px;margin:-8px -8px 0 0;border-radius:50%;background:#FFFFFF;box-shadow:0 0 0 5px rgba(255,255,255,.2)}
+.l1-cb{display:flex;align-items:center;gap:4px;font-size:13px;font-weight:600}
+.l1-cb button,.l1-cb span.b{width:40px;height:40px;border-radius:12px;border:none;background:transparent;color:#FFFFFF;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:inherit;font-weight:700}
+.l1-cb button:hover{background:rgba(255,255,255,.12)}
+.l1-cb .pp{width:46px;height:46px;border-radius:50%;background:#FFFFFF;color:#7A2E5E}
+.l1-resume{position:absolute;top:16px;right:50%;transform:translateX(50%);display:flex;align-items:center;gap:10px;padding:6px 6px 6px 16px;border-radius:22px;background:rgba(0,8,20,.75);backdrop-filter:blur(10px);font-size:13.5px;font-weight:600;animation:l1Res .5s cubic-bezier(.2,.8,.2,1) .4s both;white-space:nowrap}
+@keyframes l1Res{from{opacity:0;transform:translate(50%,-12px)}to{opacity:1;transform:translate(50%,0)}}
+.l1-resume button{height:32px;padding:0 12px;border-radius:16px;border:none;font-family:inherit;font-weight:700;font-size:12.5px}
+.l1-upn{position:absolute;inset:0;background:rgba(0,8,20,.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;animation:kFade .4s both}
+.l1-upc{display:flex;align-items:center;gap:18px;padding:18px;border-radius:22px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);max-width:480px}
+.l1-cd{position:relative;width:64px;height:64px;flex-shrink:0}
+.l1-cd svg{width:64px;height:64px;transform:rotate(-90deg)}
+.l1-cd circle{fill:none;stroke-width:5;stroke-linecap:round}
+.l1-cd > b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px}
+.l1-cdi{animation:l1Cd 5s linear forwards}
+@keyframes l1Cd{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+.l1-lp{display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:20px;background:#0B1530;border:1px solid rgba(255,255,255,.08);align-self:start}
+.l1-li{display:flex;align-items:center;gap:12px;padding:10px;border-radius:14px;color:rgba(255,255,255,.85);font-size:13.5px}
+.l1-li:hover{background:rgba(255,255,255,.06)}
+.l1-li.cur{background:linear-gradient(120deg,rgba(255,138,76,.28),rgba(242,84,91,.1));box-shadow:inset 0 0 0 1px rgba(255,159,90,.5);color:#FFFFFF}
+.l1-th{width:72px;aspect-ratio:16/10;border-radius:10px;flex-shrink:0;display:flex;align-items:flex-end;padding:4px;font-size:10.5px;font-weight:700;background:var(--sub-math)}
+.l1-th.done{background:var(--s-mint)}.l1-th.live{background:#F2545B}.l1-th.lock{background:#2A3555}
+.l1-th span{background:rgba(0,0,0,.5);border-radius:6px;padding:0 5px;line-height:1.6}
+.l1-eq{display:flex;align-items:flex-end;gap:4px;height:28px}
+.l1-eq i{width:4px;border-radius:2px;background:#FFC59A;animation:l1Eq 1s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes l1Eq{0%,100%{height:6px}50%{height:26px}}
+.l1-aud{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(80% 90% at 50% 40%,#5A2350,#05091C)}
+.l1-disc{width:170px;height:170px;border-radius:50%;background:conic-gradient(from 0deg,#FF9F5A,#F2545B,#7A4DF0,#FF5FA2,#FFC53D,#FF9F5A);display:flex;align-items:center;justify-content:center;animation:mSpinSlow 12s linear infinite;box-shadow:0 0 60px rgba(255,138,76,.35)}
+.l1-disc::after{content:"";width:54px;height:54px;border-radius:50%;background:#05091C;border:6px solid rgba(255,255,255,.2)}
+.l1-mini{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:18px;background:#FFFFFF;color:#0E2350;font-size:13px;font-weight:700;box-shadow:0 14px 30px rgba(0,0,0,.35)}
+.l1-mini button{width:36px;height:36px;border-radius:50%;border:none;background:#FFE8D6;color:#A3480A;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:inherit;font-weight:700;font-size:12px}
+/* prejoin */
+.l1-pj{min-height:var(--vh,100vh);background:radial-gradient(120% 90% at 85% -10%,#7A2E5E,#1A0F35 45%,#05091C 80%);color:#FFFFFF;display:flex;flex-direction:column}
+.l1-pjg{flex:1;display:grid;align-content:start;grid-template-columns:minmax(0,1fr) 400px;gap:28px;padding:10px 40px 40px;align-items:start}
+.l1-prev{position:relative;aspect-ratio:16/10;border-radius:26px;overflow:hidden;background:linear-gradient(160deg,#3A2A6A,#0B1530);display:flex;align-items:center;justify-content:center;box-shadow:0 30px 60px -20px rgba(0,0,0,.7)}
+.l1-me{width:150px;height:150px;border-radius:50%;background:linear-gradient(150deg,#4F6BE8,#7A4DF0);display:flex;align-items:center;justify-content:center;font-size:58px;font-weight:700;box-shadow:0 0 0 10px rgba(255,255,255,.06)}
+.l1-you{position:absolute;top:16px;right:16px;height:30px;padding:0 12px;border-radius:15px;background:rgba(0,8,20,.55);font-size:12.5px;font-weight:700;display:flex;align-items:center}
+.l1-mic{position:absolute;bottom:16px;right:16px;display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:20px;background:rgba(0,8,20,.6);backdrop-filter:blur(8px);font-size:12.5px;font-weight:700}
+.l1-lvl{display:flex;align-items:flex-end;gap:3px;height:18px}
+.l1-lvl i{width:4px;border-radius:2px;background:#3FE0B6;animation:l1Eq .9s ease-in-out infinite;animation-delay:var(--d)}
+.l1-tg{display:flex;justify-content:center;gap:22px}
+.l1-tg > span{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12.5px;font-weight:700;opacity:.9}
+.l1-tgb{width:60px;height:60px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.14);color:#FFFFFF}
+.l1-tgb.off{background:#F2545B}
+.l1-dev{align-self:center;display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#FFC59A}
+.l1-pjc{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:28px 24px;border-radius:26px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(10px)}
+.l1-pjc .k-btn{width:100%;height:58px;font-size:17px}
+.l1-tav{position:relative;width:96px;height:96px;border-radius:50%;background:linear-gradient(150deg,#FFB37A,#F2545B);display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:700;--halo:#FF9F5A;margin:8px 0 4px}
+.l1-wait{position:relative;width:150px;height:150px;display:flex;align-items:center;justify-content:center}
+.l1-wait i{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(255,159,90,.55);animation:l1Wave 2.4s ease-out infinite;animation-delay:var(--d)}
+@keyframes l1Wave{from{transform:scale(.55);opacity:1}to{transform:scale(1.15);opacity:0}}
+@media (max-width:760px){
+  .l1-hring{display:none}
+  .l1-hrow > .k-btn{display:none}
+  .l1-kick{font-size:16px}
+  .l1-step{gap:10px;padding:10px;flex-wrap:wrap}
+  .l1-step .l1-tx{flex:1 1 0}
+  .k .l1-live{width:100%;height:46px;font-size:15px}
+  .l1-ph h3{font-size:17px}
+  .l1-sidecol{display:contents}
+  .l1-o1{order:1}.l1-o2{order:2}.l1-o3{order:3}
+  .l1-sgrid{display:flex;flex-direction:column}
+  .l1-feat{flex-wrap:wrap;padding:14px;gap:12px}
+  .l1-feat .k-btn{width:100%}
+  .l1-fplay{width:50px;height:50px}
+  .l1-mg{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .l1-mt{padding:12px}
+  .l1-quiz{padding:14px;gap:12px}
+  .l1-quiz .k-btn{width:100%}
+  .k .l1-quiz .l1-qa{flex:1 1 100%;align-items:stretch;text-align:center}
+  .l1-open{padding:18px}
+  .l1-hist time{width:96px;font-size:12.5px}
+  .l1-ptop{padding:10px 12px}
+  .l1-hidem{display:none !important}
+  .l1-pgrid{grid-template-columns:1fr;padding:0 0 20px;gap:14px}
+  .l1-vid{border-radius:0}
+  .l1-board{inset:16% 6% 30%;gap:4%;padding:3% 5%}
+  .l1-bt{font-size:17px}.l1-eq1{font-size:20px}.l1-eq2{font-size:15px}
+  .l1-cam{display:none}
+  .l1-ctl{padding:16px 8px 6px;gap:4px}
+  .l1-cb{gap:0;font-size:11.5px}
+  .l1-cb button,.l1-cb span.b{width:34px;height:34px}
+  .l1-cb .pp{width:40px;height:40px}
+  .l1-resume{top:8px;font-size:12px;padding:4px 4px 4px 10px}
+  .l1-resume button{height:28px;padding:0 9px;font-size:11.5px}
+  .l1-upc{flex-direction:column;text-align:center;padding:12px;gap:8px;margin:0 16px}
+  .l1-upc .l1-cd,.l1-upc .l1-cd svg{width:48px;height:48px}
+  .l1-lp{margin:0 12px}
+  .l1-pinfo{padding:0 16px}
+  .l1-disc{width:64px;height:64px}.l1-disc::after{width:22px;height:22px;border-width:3px}.l1-aud{gap:8px}.l1-aud b{display:none}.l1-aud .l1-eq{height:20px}
+  .l1-modal{top:auto;bottom:0;left:0;right:0;transform:none;width:100%;max-width:100%;border-radius:28px 28px 0 0;padding:24px 18px 28px;animation:mSheet .5s cubic-bezier(.2,.8,.2,1) both}
+  .l1-otp{gap:7px}.l1-otp span{width:46px;height:56px;font-size:22px}
+  .l1-pjg{grid-template-columns:1fr;padding:4px 16px 24px;gap:16px}
+  .l1-prev{aspect-ratio:auto;height:190px}
+  .l1-me{width:96px;height:96px;font-size:38px}
+  .l1-tgb{width:52px;height:52px}
+  .l1-pjc{padding:20px 16px;gap:10px}
+  .l1-tav{width:76px;height:76px;font-size:30px;margin:4px 0 0}
+  .l1-wait{width:120px;height:120px}
+  .l1-recs .k-g3{gap:10px}
+  .l1-rc{flex-direction:row;align-items:stretch}
+  .l1-rth{width:118px;aspect-ratio:auto;min-height:86px;flex-shrink:0}
+  .l1-rth .pb{width:40px;height:40px}
+  .l1-rb{flex:1;min-width:0}
+  .k-drawer{height:auto;max-height:calc(var(--vh,100vh)*0.9)}
+}
+</style>
+</helmet>
+<div class="k a-learn" dir="rtl">
+<sc-if value="{{shell}}" hint-placeholder-val="{{ true }}">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">طالب</span></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+        <a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a>
+      </sc-for>
+      <div class="k-me"><span class="k-av sm">ف</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">فيصل العنزي</b><small style="font-size: 11.5px; opacity: .7">الصف الثاني الثانوي</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <span><small>{{crumb}}</small><h1>{{title}}</h1></span>
+        <span class="k-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن دورة أو معلم أو درس<kbd>Ctrl K</kbd></span>
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="3"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av">ف</span>
+      </header>
+      <header class="k-mtop"><a href="#" class="k-ib" aria-label="رجوع"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a><h1>{{title}}</h1><sc-for list="{{mtools}}" as="t" hint-placeholder-count="2"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for></header>
+
+      <main class="k-page">
+        <section class="k-hero {{blur}}">
+          <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+          <div class="l1-hrow">
+            <sc-if value="{{hero.ring}}" hint-placeholder-val="{{ false }}"><span class="l1-hring" role="img" aria-label="خلّصت ٣٨٪ من المادة"><svg viewBox="0 0 80 80" aria-hidden="true"><circle class="trk" cx="40" cy="40" r="33"></circle><circle class="ink m-ink" cx="40" cy="40" r="33" pathLength="100" style="--len: 100; --to: 62; --d: .2s"></circle></svg><b>٣٨٪<small>خلّصت</small></b></span></sc-if>
+            <div class="k-col">
+              <span class="k-ruqaa l1-kick">{{hero.k}}</span>
+              <h2>{{hero.h}}</h2>
+              <sc-if value="{{hero.p}}" hint-placeholder-val="{{ true }}"><p>{{hero.p}}</p></sc-if>
+            </div>
+            <sc-if value="{{hero.btn}}" hint-placeholder-val="{{ false }}"><a href="{{hero.href}}" class="k-btn ghost l1-hb">{{hero.btn}}</a></sc-if>
+          </div>
+          <sc-if value="{{hero.bar}}" hint-placeholder-val="{{ false }}"><span class="k-bar l1-hbar" role="img" aria-label="{{hero.barL}}"><i style="width: {{hero.bar}}%"></i></span></sc-if>
+        </section>
+
+        <div class="k-body {{blur}}">
+<!-- ============ دروس المادة (same look as SubjectProfile "مسارك") ============ -->
+<sc-if value="{{is.sessions}}" hint-placeholder-val="{{ true }}">
+          <div class="k-grid k-side2 l1-sgrid">
+            <section class="k-card l1-o1" style="--d: .05s">
+              <div class="l1-ph"><h3>مسارك في المادة</h3><span class="l1-pr"><svg aria-hidden="true" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" stroke="#FFE8D6"></circle><circle class="m-ink" cx="18" cy="18" r="14" stroke="#FF7A59" stroke-linecap="round" pathLength="100" style="--len: 100; --to: 62; --d: .4s"></circle></svg>٩ من ٢٤ درس</span></div>
+              <div class="l1-steps">
+                <sc-if value="{{folded}}" hint-placeholder-val="{{ true }}"><button type="button" class="l1-fold m-flip" style="--i: 0" onClick="{{unfold}}"><span class="l1-num"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span>٥ دروس خلّصتها<span class="k-sp"></span>اعرضها<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button></sc-if>
+                <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+                  <div class="l1-step m-flip {{r.cls}}" style="--i: {{r.k}}" role="button" tabindex="0" onClick="{{r.tap}}">
+                    <span class="l1-num"><sc-if value="{{r.lock}}" hint-placeholder-val="{{ false }}"><svg aria-label="مقفل" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3"></path></svg></sc-if>{{r.n}}</span>
+                    <span class="l1-tx"><b>{{r.t}}</b><span>{{r.m}}</span></span>
+                    <sc-if value="{{r.done}}" hint-placeholder-val="{{ false }}"><span class="l1-chip"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"></path></svg>خلّصته</span></sc-if>
+                    <sc-if value="{{r.live}}" hint-placeholder-val="{{ false }}"><a href="Stu1Learn.dc.html?screen=prejoin" class="k-btn hot l1-live m-breathe"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" transform="matrix(-1 0 0 1 24 0)"></path></svg>ادخل الحصة</a></sc-if>
+                    <sc-if value="{{r.cur}}" hint-placeholder-val="{{ false }}"><a href="Stu1Learn.dc.html?screen=material" class="l1-go">كمّل</a></sc-if>
+                    <sc-if value="{{r.exam}}" hint-placeholder-val="{{ false }}"><span class="l1-chip y">{{r.exam}}</span></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </section>
+            <div class="k-col l1-sidecol" style="gap: 18px">
+              <a href="Stu1Learn.dc.html?screen=attend" class="l1-att m-flip l1-o2" style="--i: 2">
+                <span class="k-row" style="gap: 10px"><span class="l1-dot m-breathe"></span><b style="font-size: 17px">الحضور مفتوح</b></span>
+                <span style="font-size: 13.5px; opacity: .9">حصة الدوال الأسية، يقفل بعد ٨ دقايق</span>
+                <span class="k-btn sm" style="align-self: flex-start">سجّل حضوري</span>
+              </a>
+              <section class="k-card l1-o3" style="--d: .2s; gap: 10px">
+                <sc-for list="{{tools2}}" as="t" hint-placeholder-count="3"><a href="{{t.href}}" class="l1-tool m-flip" style="--i: {{t.k}}"><span style="background: {{t.bg}}; color: {{t.fg}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg></span>{{t.l}}<small>{{t.m}}</small></a></sc-for>
+              </section>
+            </div>
+          </div>
+</sc-if>
+
+<!-- ============ LESSON CONTENT + QUIZ ============ -->
+<sc-if value="{{is.material}}" hint-placeholder-val="{{ false }}">
+          <div class="k-grid k-side2">
+            <div class="k-col" style="gap: 18px">
+              <section class="k-card" style="--d: .05s">
+                <div class="l1-feat m-flip" style="--i: 0">
+                  <span class="l1-fplay m-breathe"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" transform="matrix(-1 0 0 1 24 0)"></path></svg></span>
+                  <span class="l1-ftx"><b>شرح الدرس</b><span>فيديو ٣٨ دقيقة، وقفت عند ١٢:٣٠</span><span class="l1-fbar"><i></i></span></span>
+                  <a href="Stu1Learn.dc.html?screen=player" class="k-btn hot" style="background: #FFFFFF; color: #B23A2E">كمّل المشاهدة</a>
+                </div>
+                <div class="l1-mg"><sc-for list="{{mats}}" as="x" hint-placeholder-count="5">
+                  <a href="#" class="l1-mt m-flip" style="--i: {{x.k}}">
+                    <span class="k-ico" style="background: {{x.bg}}; color: {{x.fg}}"><svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span>
+                    <span class="l1-st"><sc-if value="{{x.ok}}" hint-placeholder-val="{{ false }}"><span class="l1-ok" aria-label="خلّصته"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></span></sc-if><sc-if value="{{x.dl}}" hint-placeholder-val="{{ false }}"><span class="l1-dl" role="img" aria-label="ننزّله"><svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="11" stroke="#E2EAF4"></circle><circle class="m-ink" cx="14" cy="14" r="11" stroke="#FF8A4C" stroke-linecap="round" pathLength="100" style="--len: 100; --to: {{x.dl}}"></circle></svg></span></sc-if></span>
+                    <span class="k-col" style="gap: 2px"><b style="font-size: 14px; line-height: 1.5">{{x.t}}</b><span class="k-m">{{x.m}}</span></span>
+                  </a>
+                </sc-for></div>
+              </section>
+              <div class="l1-quiz m-flip" style="--i: 3; --qb: {{q.qb}}; --qt: {{q.qt}}">
+                <span class="k-ico"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{q.i}}"></path></svg></span>
+                <span class="k-col" style="gap: 2px">
+                  <span class="k-row" style="gap: 8px"><b style="font-size: 17px">اختبار الدرس</b><span class="k-tag {{q.tc}}">{{q.tag}}</span></span>
+                  <span style="font-size: 14px; font-weight: 600; color: #34466B">{{q.line}}</span>
+                </span>
+                <span class="k-col l1-qa" style="gap: 6px; flex: 0 0 auto; align-items: center">
+                  <sc-if value="{{q.btn}}" hint-placeholder-val="{{ true }}"><a href="{{q.href}}" class="k-btn {{q.bc}}">{{q.btn}}</a></sc-if>
+                  <span class="l1-left">{{q.left}}</span>
+                </span>
+              </div>
+            </div>
+            <div class="k-col" style="gap: 18px">
+              <section class="k-card" style="--d: .15s; gap: 10px">
+                <b style="font-size: 15px">بعد هالدرس</b>
+                <div class="l1-step lock m-flip" style="--i: 4"><span class="l1-num"><svg aria-label="مقفل" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3"></path></svg></span><span class="l1-tx"><b>٩. خصائص اللوغاريتمات</b><span>{{q.next}}</span></span></div>
+              </section>
+              <section class="k-card" style="--d: .2s; gap: 10px">
+                <b style="font-size: 15px">وقفت عند شي؟</b>
+                <a href="#" class="l1-tool m-flip" style="--i: 5"><span style="background: #FFE3EF; color: #A81E5E"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.chat}}"></path></svg></span>اسأل أ. ماجد</a>
+                <a href="#" class="l1-tool m-flip" style="--i: 6"><span style="background: #ECE5FF; color: #4A28B8"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.ai}}"></path></svg></span>اسأل المساعد الذكي</a>
+              </section>
+            </div>
+          </div>
+</sc-if>
+
+<!-- ============ ATTENDANCE: one card + own history ============ -->
+<sc-if value="{{is.attend}}" hint-placeholder-val="{{ false }}">
+          <div class="l1-one">
+            <div class="l1-att l1-open m-flip" style="--i: 0">
+              <span class="k-row" style="gap: 10px"><span class="l1-dot m-breathe"></span><b style="font-size: 14px; opacity: .9">الحين، الدوال الأسية مع أ. ماجد</b></span>
+              <h3>الحضور مفتوح، يقفل بعد ٨ دقايق</h3>
+              <button type="button" class="k-btn m-breathe" onClick="{{openCheckin}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>سجّل حضوري</button>
+            </div>
+            <section class="k-card m-flip" style="--i: 1">
+              <div class="k-ch"><h3>سجل حضوري</h3><span class="k-tag g">حضرت ٨٧٪</span></div>
+              <div><sc-for list="{{hist}}" as="h" hint-placeholder-count="5"><div class="l1-hist"><time>{{h.d}}</time><span>{{h.t}}</span><span class="k-tag {{h.tc}}" style="flex: 0 0 auto">{{h.s}}</span></div></sc-for></div>
+            </section>
+          </div>
+</sc-if>
+
+<!-- ============ PRIVATE COURSE (blurred background) ============ -->
+<sc-if value="{{is.code}}" hint-placeholder-val="{{ false }}">
+          <div class="k-grid k-side2">
+            <section class="k-card"><sc-for list="{{ghost}}" as="g" hint-placeholder-count="5"><div class="l1-step"><span class="l1-num"></span><span class="k-col" style="gap: 8px; flex: 1"><span class="l1-skel" style="width: 60%"></span><span class="l1-skel" style="width: 35%; height: 10px"></span></span></div></sc-for></section>
+            <section class="k-card"><span class="l1-skel" style="height: 120px; border-radius: 16px"></span></section>
+          </div>
+</sc-if>
+
+<!-- ============ CLASS RECORDINGS (play / download only) ============ -->
+<sc-if value="{{is.records}}" hint-placeholder-val="{{ false }}">
+          <div class="k-seg m-pill" style="--n: 3; max-width: 480px; background: #FFFFFF; box-shadow: 0 10px 24px -16px rgba(0,20,64,.35)" role="tablist" aria-label="المادة"><span class="m-pill-bg" style="--i: {{recI}}; background: #FFE8D6; box-shadow: none"></span><sc-for list="{{rtabs}}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.go}}">{{t.l}}</button></sc-for></div>
+          <sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+            <section class="k-card l1-recs {{g.sub}}">
+              <div class="k-ch"><h3 style="display: flex; align-items: center; gap: 8px"><i style="width: 12px; height: 12px; border-radius: 4px; background: var(--sub); display: inline-block"></i>{{g.t}}</h3><span class="k-sub">{{g.m}}</span></div>
+              <div class="k-grid k-g3"><sc-for list="{{g.items}}" as="r" hint-placeholder-count="3">
+                <div class="l1-rc m-flip" style="--i: {{r.k}}">
+                  <a href="Stu1Learn.dc.html?screen=player" class="l1-rth" aria-label="شغّل {{r.t}}"><span class="pb"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" transform="matrix(-1 0 0 1 24 0)"></path></svg></span><span class="dur">{{r.dur}}</span></a>
+                  <span class="l1-rb"><span class="k-col" style="gap: 0; flex: 1; min-width: 0"><b style="font-size: 14.5px">{{r.t}}</b><span class="k-m">{{r.m}}</span></span><button type="button" class="l1-ia {{r.dc}}" aria-label="{{r.dl}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.di}}"></path></svg></button></span>
+                </div>
+              </sc-for></div>
+            </section>
+          </sc-for>
+</sc-if>
+        </div>
+      </main>
+      <nav class="k-bnav m-pill" aria-label="القائمة" style="--n: 5"><span class="m-pill-bg" style="--i: 1"></span><sc-for list="{{bnav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a></sc-for></nav>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ VIDEO PLAYER ============ -->
+<sc-if value="{{is.player}}" hint-placeholder-val="{{ false }}">
+  <div class="l1-pl">
+    <header class="l1-ptop">
+      <a href="Stu1Learn.dc.html?screen=material" class="l1-gp l1-gi" aria-label="رجوع"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <span class="k-col" style="gap: 0; flex: 1; min-width: 0"><b style="font-size: 16px">٨. الدوال اللوغاريتمية</b><span style="font-size: 12px; opacity: .65">الرياضيات ٢ ثانوي، أ. ماجد الشهري</span></span>
+      <span class="l1-gp l1-hidem">باقي لك ٧ مشاهدات هالشهر</span>
+    </header>
+    <div class="l1-pgrid">
+      <div class="k-col" style="gap: 14px">
+        <div class="l1-vid">
+          <sc-if value="{{video}}" hint-placeholder-val="{{ true }}">
+            <div class="l1-board"><span class="l1-bt">الدوال اللوغاريتمية</span><span class="l1-eq1">لو<sub>٢</sub> ٨ = ٣ &nbsp;لأن&nbsp; ٢<sup>٣</sup> = ٨</span><span class="l1-eq2">ص = لو<sub>أ</sub> س &nbsp;⟺&nbsp; أ<sup>ص</sup> = س</span></div>
+            <div class="l1-cam"><b style="font-size: 18px">م</b>أ. ماجد</div>
+          </sc-if>
+          <sc-if value="{{audio}}" hint-placeholder-val="{{ false }}">
+            <div class="l1-aud"><span class="l1-disc"></span><span class="l1-eq"><sc-for list="{{eq}}" as="e" hint-placeholder-count="12"><i style="--d: {{e}}"></i></sc-for></span><b style="font-size: 15px">تسمع الدرس بالصوت بس</b></div>
+          </sc-if>
+          <sc-if value="{{resume}}" hint-placeholder-val="{{ true }}"><div class="l1-resume" role="status">نكمّل من ١٢:٣٠؟<button type="button" style="background: #FFFFFF; color: #7A2E5E">كمّل</button><button type="button" style="background: rgba(255,255,255,.14); color: #FFFFFF">من البداية</button></div></sc-if>
+          <div class="l1-ctl">
+            <div class="l1-seek"><span class="buf"></span><span class="pos"></span><span class="knob"></span></div>
+            <div class="l1-cb">
+              <button type="button" class="pp" aria-label="إيقاف مؤقت"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"></path></svg></button>
+              <button type="button" aria-label="رجوع ١٠ ثواني"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v5h5"></path></svg></button>
+              <button type="button" aria-label="تقديم ١٠ ثواني"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-3-6.2M20 4v5h-5"></path></svg></button>
+              <span style="margin: 0 6px; white-space: nowrap">١٨:٢٤ / ٣٨:١٠</span>
+              <span class="k-sp"></span>
+              <span class="b">١٫٢٥×</span>
+              <button type="button" aria-label="استمع بالصوت بس"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14v-2a9 9 0 0 1 18 0v2M3 14h4v6H3zM17 14h4v6h-4z"></path></svg></button>
+              <button type="button" aria-label="الإعدادات: الجودة والترجمة"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15.1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.6V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg></button>
+              <button type="button" aria-label="ملء الشاشة"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"></path></svg></button>
+            </div>
+          </div>
+          <sc-if value="{{upnext}}" hint-placeholder-val="{{ false }}">
+            <div class="l1-upn"><div class="l1-upc"><span class="l1-cd"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28" stroke="rgba(255,255,255,.15)"></circle><circle class="l1-cdi" cx="32" cy="32" r="28" stroke="#FF9F5A" pathLength="100" stroke-dasharray="100"></circle></svg><b>٥</b></span><span class="k-col" style="gap: 4px; flex: 1"><span style="font-size: 12.5px; opacity: .7">الدرس الجاي بعد ٥ ثواني</span><b style="font-size: 16px">٩. خصائص اللوغاريتمات</b><span class="k-row" style="gap: 8px; justify-content: center"><a href="#" class="k-btn sm">شغّله الحين</a><a href="#" class="k-btn sm ghost" style="background: transparent; color: #FFFFFF; border-color: rgba(255,255,255,.3)">إلغاء</a></span></span></div></div>
+          </sc-if>
+        </div>
+        <div class="k-col l1-pinfo" style="gap: 10px">
+          <sc-if value="{{audio}}" hint-placeholder-val="{{ false }}"><div class="l1-mini" style="align-self: flex-start"><span class="l1-eq" style="height: 18px"><i style="--d: 0s"></i><i style="--d: .2s"></i><i style="--d: .4s"></i></span>الدوال اللوغاريتمية، ١٨:٢٤<button type="button" aria-label="رجوع ١٠ ثواني">١٠-</button><button type="button" aria-label="إيقاف مؤقت"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"></path></svg></button><button type="button" aria-label="رجّع الفيديو"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 15v5h-5"></path></svg></button></div></sc-if>
+          <div class="k-row" style="gap: 8px"><span class="l1-gp"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>نزّله وشوفه بدون نت</span><span class="l1-gp"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6"></path></svg>ملخص الدرس</span></div>
+        </div>
+      </div>
+      <aside class="l1-lp">
+        <div class="k-row" style="justify-content: space-between"><b style="font-size: 16px">دروس المادة</b><span style="font-size: 12.5px; opacity: .6">٨ من ٢٤</span></div>
+        <sc-for list="{{lect}}" as="l" hint-placeholder-count="6"><a href="#" class="l1-li m-flip {{l.cur}}" style="--i: {{l.k}}"><span class="l1-th {{l.th}}"><span>{{l.len}}</span></span><span class="k-col" style="gap: 2px; flex: 1; min-width: 0"><b style="font-size: 13.5px">{{l.t}}</b><span style="font-size: 11.5px; opacity: .65">{{l.m}}</span></span><sc-if value="{{l.lock}}" hint-placeholder-val="{{ false }}"><svg aria-label="مقفل" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" opacity=".5"><path d="M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3"></path></svg></sc-if><sc-if value="{{l.ok}}" hint-placeholder-val="{{ false }}"><svg aria-label="شاهدته" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3FE0B6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></sc-if></a></sc-for>
+      </aside>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ LIVE PRE-JOIN (only the teacher and "you") ============ -->
+<sc-if value="{{is.prejoin}}" hint-placeholder-val="{{ false }}">
+  <div class="l1-pj">
+    <header class="l1-ptop" style="background: none">
+      <a href="#" class="l1-gp l1-gi" aria-label="رجوع"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <span class="k-col" style="gap: 0; flex: 1; min-width: 0"><b style="font-size: 16px">جاهز تدخل؟</b><span style="font-size: 12px; opacity: .7">الرياضيات، حصة مباشرة ٥٠ دقيقة</span></span>
+      <span class="l1-gp"><span class="k-live" style="color: #FFB3B3"><i></i></span>بدأت من ١٢ د</span>
+    </header>
+    <div class="l1-pjg">
+      <div class="k-col" style="gap: 16px">
+        <div class="l1-prev"><span class="l1-you">أنت</span><span class="l1-me">ف</span><span class="l1-mic"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0zM5 11a7 7 0 0 0 14 0M12 18v3"></path></svg><span class="l1-lvl"><i style="--d: 0s"></i><i style="--d: .15s"></i><i style="--d: .3s"></i><i style="--d: .45s"></i><i style="--d: .6s"></i></span>صوتك واصل</span></div>
+        <div class="l1-tg">
+          <span><button type="button" class="l1-tgb" aria-pressed="true" aria-label="المايك شغّال"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0zM5 11a7 7 0 0 0 14 0M12 18v3"></path></svg></button>المايك شغّال</span>
+          <span><button type="button" class="l1-tgb off" aria-pressed="false" aria-label="الكاميرا مقفلة"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l5-3v10l-5-3zM3 6h12v12H3zM2 2l20 20"></path></svg></button>الكاميرا مقفلة</span>
+        </div>
+        <a href="#" class="l1-dev l1-hidem"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4zM17 9a4 4 0 0 1 0 6"></path></svg>غيّر المايك أو السماعة</a>
+      </div>
+      <div class="l1-pjc">
+        <sc-if value="{{ready}}" hint-placeholder-val="{{ true }}">
+          <span class="l1-tav m-breathe">م</span>
+          <span class="k-ruqaa" style="font-size: 19px; color: #FFD9A8">الحصة شغّالة</span>
+          <b style="font-size: 21px; line-height: 1.5">الدوال الأسية مع أ. ماجد الشهري</b>
+          <button type="button" class="k-btn hot" onClick="{{joinNow}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" transform="matrix(-1 0 0 1 24 0)"></path></svg>ادخل الحصة</button>
+          <span style="font-size: 12.5px; opacity: .65">تدخل باسمك: فيصل العنزي</span>
+        </sc-if>
+        <sc-if value="{{waiting}}" hint-placeholder-val="{{ false }}">
+          <div class="l1-wait"><i style="--d: 0s"></i><i style="--d: .8s"></i><i style="--d: 1.6s"></i><span class="l1-tav" style="margin: 0">م</span></div>
+          <b style="font-size: 20px">ننتظر أ. ماجد يدخلك</b>
+          <span style="font-size: 14px; opacity: .8; line-height: 1.8">خلك هنا، ندخلك أول ما توافق</span>
+          <button type="button" class="k-btn ghost" style="background: transparent; color: #FFFFFF; border-color: rgba(255,255,255,.3)" onClick="{{cancelJoin}}">إلغاء</button>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ OVERLAYS ============ -->
+<sc-if value="{{codeModal}}" hint-placeholder-val="{{ false }}">
+  <div class="k-dim"></div>
+  <div class="l1-modal" role="dialog" aria-label="دورة خاصة">
+    <span class="l1-lock m-pop" style="--d: .2s"><svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4M12 15v2"></path></svg></span>
+    <h2>دورة خاصة</h2>
+    <span style="font-size: 14.5px; color: #4A5878; line-height: 1.8">اكتب الكود اللي عطاك إياه المعلم<br><b style="color: #0E2350">القدرات: مجموعة أ. خالد المطيري</b></span>
+    <div class="l1-otp {{pin.cls}}" role="group" aria-label="الكود"><sc-for list="{{pin.d}}" as="p" hint-placeholder-count="6"><span class="{{p.c}}">{{p.v}}</span></sc-for></div>
+    <sc-if value="{{pin.msg}}" hint-placeholder-val="{{ false }}"><div class="l1-msg" role="alert" style="background: {{pin.mbg}}; color: {{pin.mfg}}">{{pin.msg}}</div></sc-if>
+    <button type="button" class="k-btn" style="width: 100%" aria-disabled="{{pin.dis}}">{{pin.cta}}</button>
+    <a href="#" class="k-link">ما عندك كود؟ راسل المعلم</a>
+  </div>
+</sc-if>
+
+<sc-if value="{{rowToast}}" hint-placeholder-val="{{ false }}"><div class="l1-toast" role="status"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFC59A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3"></path></svg>{{rowToast}}</div></sc-if>
+
+<sc-if value="{{checkin}}" hint-placeholder-val="{{ false }}">
+  <div class="k-dim" onClick="{{closeSheet}}"></div>
+  <aside class="k-drawer m-sheet" role="dialog" aria-label="تسجيل الحضور">
+    <div class="k-dh"><h2>تسجيل الحضور</h2><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+    <div class="k-db">
+      <sc-if value="{{ci.busy}}" hint-placeholder-val="{{ true }}">
+        <div class="l1-busy" role="status">
+          <span class="l1-bring"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="trk" cx="60" cy="60" r="52"></circle><circle class="ink m-ink" cx="60" cy="60" r="52" pathLength="100" style="--len: 100; --to: 30"></circle></svg><span class="spin"></span><b><svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0"></path></svg></b></span>
+          <h3>نسجّل حضورك…</h3>
+          <p class="k-sub" style="margin: 0; font-size: 14px">خلك في الصفحة ثواني بس</p>
+        </div>
+      </sc-if>
+      <sc-if value="{{ci.ok}}" hint-placeholder-val="{{ false }}">
+        <div class="k-success">
+          <span class="k-success-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"></circle><path d="M20 33l8 8 16-17"></path></svg><span class="m-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></span>
+          <h3>تم، حضورك تسجّل</h3>
+          <p>الساعة ٧:٣٢ م، حصة الدوال الأسية</p>
+        </div>
+      </sc-if>
+      <sc-if value="{{ci.other}}" hint-placeholder-val="{{ false }}">
+        <div class="l1-res" role="status"><span class="l1-resi m-pop" style="background: {{ci.bg}}; color: {{ci.fg}}"><svg aria-hidden="true" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{ci.ic}}"></path></svg></span><h3>{{ci.t}}</h3><p>{{ci.m}}</p></div>
+      </sc-if>
+    </div>
+    <div class="k-df"><button type="button" class="k-btn {{ci.bc}}" style="flex: 1" onClick="{{closeSheet}}">{{ci.cta}}</button></div>
+  </aside>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screen":"sessions","sheet":"","state":"","exam":"start","mode":"","pin":"","wait":"","$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {}, P = this.props || {};
+    const set = (o) => this.setState(o);
+    const ar = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+    const I = {
+      home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', courses: 'M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14',
+      play: 'M6 9h12a4 4 0 0 1 0 8c-2 0-3-2-6-2s-4 2-6 2a4 4 0 0 1 0-8zM8 11v4M6 13h4M16 12h.01M18 14h.01',
+      schedule: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4', profile: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0',
+      chat: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z', ai: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z', bell: 'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
+      pdf: 'M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 14h8M8 17h5', doc: 'M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h8',
+      img: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15 9h.01', link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1', rec: 'M15 10l5-3v10l-5-3zM3 6h12v12H3z',
+      exam: 'M9 4h6v3H9zM7 5H5v16h14V5h-2M8.5 13l2 2 5-5', x: 'M6 6l12 12M18 6 6 18', clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2', check: 'M5 12l5 5 9-10', retry: 'M4 12a8 8 0 1 0 3-6.2M4 4v5h5', cards: 'M7 4h12v14H7zM4 7v13h12',
+      book: 'M12 6c-2-1.5-5-2-8-1v14c3-1 6-.5 8 1 2-1.5 5-2 8-1V5c-3-1-6-.5-8 1zM12 6v14', dl: 'M12 4v11M7 10l5 5 5-5M5 20h14', wifi: 'M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01'
+    };
+    const META = {
+      sessions: ['دروس المادة', 'دوراتي › الرياضيات', true], material: ['الدرس ٨', 'الرياضيات › دروس المادة', true], attend: ['حضوري', 'دوراتي › الرياضيات', true],
+      code: ['دورة خاصة', 'دوراتي', true], records: ['تسجيلات حصصي', 'دوراتي', true], player: ['المشغّل', '', false], prejoin: ['قبل الدخول', '', false]
+    };
+    const sc = META[P.screen] ? P.screen : 'sessions';
+    const [title, crumb, shell] = META[sc];
+    const is = {}; Object.keys(META).forEach((k) => { is[k] = k === sc; });
+    const sheet = s.sheet !== undefined ? s.sheet : (P.sheet || '');
+    const MAP = [['home', 'الرئيسية', '٣'], ['courses', 'دوراتي', ''], ['schedule', 'جدولي', ''], ['play', 'العب وتعلّم', ''], ['profile', 'حسابي', '']];
+
+    // ---- hero per screen
+    const HERO = {
+      sessions: { k: 'الرياضيات، ثاني ثانوي', h: 'دروس المادة', p: 'مع أ. ماجد الشهري، خلّصت ٩ من ٢٤', ring: true, btn: 'صفحة المادة', href: 'SubjectProfile.dc.html?enrolled=1' },
+      material: { k: 'الدرس الثامن', h: 'الدوال اللوغاريتمية', p: 'فيديو، ملخص، واختبار قصير', bar: '50', barL: 'خلّصت ٣ من ٦' },
+      attend: { k: 'الرياضيات، ثاني ثانوي', h: 'حضوري', p: '' },
+      code: { k: 'دورة خاصة', h: 'القدرات: مجموعة خاصة', p: '' },
+      records: { k: 'دوراتي', h: 'تسجيلات حصصي', p: 'كل حصة مباشرة تلقاها هنا بعد ما تخلص' },
+      player: {}, prejoin: {}
+    }[sc];
+    const hero = Object.assign({ k: '', h: '', p: '', ring: false, btn: '', href: '#', bar: '', barL: '' }, HERO);
+
+    // ---- دروس المادة
+    const folded = s.folded !== undefined ? s.folded : true;
+    const ROWS = [
+      [1, 'مدخل إلى الدوال', 'درس، ٤٢ دقيقة', 'done'], [2, 'المجال والمدى', 'حصة مباشرة، ٥٠ دقيقة', 'done'], [3, 'تمثيل الدوال بيانيًا', 'درس، ٣٥ دقيقة', 'done'], [4, 'تحويلات الدوال', 'حصة مباشرة، ٥٠ دقيقة', 'done'], [5, 'الدوال العكسية', 'درس، ٢٨ دقيقة', 'done'],
+      [6, 'مراجعة الوحدة الأولى', 'اجتزت اختبارها ٩٠٪', 'done'],
+      [7, 'الدوال الأسية', 'حصة مباشرة الحين مع أ. ماجد', 'live'],
+      [8, 'الدوال اللوغاريتمية', 'درس، ٣٨ دقيقة واختبار قصير', 'cur'],
+      [9, 'خصائص اللوغاريتمات', 'درس، ٣٢ دقيقة', 'lock', 'يفتح بعد ما تخلّص الدرس ٨'],
+      [10, 'حل المعادلات الأسية', 'حصة مباشرة، الأحد ٧:٣٠ م', 'lock', 'يفتح بعد ما تجتاز اختبار الدرس ٩'],
+      [11, 'اختبار الوحدة الثانية', 'اختبار، ٢٠ سؤال', 'exam', '', 'الخميس']
+    ];
+    const rows = ROWS.filter((r) => !(folded && r[0] <= 5)).map((r, k) => {
+      const st = r[3];
+      return { n: st === 'lock' ? '' : ar(r[0]), t: r[1], m: r[2], k: String(k + 1), cls: { done: 'done', live: 'now', cur: 'cur', lock: 'lock', exam: 'exam' }[st],
+        done: st === 'done', live: st === 'live', cur: st === 'cur', lock: st === 'lock', exam: r[5] || '',
+        tap: st === 'lock' ? () => set({ toast: r[4] }) : () => {} };
+    });
+    const tools2 = [['تسجيلات الحصص', '١٢', 'Stu1Learn.dc.html?screen=records', '#FFE8D6', '#A3480A', I.rec], ['اختبارات المادة', '٢ قريب', 'Stu2Exams.dc.html?screen=list', '#ECE5FF', '#4A28B8', I.exam], ['اسأل أ. ماجد', '', '#', '#FFE3EF', '#A81E5E', I.chat]]
+      .map(([l, m, href, bg, fg, i], k) => ({ l, m, href, bg, fg, i, k: String(k + 3) }));
+
+    // ---- lesson content
+    const mats = [['ملخص الدرس', 'PDF، ٤ صفحات', '#FFE3E0', '#B23A2E', 'pdf', 1, ''], ['ورقة عمل', 'صفحتين', '#FFF4CC', '#7A5200', 'doc', 0, ''], ['جدول اللوغاريتمات', 'صورة', '#D9F7EE', '#0C6B55', 'img', 1, ''], ['تمارين إضافية', 'رابط', '#ECE5FF', '#4A28B8', 'link', 0, ''], ['تسجيل حصة المراجعة', 'ننزّله ٦٢٪', '#E0F0FF', '#0F5CA8', 'rec', 0, '38'], ['بطاقات مراجعة', '١٢ بطاقة', '#FFE3EF', '#A81E5E', 'cards', 0, '']]
+      .map(([t, m, bg, fg, ic, ok, dl], k) => ({ t, m, bg, fg, i: I[ic], ok: !!ok, dl, k: String(k + 1) }));
+    const QZ = {
+      start: ['جاهز', '', '١٠ أسئلة، ١٥ دقيقة', 'ابدأ الاختبار', 'hot', 'باقي لك ٣ محاولات', '#7A4DF0', '#ECE5FF', I.exam, 'يفتح لما تجتاز اختبار هالدرس'],
+      retry: ['ما اجتزته', 'o', 'درجتك ٥٥٪، قربت!', 'جرّب مرة ثانية', 'hot', 'باقي لك محاولتين', '#FF9F5A', '#FFE8D6', I.retry, 'يفتح لما تجتاز اختبار هالدرس'],
+      passed: ['اجتزته', 'g', '٩٠٪، ما شاء الله عليك!', 'شوف إجاباتك', 'ghost', 'الدرس الجاي انفتح لك', '#19C29B', '#D9F7EE', I.check, 'مفتوح لك الحين'],
+      waiting: ['ننتظر النتيجة', 'y', 'المعلم بيصحّحه قريب', '', '', 'نعلمك أول ما تطلع', '#FFC53D', '#FFF4CC', I.clock, 'يفتح أول ما تطلع نتيجتك'],
+      closed: ['انتهى وقته', 'n', 'فاتك موعد الاختبار', 'راسل المعلم', 'ghost', '', '#9AA8BF', '#F1F5FA', I.clock, 'كلّم المعلم عشان يفتح'],
+      none: ['خلصت محاولاتك', 'r', 'درجتك ٤٠٪', 'راسل المعلم', 'ghost', '', '#F2545B', '#FFE3E0', I.x, 'كلّم المعلم عشان يفتح']
+    };
+    const qk = QZ[s.exam || P.exam] ? (s.exam || P.exam) : 'start';
+    const qq = QZ[qk];
+    const q = { tag: qq[0], tc: qq[1], line: qq[2], btn: qq[3], bc: qq[4], left: qq[5], qb: qq[6], qt: qq[7], i: qq[8], next: qq[9], href: qq[3] && qq[4] === 'hot' ? 'Stu2Exams.dc.html?screen=list' : '#' };
+
+    // ---- attendance (own rows only)
+    const hist = [['الأحد ٢٢ نوف', 'مراجعة الوحدة الأولى', 'حضرت', 'g'], ['الخميس ١٩ نوف', 'الدوال العكسية', 'حضرت', 'g'], ['الأحد ١٥ نوف', 'تحويلات الدوال', 'متأخر', 'y'], ['الخميس ١٢ نوف', 'المجال والمدى', 'غبت', 'r'], ['الأحد ٨ نوف', 'مدخل إلى الدوال', 'حضرت', 'g']].map(([d, t, st, tc]) => ({ d, t, s: st, tc }));
+    const ciK = s.ci || P.state || 'busy';
+    const CI = {
+      pending: ['#FFF4CC', '#7A5200', I.wifi, 'حضورك محفوظ', 'نرسله أول ما يرجع النت. لا تقفل التطبيق.', 'تمام', 'ghost'],
+      rejected: ['#FFE3E0', '#B23A2E', I.x, 'انقفل الحضور', 'إذا كنت حاضر، كلّم المعلم.', 'راسل المعلم', 'ghost'],
+      failed: ['#EEF2F7', '#4A5878', I.retry, 'ما ضبط', 'تأكد من النت وجرّب مرة ثانية.', 'جرّب مرة ثانية', '']
+    };
+    const co = CI[ciK];
+    const ci = { busy: ciK === 'busy', ok: ciK === 'done', other: !!co, bg: co ? co[0] : '', fg: co ? co[1] : '', ic: co ? co[2] : '', t: co ? co[3] : '', m: co ? co[4] : '',
+      cta: co ? co[5] : (ciK === 'done' ? 'تمام' : 'إلغاء'), bc: co ? co[6] : (ciK === 'done' ? '' : 'ghost') };
+
+    // ---- private code (state comes from props only)
+    const pinK = s.pin || P.pin || 'typing';
+    const PIN = {
+      typing: [['٣', '٧', '١', '٤', '', ''], '', '', '', '', 'افتح الدورة', 'true'],
+      wrong: [['٣', '٧', '١', '٤', '٠', '٢'], 'bad m-shake', 'الكود غلط، باقي لك محاولتين', '#FFE3E0', '#B23A2E', 'جرّب مرة ثانية', 'false'],
+      locked: [['', '', '', '', '', ''], 'off', 'جرّب بعد ١٥ دقيقة', '#FFF4CC', '#7A5200', 'انتظر شوي', 'true']
+    }[pinK] || [];
+    const pin = { d: PIN[0].map((v, i) => ({ v, c: v ? 'f' : (pinK === 'typing' && i === 4 ? 'c' : '') })), cls: PIN[1], msg: PIN[2], mbg: PIN[3], mfg: PIN[4], cta: PIN[5], dis: PIN[6] };
+
+    // ---- recordings: play + download only
+    const rf = s.rf || 'all';
+    const RG = [['الرياضيات', 'sub-math', [['الدوال العكسية', 'الثلاثاء ١٧ نوفمبر', '٤٩:٤٠', 0], ['مراجعة الوحدة الأولى', 'الأحد ٢٢ نوفمبر', '٥٠:٠٠', 1], ['تحويلات الدوال', 'الأحد ١٥ نوفمبر', '٤٨:٣٢', 0]]],
+      ['الفيزياء', 'sub-physics', [['قوانين نيوتن', 'الثلاثاء ٢٤ نوفمبر', '٥٠:٠٠', 0], ['الحركة في بعد واحد', 'الثلاثاء ١٧ نوفمبر', '٤٩:١٥', 1]]]];
+    const groups = RG.filter(([t]) => rf === 'all' || (rf === 'math' ? t === 'الرياضيات' : t === 'الفيزياء')).map(([t, sub, items]) => ({ t, sub, m: ar(items.length) + ' تسجيلات',
+      items: items.map(([it, d, dur, got], k) => ({ t: it, m: d, dur, k: String(k), di: got ? I.check : I.dl, dc: got ? 'ok' : '', dl: got ? 'نزّلته' : 'نزّله' })) }));
+    const RT = [['all', 'الكل'], ['math', 'الرياضيات'], ['phys', 'الفيزياء']];
+
+    // ---- prejoin / player
+    const waiting = s.waiting !== undefined ? s.waiting : P.wait === '1';
+    const mode = s.mode || P.mode || '';
+    const lect = [['٦. مراجعة الوحدة الأولى', 'شاهدته', '٤٢:٠٠', 'done', '', 1, 0], ['٧. الدوال الأسية', 'حصة مباشرة الحين', 'مباشر', 'live', '', 0, 0], ['٨. الدوال اللوغاريتمية', 'تشتغل الحين، ٤٨٪', '٣٨:١٠', '', 'cur', 0, 0], ['٩. خصائص اللوغاريتمات', 'يفتح بعد الاختبار', '٣٢:٠٠', 'lock', '', 0, 1], ['١٠. حل المعادلات الأسية', 'حصة الأحد', '٥٠:٠٠', 'lock', '', 0, 1], ['١١. اختبار الوحدة الثانية', 'الخميس', '٢٠ سؤال', 'lock', '', 0, 1]]
+      .map(([t, m, len, th, cu, ok, lock], k) => ({ t, m, len, th, cur: cu, ok: !!ok, lock: !!lock, k: String(k) }));
+
+    return {
+      I, title, crumb, shell, is, hero, blur: sc === 'code' ? 'l1-blur' : '',
+      rows, folded, unfold: () => set({ folded: false }), rowToast: is.sessions && s.toast ? s.toast : '', tools2,
+      mats, q, hist, ci, checkin: is.attend && sheet === 'checkin', openCheckin: () => set({ sheet: 'checkin' }), closeSheet: () => set({ sheet: '' }),
+      codeModal: is.code, pin, ghost: [1, 2, 3, 4, 5],
+      groups, recI: String(RT.findIndex(([k]) => k === rf)), rtabs: RT.map(([k, l]) => ({ l, on: k === rf ? 'true' : 'false', go: () => set({ rf: k }) })),
+      ready: !waiting, waiting, joinNow: () => set({ waiting: true }), cancelJoin: () => set({ waiting: false }),
+      video: mode !== 'audio', audio: mode === 'audio', resume: mode !== 'end' && mode !== 'audio', upnext: mode === 'end', lect,
+      eq: ['0s', '.1s', '.3s', '.2s', '.5s', '.15s', '.4s', '.05s', '.35s', '.25s', '.45s', '.12s'],
+      nav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === 'courses' ? 'page' : 'false' })),
+      bnav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === 'courses' ? 'page' : 'false' })),
+      tools: [['chat', 'الرسائل', '٢'], ['ai', 'المساعد الذكي', ''], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] })),
+      mtools: [['chat', 'الرسائل', '٢'], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] }))
+    };
+  }
+}
+</script>
+</body>
+</html>

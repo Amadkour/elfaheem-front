@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>المعلم: إنشاء دورة</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* ---- Tea1 shared (teacher shell + parts) ---- */
+.t1 .k-btn{box-shadow:0 10px 22px -6px rgba(95,61,196,.45)}
+.t1 .k-btn.hot,.t1 .t1-red{background:linear-gradient(120deg,#E8364A,#F2545B,#E8364A);background-size:200% 100%;box-shadow:0 10px 22px -6px rgba(242,84,91,.55)}
+.t1 .k-btn.ghost,.t1 .k-btn.danger{box-shadow:none}
+.t1 .k-tile:hover{box-shadow:0 10px 22px rgba(95,61,196,.1)}
+.t1 .k-chip.on,.t1 .k-chip[aria-pressed="true"]{background:var(--k-acc);border-color:var(--k-acc)}
+.t1 .k-bnav a[aria-current="page"]{background:linear-gradient(160deg,#EFE9FD,#FFFFFF)}
+.t1-avT{background:linear-gradient(150deg,#8B6CF0,#5F3DC4)}
+.t1-ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.t1-pin{height:40px;font-size:13.5px}
+.t1-pinic{width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#FFFFFF;flex-shrink:0}
+.t1-pin .t1-ell{flex:1}
+/* attendance banner (global) */
+.t1-att{position:sticky;top:68px;z-index:19;display:flex;align-items:center;gap:16px;padding:0 28px;height:48px;background:linear-gradient(100deg,#1D2F7A,#5F3DC4);color:#FFFFFF;font-size:13.5px;animation:kFade .4s both}
+.t1-attc{font-size:19px;font-weight:700;letter-spacing:3px;font-family:'Noto Naskh Arabic',serif;padding:2px 12px;border-radius:10px;background:rgba(255,255,255,.14)}
+.t1-attm{opacity:.9;white-space:nowrap}
+.t1-attc{white-space:nowrap}
+.t1-attx{font-weight:700;padding:4px 12px;border-radius:14px;background:rgba(255,255,255,.16)}
+.t1-attq{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center}
+/* upload footer */
+.t1-up{position:sticky;bottom:0;z-index:18;margin:0 28px 16px;border-radius:20px;background:#FFFFFF;box-shadow:0 18px 44px -12px rgba(0,20,64,.35);border:1.5px solid #E6DEFB;overflow:hidden;animation:kRise .5s both}
+.t1-upbar{display:flex;align-items:center;gap:12px;padding:10px 14px}
+.t1-upring{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#5F3DC4;background:radial-gradient(closest-side,#FFFFFF 76%,transparent 78%),conic-gradient(#5F3DC4 calc(var(--p)*1%),#E6DEFB 0)}
+.t1-upl{display:flex;flex-direction:column;gap:6px;padding:12px 14px 4px;border-bottom:1px solid #EFEAFB}
+.t1-upi{display:flex;align-items:center;gap:10px;padding:6px 0;animation:kRise .45s both;animation-delay:var(--d,0s)}
+/* hero helpers */
+.t1-hb{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.22);color:#FFFFFF;box-shadow:none;animation:none}
+.t1-hb:hover{background:rgba(255,255,255,.16)}
+.t1 a.k-stat{color:#FFFFFF;transition:transform .2s,background .2s}
+.t1 a.k-stat:hover{transform:translateY(-3px);background:rgba(255,255,255,.13)}
+.t1-crumb{display:flex;align-items:center;gap:6px;font-size:13px;opacity:.75;margin-bottom:6px}
+/* forms */
+.t1-f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.t1-f .k-lbl small{font-weight:600;color:var(--k-muted);font-size:12px;margin-right:4px}
+.t1-inp{height:48px;border-radius:14px;border:1.5px solid #D5E3F2;background:#FFFFFF;padding:0 14px;display:flex;align-items:center;gap:8px;font-size:14.5px;color:var(--k-text);min-width:0}
+.t1-inp.ph{color:#8A97AE}
+.t1-inp.foc{border-color:var(--k-acc);box-shadow:0 0 0 4px rgba(95,61,196,.12)}
+.t1-inp.err{border-color:#F2545B;box-shadow:0 0 0 4px rgba(242,84,91,.1)}
+.t1-ta{min-height:96px;align-items:flex-start;padding:12px 14px;line-height:1.75}
+.t1-hint{font-size:12.5px;color:var(--k-muted);line-height:1.6}
+.t1-err{font-size:12.5px;color:#B23A2E;font-weight:700}
+.t1-opt{position:relative;display:flex;align-items:flex-start;gap:12px;padding:14px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;text-align:right;color:var(--k-text);transition:border-color .2s,box-shadow .2s,transform .2s;min-width:0}
+.t1-opt:hover{transform:translateY(-2px)}
+.t1-opt[aria-checked="true"]{border-color:var(--k-acc);background:linear-gradient(160deg,#F6F2FF,#FFFFFF);box-shadow:0 0 0 4px rgba(95,61,196,.1)}
+.t1-rad{width:22px;height:22px;border-radius:50%;border:2px solid #C9D6E6;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center}
+.t1-opt[aria-checked="true"] .t1-rad{border-color:var(--k-acc)}
+.t1-opt[aria-checked="true"] .t1-rad::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--k-acc)}
+.t1-sw{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px dashed var(--k-line)}
+.t1-sw:last-child{border-bottom:none}
+.t1-step{display:flex;align-items:center;gap:8px}
+.t1-step button{width:38px;height:38px;border-radius:12px;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-text);font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.t1-step b{min-width:46px;text-align:center;font-size:17px}
+/* menus, toasts, modal */
+.t1-menu{position:absolute;z-index:30;min-width:220px;padding:8px;border-radius:18px;background:#FFFFFF;box-shadow:0 24px 50px -10px rgba(0,20,64,.35);border:1px solid #EEF2F7;display:flex;flex-direction:column;animation:t1Pop .3s cubic-bezier(.2,.8,.2,1) both;transform-origin:top left}
+@keyframes t1Pop{from{opacity:0;transform:scale(.92) translateY(-6px)}to{opacity:1;transform:none}}
+.t1-menu a{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px;border-radius:12px;font-size:14px;font-weight:600;color:var(--k-text)}
+.t1-menu a:hover{background:#F6F2FF}
+.t1-menu a.red{color:#B23A2E}
+.t1-menu hr{border:none;border-top:1px solid #EEF2F7;margin:4px 6px}
+.t1-toast{position:fixed;z-index:60;bottom:24px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;padding:10px 12px 10px 18px;border-radius:18px;background:#0E2350;color:#FFFFFF;font-size:14px;font-weight:600;box-shadow:0 18px 40px rgba(0,20,64,.4);animation:t1Toast .5s cubic-bezier(.2,.8,.2,1) both;white-space:nowrap}
+.t1-toast button{border:none;background:rgba(255,255,255,.12);color:#C9B8FF;font-weight:700;height:32px;padding:0 14px;border-radius:16px;font-size:13.5px}
+@keyframes t1Toast{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+.t1-modal{position:fixed;z-index:41;top:50%;left:50%;width:640px;max-width:calc(100% - 32px);max-height:calc(100% - 48px);transform:translate(-50%,-50%);background:#FFFFFF;border-radius:28px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 40px 90px rgba(0,16,48,.45);animation:t1Mod .45s cubic-bezier(.2,.8,.2,1) both}
+@keyframes t1Mod{from{opacity:0;transform:translate(-50%,-46%) scale(.97)}to{opacity:1;transform:translate(-50%,-50%)}}
+.t1-x{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-text);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.t1-hs{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:none}
+.t1-hs::-webkit-scrollbar{display:none}
+.t1-ib2{width:36px;height:36px;border-radius:12px;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-muted);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.t1-note{display:flex;gap:10px;align-items:flex-start;border-radius:16px;padding:12px 14px;font-size:13.5px;line-height:1.7;background:#F3EFFD;color:#4B2FA8}
+.t1-note.amber{background:#FFF6E0;color:#855700}
+.t1-note.sky{background:#E8F3FC;color:#135F9A}
+.t1-note.red{background:#FFEDEB;color:#B23A2E}
+.t1-note svg{flex-shrink:0;margin-top:3px}
+.t1-qr{display:grid;grid-template-columns:repeat(21,1fr);aspect-ratio:1;padding:10px;background:#FFFFFF;border-radius:14px}
+.t1-qr i{display:block}
+.t1-qr i.on{background:#0E2350}
+.t1-cover{position:relative;overflow:hidden;color:#FFFFFF;display:flex;flex-direction:column;justify-content:flex-end}
+.t1-cover::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 2px,transparent 2px 14px)}
+.t1-cover::after{content:"";position:absolute;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.16);top:-50px;left:-40px}
+.t1-cover > *{position:relative;z-index:1}
+.t1-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:6px;border-radius:22px;background:#FFFFFF;box-shadow:0 14px 30px -18px rgba(0,20,64,.3)}
+.t1-tabs::-webkit-scrollbar{display:none}
+.t1-tabs a{height:40px;padding:0 16px;border-radius:16px;display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:700;color:var(--k-muted);white-space:nowrap;flex-shrink:0;transition:background .2s,color .2s}
+.t1-tabs a:hover{background:#F6F2FF;color:var(--k-acc)}
+.t1-tabs a[aria-current="page"]{background:linear-gradient(120deg,#5F3DC4,#8B6CF0);color:#FFFFFF;box-shadow:0 8px 18px -6px rgba(95,61,196,.55)}
+.t1-tabs a i{font-style:normal;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#F2545B;color:#FFFFFF;font-size:11px;display:inline-flex;align-items:center;justify-content:center}
+.t1-fade{animation:kIn .45s cubic-bezier(.2,.8,.2,1) both}
+@media (max-width:760px){
+.t1-att{top:58px;padding:0 12px;gap:10px;height:46px;font-size:12.5px}
+.t1-att .t1-attx{display:none}
+.t1-attc{font-size:16px;letter-spacing:2px;padding:2px 8px}
+.t1-up{margin:0 10px 10px;bottom:78px}
+.t1-modal{top:auto;bottom:0;left:0;right:0;width:100%;max-width:100%;max-height:94%;transform:none;border-radius:26px 26px 0 0;animation:kUp .45s cubic-bezier(.2,.8,.2,1) both}
+.t1-toast{bottom:86px;max-width:calc(100% - 24px);white-space:normal}
+.t1-tabs{border-radius:18px}
+.t1-tabs a{height:38px;padding:0 13px;font-size:13.5px}
+}
+.gl-b > *,.k-db > *{flex-shrink:0}
+.mo{z-index:8}
+@media (max-width:760px){.t1 .k-seg{overflow-x:auto;scrollbar-width:none}.t1 .k-seg::-webkit-scrollbar{display:none}.t1 .k-seg button{flex:0 0 auto}}
+.tc-stars{display:inline-flex;gap:1px;color:#E89B00}
+.tc-stars svg{fill:currentColor}
+@media (max-width:760px){.tc-hidem{display:none !important}}
+.t1 a.k-btn{color:#FFFFFF}
+.t1 a.k-btn.ghost{color:var(--k-acc)}
+.t1 a.k-btn.danger{color:#C2410C}
+@media (max-width:760px){.t1-sw{flex-wrap:wrap}.t1-sw > .k-col{min-width:180px}}
+.t1 .k-grid > *{min-width:0}
+@media (max-width:760px){.t1-toast{width:calc(100% - 24px);justify-content:space-between}}
+
+
+/* Tea1Wizard (wz-) */
+.wz-steps{display:flex;gap:6px;margin-top:20px;overflow-x:auto;scrollbar-width:none}
+.wz-steps a{flex:1 0 auto;display:flex;align-items:center;gap:8px;height:46px;padding:0 12px 0 14px;border-radius:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.7);font-size:13.5px;font-weight:700;white-space:nowrap;transition:background .2s}
+.wz-steps a b{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;background:rgba(255,255,255,.14);flex-shrink:0}
+.wz-steps a.done b{background:#3EC98A;color:#FFFFFF}
+.wz-steps a.cur{background:#FFFFFF;color:var(--k-navy);box-shadow:0 10px 24px -8px rgba(0,0,0,.35)}
+.wz-steps a.cur b{background:var(--k-acc);color:#FFFFFF}
+.wz-mstep{display:none}
+.wz-sec{display:flex;flex-direction:column;gap:14px;padding-top:4px}
+.wz-sec + .wz-sec{border-top:1px dashed var(--k-line);padding-top:18px}
+.wz-sec h4{margin:0;font-size:15.5px;font-weight:700;display:flex;align-items:center;gap:8px}
+.wz-sec h4 svg{color:var(--k-acc)}
+.wz-cv{position:relative;height:170px;border-radius:20px;padding:16px;align-items:flex-start}
+.wz-cv .k-row{position:absolute;top:14px;left:14px}
+.wz-cv .k-btn{background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.35);backdrop-filter:blur(6px);animation:none;box-shadow:none}
+.wz-plan{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:20px;border:1.5px solid var(--k-line);background:#FFFFFF;animation:kRise .5s both;animation-delay:var(--d)}
+.wz-plan.def{border-color:var(--k-acc);background:linear-gradient(160deg,#F6F2FF,#FFFFFF);box-shadow:0 0 0 4px rgba(95,61,196,.1)}
+.wz-plan .t1-inp{font-size:20px;font-weight:700;height:54px}
+.wz-plan .t1-inp small{font-size:13px;color:var(--k-muted);font-weight:600;margin-right:auto}
+.wz-def{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--k-muted)}
+.wz-def i{width:18px;height:18px;border-radius:50%;border:2px solid #C9D6E6;display:flex;align-items:center;justify-content:center}
+.wz-plan.def .wz-def{color:var(--k-acc)}
+.wz-plan.def .wz-def i{border-color:var(--k-acc)}
+.wz-plan.def .wz-def i::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--k-acc)}
+.wz-stage{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:18px;border:1.5px solid var(--k-line)}
+.wz-stage.on{border-color:#CDBEF7;background:#FBF9FF}
+.wz-code{display:flex;gap:8px;direction:ltr;justify-content:flex-end}
+.wz-code span{width:46px;height:56px;border-radius:14px;border:1.5px solid #CDBEF7;background:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--k-navy);animation:kRise .4s both;animation-delay:var(--d)}
+.wz-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.wz-day{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border-radius:16px;background:#F8FBFE;border:1.5px dashed #D5E3F2;font-size:13px;font-weight:700;color:var(--k-muted);min-height:104px}
+.wz-day.on{background:linear-gradient(160deg,#5F3DC4,#8B6CF0);border:none;color:#FFFFFF;box-shadow:0 12px 24px -12px rgba(95,61,196,.7);animation:thPop2 .5s cubic-bezier(.3,1.4,.5,1) both;animation-delay:var(--d)}
+@keyframes thPop2{from{transform:scale(.8);opacity:0}to{transform:none;opacity:1}}
+.wz-day small{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.2)}
+.wz-day.new{border:2px solid #FF9F5A;background:#FFF4EA;color:#A3480A}
+.wz-ap{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;animation:kRise .5s both;animation-delay:var(--d)}
+.wz-cert{position:relative;aspect-ratio:1.414;border-radius:12px;background:#FFFDF7;border:6px double #D9C38A;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px;text-align:center;color:#5A4420}
+.wz-cert b{font-family:'Aref Ruqaa',serif;font-size:20px;color:#5F3DC4}
+.wz-cert i{display:block;height:1.5px;width:60%;background:#D9C38A;margin:4px 0}
+.wz-cert em{position:absolute;bottom:10px;left:14px;width:34px;height:34px;border-radius:50%;background:radial-gradient(#F6C453,#B7791F);box-shadow:0 0 0 3px #FFF3C4}
+.wz-vid{position:relative;border-radius:18px;overflow:hidden;aspect-ratio:16/9;background:radial-gradient(120% 140% at 80% 0%,#8B6CF0,#00205E 70%);display:flex;align-items:center;justify-content:center;color:#FFFFFF}
+.wz-vid .pb{width:60px;height:60px;border-radius:50%;background:#FFFFFF;color:#5F3DC4;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 10px rgba(255,255,255,.15)}
+.wz-vid .pb svg{fill:currentColor}
+.wz-vid .k-tag{position:absolute;top:12px;right:12px}
+.wz-li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#F8FBFE;border:1.5px solid var(--k-line);font-size:14px;font-weight:600}
+.wz-addl{display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border-radius:14px;border:1.5px dashed #CDBEF7;color:var(--k-acc);font-weight:700;font-size:14px;background:#FBF9FF}
+.wz-sum{display:flex;gap:14px;align-items:flex-start;padding:14px;border-radius:18px;border:1.5px solid var(--k-line);animation:kRise .5s both;animation-delay:var(--d)}
+.wz-ok{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.wz-ok.y{background:#DDF5E9;color:#1D7A50}
+.wz-ok.n{background:#EEF2F7;color:#8A97AE}
+.wz-pv .t1-cover{height:130px;padding:14px;border-radius:18px}
+.wz-foot{position:sticky;bottom:0;z-index:15;display:flex;align-items:center;gap:10px;padding:12px 28px;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-top:1px solid var(--k-line)}
+.wz-foot .k-btn[aria-disabled="true"]{background:#D5DFEB;color:#8A97AE;box-shadow:none;animation:none}
+.wz-kw{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 6px 0 12px;border-radius:16px;background:#EFE9FD;color:#5F3DC4;font-size:13px;font-weight:700}
+.wz-kw svg{opacity:.7}
+.wz-dchip{height:40px;min-width:62px;padding:0 12px;border-radius:14px;border:1.5px solid var(--k-line);background:#FFFFFF;font-size:14px;font-weight:700;color:var(--k-text);display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.wz-dchip.on{background:var(--k-acc);border-color:var(--k-acc);color:#FFFFFF}
+.wz-dchip.has{border-color:#CDBEF7;color:#5F3DC4}
+@media (max-width:760px){
+.wz-steps{display:none}
+.wz-mstep{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.wz-mstep .k-bar{background:rgba(255,255,255,.18)}
+.wz-week{gap:4px}
+.wz-day{padding:8px 2px;min-height:86px;font-size:11.5px;border-radius:12px}
+.wz-day small{font-size:10px;padding:1px 4px}
+.wz-foot{padding:10px 12px;bottom:70px;flex-wrap:wrap}
+.wz-foot .k-btn{flex:1}
+.wz-foot .wz-hm{display:none}
+.wz-code span{width:42px;height:50px;font-size:21px}
+.wz-sum{flex-wrap:wrap}
+}
+.wz-om{display:none}
+@media (max-width:760px){.wz-om{display:inline}.wz-foot .k-btn{white-space:nowrap}.wz-foot .k-btn.ghost{flex:0 0 auto}}
+/* WP10 */
+@media (max-width:760px){.t1 .k-card .k-g3:has(> .k-stat){grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.t1 .k-card .k-g3 > .k-stat{padding:10px 8px}}
+.t1 .t1-ta{height:auto}
+/* WP10: compact teacher hero on phone (T-09) */
+@media (max-width:760px){
+.t1 .k-hero .k-g4{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:14px !important}
+.t1 .k-hero .k-g3{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:14px !important}
+.t1 .k-hero .k-stat{padding:8px 4px;text-align:center;align-items:center;gap:0;min-width:0}
+.t1 .k-hero .k-stat b{font-size:17px;white-space:nowrap}
+.t1 .k-hero .k-stat small{font-size:10.5px;line-height:1.35}
+.t1 .k-hero h2{font-size:21px;line-height:1.5}
+}
+@media (max-width:760px){.wz-day{font-size:11px;padding:10px 2px;min-height:84px}.wz-day small{font-size:10px;padding:1px 4px;white-space:nowrap}}
+.t1.ov,.t1.ov .k-shell{height:var(--vh,100vh);max-height:var(--vh,100vh);min-height:0;overflow:hidden}
+</style>
+</helmet>
+<div class="k teacher t1 {{rootc}}" dir="rtl">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">معلم</span></div>
+      <sc-for list="{{sh.nav}}" as="n" hint-placeholder-count="5">
+        <a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{n.c}}</span></sc-if></a>
+      </sc-for>
+      <span class="k-navg">مثبّتة</span>
+      <sc-for list="{{sh.pins}}" as="p" hint-placeholder-count="3">
+        <a href="#" class="k-nav t1-pin"><span class="t1-pinic" style="background: {{p.bg}}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{p.i}}"></path></svg></span><span class="t1-ell">{{p.l}}</span><sc-if value="{{p.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{p.c}}</span></sc-if></a>
+      </sc-for>
+      <div class="k-me"><span class="k-av sm t1-avT">م</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">أ. ماجد الشهري</b><small style="font-size: 11.5px; opacity: .7">معلم رياضيات وفيزياء</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <span><small>{{sh.kicker}}</small><h1>{{sh.title}}</h1></span>
+        <span class="k-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن دورة أو طالب أو حصة<kbd>Ctrl K</kbd></span>
+        <sc-for list="{{sh.tools}}" as="t" hint-placeholder-count="5"><a href="#" class="k-ib" aria-label="{{t.l}}" title="{{t.l}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av t1-avT">م</span>
+      </header>
+      <header class="k-mtop">
+        <sc-if value="{{sh.back}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-ib" aria-label="رجوع"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a></sc-if>
+        <sc-if value="{{sh.logo}}" hint-placeholder-val="{{ true }}"><img src="./logo.png" alt="" width="28" height="31" style="width: 28px; height: auto"></sc-if>
+        <h1>{{sh.title}}</h1>
+        <sc-for list="{{sh.mtools}}" as="t" hint-placeholder-count="2"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+      </header>
+      <sc-if value="{{sh.att}}" hint-placeholder-val="{{ false }}">
+        <a href="#" class="t1-att" aria-label="الحضور مفتوح، افتح شاشة الكود">
+          <span class="k-live" style="color: #FFFFFF"><i style="background: #3EE08F"></i>الحضور مفتوح</span>
+          <span class="t1-attc" dir="ltr">٤٨٢&#x200E; &#x200E;٩١٧</span>
+          <span class="t1-attm"><b>٧</b> حاضر من ٨</span>
+          <span class="t1-attm">باقي <b>٣:١٢</b></span>
+          <span class="k-sp"></span>
+          <span class="t1-attx">افتح الشاشة</span>
+          <span class="t1-attq" aria-label="إغلاق التسجيل"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></span>
+        </a>
+      </sc-if>
+      <main class="k-page">
+
+<section class="k-hero" style="padding-bottom: 90px">
+  <div class="t1-crumb">دوراتي <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg> {{w.crumb}}</div>
+  <div class="k-row" style="align-items: flex-end"><div class="k-col" style="flex: 1 1 360px; gap: 4px"><h2>{{w.title}}</h2><p>{{w.sub}}</p></div><sc-if value="{{w.edit}}" hint-placeholder-val="{{ false }}"><span class="k-tag g" style="height: 30px; padding: 0 14px; font-size: 13px">منشورة، ٨ طلاب</span></sc-if></div>
+  <nav class="wz-steps" aria-label="الخطوات"><sc-for list="{{steps}}" as="s" hint-placeholder-count="7"><a href="#" class="{{s.c}}" aria-current="{{s.cur}}"><b>{{s.n}}</b>{{s.l}}</a></sc-for></nav>
+  <div class="wz-mstep"><span class="k-row" style="justify-content: space-between; font-size: 13.5px; font-weight: 700"><span>الخطوة {{w.num}} من ٧: {{w.step}}</span><span style="opacity: .7">التالي: {{w.next}}</span></span><span class="k-bar"><i style="width: {{w.pct}}%"></i></span></div>
+</section>
+<div class="k-body">
+  <div class="k-grid k-side2">
+    <section class="k-card t1-fade" style="--d: .05s">
+      <!-- BASICS -->
+      <sc-if value="{{is.basics}}" hint-placeholder-val="{{ true }}">
+        <div class="wz-sec">
+          <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15.5 8.5h.01"></path></svg>الغلاف</h4>
+          <div class="t1-cover wz-cv" style="background: linear-gradient(135deg,#5F3DC4,#8B6CF0 55%,#FF9F5A)"><span style="opacity: .9"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2"></path></svg></span><b style="font-size: 20px; margin-top: auto">الرياضيات ٣ ثانوي، مجموعة أ</b><span class="k-row"><span class="k-btn sm"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15.5 8.5h.01"></path></svg>غيّر الغلاف</span><span class="k-btn sm"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>شيل</span></span></div>
+          <span class="t1-hint">صورة أفقية ١٦:٩، تقدر تقصّها بعد الاختيار.</span>
+        </div>
+        <div class="wz-sec">
+          <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h7"></path></svg>المعلومات الأساسية</h4>
+          <div class="k-grid k-g2" style="gap: 14px">
+            <label class="t1-f"><span class="k-lbl">العنوان بالعربي</span><span class="t1-inp foc">الرياضيات ٣ ثانوي، مجموعة أ</span></label>
+            <label class="t1-f"><span class="k-lbl">العنوان بالإنجليزي <small>اختياري</small></span><span class="t1-inp" dir="ltr" style="justify-content: flex-end">Math Grade 12, Group A</span></label>
+          </div>
+          <span class="t1-hint" style="margin-top: -6px">اكتب عنوان واحد على الأقل.</span>
+          <label class="t1-f"><span class="k-lbl">الوصف بالعربي</span><span class="t1-inp t1-ta">مراجعة شاملة لمنهج الرياضيات للصف الثالث الثانوي: الدوال والمتتابعات والتفاضل، مع تدريب مكثّف على أسئلة التحصيلي وحل نماذج سابقة.</span></label>
+          <label class="t1-f"><span class="k-lbl">الوصف بالإنجليزي <small>اختياري</small></span><span class="t1-inp t1-ta ph">Describe the course in English…</span></label>
+        </div>
+        <div class="wz-sec">
+          <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM16 10l5-3v10l-5-3"></path></svg>نوع الدورة</h4>
+          <div class="k-grid k-g3" style="gap: 12px"><sc-for list="{{types}}" as="o" hint-placeholder-count="3"><button class="t1-opt" role="radio" aria-checked="{{o.on}}"><span class="t1-rad"></span><span class="k-col" style="gap: 2px"><b style="font-size: 15px">{{o.t}}</b><span class="k-m">{{o.m}}</span></span></button></sc-for></div>
+          <label class="t1-f"><span class="k-lbl">التخصص</span><span class="t1-inp" style="justify-content: space-between">رياضيات<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span></label>
+        </div>
+      </sc-if>
+      <!-- PRICING -->
+      <sc-if value="{{is.pricing}}" hint-placeholder-val="{{ false }}">
+        <div class="wz-sec">
+          <div class="k-ch"><h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h13v4M3 7v10a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14h.01"></path></svg>خطط الاشتراك</h4><span class="t1-inp" style="height: 40px; font-size: 13.5px; font-weight: 700">ريال سعودي (SAR)<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span></div>
+          <div class="k-grid k-g3" style="gap: 12px"><sc-for list="{{plans}}" as="p" hint-placeholder-count="3"><div class="wz-plan {{p.c}}" style="--d: {{p.d}}"><span class="k-row" style="justify-content: space-between"><b style="font-size: 15.5px">{{p.t}}</b><span class="k-tag {{p.tc}}">{{p.tag}}</span></span><span class="t1-inp {{p.ph}}">{{p.v}}<small>ريال</small></span><span class="k-m">{{p.m}}</span><span class="wz-def"><i></i>الخطة الافتراضية</span></div></sc-for></div>
+          <div class="t1-note"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5M12 8h.01"></path></svg>اترك الخطة فاضية إذا ما تقدّمها. الخصم يسري على كل الخطط، والخطة الافتراضية هي اللي تطلع للطالب أول.</div>
+        </div>
+        <div class="wz-sec">
+          <div class="k-ch"><h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5L5 19M7 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM17 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"></path></svg>خصم <span class="k-m" style="font-weight: 600">اختياري</span></h4><a href="#" class="k-link" style="color: #B23A2E">شيل الخصم</a></div>
+          <div class="k-grid k-g2" style="gap: 14px">
+            <label class="t1-f"><span class="k-lbl">نسبة الخصم</span><span class="t1-inp foc">١٥<span class="k-sp"></span><b style="color: var(--k-muted)">٪</b></span><span class="t1-hint">من ١ إلى ١٠٠</span></label>
+            <label class="t1-f"><span class="k-lbl">لمدة <small>اختياري</small></span><span class="t1-inp">١٠<span class="k-sp"></span><span class="k-m">أيام</span></span><span class="t1-hint">بدون مدة يستمر لين توقفه</span></label>
+          </div>
+        </div>
+        <div class="wz-sec">
+          <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"></path></svg>كذا يشوف الطالب السعر</h4>
+          <div class="k-row" style="gap: 12px; padding: 14px; border-radius: 18px; background: #F8FBFE; border: 1.5px solid var(--k-line)"><span class="k-col" style="gap: 0; flex: 1"><span class="k-row" style="gap: 8px"><b style="font-size: 24px; color: var(--k-navy)">٣٨٢٫٥ ريال</b><s class="k-m" style="font-size: 15px">٤٥٠</s><span class="k-tag r">خصم ١٥٪</span></span><span class="k-m">سنويًا، ينتهي الخصم بعد ١٠ أيام، أو ٦ شهور بـ ٢٢١ ريال، أو شهري بـ ٧٢٫٢٥ ريال</span></span></div>
+        </div>
+      </sc-if>
+      <!-- AUDIENCE -->
+      <sc-if value="{{is.audience}}" hint-placeholder-val="{{ false }}">
+        <div class="wz-sec">
+          <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5M22 9v6"></path></svg>لمن هذي الدورة؟</h4>
+          <sc-for list="{{stages}}" as="g" hint-placeholder-count="3"><div class="wz-stage {{g.c}}"><span class="k-row" style="justify-content: space-between"><b style="font-size: 14.5px">{{g.t}}</b><button class="k-chip {{g.allc}}" style="height: 30px"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>المرحلة كاملة</button></span><span class="k-row" style="gap: 8px"><sc-for list="{{g.gs}}" as="x" hint-placeholder-count="3"><button class="k-chip {{x.c}}">{{x.l}}</button></sc-for></span></div></sc-for>
+          <span class="k-lbl">المجموعة</span>
+          <div class="k-grid k-g2" style="gap: 12px"><button class="t1-opt" role="radio" aria-checked="true"><span class="t1-rad"></span><span class="k-col" style="gap: 2px"><b>طلاب</b><span class="k-m">مجموعة بنين، من ٥ إلى ١٠ طلاب</span></span></button><button class="t1-opt" role="radio" aria-checked="false" aria-disabled="true" style="opacity: .55"><span class="t1-rad"></span><span class="k-col" style="gap: 2px"><b>طالبات</b><span class="k-m">مجموعات الطالبات تدرّسها معلمات</span></span></button></div>
+          <label class="t1-f"><span class="k-lbl">المادة <small>اختياري</small></span><span class="t1-inp" style="justify-content: space-between">الرياضيات<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span></label>
+        </div>
+        <div class="wz-sec">
+          <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11zM12 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"></path></svg>وين تدرّس؟</h4>
+          <div class="k-grid k-g3" style="gap: 12px"><sc-for list="{{modes}}" as="o" hint-placeholder-count="3"><button class="t1-opt" role="radio" aria-checked="{{o.on}}"><span class="t1-rad"></span><span class="k-col" style="gap: 2px"><b style="font-size: 15px">{{o.t}}</b><span class="k-m">{{o.m}}</span></span></button></sc-for></div>
+          <div class="k-grid k-g2" style="gap: 14px">
+            <label class="t1-f"><span class="k-lbl">المنطقة</span><span class="t1-inp" style="justify-content: space-between">منطقة الرياض<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span></label>
+            <label class="t1-f"><span class="k-lbl">المدينة أو الحي</span><span class="t1-inp" style="justify-content: space-between">الرياض، حي الياسمين<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span></label>
+          </div>
+          <label class="t1-f"><span class="k-lbl">العنوان</span><span class="t1-inp t1-ta" style="min-height: 72px">مركز الياسمين التعليمي، طريق الملك سلمان، الدور الثاني قاعة ٤</span></label>
+        </div>
+      </sc-if>
+      <!-- PRIVACY -->
+      <sc-if value="{{is.privacy}}" hint-placeholder-val="{{ false }}">
+        <div class="wz-sec">
+          <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg>الخصوصية</h4>
+          <div class="k-grid k-g2" style="gap: 12px">
+            <button class="t1-opt" role="radio" aria-checked="false"><span class="t1-rad"></span><span class="k-col" style="gap: 2px"><b style="font-size: 15px">دورة عامة</b><span class="k-m">تظهر للكل في الكتالوج</span></span></button>
+            <button class="t1-opt" role="radio" aria-checked="true"><span class="t1-rad"></span><span class="k-col" style="gap: 2px"><b style="font-size: 15px">دورة خاصة <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg></b><span class="k-m">ما تنفتح إلا بالكود، مناسبة لمدرسة أو مجموعة محددة</span></span></button>
+          </div>
+          <div class="k-row" style="gap: 14px; padding: 16px; border-radius: 18px; background: #FBF9FF; border: 1.5px solid #E6DEFB; justify-content: space-between">
+            <span class="k-col" style="gap: 2px"><b style="font-size: 14.5px">كود الدخول</b><span class="k-m">٦ أرقام. لو تركته فاضي ننشئه تلقائيًا.</span></span>
+            <div class="wz-code"><sc-for list="{{code}}" as="c" hint-placeholder-count="6"><span style="--d: {{c.d}}">{{c.v}}</span></sc-for></div>
+            <span class="k-row" style="gap: 8px"><a href="#" class="k-btn sm ghost"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"></path></svg>إنشاء كود</a><a href="#" class="k-btn sm"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9h11v11H9zM5 15H4V4h11v1"></path></svg>نسخ</a></span>
+          </div>
+        </div>
+        <div class="wz-sec">
+          <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"></path></svg>الساعات المتوقعة</h4>
+          <div class="k-row" style="justify-content: space-between"><span class="k-m">كم ساعة تتوقع يحتاج الطالب يخلّص الدورة؟</span><span class="t1-step"><button aria-label="نقّص">−</button><b>٣٦</b><button aria-label="زِد">+</button></span></div>
+        </div>
+        <div class="wz-sec">
+          <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4h8l10 10-8 8zM7.5 7.5h.01"></path></svg>المستوى والكلمات المفتاحية</h4>
+          <div class="k-seg" style="max-width: 420px"><button aria-selected="false">مبتدئ</button><button aria-selected="true">متوسط</button><button aria-selected="false">متقدّم</button></div>
+          <div class="k-row" style="gap: 8px"><span class="wz-kw">تحصيلي<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></span><span class="wz-kw">التفاضل<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></span><span class="wz-kw">المتتابعات<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></span><span class="wz-kw">الدوال<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></span><span class="t1-inp ph" style="height: 34px; font-size: 13px; border-style: dashed">+ أضف كلمة</span></div>
+          <span class="t1-hint">تساعدنا نقترح دورتك للطلاب المناسبين.</span>
+        </div>
+        <div class="wz-sec">
+          <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 17h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7"></path></svg>المسار</h4>
+          <div class="t1-note sky"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5M12 8h.01"></path></svg><span style="flex: 1">الدورات اللي بعدها والمتطلبات تتحدد من تبويب «المسار» في صفحة الدورة.</span><a href="#" class="k-btn sm ghost">تعديل المسار</a></div>
+        </div>
+      </sc-if>
+      <!-- SCHEDULE -->
+      <sc-if value="{{is.schedule}}" hint-placeholder-val="{{ false }}">
+        <div class="wz-sec">
+          <div class="k-ch"><h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v16H3zM3 10h18M8 3v4M16 3v4"></path></svg>المواعيد الأسبوعية</h4><a href="#" class="k-btn sm"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>إضافة موعد</a></div>
+          <div class="t1-note"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"></path></svg>تتكرر كل أسبوع وتطلع للطلاب في صفحة الدورة وجدولهم. هذي مواعيد الدورة الثابتة، وتختلف عن الحصص اللي تضيفها وحدة وحدة.</div>
+          <div class="wz-week"><sc-for list="{{week}}" as="d" hint-placeholder-count="7"><div class="wz-day {{d.c}}" style="--d: {{d.d}}">{{d.l}}<sc-for list="{{d.t}}" as="t" hint-placeholder-count="1"><small>{{t}}</small></sc-for></div></sc-for></div>
+        </div>
+        <div class="wz-sec">
+          <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>المواعيد ({{w.apc}})</h4>
+          <sc-for list="{{aps}}" as="a" hint-placeholder-count="3"><div class="wz-ap" style="--d: {{a.d}}"><span class="k-ico" style="background: #EFE9FD; color: #5F3DC4; flex-direction: column; line-height: 1.1; font-size: 12px; font-weight: 700; width: 52px; height: 52px; border-radius: 16px">{{a.day}}</span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 15px">{{a.t}}</b><span class="k-m">{{a.m}}</span></span><button class="t1-ib2" aria-label="تعديل"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"></path></svg></button><button class="t1-ib2" style="color: #B23A2E" aria-label="حذف"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg></button></div></sc-for>
+        </div>
+      </sc-if>
+      <!-- EXTRAS -->
+      <sc-if value="{{is.extras}}" hint-placeholder-val="{{ false }}">
+        <div class="k-grid k-g2" style="gap: 18px">
+          <div class="wz-sec">
+            <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"></path></svg>فيديو تعريفي</h4>
+            <div class="wz-vid"><span class="k-tag o"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4"></path></svg>ينرفع عند الحفظ</span><span class="pb"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"></path></svg></span></div>
+            <div class="k-row" style="justify-content: space-between"><span class="k-col" style="gap: 0"><b style="font-size: 14px">تعريف بالدورة.mp4</b><span class="k-m">٤٨ م.ب، ١:٤٢ دقيقة</span></span><span class="k-row" style="gap: 6px"><a href="#" class="k-btn sm ghost">استبدال</a><a href="#" class="k-btn sm danger">شيل</a></span></span></div>
+            <span class="t1-hint">MP4 أو MOV أو WEBM لين ١٠٠ م.ب. يشتغل كخلفية لصفحة الدورة.</span>
+          </div>
+          <div class="wz-sec" style="border: none; padding-top: 4px">
+            <h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM8.5 14L7 21l5-3 5 3-1.5-7"></path></svg>قالب الشهادة <span class="k-m" style="font-weight: 600">اختياري</span></h4>
+            <div class="wz-cert"><span style="font-size: 11px; letter-spacing: 1px">منصة الفهيم</span><b>شهادة إتمام الدورة</b><span style="font-size: 12px">تشهد المنصة بأن الطالب</span><i></i><span style="font-size: 11px">أتمّ دورة الرياضيات ٣ ثانوي</span><em></em></div>
+            <label class="t1-f"><span class="k-lbl">عنوان الشهادة</span><span class="t1-inp">شهادة إتمام الدورة</span></label>
+            <div class="k-row" style="gap: 8px"><a href="#" class="k-btn sm ghost" style="flex: 1">اختر تصميم محفوظ</a><a href="#" class="k-btn sm ghost" style="flex: 1"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4"></path></svg>ارفع قالب</a></div>
+            <a href="#" class="t1-note sky" style="align-items: center"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM8.5 14L7 21l5-3 5 3-1.5-7"></path></svg><span style="flex: 1"><b>تصميمات الشهادات</b>، صمّم وأصدر وتابع كل شهاداتك من مكان واحد</span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></a>
+          </div>
+        </div>
+        <div class="k-grid k-g2" style="gap: 18px">
+          <div class="wz-sec"><h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4"></path></svg>الأدوات المطلوبة</h4><sc-for list="{{tools}}" as="t" hint-placeholder-count="2"><span class="wz-li"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>{{t}}<span class="k-sp"></span><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></span></sc-for><a href="#" class="wz-addl"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>أضف أداة</a></div>
+          <div class="wz-sec"><h4><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"></path></svg>المتطلبات</h4><sc-for list="{{prereq}}" as="t" hint-placeholder-count="2"><span class="wz-li"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14"></path></svg>{{t}}<span class="k-sp"></span><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></span></sc-for><a href="#" class="wz-addl"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>أضف متطلب</a></div>
+        </div>
+      </sc-if>
+      <!-- REVIEW -->
+      <sc-if value="{{is.review}}" hint-placeholder-val="{{ false }}">
+        <div class="k-ch"><h3>راجع قبل النشر</h3><span class="k-tag g">جاهزة ٤ من ٥</span></div>
+        <sc-for list="{{summary}}" as="s" hint-placeholder-count="6"><div class="wz-sum" style="--d: {{s.d}}"><span class="k-ico" style="background: #EFE9FD; color: #5F3DC4"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{s.i}}"></path></svg></span><span class="k-col" style="gap: 2px; flex: 1"><b style="font-size: 15px">{{s.t}}</b><span class="k-m" style="font-size: 13.5px">{{s.m}}</span></span><a href="#" class="k-link">تعديل</a></div></sc-for>
+        <div class="t1-sw" style="padding: 14px; border-radius: 18px; border: 1.5px solid #CDEEDC; background: #F4FBF7"><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 15px">حالة النشر: تُنشر للطلاب</b><span class="k-m">لو قفلتها تنحفظ مسودة، والطلاب ما يشوفونها لين تنشرها.</span></span><span class="k-tog on"><i></i></span></div>
+      </sc-if>
+    </section>
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card wz-pv" style="--d: .1s">
+        <div class="k-ch"><h3>كذا يشوفها الطالب</h3><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"></path></svg></div>
+        <div class="t1-cover" style="background: linear-gradient(135deg,#5F3DC4,#8B6CF0 55%,#FF9F5A)"><span class="k-row" style="gap: 6px"><span class="k-tag r">بث مباشر</span><sc-if value="{{w.priv}}" hint-placeholder-val="{{ false }}"><span class="k-tag" style="background: rgba(0,0,0,.25); color: #FFFFFF"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>خاصة</span></sc-if></span><span style="margin-top: auto"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2"></path></svg></span></div>
+        <b style="font-size: 16px">الرياضيات ٣ ثانوي، مجموعة أ</b>
+        <span class="k-row" style="gap: 6px"><span class="k-av sm t1-avT" style="width: 26px; height: 26px; font-size: 11px">م</span><span class="k-m">أ. ماجد الشهري، ٣ ثانوي</span></span>
+        <span class="k-row" style="gap: 8px"><b style="font-size: 18px; color: #5F3DC4">{{w.price}}</b><sc-if value="{{w.disc}}" hint-placeholder-val="{{ false }}"><s class="k-m">٤٥٠</s><span class="k-tag r">-١٥٪</span></sc-if></span>
+      </section>
+      <section class="k-card" style="--d: .15s">
+        <div class="k-ch"><h3>جهّز دورتك</h3><span class="k-tag p">{{w.ready}}</span></div>
+        <span class="k-bar"><i style="width: {{w.readyp}}%"></i></span>
+        <sc-for list="{{check}}" as="c" hint-placeholder-count="5"><span class="k-row" style="gap: 10px; flex-wrap: nowrap; font-size: 14px; font-weight: 600"><span class="wz-ok {{c.c}}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg></span><span style="flex: 1; {{c.st}}">{{c.t}}</span></span></sc-for>
+        <span class="t1-hint">الطلاب ما يشوفون الدورة لين تنشرها. تقدر تحفظها مسودة وترجع لها أي وقت.</span>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="wz-foot">
+  <a href="#" class="k-btn ghost"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6"></path></svg><span class="wz-hm">حفظ في المسودة</span><span class="wz-om">مسودة</span></a>
+  <span class="k-sp wz-hm"></span>
+  <sc-if value="{{w.prev}}" hint-placeholder-val="{{ true }}"><a href="#" class="k-btn ghost wz-hm"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>السابق</a></sc-if>
+  <span class="t1-hint wz-hm">{{w.hint}}</span>
+  <a href="#" class="k-btn" aria-disabled="{{w.dis}}"><span class="wz-hm">{{w.main}}</span><span class="wz-om">{{w.mmain}}</span></a>
+</div>
+
+      </main>
+      <sc-if value="{{sh.up}}" hint-placeholder-val="{{ false }}">
+        <section class="t1-up" aria-label="الرفع في الخلفية">
+          <sc-if value="{{sh.upOpen}}" hint-placeholder-val="{{ false }}">
+            <div class="t1-upl">
+              <sc-for list="{{sh.ups}}" as="u" hint-placeholder-count="3">
+                <div class="t1-upi" style="--d: {{u.d}}">
+                  <span class="k-ico" style="width: 36px; height: 36px; border-radius: 11px; background: #F3EFFD; color: {{u.c}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{u.i}}"></path></svg></span>
+                  <span class="k-col" style="gap: 4px; flex: 1"><span class="k-row" style="justify-content: space-between; flex-wrap: nowrap"><b class="t1-ell" style="font-size: 13.5px">{{u.n}}</b><small class="k-m" style="white-space: nowrap">{{u.m}}</small></span><span class="k-bar" style="height: 6px"><i style="width: {{u.w}}%; background: {{u.c}}"></i></span></span>
+                  <sc-if value="{{u.fail}}" hint-placeholder-val="{{ false }}"><button class="k-chip" style="height: 30px; color: #5F3DC4"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"></path></svg>أعد</button><button class="k-ib" style="width: 30px; height: 30px" aria-label="تجاهل"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></sc-if>
+                  <sc-if value="{{u.done}}" hint-placeholder-val="{{ false }}"><span class="k-ico" style="width: 30px; height: 30px; border-radius: 50%; background: #DDF5E9; color: #1D7A50"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg></span></sc-if>
+                  <sc-if value="{{u.run}}" hint-placeholder-val="{{ false }}"><button class="k-ib" style="width: 30px; height: 30px" aria-label="إيقاف"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14M16 5v14"></path></svg></button></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div class="t1-upbar">
+            <span class="t1-upring" style="--p: 67"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M4 16v4h16v-4"></path></svg></span>
+            <span class="k-col" style="gap: 1px; flex: 1"><b style="font-size: 13.5px">ينرفع ٢ من ٣ ملفات</b><small class="k-m">ملف واحد تعطّل، الرفع يكمل لو تنقّلت بين الصفحات</small></span>
+            <span class="k-tag r">١ تعطّل</span>
+            <button class="k-ib" style="width: 34px; height: 34px" aria-label="توسيع"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg></button>
+          </div>
+        </section>
+      </sc-if>
+      <nav class="k-bnav" aria-label="القائمة"><sc-for list="{{sh.bnav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{n.c}}</span></sc-if></a></sc-for></nav>
+    </div>
+  </div>
+
+
+<sc-if value="{{is.sheet}}" hint-placeholder-val="{{ false }}">
+  <div class="k-dim"></div>
+  <aside class="k-drawer" aria-label="إضافة موعد" style="width: 460px">
+    <div class="k-dh"><h2>إضافة موعد أسبوعي</h2><button class="t1-x" aria-label="إغلاق"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+    <div class="k-db">
+      <span class="k-lbl">اليوم</span>
+      <div class="k-row" style="gap: 8px"><sc-for list="{{dchips}}" as="d" hint-placeholder-count="7"><button class="wz-dchip {{d.c}}">{{d.l}}</button></sc-for></div>
+      <div class="k-grid k-g2" style="gap: 12px">
+        <label class="t1-f"><span class="k-lbl">من</span><span class="t1-inp foc" style="justify-content: space-between">٤:٠٠ م<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"></path></svg></span></label>
+        <label class="t1-f"><span class="k-lbl">ينتهي</span><span class="t1-inp" style="justify-content: space-between; background: #F8FBFE; color: var(--k-muted)">٤:٥٠ م<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"></path></svg></span></label>
+      </div>
+      <span class="t1-hint">مدة الحصة ثابتة: ٥٠ دقيقة، ويتكرر الموعد كل ثلاثاء</span>
+      <div class="t1-note amber"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 17H2zM12 10v4M12 17h.01"></path></svg><span>عندك موعد يوم الثلاثاء ٧:٣٠ – ٨:٢٠ م. متأكد تبي تضيف موعد ثاني بنفس اليوم؟</span></div>
+    </div>
+    <div class="k-df"><a href="#" class="k-btn" style="flex: 1"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>إيه، أضفه</a><a href="#" class="k-btn ghost">إلغاء</a></div>
+  </aside>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screen":"basics","mode":"","$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  ic() { return {"home":"M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z","book":"M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14","cal":"M3 5h18v16H3zM3 10h18M8 3v4M16 3v4","chart":"M4 20V10M10 20V4M16 20v-7M22 20H2","user":"M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0","users":"M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a7 7 0 0 1 14 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a7 7 0 0 0-4-6.3","search":"M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3","video":"M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM16 10l5-3v10l-5-3","chat":"M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z","bell":"M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0","ai":"M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z","plus":"M12 5v14M5 12h14","live":"M12 11.2a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6zM8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8","mic":"M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3","micoff":"M9 9v3a3 3 0 0 0 5.1 2.1M15 9.3V6a3 3 0 0 0-5.7-1.3M5 11a7 7 0 0 0 11.5 5.4M19 11a7 7 0 0 1-.6 2.8M12 18v3M3 3l18 18","camoff":"M10 5h4a2 2 0 0 1 2 2v4l5-3v10l-3-1.8M16 16v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2M3 3l18 18","rec":"M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z","screen":"M3 4h18v12H3zM8 20h8M12 16v4M12 13V7M9 10l3-3 3 3","hand":"M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0","smile":"M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01","endcall":"M3 15.5c5-4.5 13-4.5 18 0l-2.5 3-3.5-1.5v-2.5c-2-.7-4-.7-6 0V17l-3.5 1.5z","star":"M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z","wallet":"M3 7a2 2 0 0 1 2-2h13v4M3 7v10a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14h.01","check":"M5 12l5 5L20 7","x":"M6 6l12 12M18 6L6 18","clock":"M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2","more":"M12 4.6a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8zM12 10.6a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8zM12 16.6a1.4 1.4 0 1 0 0 2.8 1.4 1.4 0 0 0 0-2.8z","moreh":"M4.6 12a1.4 1.4 0 1 0 2.8 0 1.4 1.4 0 0 0-2.8 0zM10.6 12a1.4 1.4 0 1 0 2.8 0 1.4 1.4 0 0 0-2.8 0zM16.6 12a1.4 1.4 0 1 0 2.8 0 1.4 1.4 0 0 0-2.8 0z","chevL":"M15 6l-6 6 6 6","chevR":"M9 6l6 6-6 6","chevD":"M6 9l6 6 6-6","chevU":"M6 15l6-6 6 6","back":"M5 12h14M13 6l6 6-6 6","fwd":"M19 12H5M11 6l-6 6 6 6","edit":"M4 20h4L19 9l-4-4L4 16zM14 6l4 4","trash":"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3","copy":"M9 9h11v11H9zM5 15H4V4h11v1","share":"M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4","qr":"M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2","link":"M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1","lock":"M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4","eye":"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z","file":"M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6","image":"M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15.5 8.5h.01","upload":"M12 16V4M7 9l5-5 5 5M4 16v4h16v-4","download":"M12 4v12M7 11l5 5 5-5M4 16v4h16v-4","grip":"M9 5.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM15 5.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM9 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM15 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM9 16.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM15 16.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2z","bank":"M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18","receipt":"M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6","filter":"M4 5h16l-6 8v6l-4-2v-4z","sort":"M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4","inbox":"M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5","list":"M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01","att":"M9 3h6v4H9zM7 5H5v16h14V5h-2M9 14l2 2 4-4","clip":"M20 11l-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7","mega":"M3 10v4h4l8 5V5L7 10zM18 9a4 4 0 0 1 0 6","scale":"M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z","box":"M3 4h18v5H3zM5 9v11h14V9M10 13h4","route":"M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 17h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7","award":"M12 3a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM8.5 14L7 21l5-3 5 3-1.5-7","exam":"M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9","bolt":"M13 2L4 14h7l-1 8 9-12h-7z","refresh":"M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4","sliders":"M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4","pin":"M9 4h6l-1 6 4 4H6l4-4zM12 14v7","globe":"M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z","mappin":"M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11zM12 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z","tag":"M3 12V4h8l10 10-8 8zM7.5 7.5h.01","play":"M8 5v14l11-7z","pause":"M8 5v14M16 5v14","stop":"M6 6h12v12H6z","board":"M3 4h18v12H3zM8 20l4-4 4 4M7 12l3-3 2 2 4-4","volume":"M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12","door":"M5 21V4l9-1v18M14 4h5v17M3 21h18M11 12h.01","wifi":"M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01","expand":"M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5","min":"M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5","flag":"M5 21V4M5 4h11l-2 4 2 4H5","rag":"M14 3H6v18h12V7zM14 3v4h4M11.5 11a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM13.3 15.8L15.5 18","table":"M3 4h18v16H3zM3 10h18M3 15h18M9 4v16","info":"M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5M12 8h.01","alert":"M12 3l10 17H2zM12 10v4M12 17h.01","up":"M7 10v10H4V10zM7 10l4-7a2 2 0 0 1 2 2v4h6a2 2 0 0 1 2 2.3l-1.4 7A2 2 0 0 1 17.6 20H7","down":"M7 14V4H4v10zM7 14l4 7a2 2 0 0 0 2-2v-4h6a2 2 0 0 0 2-2.3l-1.4-7A2 2 0 0 0 17.6 4H7","send":"M21 3L3 10l7 3 3 7zM10 13l11-10","cc":"M3 5h18v14H3zM10.5 10.2a2.2 2.2 0 1 0 0 3.6M17 10.2a2.2 2.2 0 1 0 0 3.6","percent":"M19 5L5 19M7 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM17 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4z","layers":"M12 3l9 5-9 5-9-5zM3 13l9 5 9-5","learn":"M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5","shield":"M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z","monitor":"M3 4h18v12H3zM8 20h8M12 16v4","text":"M4 6h16M4 12h10M4 18h7","math":"M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2","atom":"M12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 3c2.5 0 4.5 4 4.5 9s-2 9-4.5 9-4.5-4-4.5-9 2-9 4.5-9z","flask":"M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7.5 15h9","pen":"M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z","undo":"M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3","moon":"M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z","key":"M15 7a4 4 0 1 0-3.9 4.9L4 19v2h3v-2h2v-2h2l1.1-1.1A4 4 0 0 0 15 7zM16 6h.01","hash":"M5 9h14M5 15h14M10 3L8 21M16 3l-2 18","signal":"M4 20v-3M9 20v-7M14 20v-11M19 20V5","grad":"M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5M22 9v6","sun":"M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"}; }
+  ar(v) { return String(v).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]).replace(/\./g, '٫').replace(/,/g, '٬'); }
+  dl(i, b, s) { return ((b == null ? 0.1 : b) + i * (s == null ? 0.06 : s)).toFixed(2) + 's'; }
+  shell(cur, o) {
+    o = o || {};
+    const I = this.ic();
+    const NAV = [['home', 'الرئيسية', 'home', '٤'], ['courses', 'دوراتي', 'book', ''], ['schedule', 'جدولي', 'cal', ''], ['analysis', 'التحليلات', 'chart', ''], ['profile', 'حسابي', 'user', '٢']];
+    const mt = o.mtools || [['chat', 'الرسائل', '٢'], ['bell', 'الإشعارات', '٥']];
+    const ups = [['ملخص الوحدة الثالثة.pdf', 'file', 100, 'done', 'خلص الرفع'], ['شرح الدوال الأسية.mp4', 'video', 64, 'run', '٦٤٪، باقي دقيقتين تقريبًا'], ['حل تمارين الوحدة.jpg', 'image', 38, 'fail', 'تعطّل الاتصال، جرّب مرة ثانية']];
+    return {
+      title: o.title, kicker: o.kicker || '', back: !!o.back, logo: !o.back,
+      nav: NAV.map(([k, l, i, c]) => ({ l, c, i: I[i], cur: k === cur ? 'page' : 'false' })),
+      bnav: NAV.map(([k, l, i, c]) => ({ l, c, i: I[i], cur: k === cur ? 'page' : 'false' })),
+      pins: [['طلبات الدفع بالتحويل', 'receipt', 'linear-gradient(140deg,#FF9F5A,#F2545B)', '٣'], ['رياضيات ٣ ثانوي، مجموعة أ', 'math', 'linear-gradient(140deg,#5F3DC4,#8B6CF0)', ''], ['روابط الاجتماعات', 'video', 'linear-gradient(140deg,#1979C1,#07B8EE)', '']].map(([l, i, bg, c]) => ({ l, i: I[i], bg, c })),
+      tools: [['video', 'روابط الاجتماعات', ''], ['cal', 'التقويم', ''], ['chat', 'الرسائل', '٢'], ['ai', 'المساعد الذكي', ''], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] })),
+      mtools: mt.map(([k, l, c]) => ({ l, c, i: I[k] })),
+      att: !!o.att, up: !!o.up, upOpen: o.up === 'open', upMini: o.up === 'mini',
+      ups: ups.map(([n, i, p, st, m], j) => ({ n, i: I[i], p, m, w: p, fail: st === 'fail', run: st === 'run', done: st === 'done', d: this.dl(j, 0.1, 0.07), c: st === 'fail' ? '#F2545B' : st === 'done' ? '#1D9A63' : '#5F3DC4' }))
+    };
+  }
+
+renderVals() {
+    const I = this.ic(), dl = (i, b, s) => this.dl(i, b, s);
+    let scr = this.props.screen || 'basics';
+    const sheet = scr === 'schedadd';
+    const key = sheet ? 'schedule' : scr;
+    const edit = this.props.mode === 'edit' || sheet;
+    const K = ['basics', 'pricing', 'audience', 'privacy', 'schedule', 'extras', 'review'];
+    const L = ['الأساسيات', 'الأسعار', 'الجمهور', 'الخصوصية والمسار', 'المواعيد الأسبوعية', 'الإضافات', 'المراجعة والنشر'];
+    const idx = K.indexOf(key);
+    const is = {}; K.forEach((k) => { is[k] = k === key; }); is.sheet = sheet;
+    const sh = this.shell('courses', { title: edit ? 'تعديل الدورة' : 'دورة جديدة', kicker: 'دوراتي', back: true, mtools: [['bell', 'الإشعارات', '٥']] });
+    const ard = (n) => '١٢٣٤٥٦٧'[n];
+    const w = {
+      edit, crumb: edit ? 'الرياضيات ٣ ثانوي، مجموعة أ' : 'دورة جديدة',
+      title: edit ? (key === 'schedule' ? 'المواعيد الأسبوعية' : 'تعديل الدورة') : 'إنشاء دورة جديدة',
+      sub: edit ? 'كل إعدادات الدورة في مكان واحد. تعديل المواعيد هنا يوصل للطلاب في جدولهم مباشرة.' : 'سبع خطوات قصيرة، وتقدر تحفظ مسودة في أي وقت وترجع تكمّل.',
+      num: ard(idx), step: L[idx], next: idx < 6 ? L[idx + 1] : 'النشر', pct: Math.round((idx + 1) / 7 * 100),
+      prev: idx > 0, priv: idx >= 3, disc: idx >= 1, price: idx >= 1 ? '٣٨٢٫٥ ريال' : 'السعر في الخطوة الجاية',
+      apc: sheet ? '٣' : '٣',
+      ready: ['٢ من ٥', '٢ من ٥', '٢ من ٥', '٢ من ٥', '٣ من ٥', '٣ من ٥', '٤ من ٥'][idx], readyp: [40, 40, 40, 40, 60, 60, 80][idx],
+      main: edit ? 'حفظ التعديلات' : (idx < 6 ? 'التالي: ' + L[idx + 1] : 'انشر الدورة للجميع'),
+      dis: 'false', mmain: edit ? 'حفظ التعديلات' : (idx < 6 ? 'التالي' : 'انشر الدورة'), hint: edit ? 'عدّلت ٢ مواعيد' : (idx === 6 ? 'أو احفظها مسودة' : '')
+    };
+    const done = (i) => i < idx || (edit && i !== idx);
+    const steps = L.map((l, i) => ({ l, n: done(i) ? '✓' : ard(i), c: i === idx ? 'cur' : done(i) ? 'done' : '', cur: i === idx ? 'step' : 'false' }));
+    const opt = (xs, on) => xs.map(([t, m], i) => ({ t, m, on: i === on ? 'true' : 'false' }));
+    const wk = [['الأحد', ['٧:٣٠ م']], ['الإثنين', []], ['الثلاثاء', ['٧:٣٠ م']], ['الأربعاء', []], ['الخميس', ['٤:٠٠ م']], ['الجمعة', []], ['السبت', []]];
+    if (sheet) wk[2][1] = ['٤:٠٠ م', '٧:٣٠ م'];
+    return {
+      sh, is, w, steps, rootc: sheet ? 'ov' : '',
+      types: opt([['بث مباشر', 'حصص مباشرة بس'], ['مسجّلة', 'دروس مسجّلة بس'], ['الاثنين', 'حصص مباشرة + دروس مسجّلة']], 0),
+      modes: opt([['عن بعد', 'من المنصة'], ['حضوري', 'في مكان محدد'], ['الاثنين', 'عن بعد وحضوري']], 2),
+      plans: [['سنوي', 'الأساسية', 'p', '٤٥٠', '', 'يعني ٣٧٫٥ ريال بالشهر', 'def'], ['٦ شهور', 'اختياري', 'n', '٢٦٠', '', 'يعني ٤٣ ريال بالشهر تقريبًا', ''], ['شهري', 'اختياري', 'n', '٨٥', '', 'يتجدد كل شهر', '']].map(([t, tag, tc, v, ph, m, c], i) => ({ t, tag, tc, v, ph, m, c, d: dl(i, 0.1, 0.07) })),
+      stages: [['المرحلة الابتدائية', ['١', '٢', '٣', '٤', '٥', '٦'], [], false], ['المرحلة المتوسطة', ['١', '٢', '٣'], [], false], ['المرحلة الثانوية', ['١', '٢', '٣'], [2], false]].map(([t, gs, on, all]) => ({ t, c: on.length ? 'on' : '', allc: all ? 'on' : '', gs: gs.map((g, i) => ({ l: 'الصف ' + g, c: on.includes(i) ? 'on' : '' })) })),
+      code: ['٤', '٨', '٢', '٩', '١', '٧'].map((v, i) => ({ v, d: dl(i, 0.1, 0.05) })),
+      week: wk.map(([l, t], i) => ({ l, t, c: t.length ? (sheet && i === 2 ? 'on' : 'on') : '', d: dl(i, 0.1, 0.05) })),
+      aps: [['الأحد', '٧:٣٠ – ٨:٢٠ مساءً', 'حصة ٥٠ دقيقة'], ['الثلاثاء', '٧:٣٠ – ٨:٢٠ مساءً', 'حصة ٥٠ دقيقة'], ['الخميس', '٤:٠٠ – ٤:٥٠ العصر', 'حصة ٥٠ دقيقة']].map(([day, t, m], i) => ({ day, t, m, d: dl(i, 0.15, 0.07) })),
+      dchips: [['الأحد', 'has'], ['الإثنين', ''], ['الثلاثاء', 'on'], ['الأربعاء', ''], ['الخميس', 'has'], ['الجمعة', ''], ['السبت', '']].map(([l, c]) => ({ l, c })),
+      tools: ['آلة حاسبة علمية (Casio fx-991)', 'دفتر مربعات'], prereq: ['الرياضيات ٢ ثانوي', 'أساسيات الدوال'],
+      summary: [['text', 'الأساسيات', 'الرياضيات ٣ ثانوي، مجموعة أ، بث مباشر، رياضيات'], ['wallet', 'الأسعار', 'سنوي ٤٥٠ (افتراضي)، ٦ شهور ٢٦٠، شهري ٨٥ ريال، خصم ١٥٪ لمدة ١٠ أيام'], ['grad', 'الجمهور', 'الصف الثالث الثانوي، طلاب، عن بعد وحضوري في الرياض، حي الياسمين'], ['shield', 'الخصوصية', 'خاصة بالكود ٤٨٢٩١٧، ٣٦ ساعة، مستوى متوسط'], ['cal', 'المواعيد الأسبوعية', 'الأحد والثلاثاء ٧:٣٠ م، الخميس ٤:٠٠ م'], ['award', 'الإضافات', 'فيديو تعريفي، قالب «شهادة إتمام الدورة»، أداتين، متطلبين']].map(([i, t, m], j) => ({ i: I[i], t, m, d: dl(j, 0.1, 0.05) })),
+      check: [['صورة الغلاف', idx >= 0], ['وصف الدورة', true], ['الجدول الأسبوعي', idx >= 4 || edit], ['أضف أول حصة', edit], ['انشر الدورة', edit]].map(([t, ok]) => ({ t, c: ok ? 'y' : 'n', st: ok ? 'color: var(--k-muted); text-decoration: line-through' : '' }))
+    };
+  }
+}
+</script>
+</body>
+</html>

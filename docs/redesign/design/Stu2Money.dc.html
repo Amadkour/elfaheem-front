@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الطالب: المحفظة والمدفوعات</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* Stu2Money — paying (enroll / transfer / path / subscribe) uses the BookFlow look and the a-learn area for course purchases;
+   wallet / rewards / history use a-money. Signature: balances and prices M10 roll, coupons M12 wobble + value stamp M4,
+   options M3 pop on select + M9 jelly, success = k-success (M2 ink check) + M11 burst (only when a course or path is confirmed).
+   Loops: two hero shapes + the processing spinner only. Flutter: kit.css / PLAN §1.3 table. */
+.k-grid > *{min-width:0}
+.mn-subj{display:flex;align-items:center;gap:14px}
+.mn-cover{width:50px;height:66px;border-radius:8px 3px 3px 8px;flex-shrink:0;background:linear-gradient(160deg,#FFB08F,var(--sub-math) 55%,#E4573A);box-shadow:-3px 3px 0 rgba(255,255,255,.25),0 10px 20px rgba(0,0,0,.35);position:relative;overflow:hidden;transform:rotate(-3deg)}
+.mn-cover::before{content:"";position:absolute;top:0;bottom:0;right:0;width:7px;background:rgba(0,0,0,.22)}
+.mn-cover::after{content:"";position:absolute;top:14px;right:14px;left:9px;height:3px;border-radius:2px;background:rgba(255,255,255,.75);box-shadow:0 7px 0 rgba(255,255,255,.45)}
+.mn-cover.path{background:linear-gradient(160deg,#FFD27A,var(--sub-qudurat) 55%,#E08A00)}
+.mn-kick{font-size:13px;opacity:.82;font-weight:600}
+.mn-hrow{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.mn-hb{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 16px;border-radius:22px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.24);color:#FFFFFF;font-size:13.5px;font-weight:700;white-space:nowrap;transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.mn-hb:active{transform:scale(.94,1.04)}
+.mn-q{width:44px;height:44px;padding:0;justify-content:center;font-size:18px}
+/* purchase card (same layout as BookFlow step 4) */
+.mn-main{padding:26px;gap:18px}
+.mn-h{margin:0;font-size:26px;font-weight:700;line-height:1.45}
+.mn-rev{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
+.mn-box{border-radius:22px;border:1.5px solid var(--k-line);background:#F8FBFE;padding:18px;display:flex;flex-direction:column;gap:12px}
+.mn-sum{border-radius:22px;border:1.5px solid var(--k-line);background:#FFFFFF;overflow:hidden}
+.mn-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid #EDF2F8;font-size:14px}
+.mn-row:first-child{border-top:none}
+.mn-row > span:first-child{color:var(--k-muted);flex-shrink:0}
+.mn-row > span:last-child{font-weight:700;text-align:left}
+.mn-dur{padding:14px 18px 6px}
+.mn-total{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 18px;border-top:1.5px dashed #D5E3F2}
+.mn-total > span:first-child{font-size:14px;color:var(--k-muted);display:flex;flex-direction:column;line-height:1.4}
+.mn-total small{font-size:12px}
+.mn-price{display:inline-flex;align-items:baseline;gap:6px;font-size:24px;font-weight:700;color:var(--k-navy)}
+.mn-price small{font-size:15px}
+.mn-more{position:relative;height:30px;padding:0 12px;border-radius:15px;border:none;background:var(--area-tint);color:var(--area-ink);font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+.mn-more::after{content:"";position:absolute;top:50%;left:50%;width:max(100%,48px);height:48px;transform:translate(-50%,-50%)}
+.mn-more svg{transition:transform .25s}
+.mn-more[aria-expanded="true"] svg{transform:rotate(180deg)}
+.mn-det{padding:0 18px 12px;display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--k-muted);transform-origin:50% 0;animation:mnUnfold .4s cubic-bezier(.3,1.3,.5,1) backwards}
+.mn-det > span{display:flex;justify-content:space-between}
+@keyframes mnUnfold{from{opacity:0;transform:translateY(-8px) scaleY(.9)}}
+.mn-lbl{font-size:15px;font-weight:700}
+.mn-pay{display:flex;flex-direction:column;gap:10px}
+.mn-pm{height:54px;border-radius:16px;border:1.5px solid #D5E3F2;background:#FFFFFF;font-size:14.5px;font-weight:700;color:var(--k-text);display:flex;align-items:center;gap:12px;padding:0 14px;text-align:right;transition:border-color .2s,background .2s,box-shadow .2s,transform .18s cubic-bezier(.3,1.6,.5,1)}
+.mn-pm:active{transform:scale(.94,1.04)}
+.mn-pm > span:first-child{width:40px;height:28px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.mn-radio{margin-right:auto;width:22px;height:22px;border-radius:50%;border:2px solid #D5E3F2;flex-shrink:0;transition:border-width .2s,border-color .2s}
+.mn-pm[aria-checked="true"]{border-color:var(--sel,var(--k-acc));background:var(--area-tint);box-shadow:0 0 0 4px var(--sel-sh,rgba(255,159,90,.16))}
+.mn-pm[aria-checked="true"] .mn-radio{border:7px solid var(--sel2,var(--k-acc2));animation:mPop .4s cubic-bezier(.3,1.4,.5,1)}
+.k.a-money{--sel:#19C29B;--sel2:#0C6B55;--sel-sh:rgba(25,194,155,.16)}
+.k.a-learn{--sel:#FF8A4C;--sel2:#F2545B}
+.mn-safe{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#0C6B55}
+.mn-link{align-self:flex-start;min-height:44px;background:none;border:none;padding:0;color:var(--area-ink);font-size:14px;font-weight:700;text-decoration:underline;text-underline-offset:4px;display:inline-flex;align-items:center;gap:6px}
+.mn-nav{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.mn-go{height:56px;padding:0 30px;font-size:17px}
+.mn-bar{display:none}
+/* status card (receipt under review / rejected / free) */
+.mn-st{border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.mn-st.w{background:var(--s-sun-tint);color:var(--s-sun-ink)}
+.mn-st.r{background:var(--k-coral-tint);color:var(--k-coral-ink)}
+.mn-st.g{background:var(--s-mint-tint);color:var(--s-mint-ink)}
+.mn-st > b{font-size:17px;line-height:1.45;display:flex;align-items:center;gap:8px}
+.mn-st > span{font-size:14px;line-height:1.6}
+.mn-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.mn-steps li{display:flex;align-items:center;gap:12px;position:relative;padding-bottom:14px;font-size:14px;font-weight:700;color:var(--k-text)}
+.mn-steps li:last-child{padding-bottom:0}
+.mn-steps li::before{content:"";position:absolute;right:15px;top:32px;bottom:2px;width:2px;background:rgba(0,0,0,.08)}
+.mn-steps li:last-child::before{display:none}
+.mn-steps li > i{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;background:#FFFFFF;color:var(--k-muted)}
+.mn-steps li.done > i{background:var(--s-mint);color:#FFFFFF}
+.mn-steps li.now > i{background:var(--s-sun);color:#3D2700;animation:mBreathe 2.4s ease-in-out infinite}
+.mn-steps li small{display:block;font-size:12.5px;font-weight:500;color:var(--k-muted)}
+/* big result card */
+.mn-res{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:26px 16px;max-width:560px;margin:0 auto}
+.mn-res h3{margin:0;font-size:24px;line-height:1.4}
+.mn-res p{margin:0;font-size:15px;color:var(--k-muted);line-height:1.6}
+.mn-res .k-btn{margin-top:6px}
+.mn-big{width:92px;height:92px;border-radius:50%;display:flex;align-items:center;justify-content:center;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards}
+.mn-spin{width:64px;height:64px;border-radius:50%;border:6px solid var(--area-tint);border-top-color:var(--k-acc2);animation:mnRot 1s linear infinite}
+@keyframes mnRot{to{transform:rotate(360deg)}}
+.mn-seats{display:flex;align-items:center;flex-wrap:wrap;gap:4px;justify-content:center}
+.mn-seat{width:14px;height:14px;border-radius:4px;background:#FF8A4C;animation:mnSeat .4s cubic-bezier(.3,1.6,.5,1) backwards;animation-delay:var(--d)}
+@keyframes mnSeat{from{transform:scale(0) rotate(-30deg)}}
+/* success (same as BookFlow) */
+.mn-done{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:center}
+.mn-done .k-success-mark{width:112px;height:112px}
+.mn-done .k-success-mark svg{width:80px;height:80px}
+.mn-done .k-success h3{font-size:27px}
+.mn-done .k-success p{font-size:15px}
+.mn-done .k-success .k-btn{align-self:stretch;margin-top:8px}
+.mn-after{display:flex;flex-direction:column;gap:14px}
+.mn-after .k-rules > li{animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d)}
+.mn-tix{position:relative;display:flex;border-radius:24px;background:#FFFFFF;border:1.5px solid #F5D3BC;box-shadow:0 18px 40px -20px rgba(163,72,10,.45);animation:mDeal .55s cubic-bezier(.2,.9,.3,1.1) .35s backwards;--r:-4deg}
+.mn-cal{width:112px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;border-radius:22px 0 0 22px;overflow:hidden;background:#FFF6EF;border-left:2px dashed #F5C3A2}
+.mn-cal > span:first-child{align-self:stretch;text-align:center;padding:6px 0;background:linear-gradient(120deg,#FF8A4C,#F2545B);color:#FFFFFF;font-size:13.5px;font-weight:700}
+.mn-cal b{font-size:44px;line-height:1.3;color:var(--k-navy);margin-top:4px}
+.mn-cal small{font-size:13px;font-weight:700;color:#A3480A;padding-bottom:10px}
+.mn-tinfo{flex:1;min-width:0;padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.mn-tinfo > small{font-size:12.5px;font-weight:700;color:#A3480A}
+.mn-tinfo > b{font-size:18px;line-height:1.5}
+.mn-tmeta{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--k-muted)}
+.mn-tmeta .k-av{width:30px;height:30px;font-size:12px}
+/* transfer */
+.mn-bank{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:16px;background:#F8FBFE;border:1.5px solid var(--k-line)}
+.mn-bank > span{display:flex;flex-direction:column;gap:0;min-width:0}
+.mn-bank small{font-size:12.5px;color:var(--k-muted)}
+.mn-bank b{font-size:15px;color:var(--k-navy);overflow-wrap:anywhere}
+.mn-copy{position:relative;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--area-ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.mn-copy:active{transform:scale(.9)}
+.mn-hold{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 16px;border-radius:20px;background:var(--area-tint)}
+.mn-hold > b{font-size:15px;color:var(--area-ink)}
+.mn-drop{display:flex;align-items:center;gap:14px;padding:14px;border-radius:18px;border:2px dashed #F5C3A2;background:#FFFAF6}
+.mn-thumb{width:56px;height:70px;border-radius:10px;flex-shrink:0;background:linear-gradient(180deg,#FFFFFF,#EEF2F7);border:1px solid var(--k-line);display:flex;flex-direction:column;gap:4px;padding:8px;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) .3s backwards}
+.mn-thumb i{height:4px;border-radius:2px;background:#D5DEEA}
+.mn-fld{display:flex;flex-direction:column;gap:6px}
+.mn-fld .k-in{color:var(--k-text)}
+/* path */
+.mn-pc{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:#FFFFFF;border:1.5px solid var(--k-line)}
+.mn-pc .k-ico{background:var(--sub);color:var(--sub-fg);box-shadow:0 8px 16px -8px var(--sub)}
+.mn-pc.own{background:var(--s-mint-tint);border-color:#BDEBDD}
+.mn-pc > b{white-space:nowrap;color:var(--k-navy);font-size:14px}
+.mn-pre{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:700;color:var(--s-sun-ink);padding:10px 14px;border-radius:16px;background:var(--s-sun-tint)}
+/* plans (subscribe) */
+.mn-plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.mn-plan{position:relative;text-align:right;border-radius:20px;border:2px solid var(--k-line);background:#FFFFFF;padding:16px;display:flex;flex-direction:column;gap:4px;color:var(--k-text);transition:border-color .25s,box-shadow .25s,transform .18s cubic-bezier(.3,1.6,.5,1)}
+.mn-plan:active{transform:scale(.94,1.04)}
+.mn-plan[aria-checked="true"]{border-color:var(--sel);box-shadow:0 14px 30px -8px var(--sel-sh)}
+.mn-plan[aria-checked="true"] b{animation:mPop .4s cubic-bezier(.3,1.4,.5,1)}
+.mn-plan b{font-size:22px;color:var(--k-navy)}
+.mn-plan .k-tag{position:absolute;top:-12px;left:12px}
+/* wallet */
+.mn-bal{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.mn-cur{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:6px;padding:18px;border-radius:22px;background:linear-gradient(160deg,var(--t1) 0%,#FFFFFF 75%);border:1.5px solid var(--t2)}
+.mn-cur::after{content:"";position:absolute;width:120px;height:120px;border-radius:38px;background:var(--t2);opacity:.5;left:-40px;top:-50px;transform:rotate(18deg)}
+.mn-cur > *{position:relative;z-index:1}
+.mn-cur .k-ico{width:46px;height:46px;border-radius:15px;background:var(--c);color:var(--fg);box-shadow:0 10px 18px -10px var(--c);animation:mPop .45s cubic-bezier(.3,1.4,.5,1) .2s backwards}
+.mn-num{font-size:44px;font-weight:700;line-height:1.3;color:var(--k-navy);display:flex;align-items:baseline;gap:8px}
+.mn-num small{font-size:16px;color:var(--ink)}
+.mn-cur > span:last-child{font-size:14px;font-weight:700;color:var(--ink)}
+.mn-links{display:flex;gap:10px;flex-wrap:wrap}
+.mn-lk{white-space:nowrap;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:22px;background:#FFFFFF;border:1.5px solid var(--k-line);font-size:13.5px;font-weight:700;color:var(--k-text);transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.mn-lk:active{transform:scale(.94,1.04)}
+.mn-lk b{color:var(--k-navy)}
+.mn-lk svg:last-child{color:#9AA8BD}
+.mn-led{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #EDF2F8}
+.mn-led:last-child{border-bottom:none}
+.mn-led .k-ico{width:42px;height:42px;border-radius:13px}
+.mn-led b.p{color:#0C6B55}.mn-led b.m{color:#B23A2E}
+.mn-kv{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px dashed var(--k-line);font-size:14px}
+.mn-kv:last-child{border-bottom:none}
+.mn-kv > span{color:var(--k-muted)}
+.mn-kv b{color:var(--k-navy)}
+.mn-meet{background:linear-gradient(150deg,#FFFFFF 40%,var(--s-pink-tint));border:1.5px solid #FFD0E3}
+.mn-meet .k-ico{background:var(--s-pink);color:#FFFFFF}
+.mn-help{display:flex;align-items:center;gap:14px;padding:14px;border-radius:18px;background:#F8FBFE;border:1.5px solid var(--k-line)}
+.mn-help .k-ico{width:46px;height:46px;border-radius:15px;background:var(--c);color:var(--fg)}
+.mn-help b{font-size:15.5px;display:block}
+.mn-help span{font-size:13.5px;color:var(--k-muted);line-height:1.6}
+.mn-amts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.mn-amt{height:64px;border-radius:16px;border:1.5px solid #D5E3F2;background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.35;font-size:15px;font-weight:700;color:var(--k-text);transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.mn-amt small{font-size:11.5px;color:var(--k-muted);font-weight:600}
+.mn-amt:active{transform:scale(.94,1.04)}
+.mn-amt[aria-checked="true"]{background:var(--k-navy);border-color:var(--k-navy);color:#FFFFFF;animation:mPop .4s cubic-bezier(.3,1.4,.5,1)}
+.mn-amt[aria-checked="true"] small{color:#FFD66B}
+/* rewards */
+.mn-cp{position:relative;display:flex;border-radius:20px;background:#FFFFFF;border:1.5px solid var(--k-line)}
+.mn-cp .l{width:112px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;color:#FFFFFF;position:relative;padding:12px;border-radius:18px 0 0 18px}
+.mn-cp .l::after,.mn-cp .l::before{content:"";position:absolute;right:-9px;width:18px;height:18px;border-radius:50%;background:var(--k-page)}
+.mn-cp .l::before{top:-9px}.mn-cp .l::after{bottom:-9px}
+.mn-cp .l b{font-size:28px;line-height:1.2;display:inline-block}
+.mn-cp .r{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:6px;border-left:2px dashed var(--k-line);min-width:0;order:-1}
+.mn-cp.off{opacity:.62}
+.mn-cp.lock{border:2px dashed #FFC53D;background:#FFFBEA}
+.mn-code{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 10px;border-radius:10px;background:#F3F6FA;border:1.5px dashed #B7C8DC;font-weight:700;letter-spacing:1.5px;color:var(--k-navy);font-size:14px}
+.mn-tier{display:flex;gap:6px}
+.mn-tier span{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:rgba(255,255,255,.6)}
+.mn-tier span i{width:100%;height:8px;border-radius:4px;background:rgba(255,255,255,.16)}
+.mn-tier span.on i{background:linear-gradient(90deg,#FFD36B,#19C29B);transform-origin:100% 50%;animation:kGrow .7s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:var(--d)}
+.mn-tier span.on{color:#FFD66B}
+.mn-win{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--k-line);font-size:14px;font-weight:700}
+.mn-win:last-child{border-bottom:none}
+.mn-win > span:first-child{width:34px;height:34px;border-radius:11px;background:var(--s-sun-tint);color:#B37A00;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+/* history */
+.mn-hr{display:grid;grid-template-columns:minmax(0,1.6fr) 110px 110px 120px;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid #EDF2F8;font-size:14px}
+.mn-hr.h{font-size:12px;font-weight:700;color:var(--k-muted);border-bottom:1.5px solid var(--k-line)}
+.mn-hr:last-child{border-bottom:none}
+.mn-tab{animation:mWipe .55s cubic-bezier(.6,0,.2,1) backwards}
+.mn-ro.r0 i{animation-name:mnR0}.mn-ro.r1 i{animation-name:mnR1}
+@keyframes mnR0{from{transform:translateY(0)}to{transform:translateY(calc(var(--v,0)*-1.3em))}}
+@keyframes mnR1{from{transform:translateY(0)}to{transform:translateY(calc(var(--v,0)*-1.3em))}}
+.mn-sheet-in{display:flex;flex-direction:column;gap:14px}
+.mn-big2{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}
+.mn-big2 .k-ico{width:72px;height:72px;border-radius:24px;background:linear-gradient(150deg,#FF8FC0,var(--s-pink));color:#FFFFFF;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) .2s backwards}
+.mn-bnav-pad{display:none}
+@media (max-width:760px){
+  .mn-kick{font-size:12.5px}
+  .mn-cover{width:40px;height:54px}
+  .k-hero p.mn-hide{display:none}
+  .mn-hrow .mn-hb.mn-wide{display:none}
+  .mn-main{padding:18px 16px;gap:14px}
+  .mn-h{font-size:21px}
+  .mn-rev{grid-template-columns:1fr;gap:14px}
+  .mn-row{padding:11px 14px}
+  .mn-total,.mn-det{padding-right:14px;padding-left:14px}
+  .mn-dur{padding:12px 14px 4px}
+  .mn-box{padding:14px}
+  .mn-nav{display:none}
+  .mn-bar{display:flex;position:sticky;bottom:0;z-index:20;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px 16px;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid #D5E3F2}
+  .mn-bar > span{display:flex;flex-direction:column;line-height:1.35}
+  .mn-bar > span small{font-size:12px;color:var(--k-muted)}
+  .mn-bar > span b{font-size:19px;color:var(--k-navy)}
+  .mn-bar .k-btn{flex:1;max-width:240px;height:52px}
+  .mn-done{grid-template-columns:1fr;gap:18px}
+  .mn-done .k-success-mark{width:96px;height:96px}
+  .mn-done .k-success-mark svg{width:70px;height:70px}
+  .mn-done .k-success h3{font-size:23px}
+  .mn-done .k-success p{font-size:14px}
+  .mn-cal{width:92px}
+  .mn-cal b{font-size:36px}
+  .mn-tinfo{padding:12px 14px}
+  .mn-tinfo > b{font-size:16px}
+  .mn-res{padding:16px 6px}
+  .mn-res h3{font-size:21px}
+  .mn-plans{grid-template-columns:1fr;gap:16px}
+  .mn-plan{flex-direction:row;align-items:center;flex-wrap:wrap;gap:4px 12px;padding:14px}
+  .mn-plan b{font-size:19px;margin-right:auto}
+  .mn-plan > span:last-child{flex-basis:100%}
+  .mn-bal{gap:10px}
+  .mn-cur{padding:14px;gap:4px}
+  .mn-cur .k-ico{width:40px;height:40px}
+  .mn-num{font-size:32px;gap:4px}
+  .mn-num small{font-size:13px}
+  .mn-cur > span:last-child{font-size:12.5px}
+  .mn-links{flex-wrap:nowrap}
+  .mn-lk{flex:1;justify-content:center;padding:0 10px;font-size:12.5px}
+  .mn-amts{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .mn-cp .l{width:88px}
+  .mn-cp .l b{font-size:22px}
+  .mn-cp .r{padding:12px}
+  .mn-hr{grid-template-columns:1fr auto;gap:2px 10px}
+  .mn-hr.h{display:none}
+  .mn-hr > :nth-child(1){grid-column:1 / -1}
+  .mn-hr > :nth-child(3){display:none}
+}
+</style>
+</helmet>
+<div class="k {{area}}" dir="rtl">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">طالب</span></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+        <a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a>
+      </sc-for>
+      <div class="k-me"><span class="k-av sm">ف</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">فيصل العنزي</b><small style="font-size: 11.5px; opacity: .7">الصف الثاني الثانوي</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <sc-if value="{{back}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-ib" aria-label="رجوع" onClick="{{goBack}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a></sc-if>
+        <span><small>{{crumb}}</small><h1>{{title}}</h1></span>
+        <span class="k-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن دورة أو معلم أو درس<kbd>Ctrl K</kbd></span>
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="3"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av">ف</span>
+      </header>
+      <header class="k-mtop"><sc-if value="{{back}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-ib" aria-label="رجوع" onClick="{{goBack}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a></sc-if><sc-if value="{{noback}}" hint-placeholder-val="{{ true }}"><img src="./logo.png" alt="" width="28" height="31" style="width: 28px; height: auto"></sc-if><h1>{{title}}</h1><sc-for list="{{mtools}}" as="t" hint-placeholder-count="2"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for></header>
+      <main class="k-page">
+
+<!-- ============ ENROLL: course purchase, same layout as BookFlow step 4 ============ -->
+<sc-if value="{{is.enroll}}" hint-placeholder-val="{{ true }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+  <div class="mn-subj">
+    <span class="mn-cover" aria-hidden="true"></span>
+    <span class="k-col" style="gap: 0"><span class="mn-kick">{{en.kick}}</span><h2>الرياضيات ٢ ث</h2><p>مع أ. ماجد الشهري، ٤٨ درس مسجّل</p></span>
+  </div>
+</section>
+<div class="k-body">
+  <sc-if value="{{en.big}}" hint-placeholder-val="{{ false }}">
+  <section class="k-card m-pop" style="--d: .15s">
+    <div class="mn-res">
+      <sc-if value="{{en.spin}}" hint-placeholder-val="{{ false }}"><span class="mn-spin" aria-hidden="true"></span></sc-if>
+      <sc-if value="{{en.ico}}" hint-placeholder-val="{{ true }}"><span class="mn-big" style="background: {{en.bg}}; color: {{en.fg}}"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{en.ico}}"></path></svg></span></sc-if>
+      <h3>{{en.h}}</h3>
+      <p>{{en.m}}</p>
+      <sc-if value="{{en.seats}}" hint-placeholder-val="{{ false }}"><span class="mn-seats" aria-label="١٠ من ١٠ مقاعد محجوزة"><sc-for list="{{fullSeats}}" as="x" hint-placeholder-count="10"><span class="mn-seat" style="--d: {{x.d}}"></span></sc-for></span></sc-if>
+      <sc-if value="{{en.btn}}" hint-placeholder-val="{{ false }}"><a href="{{en.href}}" class="k-btn {{en.bc}}" onClick="{{en.go}}">{{en.btn}}</a></sc-if>
+      <sc-if value="{{en.link}}" hint-placeholder-val="{{ false }}"><a href="{{en.lhref}}" class="mn-link" style="align-self: center" onClick="{{en.lgo}}">{{en.link}}</a></sc-if>
+    </div>
+  </section>
+  </sc-if>
+  <sc-if value="{{en.ok}}" hint-placeholder-val="{{ false }}">
+  <section class="k-card mn-main">
+    <div class="mn-done">
+      <div class="k-success">
+        <span class="k-success-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"></circle><path d="M20 33l8 8 16-17"></path></svg><span class="m-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></span>
+        <h3>تمّ، الدورة صارت لك</h3>
+        <p>مكانك في المجموعة أ محجوز.</p>
+        <a href="SubjectProfile.dc.html" class="k-btn hot mn-go">افتح المادة</a>
+      </div>
+      <div class="mn-after">
+        <div class="mn-tix">
+          <div class="mn-tinfo"><small>أول حصة</small><b>٧:٣٠ إلى ٨:٢٠ م</b><span class="mn-tmeta"><span class="k-av">م</span>أ. ماجد الشهري</span><span class="mn-tmeta">مجموعة أ، عن بعد، الحصة ٥٠ دقيقة</span></div>
+          <div class="mn-cal" aria-label="الثلاثاء ١ ديسمبر"><span>ديسمبر</span><b><span class="m-roll" style="--d: .9s"><i style="--v: 1" aria-hidden="true"></i></span></b><small>الثلاثاء</small></div>
+        </div>
+        <ul class="k-rules"><sc-for list="{{after}}" as="a" hint-placeholder-count="3"><li style="--d: {{a.d}}"><span class="k-ico"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{a.i}}"></path></svg></span>{{a.t}}</li></sc-for></ul>
+      </div>
+    </div>
+  </section>
+  </sc-if>
+  <sc-if value="{{en.form}}" hint-placeholder-val="{{ true }}">
+  <section class="k-card mn-main" style="--d: .15s">
+    <h3 class="mn-h">{{en.title}}</h3>
+    <div class="mn-rev">
+      <div class="mn-sum">
+        <sc-if value="{{en.durOn}}" hint-placeholder-val="{{ true }}">
+        <div class="mn-dur"><div class="k-seg m-pill" role="tablist" aria-label="مدة الاشتراك" style="--n: 2"><span class="m-pill-bg" style="--i: {{durI}}"></span><sc-for list="{{durs}}" as="d" hint-placeholder-count="2"><button type="button" role="tab" aria-selected="{{d.sel}}" onClick="{{d.go}}">{{d.l}}</button></sc-for></div></div>
+        </sc-if>
+        <sc-for list="{{enRows}}" as="r" hint-placeholder-count="5"><div class="mn-row"><span>{{r.k}}</span><span>{{r.v}}</span></div></sc-for>
+        <div class="mn-total">
+          <span>{{en.totL}}<small>شامل الضريبة</small></span>
+          <span class="k-row" style="gap: 10px; flex-wrap: nowrap">
+            <sc-if value="{{en.paid}}" hint-placeholder-val="{{ true }}"><b class="mn-price"><span class="m-roll mn-ro {{rc}}" aria-label="{{enPrice}}"><sc-for list="{{enDigs}}" as="g" hint-placeholder-count="3"><sc-if value="{{g.num}}" hint-placeholder-val="{{ true }}"><i aria-hidden="true" style="--v: {{g.v}}; --i: {{g.i}}"></i></sc-if><sc-if value="{{g.sep}}" hint-placeholder-val="{{ false }}"><i aria-hidden="true" style="--v: 0"><b>٬</b></i></sc-if></sc-for></span><small>ريال</small></b></sc-if>
+            <sc-if value="{{en.free}}" hint-placeholder-val="{{ false }}"><b class="mn-price" style="font-size: 20px">بدون رسوم</b></sc-if>
+            <sc-if value="{{en.paid}}" hint-placeholder-val="{{ true }}"><button type="button" class="mn-more" aria-expanded="{{detX}}" onClick="{{togDet}}">التفاصيل<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></button></sc-if>
+          </span>
+        </div>
+        <sc-if value="{{detOn}}" hint-placeholder-val="{{ false }}"><div class="mn-det"><sc-for list="{{enDet}}" as="r" hint-placeholder-count="2"><span><span>{{r.k}}</span><b>{{r.v}}</b></span></sc-for></div></sc-if>
+      </div>
+      <sc-if value="{{en.payOn}}" hint-placeholder-val="{{ true }}">
+      <div class="mn-box">
+        <span class="mn-lbl">طريقة الدفع</span>
+        <div class="mn-pay" role="radiogroup" aria-label="طريقة الدفع"><sc-for list="{{pays}}" as="m" hint-placeholder-count="3"><button type="button" role="radio" class="mn-pm" aria-checked="{{m.on}}" onClick="{{m.go}}"><span style="background: {{m.bg}}; color: {{m.fg}}">{{m.mark}}</span>{{m.t}}<span class="mn-radio" aria-hidden="true"></span></button></sc-for></div>
+        <a href="#" class="mn-link" onClick="{{goTransfer}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18"></path></svg>تبي تحوّل بنكي؟</a>
+        <span class="mn-safe"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3zM9 12l2 2 4-4"></path></svg>دفعك آمن، والإيصال يوصلك على الجوال</span>
+      </div>
+      </sc-if>
+      <sc-if value="{{en.stOn}}" hint-placeholder-val="{{ false }}">
+      <div class="mn-st {{en.stc}} m-pop" style="--d: .3s">
+        <b><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{en.sti}}"></path></svg>{{en.sth}}</b>
+        <span>{{en.stm}}</span>
+        <sc-if value="{{en.steps}}" hint-placeholder-val="{{ false }}"><ol class="mn-steps"><sc-for list="{{revSteps}}" as="s" hint-placeholder-count="3"><li class="{{s.c}}"><i>{{s.n}}</i><span>{{s.t}}<small>{{s.m}}</small></span></li></sc-for></ol></sc-if>
+      </div>
+      </sc-if>
+    </div>
+    <div class="mn-nav"><a href="{{en.goHref}}" class="k-btn {{en.goC}} mn-go" onClick="{{en.goFn}}">{{en.goL}}</a></div>
+  </section>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ============ TRANSFER ============ -->
+<sc-if value="{{is.transfer}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+  <div class="mn-subj">
+    <span class="mn-cover" aria-hidden="true"></span>
+    <span class="k-col" style="gap: 0"><span class="mn-kick">الرياضيات ٢ ث</span><h2>حوّل المبلغ بنكيًا</h2><p>بعدها ارفع صورة الإيصال</p></span>
+  </div>
+</section>
+<div class="k-body">
+  <section class="k-card mn-main" style="--d: .15s">
+    <div class="mn-rev">
+      <div class="k-col" style="gap: 12px">
+        <span class="mn-lbl">١. حوّل على هذا الحساب</span>
+        <sc-for list="{{bank}}" as="b" hint-placeholder-count="3"><div class="mn-bank"><span><small>{{b.k}}</small><b><bdi dir="{{b.dir}}">{{b.v}}</bdi></b></span><button type="button" class="mn-copy" aria-label="{{b.cl}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8h12v12H8zM4 16V4h12"></path></svg></button></div></sc-for>
+        <div class="mn-sum"><div class="mn-total" style="border-top: none"><span>المبلغ<small>شامل الضريبة</small></span><b class="mn-price"><span class="m-roll" aria-label="١٩٩"><i style="--v: 1" aria-hidden="true"></i><i style="--v: 9; --i: 1" aria-hidden="true"></i><i style="--v: 9; --i: 2" aria-hidden="true"></i></span><small>ريال</small></b></div></div>
+      </div>
+      <div class="mn-box">
+        <div class="mn-hold"><b>مقعدك محجوز لك</b><div class="k-count" aria-label="٤٧ دقيقة و١٢ ثانية"><sc-for list="{{holdCount}}" as="u" hint-placeholder-count="2"><span><b><span class="m-roll"><sc-for list="{{u.digs}}" as="g" hint-placeholder-count="2"><i aria-hidden="true" style="--v: {{g.v}}; --i: {{g.i}}"></i></sc-for></span></b><small>{{u.l}}</small></span></sc-for></div></div>
+        <span class="mn-lbl">٢. ارفع صورة الإيصال</span>
+        <div class="mn-drop"><span class="mn-thumb" aria-hidden="true"><i></i><i style="width: 70%"></i><i></i><i style="width: 50%"></i><i style="margin-top: auto; background: #19C29B; width: 60%"></i></span><span class="k-col" style="gap: 2px; flex: 1"><b style="font-size: 14px">إيصال الراجحي</b><span class="k-m">ارتفع، صورة واضحة</span><a href="#" class="mn-link" style="min-height: 34px; font-size: 13px">غيّر الصورة</a></span></div>
+        <div class="mn-fld"><span class="k-lbl">اسم اللي حوّل</span><span class="k-in">سعد فيصل العنزي</span></div>
+      </div>
+    </div>
+    <div class="mn-nav"><a href="#" class="k-btn hot mn-go" onClick="{{goEnrollReview}}">أرسل الإيصال</a></div>
+  </section>
+</div>
+</sc-if>
+
+<!-- ============ PATH ============ -->
+<sc-if value="{{is.path}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+  <div class="mn-subj">
+    <span class="mn-cover path" aria-hidden="true"></span>
+    <span class="k-col" style="gap: 0"><span class="mn-kick">{{pathKick}}</span><h2>مسار التحصيلي العلمي</h2><p>كل دورات المسار في اشتراك واحد</p></span>
+  </div>
+</section>
+<div class="k-body">
+  <sc-if value="{{pathOk}}" hint-placeholder-val="{{ false }}">
+  <section class="k-card mn-main">
+    <div class="mn-done">
+      <div class="k-success">
+        <span class="k-success-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"></circle><path d="M20 33l8 8 16-17"></path></svg><span class="m-burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></span>
+        <h3>تمّ، المسار صار لك</h3>
+        <p>٣ دورات جديدة انضافت لدوراتي.</p>
+        <a href="Stu1Discover.dc.html?screen=mycourses" class="k-btn hot mn-go">افتح دوراتي</a>
+      </div>
+      <div class="mn-after">
+        <div class="k-col" style="gap: 10px"><sc-for list="{{pNew}}" as="c" hint-placeholder-count="3"><div class="mn-pc m-deal {{c.sub}}" style="--i: {{c.k}}; --d: .4s"><span class="k-ico"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 15px">{{c.t}}</b><span class="k-m">{{c.m}}</span></span><span class="k-tag g">صارت لك</span></div></sc-for></div>
+        <ul class="k-rules"><sc-for list="{{after}}" as="a" hint-placeholder-count="3"><li style="--d: {{a.d}}"><span class="k-ico"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{a.i}}"></path></svg></span>{{a.t}}</li></sc-for></ul>
+      </div>
+    </div>
+  </section>
+  </sc-if>
+  <sc-if value="{{pathForm}}" hint-placeholder-val="{{ true }}">
+  <section class="k-card mn-main" style="--d: .15s">
+    <h3 class="mn-h">راجع المسار</h3>
+    <div class="mn-rev">
+      <div class="k-col" style="gap: 10px">
+        <sc-for list="{{pcourses}}" as="c" hint-placeholder-count="5"><div class="mn-pc m-deal {{c.sub}} {{c.cls}}" style="--i: {{c.k}}; --d: .2s"><span class="k-ico"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1; min-width: 0"><b style="font-size: 15px">{{c.t}}</b><span class="k-m">{{c.m}}</span></span><sc-if value="{{c.tag}}" hint-placeholder-val="{{ false }}"><span class="k-tag {{c.tc}}">{{c.tag}}</span></sc-if><sc-if value="{{c.p}}" hint-placeholder-val="{{ true }}"><b>{{c.p}}</b></sc-if></div></sc-for>
+        <div class="mn-pre"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2zM12 10v4M12 17.5h.01"></path></svg><span style="flex: 1">قبلها خلّص «أساسيات الكيمياء»</span><a href="#" class="mn-link" style="min-height: 0; font-size: 13px; color: inherit">وش ينقصني؟</a></div>
+      </div>
+      <div class="k-col" style="gap: 14px">
+        <div class="mn-sum">
+          <div class="mn-row"><span>٣ دورات جديدة</span><span>٥٩٧ ريال</span></div>
+          <div class="mn-row"><span>خصم المسار ١٠٪</span><span style="color: #0C6B55">- ٦٠ ريال</span></div>
+          <div class="mn-total"><span>في الشهر<small>شامل الضريبة</small></span><b class="mn-price"><span class="m-roll" aria-label="٥٣٧"><i style="--v: 5" aria-hidden="true"></i><i style="--v: 3; --i: 1" aria-hidden="true"></i><i style="--v: 7; --i: 2" aria-hidden="true"></i></span><small>ريال</small></b></div>
+        </div>
+        <div class="mn-box">
+          <span class="mn-lbl">طريقة الدفع</span>
+          <div class="mn-pay" role="radiogroup" aria-label="طريقة الدفع"><sc-for list="{{pays}}" as="m" hint-placeholder-count="3"><button type="button" role="radio" class="mn-pm" aria-checked="{{m.on}}" onClick="{{m.go}}"><span style="background: {{m.bg}}; color: {{m.fg}}">{{m.mark}}</span>{{m.t}}<span class="mn-radio" aria-hidden="true"></span></button></sc-for></div>
+        </div>
+      </div>
+    </div>
+    <div class="mn-nav"><a href="#" class="k-btn hot mn-go" onClick="{{pathPay}}">أكّد وادفع ٥٣٧ ريال</a></div>
+  </section>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ============ WALLET ============ -->
+<sc-if value="{{is.wallet}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+  <div class="mn-hrow">
+    <div class="k-col" style="gap: 2px; flex: 1 1 260px"><h2>محفظتي</h2><p>نقاطك وعملاتك في مكان واحد</p></div>
+    <button type="button" class="mn-hb mn-q" aria-label="وش الفرق بين النقاط والعملات؟" onClick="{{openHelp}}">؟</button>
+  </div>
+</section>
+<div class="k-body">
+  <section class="k-card" style="--d: .1s">
+    <div class="mn-bal">
+      <sc-for list="{{bals}}" as="c" hint-placeholder-count="2">
+      <div class="mn-cur" style="--t1: {{c.t1}}; --t2: {{c.t2}}; --c: {{c.c}}; --fg: {{c.fg}}; --ink: {{c.ink}}">
+        <span class="k-ico"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg></span>
+        <span class="mn-num"><span class="m-roll" aria-label="{{c.lbl}}"><sc-for list="{{c.d}}" as="g" hint-placeholder-count="4"><sc-if value="{{g.num}}" hint-placeholder-val="{{ true }}"><i aria-hidden="true" style="--v: {{g.v}}; --i: {{g.i}}"></i></sc-if><sc-if value="{{g.sep}}" hint-placeholder-val="{{ false }}"><i aria-hidden="true" style="--v: 0"><b>٬</b></i></sc-if></sc-for></span><small>{{c.u}}</small></span>
+        <span>{{c.line}}</span>
+      </div>
+      </sc-for>
+    </div>
+    <div class="k-row" style="gap: 10px"><a href="#" class="k-btn" style="flex: 1 1 200px" onClick="{{openBuy}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>اشحن نقاط</a><a href="Stu2Games.dc.html?screen=wardrobe" class="k-btn ghost" style="flex: 1 1 200px">افتح خزانتي</a></div>
+    <div class="mn-links"><sc-for list="{{wlinks}}" as="l" hint-placeholder-count="2"><a href="{{l.href}}" class="mn-lk" onClick="{{l.go}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: {{l.c}}"><path d="{{l.i}}"></path></svg>{{l.t}}<b>{{l.n}}</b><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></a></sc-for></div>
+  </section>
+  <div class="k-grid k-side2" style="align-items: start">
+    <section class="k-card" style="--d: .18s">
+      <div class="k-ch"><h3>حركات النقاط</h3><div class="k-seg m-pill" role="tablist" style="--n: 3; min-width: 210px"><span class="m-pill-bg" style="--i: {{lfI}}"></span><sc-for list="{{ledF}}" as="f" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{f.sel}}" onClick="{{f.go}}">{{f.l}}</button></sc-for></div></div>
+      <div class="mn-tab"><sc-for list="{{ledger}}" as="l" hint-placeholder-count="5"><div class="mn-led"><span class="k-ico" style="background: {{l.bg}}; color: {{l.fg}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{l.i}}"></path></svg></span><span class="k-col" style="gap: 0; min-width: 0"><b style="font-size: 14px">{{l.t}}</b><span class="k-m">{{l.m}}</span></span><b class="{{l.pc}}" style="font-size: 15px"><bdi dir="ltr">{{l.v}}</bdi></b></div></sc-for></div>
+    </section>
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card mn-meet" style="--d: .22s">
+        <div class="k-row" style="gap: 12px; flex-wrap: nowrap"><span class="k-ico"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h12v12H3zM15 10l6-3v10l-6-3"></path></svg></span><span class="k-col" style="gap: 0"><b style="font-size: 16px">اجتماعات مع أصحابك</b><span class="k-m">ساعة كل يوم بـ ٣٠٠ نقطة</span></span></div>
+        <a href="#" class="k-btn ghost sm" onClick="{{openPlan}}">فعّل الباقة</a>
+      </section>
+      <section class="k-card" style="--d: .26s">
+        <div class="k-ch"><h3 style="font-size: 16px">طلبات الشحن</h3></div>
+        <div><sc-for list="{{topups}}" as="t" hint-placeholder-count="3"><div class="mn-kv"><span class="k-col" style="gap: 0"><b style="font-size: 14px">{{t.a}}</b><small>{{t.m}}</small></span><span class="k-tag {{t.c}}">{{t.s}}</span></div></sc-for></div>
+      </section>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ SUBSCRIBE (platform plan) ============ -->
+<sc-if value="{{is.subscribe}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+  <div class="k-col" style="gap: 2px"><h2>{{sb.h}}</h2><p>{{sb.p}}</p></div>
+</section>
+<div class="k-body">
+  <sc-if value="{{sb.big}}" hint-placeholder-val="{{ false }}">
+  <section class="k-card m-pop" style="--d: .15s">
+    <div class="mn-res">
+      <sc-if value="{{sb.mark}}" hint-placeholder-val="{{ false }}"><div class="k-success" style="padding: 0"><span class="k-success-mark"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"></circle><path d="M20 33l8 8 16-17"></path></svg></span></div></sc-if>
+      <sc-if value="{{sb.ico}}" hint-placeholder-val="{{ true }}"><span class="mn-big" style="background: {{sb.bg}}; color: {{sb.fg}}"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{sb.ico}}"></path></svg></span></sc-if>
+      <h3>{{sb.bh}}</h3><p>{{sb.bm}}</p>
+      <sc-if value="{{sb.steps}}" hint-placeholder-val="{{ false }}"><div class="mn-st w" style="align-self: stretch; text-align: right"><ol class="mn-steps"><sc-for list="{{subSteps}}" as="s" hint-placeholder-count="3"><li class="{{s.c}}"><i>{{s.n}}</i><span>{{s.t}}<small>{{s.m}}</small></span></li></sc-for></ol></div></sc-if>
+      <a href="#" class="k-btn">{{sb.btn}}</a>
+      <sc-if value="{{sb.link}}" hint-placeholder-val="{{ false }}"><a href="#" class="mn-link" style="align-self: center">{{sb.link}}</a></sc-if>
+    </div>
+  </section>
+  </sc-if>
+  <sc-if value="{{sb.form}}" hint-placeholder-val="{{ true }}">
+  <section class="k-card mn-main" style="--d: .15s">
+    <sc-if value="{{sb.rej}}" hint-placeholder-val="{{ false }}"><div class="mn-st r m-pop" style="--d: .3s"><b><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2zM12 10v4M12 17.5h.01"></path></svg>ما قبلنا طلبك السابق</b><span>صورة الإيصال ما كانت واضحة. اختر طريقة وكمّل.</span></div></sc-if>
+    <h3 class="mn-h">اختر خطتك</h3>
+    <div class="mn-plans" role="radiogroup" aria-label="الخطة"><sc-for list="{{splans}}" as="p" hint-placeholder-count="3"><button type="button" role="radio" class="mn-plan" aria-checked="{{p.on}}" onClick="{{p.go}}"><sc-if value="{{p.tag}}" hint-placeholder-val="{{ false }}"><span class="k-tag o">{{p.tag}}</span></sc-if><span class="k-m" style="font-weight: 700; font-size: 14px">{{p.t}}</span><b>{{p.p}}</b><span class="k-m">{{p.m}}</span></button></sc-for></div>
+    <div class="mn-rev">
+      <div class="mn-sum">
+        <div class="mn-row"><span>الخطة</span><span>{{spName}}</span></div>
+        <div class="mn-row"><span>يبدأ</span><span>اليوم، ٢٥ نوفمبر</span></div>
+        <div class="mn-total"><span>المبلغ<small>شامل الضريبة</small></span><b class="mn-price"><span class="m-roll mn-ro {{src}}" aria-label="{{spPrice}}"><sc-for list="{{spDigs}}" as="g" hint-placeholder-count="3"><i aria-hidden="true" style="--v: {{g.v}}; --i: {{g.i}}"></i></sc-for></span><small>ريال</small></b></div>
+      </div>
+      <div class="mn-box">
+        <span class="mn-lbl">طريقة الدفع</span>
+        <div class="mn-pay" role="radiogroup" aria-label="طريقة الدفع"><sc-for list="{{pays}}" as="m" hint-placeholder-count="3"><button type="button" role="radio" class="mn-pm" aria-checked="{{m.on}}" onClick="{{m.go}}"><span style="background: {{m.bg}}; color: {{m.fg}}">{{m.mark}}</span>{{m.t}}<span class="mn-radio" aria-hidden="true"></span></button></sc-for></div>
+        <a href="#" class="mn-link" onClick="{{goTransfer}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18"></path></svg>تبي تحوّل بنكي؟</a>
+      </div>
+    </div>
+    <div class="mn-nav"><a href="#" class="k-btn hot mn-go">{{spBtn}}</a></div>
+  </section>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ============ REWARDS ============ -->
+<sc-if value="{{is.rewards}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+  <div class="k-col" style="gap: 2px"><h2>مكافآتي</h2><p>قسائمك وانتصاراتك ودعواتك لأصحابك</p></div>
+  <div class="k-stats"><sc-for list="{{rstats}}" as="s" hint-placeholder-count="4"><span class="k-stat"><b>{{s.n}}</b><small>{{s.l}}</small></span></sc-for></div>
+</section>
+<div class="k-body">
+  <div class="k-grid k-side2" style="align-items: start">
+    <section class="k-card" style="--d: .1s">
+      <div class="k-seg m-pill" role="tablist" aria-label="القسائم" style="--n: 3"><span class="m-pill-bg" style="--i: {{ctI}}"></span><sc-for list="{{ctabs}}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.sel}}" onClick="{{t.go}}">{{t.l}} {{t.n}}</button></sc-for></div>
+      <div class="k-col mn-tab" style="gap: 14px">
+        <sc-for list="{{coupons}}" as="c" hint-placeholder-count="2"><div class="mn-cp m-wobble {{c.cls}}" style="--i: {{c.k}}; --d: .2s"><div class="l" style="background: {{c.bg}}"><b class="m-slap" style="--d: {{c.sd}}">{{c.v}}</b><small>{{c.u}}</small></div><div class="r"><b style="font-size: 15px">{{c.t}}</b><span class="k-m">{{c.why}}، {{c.date}}</span><div class="k-row" style="justify-content: space-between; gap: 8px"><span class="mn-code"><bdi dir="ltr">{{c.code}}</bdi><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8h12v12H8zM4 16V4h12"></path></svg></span><sc-if value="{{c.act}}" hint-placeholder-val="{{ true }}"><a href="#" class="k-btn sm {{c.bc}}">استخدمها</a></sc-if><sc-if value="{{c.st}}" hint-placeholder-val="{{ false }}"><span class="k-tag n">{{c.st}}</span></sc-if></div></div></div></sc-for>
+        <sc-if value="{{showLocked}}" hint-placeholder-val="{{ true }}"><div class="mn-cp lock m-wobble" style="--i: 2; --d: .2s"><div class="l" style="background: linear-gradient(150deg,#FFD36B,#E89B00); color: #3D2600"><b>١٥٪</b><small>مقفلة</small></div><div class="r"><b style="font-size: 15px">جائزة بطل الأسبوع</b><span class="k-m">تنفتح إذا سجّل ٢ من أصحابك</span><span class="k-bar"><i style="width: 50%; background: linear-gradient(90deg,#FFD36B,#E89B00)"></i></span><span class="k-m" style="font-weight: 700">سجّل ١ من ٢، باقي ٦ أيام</span></div></div></sc-if>
+      </div>
+    </section>
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card dark" style="--d: .16s">
+        <b style="font-size: 18px">ادعُ أصحابك</b>
+        <span style="opacity: .85; font-size: 14px">كل واحد يسجّل، تاخذ أنت وهو قسيمة ١٠٪</span>
+        <div class="mn-bank" style="background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.2)"><b style="color: #FFFFFF"><bdi dir="ltr">alfaheem.sa/i/faisal77</bdi></b><button type="button" class="mn-copy" aria-label="انسخ الرابط" style="background: transparent; color: #FFFFFF; border-color: rgba(255,255,255,.3)"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8h12v12H8zM4 16V4h12"></path></svg></button></div>
+        <div class="mn-tier"><sc-for list="{{tiers}}" as="t" hint-placeholder-count="4"><span class="{{t.c}}" style="--d: {{t.d}}"><i></i>{{t.l}}</span></sc-for></div>
+        <a href="#" class="k-btn ghost" style="background: #FFFFFF"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"></path></svg>شارك الرابط</a>
+      </section>
+      <section class="k-card" style="--d: .2s">
+        <div class="k-ch"><h3 style="font-size: 16px">انتصاراتي</h3><a href="Stu2Games.dc.html?screen=champions">لوحة الأبطال</a></div>
+        <div><sc-for list="{{wins}}" as="w" hint-placeholder-count="3"><div class="mn-win"><span><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"></path></svg></span><span style="flex: 1">{{w.t}}</span><span class="k-tag y">{{w.m}}</span></div></sc-for></div>
+      </section>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ HISTORY ============ -->
+<sc-if value="{{is.history}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+  <div class="mn-hrow">
+    <div class="k-col" style="gap: 2px; flex: 1 1 260px"><h2>المدفوعات والاشتراكات</h2><p>كل اللي دفعته في مكان واحد</p></div>
+    <a href="#" class="mn-hb mn-wide"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"></path></svg>نزّل كشف الحساب</a>
+  </div>
+  <div class="k-stats"><sc-for list="{{hstats}}" as="s" hint-placeholder-count="4"><span class="k-stat"><b>{{s.n}}</b><small>{{s.l}}</small></span></sc-for></div>
+</section>
+<div class="k-body">
+  <section class="k-card" style="--d: .1s">
+    <div class="k-seg m-pill" role="tablist" aria-label="المدفوعات" style="--n: 3; max-width: 520px"><span class="m-pill-bg" style="--i: {{htI}}"></span><sc-for list="{{htabs}}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.sel}}" onClick="{{t.go}}">{{t.l}}</button></sc-for></div>
+    <div class="mn-tab">
+      <div class="mn-hr h"><span>{{htHead}}</span><span>المبلغ</span><span>التاريخ</span><span>الحالة</span></div>
+      <sc-for list="{{hrows}}" as="p" hint-placeholder-count="5"><div class="mn-hr"><span class="k-col" style="gap: 0"><b>{{p.t}}</b><span class="k-m">{{p.m}}</span></span><b>{{p.a}}</b><span class="k-m">{{p.date}}</span><span><span class="k-tag {{p.c}}">{{p.s}}</span></span></div></sc-for>
+    </div>
+  </section>
+</div>
+</sc-if>
+      </main>
+      <sc-if value="{{payBar}}" hint-placeholder-val="{{ false }}">
+      <div class="mn-bar"><span><small>{{bar.l}}</small><b>{{bar.p}}</b></span><a href="{{bar.href}}" class="k-btn {{bar.c}}" onClick="{{bar.go}}">{{bar.b}}</a></div>
+      </sc-if>
+      <sc-if value="{{bnavOn}}" hint-placeholder-val="{{ true }}">
+      <nav class="k-bnav m-pill" aria-label="القائمة" style="--n: 5"><span class="m-pill-bg" style="--i: {{bi}}"></span><sc-for list="{{bnav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a></sc-for></nav>
+      </sc-if>
+    </div>
+  </div>
+
+<sc-if value="{{sh.any}}" hint-placeholder-val="{{ false }}">
+<div class="k-dim" onClick="{{closeSheet}}"></div>
+<aside class="k-drawer m-sheet" role="dialog" aria-modal="true" aria-label="{{sh.title}}">
+  <div class="k-dh"><h2>{{sh.title}}</h2><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+  <sc-if value="{{sh.help}}" hint-placeholder-val="{{ false }}"><div class="k-db">
+    <sc-for list="{{helps}}" as="h" hint-placeholder-count="4"><div class="mn-help m-pop" style="--c: {{h.c}}; --fg: {{h.fg}}; --d: {{h.d}}"><span class="k-ico"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{h.i}}"></path></svg></span><span><b>{{h.t}}</b><span>{{h.m}}</span></span></div></sc-for>
+  </div><div class="k-df"><a href="#" class="k-btn" style="flex: 1" onClick="{{closeSheet}}">فهمت</a></div></sc-if>
+  <sc-if value="{{sh.buy}}" hint-placeholder-val="{{ false }}"><div class="k-db">
+    <span class="mn-lbl">كم نقطة تبي؟</span>
+    <div class="mn-amts" role="radiogroup" aria-label="عدد النقاط"><sc-for list="{{amts}}" as="a" hint-placeholder-count="4"><button type="button" role="radio" class="mn-amt" aria-checked="{{a.on}}" onClick="{{a.go}}">{{a.l}}<small>{{a.p}}</small></button></sc-for></div>
+    <span class="mn-lbl">طريقة الدفع</span>
+    <div class="mn-pay" role="radiogroup" aria-label="طريقة الدفع"><sc-for list="{{bpays}}" as="m" hint-placeholder-count="3"><button type="button" role="radio" class="mn-pm" aria-checked="{{m.on}}" onClick="{{m.go}}"><span style="background: {{m.bg}}; color: {{m.fg}}">{{m.mark}}</span>{{m.t}}<span class="mn-radio" aria-hidden="true"></span></button></sc-for></div>
+    <sc-if value="{{bmReceipt}}" hint-placeholder-val="{{ false }}"><div class="mn-drop" style="border-color: #B7D3EE; background: #F6FAFE"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="color: #1979C1"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg><span class="k-col" style="gap: 0"><b style="font-size: 14px">ارفع صورة الإيصال</b><span class="k-m">بعد ما تحوّل على حساب الفهيم</span></span></div></sc-if>
+  </div><div class="k-df"><a href="#" class="k-btn hot" style="flex: 1" onClick="{{closeSheet}}">{{bmBtn}}</a></div></sc-if>
+  <sc-if value="{{sh.plan}}" hint-placeholder-val="{{ false }}"><div class="k-db">
+    <div class="mn-big2"><span class="k-ico"><svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h12v12H3zM15 10l6-3v10l-6-3"></path></svg></span><b style="font-size: 19px">اجتماعات خاصة مع أصحابك</b><span class="k-m" style="font-size: 14px">ساعة كل يوم لاجتماعاتك</span></div>
+    <div><div class="mn-kv"><span>السعر</span><b>٣٠٠ نقطة في الشهر</b></div><div class="mn-kv"><span>رصيدك</span><b>{{ptsTxt}} نقطة</b></div><div class="mn-kv"><span style="color: var(--k-text); font-weight: 700">تجديد تلقائي</span><span class="k-tog on"><i></i></span></div></div>
+    <sc-if value="{{short}}" hint-placeholder-val="{{ false }}"><div class="mn-st r m-shake"><b><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2zM12 10v4M12 17.5h.01"></path></svg>ينقصك ٦٠ نقطة</b></div></sc-if>
+  </div><div class="k-df"><sc-if value="{{short}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-btn hot" style="flex: 1" onClick="{{openBuy}}">اشحن نقاط</a></sc-if><sc-if value="{{noShort}}" hint-placeholder-val="{{ true }}"><a href="#" class="k-btn hot" style="flex: 1" onClick="{{closeSheet}}">فعّلها بـ ٣٠٠ نقطة</a></sc-if></div></sc-if>
+</aside>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 1360, "height": 1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = this.props || {}, S = this.state || {};
+    const D = '٠١٢٣٤٥٦٧٨٩', ar = (x) => String(x).replace(/\d/g, (d) => D[d]);
+    const I = {"home": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z", "courses": "M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14", "store": "M4 7h16l-1.5 12h-13zM9 7V5a3 3 0 0 1 6 0v2", "games": "M6 9h12a4 4 0 0 1 0 8c-2 0-3-2-6-2s-4 2-6 2a4 4 0 0 1 0-8zM8 11v4M6 13h4M16 12h.01M18 14h.01", "quran": "M12 6c-2-1.5-5-2-8-1v14c3-1 6-.5 8 1 2-1.5 5-2 8-1V5c-3-1-6-.5-8 1zM12 6v14", "teachers": "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a8 8 0 0 1 16 0v1", "nahw": "M4 6h16M4 12h10M4 18h7", "analysis": "M4 20V10M10 20V4M16 20v-7M22 20H2", "schedule": "M3 5h18v16H3zM3 10h18M8 3v4M16 3v4", "profile": "M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0", "learn": "M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5", "cal": "M3 5h18v16H3zM3 10h18M8 3v4M16 3v4", "chat": "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z", "ai": "M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z", "bell": "M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0", "exam": "M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9", "task": "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01", "math": "M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2", "atom": "M12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 3c2.5 0 4.5 4 4.5 9s-2 9-4.5 9-4.5-4-4.5-9 2-9 4.5-9z", "en": "M4 6h9M8.5 4v2M6 6c0 4 3 7 6 8M11 6c0 3-3 7-7 8M13 20l4-9 4 9M14.5 17h5", "clock": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2", "check": "M5 12l5 5L20 7", "x": "M6 6l12 12M18 6L6 18", "lock": "M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4", "key": "M7 14a4 4 0 1 1 3.5-6H21v3h-2v3h-3v-3h-5.5A4 4 0 0 1 7 14z", "flag": "M5 21V4M5 4h11l-2 4 2 4H5", "star": "M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z", "coin": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v10M9 9.5h4.5a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3H15", "trophy": "M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 21h8M9 17h6", "gift": "M4 11h16v10H4zM3 7h18v4H3zM12 7v14M12 7C10 3 6 3 6 5.5S12 7 12 7zM12 7c2-4 6-4 6-1.5S12 7 12 7", "ticket": "M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4zM14 7v10", "wallet": "M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-4v4M16 13h2", "card": "M3 6h18v12H3zM3 10h18M7 15h4", "bank": "M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18", "upload": "M12 16V4M7 9l5-5 5 5M4 20h16", "download": "M12 4v12M7 11l5 5 5-5M4 20h16", "share": "M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4", "copy": "M8 8h12v12H8zM4 16V4h12", "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3", "filter": "M4 5h16l-6 8v6l-4-2v-4z", "cart": "M3 4h2l2.4 11h11l2-8H6.2M9 20h.01M17 20h.01", "book": "M4 5a2 2 0 0 1 2-2h14v15H6a2 2 0 0 0-2 2zM4 20a2 2 0 0 0 2 2h14", "file": "M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6", "eye": "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z", "play": "M7 4l13 8-13 8z", "pause": "M8 5v14M16 5v14", "heart": "M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z", "bulb": "M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z", "sound": "M4 9h4l5-4v14l-5-4H4zM17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11", "gear": "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1", "shield": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", "shieldok": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4", "wifioff": "M2 8.8a15 15 0 0 1 4.2-2.6M10.7 5.1A15 15 0 0 1 22 8.8M5 12.6a10 10 0 0 1 5.2-2.5M16.8 11.4A10 10 0 0 1 19 12.6M8.5 16.4a5 5 0 0 1 7 0M12 20h.01M2 2l20 20", "wifi": "M2 8.8a15 15 0 0 1 20 0M5 12.6a10 10 0 0 1 14 0M8.5 16.4a5 5 0 0 1 7 0M12 20h.01", "phone": "M7 2h10v20H7zM11 18h2", "laptop": "M4 5h16v11H4zM2 19h20", "video": "M3 6h12v12H3zM15 10l6-3v10l-6-3", "mic": "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3", "link": "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1", "plus": "M12 5v14M5 12h14", "minus": "M5 12h14", "fwd": "M15 6l-6 6 6 6", "back": "M9 6l6 6-6 6", "dots": "M5 12h.01M12 12h.01M19 12h.01", "edit": "M4 20h4L19 9l-4-4L4 16zM14 6l4 4", "trash": "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3", "logout": "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11", "users": "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a7 7 0 0 1 14 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a7 7 0 0 0-4-6.3", "moon": "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", "globe": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z", "text": "M4 7V5h16v2M12 5v14M9 19h6", "cert": "M12 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM8.5 13.5L7 22l5-3 5 3-1.5-8.5", "help": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01", "info": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7.5h.01", "msg": "M4 4h16v12H8l-4 4z", "cloud": "M7 18a5 5 0 1 1 .9-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 8z", "qr": "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2", "fire": "M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.5 2-5 .8 1.5 1.5 2 2.5 2 0-2.5-.5-4.5.5-7z", "target": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z", "crown": "M3 8l4 4 5-7 5 7 4-4-2 11H5z", "hat": "M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5", "shirt": "M8 3L3 6l2 4 3-1v12h8V9l3 1 2-4-5-3c0 2-2 3-4 3S8 5 8 3z", "rocket": "M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2M9 15l-3-3c1-4 4-8 10-9 0 6-4 9-8 10zM14 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2", "sparkle": "M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6", "bolt": "M13 2L4 14h7l-1 8 9-12h-7z", "refresh": "M20 11a8 8 0 0 0-14.9-4M4 4v4h4M4 13a8 8 0 0 0 14.9 4M20 20v-4h-4", "export": "M12 3v12M8 7l4-4 4 4M5 13v7h14v-7", "grid": "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", "wave": "M3 12h2M7 8v8M11 5v14M15 8v8M19 10v4", "pin": "M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12zM12 7a2 2 0 1 0 0 4 2 2 0 0 0 0-4z", "alert": "M12 3l10 18H2zM12 10v4M12 17.5h.01", "image": "M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15.5 8.5h.01", "hand": "M8 13V5a1.5 1.5 0 0 1 3 0v6M11 10V4a1.5 1.5 0 0 1 3 0v6M14 10V5.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7c-3 0-4.5-1.5-6-4l-1.5-3a1.5 1.5 0 0 1 2.6-1.5L8 15", "zoom": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3M8 11h6M11 8v6", "bookmark": "M6 3h12v18l-6-4-6 4z", "sun": "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4", "fp": "M12 11v3a8 8 0 0 1-2 5M8 8a5 5 0 0 1 9 3v2M5 12a7 7 0 0 1 1-4M16 17a12 12 0 0 1-1 3M12 5a7 7 0 0 1 7 7", "route": "M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 15V9a3 3 0 0 1 3-3h6M18 9v6a3 3 0 0 1-3 3H9", "percent": "M19 5L5 19M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z", "receipt": "M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6M9 16h3", "layers": "M12 3l9 5-9 5-9-5zM3 13l9 5 9-5", "mail": "M3 5h18v14H3zM3 6l9 7 9-7", "at": "M16 12a4 4 0 1 1-1.2-2.8M16 8v5a2.5 2.5 0 0 0 5 0v-1a9 9 0 1 0-3.5 7.1", "school": "M3 21h18M5 21V9l7-5 7 5v12M10 21v-5h4v5", "sliders": "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4", "repeat": "M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3", "sort": "M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4", "ext": "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"};
+
+    I.play = I.games;
+    const set = (o) => () => this.setState(o);
+    const digs = (n) => String(n).split('').map((v, i) => ({ v: +v, i }));
+    const rdigs = (n) => Number(n).toLocaleString('en-US').split('').map((c, i) => (c === ',' ? { sep: true, num: false, v: 0, i } : { sep: false, num: true, v: +c, i }));
+    const fm = (n) => ar((Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, '')).replace('.', '٫').replace(/([٠-٩])(?=([٠-٩]{3})+(?![٠-٩]))/g, '$1٬');
+    const MAP = [['home', 'الرئيسية', '٣'], ['courses', 'دوراتي', ''], ['schedule', 'جدولي', ''], ['play', 'العب وتعلّم', ''], ['profile', 'حسابي', '']];
+
+    const scr = S.scr || P.screen || 'enroll';
+    const sheet = S.sheet !== undefined ? S.sheet : (P.sheet || '');
+    const go = (s, extra) => () => this.setState(Object.assign({ scr: s, sheet: '' }, extra || {}));
+    const tab = (k) => (k === 'wallet' || k === 'rewards' || k === 'history' || k === 'subscribe' ? 'profile' : 'courses');
+    const cur = tab(scr);
+
+    // payment methods (same three as BookFlow)
+    const pay = S.pay || 'mada';
+    const pays = [['mada', 'مدى', 'mada', '#E0F0FF', '#0F5CA8'], ['apple', 'Apple Pay', 'Pay', '#0E2350', '#FFFFFF'], ['stc', 'STC Pay', 'stc', '#F3E8FF', '#4F008C'], ['card', 'بطاقة ائتمان', 'VISA', '#FFF4CC', '#7A5200']]
+      .map(([k, t, mark, bg, fg]) => ({ t, mark, bg, fg, on: pay === k ? 'true' : 'false', go: set({ pay: k }) }));
+
+    // ---------- enroll ----------
+    const dur = S.dur !== undefined ? S.dur : 0;
+    const enP = dur === 1 ? 716 : 199;
+    const est = S.est !== undefined ? S.est : (scr === 'enroll' ? (P.state || '') : '');
+    const detOn = S.det === true;
+    const big = { processing: 1, ok: 0, fail: 1, refused: 1 };
+    const E = { kick: est === 'ok' ? 'اشتركت في' : 'تشترك الحين في', big: !!big[est], ok: est === 'ok', form: !(est in big), paid: est !== 'free', free: est === 'free', durOn: est !== 'free' && est !== 'review' && est !== 'rejected', title: 'راجع اشتراكك', totL: dur === 1 ? 'مبلغ الفصل' : 'المبلغ الشهري', payOn: true, stOn: false, steps: false, goC: 'hot', goL: 'أكّد وادفع ' + ar(enP) + ' ريال', goHref: '#', goFn: () => { this.setState({ est: 'processing' }); setTimeout(() => this.setState({ est: 'ok' }), 1400); } };
+    if (est === 'processing') Object.assign(E, { spin: true, ico: '', h: 'نتأكد من الدفع…', m: 'لا تقفل الصفحة، تاخذ ثواني.' });
+    if (est === 'fail') Object.assign(E, { ico: I.x, bg: '#FFE3E0', fg: '#B23A2E', h: 'ما اكتمل الدفع', m: 'ما انخصم منك شي. جرّب مرة ثانية.', btn: 'جرّب مرة ثانية', bc: 'hot', href: '#', go: set({ est: '' }), link: 'غيّر طريقة الدفع', lhref: '#', lgo: set({ est: '' }) });
+    if (est === 'refused') Object.assign(E, { ico: I.users, bg: '#FFE8D6', fg: '#A3480A', h: 'المجموعة أ اكتملت', m: 'كل المقاعد انحجزت قبل ما تأكد.', seats: true, btn: S.nfy ? 'تم، بننبّهك أول ما يفضى مقعد' : 'نبّهني إذا فضى مقعد', bc: S.nfy ? 'ghost' : '', href: '#', go: set({ nfy: !S.nfy }), link: 'اختر مجموعة ثانية', lhref: 'BookFlow.dc.html?step=3&att=online&typ=group', lgo: null });
+    if (est === 'free') Object.assign(E, { title: 'سجّل في الدورة', payOn: false, stOn: true, stc: 'g', sti: I.gift, sth: 'هذي الدورة ما عليها رسوم', stm: 'سجّل الحين وابدأ على طول.', goL: 'سجّل في الدورة' });
+    if (est === 'review') Object.assign(E, { title: 'وصلنا إيصالك', payOn: false, stOn: true, stc: 'w', sti: I.clock, sth: 'نراجع التحويل', stm: 'نعلمك أول ما تتفعّل الدورة.', steps: true, goC: '', goL: 'رجوع لدوراتي', goHref: 'Stu1Discover.dc.html?screen=mycourses', goFn: null });
+    if (est === 'rejected') Object.assign(E, { title: 'راجع اشتراكك', payOn: false, stOn: true, stc: 'r', sti: I.alert, sth: 'ما قبلنا الإيصال', stm: 'المبلغ ما يطابق ١٩٩ ريال. أرسل إيصال ثاني.', goL: 'أرسل إيصال ثاني', goFn: go('transfer') });
+    const enRows = [['طريقة الدراسة', 'عن بعد'], ['نوع الحصص', 'مجموعة طلاب، من ٥ إلى ١٠'], ['الموعد', 'مجموعة أ: الأحد والثلاثاء، ٧:٣٠ إلى ٨:٢٠ م'], ['المعلم', 'أ. ماجد الشهري'], ['الحصة', '٥٠ دقيقة']].map(([k, v]) => ({ k, v }));
+    const enDet = [['السعر قبل الضريبة', fm(enP / 1.15) + ' ريال'], ['ضريبة القيمة المضافة ١٥٪', fm(enP - enP / 1.15) + ' ريال']].concat(dur === 1 ? [['يعني في الشهر', '١٧٩ ريال'], ['تقدر تقسّطها', 'مع تابي أو تمارا']] : []).map(([k, v]) => ({ k, v }));
+
+    // ---------- path ----------
+    const pathOk = S.pok || (scr === 'path' && P.state === 'ok');
+    const PC = [['الكيمياء ٢ ث', 'مشترك فيها من قبل', 'مشترك', 'g', '', I.atom, 'sub-chem', 'own'], ['الأحياء للتحصيلي', 'أ. ناصر الحارثي', '', '', '١٩٩ ريال', I.sparkle, 'sub-bio', ''], ['الفيزياء للتحصيلي', 'أ. فهد المطيري', '', '', '١٩٩ ريال', I.atom, 'sub-physics', ''], ['الرياضيات للتحصيلي', 'أ. ماجد الشهري', '', '', '١٩٩ ريال', I.math, 'sub-math', ''], ['اختبارات محاكية', '٥ اختبارات كاملة', 'ضمن المسار', 'p', '', I.exam, 'sub-qudurat', '']];
+
+    // ---------- wallet ----------
+    const short = P.short === '1';
+    const pts = short ? 240 : 1240;
+    const lf = S.lf || 'all';
+    const LED = [['منحة تفوّق', 'اختبار الفصل، ٢٠ نوفمبر', '+٢٠٠', 'in', I.gift], ['اشتريت من المتجر', 'كتاب القدرات الكمي، ١٠ نوفمبر', '-٨٩٠', 'out', I.store], ['شحن رصيد', 'مدى، ٨ نوفمبر', '+١٬٠٠٠', 'in', I.plus], ['اجتماعات مع أصحابك', 'باقة أكتوبر', '-٣٠٠', 'out', I.video], ['من الألعاب والنحو', '٢٤ لعبة ودرسين', '+١٣٠', 'in', I.games], ['رجعت لك', 'طلب ألغيته، ١٥ أكتوبر', '+٤٩٠', 'in', I.refresh]];
+    const ledger = LED.filter((l) => lf === 'all' || l[3] === lf).map(([t, m, v, k, i]) => ({ t, m, v, i, pc: k === 'in' ? 'p' : 'm', bg: k === 'in' ? '#D9F7EE' : '#FFE3E0', fg: k === 'in' ? '#0C6B55' : '#B23A2E' }));
+    const amt = S.amt !== undefined ? S.amt : 1;
+    const AM = [500, 1000, 2000, 5000];
+    const bp = S.bp || 'mada';
+    const bpays = [['mada', 'مدى', 'mada', '#E0F0FF', '#0F5CA8'], ['apple', 'Apple Pay', 'Pay', '#0E2350', '#FFFFFF'], ['stc', 'STC Pay', 'stc', '#F3E8FF', '#4F008C'], ['bank', 'تحويل بنكي', 'بنك', '#D9F7EE', '#0C6B55']]
+      .map(([k, t, mark, bg, fg]) => ({ t, mark, bg, fg, on: bp === k ? 'true' : 'false', go: set({ bp: k }) }));
+
+    // ---------- subscribe ----------
+    const sst = S.sst || (scr === 'subscribe' ? P.state : '') || 'choose';
+    const SBS = {
+      choose: { h: 'اشتراك الفهيم', p: 'يفتح لك كل مزايا التطبيق', form: true },
+      rejected: { h: 'اشتراك الفهيم', p: 'يفتح لك كل مزايا التطبيق', form: true, rej: true },
+      review: { h: 'نراجع طلبك', p: 'عادة خلال يوم عمل', big: true, ico: I.clock, bg: '#FFF4CC', fg: '#7A5200', bh: 'وصلنا إيصالك', bm: 'خطة ٣ شهور، أرسلته اليوم ١٠:٤٠ الصبح.', steps: true, btn: 'تمام' },
+      active: { h: 'اشتراكك فعّال', p: 'كل شي مفتوح لك', big: true, mark: true, ico: '', bh: 'اشتراكك فعّال', bm: 'خطة ٣ شهور، ينتهي ٢٤ فبراير ٢٠٢٧.', btn: 'ارجع للرئيسية', link: 'جدّد قبل ما ينتهي' },
+      notopen: { h: 'حسابك ما انفتح بعد', p: 'نراجع بياناتك ونفتحه لك', big: true, ico: I.lock, bg: '#EEF2F7', fg: '#4A5878', bh: 'حسابك ما انفتح بعد', bm: 'نعلمك أول ما ينفتح.', btn: 'حدّث', link: 'تسجيل خروج' }
+    };
+    const SB = SBS[sst] || SBS.choose;
+    const sp = S.sp !== undefined ? S.sp : 1;
+    const SP = [['شهر', 49, '٣٠ يوم', ''], ['٣ شهور', 129, 'وفّر ١٢٪', 'الأكثر اختيارًا'], ['سنة', 449, 'وفّر ٢٤٪', '']];
+
+    // ---------- rewards / history ----------
+    const ct = S.ct || 'active';
+    const CP = {
+      active: [['١٥٪', 'خصم', 'على أي دورة', 'فزت ببطولة الأسبوع', 'CHAMP15', 'ينتهي ٣٠ نوفمبر', 'linear-gradient(150deg,#A98BFF,#7A4DF0)'], ['٥٠', 'ريال', 'على المتجر', 'دعوت عبدالعزيز وسجّل', 'FRIEND50', 'ينتهي ١٥ ديسمبر', 'linear-gradient(150deg,#3DD5B0,#0C9C7C)']],
+      used: [['١٠٪', 'خصم', 'دورة الإنجليزي من الصفر', 'هدية الترحيب', 'WELCOME10', 'استخدمتها ٢ سبتمبر', 'linear-gradient(150deg,#7FD8F5,#07B8EE)']],
+      expired: [['٢٠٪', 'خصم', 'دورات القدرات', 'عرض العودة للمدارس', 'BACK20', 'انتهت ١ سبتمبر', 'linear-gradient(150deg,#C9D5E3,#8FA3C0)']]
+    };
+    const ht = S.ht || P.tab || 'pay';
+    const HR = {
+      pay: [['الرياضيات ٢ ث', 'مدى، شهر ديسمبر', '١٩٩ ريال', '٢٤ نوفمبر', 'مدفوع', 'g'], ['باقة التأسيس مع أ. ماجد', 'مدى، ٨ حصص', '٦٨٠ ريال', '٢٠ نوفمبر', 'مدفوع', 'g'], ['الفيزياء ٢ ث', 'تحويل بنكي', '١٩٩ ريال', '١٨ نوفمبر', 'نراجعه', 'y'], ['الرياضيات ٢ ث', 'مدى، شهر نوفمبر', '١٩٩ ريال', '٢٤ أكتوبر', 'مدفوع', 'g'], ['القدرات الكمي', 'بطاقة ائتمان', '١٩٩ ريال', '٢٠ أغسطس', 'رجع لك', 'n']],
+      sub: [['اشتراك الفهيم، ٣ شهور', 'تحويل بنكي', '١٢٩ ريال', 'لين ٢٤ فبراير', 'فعّال', 'g'], ['الرياضيات ٢ ث', 'يتجدد كل شهر', '١٩٩ ريال', 'التجديد ٢٤ ديسمبر', 'فعّال', 'g'], ['اجتماعات مع أصحابك', 'بالنقاط', '٣٠٠ نقطة', 'انتهت أكتوبر', 'منتهي', 'n']],
+      left: [['القدرات الكمي', 'تعارض مع دوام المدرسة', '١٩٩ ريال رجعت', '٢٥ أغسطس', 'طلعت منها', 'n']]
+    };
+
+    // ---------- shell ----------
+    const titles = { enroll: 'الاشتراك في الدورة', transfer: 'التحويل البنكي', path: 'الاشتراك في المسار', wallet: 'محفظتي', subscribe: 'اشتراك الفهيم', rewards: 'مكافآتي', history: 'المدفوعات' };
+    const purchase = (scr === 'enroll' && E.form) || scr === 'transfer' || (scr === 'path' && !pathOk) || (scr === 'subscribe' && SB.form);
+    let bar = { l: '', p: '', b: '', c: 'hot', href: '#', go: null };
+    if (scr === 'enroll') bar = { l: est === 'free' ? 'الرياضيات ٢ ث' : (dur === 1 ? 'مبلغ الفصل' : 'في الشهر'), p: est === 'free' ? 'بدون رسوم' : ar(enP) + ' ريال', b: est === 'review' ? 'رجوع لدوراتي' : est === 'rejected' ? 'أرسل إيصال ثاني' : est === 'free' ? 'سجّل' : 'أكّد وادفع', c: E.goC, href: E.goHref, go: E.goFn };
+    if (scr === 'transfer') bar = { l: 'المبلغ', p: '١٩٩ ريال', b: 'أرسل الإيصال', c: 'hot', href: '#', go: go('enroll', { est: 'review' }) };
+    if (scr === 'path') bar = { l: 'في الشهر', p: '٥٣٧ ريال', b: 'أكّد وادفع', c: 'hot', href: '#', go: set({ pok: true }) };
+    if (scr === 'subscribe') bar = { l: SP[sp][0], p: ar(SP[sp][1]) + ' ريال', b: 'أكّد وادفع', c: 'hot', href: '#', go: null };
+    const back = scr === 'transfer' ? { scr: 'enroll', sheet: '' } : (scr === 'wallet' || scr === 'history' ? false : { scr: scr === 'rewards' ? 'wallet' : scr, sheet: '' });
+    const shT = { buy: 'اشحن نقاط', plan: 'باقة الاجتماعات', help: 'وش الفرق؟' };
+    const durI = String(dur), ctI = ['active', 'used', 'expired'].indexOf(ct), htI = ['pay', 'sub', 'left'].indexOf(ht);
+
+    return {
+      area: scr === 'enroll' || scr === 'transfer' || scr === 'path' ? 'a-learn' : 'a-money',
+      title: titles[scr], crumb: cur === 'profile' ? 'حسابي' : 'دوراتي', back: !!back, noback: !back,
+      goBack: back ? () => this.setState(back) : null,
+      nav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === cur ? 'page' : 'false' })),
+      bnav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === cur ? 'page' : 'false' })), bi: cur === 'profile' ? '4' : '1',
+      tools: [['chat', 'الرسائل', '٢'], ['ai', 'المساعد الذكي', ''], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] })),
+      mtools: [['chat', 'الرسائل', '٢'], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] })),
+      payBar: purchase, bnavOn: !purchase, bar,
+      is: { enroll: scr === 'enroll', transfer: scr === 'transfer', path: scr === 'path', wallet: scr === 'wallet', subscribe: scr === 'subscribe', rewards: scr === 'rewards', history: scr === 'history' },
+      sh: { any: !!shT[sheet], title: shT[sheet] || '', buy: sheet === 'buy', plan: sheet === 'plan', help: sheet === 'help' },
+      closeSheet: set({ sheet: '' }), openBuy: set({ sheet: 'buy' }), openPlan: set({ sheet: 'plan' }), openHelp: set({ sheet: 'help' }),
+      goTransfer: go('transfer'), goEnrollReview: go('enroll', { est: 'review' }),
+      pays,
+      // enroll
+      en: E, enRows, enDet, detOn, detX: detOn ? 'true' : 'false', togDet: set({ det: !detOn }),
+      durI, durs: [['كل شهر', 0], ['الفصل كامل، ٤ شهور', 1]].map(([l, k]) => ({ l, sel: k === dur ? 'true' : 'false', go: set({ dur: k }) })),
+      enPrice: ar(enP), enDigs: rdigs(enP), rc: 'r' + dur,
+      fullSeats: Array.from({ length: 10 }, (_, i) => ({ d: (0.3 + i * 0.05).toFixed(2) + 's' })),
+      revSteps: [['أرسلت الإيصال', 'اليوم ١٠:٤٠ الصبح', 'done', '✓'], ['نراجعه', 'عادة خلال يوم عمل', 'now', '٢'], ['تتفعّل الدورة', 'ونرسل لك إشعار', '', '٣']].map(([t, m, c, n]) => ({ t, m, c, n })),
+      after: [['إيصال الدفع وصل جوالك', I.receipt], ['رابط الحصة في جدولك', I.laptop], ['نذكّرك قبلها بساعة', I.bell]].map(([t, i], j) => ({ t, i, d: (1.0 + j * 0.12).toFixed(2) + 's' })),
+      // transfer
+      bank: [['اسم الحساب', 'شركة الفهيم للتعليم', 'rtl', 'انسخ اسم الحساب'], ['البنك', 'مصرف الراجحي', 'rtl', 'انسخ اسم البنك'], ['الآيبان', 'SA4480000123608010167519', 'ltr', 'انسخ الآيبان']].map(([k, v, dir, cl]) => ({ k, v, dir, cl })),
+      holdCount: [[47, 'دقيقة'], [12, 'ثانية']].map(([n, l]) => ({ l, digs: digs(String(n).padStart(2, '0')) })),
+      // path
+      pathOk: !!pathOk, pathForm: !pathOk, pathPay: set({ pok: true }), pathKick: pathOk ? 'اشتركت في' : 'تشترك الحين في',
+      pcourses: PC.map(([t, m, tag, tc, p, i, sub, cls], k) => ({ t, m, tag, tc, p, i, sub, cls, k: String(k) })),
+      pNew: PC.slice(1, 4).map(([t, m, , , , i, sub], k) => ({ t, m, i, sub, k: String(k) })),
+      // wallet
+      bals: [
+        ['نقطة', pts, 'تشتري فيها من المتجر', '#FFF4CC', '#FFE6A0', 'linear-gradient(150deg,#FFD66B,#FFB020)', '#3D2700', '#7A5200', I.coin],
+        ['عملة', 320, 'تلبّس فيها فهيم', '#D9F7EE', '#B5EEDD', 'linear-gradient(150deg,#3DD5B0,#0C9C7C)', '#FFFFFF', '#0C6B55', I.star]
+      ].map(([u, n, line, t1, t2, c, fg, ink, i]) => ({ u, line, t1, t2, c, fg, ink, i, lbl: ar(n.toLocaleString('en-US')).replace(',', '٬') + ' ' + u, d: rdigs(n) })),
+      ptsTxt: ar(pts.toLocaleString('en-US')).replace(',', '٬'),
+      wlinks: [['قسائمي', '٢', I.ticket, '#7A4DF0', '#', go('rewards')], ['ترتيبي', '١٬٨٤٠', I.trophy, '#E89B00', 'Stu2Games.dc.html?screen=champions', null]].map(([t, n, i, c, href, g]) => ({ t, n, i, c, href, go: g })),
+      lfI: String(['all', 'in', 'out'].indexOf(lf)),
+      ledF: [['all', 'الكل'], ['in', 'وارد'], ['out', 'صادر']].map(([k, l]) => ({ l, sel: k === lf ? 'true' : 'false', go: set({ lf: k }) })), ledger,
+      topups: [['١٬٠٠٠ نقطة', 'مدى، ٨ نوفمبر', 'وصلت', 'g'], ['٥٠٠ نقطة', 'تحويل بنكي، اليوم', 'نراجعه', 'y'], ['٢٠٠ نقطة', 'الإيصال مو واضح، ٢ نوفمبر', 'ما انقبل', 'r']].map(([a, m, s, c]) => ({ a, m, s, c })),
+      helps: [['النقاط', 'تشتري فيها من المتجر والاجتماعات. كل ١٠ نقاط بريال.', I.coin, '#FFC53D', '#3D2700'], ['العملات', 'تكسبها من نجوم الألعاب، وتلبّس فيها فهيم بس.', I.star, '#19C29B', '#FFFFFF'], ['نقاط الترتيب', 'ترتيبك في لوحة الأبطال، وما تنصرف.', I.trophy, '#7A4DF0', '#FFFFFF'], ['القسائم', 'خصم على دورة أو بالمتجر، ولها تاريخ.', I.ticket, '#FF5FA2', '#FFFFFF']].map(([t, m, i, c, fg], j) => ({ t, m, i, c, fg, d: (0.15 + j * 0.08).toFixed(2) + 's' })),
+      amts: AM.map((a, j) => ({ l: ar(a.toLocaleString('en-US')).replace(',', '٬') + ' نقطة', p: ar(a / 10) + ' ريال', on: j === amt ? 'true' : 'false', go: set({ amt: j }) })),
+      bpays, bmReceipt: bp === 'bank', bmBtn: bp === 'bank' ? 'أرسل الطلب' : 'ادفع ' + ar(AM[amt] / 10) + ' ريال',
+      short, noShort: !short,
+      // subscribe
+      sb: Object.assign({}, SB, { mark: !!SB.mark, ico: SB.ico || '', steps: !!SB.steps, rej: !!SB.rej, big: !!SB.big, form: !!SB.form, link: SB.link || '' }),
+      subSteps: [['أرسلت الإيصال', 'اليوم ١٠:٤٠ الصبح', 'done', '✓'], ['نراجعه', 'عادة خلال يوم عمل', 'now', '٢'], ['يتفعّل اشتراكك', 'ونرسل لك إشعار', '', '٣']].map(([t, m, c, n]) => ({ t, m, c, n })),
+      splans: SP.map(([t, p, m, tag], j) => ({ t, tag, m, p: ar(p) + ' ريال', on: j === sp ? 'true' : 'false', go: set({ sp: j }) })),
+      spName: SP[sp][0], spPrice: ar(SP[sp][1]), spDigs: digs(SP[sp][1]), src: 'r' + (sp % 2), spBtn: 'أكّد وادفع ' + ar(SP[sp][1]) + ' ريال',
+      // rewards
+      rstats: [['٢', 'قسائم تقدر تستخدمها'], ['٣', 'أصحاب سجّلوا'], ['٤', 'انتصارات'], ['١٤٥ ريال', 'وفّرتها']].map(([n, l]) => ({ n, l })),
+      ctI: String(ctI), ctabs: [['active', 'فعّالة', '٢'], ['used', 'مستخدمة', '١'], ['expired', 'منتهية', '١']].map(([k, l, n]) => ({ l, n: '(' + n + ')', sel: k === ct ? 'true' : 'false', go: set({ ct: k }) })),
+      coupons: CP[ct].map(([v, u, t, why, code, date, bg], j) => ({ v, u, t: 'تنفع ' + t, why, code, date, bg, act: ct === 'active', bc: j === 0 ? '' : 'ghost', st: ct === 'used' ? 'استخدمتها' : ct === 'expired' ? 'انتهت' : '', cls: ct === 'active' ? '' : 'off', k: String(j), sd: (0.55 + j * 0.12).toFixed(2) + 's' })),
+      showLocked: ct === 'active',
+      tiers: [['١', 'on'], ['٣', 'on'], ['٥', ''], ['١٠', '']].map(([l, c], j) => ({ l: l + ' أصحاب', c, d: (0.4 + j * 0.15).toFixed(2) + 's' })),
+      wins: [['بطل الأسبوع', 'قسيمة ١٥٪'], ['بطل يوم ١٩ نوفمبر', '+٥٠ نقطة'], ['الثاني يوم ١٢ نوفمبر', 'شارة']].map(([t, m]) => ({ t, m })),
+      // history
+      hstats: [['٨٧٦ ريال', 'دفعتها هالفصل'], ['٢', 'اشتراكات فعّالة'], ['١', 'دفعة نراجعها'], ['١', 'دورة طلعت منها']].map(([n, l]) => ({ n, l })),
+      htI: String(htI), htabs: [['pay', 'المدفوعات'], ['sub', 'الاشتراكات'], ['left', 'طلعت منها']].map(([k, l]) => ({ l, sel: k === ht ? 'true' : 'false', go: set({ ht: k }) })),
+      htHead: ht === 'sub' ? 'الاشتراك' : 'الدورة',
+      hrows: (HR[ht] || HR.pay).map(([t, m, a, date, s, c]) => ({ t, m, a, date, s, c }))
+    };
+  }
+}
+</script>
+</body>
+</html>

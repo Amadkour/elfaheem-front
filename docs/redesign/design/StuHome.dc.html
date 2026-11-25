@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الطالب: الرئيسية</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* StuHome — reference student screen (area a-home). Signature: M6 hero wipe, M7 squiggle, M8 live button, M5 "كمّل" cards, M12 shelf. */
+.sh-hero-row{display:flex;align-items:flex-end;gap:24px}
+.sh-greet{font-size:20px;color:#FFD9A8}
+.sh-next{display:flex;flex-direction:column;align-items:flex-start;gap:6px;flex-shrink:0}
+.sh-next > small{font-size:12.5px;font-weight:700;opacity:.8}
+.sh-stat{flex-direction:row;align-items:center;gap:12px}
+.sh-stat .k-ico{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12)}
+.sh-stat > span:last-child{display:flex;flex-direction:column;gap:0}
+.sh-stat b{white-space:nowrap}
+.sh-live{display:flex;flex-direction:row;align-items:center;gap:14px;padding:14px 16px;border-radius:22px;background:linear-gradient(120deg,#C81E4A,#F2545B 70%,#FF7A59);color:#FFFFFF;box-shadow:0 18px 36px -14px rgba(242,84,91,.7)}
+.sh-live .k-av{background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.5)}
+.sh-live-tx{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.sh-live-tx b{font-size:17px;line-height:1.45}
+.sh-live-tx small{font-size:13px;opacity:.88}
+.sh-livetag{align-self:flex-start;height:24px;padding:0 10px;border-radius:12px;background:#FFFFFF;color:#B23A2E;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.sh-livetag i{width:7px;height:7px;border-radius:50%;background:var(--k-coral)}
+.k .sh-go{--halo:#FFFFFF;height:50px;padding:0 24px;border-radius:25px;background:#FFFFFF;color:#B23A2E;font-size:15.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;flex-shrink:0;box-shadow:0 10px 22px -8px rgba(80,0,20,.5)}
+.sh-cc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.sh-cc{position:relative;display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:20px;background:linear-gradient(165deg,var(--sub-t) 0%,#FFFFFF 62%);border:1.5px solid var(--sub-t);transition:transform .25s cubic-bezier(.3,1.4,.5,1),box-shadow .25s}
+.sh-cc:hover{transform:translateY(-5px) rotate(-.6deg);box-shadow:0 16px 30px -16px rgba(0,20,64,.35)}
+.sh-cc-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sh-cc .k-ico{background:var(--sub);color:var(--sub-fg);box-shadow:0 8px 16px -8px var(--sub)}
+.sh-ring{position:relative;width:52px;height:52px;flex-shrink:0}
+.sh-ring svg{width:52px;height:52px;transform:rotate(-90deg)}
+.sh-ring circle{fill:none;stroke-width:5;stroke-linecap:round}
+.sh-ring .trk{stroke:var(--sub-t)}
+.sh-ring .ink{stroke:var(--sub)}
+.sh-ring > b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--sub-i)}
+.sh-cc-tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sh-cc-tx .k-t{font-size:16px}
+.sh-cc-nx{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--sub-i)}
+.sh-mstats{display:none}
+.sh-todo{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--k-line)}
+.sh-todo:last-child{border-bottom:none}
+.sh-todo .k-ico{width:40px;height:40px;border-radius:12px}
+.sh-todo .k-btn{flex-shrink:0;min-width:64px}
+.sh-ag{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--k-line);font-size:14px}
+.sh-ag:last-child{border-bottom:none}
+.sh-ag time{width:48px;flex-shrink:0;display:flex;flex-direction:column;line-height:1.3}
+.sh-ag time b{font-size:15px;color:var(--k-navy)}
+.sh-ag time small{font-size:11.5px;color:var(--k-muted);font-weight:700}
+.sh-ag > i{width:4px;align-self:stretch;border-radius:2px;flex-shrink:0;background:var(--sub)}
+.sh-ag-tx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.45}
+.sh-ag-tx b{font-size:14px}
+.sh-ag-tx small{font-size:12px;color:var(--k-muted)}
+.sh-shelf{display:flex;align-items:flex-end;gap:10px;height:140px;padding:0 16px;background:linear-gradient(#FBF3E8,#F3E4D0);border-bottom:12px solid #B98A57;box-shadow:inset 0 12px 18px rgba(90,55,20,.12);border-radius:14px 14px 4px 4px}
+.sh-sp{position:relative;width:44px;border-radius:4px 4px 2px 2px;display:flex;flex-direction:column;align-items:center;padding:8px 0 6px;gap:4px;background:var(--sub);color:var(--sub-fg);box-shadow:0 3px 6px rgba(40,25,10,.18),inset -3px 0 0 rgba(0,0,0,.12);transition:transform .25s cubic-bezier(.3,1.4,.5,1)}
+.sh-sp:hover{transform:translateY(-10px) rotate(-2deg)}
+.sh-sp span{flex:1;min-height:0;overflow:hidden;writing-mode:vertical-rl;white-space:nowrap;font-size:13px;font-weight:700}
+.sh-sp b{position:absolute;bottom:6px;left:5px;right:5px;height:4px;border-radius:2px;background:rgba(255,255,255,.4);overflow:hidden}
+.sh-sp b i{display:block;height:100%;background:#FFFFFF}
+.sh-bnav-pad{display:none}
+@media (max-width:760px){
+  .sh-greet{font-size:17px}
+  .sh-hero-row{display:block}
+  .sh-hero-row p,.sh-next{display:none}
+  .sh-live{flex-wrap:wrap;padding:14px;gap:12px}
+  .sh-live-tx b{font-size:16px}
+  .sh-go{width:100%}
+  .sh-cols{display:contents}
+  .sh-o1{order:1}.sh-o2{order:2}.sh-o3{order:3}.sh-o4{order:4}
+  .sh-cc-grid{grid-template-columns:1fr;gap:10px}
+  .sh-cc{flex-direction:row;align-items:center;padding:12px 14px;background:linear-gradient(110deg,#FFFFFF 40%,var(--sub-t))}
+  .sh-cc-top{display:contents}
+  .sh-cc .k-ico{order:0}
+  .sh-cc-tx{order:1;flex:1}
+  .sh-ring{order:2;width:46px;height:46px}
+  .sh-ring svg{width:46px;height:46px}
+  .sh-mstats{display:flex;gap:8px;flex-wrap:wrap}
+  .sh-shelf{height:116px;gap:5px;padding:0 10px}
+  .sh-sp{width:28px}
+  .sh-sp span{font-size:10px}
+}
+</style>
+</helmet>
+<div class="k a-home" dir="rtl">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">طالب</span></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+        <a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a>
+      </sc-for>
+      <div class="k-me"><span class="k-av sm">ف</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">فيصل العنزي</b><small style="font-size: 11.5px; opacity: .7">الصف الثاني الثانوي</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <span><small>صباح الخير</small><h1>{{title}}</h1></span>
+        <span class="k-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن دورة أو معلم أو درس<kbd>Ctrl K</kbd></span>
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="3"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av">ف</span>
+      </header>
+      <header class="k-mtop"><img src="./logo.png" alt="" width="28" height="31" style="width: 28px; height: auto"><h1>{{title}}</h1><sc-for list="{{mtools}}" as="t" hint-placeholder-count="2"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for></header>
+
+      <main class="k-page">
+        <section class="k-hero m-wipe">
+          <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+          <div class="sh-hero-row">
+            <div class="k-col" style="flex: 1 1 auto; gap: 4px">
+              <span class="k-ruqaa sh-greet">صباح الخير يا فيصل</span>
+              <h2>حصة الرياضيات <span class="m-squig">شغّالة الحين<svg viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true"><path pathLength="240" d="M2 6 Q 17 0 32 6 T 62 6 T 92 6 T 118 5"></path></svg></span></h2>
+              <p>بعدها اختبار الدوال، يقفل ٩ المساء</p>
+            </div>
+            <div class="sh-next">
+              <small>الاختبار يقفل بعد</small>
+              <div class="k-count" aria-label="ساعة و١٧ دقيقة و٤٠ ثانية">
+                <sc-for list="{{count}}" as="u" hint-placeholder-count="3"><span><b><span class="m-roll"><sc-for list="{{u.digs}}" as="g" hint-placeholder-count="2"><i aria-hidden="true" style="--v: {{g.v}}; --i: {{g.i}}"></i></sc-for></span></b><small>{{u.l}}</small></span></sc-for>
+              </div>
+            </div>
+          </div>
+          <div class="k-stats">
+            <sc-for list="{{stats}}" as="s" hint-placeholder-count="4"><span class="k-stat sh-stat"><span class="k-ico" style="color: {{s.c}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{s.i}}"></path></svg></span><span><b aria-label="{{s.n}}"><span class="m-roll"><sc-for list="{{s.digs}}" as="g" hint-placeholder-count="2"><i aria-hidden="true" style="--v: {{g.v}}; --i: {{g.i}}"></i></sc-for></span>{{s.suf}}</b><small>{{s.l}}</small></span></span></sc-for>
+          </div>
+        </section>
+        <div class="k-body">
+          <div class="sh-live k-card" style="--d: .25s">
+            <span class="k-av">م</span>
+            <span class="sh-live-tx">
+              <span class="sh-livetag m-slap" style="--d: .55s"><i></i>مباشر، من ١٢ دقيقة</span>
+              <b>الرياضيات: الدوال الأسية</b>
+              <small>مع أ. ماجد الشهري، ٥٠ دقيقة</small>
+            </span>
+            <a href="#" class="sh-go m-breathe m-jelly"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>ادخل الحصة</a>
+          </div>
+          <div class="k-grid k-side2">
+            <div class="k-col sh-cols" style="gap: 18px">
+              <section class="k-card sh-o1" style="--d: .3s">
+                <div class="k-ch"><h3>كمّل من وين وقفت</h3><a href="#">كل دوراتي</a></div>
+                <div class="sh-cc-grid">
+                  <sc-for list="{{cont}}" as="c" hint-placeholder-count="3">
+                    <a href="#" class="sh-cc m-deal {{c.sub}}" style="--i: {{c.k}}; --d: .35s">
+                      <span class="sh-cc-top">
+                        <span class="k-ico"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg></span>
+                        <span class="sh-ring" role="img" aria-label="{{c.pl}}"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="trk" cx="22" cy="22" r="18"></circle><circle class="ink m-ink" cx="22" cy="22" r="18" pathLength="100" style="--len: 100; --to: {{c.to}}; --d: {{c.dd}}"></circle></svg><b>{{c.p}}٪</b></span>
+                      </span>
+                      <span class="sh-cc-tx"><span class="k-t">{{c.t}}</span><span class="sh-cc-nx"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" transform="matrix(-1 0 0 1 24 0)"></path></svg>{{c.n}}</span></span>
+                    </a>
+                  </sc-for>
+                </div>
+                <div class="sh-mstats"><sc-for list="{{mstats}}" as="s" hint-placeholder-count="3"><span class="k-tag {{s.tc}}">{{s.t}}</span></sc-for></div>
+              </section>
+              <section class="k-card sh-o4" style="--d: .4s">
+                <div class="k-ch"><h3>مكتبتي</h3><a href="#">المتجر</a></div>
+                <div class="sh-shelf"><sc-for list="{{shelf}}" as="b" hint-placeholder-count="9"><a href="#" class="sh-sp m-wobble {{b.sub}}" style="height: {{b.h}}px; --i: {{b.k}}; --d: .45s" aria-label="{{b.t}}"><span>{{b.t}}</span><b><i style="width: {{b.p}}%"></i></b></a></sc-for></div>
+              </section>
+            </div>
+            <div class="k-col sh-cols" style="gap: 18px">
+              <section class="k-card sh-o2" style="--d: .35s">
+                <div class="k-ch"><h3>يحتاج انتباهك</h3><span class="k-tag o m-slap" style="--d: .7s">٣</span></div>
+                <div><sc-for list="{{todo}}" as="t" hint-placeholder-count="3"><div class="sh-todo"><span class="k-ico" style="background: {{t.bg}}; color: {{t.fg}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><span class="k-t" style="font-size: 14.5px">{{t.t}}</span><span class="k-m">{{t.m}}</span></span><a href="#" class="k-btn ghost sm">{{t.v}}</a></div></sc-for></div>
+              </section>
+              <section class="k-card sh-o3" style="--d: .4s">
+                <div class="k-ch"><h3>اليوم</h3><a href="#">جدولي</a></div>
+                <div><sc-for list="{{agenda}}" as="a" hint-placeholder-count="3"><div class="sh-ag {{a.sub}}"><time><b>{{a.time}}</b><small>{{a.len}}</small></time><i></i><span class="sh-ag-tx"><b>{{a.t}}</b><small>{{a.m}}</small></span><span class="k-tag {{a.tc}}">{{a.tag}}</span></div></sc-for></div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </main>
+      <nav class="k-bnav m-pill" aria-label="القائمة" style="--n: 5"><span class="m-pill-bg" style="--i: {{bi}}"></span><sc-for list="{{bnav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a></sc-for></nav>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const I = {
+      home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', courses: 'M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14',
+      play: 'M6 9h12a4 4 0 0 1 0 8c-2 0-3-2-6-2s-4 2-6 2a4 4 0 0 1 0-8zM8 11v4M6 13h4M16 12h.01M18 14h.01',
+      schedule: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4', profile: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0',
+      chat: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z', ai: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z', bell: 'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
+      exam: 'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9', task: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+      math: 'M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2', atom: 'M12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 3c2.5 0 4.5 4 4.5 9s-2 9-4.5 9-4.5-4-4.5-9 2-9 4.5-9z', en: 'M4 6h9M8.5 4v2M6 6c0 4 3 7 6 8M11 6c0 3-3 7-7 8M13 20l4-9 4 9M14.5 17h5',
+      book: 'M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14', live: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8',
+      chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2', flame: 'M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .3 1.6 1 2.5 2 3 .5-3-.5-5.5.5-8z'
+    };
+    const AR = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+    const digs = (n) => String(n).split('').map((d, i) => ({ v: Number(d), i }));
+    const cur = this.props.screen === 'home' || !this.props.screen ? 'home' : this.props.screen;
+    // ONE student nav map, same order on web and phone (see kit.css "shell")
+    const MAP = [['home', 'الرئيسية', '٣'], ['courses', 'دوراتي', ''], ['schedule', 'جدولي', ''], ['play', 'العب وتعلّم', ''], ['profile', 'حسابي', '']];
+    const idx = Math.max(0, MAP.findIndex(([k]) => k === cur));
+    return {
+      title: 'الرئيسية',
+      nav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === cur ? 'page' : 'false' })),
+      bnav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === cur ? 'page' : 'false' })),
+      bi: String(idx),
+      tools: [['chat', 'الرسائل', '٢'], ['ai', 'المساعد الذكي', ''], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] })),
+      mtools: [['chat', 'الرسائل', '٢'], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] })),
+      count: [[1, 'ساعة'], [17, 'دقيقة'], [40, 'ثانية']].map(([n, l]) => ({ l, digs: digs(String(n).padStart(2, '0')) })),
+      stats: [[4, '', 'دوراتي', 'book', '#7CD3F7'], [2, '', 'حصص اليوم', 'live', '#FF9AA0'], [62, '٪', 'تقدّمك', 'chart', '#FFD66B'], [5, '', 'أيام ورا بعض', 'flame', '#B7EB6A']]
+        .map(([n, suf, l, ic, c]) => ({ n: AR(n) + suf, suf, l, c, i: I[ic], digs: digs(n) })),
+      mstats: [['٤ دورات', ''], ['٦٢٪ تقدّمك', 'y'], ['٥ أيام ورا بعض', 'g']].map(([t, tc]) => ({ t, tc })),
+      cont: [['الرياضيات', 'الدوال الأسية', 38, 'sub-math', 'math'], ['الفيزياء', 'قوانين نيوتن', 64, 'sub-physics', 'atom'], ['الإنجليزي من الصفر', 'Unit 4: Daily routines', 81, 'sub-english', 'en']]
+        .map(([t, n, p, sub, ic], k) => ({ t, n, sub, i: I[ic], k: String(k), p: AR(p), pl: 'تقدّمك ' + AR(p) + '٪', to: String(100 - p), dd: (0.45 + k * 0.08).toFixed(2) + 's' })),
+      todo: [['اختبار الدوال', 'يقفل الليلة ٩ المساء', '#ECE5FF', '#4A28B8', 'exam', 'ابدأ'], ['واجب الفيزياء', 'سلّمه قبل الخميس', '#FFE8D6', '#A3480A', 'task', 'سلّم'], ['رسالة من أ. ماجد', 'قبل ساعتين', '#FFE3EF', '#A81E5E', 'chat', 'اقرأ']]
+        .map(([t, m, bg, fg, ic, v]) => ({ t, m, bg, fg, v, i: I[ic] })),
+      agenda: [['٤:٠٠', '٥٠ د', 'الفيزياء', 'مع أ. فهد المطيري، عن بعد', 'خلصت', '', 'sub-physics'], ['٧:٣٠', '٥٠ د', 'الرياضيات', 'مع أ. ماجد الشهري، عن بعد', 'مباشر', 'r', 'sub-math'], ['٩:٠٠', 'المساء', 'اختبار الدوال يقفل', 'الرياضيات، ٢٠ سؤال', 'اختبار', 'y', 'sub-math']]
+        .map(([time, len, t, m, tag, tc, sub]) => ({ time, len, t, m, tag, tc, sub })),
+      shelf: [['الرياضيات', 'sub-math', 38], ['الفيزياء', 'sub-physics', 64], ['الإنجليزي', 'sub-english', 81], ['القدرات', 'sub-qudurat', 20], ['البرمجة', 'sub-code', 100], ['الكيمياء', 'sub-chem', 12], ['التحصيلي', 'sub-qudurat', 45], ['لغتي', 'sub-arabic', 70], ['الأحياء', 'sub-bio', 0]]
+        .map(([t, sub, p], k) => ({ t, sub, p, k: String(k), h: [118, 104, 124, 98, 112, 120, 106, 94, 110][k] }))
+    };
+  }
+}
+</script>
+</body>
+</html>

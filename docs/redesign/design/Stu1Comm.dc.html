@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الطالب: التواصل</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* c1 = student communication (area a-chat). Signature: M6 hero wipe, M3 bubbles that pop from their tail, M4 unread badges, M13 tab pill, M14 sheets.
+   Privacy: the list holds teachers, the parent, support, the teacher's one-way announcements and contacts the student added himself by exact username. */
+.k-grid > *{min-width:0}
+.k-ib.on{background:var(--area-tint);border-color:var(--area-tint);color:var(--area-ink)}
+.c1-greet{font-size:19px;color:#FFD3E6}
+.c1-hrow{display:flex;align-items:flex-end;gap:16px}
+.c1-hrow > .k-col{flex:1 1 auto;gap:4px;min-width:0}
+/* chat pane */
+.c1-pane{display:grid;grid-template-columns:360px minmax(0,1fr);gap:0;padding:0;overflow:hidden;min-height:660px}
+.c1-list{display:flex;flex-direction:column;gap:8px;padding:16px;border-left:1px solid #EDF2F8;min-width:0}
+.c1-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.c1-chips::-webkit-scrollbar{display:none}
+.c1-chips .k-chip{height:34px;font-size:13px;padding:0 13px}
+.c1-chips .k-chip.on{background:var(--area-ink);border-color:var(--area-ink)}
+.c1-cv{display:flex;align-items:center;gap:12px;padding:10px;border-radius:18px;transition:background .2s;cursor:pointer;animation:kIn .45s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:var(--d)}
+.c1-cv:hover{background:#FFF6FA}
+.c1-cv.on{background:var(--area-tint)}
+.c1-avw{position:relative;flex-shrink:0}
+.c1-avw .on{position:absolute;bottom:1px;left:1px;width:12px;height:12px;border-radius:50%;background:var(--s-mint);border:2px solid #FFFFFF}
+.c1-ann{background:linear-gradient(150deg,#FF9F5A,#E8478C)}
+.c1-nm{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.c1-last{font-size:12.5px;color:var(--k-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.c1-last.b{color:var(--k-text);font-weight:700}
+.c1-un{min-width:21px;height:21px;border-radius:11px;padding:0 6px;background:var(--k-coral);color:#FFFFFF;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.c1-req{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--s-sun-tint);color:var(--s-sun-ink);font-size:13px;font-weight:700}
+.c1-th{display:flex;flex-direction:column;min-width:0;background:linear-gradient(#FFF9FC,#F3F8FD)}
+.c1-thh{display:flex;align-items:center;gap:12px;padding:14px 18px;background:#FFFFFF;border-bottom:1px solid #EDF2F8}
+.c1-thh .k-col{gap:0;flex:1;min-width:0}
+.c1-msgs{flex:1;display:flex;flex-direction:column;gap:10px;padding:18px}
+.c1-day{align-self:center;font-size:11.5px;font-weight:700;color:var(--k-muted);background:#EEF2F7;border-radius:10px;padding:2px 10px}
+/* M3 bubble pop, origin at the tail */
+.c1-m{max-width:72%;padding:10px 14px;border-radius:20px;font-size:14.5px;line-height:1.7;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d,0s)}
+.c1-m.me{align-self:flex-end;background:linear-gradient(140deg,#E8478C,#FF7A59);color:#FFFFFF;border-bottom-left-radius:6px;transform-origin:0 100%}
+.c1-m.them{align-self:flex-start;background:#FFFFFF;border:1.5px solid var(--k-line);border-bottom-right-radius:6px;transform-origin:100% 100%}
+.c1-m time{display:block;font-size:10.5px;opacity:.7;margin-top:2px}
+.c1-q{border-right:3px solid var(--s-pink);background:var(--s-pink-tint);border-radius:8px;padding:4px 10px;font-size:12.5px;color:var(--s-pink-ink);margin-bottom:6px}
+.c1-board{width:260px;max-width:100%;border-radius:12px;background:#FFFFFF;border:1px solid var(--k-line);display:flex;flex-direction:column;gap:4px;padding:12px 14px;margin-bottom:6px}
+.c1-board b{font-family:'Aref Ruqaa',serif;color:var(--sub-math-ink);font-size:18px}
+.c1-board span{direction:ltr;text-align:left;font-family:Georgia,serif;font-size:19px;color:var(--k-text)}
+.c1-file{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:#F8FBFE;border:1px solid var(--k-line)}
+.c1-dots{display:inline-flex;gap:4px;padding:12px 14px;border-radius:18px;background:#FFFFFF;border:1.5px solid var(--k-line);align-self:flex-start;border-bottom-right-radius:6px}
+.c1-dots i{width:7px;height:7px;border-radius:50%;background:#9AA8BF;animation:c1Dot 1.2s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes c1Dot{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-5px);opacity:1}}
+.c1-only{align-self:flex-end;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:var(--k-muted);margin-top:-4px}
+.c1-pin{display:flex;align-items:center;gap:10px;padding:10px 14px;margin:12px 18px 0;border-radius:14px;background:var(--s-sun-tint);color:var(--s-sun-ink);font-size:13px;font-weight:700}
+.c1-comp{display:flex;align-items:center;gap:8px;padding:12px 14px;background:#FFFFFF;border-top:1px solid #EDF2F8}
+.c1-comp .k-in{flex:1;border-radius:24px;min-width:0}
+.c1-send{width:46px;height:46px;border-radius:50%;border:none;background:linear-gradient(140deg,#E8478C,#FF7A59);color:#FFFFFF;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 8px 18px -8px rgba(232,71,140,.6)}
+.c1-pr{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid #EDF2F8}
+.c1-pr:last-child{border-bottom:none}
+.c1-grp{font-size:12.5px;font-weight:700;color:var(--k-muted);padding:6px 4px 0}
+.c1-found{display:flex;align-items:center;gap:12px;padding:12px;border-radius:18px;background:var(--area-tint);animation:mPop .45s cubic-bezier(.3,1.4,.5,1) .15s backwards}
+/* inbox */
+.c1-tabs{background:#FFFFFF;box-shadow:0 14px 30px -18px rgba(0,20,64,.35);align-self:flex-start;min-width:340px}
+.c1-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.c1-todo{display:flex;align-items:center;gap:14px;padding:14px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;transition:transform .2s,box-shadow .2s;animation:kIn .45s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:var(--d)}
+.c1-todo:hover{transform:translateX(-3px);box-shadow:0 12px 24px -14px rgba(0,32,94,.3)}
+.c1-todo.late{border-color:#FFC9C2;background:linear-gradient(120deg,#FFFFFF,#FFF5F3)}
+.c1-todo .k-btn{flex-shrink:0;min-width:76px}
+.c1-nt{display:flex;align-items:flex-start;gap:12px;padding:12px;border-radius:16px;animation:kIn .45s ease backwards;animation-delay:var(--d)}
+.c1-nt.un{background:#FFF6FA}
+.c1-nt .dot{width:9px;height:9px;border-radius:50%;background:var(--s-pink);margin-top:8px;flex-shrink:0}
+.c1-dn{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--k-line)}
+.c1-dn:last-child{border-bottom:none}
+/* complaints */
+.c1-cpg{grid-template-columns:minmax(0,1fr) minmax(0,1.25fr)}
+.c1-cp{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;cursor:pointer;animation:kIn .45s ease backwards;animation-delay:var(--d)}
+.c1-cp.on{border-color:var(--s-pink);background:#FFF8FB}
+.c1-tl{list-style:none;margin:0;display:flex;flex-direction:column;gap:2px;position:relative;padding:0 28px 0 0}
+.c1-tl::before{content:"";position:absolute;top:12px;bottom:12px;right:8px;width:2px;border-radius:1px;background:#E2EAF4}
+.c1-tl li{position:relative;font-size:13.5px;line-height:1.6;padding:4px 0}
+.c1-tl li::before{content:"";position:absolute;right:-26px;top:9px;width:14px;height:14px;border-radius:50%;background:var(--c);border:3px solid #FFFFFF;box-shadow:0 0 0 1.5px var(--c)}
+.c1-det{display:flex;flex-wrap:wrap;gap:6px 14px;padding:10px 12px;border-radius:12px;background:#F8FBFE;border:1px dashed var(--k-line);font-size:12.5px;color:var(--k-muted);animation:kIn .3s ease backwards}
+.c1-more{align-self:flex-start;border:none;background:none;padding:0;color:var(--area-ink);font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+.c1-f{display:flex;flex-direction:column;gap:8px}
+.c1-ta{min-height:110px;border-radius:14px;border:1.5px solid #D5E3F2;background:#FFFFFF;padding:12px 14px;font-size:14px;line-height:1.8;color:var(--k-text)}
+.c1-att{width:84px;height:84px;border-radius:14px;position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.c1-att .x{position:absolute;top:-6px;left:-6px;width:22px;height:22px;border-radius:50%;background:#0E2350;color:#FFFFFF;display:flex;align-items:center;justify-content:center}
+.c1-add{border:2px dashed #F5BFD6;color:var(--area-ink);background:#FFF8FB;flex-direction:column;gap:2px;font-size:11.5px;font-weight:700}
+.c1-seg button[aria-selected="true"]{color:var(--area-ink)}
+.c1-cats .k-chip.on{background:var(--area-ink);border-color:var(--area-ink)}
+/* assistant (AI helper = grape, same face as Bot.dc.html) */
+.c1-ai{display:grid;grid-template-columns:290px minmax(0,1fr);min-height:calc(var(--vh,100vh) - 68px)}
+.c1-hist{display:flex;flex-direction:column;gap:6px;padding:18px 14px;background:#FFFFFF;border-left:1px solid var(--k-line)}
+.c1-hi{display:flex;flex-direction:column;gap:1px;padding:10px 12px;border-radius:14px;font-size:13.5px;font-weight:600;cursor:pointer}
+.c1-hi small{font-size:11.5px;color:var(--k-muted);font-weight:500}
+.c1-hi.on{background:var(--s-grape-tint);color:var(--s-grape-ink)}
+.c1-hi:hover{background:#F6F2FF}
+.c1-main{display:flex;flex-direction:column;min-width:0;background:radial-gradient(90% 60% at 50% -10%,#ECE5FF,transparent 70%),var(--k-page)}
+.c1-conv{flex:1;width:100%;max-width:820px;margin:0 auto;padding:24px 24px 12px;display:flex;flex-direction:column;gap:16px}
+.c1-u{align-self:flex-end;max-width:78%;padding:12px 16px;border-radius:20px 20px 6px 20px;background:#00205E;color:#FFFFFF;font-size:15px;line-height:1.7;transform-origin:0 100%;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d,0s)}
+.c1-a{display:flex;gap:12px;align-items:flex-start}
+.c1-face{width:38px;height:38px;flex-shrink:0;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d,0s)}
+.c1-ab{flex:1;display:flex;flex-direction:column;gap:10px;padding:16px 18px;border-radius:6px 20px 20px 20px;background:#FFFFFF;box-shadow:0 14px 30px -18px rgba(0,20,64,.3);font-size:15px;line-height:1.9;min-width:0;transform-origin:100% 0;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d,0s)}
+.c1-trail{display:flex;flex-wrap:wrap;gap:6px}
+.c1-trail span{height:26px;padding:0 10px;border-radius:13px;background:#F1F5FA;color:var(--k-muted);font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px}
+.c1-trail span.ok{background:var(--s-mint-tint);color:var(--s-mint-ink)}
+.c1-trail span.run{background:var(--s-grape-tint);color:var(--s-grape-ink)}
+.c1-cite{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:6px;background:var(--s-grape-tint);color:var(--s-grape-ink);font-size:11.5px;font-weight:700;margin:0 2px;vertical-align:2px}
+.c1-src{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;border:1.5px solid var(--k-line);font-size:12.5px;font-weight:700;background:#F8FBFE}
+.c1-caret{display:inline-block;width:8px;height:18px;background:var(--s-grape);border-radius:2px;vertical-align:-3px;animation:c1Blink 1s steps(1) infinite;margin-right:2px}
+@keyframes c1Blink{50%{opacity:0}}
+.c1-vote{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--k-muted)}
+.c1-vote button{width:34px;height:34px;border-radius:10px;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-muted);display:flex;align-items:center;justify-content:center}
+.k .c1-aibtn{--btn-a:#7A4DF0;--btn-b:#9F7BFF;--btn-sh:rgba(122,77,240,.42)}
+.c1-aic{position:sticky;bottom:0;padding:12px 24px 18px;background:linear-gradient(transparent,var(--k-page) 30%)}
+.c1-box{max-width:820px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:8px;border-radius:26px;background:#FFFFFF;border:1.5px solid #D9CCFA;box-shadow:0 16px 34px -18px rgba(122,77,240,.45)}
+.c1-box .k-in{flex:1;border:none;height:44px;min-width:0}
+.c1-box .c1-send{background:linear-gradient(140deg,#7A4DF0,#9F7BFF);box-shadow:0 8px 18px -8px rgba(122,77,240,.6)}
+.c1-start{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:620px}
+.c1-st{height:40px;padding:0 16px;border-radius:20px;background:#FFFFFF;border:1.5px solid #D9CCFA;color:var(--s-grape-ink);font-size:13.5px;font-weight:700;display:inline-flex;align-items:center;gap:8px;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d)}
+.c1-st:hover{background:var(--s-grape-tint)}
+.c1-botw{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+@media (max-width:760px){
+.c1-greet{font-size:16px}
+.c1-hrow{gap:10px;align-items:center}
+.c1-hrow > .k-col{flex:1 1 0}
+.c1-hrow > .k-btn{height:42px;padding:0 16px;font-size:14px}
+.c1-hp,.c1-dup{display:none}
+.k-drawer{height:auto;max-height:calc(var(--vh,100vh)*0.9)}
+.c1-pane{grid-template-columns:1fr;min-height:0}
+.c1-list{border-left:none;padding:12px}
+.c1-pane.thread .c1-list{display:none}
+.c1-pane.list .c1-th{display:none}
+.c1-nohero{display:none}
+.c1-nohero + .k-body{margin-top:12px !important}
+.c1-m{max-width:86%}
+.c1-msgs{padding:12px}
+.c1-pin{margin:10px 12px 0}
+.c1-tabs{align-self:stretch;min-width:0}
+.c1-todo{gap:10px;padding:12px}
+.c1-todo .k-ico{width:38px;height:38px}
+.c1-todo .k-btn{min-width:64px;padding:0 12px}
+.c1-ai{grid-template-columns:1fr}
+.c1-cpg{grid-template-columns:1fr}
+.c1-hist{display:none}
+.c1-conv{padding:16px 12px 8px}
+.c1-aic{padding:10px 12px 14px}
+.c1-u{max-width:90%}
+.c1-ab{padding:12px 14px;font-size:14.5px}
+.c1-face{width:30px;height:30px}
+.c1-att{width:72px;height:72px}
+}
+</style>
+</helmet>
+<div class="k a-chat" dir="rtl">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">طالب</span></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+        <a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a>
+      </sc-for>
+      <div class="k-me"><span class="k-av sm">ف</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">فيصل العنزي</b><small style="font-size: 11.5px; opacity: .7">الصف الثاني الثانوي</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <span><small>{{crumb}}</small><h1>{{title}}</h1></span>
+        <span class="k-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن دورة أو معلم أو درس<kbd>Ctrl K</kbd></span>
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="3"><a href="#" class="k-ib {{t.on}}" aria-label="{{t.l}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av">ف</span>
+      </header>
+      <header class="k-mtop"><a href="#" class="k-ib" aria-label="رجوع"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a><h1>{{mtitle}}</h1><sc-for list="{{mtools}}" as="t" hint-placeholder-count="2"><button type="button" class="k-ib" aria-label="{{t.l}}" onClick="{{t.go}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg></button></sc-for></header>
+
+      <main class="k-page">
+
+<!-- ============ CHAT ============ -->
+<sc-if value="{{is.chat}}" hint-placeholder-val="{{ true }}">
+        <section class="k-hero m-wipe {{heroCls}}">
+          <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+          <div class="c1-hrow">
+            <div class="k-col"><span class="k-ruqaa c1-greet c1-dup">الرسائل</span><h2>كلّم معلمينك</h2><p>عندك ٣ رسائل جديدة</p></div>
+            <button type="button" class="k-btn" onClick="{{openNew}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>رسالة جديدة</button>
+          </div>
+        </section>
+        <div class="k-body">
+          <section class="k-card c1-pane {{pane}}" style="--d: .1s">
+            <div class="c1-list">
+              <span class="k-in" style="height: 44px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث في رسائلك</span>
+              <div class="c1-chips"><sc-for list="{{chips}}" as="c" hint-placeholder-count="4"><button type="button" class="k-chip {{c.on}}" aria-pressed="{{c.pr}}" onClick="{{c.go}}">{{c.l}}</button></sc-for></div>
+              <a href="#" class="c1-req"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H8l-4 4zM9 9h6M9 12h4"></path></svg>طلب مراسلة جديد<span class="k-sp"></span><span class="c1-un m-slap" style="background: #E89B00; --d: .5s">١</span></a>
+              <sc-for list="{{convs}}" as="v" hint-placeholder-count="6">
+                <div class="c1-cv {{v.on}}" style="--d: {{v.d}}" role="button" tabindex="0" onClick="{{v.go}}">
+                  <span class="c1-avw"><span class="k-av {{v.ac}}" style="background: {{v.bg}}"><sc-if value="{{v.isAnn}}" hint-placeholder-val="{{ false }}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2h3l6 4V7L6 11zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"></path></svg></sc-if>{{v.a}}</span><sc-if value="{{v.online}}" hint-placeholder-val="{{ false }}"><span class="on"></span></sc-if></span>
+                  <span class="k-col" style="gap: 1px; flex: 1; min-width: 0">
+                    <span class="k-row" style="gap: 6px; flex-wrap: nowrap"><b class="c1-nm">{{v.n}}</b><sc-if value="{{v.rel}}" hint-placeholder-val="{{ false }}"><span class="k-tag {{v.tc}}" style="height: 20px; font-size: 10.5px; padding: 0 7px">{{v.rel}}</span></sc-if><span class="k-sp"></span><span class="k-m" style="font-size: 11px; white-space: nowrap">{{v.t}}</span></span>
+                    <span class="k-row" style="gap: 6px; flex-wrap: nowrap"><span class="c1-last {{v.lb}}">{{v.last}}</span><sc-if value="{{v.u}}" hint-placeholder-val="{{ false }}"><span class="c1-un m-slap" style="--d: {{v.ud}}">{{v.u}}</span></sc-if></span>
+                  </span>
+                </div>
+              </sc-for>
+            </div>
+            <div class="c1-th">
+              <div class="c1-thh">
+                <span class="c1-avw"><span class="k-av {{th.ac}}" style="background: {{th.bg}}"><sc-if value="{{th.ann}}" hint-placeholder-val="{{ false }}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2h3l6 4V7L6 11zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"></path></svg></sc-if>{{th.a}}</span><sc-if value="{{th.online}}" hint-placeholder-val="{{ false }}"><span class="on"></span></sc-if></span>
+                <span class="k-col"><b style="font-size: 15.5px">{{th.n}}</b><span class="k-m" style="color: {{th.subc}}; font-weight: 700">{{th.sub}}</span></span>
+                <button type="button" class="k-ib" aria-label="ابحث في المحادثة"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg></button>
+                <sc-if value="{{th.canBlock}}" hint-placeholder-val="{{ false }}"><button type="button" class="k-ib" aria-label="خيارات" onClick="{{openBlock}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="12" cy="19" r="1.8"></circle></svg></button></sc-if>
+              </div>
+              <sc-if value="{{th.ann}}" hint-placeholder-val="{{ false }}"><div class="c1-pin"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>هنا تنزل إعلانات المعلم، وردّك يوصل له بس</div></sc-if>
+              <div class="c1-msgs">
+                <sc-if value="{{th.nora}}" hint-placeholder-val="{{ true }}">
+                  <span class="c1-day">اليوم</span>
+                  <div class="c1-m me" style="--d: .15s">أستاذ، ما فهمت خطوة تحويل اللوغاريتم في السؤال ٣ من الواجب<time>٤:١٢ م</time></div>
+                  <div class="c1-m them" style="--d: .3s"><div class="c1-q">ما فهمت خطوة تحويل اللوغاريتم في السؤال ٣</div>ولا يهمك يا فيصل، كتبت لك الحل خطوة بخطوة<time>٤:٢٠ م</time></div>
+                  <div class="c1-m them" style="--d: .45s; padding: 8px"><div class="c1-board"><b>حل السؤال ٣</b><span>log₃ 81 = x</span><span>3ˣ = 81  ⟹  x = 4</span></div><div class="c1-file"><span class="k-ico" style="width: 36px; height: 36px; background: #FFE3E0; color: #B23A2E"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6"></path></svg></span><span class="k-col" style="gap: 0"><b style="font-size: 13px">حل تمارين صفحة ٢٨</b><span class="k-m">ملف PDF، ٢ ميقا</span></span></div><time style="padding: 0 6px">٤:٢١ م</time></div>
+                  <div class="c1-m me" style="--d: .6s">وضحت الحين، الله يعطيك العافية<time>٤:٣٠ م، قراها</time></div>
+                  <span class="c1-dots" aria-label="أ. ماجد يكتب"><i style="--d: 0s"></i><i style="--d: .15s"></i><i style="--d: .3s"></i></span>
+                </sc-if>
+                <sc-if value="{{th.ann}}" hint-placeholder-val="{{ false }}">
+                  <span class="c1-day">أمس</span>
+                  <div class="c1-m them" style="--d: .15s">حصة الخميس تبدأ ٧:٣٠ م بالضبط، جهّز الآلة الحاسبة<time>٨:١٠ م</time></div>
+                  <span class="c1-day">اليوم</span>
+                  <div class="c1-m them" style="--d: .3s"><b style="font-size: 13px; color: var(--area-ink)">الواجب</b><br>تمارين صفحة ٢٨ من ١ إلى ٦، سلّمها قبل الثلاثاء<time>٤:١٥ م</time></div>
+                  <div class="c1-m them" style="--d: .45s; padding: 8px"><div class="c1-file"><span class="k-ico" style="width: 36px; height: 36px; background: var(--sub-math-tint); color: var(--sub-math-ink)"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6"></path></svg></span><span class="k-col" style="gap: 0"><b style="font-size: 13px">ملخص الدوال الأسية</b><span class="k-m">ملف PDF، ١ ميقا</span></span></div><time style="padding: 0 6px">٤:١٨ م</time></div>
+                  <div class="c1-m me" style="--d: .6s">أستاذ، أقدر أسلّم التمرين ٦ بكرة؟<time>٤:٢٥ م</time></div>
+                  <span class="c1-only"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>وصل لأ. ماجد بس</span>
+                </sc-if>
+                <sc-if value="{{th.other}}" hint-placeholder-val="{{ false }}">
+                  <span class="c1-day">{{th.t}}</span>
+                  <div class="c1-m them" style="--d: .15s">{{th.last}}<time>{{th.t}}</time></div>
+                </sc-if>
+              </div>
+              <div class="c1-comp">
+                <button type="button" class="k-ib" aria-label="أرفق ملف"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"></path></svg></button>
+                <span class="k-in">{{th.ph}}</span>
+                <button type="button" class="c1-send m-jelly" aria-label="أرسل"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10l7 3 3 7 8-17z"></path></svg></button>
+              </div>
+            </div>
+          </section>
+        </div>
+</sc-if>
+
+<!-- ============ INBOX + NOTIFICATIONS ============ -->
+<sc-if value="{{is.inbox}}" hint-placeholder-val="{{ false }}">
+        <section class="k-hero m-wipe">
+          <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+          <span class="k-ruqaa c1-greet c1-dup">صندوق الوارد</span>
+          <h2>٤ أشياء تنتظرك، وحدة متأخرة</h2>
+          <p class="c1-hp">ابدأ بالمتأخر، والباقي على راحتك</p>
+        </section>
+        <div class="k-body">
+          <div class="k-seg m-pill c1-tabs" style="--n: 2" role="tablist"><span class="m-pill-bg" style="--i: {{tabI}}"></span><sc-for list="{{ibTabs}}" as="t" hint-placeholder-count="2"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.go}}">{{t.l}}<span class="c1-un m-slap" style="background: {{t.c}}; --d: {{t.d}}">{{t.n}}</span></button></sc-for></div>
+          <div class="k-grid k-side2" style="align-items: start">
+            <section class="k-card m-wipe" style="--d: .1s">
+              <sc-if value="{{ib.todo}}" hint-placeholder-val="{{ true }}">
+                <div class="k-ch"><h3>مطلوب منك</h3><span class="k-sub">الأقرب موعد أول</span></div>
+                <sc-for list="{{todos}}" as="x" hint-placeholder-count="4">
+                  <div class="c1-todo {{x.late}}" style="--d: {{x.d}}">
+                    <span class="k-ico" style="background: {{x.bg}}; color: {{x.fg}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span>
+                    <span class="k-col" style="gap: 2px; flex: 1; min-width: 0"><span class="k-row" style="gap: 6px"><span class="k-tag {{x.dc}}" style="height: 21px; font-size: 11px">{{x.due}}</span></span><b style="font-size: 15px; line-height: 1.5">{{x.t}}</b><span class="k-m">{{x.m}}</span></span>
+                    <a href="#" class="k-btn sm {{x.bc}}">{{x.v}}</a>
+                  </div>
+                </sc-for>
+              </sc-if>
+              <sc-if value="{{ib.notif}}" hint-placeholder-val="{{ false }}">
+                <div class="k-ch"><h3>الإشعارات</h3><a href="#">علّمها كلها مقروءة</a></div>
+                <sc-for list="{{notifs}}" as="g" hint-placeholder-count="2"><span class="c1-grp">{{g.g}}</span><sc-for list="{{g.items}}" as="x" hint-placeholder-count="3"><a href="#" class="c1-nt {{x.un}}" style="--d: {{x.d}}"><span class="k-ico" style="width: 38px; height: 38px; background: {{x.bg}}; color: {{x.fg}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span><span class="k-col" style="gap: 1px; flex: 1; min-width: 0"><b style="font-size: 14px">{{x.t}}</b><span class="k-m">{{x.m}}</span></span><span class="k-m" style="white-space: nowrap">{{x.w}}</span><sc-if value="{{x.un}}" hint-placeholder-val="{{ false }}"><span class="dot"></span></sc-if></a></sc-for></sc-for>
+              </sc-if>
+            </section>
+            <section class="k-card flat" style="--d: .2s">
+              <div class="k-ch"><h3 style="font-size: 16px">خلّصتها مؤخرًا</h3><a href="#">الكل</a></div>
+              <div><sc-for list="{{dones}}" as="x" hint-placeholder-count="3"><div class="c1-dn"><span class="k-ico" style="width: 36px; height: 36px; border-radius: 11px; background: #F1F5FA; color: #4A5878"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1; min-width: 0"><b style="font-size: 14px">{{x.t}}</b><span class="k-m">{{x.m}}</span></span><span class="k-tag {{x.tc}}">{{x.s}}</span></div></sc-for></div>
+            </section>
+          </div>
+        </div>
+</sc-if>
+
+<!-- ============ COMPLAINTS HUB ============ -->
+<sc-if value="{{is.complaints}}" hint-placeholder-val="{{ false }}">
+        <section class="k-hero m-wipe">
+          <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+          <div class="c1-hrow">
+            <div class="k-col"><span class="k-ruqaa c1-greet c1-dup">الدعم والشكاوى</span><h2>نسمعك، ونرد عليك بسرعة</h2><p class="c1-hp">جاك رد جديد على شكوى وحدة</p></div>
+            <a href="#" class="k-btn"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>شكوى جديدة</a>
+          </div>
+        </section>
+        <div class="k-body">
+          <div class="k-grid c1-cpg" style="align-items: start">
+            <section class="k-card" style="--d: .1s">
+              <div class="k-ch"><h3>شكاويك</h3><span class="k-sub">٤ شكاوى</span></div>
+              <sc-for list="{{cps}}" as="x" hint-placeholder-count="4"><div class="c1-cp {{x.on}}" style="--d: {{x.d}}" role="button" tabindex="0" onClick="{{x.go}}"><span class="k-ico" style="width: 40px; height: 40px; background: {{x.bg}}; color: {{x.fg}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span><span class="k-col" style="gap: 2px; flex: 1; min-width: 0"><span class="k-row" style="gap: 6px"><b style="font-size: 14px">{{x.t}}</b><sc-if value="{{x.new}}" hint-placeholder-val="{{ false }}"><span class="k-tag r m-slap" style="height: 20px; font-size: 10.5px; --d: .5s">رد جديد</span></sc-if></span><span class="k-m">{{x.m}}</span></span><span class="k-tag {{x.tc}}">{{x.s}}</span></div></sc-for>
+            </section>
+            <section class="k-card" style="--d: .18s">
+              <div class="k-ch"><h3>الفيديو يوقف في درس الدوال</h3><span class="k-tag">جاري</span></div>
+              <div class="k-row" style="gap: 6px"><span class="k-tag n">تقني</span><span class="k-tag n">الرياضيات ٢ ث</span></div>
+              <div class="c1-msgs" style="padding: 4px 0">
+                <div class="c1-m me" style="max-width: 88%; --d: .3s">الفيديو في الدرس ٨ يوقف عند الدقيقة ١٢ ويطلع "ما قدرنا نشغّل الفيديو" حتى بعد ما أعيد. جربت من الجوال واللابتوب.<time>أمس ٩:٤٠ م</time></div>
+                <div class="c1-m them" style="max-width: 88%; --d: .45s"><b style="font-size: 13px; color: var(--area-ink)">سلمان من فريق الفهيم</b><br>هلا فيصل، شكرًا على التفاصيل. لقينا المشكلة في الجودة العالية وصلّحناها. جرّب الحين وطمّنا.<time>اليوم ١٠:٠٥ ص</time></div>
+              </div>
+              <ol class="c1-tl"><sc-for list="{{cpTl}}" as="t" hint-placeholder-count="3"><li style="--c: {{t.c}}"><b>{{t.t}}</b> <span class="k-m">· {{t.w}}</span></li></sc-for></ol>
+              <button type="button" class="c1-more" onClick="{{togDet}}" aria-expanded="{{detX}}">تفاصيل الشكوى<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="{{detRot}}"><path d="M6 9l6 6 6-6"></path></svg></button>
+              <sc-if value="{{det}}" hint-placeholder-val="{{ false }}"><div class="c1-det"><span>رقم الشكوى <b style="color: var(--k-text)">٢٠٤١٨</b></span><span>أرسلتها أمس ٩:٤٠ م</span><span>الجهاز: جوال ولابتوب</span></div></sc-if>
+              <div class="c1-comp" style="padding: 0; border: none; background: none"><span class="k-in">اكتب ردك…</span><button type="button" class="c1-send m-jelly" aria-label="أرسل"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10l7 3 3 7 8-17z"></path></svg></button></div>
+              <div class="k-row" style="gap: 8px"><a href="#" class="k-btn sm" style="--btn-a: #12A383; --btn-b: #19C29B; --btn-sh: rgba(25,194,155,.4)">انحلت، اقفلها</a><a href="#" class="k-btn ghost sm">للحين ما انحلت</a></div>
+            </section>
+          </div>
+        </div>
+</sc-if>
+
+<!-- ============ NEW COMPLAINT ============ -->
+<sc-if value="{{is.newcomplaint}}" hint-placeholder-val="{{ false }}">
+        <section class="k-hero m-wipe">
+          <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+          <span class="k-ruqaa c1-greet">نحن نسمعك</span>
+          <h2>شكوى جديدة</h2>
+          <p class="c1-hp">تروح لفريق الفهيم، ونرد خلال ٢٤ ساعة</p>
+        </section>
+        <div class="k-body">
+          <div class="k-grid k-side2" style="align-items: start">
+            <section class="k-card m-wipe" style="--d: .1s; gap: 18px">
+              <div class="c1-f"><span class="k-lbl">الشكوى عن</span><div class="k-seg m-pill c1-seg" style="--n: 2"><span class="m-pill-bg" style="--i: {{aboutI}}"></span><sc-for list="{{about}}" as="a" hint-placeholder-count="2"><button type="button" aria-selected="{{a.on}}" onClick="{{a.go}}">{{a.l}}</button></sc-for></div></div>
+              <sc-if value="{{aboutCourse}}" hint-placeholder-val="{{ true }}"><div class="c1-f"><span class="k-lbl">الدورة</span><span class="k-in sub-math" style="color: #0E2350; font-weight: 600"><span class="k-ico" style="width: 28px; height: 28px; border-radius: 9px; background: var(--sub)"></span>الرياضيات ٢ ثانوي<span class="k-sp"></span><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span></div></sc-if>
+              <div class="c1-f"><span class="k-lbl">وش نوعها؟</span><div class="k-row c1-cats" style="gap: 8px"><sc-for list="{{cats}}" as="c" hint-placeholder-count="5"><button type="button" class="k-chip {{c.on}}" aria-pressed="{{c.pr}}" onClick="{{c.go}}">{{c.l}}</button></sc-for></div></div>
+              <div class="c1-f"><span class="k-lbl">كم هي مستعجلة؟</span><div class="k-seg m-pill c1-seg" style="--n: 4"><span class="m-pill-bg" style="--i: {{prioI}}"></span><sc-for list="{{prio}}" as="p" hint-placeholder-count="4"><button type="button" aria-selected="{{p.on}}" onClick="{{p.go}}">{{p.l}}</button></sc-for></div></div>
+              <div class="c1-f"><span class="k-lbl">العنوان</span><span class="k-in" style="color: #0E2350">الفيديو يوقف في درس الدوال</span></div>
+              <div class="c1-f"><span class="k-lbl">وش صار؟</span><div class="c1-ta">الفيديو في الدرس ٨ يوقف عند الدقيقة ١٢ ويطلع "ما قدرنا نشغّل الفيديو" حتى بعد ما أعيد. جربت من الجوال واللابتوب.</div></div>
+              <div class="c1-f"><span class="k-lbl">وش الحل اللي تقترحه؟ <span class="k-m">(اختياري)</span></span><span class="k-in">مثلًا: أنزّل الفيديو وأشوفه بدون نت</span></div>
+              <div class="c1-f"><span class="k-lbl">صور أو ملفات <span class="k-m">(اختياري)</span></span><div class="k-row" style="gap: 12px"><span class="c1-att m-pop" style="background: linear-gradient(140deg, #173A75, #0B1530); color: #FFFFFF; --d: .3s"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6"></path></svg><span class="x" aria-label="احذف"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></span></span><span class="c1-att c1-add"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>أضف صورة</span></div></div>
+              <a href="#" class="k-btn" style="align-self: stretch">أرسل الشكوى</a>
+            </section>
+            <section class="k-card tint" style="--d: .2s; background: linear-gradient(150deg, #FFFFFF 50%, #FFEFF6); border-color: #FFD3E6">
+              <div class="k-ch"><h3 style="font-size: 16px">عشان نحلها أسرع</h3></div>
+              <ul class="k-rules"><sc-for list="{{tips}}" as="t" hint-placeholder-count="3"><li><span class="k-ico"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg></span>{{t.t}}</li></sc-for></ul>
+            </section>
+          </div>
+        </div>
+</sc-if>
+
+<!-- ============ AI ASSISTANT ============ -->
+<sc-if value="{{is.assistant}}" hint-placeholder-val="{{ false }}">
+        <div class="c1-ai">
+          <aside class="c1-hist">
+            <a href="#" class="k-btn sm c1-aibtn"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>محادثة جديدة</a>
+            <span class="k-navg" style="color: #4A5878; opacity: .8">محادثاتك</span>
+            <sc-for list="{{hist}}" as="h" hint-placeholder-count="6"><span class="c1-hi {{h.on}}">{{h.t}}<small>{{h.w}}</small></span></sc-for>
+            <span class="k-sp"></span>
+            <div class="k-tile" style="animation: none; padding: 10px 12px"><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 13px">زر المساعد العائم</b><span class="k-m" style="font-size: 11.5px">يطلع فوق كل صفحة</span></span><span class="k-tog on" style="--k-acc: #7A4DF0"><i></i></span></div>
+          </aside>
+          <div class="c1-main">
+            <sc-if value="{{fresh}}" hint-placeholder-val="{{ false }}">
+              <div class="c1-conv" style="align-items: center; justify-content: center; gap: 16px">
+                <div class="c1-botw">
+                  <div class="m-pop" style="width: 104px; height: 104px; flex-shrink: 0"><dc-import name="Bot" size="104" hint-size="104px,104px"></dc-import></div>
+                  <span class="k-ruqaa" style="font-size: 20px; color: var(--s-grape-ink)">هلا فيصل</span>
+                  <b style="font-size: 23px; line-height: 1.5">وش تبي تعرف اليوم؟</b>
+                  <span class="k-sub" style="font-size: 14.5px">أعرف دوراتك وجدولك واختباراتك</span>
+                </div>
+                <div class="c1-start"><sc-for list="{{starts}}" as="t" hint-placeholder-count="4"><button type="button" class="c1-st m-jelly" style="--d: {{t.d}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg>{{t.t}}</button></sc-for></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{convo}}" hint-placeholder-val="{{ true }}">
+              <div class="c1-conv">
+                <div class="c1-u" style="--d: .05s">متى اختبار الرياضيات الجاي؟ وكم درس باقي لي قبله؟</div>
+                <div class="c1-a"><span class="c1-face" style="--d: .2s"><dc-import name="Bot" size="38" hint-size="38px,38px"></dc-import></span><div class="c1-ab" style="--d: .25s">
+                  <div class="c1-trail"><span class="ok"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>شفت جدولك</span><span class="ok"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>شيّكت على دورة الرياضيات</span></div>
+                  <span>اختبارك الجاي <b>اختبار الوحدة الثانية</b> يوم <b>الخميس ٢٦ نوفمبر</b> الساعة ٧ المساء<span class="c1-cite">١</span>، وقبله باقي لك <b>٣ دروس</b>: الدوال اللوغاريتمية (وصلت فيها ٥٠٪)، وخصائص اللوغاريتمات، وحل المعادلات الأسية.<span class="c1-cite">٢</span></span>
+                  <span>نصيحتي: كمّل الدرس ٨ اليوم، عشان ينفتح لك الدرس ٩ وتلحق تراجع.</span>
+                  <div class="k-row" style="gap: 8px"><span class="c1-src"><span class="c1-cite">١</span>جدولي</span><span class="c1-src"><span class="c1-cite">٢</span>الرياضيات ٢ ث، الدروس</span></div>
+                  <div class="k-row" style="gap: 8px"><a href="#" class="k-btn sm c1-aibtn">كمّل الدرس ٨</a><a href="#" class="k-btn sm ghost">افتح جدولي</a></div>
+                  <div class="c1-vote">أفادك؟<button type="button" aria-label="مفيد"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11H3V10zM7 10l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 17.6 21H7"></path></svg></button><button type="button" aria-label="مو مفيد"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(180deg)"><path d="M7 10v11H3V10zM7 10l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 17.6 21H7"></path></svg></button></div>
+                </div></div>
+                <div class="c1-u" style="--d: .5s">اشرح لي خصائص اللوغاريتمات باختصار</div>
+                <div class="c1-a"><span class="c1-face" style="--d: .65s"><dc-import name="Bot" size="38" hint-size="38px,38px"></dc-import></span><div class="c1-ab" style="--d: .7s">
+                  <div class="c1-trail"><span class="ok"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>دوّرت في ملفات الدورة</span><span class="run"><span class="k-live" style="color: var(--s-grape-ink)"><i style="background: var(--s-grape)"></i></span>يكتب الجواب</span></div>
+                  <span>أهم ثلاث خصائص تحتاجها:<br>١. لوغاريتم الضرب = مجموع اللوغاريتمات: <bdi dir="ltr">log(xy) = log x + log y</bdi><br>٢. لوغاريتم القسمة = الفرق بينهم<span class="c1-caret"></span></span>
+                </div></div>
+              </div>
+            </sc-if>
+            <div class="c1-aic">
+              <div class="c1-box">
+                <button type="button" class="k-ib" aria-label="محادثاتك" onClick="{{openHist}}" style="border: none; background: var(--s-grape-tint); color: var(--s-grape-ink)"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9M12 7v5l3 2M21 3v5h-5"></path></svg></button>
+                <span class="k-in">اسأل عن دوراتك أو أي درس…</span>
+                <button type="button" class="c1-send m-jelly" aria-label="أرسل"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10l7 3 3 7 8-17z"></path></svg></button>
+              </div>
+              <div style="text-align: center; font-size: 11.5px; color: #6B7A95; margin-top: 6px">المساعد ممكن يغلط، تأكد من المعلومات المهمة.</div>
+            </div>
+          </div>
+        </div>
+</sc-if>
+
+      </main>
+      <sc-if value="{{showBnav}}" hint-placeholder-val="{{ true }}"><nav class="k-bnav m-pill" aria-label="القائمة" style="--n: 5"><sc-if value="{{hasBi}}" hint-placeholder-val="{{ false }}"><span class="m-pill-bg" style="--i: {{bi}}"></span></sc-if><sc-for list="{{bnav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a></sc-for></nav></sc-if>
+    </div>
+  </div>
+
+<!-- ============ SHEETS (M14 on phone) ============ -->
+<sc-if value="{{sheetNew}}" hint-placeholder-val="{{ false }}">
+  <div class="k-dim" onClick="{{closeSheet}}"></div>
+  <aside class="k-drawer m-sheet" role="dialog" aria-label="رسالة جديدة">
+    <div class="k-dh"><h2>رسالة جديدة</h2><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+    <div class="k-db">
+      <span class="k-lbl">لمين تبي ترسل؟</span>
+      <span class="k-in" style="color: #0E2350; border-color: var(--s-pink); box-shadow: 0 0 0 4px var(--s-pink-tint)"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg><bdi dir="ltr">@nawaf.q</bdi></span>
+      <span class="k-sub">اكتب اسم المستخدم أو رقم الجوال كامل</span>
+      <div class="c1-found"><span class="k-av sm" style="background: #1D7A50">ن</span><span class="k-col" style="gap: 0; flex: 1; min-width: 0"><b style="font-size: 14.5px">نواف القرني</b><span class="k-m"><bdi dir="ltr">@nawaf.q</bdi></span></span><a href="#" class="k-btn sm">أرسل طلب</a></div>
+      <span class="c1-grp">معلمينك</span>
+      <div><sc-for list="{{people}}" as="p" hint-placeholder-count="3"><div class="c1-pr"><span class="k-av sm" style="background: {{p.bg}}">{{p.a}}</span><span class="k-col" style="gap: 0; flex: 1; min-width: 0"><b style="font-size: 14px">{{p.n}}</b><span class="k-m">{{p.m}}</span></span><a href="#" class="k-btn ghost sm">راسل</a></div></sc-for></div>
+    </div>
+  </aside>
+</sc-if>
+<sc-if value="{{sheetBlock}}" hint-placeholder-val="{{ false }}">
+  <div class="k-dim" onClick="{{closeSheet}}"></div>
+  <aside class="k-drawer m-sheet" role="dialog" aria-label="حظر" style="width: 440px">
+    <div class="k-dh"><h2>تحظر {{th.n}}؟</h2><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+    <div class="k-db">
+      <div class="k-row" style="gap: 12px; flex-wrap: nowrap"><span class="k-av lg m-pop" style="background: {{th.bg}}; --d: .2s">{{th.a}}</span><span class="k-col" style="gap: 2px"><b style="font-size: 15.5px">ما راح توصلك رسائله.</b><span class="k-sub">وما نعلمه إنك حظرته.</span></span></div>
+      <span class="k-lbl">السبب <span class="k-m">(اختياري)</span></span>
+      <div class="k-row c1-cats" style="gap: 8px"><span class="k-chip on">رسائل مزعجة</span><span class="k-chip">كلام ما يليق</span><span class="k-chip">ما أعرفه</span><span class="k-chip">غير كذا</span></div>
+      <div class="k-tile" style="animation: none"><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 14px">بلّغ عنه بعد</b><span class="k-m">نرسل آخر رسائله لفريق الفهيم</span></span><span class="k-tog"><i></i></span></div>
+    </div>
+    <div class="k-df"><a href="#" class="k-btn" style="flex: 1; --btn-a: #C2410C; --btn-b: #F2545B; --btn-sh: rgba(194,65,12,.4)">احظره</a><button type="button" class="k-btn ghost" onClick="{{closeSheet}}">لا، رجوع</button></div>
+  </aside>
+</sc-if>
+<sc-if value="{{sheetHist}}" hint-placeholder-val="{{ false }}">
+  <div class="k-dim" onClick="{{closeSheet}}"></div>
+  <aside class="k-drawer m-sheet" role="dialog" aria-label="محادثاتك" style="width: 400px">
+    <div class="k-dh"><h2>محادثاتك مع المساعد</h2><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+    <div class="k-db" style="gap: 4px"><a href="#" class="k-btn sm c1-aibtn" style="margin-bottom: 8px">محادثة جديدة</a><sc-for list="{{hist}}" as="h" hint-placeholder-count="6"><span class="c1-hi {{h.on}}">{{h.t}}<small>{{h.w}}</small></span></sc-for></div>
+  </aside>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screen":"chat","sheet":"","pane":"","tab":"todo","fresh":"","conv":"","$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {}, P = this.props || {};
+    const set = (o) => this.setState(o);
+    const dl = (i, b = 0.15, st = 0.06) => (b + i * st).toFixed(2) + 's';
+    const I = {
+      home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', courses: 'M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14',
+      play: 'M6 9h12a4 4 0 0 1 0 8c-2 0-3-2-6-2s-4 2-6 2a4 4 0 0 1 0-8zM8 11v4M6 13h4M16 12h.01M18 14h.01',
+      schedule: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4', profile: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0',
+      cal: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4', chat: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z', ai: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z', bell: 'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
+      form: 'M9 3h6v3H9zM6 5H5v16h14V5h-1M8 11h8M8 15h5', survey: 'M4 20V10M10 20V4M16 20v-7', clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2', exam: 'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9',
+      reply: 'M9 14L4 9l5-5M4 9h11a5 5 0 0 1 5 5v6', dept: 'M3 21h18M5 21V9l7-5 7 5v12M10 21v-6h4v6', mega: 'M3 11v2h3l6 4V7L6 11zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12',
+      live: 'M15 10l5-3v10l-5-3zM3 6h12v12H3z', star: 'M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z', coin: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9 9h4.5a1.5 1.5 0 0 1 0 3H10a1.5 1.5 0 0 0 0 3h5M12 7v2M12 15v2',
+      pay: 'M3 6h18v12H3zM3 10h18M7 15h3', video: 'M15 10l5-3v10l-5-3zM3 6h12v12H3z', hist: 'M12 3a9 9 0 1 0 9 9M12 7v5l3 2M21 3v5h-5', plus: 'M12 5v14M5 12h14',
+      search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3', pen: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4', image: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15.5 8.5h.01', phone: 'M7 2h10v20H7zM11 18h2'
+    };
+    // ONE student nav map (kit.css "shell"): messages / inbox / assistant live in the top bar, so no nav item is current for them
+    const MAP = [['home', 'الرئيسية', '٣'], ['courses', 'دوراتي', ''], ['schedule', 'جدولي', ''], ['play', 'العب وتعلّم', ''], ['profile', 'حسابي', '١']];
+    const META = {
+      chat: ['الرسائل', 'الرئيسية', '', 'chat'], inbox: ['صندوق الوارد', 'الرئيسية', '', 'bell'], complaints: ['الدعم والشكاوى', 'حسابي', 'profile', ''],
+      newcomplaint: ['شكوى جديدة', 'حسابي · الدعم والشكاوى', 'profile', ''], assistant: ['المساعد الذكي', 'الرئيسية', '', 'ai']
+    };
+    const sc = META[P.screen] ? P.screen : 'chat';
+    const [title, crumb, cur, tool] = META[sc];
+    const is = {}; Object.keys(META).forEach((k) => { is[k] = k === sc; });
+    const sheet = s.sheet !== undefined ? s.sheet : (P.sheet || '');
+
+    // chat: teachers, parent, support, the teacher's announcements (one-way) and contacts he added himself by username
+    const chipK = s.chip || 'all';
+    const pane = s.pane || P.pane || 'list';
+    const conv0 = P.conv === 'ann' ? 1 : P.sheet === 'block' ? 4 : 0;
+    const convSel = s.conv !== undefined ? s.conv : conv0;
+    // [name, initial, bg, relation, tagClass, last, time, unread, online, kind]
+    const CV = [
+      ['أ. ماجد الشهري', 'م', 'linear-gradient(150deg, #FFB37A, #F2545B)', 'معلمك', 'o', 'أنت: وضحت الحين، الله يعطيك العافية', '٤:٣٠ م', '', 1, 'teacher'],
+      ['إعلانات أ. ماجد', '', '', 'الرياضيات', 'o', 'الواجب: صفحة ٢٨ قبل الثلاثاء', '٤:١٨ م', '٢', 0, 'ann'],
+      ['أ. فهد المطيري', 'ف', 'linear-gradient(150deg, #9F7BFF, #7A4DF0)', 'معلمك', 'p', 'صححت واجب قوانين نيوتن، شغلك حلو', 'أمس', '١', 0, 'teacher'],
+      ['عبدالله العنزي', 'ع', '#1D7A50', 'ولي أمرك', 'g', 'لا تتأخر الليلة يا فيصل', 'أمس', '', 0, 'parent'],
+      ['سلطان المطيري', 'س', '#0F5CA8', '', '', 'تمام، نتقابل في الاجتماع الخميس', 'الأحد', '', 0, 'friend'],
+      ['فريق الفهيم', 'ف', '#00205E', 'الدعم', 'n', 'صلّحنا مشكلة الفيديو، جرّب الحين', 'الأحد', '', 0, 'support']];
+    const keep = { all: () => true, un: (c) => !!c[7], teachers: (c) => c[9] === 'teacher' || c[9] === 'ann', ann: (c) => c[9] === 'ann' };
+    let ui = 0;
+    const convs = CV.map((c, i) => ({ c, i })).filter(({ c }) => keep[chipK](c)).map(({ c, i }, j) => ({
+      n: c[0], a: c[1], bg: c[2], ac: c[9] === 'ann' ? 'c1-ann' : '', isAnn: c[9] === 'ann', rel: c[3], tc: c[4], last: c[5], t: c[6], u: c[7], ud: (0.5 + (c[7] ? ui++ : 0) * 0.12).toFixed(2) + 's',
+      lb: c[7] ? 'b' : '', online: !!c[8], on: i === convSel ? 'on' : '', d: dl(j), go: () => set({ conv: i, pane: 'thread' })
+    }));
+    const chips = [['all', 'الكل'], ['un', 'ما قريتها'], ['teachers', 'المعلمين'], ['ann', 'الإعلانات']].map(([k, l]) => ({ l, on: k === chipK ? 'on' : '', pr: k === chipK ? 'true' : 'false', go: () => set({ chip: k }) }));
+    const C = CV[convSel] || CV[0];
+    const kind = C[9];
+    const SUB = { teacher: [convSel === 0 ? 'متصل الحين، معلمك في الرياضيات' : 'معلمك في الفيزياء', convSel === 0 ? '#0C6B55' : '#4A5878'], ann: ['من المعلم لك', '#A3480A'], parent: ['ولي أمرك', '#4A5878'], friend: ['أضفته أنت', '#4A5878'], support: ['يرد خلال ساعات', '#4A5878'] };
+    const th = {
+      n: C[0], a: C[1], bg: C[2], ac: kind === 'ann' ? 'c1-ann' : '', online: !!C[8], sub: SUB[kind][0], subc: SUB[kind][1], t: C[6], last: C[5].replace('أنت: ', ''),
+      nora: convSel === 0, ann: kind === 'ann', other: convSel !== 0 && kind !== 'ann', canBlock: kind === 'friend',
+      ph: kind === 'ann' ? 'ردّك يوصل للمعلم بس…' : 'اكتب رسالة…'
+    };
+    const people = [['أ. ماجد الشهري', 'م', 'linear-gradient(150deg, #FFB37A, #F2545B)', 'الرياضيات'], ['أ. فهد المطيري', 'ف', 'linear-gradient(150deg, #9F7BFF, #7A4DF0)', 'الفيزياء'], ['أ. ماهر السبيعي', 'م', 'linear-gradient(150deg, #3CD6B0, #19C29B)', 'الكيمياء']]
+      .map(([n, a, bg, m]) => ({ n, a, bg, m }));
+
+    // inbox: two tabs, each item one verb
+    const tab = s.tab || (P.tab === 'notif' ? 'notif' : 'todo');
+    const ib = { todo: tab === 'todo', notif: tab === 'notif' };
+    const ibTabs = [['todo', 'مطلوب منك', '٤', '#F2545B'], ['notif', 'الإشعارات', '٥', '#E8478C']].map(([k, l, n, c], j) => ({ l, n, c, d: (0.45 + j * 0.12).toFixed(2) + 's', on: k === tab ? 'true' : 'false', go: () => set({ tab: k }) }));
+    const todos = [
+      ['متأخر يومين', 'r', 'بيانات ولي الأمر للرحلة', 'نموذج من أ. ماجد، ٤ أسئلة', I.form, '#FFE3E0', '#B23A2E', 'عبّه', 'late', ''],
+      ['الخميس ٧:٠٠ م', 'o', 'اختبار الوحدة الثانية', 'الرياضيات ٢ ث، ٢٠ سؤال', I.exam, '#ECE5FF', '#4A28B8', 'افتحه', '', 'ghost'],
+      ['باقي ٥ أيام', 'n', 'اختر الأوقات اللي تناسبك', 'أ. فهد المطيري، الفيزياء', I.clock, '#E0F0FF', '#0F5CA8', 'اختر', '', 'ghost'],
+      ['اليوم', 'n', 'رد فريق الفهيم على شكواك', 'الفيديو يوقف في درس الدوال', I.reply, '#FFE3EF', '#A81E5E', 'اقرأ', '', 'ghost']]
+      .map(([due, dc, t, m, i, bg, fg, v, late, bc], j) => ({ due, dc, t, m, i, bg, fg, v, late, bc, d: dl(j, 0.2, 0.07) }));
+    const notifs = [['اليوم', [['بدأت حصة الرياضيات', 'أ. ماجد الشهري بدأ الحصة', '٧:٣٠ م', I.live, '#FFE3E0', '#B23A2E', 1], ['نتيجة اختبار الدرس ٦', 'جبت ٩٠٪ واجتزته', '١:١٥ م', I.star, '#D9F7EE', '#0C6B55', 1], ['درس جديد في الرياضيات', 'انضاف «حل المعادلات الأسية»', '١١:٠٠ ص', I.video, '#FFE8D6', '#A3480A', 1]]],
+      ['أمس', [['من الفهيم: إجازة نهاية الفصل', 'الحصص تتوقف من ٢٨ ديسمبر لين ٤ يناير', '٩:٢٠ م', I.mega, '#E0F0FF', '#0F5CA8', 0], ['كسبت ٤٠ نقطة', 'حضرت ٥ حصص ورا بعض', '٨:٠٠ م', I.coin, '#FFF4CC', '#7A5200', 0], ['تم الدفع', 'الرياضيات ٢ ث، ١٩٩ ريال', '٦:٠٠ م', I.pay, '#ECE5FF', '#4A28B8', 0]]]]
+      .map(([g, items], gi) => ({ g, items: items.map(([t, m, w, i, bg, fg, un], j) => ({ t, m, w, i, bg, fg, un: un ? 'un' : '', d: dl(gi * 3 + j, 0.2, 0.06) })) }));
+    const dones = [['طلب استرجاع مبلغ', 'أرسلته ٢٠ نوفمبر', 'قيد المراجعة', 'y', I.pay], ['اختيار القسم العلمي', 'أرسلته ١٢ نوفمبر', 'مقبول', 'g', I.dept], ['شكوى: الصوت مقطّع', 'أرسلتها ٢ نوفمبر', 'انحلت', 'n', I.reply]]
+      .map(([t, m, st, tc, i]) => ({ t, m, s: st, tc, i }));
+
+    // complaints
+    const cpSel = s.cp !== undefined ? s.cp : 0;
+    const cps = [['الفيديو يوقف في درس الدوال', 'تقني، أمس', 'جاري', '', 1, I.video, '#E2EFFA', '#135F9A'], ['ما وصلني تأكيد الدفع', 'دفع، ١٨ نوفمبر', 'مفتوح', 'y', 0, I.pay, '#FFF4CC', '#7A5200'], ['الصوت مقطّع في الحصة', 'تقني، ٢ نوفمبر', 'انحلت', 'g', 0, I.live, '#D9F7EE', '#0C6B55'], ['اقتراح: وضع ليلي', 'عام، ١٥ أكتوبر', 'مقفلة', 'n', 0, I.star, '#EEF2F7', '#4A5878']]
+      .map(([t, m, st, tc, nw, i, bg, fg], j) => ({ t, m, s: st, tc, new: !!nw, i, bg, fg, on: j === cpSel ? 'on' : '', d: dl(j), go: () => set({ cp: j }) }));
+    const cpTl = [['أرسلت الشكوى', 'أمس ٩:٤٠ م', '#9AA8BF'], ['استلمها فريق الدعم', 'اليوم ٨:١٢ ص', '#3DA5FF'], ['رد عليك سلمان', 'اليوم ١٠:٠٥ ص', '#FF5FA2']].map(([t, w, c]) => ({ t, w, c }));
+    const det = !!s.det;
+    // new complaint
+    const aboutK = s.about || 'course';
+    const catK = s.cat || 'تقني';
+    const prioK = s.prio || 'عالية';
+    const PR = ['عادية', 'متوسطة', 'عالية', 'عاجلة'];
+    // assistant
+    const fresh = s.fresh !== undefined ? s.fresh : P.fresh === '1';
+    const hist = [['متى اختبار الرياضيات الجاي؟', 'الحين', 'on'], ['اشرح لي قانون نيوتن الثاني', 'أمس'], ['كيف أستخدم نقاطي في المتجر؟', 'الأحد'], ['رتّب لي جدول مذاكرة للقدرات', '١٢ نوفمبر'], ['وش الفرق بين الدرس والحصة؟', '٨ نوفمبر'], ['ساعدني في واجب الكيمياء', '٢ نوفمبر']].map(([t, w, on]) => ({ t, w, on: on || '' }));
+    const starts = [['وش عندي اليوم؟', I.cal], ['اشرح لي آخر درس', I.ai], ['اختبرني في الدوال', I.exam], ['كيف أرفع مستواي؟', I.survey]].map(([t, i], j) => ({ t, i, d: dl(j, 0.35, 0.08) }));
+
+    const idx = MAP.findIndex(([k]) => k === cur);
+    const mt = (k, l, go) => ({ l, go, i: I[k] });
+    return {
+      title, crumb, is, mtitle: sc === 'chat' && pane === 'thread' ? th.n : title,
+      convs, chips, pane, people, th, heroCls: pane === 'thread' ? 'c1-nohero' : '',
+      sheetNew: sc === 'chat' && sheet === 'new', sheetBlock: sc === 'chat' && sheet === 'block', sheetHist: sc === 'assistant' && sheet === 'history',
+      openNew: () => set({ sheet: 'new' }), openBlock: () => set({ sheet: 'block' }), openHist: () => set({ sheet: 'history' }), closeSheet: () => set({ sheet: '' }),
+      ib, ibTabs, tabI: tab === 'notif' ? '1' : '0', todos, notifs, dones, cps, cpTl,
+      det, detX: det ? 'true' : 'false', detRot: det ? 'transform: rotate(180deg)' : '', togDet: () => set({ det: !det }),
+      about: [['course', 'دورة'], ['general', 'شي عام']].map(([k, l]) => ({ l, on: k === aboutK ? 'true' : 'false', go: () => set({ about: k }) })), aboutCourse: aboutK === 'course', aboutI: aboutK === 'course' ? '0' : '1',
+      cats: ['تقني', 'دفع', 'محتوى', 'معلم', 'عام'].map((l) => ({ l, on: l === catK ? 'on' : '', pr: l === catK ? 'true' : 'false', go: () => set({ cat: l }) })),
+      prio: PR.map((l) => ({ l, on: l === prioK ? 'true' : 'false', go: () => set({ prio: l }) })), prioI: String(Math.max(0, PR.indexOf(prioK))),
+      tips: [['اكتب وش صار بالضبط', I.pen], ['أرفق صورة الشاشة', I.image], ['اذكر جهازك', I.phone]].map(([t, i]) => ({ t, i })),
+      fresh, convo: !fresh, hist, starts, showBnav: sc !== 'assistant' && !(sc === 'chat' && pane === 'thread'),
+      nav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === cur ? 'page' : 'false' })),
+      bnav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === cur ? 'page' : 'false' })), bi: String(Math.max(0, idx)), hasBi: idx >= 0,
+      tools: [['chat', 'الرسائل', '٣'], ['ai', 'المساعد الذكي', ''], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k], on: k === tool ? 'on' : '' })),
+      mtools: sc === 'assistant' ? [mt('hist', 'محادثاتك', () => set({ sheet: 'history' })), mt('plus', 'محادثة جديدة', () => set({ fresh: true }))]
+        : sc === 'chat' && pane === 'thread' ? [mt('search', 'ابحث في المحادثة', () => {})]
+        : sc === 'chat' ? [mt('plus', 'رسالة جديدة', () => set({ sheet: 'new' }))]
+        : sc === 'inbox' ? [mt('chat', 'الرسائل', () => {})]
+        : [mt('bell', 'الإشعارات', () => {})]
+    };
+  }
+}
+</script>
+</body>
+</html>

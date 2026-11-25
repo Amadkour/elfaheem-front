@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الطالب: الضيف والروابط العامة</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* p1 = guest & public pages. Areas: guest home / gate / live link / legal = a-home; shared course link = a-learn.
+   Motion: M6 hero wipe + M7 squiggle, M5 course cards, M12 book covers, M3 tiles, M1 lesson rows, M10 price, M8 live, M14 sheet.
+   Same student nav map as StuHome (الرئيسية · دوراتي · جدولي · العب وتعلّم · حسابي); locked items show a lock for guests.
+   "سجّل دخولك واحجز" on the shared course opens the booking flow (BookFlow.dc.html) after login. */
+.k a.k-link,.k .k-ch a{color:var(--area-ink)}
+.p1-lock{margin-right:auto;opacity:.6}
+.k-bnav .p1-bl{position:absolute;top:4px;left:calc(50% - 22px);width:16px;height:16px;border-radius:50%;background:#FFFFFF;color:#8A97AE;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.p1-greet{font-size:20px;color:#FFD9A8}
+.p1-hrow{display:flex;align-items:center;gap:24px}
+/* mini book covers (same look as the home shelf / subject page book) */
+.p1-bk{position:relative;flex-shrink:0;width:76px;height:96px;border-radius:4px 12px 12px 4px;background:linear-gradient(160deg,rgba(255,255,255,.3),rgba(255,255,255,0) 55%),var(--sub);color:var(--sub-fg);padding:10px 6px 8px 8px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:inset -7px 0 0 rgba(0,0,0,.13),-3px 3px 0 #EFE8DA,0 12px 20px -10px rgba(0,20,64,.45);transform:rotate(-3deg);transition:transform .3s cubic-bezier(.3,1.4,.5,1)}
+.p1-bk b{font-family:'Aref Ruqaa',serif;font-size:13.5px;line-height:1.25;white-space:nowrap;overflow:hidden}
+.p1-bks .p1-bk b{font-size:17px}
+.p1-bk small{font-size:10.5px;font-weight:700;opacity:.9}
+.p1-bks{display:flex;align-items:flex-end;gap:12px;flex-shrink:0;padding-left:8px}
+.p1-bks .p1-bk{width:82px;height:108px}
+.p1-bks .p1-bk:nth-child(2){height:120px;transform:rotate(4deg)}
+.p1-bks .p1-bk:nth-child(3){transform:rotate(-8deg)}
+/* join promo */
+.p1-promo{position:relative;overflow:hidden;display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:24px;background:linear-gradient(120deg,#FF9F5A,#F2545B 70%,#E8478C);color:#FFFFFF;box-shadow:0 20px 40px -18px rgba(242,84,91,.6)}
+.p1-promo::after{content:"";position:absolute;width:180px;height:180px;border-radius:50%;border:26px solid rgba(255,255,255,.12);top:-90px;left:-40px}
+.p1-promo > *{position:relative;z-index:1}
+.k .p1-promo .k-btn{background:#FFFFFF;color:#C2410C;box-shadow:0 10px 20px -10px rgba(80,0,20,.5);flex-shrink:0}
+.p1-promo .k-ico{width:50px;height:50px;border-radius:16px;background:rgba(255,255,255,.2);color:#FFFFFF}
+/* course cards */
+.p1-chips{display:flex;flex-wrap:wrap;gap:8px}
+.p1-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.p1-cc{display:flex;align-items:center;gap:14px;padding:14px;border-radius:20px;background:linear-gradient(160deg,var(--sub-t),#FFFFFF 60%);border:1.5px solid var(--sub-t);transition:transform .25s cubic-bezier(.3,1.4,.5,1),box-shadow .25s}
+.p1-cc:hover{transform:translateY(-4px);box-shadow:0 16px 30px -16px rgba(0,20,64,.35)}
+.p1-cc:hover .p1-bk{transform:rotate(0) translateY(-3px)}
+.p1-cb{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.p1-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px}
+.p1-star{display:inline-flex;align-items:center;gap:3px;font-size:12.5px;font-weight:700;color:var(--s-sun-ink)}
+.p1-pr{font-size:15px;color:var(--k-navy)}
+.p1-pr small{font-size:11.5px;color:var(--k-muted);font-weight:600}
+/* categories */
+.p1-cats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.p1-cat{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 6px;border-radius:18px;background:var(--sub-t);color:var(--sub-i);font-weight:700;font-size:13.5px;text-align:center;transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.p1-cat:active{transform:scale(.94,1.04)}
+.p1-cat .k-ico{width:40px;height:40px;border-radius:13px;background:var(--sub);color:var(--sub-fg)}
+/* featured course */
+.p1-ad{position:relative;overflow:hidden;border-radius:24px;padding:22px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;color:#3D2700;background:linear-gradient(135deg,#FFC53D,#FF9F5A);box-shadow:0 20px 40px -20px rgba(232,155,0,.7)}
+.p1-ad::before{content:"";position:absolute;width:200px;height:200px;border-radius:60px;border:24px solid rgba(255,255,255,.25);top:-70px;left:-50px;transform:rotate(18deg)}
+.p1-ad > *{position:relative}
+.p1-ad b{font-size:21px;line-height:1.45}
+.k .p1-ad .k-btn{background:#FFFFFF;color:#7A5200;border:none;align-self:flex-start;margin-top:6px}
+/* teachers */
+.p1-tchs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.p1-tch{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;border-radius:20px;background:#F8FBFE;border:1.5px solid var(--k-line);text-align:center}
+.p1-tch .k-av{background:var(--sub);color:var(--sub-fg);box-shadow:0 0 0 4px var(--sub-t)}
+/* gate */
+.p1-gate{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:26px 16px}
+.p1-gate h4{margin:0;font-size:20px;line-height:1.5}
+.p1-gate p{margin:0;color:var(--k-muted);font-size:14.5px}
+.p1-gl{width:120px;height:100px;border-radius:36px 36px 36px 12px;background:var(--area-tint);color:var(--area-ink);display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+/* public header pages */
+.p1-ph{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;height:64px;padding:0 32px;background:rgba(0,26,78,.94);backdrop-filter:blur(12px);color:#FFFFFF}
+.p1-ph img{width:30px;height:auto}
+.k .p1-ph .k-btn.ghost{background:transparent;color:#FFFFFF;border-color:rgba(255,255,255,.32)}
+.p1-shell{max-width:1180px;margin:0 auto;padding:0 32px}
+.p1-sh{position:relative;overflow:hidden;color:#FFFFFF;background:radial-gradient(120% 160% at 85% -30%,var(--hero-a) 0%,var(--hero-b) 45%,#001440 100%);padding:34px 0 110px}
+.p1-sh > .k-hero-shapes{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.p1-sh > :not(.k-hero-shapes){position:relative;z-index:1}
+.p1-shrow{display:flex;align-items:center;gap:32px}
+.p1-sh h1{margin:0;font-size:36px;line-height:1.4}
+.p1-from{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:15px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);font-size:13px;font-weight:700}
+.p1-book{width:200px;height:260px;flex-shrink:0}
+.p1-book.p1-bk{padding:22px 18px;border-radius:8px 20px 20px 8px;box-shadow:inset -14px 0 0 rgba(0,0,0,.13),-5px 5px 0 #EFE8DA,-10px 10px 0 #E5DCCB,0 30px 50px -16px rgba(0,0,0,.6)}
+.p1-book.p1-bk b{font-size:36px}
+.p1-book.p1-bk small{font-size:13px}
+.p1-body{position:relative;z-index:2;margin-top:-76px;padding-bottom:40px}
+.p1-learn{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.p1-learn span{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.7;font-weight:600}
+.p1-learn i{width:22px;height:22px;border-radius:7px;background:var(--s-mint-tint);color:var(--s-mint-ink);flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:2px}
+.p1-ses{display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;border:1.5px solid var(--k-line);background:#FFFFFF}
+.p1-ses.open{border-color:var(--sub-math-tint);background:linear-gradient(120deg,#FFFFFF,var(--sub-math-tint))}
+.p1-ses .k-ico{width:40px;height:40px}
+.p1-price{display:flex;align-items:baseline;gap:6px;color:var(--k-navy)}
+.p1-price b{font-size:38px;line-height:1.2}
+.p1-price > span{font-size:14px;color:var(--k-muted);font-weight:700}
+.p1-copy{display:flex;align-items:center;gap:8px}
+.p1-copy .k-in{flex:1;min-width:0;direction:ltr;justify-content:center;color:var(--k-blue-ink);font-weight:700;font-size:13px}
+/* live guest */
+.p1-lv{position:relative;overflow:hidden;min-height:var(--vh,100vh);display:flex;flex-direction:column;background:radial-gradient(120% 90% at 80% -10%,#1979C1,#093F81 40%,#001440 75%);color:#FFFFFF}
+.p1-lv > .k-hero-shapes{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.p1-lv > :not(.k-hero-shapes){position:relative;z-index:1}
+.p1-lvc{width:100%;max-width:470px;margin:auto;padding:26px;border-radius:28px;background:#FFFFFF;color:var(--k-text);display:flex;flex-direction:column;gap:14px;box-shadow:0 40px 80px -30px rgba(0,0,0,.7);animation:kIn .5s cubic-bezier(.2,.8,.2,1) both}
+.p1-lvh{display:flex;align-items:center;gap:14px;padding:14px;border-radius:20px;background:linear-gradient(120deg,#FFFFFF,var(--area-tint));border:1.5px solid #CFE3F5}
+.p1-lvh .k-ico{width:50px;height:50px;border-radius:16px;background:linear-gradient(150deg,var(--k-acc),var(--k-acc2));color:#FFFFFF}
+.p1-pin{display:flex;gap:8px;direction:ltr}
+.p1-pin span{flex:1;height:54px;border-radius:14px;border:2px solid #D5E3F2;background:#F8FBFE;display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:700;color:var(--k-navy)}
+.p1-pin span.f{border-color:#9CC8EC;background:#FFFFFF}
+.p1-pin span.c{border-color:var(--k-acc);box-shadow:0 0 0 4px rgba(25,121,193,.15)}
+.p1-pin span.c::after{content:"";width:2px;height:24px;background:var(--k-acc);animation:p1Blink 1s steps(1) infinite}
+@keyframes p1Blink{50%{opacity:0}}
+.k .p1-star2{--halo:var(--k-apricot);width:84px;height:84px;border-radius:28px;display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,#FFC53D,#FF9F5A);color:#FFFFFF;margin:8px auto 4px}
+/* legal */
+.p1-toc{position:sticky;top:84px;display:flex;flex-direction:column;gap:4px;padding:12px}
+.p1-toc a{padding:9px 12px;border-radius:12px;font-size:13.5px;font-weight:700;color:var(--k-muted)}
+.p1-toc a.on{background:var(--area-tint);color:var(--area-ink)}
+.p1-lg{grid-template-columns:240px minmax(0,1fr)}
+.p1-sec{display:flex;gap:14px;padding-bottom:16px;border-bottom:1px solid #EDF2F8}
+.p1-sec:last-child{border-bottom:none;padding-bottom:0}
+.p1-sec .k-ico{width:40px;height:40px;border-radius:13px;background:var(--area-tint);color:var(--area-ink)}
+.p1-sec h3{margin:0;font-size:17px;line-height:1.5}
+.p1-sec p{margin:2px 0 0;font-size:14.5px;line-height:1.9;color:#34466B}
+.p1-legal{padding-bottom:100px}
+.p1-mseg{display:none}
+/* hero squircle as a sun outline (the filled one turns muddy on dark heroes) */
+.k .k-hero-shapes > i:nth-child(2){background:transparent;border:3px solid var(--s-sun);opacity:.34}
+@media (max-width:760px){
+.k-drawer{height:auto;max-height:calc(var(--vh,100vh)*0.9)}
+.p1-hrow .p1-bks{display:none}
+.p1-hrow p{display:none}
+.p1-greet{font-size:16px}
+.k .k-mtop .k-btn.ghost{height:34px;padding:0 12px;font-size:13px;background:rgba(255,255,255,.1);color:#FFFFFF;border-color:rgba(255,255,255,.25)}
+.p1-promo{padding:14px;gap:12px}
+.p1-promo .k-ico{display:none}
+.p1-promo .k-btn{height:42px;padding:0 16px;font-size:14px}
+.p1-promo small{display:none}
+.p1-grid{grid-template-columns:1fr;gap:10px}
+.p1-cc{padding:10px 12px}
+.p1-bk{width:62px;height:80px;padding:8px 5px 6px 6px}
+.p1-bk b{font-size:11.5px}
+.p1-tchs{grid-template-columns:repeat(2,minmax(0,1fr))}
+.p1-tchs > :nth-child(5){display:none}
+.p1-ph{padding:0 14px;height:58px}
+.p1-ph .p1-hidem{display:none}
+.p1-shell{padding:0 12px}
+.p1-sh{padding:14px 0 78px}
+.p1-shrow{gap:14px}
+.p1-sh h1{font-size:22px}
+.p1-book{width:76px;height:100px}
+.p1-book.p1-bk{padding:10px 8px;box-shadow:inset -6px 0 0 rgba(0,0,0,.13),-3px 3px 0 #EFE8DA,0 16px 24px -12px rgba(0,0,0,.6)}
+.p1-book.p1-bk b{font-size:14px}
+.p1-sh .k-stats{display:none}
+.p1-book.p1-bk small{font-size:10px}
+.p1-tags,.p1-tch-h{display:none !important}
+.p1-from{height:26px;font-size:12px}
+.p1-body{margin-top:-58px}
+.p1-buy{order:-1}
+.p1-learn{grid-template-columns:1fr}
+.p1-lvc{margin:16px auto;max-width:calc(100% - 24px);padding:20px 16px}
+.p1-toc{display:none}
+.p1-lg{grid-template-columns:1fr}
+.p1-mseg{display:flex}
+.p1-sh.p1-legal h1{font-size:24px}
+.p1-legal{padding-bottom:78px}
+}
+</style>
+</helmet>
+<div class="k {{area}}" dir="rtl">
+
+<!-- ============ GUEST SHELL (home / gate) ============ -->
+<sc-if value="{{shell}}" hint-placeholder-val="{{ true }}">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">ضيف</span></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+        <a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.lock}}" hint-placeholder-val="{{ false }}"><svg class="p1-lock" aria-label="يحتاج تسجيل دخول" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4"></path></svg></sc-if></a>
+      </sc-for>
+      <div class="k-me"><span class="k-av sm" style="background: rgba(255,255,255,.18)"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0"></path></svg></span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">ضيف</b><small style="font-size: 11.5px; opacity: .7">تصفّح بدون حساب</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <span><small>هلا يا ضيف</small><h1>{{title}}</h1></span>
+        <span class="k-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن دورة أو معلم<kbd>Ctrl K</kbd></span>
+        <a href="#" class="k-btn ghost sm">سجّل دخولك</a>
+      </header>
+      <header class="k-mtop"><img src="./logo.png" alt="" width="28" height="31" style="width: 28px; height: auto"><h1>{{title}}</h1><a href="#" class="k-btn ghost sm">دخول</a></header>
+      <main class="k-page">
+
+<sc-if value="{{is.guesthome}}" hint-placeholder-val="{{ true }}">
+        <section class="k-hero m-wipe">
+          <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+          <div class="p1-hrow">
+            <div class="k-col" style="gap: 4px; flex: 1"><span class="k-ruqaa p1-greet">هلا والله يا ضيف</span><h2>وش ودّك <span class="m-squig">تتعلّم<svg viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true"><path pathLength="240" d="M2 6 Q 17 0 32 6 T 62 6 T 92 6 T 118 5"></path></svg></span> اليوم؟</h2><p>تصفّح براحتك، وشوف أول درس من أي دورة.</p></div>
+            <div class="p1-bks" aria-hidden="true"><sc-for list="{{heroBooks}}" as="b" hint-placeholder-count="3"><span class="p1-bk m-wobble {{b.sub}}" style="--i: {{b.k}}; --d: .35s"><b>{{b.t}}</b><small>الفهيم</small></span></sc-for></div>
+          </div>
+        </section>
+        <div class="k-body">
+          <div class="p1-promo m-pop" style="--d: .25s"><span class="k-ico"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 17px">سوّ حسابك في دقيقة</b><small style="font-size: 13.5px; opacity: .92">واحفظ تقدّمك ومفضلتك وجدولك.</small></span><a href="#" class="k-btn m-jelly">أنشئ حسابك</a></div>
+          <section class="k-card" style="--d: .3s">
+            <div class="k-ch"><h3>دورات لصفّك</h3><a href="#">كل الدورات</a></div>
+            <div class="p1-chips"><span class="k-chip on">ثاني ثانوي</span><span class="k-chip">عن بعد</span><span class="k-chip">حضوري</span><span class="k-chip">طلاب</span></div>
+            <div class="p1-grid"><sc-for list="{{courses}}" as="c" hint-placeholder-count="3"><a href="#" class="p1-cc m-deal {{c.sub}}" style="--i: {{c.k}}; --d: .35s"><span class="p1-bk"><b>{{c.s}}</b><small>{{c.g}}</small></span><span class="p1-cb"><span class="k-t">{{c.t}}</span><span class="k-m">{{c.m}}</span><span class="p1-meta"><span class="p1-star"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z"></path></svg>{{c.r}}</span><b class="p1-pr">{{c.p}} <small>ريال في الشهر</small></b></span></span></a></sc-for></div>
+          </section>
+          <div class="k-grid k-g2">
+            <section class="k-card" style="--d: .35s">
+              <div class="k-ch"><h3>المواد</h3><a href="#">عرض الكل</a></div>
+              <div class="p1-cats"><sc-for list="{{cats}}" as="c" hint-placeholder-count="6"><a href="#" class="p1-cat m-pop {{c.sub}}" style="--d: {{c.d}}"><span class="k-ico"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg></span>{{c.t}}</a></sc-for></div>
+            </section>
+            <div class="p1-ad k-card" style="--d: .4s"><span class="k-tag m-slap" style="background: #FFFFFF; color: #7A5200; align-self: flex-start; --d: .7s">تبدأ الأحد</span><b>القدرات المكثّفة مع أ. خالد المطيري</b><span style="font-size: 14px; font-weight: 600">٢٠ حصة مباشرة، كل حصة ٥٠ دقيقة</span><a href="#" class="k-btn sm ghost">شوف الدورة</a></div>
+          </div>
+          <section class="k-card" style="--d: .45s">
+            <div class="k-ch"><h3>معلمين يحبهم الطلاب</h3><a href="#">كل المعلمين</a></div>
+            <div class="p1-tchs"><sc-for list="{{teachers}}" as="t" hint-placeholder-count="5"><a href="#" class="p1-tch m-pop {{t.sub}}" style="--d: {{t.d}}"><span class="k-av lg">{{t.a}}</span><b style="font-size: 14px; margin-top: 6px">{{t.n}}</b><span class="k-m">{{t.s}}</span><span class="p1-star"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z"></path></svg>{{t.r}}</span></a></sc-for></div>
+          </section>
+        </div>
+</sc-if>
+
+<sc-if value="{{is.gate}}" hint-placeholder-val="{{ false }}">
+        <section class="k-hero m-wipe">
+          <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+          <span class="k-ruqaa p1-greet">دوراتي</span><h2>دوراتك وتقدّمك <span class="m-squig">هنا<svg viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true"><path pathLength="240" d="M2 6 Q 17 0 32 6 T 62 6 T 92 6 T 118 5"></path></svg></span></h2>
+        </section>
+        <div class="k-body">
+          <section class="k-card" style="--d: .2s">
+            <div class="p1-gate">
+              <span class="p1-gl m-wobble" style="--d: .3s"><svg aria-hidden="true" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4M12 15v2"></path></svg></span>
+              <h4>سجّل دخولك وتلقاها هنا</h4>
+              <p>دوراتك كلها، وتكمل من وين وقفت.</p>
+              <a href="#" class="k-btn" style="margin-top: 6px; min-width: 200px">سجّل دخولك</a>
+              <div class="k-row" style="gap: 6px; justify-content: center; font-size: 13.5px"><span class="k-sub" style="font-size: 13.5px">ما عندك حساب؟</span><a href="#" class="k-link">أنشئه</a></div>
+            </div>
+          </section>
+          <div class="k-grid k-g3"><sc-for list="{{perks}}" as="p" hint-placeholder-count="3"><div class="k-tile m-pop" style="--d: {{p.d}}; animation-name: mPop"><span class="k-ico" style="background: {{p.bg}}; color: {{p.fg}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{p.i}}"></path></svg></span><span class="k-col" style="gap: 0"><b style="font-size: 14.5px">{{p.t}}</b><span class="k-m">{{p.m}}</span></span></div></sc-for></div>
+        </div>
+</sc-if>
+
+      </main>
+      <nav class="k-bnav m-pill" aria-label="القائمة" style="--n: 5"><span class="m-pill-bg" style="--i: {{bi}}"></span><sc-for list="{{nav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.lock}}" hint-placeholder-val="{{ false }}"><span class="p1-bl" aria-label="يحتاج تسجيل دخول"><svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4"></path></svg></span></sc-if></a></sc-for></nav>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ PUBLIC HEADER PAGES ============ -->
+<sc-if value="{{pub}}" hint-placeholder-val="{{ false }}">
+  <header class="p1-ph"><img src="./logo.png" alt="" width="30" height="33"><b style="font-size: 18px; flex: 1">ALFaheem</b><a href="#" class="k-btn ghost sm p1-hidem">أنشئ حساب</a><a href="#" class="k-btn ghost sm">سجّل دخولك</a></header>
+
+<sc-if value="{{is.share}}" hint-placeholder-val="{{ false }}">
+  <section class="p1-sh m-wipe">
+    <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+    <div class="p1-shell p1-shrow">
+      <div class="k-col" style="gap: 8px; flex: 1; min-width: 0">
+        <span class="p1-from m-slap" style="--d: .5s"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg>وصلتك من عبدالعزيز</span>
+        <h1>الرياضيات ٢ ثانوي</h1>
+        <div class="k-row p1-tags" style="gap: 6px"><span class="k-tag" style="background: rgba(255,255,255,.16); color: #FFFFFF">عن بعد</span><span class="k-tag" style="background: rgba(255,255,255,.16); color: #FFFFFF">حصص مباشرة</span><span class="k-tag" style="background: rgba(255,255,255,.16); color: #FFFFFF">الفصل الأول</span></div>
+        <div class="k-row" style="gap: 10px; flex-wrap: nowrap"><span class="k-av sm" style="background: rgba(255,255,255,.22)">م</span><b style="font-size: 14.5px">أ. ماجد الشهري</b><span class="k-tag p1-tch-h" style="background: rgba(25,194,155,.22); color: #B6F5E2">معلم موثّق</span></div>
+        <div class="k-stats" style="max-width: 560px"><sc-for list="{{shStats}}" as="s" hint-placeholder-count="4"><span class="k-stat"><b>{{s.n}}</b><small>{{s.l}}</small></span></sc-for></div>
+      </div>
+      <div class="p1-bk p1-book m-wobble sub-math" style="--d: .25s"><small>ALFaheem</small><b>الرياضيات</b><small>الصف الثاني الثانوي</small></div>
+    </div>
+  </section>
+  <div class="p1-shell p1-body">
+    <div class="k-grid k-side2">
+      <div class="k-col" style="gap: 18px">
+        <section class="k-card m-flip" style="--i: 1; animation-name: mFlip"><div class="k-ch"><h3>وش بتتعلّم</h3></div><div class="p1-learn"><sc-for list="{{learn}}" as="l" hint-placeholder-count="4"><span><i><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></i>{{l}}</span></sc-for></div></section>
+        <section class="k-card m-flip" style="--i: 2; animation-name: mFlip">
+          <div class="k-ch"><h3>الدروس</h3><span class="k-sub">٢٤ درس</span></div>
+          <sc-for list="{{ses}}" as="x" hint-placeholder-count="4"><div class="p1-ses m-flip {{x.cls}}" style="--i: {{x.k}}; --d: .3s"><span class="k-ico" style="background: {{x.bg}}; color: {{x.fg}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 14.5px">{{x.t}}</b><span class="k-m">{{x.m}}</span></span><sc-if value="{{x.open}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-btn sm ghost">شوفه</a></sc-if></div></sc-for>
+          <span class="k-sub" style="text-align: center">والباقي ينفتح بعد الاشتراك.</span>
+        </section>
+      </div>
+      <aside class="k-col p1-buy" style="gap: 14px">
+        <section class="k-card m-pop" style="--d: .3s; animation-name: mPop">
+          <span class="k-m" style="font-weight: 700">الاشتراك</span>
+          <span class="p1-price"><b><span class="m-roll" aria-label="١٩٩"><i aria-hidden="true" style="--v: 1"></i><i aria-hidden="true" style="--v: 9; --i: 1"></i><i aria-hidden="true" style="--v: 9; --i: 2"></i></span></b><span>ريال في الشهر، شامل الضريبة</span></span>
+          <ul class="k-rules"><sc-for list="{{rules}}" as="r" hint-placeholder-count="3"><li><span class="k-ico"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.i}}"></path></svg></span>{{r.t}}</li></sc-for></ul>
+          <a href="#" class="k-btn hot" style="height: 52px">سجّل دخولك واحجز</a>
+          <div class="k-row" style="gap: 6px; justify-content: center; font-size: 13.5px"><span class="k-sub" style="font-size: 13.5px">ما عندك حساب؟</span><a href="#" class="k-link">أنشئه</a></div>
+        </section>
+        <section class="k-card flat" style="--d: .4s; gap: 10px"><b style="font-size: 14.5px">شارك الدورة</b><div class="p1-copy"><span class="k-in"><bdi dir="ltr">alfaheem.sa/c/math-2</bdi></span><button type="button" class="k-ib" aria-label="انسخ الرابط"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9h11v11H9zM5 15H4V4h11v1"></path></svg></button></div></section>
+      </aside>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{is.legal}}" hint-placeholder-val="{{ false }}">
+  <section class="p1-sh p1-legal m-wipe">
+    <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></div>
+    <div class="p1-shell"><span class="k-ruqaa" style="font-size: 18px; color: #FFD9A8">آخر تحديث: ١ نوفمبر ٢٠٢٦</span><h1 style="margin-top: 2px">{{lgT}}</h1><p style="margin: 4px 0 0; opacity: .82; font-size: 14.5px">مكتوبة بكلام واضح. سؤال؟ <bdi dir="ltr">support@alfaheem.sa</bdi></p></div>
+  </section>
+  <div class="p1-shell p1-body">
+    <div class="k-grid p1-lg">
+      <nav class="p1-toc k-card" aria-label="الأقسام"><div class="k-seg m-pill" style="--n: 2; margin-bottom: 6px"><span class="m-pill-bg" style="--i: {{lgI}}"></span><sc-for list="{{lgTabs}}" as="t" hint-placeholder-count="2"><button type="button" aria-selected="{{t.on}}" onClick="{{t.go}}">{{t.l}}</button></sc-for></div><sc-for list="{{lgSecs}}" as="x" hint-placeholder-count="5"><a href="#" class="{{x.on}}">{{x.t}}</a></sc-for></nav>
+      <section class="k-card" style="gap: 16px"><div class="k-seg m-pill p1-mseg" style="--n: 2"><span class="m-pill-bg" style="--i: {{lgI}}"></span><sc-for list="{{lgTabs}}" as="t" hint-placeholder-count="2"><button type="button" aria-selected="{{t.on}}" onClick="{{t.go}}">{{t.l}}</button></sc-for></div><sc-for list="{{lgSecs}}" as="x" hint-placeholder-count="5"><div class="p1-sec m-flip" style="--i: {{x.k}}"><span class="k-ico"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span><span class="k-col" style="gap: 0"><h3>{{x.t}}</h3><p>{{x.p}}</p></span></div></sc-for></section>
+    </div>
+  </div>
+</sc-if>
+</sc-if>
+
+<!-- ============ LIVE GUEST LINK (a private meeting the student hosts) ============ -->
+<sc-if value="{{is.liveguest}}" hint-placeholder-val="{{ false }}">
+  <div class="p1-lv">
+    <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+    <header class="p1-ph" style="background: transparent; backdrop-filter: none"><img src="./logo.png" alt="" width="30" height="33"><b style="font-size: 18px; flex: 1">ALFaheem</b><span class="k-tag" style="background: rgba(255,255,255,.14); color: #FFFFFF">رابط اجتماع</span></header>
+    <sc-if value="{{lv.join}}" hint-placeholder-val="{{ true }}">
+      <div class="p1-lvc">
+        <div class="p1-lvh"><span class="k-ico"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l5-3v10l-5-3zM3 6h12v12H3z"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 16px">مراجعة القدرات</b><span class="k-m">المضيف: فيصل العنزي</span></span><span class="k-live"><i></i>شغّال</span></div>
+        <b style="font-size: 21px">ادخل كضيف</b>
+        <div class="k-col" style="gap: 6px"><span class="k-lbl">اسمك</span><span class="k-in" style="color: var(--k-text); border-color: var(--k-acc); box-shadow: 0 0 0 4px rgba(25,121,193,.12)">سلطان الدوسري</span><span class="k-m">يشوفه المضيف بس</span></div>
+        <div class="k-col" style="gap: 6px"><span class="k-lbl">رمز الدخول</span><div class="p1-pin" role="group" aria-label="رمز الدخول"><sc-for list="{{pin}}" as="d" hint-placeholder-count="4"><span class="{{d.c}}" style="--d: {{d.d}}">{{d.v}}</span></sc-for></div></div>
+        <sc-if value="{{lv.wait}}" hint-placeholder-val="{{ false }}"><div class="k-row m-shake" style="gap: 10px; padding: 10px 14px; border-radius: 14px; background: var(--s-sun-tint); color: var(--s-sun-ink); font-size: 13.5px; font-weight: 700; flex-wrap: nowrap">حاولت كثير، جرّب بعد ٠:٤٥</div></sc-if>
+        <a href="#" class="k-btn" style="height: 52px">ادخل الاجتماع</a>
+        <div class="k-row" style="gap: 6px; justify-content: center; font-size: 13.5px"><span class="k-sub" style="font-size: 13.5px">عندك حساب؟</span><a href="#" class="k-link">ادخل بحسابك</a></div>
+        <span class="k-sub" style="text-align: center; font-size: 12px">الاجتماع ممكن يتسجّل.</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{lv.after}}" hint-placeholder-val="{{ false }}">
+      <div class="p1-lvc" style="text-align: center; align-items: center">
+        <span class="p1-star2 m-pop"><svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z"></path></svg></span>
+        <b style="font-size: 23px">عجبك الاجتماع؟</b>
+        <span class="k-sub" style="font-size: 14.5px">حضرت ٤٥ دقيقة. سوّ حسابك وسوّ اجتماعاتك بنفسك.</span>
+        <a href="#" class="k-btn" style="width: 100%; height: 52px">أنشئ حسابك</a>
+        <div class="k-row" style="gap: 14px; justify-content: center; font-size: 13.5px"><a href="#" class="k-link">سجّل دخولك</a><a href="#" class="k-link" style="color: var(--k-muted)">مو الحين</a></div>
+      </div>
+    </sc-if>
+  </div>
+</sc-if>
+
+<!-- ============ SIGN-IN SHEET (M14) ============ -->
+<sc-if value="{{sheetSignin}}" hint-placeholder-val="{{ false }}">
+  <div class="k-dim" onClick="{{closeSheet}}"></div>
+  <aside class="k-drawer m-sheet" role="dialog" aria-label="سجّل دخولك" style="width: 440px">
+    <div class="k-dh"><h2>سجّل دخولك وكمّل</h2><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+    <div class="k-db">
+      <div class="p1-cc sub-math" style="animation: none"><span class="p1-bk"><b>الرياضيات</b><small>٢ ث</small></span><span class="p1-cb"><span class="k-t">الرياضيات ٢ ثانوي</span><span class="k-m">أ. ماجد الشهري، عن بعد</span><b class="p1-pr">١٩٩ <small>ريال في الشهر</small></b></span></div>
+      <span class="k-sub" style="font-size: 14.5px; text-align: center">نكمّل الحجز من نفس المكان.</span>
+      <a href="#" class="k-btn" style="height: 52px">سجّل دخولك</a>
+      <a href="#" class="k-btn ghost">أنشئ حساب</a>
+      <button type="button" class="k-link" style="border: none; background: none; font-family: inherit; padding: 6px" onClick="{{closeSheet}}">كمّل التصفّح</button>
+    </div>
+  </aside>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screen":"guesthome","sheet":"","state":"","doc":"","$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {}, P = this.props || {};
+    const set = (o) => this.setState(o);
+    const dl = (i, b = 0.1, st = 0.05) => (b + i * st).toFixed(2) + 's';
+    const ar = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+    const I = {
+      home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z', courses: 'M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14',
+      play: 'M6 9h12a4 4 0 0 1 0 8c-2 0-3-2-6-2s-4 2-6 2a4 4 0 0 1 0-8zM8 11v4M6 13h4M16 12h.01M18 14h.01',
+      schedule: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4', profile: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0',
+      math: 'M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2', atom: 'M12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 3c2.5 0 4.5 4 4.5 9s-2 9-4.5 9-4.5-4-4.5-9 2-9 4.5-9z', en: 'M4 6h9M8.5 4v2M6 6c0 4 3 7 6 8M11 6c0 3-3 7-7 8M13 20l4-9 4 9M14.5 17h5',
+      chem: 'M9 3h6M10 3v6L5 19a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2L14 9V3', brain: 'M12 4a3 3 0 0 0-3 3 3 3 0 0 0-3 5 3 3 0 0 0 3 5 3 3 0 0 0 6 0 3 3 0 0 0 3-5 3 3 0 0 0-3-5 3 3 0 0 0-3-3zM12 4v16', code: 'M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14',
+      video: 'M7 4l13 8-13 8z', lock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4', live: 'M15 10l5-3v10l-5-3zM3 6h12v12H3z', heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z', chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+      exam: 'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9', eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', share: 'M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4',
+      shield: 'M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z', user: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0', card: 'M3 6h18v12H3zM3 10h18M7 15h3', back: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5', smile: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8.5 14a4 4 0 0 0 7 0M9 9.5h.01M15 9.5h.01', db: 'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3', send: 'M4 12l16-8-6 16-3-7z'
+    };
+    const META = { guesthome: ['الرئيسية', 'home', 'a-home'], gate: ['دوراتي', 'courses', 'a-home'], share: ['', '', 'a-learn'], liveguest: ['', '', 'a-home'], legal: ['', '', 'a-home'] };
+    const sc = META[P.screen] ? P.screen : 'guesthome';
+    const [title, cur, area] = META[sc];
+    const is = {}; Object.keys(META).forEach((k) => { is[k] = k === sc; });
+    const sheet = s.sheet !== undefined ? s.sheet : (P.sheet || '');
+    // ONE student nav map (same as StuHome); guests see a lock on what needs an account
+    const MAP = [['home', 'الرئيسية', 0], ['courses', 'دوراتي', 1], ['schedule', 'جدولي', 1], ['play', 'العب وتعلّم', 0], ['profile', 'حسابي', 1]];
+    const lgK = s.doc || P.doc || 'privacy';
+    const PRIV = [['وش نحفظ عنك', 'اسمك وجوالك وصفّك، وتقدّمك في الدورات.', I.user], ['ليش نحفظها', 'نرتّب لك الدورات والجدول، ونذكّرك بحصصك.', I.chart], ['مين يشوفها', 'معلمينك وولي أمرك المربوط بحسابك بس. ما نبيعها لأحد.', I.eye], ['كيف نحميها', 'نشفّرها، ونحمي الدروس من التصوير.', I.shield], ['حقوقك', 'تقدر تعدّل بياناتك أو تحذف حسابك من الإعدادات.', I.smile]];
+    const TERMS = [['حسابك لك بس', 'تستخدمه للتعلّم، وما تعطيه أحد.', I.user], ['الدروس لمعلميها', 'لا تصوّرها ولا تنشرها برّا المنصة.', I.live], ['الاشتراك والدفع', 'الأسعار بالريال وتشمل الضريبة.', I.card], ['الاسترجاع', 'خلال ٧ أيام إذا ما حضرت أكثر من حصتين.', I.back], ['الاحترام', 'نحترم بعض في الحصص والرسائل.', I.smile]];
+    const LS = lgK === 'terms' ? TERMS : PRIV;
+    const lvState = P.state || '';
+    return {
+      area, title, is, shell: sc === 'guesthome' || sc === 'gate', pub: sc === 'share' || sc === 'legal',
+      nav: MAP.map(([k, l, lock]) => ({ l, i: I[k], lock: !!lock, cur: k === cur ? 'page' : 'false' })),
+      bi: String(Math.max(0, MAP.findIndex(([k]) => k === cur))),
+      heroBooks: [['الرياضيات', 'sub-math'], ['الإنجليزية', 'sub-english'], ['القدرات', 'sub-qudurat']].map(([t, sub], k) => ({ t, sub, k: String(k) })),
+      courses: [['الرياضيات ٢ ثانوي', 'الرياضيات', '٢ ث', 'أ. ماجد الشهري، عن بعد', '٤٫٨', '١٩٩', 'sub-math'], ['الفيزياء: الحركة والقوى', 'الفيزياء', '٢ ث', 'أ. فهد المطيري، عن بعد', '٤٫٧', '١٧٩', 'sub-physics'], ['القدرات الكمي: تأسيس', 'القدرات', 'كمي', 'أ. خالد المطيري، حضوري', '٤٫٩', '١٤٩', 'sub-qudurat']]
+        .map(([t, s2, g, m, r, p, sub], k) => ({ t, s: s2, g, m, r, p, sub, k: String(k) })),
+      cats: [['الرياضيات', 'sub-math', 'math'], ['الفيزياء', 'sub-physics', 'atom'], ['الإنجليزية', 'sub-english', 'en'], ['القدرات', 'sub-qudurat', 'brain'], ['الكيمياء', 'sub-chem', 'chem'], ['المهارات الرقمية', 'sub-code', 'code']].map(([t, sub, ic], i) => ({ t, sub, i: I[ic], d: dl(i, 0.4, 0.05) })),
+      teachers: [['أ. ماجد الشهري', 'م', 'معلم رياضيات', '٤٫٨', 'sub-math'], ['أ. فهد المطيري', 'ف', 'معلم فيزياء', '٤٫٧', 'sub-physics'], ['أ. خالد العتيبي', 'خ', 'معلم إنجليزي', '٤٫٩', 'sub-english'], ['أ. خالد المطيري', 'خ', 'معلم قدرات', '٤٫٨', 'sub-qudurat'], ['أ. ماهر السبيعي', 'م', 'معلم كيمياء', '٤٫٧', 'sub-chem']].map(([n, a, s2, r, sub], i) => ({ n, a, s: s2, r, sub, d: dl(i, 0.5, 0.05) })),
+      perks: [['احفظ تقدّمك', 'وكمّل من أي جهاز', I.chart, 'var(--k-blue-tint)', 'var(--k-blue-ink)'], ['احضر مباشر', 'حصص مع معلمك', I.live, 'var(--k-coral-tint)', 'var(--k-coral-ink)'], ['مفضلتك وجدولك', 'كل شي مرتّب لك', I.heart, 'var(--s-pink-tint)', 'var(--s-pink-ink)']].map(([t, m, i, bg, fg], j) => ({ t, m, i, bg, fg, d: dl(j, 0.35, 0.08) })),
+      shStats: [['٢٤', 'درس'], ['٥٠ د', 'كل حصة'], ['٤٣٨', 'طالب'], ['٤٫٨', 'تقييم']].map(([n, l]) => ({ n, l })),
+      learn: ['تفهم الدوال وتمثّلها بيانيًا', 'تحل المعادلات الأسية', 'تتدرّب على أسئلة التحصيلي', 'تختبر نفسك بعد كل درس'],
+      ses: [['١. مدخل إلى الدوال', 'فيديو، ٤٢ د، مفتوح لك', I.video, 'var(--sub-math)', '#FFFFFF', 'open', 1], ['٢. المجال والمدى', 'حصة مباشرة، ٥٠ د', I.lock, '#EEF2F7', '#8A97AE', '', 0], ['٣. تمثيل الدوال بيانيًا', 'فيديو، ٣٥ د', I.lock, '#EEF2F7', '#8A97AE', '', 0], ['٤. تحويلات الدوال', 'حصة مباشرة، ٥٠ د', I.lock, '#EEF2F7', '#8A97AE', '', 0]]
+        .map(([t, m, i, bg, fg, cls, open], k) => ({ t, m, i, bg, fg, cls, open: !!open, k: String(k) })),
+      rules: [['حصص مباشرة مع المعلم', I.live], ['دروس تشوفها وقت ما تبي', I.video], ['اختبار بعد كل درس', I.exam]].map(([t, i]) => ({ t, i })),
+      lgT: lgK === 'terms' ? 'الشروط' : 'الخصوصية', lgI: lgK === 'terms' ? '1' : '0',
+      lgTabs: [['privacy', 'الخصوصية'], ['terms', 'الشروط']].map(([k, l]) => ({ l, on: k === lgK ? 'true' : 'false', go: () => set({ doc: k }) })),
+      lgSecs: LS.map(([t, p, i], k) => ({ t, p, i, k: String(k), on: k === 0 ? 'on' : '' })),
+      pin: ['٤', '٧', '٢', ''].map((v, i) => ({ v, c: v ? 'f m-pop' : 'c', d: dl(i, 0.2, 0.08) })),
+      lv: { join: lvState !== 'after', after: lvState === 'after', wait: lvState === 'wait' },
+      sheetSignin: sc === 'guesthome' && sheet === 'signin', closeSheet: () => set({ sheet: '' })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>المعلم: التحليلات</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* same teacher shell look as Tea1 */
+.t2 .k-btn{box-shadow:0 10px 22px -6px rgba(95,61,196,.45)}
+.t2 .k-btn.hot{background:linear-gradient(120deg,#E8364A,#F2545B,#E8364A);background-size:200% 100%;box-shadow:0 10px 22px -6px rgba(242,84,91,.55)}
+.t2 .k-btn.ghost,.t2 .k-btn.danger{box-shadow:none}
+.t2 .k-tile:hover{box-shadow:0 10px 22px rgba(95,61,196,.1)}
+.t2 .k-chip.on,.t2 .k-chip[aria-pressed="true"]{background:var(--k-acc);border-color:var(--k-acc)}
+.t2 .k-bnav a[aria-current="page"]{background:linear-gradient(160deg,#EFE9FD,#FFFFFF)}
+.t2-pinic{width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#FFFFFF;flex-shrink:0}
+.t2-ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.t2-pin{height:40px;font-size:13.5px}
+.t2-fade{animation:kIn .45s cubic-bezier(.2,.8,.2,1) both}
+.t2-hr{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
+.t2-hr > .k-col{flex:1 1 340px;gap:6px}
+.t2-acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.t2-gw{background:rgba(255,255,255,.1);color:#FFFFFF;border:1.5px solid rgba(255,255,255,.24);box-shadow:none;animation:none;backdrop-filter:blur(6px)}
+.t2-gw:hover{background:rgba(255,255,255,.18)}
+.t2-greet{font-size:19px;color:#D9CCFF}
+.t2-tabs{display:flex;gap:6px;margin-top:18px;flex-wrap:wrap}
+.t2-tabs a,.t2-tabs button{height:38px;padding:0 16px;border-radius:19px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:rgba(255,255,255,.82);font-size:13.5px;font-weight:700;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;transition:background .2s}
+.t2-tabs a[aria-selected="true"],.t2-tabs button[aria-selected="true"]{background:#FFFFFF;color:var(--k-navy);border-color:#FFFFFF}
+.t2-tabs .n{min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--k-coral);color:#FFFFFF;font-size:11px;display:inline-flex;align-items:center;justify-content:center}
+.t2-f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.t2-f .k-in{color:var(--k-text)}
+.t2-f .k-in.ph{color:#8A97AE}
+.t2-hint{font-size:12px;color:var(--k-muted);line-height:1.6}
+.t2-ok{color:var(--k-green);font-size:12px;font-weight:700;display:inline-flex;gap:4px;align-items:center}
+.t2-ta{min-height:96px;border-radius:14px;border:1.5px solid #D5E3F2;background:#FFFFFF;padding:12px 14px;font-size:14px;line-height:1.8;color:var(--k-text)}
+.t2-ff{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.t2-ff3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.t2-li{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #EDF2F8;min-width:0}
+.t2-li:last-child{border-bottom:none}
+.t2-opt{position:relative;display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;transition:border-color .2s,box-shadow .2s,transform .2s;text-align:right}
+.t2-opt:hover{transform:translateY(-2px)}
+.t2-opt.on{border-color:var(--k-acc);background:linear-gradient(160deg,#F5F1FF,#FFFFFF);box-shadow:0 12px 26px -14px rgba(95,61,196,.55)}
+.t2-opt .t2-ck{position:absolute;top:12px;left:12px;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--k-line);display:flex;align-items:center;justify-content:center;color:#FFFFFF}
+.t2-opt.on .t2-ck{background:var(--k-acc);border-color:var(--k-acc)}
+.t2-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:22px;border-radius:18px;border:2px dashed #C9D8EA;background:#F8FBFE;color:var(--k-muted);font-size:13.5px;text-align:center}
+.t2-drop b{color:var(--k-text)}
+.t2-note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:16px;background:#FFF6DF;color:#6B4A00;border:1px solid #F3DD9F;font-size:13.5px;line-height:1.7}
+.t2-note svg{flex-shrink:0;margin-top:2px}
+.t2-note.b{background:#EAF4FD;color:#134E7C;border-color:#CFE3F5}
+.t2-note.r{background:#FFF0EE;color:#9B2C22;border-color:#FFD2CB}
+.t2-note.g{background:#E7F7EF;color:#17643F;border-color:#BFE8D2}
+.t2-note.p{background:#F3EFFE;color:#4A2EA8;border-color:#DCD2FB}
+.t2-mrow{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid #EDF2F8;font-size:14.5px;font-weight:600;transition:background .2s}
+.t2-mrow:last-child{border-bottom:none}
+.t2-mrow:hover{background:#F8FBFE}
+.t2-mrow .k-ico{width:36px;height:36px;border-radius:11px}
+.t2-mrow .chev{margin-right:auto;color:#9AA8BF;display:flex;align-items:center;gap:8px}
+.t2-bars{display:flex;align-items:flex-end;gap:10px;height:170px;padding-top:10px}
+.t2-bars > span{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;min-width:0}
+.t2-bars i{display:block;width:100%;max-width:38px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg,var(--k-acc2),var(--k-acc));transform-origin:50% 100%;animation:t2Gy .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
+.t2-bars small{font-size:11.5px;color:var(--k-muted);white-space:nowrap}
+.t2-bars b{font-size:11.5px;color:var(--k-navy)}
+@keyframes t2Gy{from{transform:scaleY(0)}to{transform:none}}
+.t2-ring{transform:rotate(-90deg)}
+.t2-ring circle{fill:none;stroke-linecap:round}
+.t2-ring .arc{animation:t2Arc 1.3s cubic-bezier(.2,.8,.2,1) .2s both}
+@keyframes t2Arc{from{stroke-dasharray:0 100}}
+.t2-steps{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.t2-steps::-webkit-scrollbar{display:none}
+.t2-step{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:rgba(255,255,255,.6);white-space:nowrap}
+.t2-step i{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:12.5px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.25)}
+.t2-step.done{color:rgba(255,255,255,.9)}
+.t2-step.done i{background:var(--k-green);border-color:var(--k-green)}
+.t2-step.cur{color:#FFFFFF}
+.t2-step.cur i{background:#FFFFFF;color:var(--k-acc);border-color:#FFFFFF;box-shadow:0 0 0 5px rgba(255,255,255,.15)}
+.t2-step-sep{flex:0 0 26px;height:2px;border-radius:1px;background:rgba(255,255,255,.2)}
+.t2-sel{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.t2-mini{font-size:12px;color:var(--k-muted)}
+.t2-num{font-weight:700;color:var(--k-navy)}
+.t2-tw{overflow-x:auto;margin:0 -4px;padding:0 4px}
+.t2-avs{display:flex}
+.t2-avs .k-av{width:30px;height:30px;font-size:12px;border:2px solid #FFFFFF;margin-left:-8px}
+.t2-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;padding:12px 18px;border-radius:18px;background:#0E2350;color:#FFFFFF;font-size:14px;box-shadow:0 18px 40px rgba(0,16,48,.4);animation:t2Toast .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes t2Toast{from{opacity:0;transform:translate(-50%,20px)}}
+.t2-pop{position:absolute;z-index:30;background:#FFFFFF;border-radius:18px;box-shadow:0 24px 50px -10px rgba(0,16,48,.35);border:1px solid var(--k-line);padding:8px;min-width:220px;animation:t2Pop .3s cubic-bezier(.2,.8,.2,1) both}
+@keyframes t2Pop{from{opacity:0;transform:translateY(-6px) scale(.97)}}
+.t2-pop a{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px;border-radius:12px;font-size:13.5px;font-weight:600}
+.t2-pop a:hover{background:#F3F8FD}
+.t2-pop a.dg{color:#C2410C}
+.t2-kv{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:7px 0;border-bottom:1px dashed var(--k-line)}
+.t2-kv:last-child{border-bottom:none}
+.t2-kv span{color:var(--k-muted)}
+.t2-kv b{font-weight:700;text-align:left}
+.k-drawer .k-ib{border-color:var(--k-line)}
+.k-db > *{flex-shrink:0}
+.t2-chips{display:flex;gap:8px;flex-wrap:wrap}
+.k-chip.pon{background:#F1ECFE;border-color:#CFC2F8;color:#4A2EA8}
+.t2-step-dots{display:none}
+@media (max-width:760px){
+.t2-ff,.t2-ff3{grid-template-columns:1fr}
+.t2-hr{align-items:stretch}
+.t2-hr > .k-col{flex-basis:auto}
+.t2-acts .k-btn{flex:1 1 auto}
+.t2-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-16px;margin-right:-16px;padding:0 16px}
+.t2-tabs::-webkit-scrollbar{display:none}
+.t2-step span{display:none}
+.t2-step.cur span{display:inline}
+.t2-step-sep{flex-basis:14px}
+.t2-hm{display:none !important}
+.t2-toast{width:calc(100% - 32px);bottom:84px}
+}
+@media (min-width:761px){.t2-ho{display:none !important}}
+/* WP11: compact teacher hero on phone (T-09), same as Tea1 */
+@media (max-width:760px){
+.t2 .k-hero .k-g4{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:14px !important}
+.t2 .k-hero .k-g3{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:14px !important}
+.t2 .k-hero .k-stat{padding:8px 4px;text-align:center;align-items:center;gap:0;min-width:0}
+.t2 .k-hero .k-stat b{font-size:17px;white-space:nowrap}
+.t2 .k-hero .k-stat small{font-size:10.5px;line-height:1.35}
+.t2 .k-hero h2{font-size:21px;line-height:1.5}
+.t2-greet{display:none}
+.t2 .k-hero p{font-size:13.5px;line-height:1.6}
+.t2-tabs{margin-top:14px}
+.t2 .k-hero .t2-acts .t2-gw{display:none}
+.t2 .k-hero:has(.k-stat) .t2-hr p{display:none}
+.t2 .k-hero{padding-bottom:74px !important}
+.t2 .k-body{margin-top:-56px}
+.t2 .k-hero .t2-acts{gap:8px}
+.t2 .k-hero .t2-hr{gap:12px}
+.t2 .k-hero .an-rings{display:none}
+}
+
+.an-rings{display:flex;align-items:center;gap:20px;padding:14px 18px;border-radius:24px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14)}
+.an-lg{display:flex;flex-direction:column;gap:8px;font-size:13px}
+.an-lg span{display:flex;align-items:center;gap:8px}
+.an-lg i{width:10px;height:10px;border-radius:50%}
+.an-lg b{font-size:16px;min-width:44px}
+.an-ins{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;animation:kRise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d);transition:transform .2s,box-shadow .2s}
+.an-ins:hover{transform:translateY(-3px);box-shadow:0 14px 26px -14px rgba(0,32,94,.3)}
+.an-ig{grid-template-columns:repeat(5,minmax(0,1fr))}
+.an-cb{display:flex;align-items:center;gap:12px;padding:8px 0}
+.an-cb .nm{width:170px;flex-shrink:0;font-size:14px;font-weight:700}
+.an-cb .k-bar{flex:1;height:12px;border-radius:6px}
+.an-cb .k-bar i{border-radius:6px}
+.an-cb b{width:44px;text-align:left;font-size:14px;color:var(--k-navy)}
+.an-cc{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:20px;border:1.5px solid var(--k-line);background:#FFFFFF;animation:kRise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d)}
+.an-cc.warn{border-color:#F3DD9F;background:linear-gradient(170deg,#FFFBEF,#FFFFFF 60%)}
+.an-cover{width:48px;height:48px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#FFFFFF}
+.an-m3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.an-m3 span{padding:8px 10px;border-radius:12px;background:#F8FBFE;display:flex;flex-direction:column;line-height:1.3}
+.an-m3 b{font-size:16px;color:var(--k-navy)}
+.an-m3 small{font-size:11.5px;color:var(--k-muted)}
+.an-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.an-tool{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:14px;border:1.5px solid var(--k-line);font-size:12.5px;line-height:1.35;transition:background .2s}
+.an-tool:hover{background:#F8FBFE}
+.an-tool b{display:block;font-size:13px}
+.an-tool small{color:var(--k-muted);font-size:11px}
+.an-tool.pri{background:linear-gradient(130deg,#1D9A63,#34C38F);color:#FFFFFF;border-color:transparent}
+.an-tool.pri small{color:rgba(255,255,255,.85)}
+.an-st{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--k-line)}
+.an-st:last-child{border-bottom:none}
+.an-q{display:flex;flex-direction:column;gap:14px}
+.an-qt{font-size:16px;font-weight:700;line-height:1.8}
+.an-math{direction:ltr;unicode-bidi:isolate;font-family:'Noto Naskh Arabic',serif;background:#F3EFFE;color:#3B2591;padding:1px 8px;border-radius:8px;font-weight:700}
+.an-opt{display:flex;align-items:center;gap:10px;font-size:13.5px}
+.an-opt .lbl{width:150px;flex-shrink:0;display:flex;gap:6px;align-items:center}
+.an-opt .k-bar{flex:1;height:10px}
+.an-opt b{width:40px;text-align:left}
+.an-opt.ok .k-bar i{background:linear-gradient(90deg,#1D9A63,#34C38F)}
+.an-opt.bad .k-bar i{background:linear-gradient(90deg,#F2545B,#FF9F5A)}
+.an-big{font-size:34px;font-weight:700;line-height:1;color:#C2410C}
+.dl-tb{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dl-tb .k-chip{height:36px}
+.dl-wrap{position:relative;border:1.5px solid var(--k-line);border-radius:18px;overflow:auto;max-height:640px;background:#FFFFFF}
+.dl{display:table;border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:1000px;width:100%}
+.dl .tr{display:table-row}
+.dl .c{display:table-cell;padding:10px 12px;border-bottom:1px solid #EDF2F8;border-left:1px solid #F0F4F9;white-space:nowrap;background:#FFFFFF;vertical-align:middle}
+.dl .th .c{position:sticky;top:0;z-index:2;background:#F3F6FB;padding:0;border-bottom:1.5px solid var(--k-line);border-left:1px solid #E6EDF6;vertical-align:top}
+.dl .th .h{display:flex;flex-direction:column;gap:2px;padding:10px 12px;font-size:12.5px;font-weight:700;color:var(--k-text);border-bottom:3px solid transparent}
+.dl .th .h small{font-size:11px;color:var(--k-muted);font-weight:600;display:flex;gap:4px;align-items:center}
+.dl .th .h.vis{border-bottom-color:#1D9A63}
+.dl .th .c.sel{background:#EFE9FD}
+.dl .c.n{font-variant-numeric:tabular-nums;font-weight:600}
+.dl .c.sel{background:#FBF9FF}
+.dl .c.ov{position:relative;background:#FBF9FF}
+.dl .c.ov::after{content:"";position:absolute;top:0;left:0;border-top:9px solid var(--k-acc);border-right:9px solid transparent}
+.dl .c.lo{color:#B23A2E;background:#FFF6F5}
+.dl .c.stk{position:sticky;right:0;z-index:1;box-shadow:-6px 0 10px -8px rgba(0,32,94,.25)}
+.dl .th .c.stk{z-index:3}
+.dl .tr.chk .c{background:#F6F2FF}
+.dl .tr.chk .c.stk{background:#EFE9FD}
+.dl .cb{width:18px;height:18px;border-radius:6px;border:1.5px solid #B9C7DA;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#FFFFFF}
+.dl .tr.chk .cb{background:var(--k-acc);border-color:var(--k-acc)}
+.dl .who{display:flex;align-items:center;gap:8px}
+.dl .who .k-av{width:28px;height:28px;font-size:11.5px}
+.dl-pop{top:178px;left:350px;width:300px;display:flex;flex-direction:column;gap:10px;padding:14px}
+.dl-sel{position:sticky;bottom:12px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;border-radius:22px;background:linear-gradient(130deg,#1D9A63,#34C38F);color:#FFFFFF;box-shadow:0 18px 36px -14px rgba(29,154,99,.7);width:max-content;max-width:100%;flex-wrap:wrap;animation:kRise .5s .4s both}
+.dl-sel .k-btn{background:#FFFFFF;color:#17643F;animation:none;box-shadow:none}
+.dl-zoom{display:flex;align-items:center;border:1.5px solid var(--k-line);border-radius:18px;height:36px;font-size:12.5px;font-weight:700}
+.dl-zoom a{width:34px;height:34px;display:flex;align-items:center;justify-content:center}
+.aq{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF}
+.aq.off{opacity:.6;background:#FAFBFD}
+.fx{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:12px;border-radius:14px;border:1.5px solid #CFC2F8;background:#FBF9FF;font-size:14px;direction:rtl;line-height:2}
+.fx .tk{padding:2px 10px;border-radius:9px;background:var(--k-acc);color:#FFFFFF;font-weight:700;font-size:13px}
+.fx .op{font-weight:700;color:var(--k-acc)}
+.fx .cur{width:2px;height:20px;background:var(--k-acc);animation:anBlink 1s steps(2) infinite}
+@keyframes anBlink{50%{opacity:0}}
+@media (max-width:760px){
+.an-ig{grid-template-columns:1fr}
+.an-rings{flex-direction:column;align-items:flex-start;width:100%}
+.an-cb .nm{width:110px;font-size:13px}
+.an-opt .lbl{width:124px}
+.an-opt .an-math{white-space:nowrap;padding:1px 4px}
+.dl-pop{display:none}
+.dl-wrap{max-height:none}
+.an-tools{grid-template-columns:1fr 1fr}
+}
+</style>
+</helmet>
+<div class="k teacher t2" dir="rtl">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">معلم</span></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5"><a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{n.c}}</span></sc-if></a></sc-for>
+      <span class="k-navg">مثبّتة</span>
+      <sc-for list="{{pins}}" as="p" hint-placeholder-count="3"><a href="#" class="k-nav t2-pin"><span class="t2-pinic" style="background: {{p.bg}}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{p.i}}"></path></svg></span><span class="t2-ell">{{p.l}}</span><sc-if value="{{p.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{p.c}}</span></sc-if></a></sc-for>
+      <div class="k-me"><span class="k-av sm" style="background: linear-gradient(150deg, #8B6CF0, #5F3DC4)">م</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">أ. ماجد الشهري</b><small style="font-size: 11.5px; opacity: .7">معلم رياضيات وفيزياء</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <span><small>{{crumb}}</small><h1>{{title}}</h1></span>
+        <span class="k-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن دورة أو طالب أو حصة<kbd>Ctrl K</kbd></span>
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="4"><a href="#" class="k-ib" aria-label="{{t.l}}" title="{{t.l}}" style="{{t.st}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av" style="background: linear-gradient(150deg, #8B6CF0, #5F3DC4)">م</span>
+      </header>
+      <header class="k-mtop"><sc-if value="{{back}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-ib" aria-label="رجوع"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a></sc-if><sc-if value="{{logo}}" hint-placeholder-val="{{ true }}"><img src="./logo.png" alt="" width="28" height="31" style="width: 28px; height: auto"></sc-if><h1>{{title}}</h1><sc-for list="{{mtools}}" as="t" hint-placeholder-count="2"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for></header>
+      <main class="k-page">
+
+<sc-if value="{{isHub}}" hint-placeholder-val="{{ true }}">
+<section class="k-hero">
+  <div class="t2-hr">
+    <div class="k-col">
+      <span class="k-ruqaa t2-greet">نظرة على فصولك</span>
+      <h2>٦ طلاب يحتاجون انتباهك هالأسبوع</h2>
+      <p>الحضور ممتاز في تحصيلي، بس متوسط اختبارات الرياضيات ٣ ث نزل ٨ درجات.</p>
+    </div>
+    <div class="an-rings"><svg class="t2-ring" width="124" height="124" viewBox="0 0 124 124" aria-hidden="true">
+<circle cx="62" cy="62" r="54" stroke="rgba(255,255,255,.12)" stroke-width="10"></circle><circle class="arc" cx="62" cy="62" r="54" stroke="#8B6CF0" stroke-width="10" pathLength="100" stroke-dasharray="68 100"></circle>
+<circle cx="62" cy="62" r="40" stroke="rgba(255,255,255,.12)" stroke-width="10"></circle><circle class="arc" cx="62" cy="62" r="40" stroke="#07B8EE" stroke-width="10" pathLength="100" stroke-dasharray="82 100" style="animation-delay: .35s"></circle>
+<circle cx="62" cy="62" r="26" stroke="rgba(255,255,255,.12)" stroke-width="10"></circle><circle class="arc" cx="62" cy="62" r="26" stroke="#FF9F5A" stroke-width="10" pathLength="100" stroke-dasharray="74 100" style="animation-delay: .5s"></circle></svg><div class="an-lg"><span><i style="background: #8B6CF0"></i><b>٦٨٪</b>تقدّم الطلاب</span><span><i style="background: #07B8EE"></i><b>٨٢٪</b>الحضور</span><span><i style="background: #FF9F5A"></i><b>٧٤٪</b>متوسط الاختبارات</span></div></div>
+  </div>
+  <div class="k-grid k-g4" style="margin-top: 20px"><sc-for list="{{stats}}" as="s" hint-placeholder-count="4"><span class="k-stat"><b>{{s.n}}</b><small>{{s.l}}</small></span></sc-for></div>
+</section>
+<div class="k-body t2-fade">
+  <section class="k-card" style="--d: .05s">
+    <div class="k-ch"><h3>لك هالأسبوع</h3><a href="#" class="k-link"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"></path></svg>تحديث</a></div>
+    <div class="k-grid an-ig" style="gap: 12px"><sc-for list="{{ins}}" as="x" hint-placeholder-count="5"><a href="#" class="an-ins" style="--d: {{x.d}}"><span class="k-ico" style="background: {{x.bg}}; color: {{x.fg}}; width: 38px; height: 38px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span><span class="k-col" style="gap: 2px"><b style="font-size: 14px; line-height: 1.5">{{x.t}}</b><span class="k-m">{{x.m}}</span><span class="k-link" style="font-size: 12.5px; margin-top: 4px">{{x.a}}</span></span></a></sc-for></div>
+  </section>
+  <div class="k-grid k-side2">
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card" style="--d: .1s">
+        <div class="k-ch"><h3>فصولك</h3><div class="k-seg" style="min-width: 270px"><sc-for list="{{metrics}}" as="m" hint-placeholder-count="3"><button aria-selected="{{m.on}}" onClick="{{m.go}}">{{m.l}}</button></sc-for></div></div>
+        <sc-for list="{{bars}}" as="b" hint-placeholder-count="4"><a href="#" class="an-cb"><span class="nm">{{b.t}}</span><span class="k-bar"><i style="width: {{b.w}}%; {{b.st}}"></i></span><b>{{b.v}}</b></a></sc-for>
+      </section>
+      <section class="k-card" style="--d: .16s">
+        <div class="k-ch"><h3>كل الدورات</h3></div>
+        <div class="k-row"><span class="k-in" style="flex: 1 1 220px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن دورة...</span><span class="k-row" style="gap: 8px; font-size: 13.5px; font-weight: 700"><span class="k-tog on"><i></i></span>اللي تحتاج انتباه أول</span></div>
+        <div class="k-grid k-g2" style="gap: 14px"><sc-for list="{{courses}}" as="c" hint-placeholder-count="4"><div class="an-cc {{c.cls}}" style="--d: {{c.d}}">
+          <div class="k-row" style="flex-wrap: nowrap"><span class="an-cover" style="background: {{c.bg}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 15px">{{c.t}}</b><span class="k-m">{{c.s}}</span></span><sc-if value="{{c.warn}}" hint-placeholder-val="{{ false }}"><span class="k-tag o">{{c.warn}}</span></sc-if></div>
+          <div class="an-m3"><span><b>{{c.p}}</b><small>التقدّم</small></span><span><b>{{c.a}}</b><small>الحضور</small></span><span><b>{{c.e}}</b><small>الاختبارات</small></span></div>
+          <div class="an-tools"><a href="#" class="an-tool pri" onClick="{{goLab}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18v16H3zM3 10h18M3 15h18M9 4v16"></path></svg><span><b>معمل البيانات</b><small>كل درجات الطلاب</small></span></a><a href="#" class="an-tool"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg><span><b>الحضور</b><small>تسجيل وتعديل</small></span></a><a href="#" class="an-tool"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"></path></svg><span><b>الاختبارات</b><small>إنشاء وإدارة</small></span></a><a href="#" class="an-tool" onClick="{{goFlags}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"></path></svg><span><b>الأسئلة الصعبة</b><small>{{c.f}}</small></span></a></div>
+        </div></sc-for></div>
+      </section>
+    </div>
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card" style="--d: .14s">
+        <div class="k-ch"><h3 style="font-size: 16px">يحتاجون انتباهك</h3><span class="k-tag o">٦</span></div>
+        <p class="k-sub" style="margin: 0">حضور أقل من ٦٠٪ أو اختبارات أقل من ٥٠٪</p>
+        <div><sc-for list="{{risk}}" as="r" hint-placeholder-count="3"><a href="#" class="an-st"><span class="k-av sm" style="background: {{r.bg}}">{{r.a}}</span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 14px">{{r.n}}</b><span class="k-m">{{r.c}}</span></span><span class="k-col" style="gap: 3px; align-items: flex-end"><span class="k-tag r">{{r.r1}}</span><sc-if value="{{r.r2}}" hint-placeholder-val="{{ false }}"><span class="k-tag o">{{r.r2}}</span></sc-if></span></a></sc-for></div>
+        <a href="#" class="k-btn ghost sm">عرض الكل (٦)</a>
+      </section>
+      <section class="k-card dark" style="--d: .2s">
+        <span class="k-ico" style="background: rgba(255, 255, 255, .14); color: #FFFFFF"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"></path></svg></span>
+        <b style="font-size: 16px">اسأل عن فصولك</b>
+        <span style="font-size: 13.5px; opacity: .85; line-height: 1.7">مثلًا: «مين الطلاب اللي تراجعوا بعد اختبار الدوال؟»</span>
+        <span class="k-in" style="background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .2); color: rgba(255, 255, 255, .7)">اكتب سؤالك...</span>
+      </section>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{isFlags}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero">
+  <div class="t2-hr">
+    <div class="k-col">
+      <span class="k-ruqaa t2-greet">بنك الأسئلة الصعبة</span>
+      <h2>الأسئلة اللي يتعثر فيها طلابك</h2>
+      <p>تظهر هنا الأسئلة اللي تعدّت حد الإدارة: أكثر من ٦٠٪ أخطأوا فيها بعد ١٠ محاولات على الأقل.</p>
+    </div>
+  </div>
+  <div class="k-grid k-g4" style="margin-top: 20px"><sc-for list="{{fstats}}" as="s" hint-placeholder-count="4"><span class="k-stat"><b>{{s.n}}</b><small>{{s.l}}</small></span></sc-for></div>
+</section>
+<div class="k-body t2-fade">
+  <section class="k-card" style="--d: .04s; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 14px 16px">
+    <div class="t2-chips" style="flex: 1"><span class="k-chip on">الكل ٧</span><span class="k-chip">الرياضيات ٣ ث ٤</span><span class="k-chip">تحصيلي ٢</span><span class="k-chip">قدرات كمي ١</span></div>
+    <span class="k-chip"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4"></path></svg>الأعلى خطأ أول</span>
+  </section>
+  <div class="k-grid k-side2">
+    <div class="k-col" style="gap: 18px">
+      <sc-for list="{{qs}}" as="q" hint-placeholder-count="3"><section class="k-card an-q" style="--d: {{q.d}}">
+        <div class="k-row"><span class="k-tag p">{{q.c}}</span><span class="k-tag n">{{q.x}}</span><span class="k-sp"></span><span class="k-col" style="gap: 0; align-items: flex-end"><span class="an-big">{{q.err}}</span><span class="t2-mini">أخطأوا فيه</span></span></div>
+        <div class="an-qt">{{q.t}} <sc-if value="{{q.m}}" hint-placeholder-val="{{ true }}"><span class="an-math">{{q.m}}</span></sc-if></div>
+        <div class="k-col" style="gap: 8px"><sc-for list="{{q.o}}" as="o" hint-placeholder-count="4"><div class="an-opt {{o.cls}}"><span class="lbl"><span class="k-tag {{o.tc}}">{{o.k}}</span><span class="an-math" style="background: transparent; color: var(--k-text)">{{o.v}}</span></span><span class="k-bar"><i style="width: {{o.w}}%"></i></span><b>{{o.p}}</b></div></sc-for></div>
+        <div class="k-row" style="border-top: 1px dashed var(--k-line); padding-top: 12px"><span class="t2-avs"><sc-for list="{{q.av}}" as="a" hint-placeholder-count="4"><span class="k-av" style="background: {{a.bg}}">{{a.a}}</span></sc-for></span><span class="k-m">{{q.who}}</span><span class="k-sp"></span><a href="#" class="k-btn ghost sm">اعرض الطلاب</a><a href="#" class="k-btn sm"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>أضفه لحصة مراجعة</a></div>
+      </section></sc-for>
+    </div>
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card" style="--d: .12s">
+        <div class="k-ch"><h3 style="font-size: 16px">وش يعني هذا؟</h3></div>
+        <div class="t2-note b"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5h.01"></path></svg><span>السؤال يدخل البنك لما يخطئ فيه أكثر من ٦٠٪ من الطلاب بعد ١٠ محاولات. الحد تحدده الإدارة.</span></div>
+        <div class="t2-kv"><span>أكثر خطأ شائع</span><b>نسيان تغيير الإشارة</b></div>
+        <div class="t2-kv"><span>أكثر درس فيه أسئلة صعبة</span><b>الدوال الأسية</b></div>
+        <div class="t2-kv"><span>آخر تحديث</span><b>قبل ساعة</b></div>
+      </section>
+      <section class="k-card" style="--d: .18s">
+        <div class="k-ch"><h3 style="font-size: 16px">حسب الدرس</h3></div>
+        <sc-for list="{{bylesson}}" as="b" hint-placeholder-count="4"><div class="an-cb" style="padding: 4px 0"><span class="nm" style="width: 120px; font-size: 13px">{{b.t}}</span><span class="k-bar"><i style="width: {{b.w}}%; background: linear-gradient(90deg, #F2545B, #FF9F5A)"></i></span><b>{{b.v}}</b></div></sc-for>
+      </section>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{isLab}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero" style="padding-bottom: 90px">
+  <div class="t2-hr">
+    <div class="k-col">
+      <span class="k-ruqaa t2-greet">معمل البيانات</span>
+      <h2>الرياضيات ٣ ثانوي، مجموعة أ</h2>
+      <p>كل أرقام طلابك في جدول واحد، يتحدث تلقائيًا من الحضور والاختبارات.</p>
+    </div>
+    <div class="t2-acts"><a href="#" class="k-btn t2-gw t2-hm"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"></path></svg>ملء الشاشة</a><a href="#" class="k-btn t2-gw"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3 3.7M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7a9.6 9.6 0 0 0 4.4-1"></path></svg>إخفاء الأدوات</a></div>
+  </div>
+  <div class="k-grid k-g4" style="margin-top: 20px"><sc-for list="{{lstats}}" as="s" hint-placeholder-count="4"><span class="k-stat"><b>{{s.n}}</b><small>{{s.l}}</small></span></sc-for></div>
+</section>
+<div class="k-body t2-fade">
+  <section class="k-card" style="--d: .05s; position: relative">
+    <div class="dl-tb">
+      <span class="k-in" style="height: 36px; border-radius: 18px; flex: 0 1 220px"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن طالب…</span>
+      <a href="#" class="k-chip"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4zM10 4v16M15 9v6M12 12h6"></path></svg>الأعمدة</a>
+      <a href="#" class="k-chip on" onClick="{{openCol}}"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>عمود جديد</a>
+      <a href="#" class="k-chip"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"></path></svg>استيراد</a>
+      <a href="#" class="k-chip"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"></path></svg>تصدير</a>
+      <a href="#" class="k-chip" onClick="{{openAsk}}"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg>اسأل الطلاب</a>
+      <a href="#" class="k-chip"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.5 14L7 22l5-3 5 3-1.5-8"></path></svg>الشهادات</a>
+      <a href="#" class="k-chip"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg>المزيد</a>
+      <span class="k-sp"></span>
+      <span class="dl-zoom t2-hm"><a href="#" aria-label="تصغير"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3M8 11h6"></path></svg></a>١٠٠٪<a href="#" aria-label="تكبير"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3M8 11h6M11 8v6"></path></svg></a></span>
+    </div>
+    <div class="k-row" style="gap: 14px; font-size: 12px; color: var(--k-muted)"><span class="k-row" style="gap: 6px"><i style="width: 18px; height: 3px; background: #1D9A63; border-radius: 2px"></i>يشوفه الطلاب</span><span class="k-row" style="gap: 6px"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg>مقفل ومعتمد</span><span class="k-row" style="gap: 6px"><i style="width: 0; height: 0; border-top: 8px solid var(--k-acc); border-right: 8px solid transparent"></i>قيمة عدّلتها بيدك</span></div>
+    <div class="dl-wrap">
+      <div class="dl" role="table">
+        <div class="tr th" role="row"><span class="c stk" role="columnheader"><span class="h" style="flex-direction: row; align-items: center; gap: 8px"><span class="cb"></span>الطالب <small>(٨)</small></span></span><sc-for list="{{cols}}" as="c" hint-placeholder-count="8"><span class="c {{c.cls}}" role="columnheader"><span class="h {{c.vis}}">{{c.t}}<small><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg>{{c.s}}</small></span></span></sc-for></div>
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="10"><div class="tr {{r.cls}}" role="row"><span class="c stk"><span class="who"><span class="cb"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="k-av" style="background: {{r.bg}}">{{r.a}}</span><b style="font-weight: 700">{{r.n}}</b></span></span><sc-for list="{{r.c}}" as="v" hint-placeholder-count="8"><span class="c n {{v.cls}}">{{v.v}}</span></sc-for></div></sc-for>
+      </div>
+    </div>
+    <div class="t2-pop dl-pop">
+      <div class="k-row" style="flex-wrap: nowrap"><b style="font-size: 15px; flex: 1">اختبار ٢: الدوال الأسية</b><span class="k-tag g">يشوفه الطلاب</span></div>
+      <span class="t2-hint">من الاختبارات، الدرجة من ٢٠</span>
+      <div class="an-m3"><span><b>١٣٫٨</b><small>المتوسط</small></span><span><b>٢٠</b><small>الأعلى</small></span><span><b>٦</b><small>الأقل</small></span></div>
+      <div class="k-row" style="justify-content: space-between"><span style="font-size: 13.5px; font-weight: 600">اعرضه للطلاب</span><span class="k-tog on"><i></i></span></div>
+      <div class="k-row" style="justify-content: space-between"><span style="font-size: 13.5px; font-weight: 600">اقفله واعتمده</span><span class="k-tog"><i></i></span></div>
+      <div style="border-top: 1px solid var(--k-line); padding-top: 4px"><a href="#"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"></path></svg>سجل التعديلات</a><a href="#"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"></path></svg>تعديل العمود</a><a href="#"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3 3.7M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7a9.6 9.6 0 0 0 4.4-1"></path></svg>إخفاء</a><a href="#" class="dg"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>حذف</a></div>
+    </div>
+    <div class="dl-sel"><b style="font-size: 14px">٣ طلاب محددين</b><a href="#" class="k-btn sm"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"></path></svg>تصدير</a><a href="#" class="k-btn sm"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.5 14L7 22l5-3 5 3-1.5-8"></path></svg>شهادات</a><a href="#" style="display: flex; color: #FFFFFF" aria-label="إلغاء التحديد"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></a></div>
+  </section>
+</div>
+</sc-if>
+
+      </main>
+      <nav class="k-bnav" aria-label="القائمة"><sc-for list="{{bnav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{n.c}}</span></sc-if></a></sc-for></nav>
+    </div>
+  </div>
+
+<sc-if value="{{isAsk}}" hint-placeholder-val="{{ false }}">
+  <div class="k-dim" onClick="{{close}}"></div>
+  <aside class="k-drawer m-sheet" role="dialog" aria-label="اسأل الطلاب">
+    <div class="k-dh"><span class="k-ico" style="background: #DDF5E9; color: #1D7A50"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg></span><h2>اسأل الطلاب</h2><a href="#" class="k-ib" aria-label="إغلاق" onClick="{{close}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></a></div>
+    <div class="k-db">
+      <p class="k-sub" style="margin: 0">نموذج قصير يعبّيه الطالب أول ما يفتح الدورة، وكل إجابة تنزل في عمود بالجدول.</p>
+      <div class="k-row" style="flex-wrap: nowrap; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #F8FBFE; border: 1.5px solid var(--k-line)"><span class="k-col" style="gap: 6px; flex: 1"><span class="k-row" style="justify-content: space-between"><b style="font-size: 14px">جاوب ٧ من ٨</b><span class="t2-mini">٨٨٪</span></span><span class="k-bar"><i style="width: 88%; background: linear-gradient(90deg, #1D9A63, #34C38F)"></i></span></span><a href="#" class="k-btn sm ghost"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>ذكّر الباقين</a></div>
+      <sc-for list="{{aqs}}" as="q" hint-placeholder-count="3"><div class="aq {{q.cls}}">
+        <div class="k-row" style="flex-wrap: nowrap"><span class="k-tag {{q.tc}}">{{q.k}}</span><b style="flex: 1; font-size: 14.5px">{{q.t}}</b><span class="k-tog {{q.on}}"><i></i></span></div>
+        <sc-if value="{{q.ch}}" hint-placeholder-val="{{ false }}"><div class="t2-chips"><sc-for list="{{q.ch}}" as="c" hint-placeholder-count="3"><span class="k-chip" style="height: 30px">{{c}}</span></sc-for></div></sc-if>
+        <span class="t2-hint"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18v16H3zM3 10h18M3 15h18M9 4v16"></path></svg> يعبّي عمود «{{q.col}}»، {{q.n}}</span>
+      </div></sc-for>
+      <div class="aq" style="border-style: dashed; border-color: #CFC2F8">
+        <b style="font-size: 14px">سؤال جديد</b>
+        <div class="k-seg m-pill" style="--n: 3"><span class="m-pill-bg" style="--i: 1"></span><button aria-selected="false">نص</button><button aria-selected="true">اختيار</button><button aria-selected="false">رقم</button></div>
+        <span class="k-in" style="color: var(--k-text)">وش أكثر وقت يناسبك للمراجعة؟</span>
+        <div class="t2-chips"><span class="k-chip pon">العصر</span><span class="k-chip pon">الخميس</span><span class="k-chip pon">بعد العشاء</span><span class="k-chip"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>خيار</span></div>
+      </div>
+    </div>
+    <div class="k-df"><a href="#" class="k-btn" style="flex: 1">حفظ وأرسل للطلاب</a><a href="#" class="k-btn ghost" onClick="{{close}}">إلغاء</a></div>
+  </aside>
+</sc-if>
+<sc-if value="{{isCol}}" hint-placeholder-val="{{ false }}">
+  <div class="k-dim" onClick="{{close}}"></div>
+  <aside class="k-drawer m-sheet" role="dialog" aria-label="عمود جديد">
+    <div class="k-dh"><span class="k-ico" style="background: #F1ECFE; color: var(--k-acc)"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4zM10 4v16M15 9v6M12 12h6"></path></svg></span><h2>عمود جديد</h2><a href="#" class="k-ib" aria-label="إغلاق" onClick="{{close}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></a></div>
+    <div class="k-db">
+      <label class="t2-f"><span class="k-lbl">اسم العمود</span><span class="k-in">الدرجة النهائية</span></label>
+      <div class="t2-f"><span class="k-lbl">من وين تجي قيمته؟</span><div class="k-grid k-g2" style="gap: 10px"><sc-for list="{{srcs}}" as="o" hint-placeholder-count="4"><a href="#" class="t2-opt {{o.on}}" style="padding: 12px 14px"><span class="t2-ck"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="k-row" style="gap: 8px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{o.i}}"></path></svg><b style="font-size: 14px">{{o.t}}</b></span><span class="t2-hint">{{o.s}}</span></a></sc-for></div></div>
+      <div class="t2-f"><span class="k-lbl">المعادلة</span>
+        <div class="fx"><span class="tk">اختبار ١</span><span class="op">× ٠٫٣</span><span class="op">+</span><span class="tk">اختبار ٢</span><span class="op">× ٠٫٤</span><span class="op">+</span><span class="tk">الواجبات</span><span class="op">× ٠٫٢</span><span class="op">+</span><span class="tk">المشاركة</span><span class="cur"></span></div>
+        <div class="t2-chips"><span class="k-chip" style="height: 30px">+ الحضور ٪</span><span class="k-chip" style="height: 30px">+ التقدّم ٪</span><span class="k-chip" style="height: 30px">متوسط()</span><span class="k-chip" style="height: 30px">أعلى()</span><span class="k-chip" style="height: 30px">لو()</span></div>
+      </div>
+      <div class="t2-f"><span class="k-lbl">معاينة</span>
+        <div style="border: 1.5px solid var(--k-line); border-radius: 14px; padding: 4px 14px"><sc-for list="{{prev}}" as="p" hint-placeholder-count="3"><div class="t2-kv"><span>{{p.n}}</span><b>{{p.v}}</b></div></sc-for></div>
+      </div>
+      <div class="k-row" style="justify-content: space-between; flex-wrap: nowrap"><span class="k-col" style="gap: 0"><b style="font-size: 14px">لوّن الخلايا حسب القيمة</b><span class="t2-hint">الأقل من ٥٠ بالأحمر</span></span><span class="k-tog on"><i></i></span></div>
+      <div class="k-row" style="justify-content: space-between; flex-wrap: nowrap"><span class="k-col" style="gap: 0"><b style="font-size: 14px">اعرضه للطلاب</b><span class="t2-hint">كل طالب يشوف قيمته بس</span></span><span class="k-tog"><i></i></span></div>
+    </div>
+    <div class="k-df"><a href="#" class="k-btn" style="flex: 1">إضافة العمود</a><a href="#" class="k-btn ghost" onClick="{{close}}">إلغاء</a></div>
+  </aside>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const D = '٠١٢٣٤٥٦٧٨٩';
+    const ar = (x) => String(x).replace(/\d/g, (d) => D[d]);
+    const I = {"home": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z", "courses": "M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14", "schedule": "M3 5h18v16H3zM3 10h18M8 3v4M16 3v4", "analysis": "M4 20V10M10 20V4M16 20v-7M22 20H2", "profile": "M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0", "cal": "M3 5h18v16H3zM3 10h18M8 3v4M16 3v4", "chat": "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z", "ai": "M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z", "bell": "M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0", "back": "M9 5l7 7-7 7", "next": "M15 5l-7 7 7 7", "plus": "M12 5v14M5 12h14", "minus": "M5 12h14", "receipt": "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6", "math": "M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2", "vid": "M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM16 10l5-3v10l-5-3", "tack": "M9 4h6l-1 6 4 4H6l4-4zM12 14v7", "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3", "filter": "M3 5h18l-7 8v6l-4 2v-8z", "down": "M12 3v12M7 10l5 5 5-5M4 21h16", "up": "M12 15V3M7 8l5-5 5 5M4 21h16", "check": "M5 12.5l4.5 4.5L19 7.5", "x": "M6 6l12 12M18 6L6 18", "dots": "M5 12h.01M12 12h.01M19 12h.01", "copy": "M9 9h11v11H9zM5 15H4V4h11v1", "share": "M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4", "video": "M3 7h12v10H3zM15 10l6-3v10l-6-3", "pin": "M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z", "clock": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2", "users": "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a7 7 0 0 1 14 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a7 7 0 0 0-4-6.3", "user": "M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0", "repeat": "M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3", "link": "M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7", "exam": "M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9", "cert": "M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.5 14L7 22l5-3 5 3-1.5-8", "money": "M2 6h20v12H2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 12h.01M18 12h.01", "wallet": "M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-4v4M16 13.5h.01", "bank": "M3 10h18M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18M12 3l9 5H3z", "phone": "M7 2h10v20H7zM11 18h2", "lock": "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4", "eye": "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z", "eyeoff": "M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3 3.7M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7a9.6 9.6 0 0 0 4.4-1", "edit": "M4 20h4L19 9l-4-4L4 16zM14 6l4 4", "trash": "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3", "star": "M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z", "flag": "M5 21V4M5 4h11l-2 4 2 4H5", "table": "M3 4h18v16H3zM3 10h18M3 15h18M9 4v16", "ad": "M3 11v3l12 5V6L3 11zM15 9a3 3 0 0 1 0 6M7 14v5h3", "store": "M4 7h16l-1.5 12h-13zM9 7V5a3 3 0 0 1 6 0v2", "quran": "M12 6c-2-1.5-5-2-8-1v14c3-1 6-.5 8 1 2-1.5 5-2 8-1V5c-3-1-6-.5-8 1zM12 6v14", "ticket": "M4 5h16v4a3 3 0 0 0 0 6v4H4v-4a3 3 0 0 0 0-6z", "sliders": "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4", "moon": "M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z", "globe": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18", "logout": "M15 4h4v16h-4M10 17l-5-5 5-5M5 12h11", "key": "M15 7a4 4 0 1 1-3.9 5H3v3h3v3h3v-3h2.1A4 4 0 0 1 15 7z", "mic": "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3", "clip": "M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7", "send": "M22 2L11 13M22 2l-7 20-4-9-9-4z", "image": "M3 4h18v16H3zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 20", "file": "M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h4", "print": "M6 9V3h12v6M6 18H4v-7h16v7h-2M6 14h12v7H6z", "mail": "M3 5h18v14H3zM3 6l9 7 9-7", "qr": "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3zM6 6h1M17 6h1M6 17h1", "undo": "M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3", "redo": "M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3", "gift": "M3 8h18v4H3zM5 12v9h14v-9M12 8v13M12 8C10 4 6 4 6 7s4 1 6 1zM12 8c2-4 6-4 6-1s-4 1-6 1z", "rec": "M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "help": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01", "shield": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", "scan": "M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M4 12h16", "pen": "M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z", "pkg": "M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10", "live": "M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM7.8 16.2a6 6 0 0 1 0-8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2", "warn": "M12 3l10 18H2zM12 10v5M12 18h.01", "info": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5h.01", "trend": "M3 17l6-6 4 4 8-8M15 7h6v6", "col": "M4 4h16v16H4zM10 4v16M15 9v6M12 12h6", "zin": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3M8 11h6M11 8v6", "zout": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3M8 11h6", "full": "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5", "hist": "M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2", "type": "M4 7V5h16v2M9 19h6M12 5v14", "move": "M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3", "grip": "M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01", "cam": "M3 8h4l2-3h6l2 3h4v12H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "school": "M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5", "target": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01", "bolt": "M13 2L4 14h7l-1 8 9-12h-7z", "layers": "M12 3l9 5-9 5-9-5zM3 13l9 5 9-5M3 17l9 5 9-5", "mega": "M3 11v3l12 5V6L3 11z", "device": "M4 5h12v9H4zM2 18h16M19 8h3v11h-3z", "sig": "M3 17c3 0 4-8 6-8s1 6 3 6 2-4 4-4 2 3 5 3", "excel": "M4 3h16v18H4zM8 8l8 8M16 8l-8 8", "robot": "M5 9h14v10H5zM12 5v4M9 13h.01M15 13h.01M9 16h6M12 3a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"};
+    const S = this.state || {};
+    const P = this.props || {};
+    const set = (o) => () => this.setState(o);
+    const stg = (i, b, s) => ((b || 0.08) + i * (s || 0.05)).toFixed(2) + 's';
+    const shell = (cur, title, crumb, back, tool) => ({
+      title, crumb, back: !!back, logo: !back,
+      nav: [['home', 'الرئيسية', '٤'], ['courses', 'دوراتي', ''], ['schedule', 'جدولي', ''], ['analysis', 'التحليلات', ''], ['profile', 'حسابي', '٢']].map(([k, l, c]) => ({ l, c, i: I[k], cur: k === cur ? 'page' : 'false' })),
+      bnav: [['home', 'الرئيسية', '٤'], ['courses', 'دوراتي', ''], ['schedule', 'جدولي', ''], ['analysis', 'التحليلات', ''], ['profile', 'حسابي', '٢']].map(([k, l, c]) => ({ l, c, i: I[k], cur: k === cur ? 'page' : 'false' })),
+      pins: [['طلبات الدفع بالتحويل', 'receipt', 'linear-gradient(140deg,#FF9F5A,#F2545B)', '٣'], ['رياضيات ٣ ثانوي، مجموعة أ', 'math', 'linear-gradient(140deg,#5F3DC4,#8B6CF0)', ''], ['روابط الاجتماعات', 'vid', 'linear-gradient(140deg,#1979C1,#07B8EE)', '']].map(([l, i, bg, c]) => ({ l, i: I[i], bg, c })),
+      tools: [['vid', 'روابط الاجتماعات', ''], ['cal', 'التقويم', ''], ['chat', 'الرسائل', '٢'], ['ai', 'المساعد الذكي', ''], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k], st: k === tool ? 'background: var(--k-navy); color: #FFFFFF; border-color: var(--k-navy)' : '' })),
+      mtools: [['chat', 'الرسائل', '٢'], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] }))
+    });
+
+    const scr = S.scr || P.screen || 'hub';
+    const sheet = S.sheet !== undefined ? S.sheet : (scr === 'ask' ? 'ask' : scr === 'col' ? 'col' : '');
+    const page = (scr === 'ask' || scr === 'col') ? 'lab' : scr;
+    const AV = ['linear-gradient(150deg, #FF9F5A, #F2545B)', 'linear-gradient(150deg, #07B8EE, #1979C1)', 'linear-gradient(150deg, #34C38F, #1D9A63)', 'linear-gradient(150deg, #8B6CF0, #5F3DC4)', 'linear-gradient(150deg, #F6C453, #E89B00)'];
+    const metric = S.metric || 'p';
+    const CB = [['الرياضيات ٣ ث، أ', 71, 88, 69], ['الرياضيات ٣ ث، ب', 64, 79, 61], ['تحصيلي رياضيات', 58, 91, 82], ['قدرات كمي', 79, 70, 84]];
+    const mi = { p: 1, a: 2, e: 3 }[metric];
+    const NAMES = ['فيصل العنزي', 'راكان الحربي', 'عبدالله الدوسري', 'سعد المطيري', 'نواف القحطاني', 'لؤي الزهراني', 'تركي السبيعي', 'جواد الغامدي', 'يزيد العتيبي', 'هشام الشمري', 'سلطان العمري', 'رائد الشهراني'];
+    const RW = [[96, 88, 17, 19, 9, 8], [100, 94, 19, 20, 10, 9], [58, 41, 9, 6, 6, 5], [92, 80, 15, 16, 9, 10], [75, 62, 12, 11, 7, 6], [88, 76, 16, 14, 8, 9], [44, 35, 8, 7, 4, 3], [97, 90, 18, 18, 10, 9], [83, 70, 14, 13, 8, 7], [91, 85, 16, 17, 9, 10], [79, 66, 13, 12, 7, 8], [86, 78, 15, 15, 9, 8]];
+    const fin = (r) => Math.round(r[2] * 1.5 + r[3] * 2 + r[4] * 2 + r[5] * 1);
+    const grade = (f) => f >= 90 ? 'ممتاز' : f >= 80 ? 'جيد جدًا' : f >= 65 ? 'جيد' : 'يحتاج دعم';
+    const rows = NAMES.slice(0, 8).map((n, i) => { const r = RW[i]; const f = fin(r); return { n, a: n[0], bg: AV[i % 5], cls: [1, 4, 7].includes(i) ? 'chk' : '', c: [[r[0] + '٪', r[0] < 60 ? 'lo' : ''], [r[1] + '٪', r[1] < 50 ? 'lo' : ''], [r[2], ''], [r[3], 'sel' + (r[3] < 10 ? ' lo' : '')], [r[4] + ' / ١٠', ''], [r[5], i === 2 || i === 6 ? 'ov' : ''], [f, f < 50 ? 'lo' : ''], [grade(f), '']].map(([v, cls]) => ({ v: ar(v), cls })) }; });
+    const goScr = (k) => () => this.setState({ scr: k, sheet: '' });
+    return Object.assign(shell('analysis', page === 'lab' ? 'معمل البيانات' : page === 'flags' ? 'الأسئلة الصعبة' : 'التحليلات', page === 'hub' ? 'كيف ماشية فصولك' : 'التحليلات', page !== 'hub'), {
+      isHub: page === 'hub', isFlags: page === 'flags', isLab: page === 'lab', isAsk: sheet === 'ask', isCol: sheet === 'col',
+      stats: [['٤', 'دورات'], ['٥٦', 'طالب'], ['٦', 'يحتاجون متابعة'], ['٧٨٪', 'نسبة النجاح']].map(([n, l]) => ({ n, l })),
+      ins: [['٦ طلاب في خطر', 'غيابهم كثير أو درجاتهم نازلة', 'شوفهم', 'warn', '#FFE8D6', '#A3480A'], ['حضور ضعيف في مجموعة ب', '٧٩٪ مقابل ٨٨٪ في مجموعة أ', 'افتح الحضور', 'users', '#E2EFFA', '#135F9A'], ['نجاح منخفض في اختبار الدوال', '٥٤٪ بس نجحوا', 'راجع الأسئلة', 'exam', '#FFE3E0', '#B23A2E'], ['درجات ما انتشرت', 'اختبار قدرات قصير من ٣ أيام', 'انشرها', 'eye', '#FFF3C4', '#855700'], ['أقوى فصل: قدرات كمي', 'متوسط ٨٤٪ وتقدّم ٧٩٪', 'التفاصيل', 'star', '#DDF5E9', '#1D7A50']].map(([t, m, a, i, bg, fg], j) => ({ t, m, a, i: I[i], bg, fg, d: stg(j) })),
+      metrics: [['p', 'التقدّم'], ['a', 'الحضور'], ['e', 'الاختبارات']].map(([k, l]) => ({ l, on: k === metric ? 'true' : 'false', go: set({ metric: k }) })),
+      bars: CB.map((c) => ({ t: c[0], w: c[mi], v: ar(c[mi]) + '٪', st: c[mi] < 65 ? 'background: linear-gradient(90deg, #E89B00, #FF9F5A)' : '' })),
+      courses: [['الرياضيات ٣ ثانوي، ب', '٨ طلاب، مباشر', '٦٤٪', '٧٩٪', '٦١٪', 'warn', '٤ يحتاجون متابعة', '٤ أسئلة', 'linear-gradient(140deg, #FF9F5A, #F2545B)', 'analysis'], ['الرياضيات ٣ ثانوي، أ', '٨ طلاب، مباشر', '٧١٪', '٨٨٪', '٦٩٪', '', '٢ يحتاجون متابعة', 'سؤالين', 'linear-gradient(140deg, #8B6CF0, #5F3DC4)', 'analysis'], ['تحصيلي رياضيات', '١٨ طالب، مباشر ومسجّل', '٥٨٪', '٩١٪', '٨٢٪', '', '', 'سؤال واحد', 'linear-gradient(140deg, #07B8EE, #1979C1)', 'target'], ['قدرات كمي', '٢٢ طالب، مسجّل', '٧٩٪', '٧٠٪', '٨٤٪', '', '', 'لا شيء', 'linear-gradient(140deg, #34C38F, #1D9A63)', 'bolt']].map(([t, s, p, a, e, cls, warn, f, bg, i], j) => ({ t, s, p, a, e, cls, warn, f, bg, i: I[i], d: stg(j, 0.18) })),
+      risk: [['تركي السبيعي', 'الرياضيات ٣ ث، ب', 'حضور ٤٤٪', 'اختبارات ٣٥٪'], ['عبدالله الدوسري', 'الرياضيات ٣ ث، أ', 'اختبارات ٤١٪', ''], ['سلطان العمري', 'تحصيلي رياضيات', 'حضور ٥٢٪', '']].map(([n, c, r1, r2], i) => ({ n, c, r1, r2, a: n[0], bg: AV[(i + 2) % 5] })),
+      fstats: [['٧', 'أسئلة تعدّت الحد'], ['٦٤٪', 'متوسط الخطأ فيها'], ['٣', 'دورات'], ['٢٤', 'طالب تعثّر فيها']].map(([n, l]) => ({ n, l })),
+      qs: [
+        ['الرياضيات ٣ ث', 'اختبار الدوال الأسية، س٤', '٧٢٪', 'وش حل المعادلة', '2ˣ⁺¹ = 32', [['أ', 'x = 4', 28, 'ok'], ['ب', 'x = 5', 51, 'bad'], ['ج', 'x = 16', 14, 'bad'], ['د', 'x = 6', 7, 'bad']], '١٢ طالب من ١٦'],
+        ['تحصيلي', 'تجريبي ٢، س١١', '٦٦٪', 'إذا كان ميل المستقيم ٣ ويمر بالنقطة (١، ٢)، وش معادلته؟', '', [['أ', 'y = 3x + 2', 38, 'bad'], ['ب', 'y = 3x − 1', 34, 'ok'], ['ج', 'y = x + 3', 18, 'bad'], ['د', 'y = 2x + 3', 10, 'bad']], '١٢ طالب من ١٨']
+      ].map(([c, x, err, t, m, o, who], j) => ({ c, x, err, t, m, who: who + ' أخطأوا', d: stg(j, 0.08, 0.08), av: [0, 1, 2, 3].map((k) => ({ a: NAMES[k + j * 3][0], bg: AV[(k + j) % 5] })), o: o.map(([k, v, p, st]) => ({ k: k + (st === 'ok' ? ' صح' : ''), v, w: p, p: ar(p) + '٪', cls: st, tc: st === 'ok' ? 'g' : 'n' })) })),
+      bylesson: [['الدوال الأسية', 82, '٣'], ['المستقيمات', 64, '٢'], ['اللوغاريتمات', 45, '١'], ['النسب والتناسب', 30, '١']].map(([t, w, v]) => ({ t, w, v })),
+      lstats: [['٨', 'طلاب'], ['٧١٪', 'متوسط التقدّم'], ['٨٨٪', 'متوسط الحضور'], ['٢', 'أعمدة مقفلة']].map(([n, l]) => ({ n, l })),
+      cols: [['الحضور', 'تلقائي', 'clock', 'vis', ''], ['التقدّم', 'تلقائي', 'trend', 'vis', ''], ['اختبار ١ /٢٠', 'مقفل', 'lock', 'vis', ''], ['اختبار ٢ /٢٠', 'من الاختبارات', 'exam', 'vis', 'sel'], ['الواجبات', 'من الواجبات', 'file', '', ''], ['المشاركة /١٠', 'يدوي', 'edit', '', ''], ['النهائي /١٠٠', 'معادلة', 'sliders', 'vis', ''], ['التقدير', 'معادلة', 'sliders', '', '']].map(([t, s, i, vis, cls]) => ({ t, s, i: I[i], vis, cls })),
+      rows,
+      aqs: [['اختيار', 'p', 'وش أكثر جزئية صعبة عليك في الدوال؟', ['الرسم البياني', 'حل المعادلات', 'التطبيقات'], 'صعوبة الدوال', '٧ إجابات', 'on', ''], ['رقم', 'y', 'كم ساعة تذاكر رياضيات بالأسبوع؟', null, 'ساعات المذاكرة', '٦ إجابات', 'on', ''], ['نص', '', 'وش تبي نركز عليه في المراجعة؟', null, 'ملاحظات المراجعة', 'موقوف', '', 'off']].map(([k, tc, t, ch, col, n, on, cls]) => ({ k, tc, t, ch, col, n, on, cls })),
+      srcs: [['يدوي', 'تكتب القيمة بنفسك', 'edit', ''], ['معادلة', 'من أعمدة ثانية', 'sliders', 'on'], ['من الاختبارات', 'درجة اختبار معيّن', 'exam', ''], ['من الحضور', 'نسبة أو عدد مرات', 'clock', '']].map(([t, s, i, on]) => ({ t, s, i: I[i], on })),
+      prev: NAMES.slice(0, 3).map((n, i) => ({ n, v: ar(fin(RW[i])) + ' من ١٠٠' })),
+      goLab: goScr('lab'), goFlags: goScr('flags'), openAsk: set({ sheet: 'ask' }), openCol: set({ sheet: 'col' }), close: set({ sheet: '' })
+    });
+
+  }
+}
+</script>
+</body>
+</html>

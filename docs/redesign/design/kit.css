@@ -1,0 +1,391 @@
+/* ALFaheem design kit — shared by every app screen. Same family as the landing, booking and subject pages.
+   Tokens: navy #00205E, deep #001440, blue #1979C1, cyan #07B8EE, apricot #FF9F5A, coral #F2545B, amber #E89B00,
+   purple #5F3DC4 (teacher accent), green #1D9A63, text #0E2350, muted #4A5878, line #E2EAF4, page #F3F8FD.
+   Student palette (PLAN §1.4): sun #FFC53D, mint #19C29B, grape #7A4DF0, pink #FF5FA2, lime #9BD728, sky #3DA5FF,
+   each with a tint (background) and an ink (text on tint). Subject colours --sub-* are fixed: same subject = same colour on every screen. */
+:root{--k-navy:#00205E;--k-deep:#001440;--k-blue:#1979C1;--k-cyan:#07B8EE;--k-apricot:#FF9F5A;--k-coral:#F2545B;--k-amber:#E89B00;--k-purple:#5F3DC4;--k-green:#1D9A63;--k-text:#0E2350;--k-muted:#4A5878;--k-line:#E2EAF4;--k-page:#F3F8FD;--k-acc:#1979C1;--k-acc2:#07B8EE;
+/* brand tints / inks */
+--k-blue-tint:#E2EFFA;--k-blue-ink:#135F9A;--k-cyan-tint:#DDF6FE;--k-cyan-ink:#06678A;--k-apricot-tint:#FFE8D6;--k-apricot-ink:#A3480A;--k-coral-tint:#FFE3E0;--k-coral-ink:#B23A2E;
+/* student accents */
+--s-sun:#FFC53D;--s-sun-tint:#FFF4CC;--s-sun-ink:#7A5200;
+--s-mint:#19C29B;--s-mint-tint:#D9F7EE;--s-mint-ink:#0C6B55;
+--s-grape:#7A4DF0;--s-grape-tint:#ECE5FF;--s-grape-ink:#4A28B8;
+--s-pink:#FF5FA2;--s-pink-tint:#FFE3EF;--s-pink-ink:#A81E5E;
+--s-lime:#9BD728;--s-lime-tint:#EEF9D2;--s-lime-ink:#4C6B05;
+--s-sky:#3DA5FF;--s-sky-tint:#E0F0FF;--s-sky-ink:#0F5CA8;
+--s-live:#F2545B;
+/* status colours never change with the area */
+--st-live:#F2545B;--st-ok:#19C29B;--st-warn:#FFC53D;--st-lock:#C9D6E6;--st-err:#C2410C;
+/* subject colours (book covers, course cards, calendar dots) + tint + ink */
+--sub-math:#FF7A59;--sub-math-tint:#FFEAE4;--sub-math-ink:#A8381C;
+--sub-physics:#7A4DF0;--sub-physics-tint:#EAE3FD;--sub-physics-ink:#4A28B8;
+--sub-chem:#19C29B;--sub-chem-tint:#DAF5EF;--sub-chem-ink:#0C6B55;
+--sub-bio:#2FB5A8;--sub-bio-tint:#DEF3F1;--sub-bio-ink:#126B63;
+--sub-english:#07B8EE;--sub-english-tint:#D7F4FC;--sub-english-ink:#06678A;
+--sub-arabic:#0F6E6D;--sub-arabic-tint:#D9E8E8;--sub-arabic-ink:#0F6E6D;
+--sub-qudurat:#FFB020;--sub-qudurat-tint:#FFF2DB;--sub-qudurat-ink:#7A5200;
+--sub-code:#1979C1;--sub-code-tint:#DAEAF5;--sub-code-ink:#135F9A;
+--sub-quran:#1D9A63;--sub-quran-tint:#DBEFE6;--sub-quran-ink:#11633F;
+--sub-islamic:#B7791F;--sub-islamic-tint:#F3EADB;--sub-islamic-ink:#7A4F10}
+.k{font-family:'Noto Naskh Arabic',serif;color:var(--k-text);background:var(--k-page);min-height:var(--vh,100vh);overflow-x:hidden}
+.k *{box-sizing:border-box}
+.k button{font-family:inherit;line-height:1.3;cursor:pointer}
+.k a{color:inherit;text-decoration:none}
+.k .k-btn{color:var(--btn-fg,#FFFFFF)}.k .k-btn.hot{color:#FFFFFF}.k .k-btn.ghost{color:var(--area-ink,var(--k-acc))}.k .k-btn.danger{color:#C2410C}
+.k button:focus-visible,.k a:focus-visible,.k [tabindex]:focus-visible{outline:3px solid var(--k-cyan);outline-offset:2px}
+.k.teacher{--k-acc:#5F3DC4;--k-acc2:#8B6CF0}
+.k.parent{--k-acc:#0B8FB8;--k-acc2:#2FB5A8}
+.k.admin{--k-acc:#1979C1;--k-acc2:#E89B00}
+.k.super{--k-acc:#B7791F;--k-acc2:#F6C453}
+.k-ruqaa{font-family:'Aref Ruqaa',serif}
+
+/* ---------- student areas (root modifier: <div class="k a-home">) ----------
+   Each student area owns one accent. Sets --k-acc/--k-acc2 (gradients, fills), --area-tint (soft bg), --area-ink (text/icons on white or tint),
+   --hero-a/--hero-b (hero gradient stops), --btn-a/--btn-b/--btn-fg (main button). Live/success/warn/lock/error never change with the area.
+   Resolved hero gradient for Flutter (RadialGradient(center: Alignment(0.7,-1.6), radius: 1.4), stops 0 / .45 / 1.0, end colour #001440):
+   | area    | accent → accent2      | hero stop 0 | hero stop .45 | tint    | ink     | button (a → b, text)        |
+   | a-home  | #1979C1 → #07B8EE     | #1979C1     | #093F81       | #E2EFFA | #135F9A | #1979C1 → #07B8EE, #FFFFFF  |
+   | a-learn | #FF9F5A → #F2545B     | #FF8A4C     | #7A2E5E       | #FFE8D6 | #A3480A | #FF8A4C → #F2545B, #FFFFFF  |
+   | a-exam  | #7A4DF0 → #1979C1     | #7A4DF0     | #2B3091       | #ECE5FF | #4A28B8 | #7A4DF0 → #1979C1, #FFFFFF  |
+   | a-games | #7A4DF0 → #FF5FA2     | #8E4DF0     | #3A1F8F       | #ECE5FF | #4A28B8 | #7A4DF0 → #E8478C, #FFFFFF  |
+   | a-store | #FFC53D → #FF9F5A     | #FF9F5A     | #8C2F5A       | #FFF4CC | #7A5200 | #FFC53D → #FF9F5A, #00205E  |
+   | a-quran | #19C29B → #0F6E6D     | #19C29B     | #0A5C6E       | #D9F7EE | #0C6B55 | #0F8F78 → #0F6E6D, #FFFFFF  |
+   | a-nahw  | #9BD728 → #19C29B     | #8BCB1E     | #1F6B55       | #EEF9D2 | #4C6B05 | #9BD728 → #19C29B, #00205E  |
+   | a-sched | #3DA5FF → #07B8EE     | #3DA5FF     | #154F96       | #E0F0FF | #0F5CA8 | #2A8EF0 → #07B8EE, #FFFFFF  |
+   | a-chat  | #FF5FA2 → #FF9F5A     | #FF5FA2     | #6A2E7E       | #FFE3EF | #A81E5E | #E8478C → #FF7A59, #FFFFFF  |
+   | a-money | #FFC53D → #19C29B     | #FFB020     | #A0442A       | #FFF4CC | #7A5200 | #FFC53D → #19C29B, #00205E  |
+   | a-me    | #1979C1 → #7A4DF0     | #4F6BE8     | #2E2A8C       | #E2EFFA | #135F9A | #1979C1 → #7A4DF0, #FFFFFF  |
+   Default hero on a student root without an area = color-mix(acc 35%, #00205E) as the middle stop. */
+.k.a-home{--k-acc:#1979C1;--k-acc2:#07B8EE;--area:#1979C1;--area-tint:#E2EFFA;--area-ink:#135F9A;--hero-a:#1979C1;--hero-b:#093F81}
+.k.a-learn{--k-acc:#FF9F5A;--k-acc2:#F2545B;--area:#FF9F5A;--area-tint:#FFE8D6;--area-ink:#A3480A;--hero-a:#FF8A4C;--hero-b:#7A2E5E;--btn-a:#FF8A4C;--btn-b:#F2545B;--btn-sh:rgba(242,84,91,.45)}
+.k.a-exam{--k-acc:#7A4DF0;--k-acc2:#1979C1;--area:#7A4DF0;--area-tint:#ECE5FF;--area-ink:#4A28B8;--hero-a:#7A4DF0;--hero-b:#2B3091;--btn-sh:rgba(122,77,240,.42)}
+.k.a-games{--k-acc:#7A4DF0;--k-acc2:#FF5FA2;--area:#7A4DF0;--area-tint:#ECE5FF;--area-ink:#4A28B8;--hero-a:#8E4DF0;--hero-b:#3A1F8F;--btn-b:#E8478C;--btn-sh:rgba(122,77,240,.42)}
+.k.a-store{--k-acc:#FFC53D;--k-acc2:#FF9F5A;--area:#FFC53D;--area-tint:#FFF4CC;--area-ink:#7A5200;--hero-a:#FF9F5A;--hero-b:#8C2F5A;--btn-fg:#00205E;--btn-sh:rgba(232,155,0,.4)}
+.k.a-quran{--k-acc:#19C29B;--k-acc2:#0F6E6D;--area:#19C29B;--area-tint:#D9F7EE;--area-ink:#0C6B55;--hero-a:#19C29B;--hero-b:#0A5C6E;--btn-a:#0F8F78;--btn-b:#0F6E6D;--btn-sh:rgba(15,110,109,.4)}
+.k.a-nahw{--k-acc:#9BD728;--k-acc2:#19C29B;--area:#9BD728;--area-tint:#EEF9D2;--area-ink:#4C6B05;--hero-a:#8BCB1E;--hero-b:#1F6B55;--btn-fg:#00205E;--btn-sh:rgba(76,107,5,.35)}
+.k.a-sched{--k-acc:#3DA5FF;--k-acc2:#07B8EE;--area:#3DA5FF;--area-tint:#E0F0FF;--area-ink:#0F5CA8;--hero-a:#3DA5FF;--hero-b:#154F96;--btn-a:#2A8EF0;--btn-sh:rgba(61,165,255,.45)}
+.k.a-chat{--k-acc:#FF5FA2;--k-acc2:#FF9F5A;--area:#FF5FA2;--area-tint:#FFE3EF;--area-ink:#A81E5E;--hero-a:#FF5FA2;--hero-b:#6A2E7E;--btn-a:#E8478C;--btn-b:#FF7A59;--btn-sh:rgba(232,71,140,.42)}
+.k.a-money{--k-acc:#FFC53D;--k-acc2:#19C29B;--area:#FFC53D;--area-tint:#FFF4CC;--area-ink:#7A5200;--hero-a:#FFB020;--hero-b:#A0442A;--btn-fg:#00205E;--btn-sh:rgba(25,194,155,.4)}
+.k.a-me{--k-acc:#1979C1;--k-acc2:#7A4DF0;--area:#1979C1;--area-tint:#E2EFFA;--area-ink:#135F9A;--hero-a:#4F6BE8;--hero-b:#2E2A8C;--btn-sh:rgba(79,107,232,.42)}
+/* subject helpers: <span class="sub-math"> sets --sub, --sub-tint, --sub-ink, --sub-fg (text on the solid colour) */
+.sub-math{--sub:var(--sub-math);--sub-t:var(--sub-math-tint);--sub-i:var(--sub-math-ink);--sub-fg:#FFFFFF}
+.sub-physics{--sub:var(--sub-physics);--sub-t:var(--sub-physics-tint);--sub-i:var(--sub-physics-ink);--sub-fg:#FFFFFF}
+.sub-chem{--sub:var(--sub-chem);--sub-t:var(--sub-chem-tint);--sub-i:var(--sub-chem-ink);--sub-fg:#FFFFFF}
+.sub-bio{--sub:var(--sub-bio);--sub-t:var(--sub-bio-tint);--sub-i:var(--sub-bio-ink);--sub-fg:#FFFFFF}
+.sub-english{--sub:var(--sub-english);--sub-t:var(--sub-english-tint);--sub-i:var(--sub-english-ink);--sub-fg:#FFFFFF}
+.sub-arabic{--sub:var(--sub-arabic);--sub-t:var(--sub-arabic-tint);--sub-i:var(--sub-arabic-ink);--sub-fg:#FFFFFF}
+.sub-qudurat{--sub:var(--sub-qudurat);--sub-t:var(--sub-qudurat-tint);--sub-i:var(--sub-qudurat-ink);--sub-fg:#3D2700}
+.sub-code{--sub:var(--sub-code);--sub-t:var(--sub-code-tint);--sub-i:var(--sub-code-ink);--sub-fg:#FFFFFF}
+.sub-quran{--sub:var(--sub-quran);--sub-t:var(--sub-quran-tint);--sub-i:var(--sub-quran-ink);--sub-fg:#FFFFFF}
+.sub-islamic{--sub:var(--sub-islamic);--sub-t:var(--sub-islamic-tint);--sub-i:var(--sub-islamic-ink);--sub-fg:#FFFFFF}
+
+/* ---------- shell ----------
+   Student nav map (ONE map, same order on web sidebar and phone bottom nav):
+     1 الرئيسية   home
+     2 دوراتي     my courses, browse courses, teachers, subject page, lessons, exams of a course
+     3 جدولي      schedule, live classes, private meetings
+     4 العب وتعلّم  games, Quran, Nahw, store/library
+     5 حسابي      profile, wallet & points, my progress (تقدّمي), certificates, settings
+   Messages + notifications live in the top bar (phone top bar: max 2 icons, each with aria-label).
+   Bottom nav: <nav class="k-bnav m-pill" style="--n:5"><span class="m-pill-bg" style="--i:<active index>"></span><a…>…</nav>;
+   unread badge: <span class="k-cnt m-slap">. */
+.k-shell{display:flex;min-height:var(--vh,100vh)}
+.k-side{position:sticky;top:0;height:var(--vh,100vh);width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:6px;padding:20px 14px;color:#FFFFFF;background:radial-gradient(140% 70% at 100% 0%,#1979C1 0%,#00205E 45%,#001440 100%);overflow:hidden}
+.k-side::after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;background:var(--k-acc2);opacity:.18;filter:blur(60px);bottom:-120px;left:-80px;pointer-events:none;animation:kDrift 9s ease-in-out infinite}
+@keyframes kDrift{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,-30px)}}
+.k-logo{display:flex;align-items:center;gap:10px;padding:0 8px 14px;font-size:19px;font-weight:700}
+.k-logo img{width:34px;height:auto}
+.k-role{margin-right:auto;height:24px;padding:0 10px;border-radius:12px;background:rgba(255,255,255,.12);font-size:11.5px;font-weight:700;display:flex;align-items:center}
+.k-navg{font-size:11.5px;font-weight:700;opacity:.5;padding:12px 12px 4px}
+.k-nav{position:relative;display:flex;align-items:center;gap:12px;height:44px;padding:0 12px;border-radius:14px;color:rgba(255,255,255,.78);font-size:14.5px;font-weight:600;transition:background .2s,color .2s}
+.k-nav:hover{background:rgba(255,255,255,.07);color:#FFFFFF}
+.k-nav svg{flex-shrink:0;opacity:.85}
+.k-nav[aria-current="page"]{background:rgba(255,255,255,.14);color:#FFFFFF;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.k-nav[aria-current="page"]::before{content:"";position:absolute;right:-14px;top:10px;bottom:10px;width:4px;border-radius:2px 0 0 2px;background:linear-gradient(var(--k-cyan),var(--k-apricot))}
+.k-nav[aria-current="page"] svg{color:var(--k-cyan);opacity:1}
+.k-cnt{margin-right:auto;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--k-coral);color:#FFFFFF;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.k-me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-radius:16px;background:rgba(255,255,255,.08)}
+.k-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.k-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;height:68px;padding:0 28px;background:rgba(243,248,253,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--k-line)}
+.k-top h1{margin:0;font-size:20px;font-weight:700;line-height:1.3}
+.k-top small{display:block;font-size:12px;color:var(--k-muted);font-weight:600}
+.k-search{margin-right:auto;width:300px;height:42px;border-radius:21px;background:#FFFFFF;border:1.5px solid var(--k-line);display:flex;align-items:center;gap:8px;padding:0 14px;color:#8A97AE;font-size:13.5px}
+.k-search kbd{margin-right:auto;font-family:inherit;font-size:11px;padding:2px 6px;border-radius:6px;background:var(--k-page);border:1px solid var(--k-line)}
+.k-ib{position:relative;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-text);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.k-ib .k-dot{position:absolute;top:-3px;left:-3px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--k-coral);color:#FFFFFF;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #FFFFFF}
+.k-av{width:42px;height:42px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-weight:700;font-size:16px;background:linear-gradient(150deg,#FFB37A,#F2545B)}
+.k-av.sm{width:34px;height:34px;font-size:13px}
+.k-av.lg{width:64px;height:64px;font-size:24px}
+.k-page{flex:1;animation:kIn .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes kIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* phone chrome */
+.k-mtop{display:none}
+.k-bnav{display:none}
+
+/* ---------- page pattern: hero band + overlapping cards ---------- */
+.k-hero{position:relative;overflow:hidden;background:radial-gradient(120% 160% at 85% -30%,var(--k-acc) 0%,#00205E 48%,#001440 100%);color:#FFFFFF;padding:28px 28px 96px}
+.k-hero::before,.k-hero::after{content:"";position:absolute;border-radius:50%;filter:blur(60px);pointer-events:none}
+.k-hero::before{width:380px;height:380px;background:var(--k-acc2);opacity:.35;top:-220px;left:-60px;animation:kDrift 10s ease-in-out infinite}
+.k-hero::after{width:300px;height:300px;background:var(--k-apricot);opacity:.22;bottom:-200px;right:26%;animation:kDrift 12s ease-in-out infinite reverse}
+.k-hero > *{position:relative;z-index:1}
+.k-hero h2{margin:0;font-size:32px;font-weight:700;line-height:1.4}
+.k-hero p{margin:4px 0 0;font-size:15.5px;opacity:.8;line-height:1.7}
+/* stat tiles inside a hero: wrap them in .k-stats (one row on web; hidden on student phones) */
+.k-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-top:20px}
+/* student hero: area gradient + three drifting shapes (replace the two blurred glows when .k-hero-shapes is present) */
+.k:not(.teacher):not(.parent):not(.admin):not(.super) .k-hero{background:radial-gradient(120% 160% at 85% -30%,var(--hero-a,var(--k-acc)) 0%,var(--hero-b,color-mix(in srgb,var(--k-acc) 35%,#00205E)) 45%,#001440 100%)}
+.k-hero:has(> .k-hero-shapes)::before,.k-hero:has(> .k-hero-shapes)::after{display:none}
+.k-hero > .k-hero-shapes{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.k-hero-shapes > i{position:absolute;display:block}
+.k-hero-shapes > i:nth-child(1){width:240px;height:240px;border-radius:50%;background:var(--k-acc2);opacity:.2;top:-110px;left:6%}
+.k-hero-shapes > i:nth-child(2){width:120px;height:120px;border-radius:38px;background:none;border:3px solid var(--s-sun);opacity:.4;top:-54px;right:44%}
+.k-hero-shapes > i:nth-child(3){width:64px;height:64px;opacity:.14;top:22px;left:52%;background:linear-gradient(#FFFFFF,#FFFFFF) center/100% 18px no-repeat,linear-gradient(#FFFFFF,#FFFFFF) center/18px 100% no-repeat;border-radius:6px}
+.k-body{position:relative;z-index:2;margin-top:-66px;padding:0 28px 40px;display:flex;flex-direction:column;gap:18px}
+.k-grid{display:grid;gap:18px}
+.k-g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.k-g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.k-g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.k-side2{grid-template-columns:minmax(0,1fr) 340px}
+
+/* ---------- cards & surfaces ---------- */
+.k-card{background:#FFFFFF;border-radius:24px;padding:20px;box-shadow:0 20px 44px -20px rgba(0,20,64,.28);display:flex;flex-direction:column;gap:14px;animation:kRise .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
+@keyframes kRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+/* student roots: soft fade by default — each page picks its signature move (m-*) explicitly; kRise stays for teacher/parent/admin/super */
+.k:not(.teacher):not(.parent):not(.admin):not(.super) .k-card:not([class*='m-']),.k:not(.teacher):not(.parent):not(.admin):not(.super) .k-tile:not([class*='m-']){animation-name:kIn}
+.k-card.flat{box-shadow:none;border:1.5px solid var(--k-line)}
+.k-card.tint{background:linear-gradient(150deg,#FFFFFF 50%,#E8F3FC);border:1.5px solid #CFE3F5}
+.k-card.dark{background:radial-gradient(120% 140% at 85% 0%,var(--k-acc),#00205E 60%);color:#FFFFFF}
+.k-ch{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.k-ch h3{margin:0;font-size:18px;font-weight:700;line-height:1.4}
+.k-ch a,.k-link{font-size:13.5px;font-weight:700;color:var(--area-ink,var(--k-acc))}
+.k-sub{font-size:13px;color:var(--k-muted);line-height:1.6}
+.k-stat{border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:2px;line-height:1.3;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)}
+.k-stat b{font-size:26px;font-weight:700}
+.k-stat small{font-size:12.5px;opacity:.75}
+.k-stat.light{background:#F8FBFE;border:1.5px solid var(--k-line)}
+.k-stat.light b{color:var(--k-navy)}
+.k-stat.light small{color:var(--k-muted);opacity:1}
+.k-tile{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:#F8FBFE;border:1.5px solid var(--k-line);transition:transform .2s,box-shadow .2s;animation:kRise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
+.k-tile:hover{transform:translateX(-4px);box-shadow:0 10px 22px rgba(25,121,193,.1)}
+.k-ico{width:42px;height:42px;border-radius:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.k-t{font-size:15px;font-weight:700;line-height:1.45}
+.k-m{font-size:12.5px;color:var(--k-muted);line-height:1.5}
+.k-col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.k-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.k-sp{flex:1}
+
+/* ---------- controls ---------- */
+/* static gradient (no infinite kGrad); press = jelly squash (M9) on every button and chip */
+.k-btn{height:48px;padding:0 22px;border:none;border-radius:24px;background:linear-gradient(120deg,var(--btn-a,var(--k-acc)),var(--btn-b,var(--k-acc2)),var(--btn-a,var(--k-acc)));background-size:200% 100%;color:#FFFFFF;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 10px 22px -6px var(--btn-sh,rgba(25,121,193,.45));transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.k-btn:hover{transform:translateY(-2px)}
+.k-btn:active,.k-chip:active{transform:scale(.94,1.04)}
+.k-btn.hot{background:linear-gradient(120deg,#FF9F5A,#F2545B,#FF9F5A);background-size:200% 100%;box-shadow:0 10px 22px -6px rgba(242,84,91,.5)}
+.k-btn.ghost{background:#FFFFFF;color:var(--area-ink,var(--k-acc));border:1.5px solid var(--k-line);box-shadow:none;animation:none}
+.k-btn.sm{height:38px;padding:0 16px;font-size:13.5px}
+.k-btn.danger{background:#FFFFFF;color:#C2410C;border:1.5px solid #FFD2C2;box-shadow:none;animation:none}
+@keyframes kGrad{0%,100%{background-position:0 0}50%{background-position:100% 0}}
+.k-chip{height:34px;padding:0 13px;border-radius:17px;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-text);font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.k-chip[aria-pressed="true"],.k-chip.on{background:var(--k-navy);border-color:var(--k-navy);color:#FFFFFF}
+.k-tag{height:24px;padding:0 10px;border-radius:12px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;background:#E2EFFA;color:#135F9A}
+.k-tag.g{background:#DDF5E9;color:#1D7A50}.k-tag.o{background:#FFE8D6;color:#A3480A}.k-tag.r{background:#FFE3E0;color:#B23A2E}.k-tag.p{background:#EFE9FD;color:#5F3DC4}.k-tag.y{background:#FFF3C4;color:#855700}.k-tag.n{background:#EEF2F7;color:#4A5878}
+.k-seg{display:flex;gap:4px;padding:4px;border-radius:22px;background:#EAF0F6}
+.k-seg button{flex:1;height:38px;border:none;border-radius:19px;background:transparent;color:var(--k-muted);font-size:13.5px;font-weight:700;white-space:nowrap;padding:0 12px}
+.k-seg button[aria-selected="true"]{background:#FFFFFF;color:var(--k-navy);box-shadow:0 4px 12px rgba(0,32,94,.12)}
+.k-in{height:48px;border-radius:14px;border:1.5px solid #D5E3F2;background:#FFFFFF;padding:0 14px;display:flex;align-items:center;gap:8px;font-size:14px;color:#8A97AE}
+.k-lbl{font-size:13.5px;font-weight:700}
+.k-tog{width:44px;height:26px;border-radius:13px;background:#D5E3F2;position:relative;flex-shrink:0}
+.k-tog i{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:right .25s}
+.k-tog.on{background:var(--k-acc)}.k-tog.on i{right:21px}
+.k-bar{height:8px;border-radius:4px;background:#E2EFFA;overflow:hidden}
+.k-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--k-acc),var(--k-acc2));transform-origin:100% 50%;animation:kGrow 1s cubic-bezier(.2,.8,.2,1) .3s both}
+@keyframes kGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+/* 44-px minimum hit area without changing layout */
+.k-hit{position:relative}
+.k-hit::after{content:"";position:absolute;top:50%;left:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+
+/* ---------- shared student helpers ---------- */
+/* empty state: <div class="k-empty"><span class="k-empty-art">svg</span><h4>…</h4><p>…</p><a class="k-btn">one action</a></div> */
+.k-empty{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:30px 16px;color:var(--k-muted);font-size:14px}
+.k-empty .k-ico{width:64px;height:64px;border-radius:20px}
+.k-empty-art{width:120px;height:96px;border-radius:34px 34px 34px 10px;display:flex;align-items:center;justify-content:center;background:var(--area-tint,#E2EFFA);color:var(--area-ink,var(--k-acc));margin-bottom:4px;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards}
+.k-empty h4{margin:0;font-size:17px;font-weight:700;color:var(--k-text);line-height:1.5}
+.k-empty p{margin:0;max-width:300px;line-height:1.6}
+.k-empty .k-btn{margin-top:6px}
+/* rules: 3 icon rows max (icon + ≤ 4 words); rows after the third are not shown */
+.k-rules{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.k-rules > li{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;line-height:1.5}
+.k-rules > li:nth-child(n+4){display:none}
+.k-rules .k-ico{width:34px;height:34px;border-radius:11px;background:var(--area-tint,#E2EFFA);color:var(--area-ink,var(--k-acc))}
+/* success: <div class="k-success"><span class="k-success-mark"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="28"/><path d="M20 33l8 8 16-17"/></svg>(optional <span class="m-burst"><i></i>×10</span>)</span><h3>…</h3><p>…</p><a class="k-btn">…</a></div> */
+.k-success{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:20px 12px}
+.k-success-mark{position:relative;width:96px;height:96px;border-radius:50%;background:var(--s-mint-tint);display:flex;align-items:center;justify-content:center;margin-bottom:6px;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards}
+.k-success-mark svg{width:72px;height:72px;overflow:visible}
+.k-success-mark circle,.k-success-mark path{fill:none;stroke:var(--s-mint);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:190;stroke-dashoffset:190;animation:mInk .7s cubic-bezier(.6,0,.2,1) .15s forwards}
+.k-success-mark path{stroke-width:6;stroke-dasharray:44;stroke-dashoffset:44;animation-delay:.7s;animation-duration:.4s}
+.k-success h3{margin:0;font-size:22px;font-weight:700;line-height:1.4}
+.k-success p{margin:0;color:var(--k-muted);font-size:14px;line-height:1.6}
+/* countdown (RTL: يوم ← ساعة ← دقيقة ← ثانية, read right to left): <div class="k-count" aria-label="…"><span><b>…</b><small>يوم</small></span>…</div> */
+.k-count{display:flex;flex-direction:row;direction:rtl;gap:8px;align-items:stretch}
+.k-count > span{min-width:58px;display:flex;flex-direction:column;align-items:center;gap:0;padding:8px 6px;border-radius:14px;background:var(--area-tint,#E2EFFA);color:var(--area-ink,var(--k-acc));line-height:1.3}
+.k-count > span b{font-size:22px;font-weight:700}
+.k-count > span small{font-size:11.5px;font-weight:700;opacity:.8}
+.k-hero .k-count > span{background:rgba(255,255,255,.12);color:#FFFFFF;border:1px solid rgba(255,255,255,.16)}
+
+/* ---------- table (admin) ---------- */
+.k-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
+.k-table th{text-align:right;font-size:12px;font-weight:700;color:var(--k-muted);padding:10px 12px;border-bottom:1.5px solid var(--k-line);white-space:nowrap}
+.k-table td{padding:12px;border-bottom:1px solid #EDF2F8;vertical-align:middle}
+.k-table tr{animation:kRise .45s ease both;animation-delay:var(--d,0s)}
+.k-table tbody tr:hover td{background:#F8FBFE}
+
+/* ---------- sheet / drawer ---------- */
+.k-dim{position:fixed;inset:0;z-index:40;background:rgba(0,16,48,.5);backdrop-filter:blur(3px);animation:kFade .3s both}
+@keyframes kFade{from{opacity:0}to{opacity:1}}
+.k-drawer{position:fixed;top:0;bottom:0;left:0;z-index:41;width:520px;max-width:100%;background:#FFFFFF;display:flex;flex-direction:column;box-shadow:24px 0 60px rgba(0,16,48,.35);animation:kSlide .45s cubic-bezier(.2,.8,.2,1) both}
+@keyframes kSlide{from{transform:translateX(-100%)}to{transform:none}}
+.k-dh{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #EDF2F8}
+.k-dh h2{margin:0;font-size:19px;font-weight:700;flex:1}
+.k-db{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.k-df{padding:14px 20px;border-top:1px solid #EDF2F8;display:flex;gap:10px}
+
+/* ---------- motion helpers ---------- */
+.k-pulse{animation:kPulse 2.2s ease-in-out infinite}
+@keyframes kPulse{0%,100%{box-shadow:0 0 0 0 rgba(242,84,91,.4)}50%{box-shadow:0 0 0 10px rgba(242,84,91,0)}}
+.k-float{animation:kFloat 5s ease-in-out infinite}
+@keyframes kFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.k-live{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#C2410C}
+.k-live i{width:8px;height:8px;border-radius:50%;background:var(--k-coral);animation:kPing 1.6s ease-out infinite}
+@keyframes kPing{0%{box-shadow:0 0 0 0 rgba(242,84,91,.6)}100%{box-shadow:0 0 0 9px rgba(242,84,91,0)}}
+
+/* ---------- motion catalogue "ورق، حبر، ونبض" (PLAN §1.3) ----------
+   Delay via --d, stagger index via --i. Transform / opacity / clip-path / stroke-dashoffset only (Flutter equivalents in PLAN §1.3).
+   Budget per screen: 1 hero move (m-flip / m-deal / m-wipe / m-wobble) + m-ink / m-roll for numbers + m-jelly on taps;
+   m-burst only for booking confirmed, exam passed, level up, attendance done; loops (m-breathe, m-drift-*) on ≤ 3 elements.
+   Entry moves end on the element's own transform (fill-mode backwards) so hover/press still work afterwards. */
+/* M1 page flip-in — card swings in on its right edge (RTL spine) */
+@keyframes mFlip{from{opacity:0;transform:perspective(900px) rotateY(-70deg)}60%{opacity:1;transform:perspective(900px) rotateY(8deg)}to{transform:none}}
+.m-flip{transform-origin:100% 50%;animation:mFlip .6s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(var(--i,0)*70ms + var(--d,0s))}
+/* M2 ink draw — svg stroke draws itself; set --len (path length or pathLength) and --to (final offset, 0 = full) */
+.m-ink{stroke-dasharray:var(--len,300);stroke-dashoffset:var(--len,300);animation:mInk .9s cubic-bezier(.6,0,.2,1) .2s forwards;animation-delay:calc(.2s + var(--d,0s))}
+@keyframes mInk{to{stroke-dashoffset:var(--to,0)}}
+/* M3 spring pop */
+@keyframes mPop{0%{opacity:0;transform:scale(.6) rotate(-6deg)}60%{opacity:1;transform:scale(1.08) rotate(2deg)}100%{transform:none}}
+.m-pop{animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d,0s)}
+/* M4 sticker slap — lands tilted −3° */
+@keyframes mSlap{0%{opacity:0;transform:scale(1.6) rotate(-12deg)}55%{opacity:1;transform:scale(.94) rotate(-3deg)}75%{transform:scale(1.04,.96) rotate(-3deg)}100%{transform:rotate(-3deg)}}
+.m-slap{animation:mSlap .42s cubic-bezier(.3,.9,.4,1) both;animation-delay:var(--d,.3s)}
+/* M5 tilt-stack deal */
+@keyframes mDeal{from{opacity:0;transform:translate(calc(var(--dx,40px)*-1),30px) rotate(var(--r,6deg)) scale(.92)}to{opacity:1;transform:none}}
+.m-deal{animation:mDeal .5s cubic-bezier(.2,.9,.3,1.1) backwards;animation-delay:calc(var(--i,0)*60ms + var(--d,0s))}
+.m-deal:nth-child(even){--r:-6deg;--dx:-40px}
+/* M6 curtain wipe (right → left) */
+@keyframes mWipe{from{clip-path:polygon(100% 0,100% 0,100% 100%,100% 100%)}to{clip-path:polygon(-20% 0,100% 0,100% 100%,0 100%)}}
+.m-wipe{animation:mWipe .55s cubic-bezier(.6,0,.2,1) backwards;animation-delay:var(--d,0s)}
+/* M7 squiggle under one key word: <span class="m-squig">كلمة<svg viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true"><path pathLength="240" d="M2 6 Q 17 0 32 6 T 62 6 T 92 6 T 118 5"/></svg></span> */
+.m-squig{position:relative;white-space:nowrap;display:inline-block}
+.m-squig svg{position:absolute;inset:auto 0 -6px 0;width:100%;height:10px;overflow:visible}
+.m-squig path{fill:none;stroke:var(--squig,var(--s-sun));stroke-width:4;stroke-linecap:round;stroke-dasharray:240;stroke-dashoffset:240;animation:mInk .7s ease-out .5s forwards}
+/* M8 breathing live halo (set --halo to change the ring colour, e.g. #fff on a red banner) */
+.m-breathe{position:relative;animation:mBreathe 2.4s ease-in-out infinite}
+.m-breathe::before,.m-breathe::after{content:"";position:absolute;inset:-4px;border-radius:inherit;border:2px solid var(--halo,var(--s-live));opacity:0;animation:mHalo 2.4s ease-out infinite;pointer-events:none}
+.m-breathe::after{animation-delay:1.2s}
+@keyframes mBreathe{50%{transform:scale(1.03)}}
+@keyframes mHalo{0%{opacity:.55;transform:scale(1)}100%{opacity:0;transform:scale(1.35)}}
+/* M9 jelly press (built into .k-btn and .k-chip; add .m-jelly to tiles/options) */
+.m-jelly{transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.m-jelly:active{transform:scale(.94,1.04)}
+/* M10 ticker roll: <span class="m-roll" aria-label="٦٢"><i style="--v:6" aria-hidden="true"></i><i style="--v:2;--i:1" aria-hidden="true"></i></span>
+   an empty <i> shows the Arabic-Indic strip ٠…٩; put your own lines inside <i> for other glyphs */
+.m-roll{display:inline-flex;direction:ltr;unicode-bidi:isolate;white-space:nowrap;overflow:hidden;height:1.3em;line-height:1.3;vertical-align:bottom}
+.m-roll i{display:flex;flex-direction:column;font-style:normal;transform:translateY(calc(var(--v,0)*-1.3em));animation:mRoll .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0)*80ms + var(--d,.2s))}
+.m-roll i:empty::before{content:"٠\A١\A٢\A٣\A٤\A٥\A٦\A٧\A٨\A٩";white-space:pre;text-align:center}
+.m-roll i > *{display:block;height:1.3em}
+@keyframes mRoll{from{transform:translateY(0)}to{transform:translateY(calc(var(--v,0)*-1.3em))}}
+/* M11 bounded confetti burst: <span class="m-burst" aria-hidden="true"><i></i>×10</span> inside a positioned parent */
+.m-burst{position:absolute;inset:50% auto auto 50%;width:0;height:0;pointer-events:none}
+.m-burst i{position:absolute;width:8px;height:8px;border-radius:2px;background:var(--c,var(--s-sun));animation:mBurst .9s cubic-bezier(.1,.7,.3,1) forwards;animation-delay:calc(.15s + var(--d,0s));opacity:0}
+.m-burst i:nth-child(1){--x:-70px;--y:-58px;--c:var(--s-sun)}
+.m-burst i:nth-child(2){--x:62px;--y:-66px;--c:var(--k-coral);border-radius:50%}
+.m-burst i:nth-child(3){--x:84px;--y:-8px;--c:var(--s-mint);width:12px;height:5px}
+.m-burst i:nth-child(4){--x:-88px;--y:6px;--c:var(--s-grape);border-radius:50%}
+.m-burst i:nth-child(5){--x:-40px;--y:-88px;--c:var(--k-cyan);width:5px;height:12px}
+.m-burst i:nth-child(6){--x:30px;--y:-92px;--c:var(--s-pink)}
+.m-burst i:nth-child(7){--x:70px;--y:46px;--c:var(--s-lime);border-radius:50%}
+.m-burst i:nth-child(8){--x:-64px;--y:52px;--c:var(--k-apricot);width:12px;height:5px}
+.m-burst i:nth-child(9){--x:8px;--y:70px;--c:var(--s-sky);--rot:-200deg}
+.m-burst i:nth-child(10){--x:-12px;--y:-104px;--c:var(--s-sun);border-radius:50%}
+@keyframes mBurst{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--rot,220deg))}}
+/* M12 shelf slide & wobble */
+@keyframes mWobble{0%{opacity:0;transform:translateX(40px) rotate(8deg)}40%{opacity:1;transform:translateX(0) rotate(-4deg)}65%{transform:rotate(3deg)}85%{transform:rotate(-1.5deg)}100%{transform:none}}
+.m-wobble{transform-origin:50% 100%;animation:mWobble .8s ease-out backwards;animation-delay:calc(var(--i,0)*60ms + var(--d,0s))}
+/* M13 morph tab pill: parent .m-pill (+ --n items), first child <span class="m-pill-bg" style="--i:<selected index>">.
+   Generic: set --x / --w yourself. Ready-made for .k-seg and .k-bnav. */
+.m-pill{position:relative}
+.m-pill > .m-pill-bg{position:absolute;top:4px;bottom:4px;right:var(--x,4px);width:var(--w,25%);border-radius:19px;background:#FFFFFF;box-shadow:0 4px 12px rgba(0,32,94,.12);transition:right .35s cubic-bezier(.3,1.3,.5,1),width .35s cubic-bezier(.3,1.3,.5,1);animation:mPillIn .45s cubic-bezier(.3,1.3,.5,1) backwards;pointer-events:none}
+@keyframes mPillIn{from{opacity:0;transform:scaleX(.4)}}
+.m-pill > :not(.m-pill-bg){position:relative;z-index:1}
+.k-seg.m-pill > .m-pill-bg{--w:calc((100% - 8px - (var(--n,4) - 1) * 4px) / var(--n,4));--x:calc(4px + var(--i,0) * ((100% - 8px - (var(--n,4) - 1) * 4px) / var(--n,4) + 4px))}
+.k-seg.m-pill button[aria-selected="true"]{background:transparent;box-shadow:none}
+/* M14 peek sheet (phone) */
+@keyframes mSheet{0%{transform:translateY(100%)}70%{transform:translateY(-8px)}100%{transform:none}}
+/* M15 shake-no / nod-yes */
+@keyframes mShake{20%,60%{transform:translateX(-7px);box-shadow:0 0 0 3px rgba(242,84,91,.4)}40%,80%{transform:translateX(7px);box-shadow:0 0 0 3px rgba(242,84,91,.4)}}
+.m-shake{animation:mShake .36s linear}
+@keyframes mNod{40%{transform:translateY(5px);box-shadow:0 0 0 4px rgba(25,194,155,.45)}70%{transform:translateY(-2px);box-shadow:0 0 0 3px rgba(25,194,155,.3)}}
+.m-nod{animation:mNod .36s ease-out}
+/* M16 parallax blobs (hero shapes) */
+.m-drift-a{animation:mDriftA 11s ease-in-out infinite}
+.m-drift-b{animation:mDriftA 15s ease-in-out infinite reverse}
+.m-drift-c{animation:mSpinSlow 28s linear infinite}
+@keyframes mDriftA{50%{transform:translate(22px,-18px) rotate(8deg)}}
+@keyframes mSpinSlow{to{transform:rotate(360deg)}}
+
+/* ---------- phone ---------- */
+@media (max-width:760px){
+.k-side{display:none}
+.k-top{display:none}
+.k-mtop{display:flex;position:sticky;top:0;z-index:20;align-items:center;gap:10px;height:58px;padding:0 14px;color:#FFFFFF;background:rgba(0,26,78,.94);backdrop-filter:blur(12px)}
+.k-mtop h1{margin:0;font-size:17px;font-weight:700;flex:1;line-height:1.3}
+.k-mtop .k-ib{width:38px;height:38px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#FFFFFF}
+.k-bnav{display:flex;position:sticky;bottom:0;z-index:20;height:70px;padding:8px 8px 12px;gap:4px;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-top:1px solid var(--k-line)}
+.k-bnav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:16px;font-size:11px;font-weight:700;color:var(--k-muted);position:relative}
+.k-bnav a[aria-current="page"]{color:var(--k-navy);background:linear-gradient(160deg,#E8F3FC,#FFFFFF)}
+.k-bnav a[aria-current="page"] svg{color:var(--area-ink,var(--k-acc))}
+.k-bnav .k-cnt{position:absolute;top:2px;left:22%;min-width:18px;height:18px;font-size:10px}
+/* bottom-nav active blob (M13) */
+.k-bnav.m-pill{position:sticky}
+.k-bnav.m-pill > .m-pill-bg{top:8px;bottom:12px;border-radius:16px;box-shadow:none;background:var(--area-tint,#E8F3FC);--w:calc((100% - 16px - (var(--n,5) - 1) * 4px) / var(--n,5));--x:calc(8px + var(--i,0) * ((100% - 16px - (var(--n,5) - 1) * 4px) / var(--n,5) + 4px))}
+.k-bnav.m-pill a[aria-current="page"]{background:transparent}
+.k-hero{padding:18px 16px 84px}
+.k-hero h2{font-size:24px}
+.k-hero p{font-size:14px}
+.k-body{padding:0 12px 24px;margin-top:-62px;gap:14px}
+.k-g2,.k-g3,.k-side2{grid-template-columns:1fr}
+.k-g4,.k-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+.k-stats{gap:10px}
+.k-card{padding:16px;border-radius:20px}
+.k-stat b{font-size:21px}
+.k-drawer{top:auto;width:100%;height:calc(var(--vh,100vh)*0.92);border-radius:24px 24px 0 0;animation:kUp .45s cubic-bezier(.2,.8,.2,1) both}
+@keyframes kUp{from{transform:translateY(100%)}to{transform:none}}
+.k-table thead{display:none}
+.k-table tr{display:flex;flex-wrap:wrap;gap:4px 10px;padding:12px 0;border-bottom:1px solid #EDF2F8}
+.k-table td{padding:0;border:none}
+/* compact student hero: ≤ 190 px; stat tiles leave the phone hero; first card starts within 260 px */
+.k:not(.teacher):not(.parent):not(.admin):not(.super) .k-hero{padding:14px 16px 72px}
+.k:not(.teacher):not(.parent):not(.admin):not(.super) .k-hero h2{font-size:22px}
+.k:not(.teacher):not(.parent):not(.admin):not(.super) .k-hero .k-stats{display:none}
+.k:not(.teacher):not(.parent):not(.admin):not(.super) .k-body{margin-top:-54px}
+.k-hero-shapes > i:nth-child(1){width:150px;height:150px;top:-70px;left:-20px}
+.k-hero-shapes > i:nth-child(2){width:72px;height:72px;border-radius:24px;bottom:18px;left:30%}
+.k-hero-shapes > i:nth-child(3){width:40px;height:40px;top:14px;left:44%;background-size:100% 11px,11px 100%}
+/* M14 peek sheet */
+.k-drawer.m-sheet,.m-sheet{animation:mSheet .5s cubic-bezier(.2,.8,.2,1) both}
+}
+@media (prefers-reduced-motion: reduce){
+.k *,.k *::before,.k *::after{animation:none !important;transition:none !important}
+/* end states when motion is off */
+.k .m-ink{stroke-dashoffset:var(--to,0)}
+.k .m-squig path,.k .k-success-mark circle,.k .k-success-mark path{stroke-dashoffset:0}
+.k .m-slap{transform:rotate(-3deg)}
+.k .m-burst{display:none}
+}

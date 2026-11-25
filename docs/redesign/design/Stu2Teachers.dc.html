@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الطالب: المعلمين</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* Stu2Teachers — teacher list, ONE teacher profile (Stu1Discover links here), packs, my teachers. Area a-learn.
+   Signature: teacher cards dealt from a stack (M5), seats fill one by one (staggered pop), avatar M3, price M10 roll,
+   pack options and payment rows M3 on select + M9 jelly. Booking language and look = BookFlow step 3/4. Flutter: kit.css / PLAN §1.3. */
+.k-grid > *{min-width:0}
+.tc-hrow{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.tc-hb{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 16px;border-radius:22px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.24);color:#FFFFFF;font-size:13.5px;font-weight:700;white-space:nowrap;transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.tc-hb:active{transform:scale(.94,1.04)}
+.tc-search{display:flex;gap:10px;margin-top:16px;max-width:680px}
+.tc-search .k-in{flex:1;border:none;height:50px;border-radius:25px;min-width:0}
+.tc-search .k-btn{height:50px;flex-shrink:0}
+.tc-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px}
+.tc-chips::-webkit-scrollbar{display:none}
+.tc-chips .k-chip{height:40px}
+.tc-tg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.tc-tc{position:relative;display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:22px;background:linear-gradient(165deg,var(--sub-t) 0%,#FFFFFF 55%);border:1.5px solid var(--sub-t);color:var(--k-text);transition:transform .25s cubic-bezier(.3,1.4,.5,1),box-shadow .25s}
+.tc-tc:hover{transform:translateY(-5px) rotate(-.6deg);box-shadow:0 16px 30px -16px rgba(0,20,64,.35)}
+.tc-tc:active{transform:scale(.97,1.02)}
+.tc-av{width:58px;height:58px;border-radius:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--sub-fg);font-size:22px;font-weight:700;background:var(--sub);box-shadow:0 10px 18px -10px var(--sub)}
+.tc-who{display:flex;align-items:center;gap:12px}
+.tc-who > span:last-child{display:flex;flex-direction:column;gap:0;min-width:0}
+.tc-who b{font-size:16px;line-height:1.45}
+.tc-sex{font-size:12px;font-weight:700;color:var(--sub-i)}
+.tc-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;color:var(--k-muted)}
+.tc-meta b{font-size:16px;color:var(--k-navy)}
+.tc-star{display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#7A5200}
+.tc-go{display:inline-flex;align-items:center;gap:4px;font-size:13.5px;font-weight:700;color:var(--sub-i)}
+/* profile */
+.tc-pav{width:96px;height:96px;border-radius:32px;font-size:38px;font-weight:700;color:#FFFFFF;background:linear-gradient(150deg,#FFB08F,var(--sub-math));border:4px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;animation:mPop .5s cubic-bezier(.3,1.4,.5,1) .2s backwards}
+.tc-ph{display:flex;align-items:center;gap:18px}
+.tc-opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.tc-opt{position:relative;text-align:right;border-radius:22px;border:2px solid var(--k-line);background:#FFFFFF;padding:18px;display:flex;flex-direction:column;gap:8px;color:var(--k-text);transition:border-color .25s,box-shadow .25s,transform .18s cubic-bezier(.3,1.6,.5,1)}
+.tc-opt:active{transform:scale(.94,1.04)}
+.tc-opt[aria-checked="true"]{border-color:#FF8A4C;background:linear-gradient(160deg,#FFFFFF 40%,#FFF1E6);box-shadow:0 16px 34px -8px rgba(242,84,91,.25)}
+.tc-opt[aria-checked="true"] .k-ico{animation:mPop .45s cubic-bezier(.3,1.4,.5,1)}
+.tc-opt .k-ico{width:48px;height:48px;border-radius:15px}
+.tc-opt b{font-size:17px}
+.tc-chk{position:absolute;top:16px;left:16px;width:26px;height:26px;border-radius:50%;border:2px solid #D5E3F2;background:#FFFFFF;display:flex;align-items:center;justify-content:center;color:#FFFFFF}
+.tc-chk svg{transform:scale(0);transition:transform .35s cubic-bezier(.3,1.7,.5,1)}
+[aria-checked="true"] > .tc-chk{background:linear-gradient(140deg,#FF9F5A,#F2545B);border-color:transparent}
+[aria-checked="true"] > .tc-chk svg{transform:scale(1)}
+.tc-price{display:flex;align-items:baseline;gap:6px}
+.tc-price b{font-size:22px;color:var(--k-navy)}
+.tc-price span{font-size:13px;color:var(--k-muted)}
+.tc-per{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:14px;background:#F3F8FD;font-size:12.5px;font-weight:700;color:var(--k-muted)}
+.tc-pk{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:20px;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-text);transition:transform .18s cubic-bezier(.3,1.6,.5,1),box-shadow .25s}
+.tc-pk:hover{box-shadow:0 12px 26px rgba(163,72,10,.1)}
+.tc-pk:active{transform:scale(.97,1.02)}
+.tc-pk .k-ico{width:50px;height:50px;border-radius:16px;flex-direction:column;font-weight:700;font-size:18px;line-height:1.1}
+.tc-pk .k-ico small{font-size:10.5px;font-weight:600}
+.tc-seats{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:4px}
+.tc-seat{width:12px;height:12px;border-radius:4px;background:#E2EAF4}
+.tc-seat.f{background:var(--sc,#FF8A4C);animation:tcSeat .4s cubic-bezier(.3,1.6,.5,1) backwards;animation-delay:var(--d)}
+@keyframes tcSeat{from{transform:scale(0) rotate(-30deg)}}
+.tc-left{font-size:12.5px;font-weight:700;margin-right:6px}
+.tc-rv{display:flex;gap:12px;padding:12px 0;border-bottom:1px dashed var(--k-line)}
+.tc-rv:last-child{border-bottom:none}
+.tc-q{display:flex;align-items:center;gap:10px}
+.tc-q .k-ico{width:38px;height:38px;border-radius:12px;background:var(--area-tint);color:var(--area-ink)}
+/* pack */
+.tc-rev{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:18px;align-items:start}
+.tc-sum{border-radius:22px;border:1.5px solid var(--k-line);background:#FFFFFF;overflow:hidden}
+.tc-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid #EDF2F8;font-size:14px}
+.tc-row:first-child{border-top:none}
+.tc-row > span:first-child{color:var(--k-muted);flex-shrink:0}
+.tc-row > span:last-child{font-weight:700;text-align:left}
+.tc-slot{display:flex;align-items:center;gap:12px;padding:10px 18px;border-top:1px dashed #EDF2F8;font-size:14px}
+.tc-slot b{width:78px;flex-shrink:0;color:var(--k-navy)}
+.tc-box{border-radius:22px;border:1.5px solid var(--k-line);background:#F8FBFE;padding:18px;display:flex;flex-direction:column;gap:12px}
+.tc-box.on{background:linear-gradient(160deg,#FFFFFF 30%,#FFF1E6);border-color:#F5C3A2}
+.tc-box.ok{background:var(--s-mint-tint);border-color:#BDEBDD}
+.tc-box.wait{background:var(--s-sky-tint);border-color:#C4E0FF}
+.tc-box > b{font-size:17px;line-height:1.45;display:flex;align-items:center;gap:8px}
+.tc-total{display:flex;justify-content:space-between;align-items:center;padding:12px 0 0;border-top:1.5px dashed #D5E3F2}
+.tc-total > span:first-child{font-size:14px;color:var(--k-muted);display:flex;flex-direction:column;line-height:1.4}
+.tc-total small{font-size:12px}
+.tc-big{display:inline-flex;align-items:baseline;gap:6px;font-size:24px;font-weight:700;color:var(--k-navy)}
+.tc-big small{font-size:15px}
+.tc-pay{display:flex;flex-direction:column;gap:8px}
+.tc-pm{height:50px;border-radius:16px;border:1.5px solid #D5E3F2;background:#FFFFFF;font-size:14px;font-weight:700;color:var(--k-text);display:flex;align-items:center;gap:12px;padding:0 14px;text-align:right;transition:border-color .2s,background .2s,transform .18s cubic-bezier(.3,1.6,.5,1)}
+.tc-pm:active{transform:scale(.94,1.04)}
+.tc-pm > span:first-child{width:40px;height:28px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.tc-radio{margin-right:auto;width:22px;height:22px;border-radius:50%;border:2px solid #D5E3F2;flex-shrink:0}
+.tc-pm[aria-checked="true"]{border-color:#FF8A4C;background:#FFF6EF}
+.tc-pm[aria-checked="true"] .tc-radio{border:7px solid #F2545B;animation:mPop .4s cubic-bezier(.3,1.4,.5,1)}
+.tc-link{align-self:flex-start;min-height:44px;background:none;border:none;padding:0;color:var(--area-ink);font-size:14px;font-weight:700;text-decoration:underline;text-underline-offset:4px;display:inline-flex;align-items:center}
+.tc-link.red{color:#C2410C}
+.tc-hold{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.tc-bar{display:none}
+/* mine */
+.tc-mine{display:grid;grid-template-columns:auto minmax(0,1.2fr) minmax(0,1fr) auto;gap:16px;align-items:center}
+.tc-mine .k-bar i{background:linear-gradient(90deg,var(--sub),var(--sub))}
+@media (max-width:760px){
+  .tc-hrow .tc-hb.wide,.tc-hide{display:none}
+  .tc-search{margin-top:12px}
+  .tc-search .k-in{height:46px}
+  .tc-search .k-btn{height:46px;padding:0 14px}
+  .tc-tg{grid-template-columns:1fr;gap:10px}
+  .tc-tc{padding:14px}
+  .tc-ph{gap:12px}
+  .tc-pav{width:64px;height:64px;font-size:26px;border-radius:22px}
+  .tc-ph p{display:none}
+  .tc-opts{grid-template-columns:1fr;gap:10px}
+  .tc-opt{padding:14px}
+  .tc-rev{grid-template-columns:1fr;gap:14px}
+  .tc-first{order:-1}
+  .tc-row,.tc-slot{padding-right:14px;padding-left:14px}
+  .tc-box{padding:14px}
+  .tc-nav{display:none}
+  .tc-bar{display:flex;position:sticky;bottom:0;z-index:20;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px 16px;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid #D5E3F2}
+  .tc-bar > span{display:flex;flex-direction:column;line-height:1.35}
+  .tc-bar > span small{font-size:12px;color:var(--k-muted)}
+  .tc-bar > span b{font-size:19px;color:var(--k-navy)}
+  .tc-bar .k-btn{flex:1;max-width:240px;height:52px}
+  .tc-mine{grid-template-columns:auto minmax(0,1fr);gap:10px 12px}
+  .tc-mine > :nth-child(3){grid-column:1 / -1}
+  .tc-mine > :nth-child(4){grid-column:1 / -1}
+}
+</style>
+</helmet>
+<div class="k a-learn" dir="rtl">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">طالب</span></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+        <a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a>
+      </sc-for>
+      <div class="k-me"><span class="k-av sm">ف</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">فيصل العنزي</b><small style="font-size: 11.5px; opacity: .7">الصف الثاني الثانوي</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <sc-if value="{{back}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-ib" aria-label="رجوع" onClick="{{goBack}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a></sc-if>
+        <span><small>دوراتي</small><h1>{{title}}</h1></span>
+        <span class="k-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن دورة أو معلم أو درس<kbd>Ctrl K</kbd></span>
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="3"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av">ف</span>
+      </header>
+      <header class="k-mtop"><sc-if value="{{back}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-ib" aria-label="رجوع" onClick="{{goBack}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a></sc-if><sc-if value="{{noback}}" hint-placeholder-val="{{ true }}"><img src="./logo.png" alt="" width="28" height="31" style="width: 28px; height: auto"></sc-if><h1>{{title}}</h1><sc-for list="{{mtools}}" as="t" hint-placeholder-count="2"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for></header>
+      <main class="k-page">
+
+<!-- ============ LIST ============ -->
+<sc-if value="{{is.list}}" hint-placeholder-val="{{ true }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+  <div class="tc-hrow">
+    <div class="k-col" style="gap: 2px; flex: 1 1 260px"><h2>لقِ معلمك</h2><p class="tc-hide">معلمين سعوديين للطلاب، عن بعد وحضوري</p></div>
+    <a href="#" class="tc-hb wide" onClick="{{goMine}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a7 7 0 0 1 14 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a7 7 0 0 0-4-6.3"></path></svg>معلميّ ٣</a>
+  </div>
+  <div class="tc-search"><span class="k-in"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>اسم المعلم أو المادة</span><a href="#" class="k-btn" onClick="{{openFilter}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6 8v6l-4-2v-4z"></path></svg>الفلاتر</a></div>
+</section>
+<div class="k-body">
+  <section class="k-card" style="--d: .1s">
+    <div class="tc-chips" role="tablist" aria-label="المادة"><sc-for list="{{subjects}}" as="c" hint-placeholder-count="6"><button type="button" role="tab" class="k-chip" aria-pressed="{{c.on}}" aria-selected="{{c.on}}" onClick="{{c.go}}">{{c.l}}</button></sc-for></div>
+    <div class="tc-tg"><sc-for list="{{teachers}}" as="t" hint-placeholder-count="6">
+      <a href="#" class="tc-tc m-deal {{t.sub}}" style="--i: {{t.k}}; --d: .2s" onClick="{{goProfile}}">
+        <span class="tc-who"><span class="tc-av">{{t.a}}</span><span><b>{{t.n}}</b><span class="tc-sex">{{t.sex}}</span><span class="k-m">{{t.subj}}</span></span></span>
+        <span class="k-row" style="gap: 6px"><sc-for list="{{t.tags}}" as="g" hint-placeholder-count="2"><span class="k-tag {{g.c}}">{{g.l}}</span></sc-for></span>
+        <span class="tc-meta"><span class="tc-star"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="#FFB020" stroke="none"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"></path></svg>{{t.r}} <span class="k-m" style="font-weight: 500">({{t.rc}} تقييم)</span></span><span><b>{{t.price}}</b> ريال في الشهر</span></span>
+        <span class="tc-go">شوف الملف<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></span>
+      </a>
+    </sc-for></div>
+  </section>
+</div>
+</sc-if>
+
+<!-- ============ PROFILE (the one teacher profile) ============ -->
+<sc-if value="{{is.profile}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+  <div class="tc-hrow">
+    <div class="tc-ph">
+      <span class="tc-pav">م</span>
+      <div class="k-col" style="gap: 2px"><span class="k-row" style="gap: 6px"><span class="k-tag g m-slap" style="--d: .6s"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4"></path></svg>معلم موثّق</span></span><h2>أ. ماجد الشهري</h2><p>الرياضيات للثانوي والقدرات الكمي</p></div>
+    </div>
+    <div class="k-row"><a href="#" class="tc-hb"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg>راسله</a><button type="button" class="tc-hb" aria-pressed="{{favP}}" onClick="{{togFav}}" aria-label="المفضلة"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="{{favF}}" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z"></path></svg></button></div>
+  </div>
+  <div class="k-stats"><sc-for list="{{pstats}}" as="s" hint-placeholder-count="4"><span class="k-stat"><b>{{s.n}}</b><small>{{s.l}}</small></span></sc-for></div>
+</section>
+<div class="k-body">
+  <section class="k-card" style="--d: .1s">
+    <div class="k-ch"><h3>كيف تبي تدرس معه؟</h3><span class="k-tag o">الرياضيات ٢ ث</span></div>
+    <div class="tc-opts" role="radiogroup" aria-label="نوع الحصص"><sc-for list="{{opts}}" as="o" hint-placeholder-count="2">
+      <button type="button" role="radio" class="tc-opt" aria-checked="{{o.on}}" onClick="{{o.go}}">
+        <span class="tc-chk" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"></path></svg></span>
+        <span class="k-ico" style="background: {{o.bg}}; color: {{o.fg}}"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{o.i}}"></path></svg></span>
+        <b>{{o.t}}</b><span class="k-m" style="font-size: 13.5px">{{o.d}}</span>
+        <span class="tc-price"><b>{{o.p}}</b><span>ريال في الشهر</span></span>
+        <span class="tc-per">الحصة ٥٠ دقيقة</span>
+      </button>
+    </sc-for></div>
+    <a href="BookFlow.dc.html" class="k-btn hot" style="align-self: flex-start; min-width: 240px">احجز معه</a>
+  </section>
+  <div class="k-grid k-side2" style="align-items: start">
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card" style="--d: .16s">
+        <div class="k-ch"><h3>باقاته</h3><span class="k-m">المقاعد محدودة</span></div>
+        <sc-for list="{{packs}}" as="p" hint-placeholder-count="3"><a href="#" class="tc-pk m-deal" style="--i: {{p.k}}; --d: .25s" onClick="{{goPack}}"><span class="k-ico" style="background: {{p.bg}}; color: {{p.fg}}">{{p.n}}<small>{{p.nu}}</small></span><span class="k-col" style="gap: 2px; flex: 1; min-width: 0"><b style="font-size: 15.5px">{{p.t}}</b><span class="k-m">{{p.m}}</span><span class="tc-seats" aria-label="{{p.sl}}"><sc-for list="{{p.seats}}" as="x" hint-placeholder-count="10"><span class="tc-seat {{x.c}}" style="--d: {{x.d}}"></span></sc-for><span class="tc-left" style="color: {{p.lc}}">{{p.left}}</span></span></span><span class="k-col" style="gap: 0; align-items: flex-end; flex-shrink: 0"><b style="font-size: 17px; color: var(--k-navy)">{{p.price}}</b><span class="k-m">{{p.per}}</span></span></a></sc-for>
+      </section>
+      <section class="k-card" style="--d: .2s">
+        <div class="k-ch"><h3>وش قالوا عنه</h3><span class="k-tag y"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"></path></svg>٤٫٩ من ٢١٣ تقييم</span></div>
+        <div><sc-for list="{{reviews}}" as="r" hint-placeholder-count="3"><div class="tc-rv"><span class="k-av sm" style="background: {{r.bg}}">{{r.a}}</span><div class="k-col" style="gap: 2px"><b style="font-size: 14px">{{r.n}} <span class="k-m" style="font-weight: 600">{{r.w}}</span></b><span style="font-size: 14px; line-height: 1.8">{{r.t}}</span></div></div></sc-for></div>
+      </section>
+    </div>
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card" style="--d: .18s">
+        <h3 style="margin: 0; font-size: 18px">عنه</h3>
+        <p style="margin: 0; font-size: 14.5px; line-height: 1.9; color: var(--k-muted)">أدرّس الرياضيات من ٩ سنوات في مدارس الرياض. أبدأ معك باختبار قصير، وبعدها نمشي بخطة واضحة.</p>
+        <sc-for list="{{quals}}" as="q" hint-placeholder-count="3"><div class="tc-q"><span class="k-ico"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{q.i}}"></path></svg></span><span class="k-col" style="gap: 0"><b style="font-size: 14px">{{q.t}}</b><span class="k-m">{{q.m}}</span></span></div></sc-for>
+      </section>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ PACK ============ -->
+<sc-if value="{{is.pack}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+  <div class="k-col" style="gap: 2px"><span style="font-size: 13px; opacity: .82; font-weight: 600">باقة مع أ. ماجد الشهري</span><h2>باقة التأسيس، ٨ حصص</h2><p>الرياضيات ٢ ث، تبدأ الأحد ٦ ديسمبر</p></div>
+</section>
+<div class="k-body">
+  <section class="k-card" style="--d: .12s; padding: 24px">
+    <div class="tc-rev">
+      <div class="tc-sum">
+        <sc-for list="{{prows}}" as="r" hint-placeholder-count="5"><div class="tc-row"><span>{{r.k}}</span><span>{{r.v}}</span></div></sc-for>
+        <div class="tc-row" style="background: #F8FBFE"><span style="color: var(--k-text); font-weight: 700">المواعيد</span><span class="k-m">ثابتة طول الباقة</span></div>
+        <sc-for list="{{slots}}" as="s" hint-placeholder-count="4"><div class="tc-slot"><b>{{s.d}}</b><span style="flex: 1">{{s.t}}</span><span class="k-tag n">{{s.time}}</span></div></sc-for>
+      </div>
+      <div class="tc-box tc-first {{pk.cls}} m-pop" style="--d: .25s">
+        <span class="k-row" style="justify-content: space-between"><b style="font-size: 15px">المقاعد</b><span class="tc-seats" aria-label="{{seatL}}" style="margin: 0"><sc-for list="{{seats}}" as="x" hint-placeholder-count="10"><span class="tc-seat {{x.c}}" style="--d: {{x.d}}"></span></sc-for></span></span>
+        <b style="color: {{pk.hc}}"><sc-if value="{{pk.okI}}" hint-placeholder-val="{{ false }}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg></sc-if>{{pk.h}}</b>
+        <sc-if value="{{pk.m}}" hint-placeholder-val="{{ false }}"><span class="k-m" style="font-size: 14px">{{pk.m}}</span></sc-if>
+        <sc-if value="{{pk.count}}" hint-placeholder-val="{{ false }}"><div class="tc-hold"><span class="k-m" style="font-weight: 700">{{pk.cl}}</span><div class="k-count" aria-label="{{pk.cal}}"><sc-for list="{{cnt}}" as="u" hint-placeholder-count="2"><span><b><span class="m-roll"><sc-for list="{{u.digs}}" as="g" hint-placeholder-count="2"><i aria-hidden="true" style="--v: {{g.v}}; --i: {{g.i}}"></i></sc-for></span></b><small>{{u.l}}</small></span></sc-for></div></div></sc-if>
+        <sc-if value="{{pk.pay}}" hint-placeholder-val="{{ true }}">
+          <div class="tc-pay" role="radiogroup" aria-label="طريقة الدفع"><sc-for list="{{pays}}" as="m" hint-placeholder-count="4"><button type="button" role="radio" class="tc-pm" aria-checked="{{m.on}}" onClick="{{m.go}}"><span style="background: {{m.bg}}; color: {{m.fg}}">{{m.mark}}</span>{{m.t}}<span class="tc-radio" aria-hidden="true"></span></button></sc-for></div>
+          <div class="tc-total"><span>المبلغ<small>٨٥ ريال للحصة، شامل الضريبة</small></span><b class="tc-big"><span class="m-roll" aria-label="٦٨٠"><i style="--v: 6" aria-hidden="true"></i><i style="--v: 8; --i: 1" aria-hidden="true"></i><i style="--v: 0; --i: 2" aria-hidden="true"></i></span><small>ريال</small></b></div>
+        </sc-if>
+        <sc-if value="{{pk.btn}}" hint-placeholder-val="{{ true }}"><a href="{{pk.href}}" class="k-btn {{pk.bc}} tc-nav" onClick="{{pk.go}}">{{pk.btn}}</a></sc-if>
+        <sc-if value="{{pk.link}}" hint-placeholder-val="{{ false }}"><a href="#" class="tc-link {{pk.lc}}" onClick="{{pk.lgo}}">{{pk.link}}</a></sc-if>
+      </div>
+    </div>
+  </section>
+</div>
+</sc-if>
+
+<!-- ============ MINE ============ -->
+<sc-if value="{{is.mine}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero m-wipe">
+  <div class="k-hero-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></div>
+  <div class="tc-hrow"><div class="k-col" style="gap: 2px; flex: 1 1 260px"><h2>معلميّ</h2><p>اللي تدرس معهم الحين</p></div><a href="#" class="k-btn" style="background: #FFFFFF; color: var(--area-ink)" onClick="{{goList}}">لقِ معلم جديد</a></div>
+  <div class="k-stats"><sc-for list="{{mstats}}" as="s" hint-placeholder-count="4"><span class="k-stat"><b>{{s.n}}</b><small>{{s.l}}</small></span></sc-for></div>
+</section>
+<div class="k-body">
+  <sc-for list="{{mine}}" as="m" hint-placeholder-count="3"><section class="k-card m-deal {{m.sub}}" style="--i: {{m.k}}; --d: .15s"><div class="tc-mine"><span class="tc-av">{{m.a}}</span><span class="k-col" style="gap: 0; min-width: 0"><b style="font-size: 16px">{{m.n}}</b><span class="k-m">{{m.subj}}</span></span><span class="k-col" style="gap: 6px"><span class="k-row" style="justify-content: space-between"><b style="font-size: 14px">{{m.pk}}</b><span class="k-m">{{m.used}}</span></span><span class="k-bar"><i style="width: {{m.p}}%"></i></span><span class="k-m">الجاية: <b style="color: var(--k-text)">{{m.next}}</b></span></span><a href="#" class="k-btn ghost sm"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg>راسل</a></div></section></sc-for>
+</div>
+</sc-if>
+      </main>
+      <sc-if value="{{payBar}}" hint-placeholder-val="{{ false }}">
+      <div class="tc-bar"><span><small>{{bar.l}}</small><b>{{bar.p}}</b></span><a href="{{pk.href}}" class="k-btn {{pk.bc}}" onClick="{{pk.go}}">{{bar.b}}</a></div>
+      </sc-if>
+      <sc-if value="{{bnavOn}}" hint-placeholder-val="{{ true }}">
+      <nav class="k-bnav m-pill" aria-label="القائمة" style="--n: 5"><span class="m-pill-bg" style="--i: 1"></span><sc-for list="{{bnav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt m-slap" style="--d: .6s">{{n.c}}</span></sc-if></a></sc-for></nav>
+      </sc-if>
+    </div>
+  </div>
+
+<sc-if value="{{sh.any}}" hint-placeholder-val="{{ false }}">
+<div class="k-dim" onClick="{{closeSheet}}"></div>
+<aside class="k-drawer m-sheet" role="dialog" aria-modal="true" aria-label="{{sh.title}}">
+  <div class="k-dh"><h2>{{sh.title}}</h2><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{closeSheet}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+  <sc-if value="{{sh.filter}}" hint-placeholder-val="{{ false }}"><div class="k-db">
+    <span class="k-lbl">مين يدرّسك؟</span><div class="k-seg m-pill" role="tablist" style="--n: 3"><span class="m-pill-bg" style="--i: {{fgI}}"></span><sc-for list="{{fg}}" as="f" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{f.sel}}" onClick="{{f.go}}">{{f.l}}</button></sc-for></div>
+    <span class="k-lbl">طريقة الدراسة</span><div class="k-row" style="gap: 8px"><sc-for list="{{fm}}" as="f" hint-placeholder-count="2"><button type="button" class="k-chip" aria-pressed="{{f.on}}" onClick="{{f.go}}">{{f.l}}</button></sc-for></div>
+    <span class="k-lbl">نوع الحصص</span><div class="k-row" style="gap: 8px"><button type="button" class="k-chip" aria-pressed="true">مجموعة طلاب</button><button type="button" class="k-chip" aria-pressed="false">فردي</button></div>
+    <span class="k-lbl">السعر في الشهر</span><div class="k-row" style="gap: 8px"><button type="button" class="k-chip" aria-pressed="false">لين ٢٠٠ ريال</button><button type="button" class="k-chip" aria-pressed="true">لين ٣٠٠ ريال</button><button type="button" class="k-chip" aria-pressed="false">أي سعر</button></div>
+    <span class="k-lbl">التقييم</span><div class="k-row" style="gap: 8px"><button type="button" class="k-chip" aria-pressed="false">٤ وفوق</button><button type="button" class="k-chip" aria-pressed="true">٤٫٥ وفوق</button></div>
+  </div><div class="k-df"><a href="#" class="k-btn" style="flex: 1" onClick="{{closeSheet}}">اعرض ١٢ معلم</a><a href="#" class="k-btn ghost">امسح</a></div></sc-if>
+  <sc-if value="{{sh.leave}}" hint-placeholder-val="{{ false }}"><div class="k-db">
+    <span style="font-size: 16px; line-height: 1.8">إذا طلعت، مقعدك يروح لغيرك وما تحضر الـ٥ حصص الباقية.</span>
+  </div><div class="k-df"><a href="#" class="k-btn danger" style="flex: 1">اطلع من الباقة</a><a href="#" class="k-btn" style="flex: 1" onClick="{{closeSheet}}">أبقى</a></div></sc-if>
+</aside>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 1360, "height": 1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = this.props || {}, S = this.state || {};
+    const D = '٠١٢٣٤٥٦٧٨٩', ar = (x) => String(x).replace(/\d/g, (d) => D[d]);
+    const I = {"home": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z", "courses": "M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14", "store": "M4 7h16l-1.5 12h-13zM9 7V5a3 3 0 0 1 6 0v2", "games": "M6 9h12a4 4 0 0 1 0 8c-2 0-3-2-6-2s-4 2-6 2a4 4 0 0 1 0-8zM8 11v4M6 13h4M16 12h.01M18 14h.01", "quran": "M12 6c-2-1.5-5-2-8-1v14c3-1 6-.5 8 1 2-1.5 5-2 8-1V5c-3-1-6-.5-8 1zM12 6v14", "teachers": "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a8 8 0 0 1 16 0v1", "nahw": "M4 6h16M4 12h10M4 18h7", "analysis": "M4 20V10M10 20V4M16 20v-7M22 20H2", "schedule": "M3 5h18v16H3zM3 10h18M8 3v4M16 3v4", "profile": "M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0", "learn": "M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5", "cal": "M3 5h18v16H3zM3 10h18M8 3v4M16 3v4", "chat": "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z", "ai": "M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z", "bell": "M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0", "exam": "M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9", "task": "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01", "math": "M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2", "atom": "M12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 3c2.5 0 4.5 4 4.5 9s-2 9-4.5 9-4.5-4-4.5-9 2-9 4.5-9z", "en": "M4 6h9M8.5 4v2M6 6c0 4 3 7 6 8M11 6c0 3-3 7-7 8M13 20l4-9 4 9M14.5 17h5", "clock": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2", "check": "M5 12l5 5L20 7", "x": "M6 6l12 12M18 6L6 18", "lock": "M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4", "key": "M7 14a4 4 0 1 1 3.5-6H21v3h-2v3h-3v-3h-5.5A4 4 0 0 1 7 14z", "flag": "M5 21V4M5 4h11l-2 4 2 4H5", "star": "M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z", "coin": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v10M9 9.5h4.5a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3H15", "trophy": "M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 21h8M9 17h6", "gift": "M4 11h16v10H4zM3 7h18v4H3zM12 7v14M12 7C10 3 6 3 6 5.5S12 7 12 7zM12 7c2-4 6-4 6-1.5S12 7 12 7", "ticket": "M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4zM14 7v10", "wallet": "M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-4v4M16 13h2", "card": "M3 6h18v12H3zM3 10h18M7 15h4", "bank": "M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18", "upload": "M12 16V4M7 9l5-5 5 5M4 20h16", "download": "M12 4v12M7 11l5 5 5-5M4 20h16", "share": "M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4", "copy": "M8 8h12v12H8zM4 16V4h12", "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3", "filter": "M4 5h16l-6 8v6l-4-2v-4z", "cart": "M3 4h2l2.4 11h11l2-8H6.2M9 20h.01M17 20h.01", "book": "M4 5a2 2 0 0 1 2-2h14v15H6a2 2 0 0 0-2 2zM4 20a2 2 0 0 0 2 2h14", "file": "M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6", "eye": "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z", "play": "M7 4l13 8-13 8z", "pause": "M8 5v14M16 5v14", "heart": "M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z", "bulb": "M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z", "sound": "M4 9h4l5-4v14l-5-4H4zM17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11", "gear": "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1", "shield": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", "shieldok": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4", "wifioff": "M2 8.8a15 15 0 0 1 4.2-2.6M10.7 5.1A15 15 0 0 1 22 8.8M5 12.6a10 10 0 0 1 5.2-2.5M16.8 11.4A10 10 0 0 1 19 12.6M8.5 16.4a5 5 0 0 1 7 0M12 20h.01M2 2l20 20", "wifi": "M2 8.8a15 15 0 0 1 20 0M5 12.6a10 10 0 0 1 14 0M8.5 16.4a5 5 0 0 1 7 0M12 20h.01", "phone": "M7 2h10v20H7zM11 18h2", "laptop": "M4 5h16v11H4zM2 19h20", "video": "M3 6h12v12H3zM15 10l6-3v10l-6-3", "mic": "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3", "link": "M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1", "plus": "M12 5v14M5 12h14", "minus": "M5 12h14", "fwd": "M15 6l-6 6 6 6", "back": "M9 6l6 6-6 6", "dots": "M5 12h.01M12 12h.01M19 12h.01", "edit": "M4 20h4L19 9l-4-4L4 16zM14 6l4 4", "trash": "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3", "logout": "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11", "users": "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a7 7 0 0 1 14 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a7 7 0 0 0-4-6.3", "moon": "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", "globe": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z", "text": "M4 7V5h16v2M12 5v14M9 19h6", "cert": "M12 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM8.5 13.5L7 22l5-3 5 3-1.5-8.5", "help": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17h.01", "info": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7.5h.01", "msg": "M4 4h16v12H8l-4 4z", "cloud": "M7 18a5 5 0 1 1 .9-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 8z", "qr": "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2", "fire": "M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.5 2-5 .8 1.5 1.5 2 2.5 2 0-2.5-.5-4.5.5-7z", "target": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2z", "crown": "M3 8l4 4 5-7 5 7 4-4-2 11H5z", "hat": "M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5", "shirt": "M8 3L3 6l2 4 3-1v12h8V9l3 1 2-4-5-3c0 2-2 3-4 3S8 5 8 3z", "rocket": "M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2M9 15l-3-3c1-4 4-8 10-9 0 6-4 9-8 10zM14 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2", "sparkle": "M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6", "bolt": "M13 2L4 14h7l-1 8 9-12h-7z", "refresh": "M20 11a8 8 0 0 0-14.9-4M4 4v4h4M4 13a8 8 0 0 0 14.9 4M20 20v-4h-4", "export": "M12 3v12M8 7l4-4 4 4M5 13v7h14v-7", "grid": "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", "wave": "M3 12h2M7 8v8M11 5v14M15 8v8M19 10v4", "pin": "M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12zM12 7a2 2 0 1 0 0 4 2 2 0 0 0 0-4z", "alert": "M12 3l10 18H2zM12 10v4M12 17.5h.01", "image": "M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15.5 8.5h.01", "hand": "M8 13V5a1.5 1.5 0 0 1 3 0v6M11 10V4a1.5 1.5 0 0 1 3 0v6M14 10V5.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7c-3 0-4.5-1.5-6-4l-1.5-3a1.5 1.5 0 0 1 2.6-1.5L8 15", "zoom": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3M8 11h6M11 8v6", "bookmark": "M6 3h12v18l-6-4-6 4z", "sun": "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4", "fp": "M12 11v3a8 8 0 0 1-2 5M8 8a5 5 0 0 1 9 3v2M5 12a7 7 0 0 1 1-4M16 17a12 12 0 0 1-1 3M12 5a7 7 0 0 1 7 7", "route": "M6 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6 15V9a3 3 0 0 1 3-3h6M18 9v6a3 3 0 0 1-3 3H9", "percent": "M19 5L5 19M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z", "receipt": "M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6M9 16h3", "layers": "M12 3l9 5-9 5-9-5zM3 13l9 5 9-5", "mail": "M3 5h18v14H3zM3 6l9 7 9-7", "at": "M16 12a4 4 0 1 1-1.2-2.8M16 8v5a2.5 2.5 0 0 0 5 0v-1a9 9 0 1 0-3.5 7.1", "school": "M3 21h18M5 21V9l7-5 7 5v12M10 21v-5h4v5", "sliders": "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4", "repeat": "M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3", "sort": "M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4", "ext": "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"};
+
+    I.play = I.games;
+    const set = (o) => () => this.setState(o);
+    const digs = (n) => String(n).split('').map((v, i) => ({ v: +v, i }));
+    const MAP = [['home', 'الرئيسية', '٣'], ['courses', 'دوراتي', ''], ['schedule', 'جدولي', ''], ['play', 'العب وتعلّم', ''], ['profile', 'حسابي', '']];
+    const scr = S.scr || P.screen || 'list';
+    const sheet = S.sheet !== undefined ? S.sheet : (P.sheet || '');
+    const go = (s, extra) => () => this.setState(Object.assign({ scr: s, sheet: '' }, extra || {}));
+    const seatList = (taken, max, d0) => Array.from({ length: max }, (_, i) => ({ c: i < taken ? 'f' : '', d: ((d0 || 0.3) + i * 0.06).toFixed(2) + 's' }));
+    const leftL = (taken, max) => (taken >= max ? 'مكتملة' : max - taken === 1 ? 'باقي مقعد واحد' : 'باقي ' + ar(max - taken) + ' مقاعد');
+
+    // list
+    const subj = S.subj || 'all';
+    const TT = [['أ. ماجد الشهري', 'م', 'معلم', 'الرياضيات والقدرات الكمي', [['عن بعد', ''], ['مجموعة وفردي', 'n']], '٤٫٩', '٢١٣', '١٩٩', 'math', 'sub-math'], ['أ. فهد المطيري', 'ف', 'معلم', 'الفيزياء والرياضيات', [['عن بعد', ''], ['حضوري، الرياض', 'g']], '٤٫٨', '١٤٠', '١٩٩', 'sci', 'sub-physics'], ['أ. خالد العتيبي', 'خ', 'معلم', 'اللغة الإنجليزية و STEP', [['عن بعد', '']], '٥٫٠', '٩٨', '٢٤٩', 'en', 'sub-english'], ['أ. سلطان العتيبي', 'س', 'معلم', 'الكيمياء والأحياء', [['عن بعد', ''], ['حضوري، جدة', 'g']], '٤٫٧', '٧٦', '١٩٩', 'sci', 'sub-chem'], ['أ. خالد الزهراني', 'خ', 'معلم', 'القدرات والتحصيلي', [['مجموعة طلاب', 'p']], '٤٫٨', '٣٠٢', '١٧٩', 'math', 'sub-qudurat'], ['أ. عبدالله الغامدي', 'ع', 'معلم', 'لغتي والنحو', [['حضوري، الدمام', 'g']], '٤٫٩', '٦٥', '١٧٩', 'ar', 'sub-arabic']];
+    const teachers = TT.filter((t) => subj === 'all' || t[8] === subj).map(([n, a, sex, s2, tags, r, rc, price, , sub], k) => ({ n, a, sex, subj: s2, tags: tags.map(([l, c]) => ({ l, c })), r, rc, price, sub, k: String(k) }));
+    const fgk = S.fg !== undefined ? S.fg : 0;
+    const fmd = S.fmd || 'online';
+
+    // profile
+    const opt = S.opt || 'group';
+    const fav = S.fav === true;
+
+    // pack
+    const pst = S.pst || P.state || 'open';
+    const taken = { open: 6, full: 10, wait: 10, hold: 9, offered: 9, active: 9 }[pst] || 6;
+    const pay = S.pay || 'mada';
+    const PK = {
+      open: { cls: 'on', h: leftL(taken, 10), hc: '#0C6B55', pay: true, btn: 'أكّد وادفع ٦٨٠ ريال', bc: 'hot', href: '#', go: set({ pst: 'hold' }) },
+      full: { cls: '', h: 'مكتملة', hc: '#4A5878', m: 'كل المقاعد انحجزت.', btn: 'نبّهني إذا فضى مقعد', bc: '', href: '#', go: set({ pst: 'wait' }), link: 'شوف باقات ثانية', lgo: go('profile') },
+      wait: { cls: 'wait', h: 'تم، بننبّهك أول ما يفضى مقعد', hc: '#0F5CA8', okI: true, btn: '', link: 'ما أبي التنبيه', lgo: set({ pst: 'full' }) },
+      hold: { cls: 'on', h: 'مقعدك محجوز لك', hc: '#A3480A', count: true, cl: 'كمّل الدفع خلال', cal: '٢٤ دقيقة و٣٨ ثانية', c: [[24, 'دقيقة'], [38, 'ثانية']], pay: true, btn: 'أكّد وادفع ٦٨٠ ريال', bc: 'hot', href: '#', go: set({ pst: 'active' }) },
+      offered: { cls: 'on', h: 'فضى مقعد لك', hc: '#A3480A', count: true, cl: 'ثبّته قبل ما يخلص الوقت', cal: '٢١ ساعة و٥ دقائق', c: [[21, 'ساعة'], [5, 'دقيقة']], pay: true, btn: 'أكّد وادفع ٦٨٠ ريال', bc: 'hot', href: '#', go: set({ pst: 'active' }) },
+      active: { cls: 'ok', h: 'أنت مشترك', hc: '#0C6B55', okI: true, m: 'حصتك الجاية الأحد ٦ ديسمبر، ٧:٣٠ م.', btn: 'افتح جدولي', bc: '', href: 'Stu2Schedule.dc.html', go: null, link: 'اطلع من الباقة', lc: 'red', lgo: set({ sheet: 'leave' }) }
+    };
+    const pk = Object.assign({ okI: false, m: '', count: false, pay: false, link: '', lc: '', lgo: null, btn: '', bc: '', href: '#', go: null }, PK[pst] || PK.open);
+
+    const shT = { filter: 'الفلاتر', leave: 'تبي تطلع من الباقة؟' };
+    const titles = { list: 'المعلمين', profile: 'ملف المعلم', pack: 'الباقة', mine: 'معلميّ' };
+    const back = scr === 'list' ? false : { scr: scr === 'pack' ? 'profile' : 'list', sheet: '' };
+    const payBar = scr === 'pack' && !!pk.btn;
+    return {
+      title: titles[scr], back: !!back, noback: !back, goBack: back ? () => this.setState(back) : null,
+      nav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === 'courses' ? 'page' : 'false' })),
+      bnav: MAP.map(([k, l, c]) => ({ l, c, i: I[k], cur: k === 'courses' ? 'page' : 'false' })),
+      tools: [['chat', 'الرسائل', '٢'], ['ai', 'المساعد الذكي', ''], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] })),
+      mtools: [['chat', 'الرسائل', '٢'], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] })),
+      payBar, bnavOn: !payBar, bar: { l: pst === 'active' ? 'مشترك' : 'المبلغ', p: pst === 'active' ? '٨ حصص' : '٦٨٠ ريال', b: pst === 'open' || pst === 'hold' || pst === 'offered' ? 'أكّد وادفع' : pk.btn },
+      is: { list: scr === 'list', profile: scr === 'profile', pack: scr === 'pack', mine: scr === 'mine' },
+      sh: { any: !!shT[sheet], title: shT[sheet] || '', filter: sheet === 'filter', leave: sheet === 'leave' },
+      closeSheet: set({ sheet: '' }), openFilter: set({ sheet: 'filter' }),
+      goMine: go('mine'), goList: go('list'), goProfile: go('profile'), goPack: go('pack', { pst: 'open' }),
+      subjects: [['all', 'كل المواد'], ['math', 'الرياضيات'], ['sci', 'العلوم'], ['en', 'الإنجليزي'], ['ar', 'لغتي']].map(([k, l]) => ({ l, on: k === subj ? 'true' : 'false', go: set({ subj: k }) })),
+      teachers,
+      fgI: String(fgk), fg: ['الكل', 'معلم', 'معلمة'].map((l, j) => ({ l, sel: j === fgk ? 'true' : 'false', go: set({ fg: j }) })),
+      fm: [['online', 'عن بعد'], ['center', 'حضوري']].map(([k, l]) => ({ l, on: k === fmd ? 'true' : 'false', go: set({ fmd: k }) })),
+      // profile
+      favP: fav ? 'true' : 'false', favF: fav ? 'currentColor' : 'none', togFav: set({ fav: !fav }),
+      pstats: [['٤٫٩', 'تقييمه'], ['٦٤٠', 'طالب درّسهم'], ['٩ سنوات', 'خبرة'], ['١٩٩ ريال', 'في الشهر، مجموعة']].map(([n, l]) => ({ n, l })),
+      opts: [['group', 'مع مجموعة طلاب', 'من ٥ إلى ١٠ طلاب من صفك، بمواعيد ثابتة.', '١٩٩', I.users, '#E0F0FF', '#0F5CA8'], ['solo', 'فردي معه', 'الشرح على قدّك، وتختار مواعيدك.', '٤٤٩', I.teachers, '#ECE5FF', '#4A28B8']].map(([k, t, d, p, i, bg, fg]) => ({ t, d, p, i, bg, fg, on: opt === k ? 'true' : 'false', go: set({ opt: k }) })),
+      packs: [['١', 'حصة', 'حصة تجربة', 'فردي، تعرف فيها مستواك', '١٢٠ ريال', 'للحصة', 0, 1, '#FFE8D6', '#A3480A'], ['٨', 'حصص', 'باقة التأسيس', 'مجموعة طلاب، من ٥ إلى ١٠', '٦٨٠ ريال', '٨٥ ريال للحصة', 6, 10, '#E0F0FF', '#0F5CA8'], ['١٢', 'حصة', 'باقة الاختبار النهائي', 'فردي، قبل اختبارات الفصل', '١٬٢٢٤ ريال', '١٠٢ ريال للحصة', 2, 3, '#ECE5FF', '#4A28B8']].map(([n, nu, t, m, price, per, tk, mx, bg, fg], k) => ({ n, nu, t, m, price, per, bg, fg, seats: seatList(tk, mx, 0.5 + k * 0.15), left: leftL(tk, mx), lc: mx - tk <= 1 ? '#C2410C' : '#0C6B55', sl: ar(tk) + ' من ' + ar(mx) + ' مقاعد محجوزة', k: String(k) })),
+      reviews: [['تركي', 'ت', 'ثالث ثانوي، قبل ٣ أسابيع', 'رفعت درجتي في القدرات من ٧٢ إلى ٨٦.'], ['عبدالرحمن', 'ع', 'ثاني ثانوي، قبل أسبوع', 'شرحه واضح، وكل حصة يعطيني تمارين على قدّي.'], ['ولي أمر', 'و', 'قبل شهر', 'ملتزم بالوقت، ويوصلنا ملاحظاته بعد كل حصة.']].map(([n, a, w, t], j) => ({ n, a, w, t, bg: ['linear-gradient(150deg,#7FD8F5,#07B8EE)', 'linear-gradient(150deg,#A98BFF,#7A4DF0)', 'linear-gradient(150deg,#3DD5B0,#0C9C7C)'][j] })),
+      quals: [[I.cert, 'ماجستير تعليم الرياضيات', 'جامعة الملك سعود، ٢٠١٧'], [I.school, 'معلم ثانوي', '٩ سنوات في مدارس الرياض'], [I.shieldok, 'رخصة مهنية', 'هيئة تقويم التعليم والتدريب']].map(([i, t, m]) => ({ i, t, m })),
+      // pack
+      prows: [['المعلم', 'أ. ماجد الشهري'], ['المادة', 'الرياضيات، الثاني الثانوي'], ['نوع الحصص', 'مجموعة طلاب، من ٥ إلى ١٠'], ['طريقة الدراسة', 'عن بعد'], ['الحصة', '٥٠ دقيقة']].map(([k, v]) => ({ k, v })),
+      slots: [['الأحد', 'الحصة ١: مراجعة الدوال', '٧:٣٠ م'], ['الثلاثاء', 'الحصة ٢: الدوال الأسية', '٧:٣٠ م'], ['الأحد', 'الحصة ٣: اللوغاريتمات', '٧:٣٠ م'], ['…', 'و٥ حصص بعدها لين ٣١ ديسمبر', '']].map(([d, t, time]) => ({ d, t, time: time || 'المساء' })),
+      pk, cnt: (pk.c || []).map(([n, l]) => ({ l, digs: digs(String(n).padStart(2, '0')) })),
+      seats: seatList(taken, 10), seatL: ar(taken) + ' من ١٠ مقاعد محجوزة',
+      pays: [['mada', 'مدى', 'mada', '#E0F0FF', '#0F5CA8'], ['apple', 'Apple Pay', 'Pay', '#0E2350', '#FFFFFF'], ['stc', 'STC Pay', 'stc', '#F3E8FF', '#4F008C'], ['card', 'بطاقة ائتمان', 'VISA', '#FFF4CC', '#7A5200']].map(([k, t, mark, bg, fg]) => ({ t, mark, bg, fg, on: pay === k ? 'true' : 'false', go: set({ pay: k }) })),
+      // mine
+      mstats: [['٣', 'معلمين'], ['٢', 'باقات شغّالة'], ['١١', 'حصة باقية'], ['الأحد', 'أقرب حصة']].map(([n, l]) => ({ n, l })),
+      mine: [['أ. ماجد الشهري', 'م', 'الرياضيات، عن بعد', 'باقة التأسيس', '٣ من ٨ حصص', 38, 'الأحد ٧:٣٠ م', 'sub-math'], ['أ. خالد العتيبي', 'خ', 'اللغة الإنجليزية، عن بعد', 'باقة المحادثة', '٤ من ١٢ حصة', 33, 'الاثنين ٧:٣٠ المساء', 'sub-english'], ['الشيخ سعد الدوسري', 'س', 'القرآن الكريم، حضوري في الرياض', 'حلقة تثبيت الحفظ', '٦ من ١٠ حصص', 60, 'الأربعاء ٨:٠٠ المساء', 'sub-quran']].map(([n, a, s2, pk2, used, p, next, sub], k) => ({ n, a, subj: s2, pk: pk2, used, p, next, sub, k: String(k) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

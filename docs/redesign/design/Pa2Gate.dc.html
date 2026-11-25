@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ولي الأمر: التسجيل والتفعيل</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* parent shell additions: child switcher, toast, modal, shared bits (prefix pa-) */
+.pa-meav{background:linear-gradient(150deg,#2FB5A8,#0B8FB8)}
+.pa-tt{display:flex;flex-direction:column;flex-shrink:0;line-height:1.3}
+.k-top .pa-search{width:150px;margin-right:0;flex-shrink:0}
+.pa-kids{margin-right:auto;display:flex;align-items:center;gap:6px;min-width:0}
+.pa-kid{position:relative;height:38px;padding:0 4px 0 12px;border-radius:19px;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-text);font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;flex-shrink:0;transition:background .25s,border-color .25s,box-shadow .25s,transform .2s}
+.pa-kid:hover{transform:translateY(-1px)}
+.pa-kid[aria-pressed="true"]{border-color:var(--kc);background:var(--kt);box-shadow:0 8px 16px -8px var(--kc)}
+.pa-kav{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-size:12.5px;font-weight:700;flex-shrink:0}
+.pa-kav svg{display:block}
+.pa-kst{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:2px}
+.pa-kst.g{background:#1D9A63}.pa-kst.y{background:#E89B00}.pa-kst.r{background:#F2545B;animation:kPing 1.6s ease-out infinite}.pa-kst.n{background:#A7B3C6}
+.pa-kadd{height:38px;min-width:38px;padding:0 10px;border-radius:19px;border:1.5px dashed #BFD3E8;color:var(--k-acc);display:inline-flex;align-items:center;justify-content:center;gap:4px;font-size:12.5px;font-weight:700;flex-shrink:0}
+.pa-kadd span:empty{display:none}
+.pa-mkids{display:none}
+
+/* WP12: child switcher = morph pill (M13); buttons share one width so the pill can slide between them */
+.pa-kids,.pa-mkids{--kw:94px}
+.pa-kid{width:var(--kw);justify-content:flex-start}
+.pa-kids.m-pill > .m-pill-bg{top:0;bottom:0;right:calc(var(--i,0) * (var(--kw) + 6px));width:var(--kw);border-radius:19px;background:var(--kt,#E3F4F6);border:1.5px solid var(--kc,#0B8FB8);box-shadow:0 8px 16px -8px var(--kc,#0B8FB8)}
+.pa-kids .pa-kid[aria-pressed="true"]{background:transparent;border-color:transparent;box-shadow:none}
+.pa-mkids.m-pill > .m-pill-bg{display:none}
+.k-db > *{flex-shrink:0}
+.k a.k-btn{color:#FFFFFF}
+.k a.k-btn.ghost{color:var(--k-acc)}
+.k a.k-btn.danger{color:#C2410C}
+/* toast */
+.pa-toast{position:fixed;z-index:60;bottom:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:22px;background:#0E2350;color:#FFFFFF;font-size:14px;font-weight:600;box-shadow:0 16px 34px rgba(0,16,48,.35);animation:paToast .4s cubic-bezier(.2,.8,.2,1) both;white-space:nowrap}
+.pa-toast svg{color:#5BE0A6}
+.pa-toast button{border:none;background:transparent;color:#7FD8F5;font-weight:700;font-size:14px;padding:0 4px}
+@keyframes paToast{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+/* modal */
+.pa-mwrap{position:fixed;inset:0;z-index:41;display:flex;align-items:flex-start;justify-content:center;padding:110px 16px 16px;pointer-events:none}
+.pa-modal{pointer-events:auto;width:470px;max-width:100%;background:#FFFFFF;border-radius:26px;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 30px 70px rgba(0,16,48,.4);animation:paPop .45s cubic-bezier(.2,.9,.3,1.2) both}
+@keyframes paPop{from{opacity:0;transform:scale(.92) translateY(14px)}to{opacity:1;transform:none}}
+.pa-modal h2{margin:0;font-size:20px;line-height:1.4}
+.pa-modal p{margin:0;font-size:14.5px;line-height:1.8;color:var(--k-muted)}
+.pa-mico{width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center}
+.pa-check{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;border:1.5px solid var(--k-line);background:#F8FBFE;font-size:14.5px;font-weight:700;cursor:pointer;text-align:right;color:var(--k-text);width:100%}
+.pa-check i{width:24px;height:24px;border-radius:8px;border:2px solid #BFD3E8;background:#FFFFFF;display:flex;align-items:center;justify-content:center;color:#FFFFFF;flex-shrink:0;transition:background .2s,border-color .2s}
+.pa-check[aria-checked="true"]{border-color:var(--k-acc);background:#E6F6F8}
+.pa-check[aria-checked="true"] i{background:var(--k-acc);border-color:var(--k-acc)}
+.pa-check svg{opacity:0;transform:scale(.4);transition:opacity .2s,transform .3s cubic-bezier(.3,1.6,.5,1)}
+.pa-check[aria-checked="true"] svg{opacity:1;transform:none}
+.k-btn[aria-disabled="true"]{opacity:.45;filter:grayscale(.4);box-shadow:none;animation:none;pointer-events:none}
+/* small shared pieces */
+.pa-ring{--p:50;--c:var(--k-acc);position:relative;width:64px;height:64px;border-radius:50%;flex-shrink:0;background:conic-gradient(var(--c) calc(var(--p)*1%),#E6EEF7 0);display:flex;align-items:center;justify-content:center;animation:paRing 1.1s cubic-bezier(.2,.8,.2,1) both}
+.pa-ring::before{content:"";position:absolute;inset:7px;border-radius:50%;background:#FFFFFF}
+.pa-ring b{position:relative;font-size:15px;font-weight:700;color:var(--k-navy)}
+@keyframes paRing{from{transform:rotate(-90deg) scale(.7);opacity:0}to{transform:none;opacity:1}}
+.pa-sec{display:flex;align-items:center;gap:10px}
+.pa-sec .k-ico{width:38px;height:38px;border-radius:12px;background:#E3F4F6;color:var(--k-acc)}
+.pa-sec h3{margin:0;font-size:18px;font-weight:700;line-height:1.4}
+.pa-sec small{display:block;font-size:12.5px;color:var(--k-muted);font-weight:500;line-height:1.5}
+.pa-pill{min-width:52px;height:28px;padding:0 10px;border-radius:14px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.pa-pill.g{background:#DDF5E9;color:#1D7A50}.pa-pill.y{background:#FFF3C4;color:#855700}.pa-pill.r{background:#FFE3E0;color:#B23A2E}
+.pa-hint{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--k-muted);line-height:1.6;padding:10px 12px;border-radius:14px;background:#F4F8FC}
+.pa-hint svg{flex-shrink:0;margin-top:2px;color:var(--k-acc)}
+.pa-heroav{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-size:26px;font-weight:700;box-shadow:0 0 0 4px rgba(255,255,255,.18);flex-shrink:0}
+.td-bar2{position:relative;display:block;height:10px;border-radius:5px;background:#EAF0F6}
+.td-bar2 i{display:block;height:100%;border-radius:5px;transform-origin:100% 50%;animation:kGrow 1s cubic-bezier(.2,.8,.2,1) .3s both}
+.td-bar2 b{position:absolute;top:-4px;width:3px;height:18px;border-radius:2px;background:var(--k-navy);box-shadow:0 0 0 2px #FFFFFF}
+@media (max-width:760px){
+.pa-mkids{display:flex;position:sticky;top:58px;z-index:19;gap:6px;padding:4px 12px 10px;background:rgba(0,26,78,.94);backdrop-filter:blur(12px);overflow-x:auto;scrollbar-width:none}
+.pa-mkids::-webkit-scrollbar{display:none}
+.pa-mkids .pa-kid{height:36px;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#FFFFFF;padding:0 4px 0 11px}
+.pa-mkids .pa-kav{width:26px;height:26px}
+.pa-mkids .pa-kid[aria-pressed="true"]{background:#FFFFFF;color:var(--k-navy);border-color:#FFFFFF;box-shadow:0 6px 14px -6px rgba(0,0,0,.4)}
+.pa-mkids .pa-kadd{height:36px;min-width:36px;border-color:rgba(255,255,255,.3);color:#FFFFFF}
+.pa-toast{bottom:86px;font-size:13px;max-width:calc(100% - 24px)}
+.pa-mwrap{align-items:flex-end;padding:0;top:auto;bottom:0;height:auto}
+.pa-mwrap{inset:auto 0 0 0}
+.pa-modal{width:100%;border-radius:26px 26px 0 0;padding:20px 18px 26px}
+.pa-mkids{--kw:88px}
+.pa-mkids.m-pill > .m-pill-bg{display:block;top:4px;bottom:10px;right:calc(12px + var(--i,0) * (var(--kw) + 6px));width:var(--kw);border-radius:18px;background:#FFFFFF;border:none;box-shadow:0 6px 14px -6px rgba(0,0,0,.4)}
+.pa-mkids .pa-kid[aria-pressed="true"]{background:transparent;border-color:transparent;box-shadow:none}
+.pa-modal{animation:mSheet .5s cubic-bezier(.2,.8,.2,1) both}
+.pa-heroav{width:54px;height:54px;font-size:22px}
+}
+
+.py-sub{position:relative;text-align:right;border-radius:20px;border:2px solid var(--k-line);background:#FFFFFF;padding:16px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;color:var(--k-text);transition:border-color .25s,box-shadow .25s,transform .25s;font-family:inherit}
+.py-sub[aria-checked="true"]{border-color:var(--k-acc);background:linear-gradient(160deg,#E3F4F6,#FFFFFF 70%);box-shadow:0 14px 30px -14px rgba(11,143,184,.5)}
+.py-sub[aria-checked="true"] .py-chk{background:var(--k-acc);border-color:var(--k-acc)}
+.py-sub b{font-size:14.5px}
+.py-steps{display:flex;gap:10px;list-style:none;margin:20px 0 0;padding:0}
+.py-steps li{flex:1;display:flex;flex-direction:column;gap:8px;font-size:13px;font-weight:600;color:rgba(255,255,255,.5)}
+.py-steps i{height:6px;border-radius:3px;background:rgba(255,255,255,.16);overflow:hidden;display:block}
+.py-steps i b{display:block;height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,#5BE0D0,#FFFFFF,#FF9F5A);background-size:200% 100%;animation:kGrad 3s linear infinite}
+.py-steps li.cur{color:#FFFFFF}
+.py-steps li.cur i b{width:55%;transition:width .6s}
+.py-sub[aria-checked="true"]{border-color:var(--k-acc);background:linear-gradient(160deg,#E3F4F6,#FFFFFF 70%);box-shadow:0 14px 30px -14px rgba(11,143,184,.5)}
+.py-sub.dis{opacity:.55;cursor:not-allowed}
+.py-sub.dis:hover{transform:none;box-shadow:none}
+.py-chk{position:absolute;top:14px;left:14px;width:24px;height:24px;border-radius:50%;border:2px solid #D5E3F2;background:#FFFFFF;display:flex;align-items:center;justify-content:center;color:#FFFFFF;transition:background .2s,border-color .2s}
+.py-chk svg{transform:scale(0);transition:transform .35s cubic-bezier(.3,1.7,.5,1)}
+.py-sub[aria-checked="true"] .py-chk{background:var(--k-acc);border-color:var(--k-acc)}
+[aria-checked="true"] .py-chk svg{transform:none}
+.py-who{display:flex;align-items:center;gap:10px;padding:12px;border-radius:16px;background:#F4F8FC}
+.py-box{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:16px;border:1.5px solid var(--k-line);font-size:14px}
+.py-steps{gap:5px}.py-steps li{font-size:10.5px}
+.py-chk{top:8px;left:8px;width:20px;height:20px}
+.py-subs{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:8px}
+.py-sub{padding:12px}
+.py-sub b{font-size:14.5px}
+.mo-code{width:100%;height:68px;border-radius:18px;border:2px solid #BFE3EA;background:#F6FCFD;text-align:center;font-family:ui-monospace,Menlo,monospace;font-size:30px;font-weight:700;letter-spacing:.35em;text-transform:uppercase;color:var(--k-navy);outline:none;transition:border-color .2s,box-shadow .2s}
+.mo-code:focus{border-color:var(--k-acc);box-shadow:0 0 0 5px rgba(11,143,184,.14)}
+.mo-code::placeholder{color:#C3D4E2}
+.mo-code{font-size:24px;height:60px}
+.mo-doc2{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;border:1.5px dashed #BFD3E8;font-size:13.5px;color:var(--k-muted)}
+.gt{display:flex;flex-direction:column}
+.gt-head{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;height:64px;padding:0 max(24px,calc((100% - 1000px)/2));background:rgba(0,26,78,.92);backdrop-filter:blur(12px);color:#FFFFFF;border-bottom:1px solid rgba(255,255,255,.1)}
+.gt-back{width:42px;height:42px;border-radius:50%;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.gt-sl{font-size:12.5px;opacity:.7}
+.gt-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:18px}
+.gt-hero{padding:30px 24px 100px}
+.gt-in{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:4px}
+.gt-ruq{font-size:19px;color:#FFC9A1}
+.gt-body{position:relative;z-index:2;margin:-72px auto 0;padding:0 24px 48px;width:100%;max-width:1048px}
+.gt-main{padding:28px;gap:16px}
+.gt-h{margin:6px 0 0;font-size:19px}
+.gt-opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.gt-opts.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.gt-opt.big{padding:22px;gap:8px}
+.gt-in2{color:var(--k-text);font-weight:600}
+.gt-in2.ph{color:#8A97AE;font-weight:400}
+.gt-acts{display:flex;gap:10px;flex-wrap:wrap}
+.gt-nf{width:22px;height:22px;border-radius:7px;background:#11A36A;color:#FFFFFF;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.gt-acts .k-btn{flex:1 1 220px}
+.gt-grades{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.gt-gr{height:74px;border-radius:18px;border:2px solid var(--k-line);background:#FFFFFF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;font-family:inherit;color:var(--k-text);transition:border-color .2s,transform .2s,background .2s;animation:kRise .45s ease both;animation-delay:var(--d)}
+.gt-gr:hover{transform:translateY(-2px)}
+.gt-gr b{font-size:20px;color:var(--k-navy)}
+.gt-gr span{font-size:12.5px;color:var(--k-muted)}
+.gt-gr[aria-pressed="true"]{border-color:var(--k-acc);background:linear-gradient(160deg,#E3F4F6,#FFFFFF)}
+.gt-code{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:20px;border:1.5px dashed #BFE3EA;background:#FBFEFF}
+.gt-done{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:10px 0}
+.gt-ok{width:84px;height:84px;border-radius:50%;background:linear-gradient(150deg,#5BD69A,#1D9A63);color:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 34px -10px rgba(29,154,99,.6);animation:paPop .6s cubic-bezier(.2,.9,.3,1.4) both}
+.gt-price{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:20px;border-radius:22px;background:radial-gradient(120% 140% at 90% 0%,#E3F4F6,#FFFFFF 60%);border:1.5px solid #CDE9EF}
+.gt-price b{font-size:44px;color:var(--k-navy);line-height:1.1}
+.gt-price b small{font-size:18px}
+.gt-ben{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;flex:1 1 260px}
+.gt-ben li{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.gt-ben svg{color:#1D9A63;flex-shrink:0}
+.gt-note{display:flex;gap:10px;padding:14px;border-radius:16px;font-size:13.5px;line-height:1.7}
+.gt-note.y{background:#FFF8E6;color:#6B4A00;border:1.5px solid #F6D77A}
+.gt-note svg{flex-shrink:0;margin-top:2px}
+.gt-iban{font-family:ui-monospace,Menlo,monospace;font-weight:700;text-align:right;letter-spacing:.06em}
+.mo-doc2.has{border-style:solid;border-color:#BFE3EA;background:#F1FAFC;color:var(--k-text)}
+.gt-out{align-self:center;font-size:13.5px;font-weight:700;color:var(--k-muted)}
+.gt-nav{display:flex;align-items:center;gap:10px;padding-top:14px;border-top:1px solid var(--k-line)}
+/* done, new child account (kid=new): one card = child row + login code. Flutter: Card(Column(ListTile, DashedBox(code))) */
+.gt-kid{display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:22px;border:1.5px solid var(--k-line);background:#FFFFFF;box-shadow:0 18px 34px -24px rgba(0,26,78,.45)}
+.gt-kid .py-who{padding:12px}
+.gt-kcode{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 12px;border-radius:18px;border:1.5px dashed #BFE3EA;background:#FBFEFF;text-align:center}
+.gt-kcl{font-size:13px;font-weight:700;color:var(--k-muted)}
+.gt-kdig{display:flex;justify-content:center;gap:22px;font-size:46px;font-weight:700;line-height:1.25;color:var(--k-navy);letter-spacing:.1em}
+.gt-kdig span{display:inline-block}
+.gt-ksend{font-size:14.5px;font-weight:600;color:var(--k-text);line-height:1.7}
+.k .k-btn.gt-wa{--btn-a:#25B862;--btn-b:#1D9A63;--btn-sh:rgba(29,154,99,.45)}
+@media (max-width:760px){
+.gt-kdig{font-size:38px;gap:16px}
+.gt-kid{padding:12px}
+.gt-head{padding:0 14px;height:58px}
+.gt-logo{font-size:15px}
+.gt-hero{padding:20px 16px 88px}
+.gt-body{padding:0 12px 24px}
+.gt-main{padding:18px 16px}
+.gt-opts,.gt-opts.g3{grid-template-columns:1fr}
+.gt-opts.g3{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.gt-opts.g3 .gt-opt{padding:12px 8px;align-items:center;text-align:center}
+.gt-opts.g3 .k-m{display:none}
+.gt-opts.g3 .py-chk{top:8px;left:8px;width:20px;height:20px}
+.py-steps{gap:5px}.py-steps li{font-size:10.5px}
+.gt-price b{font-size:36px}
+.gt-nav .k-btn{padding:0 14px;font-size:14px}
+}
+
+</style>
+</helmet>
+<div class="k parent gt" dir="rtl">
+  <header class="gt-head">
+    <a href="#" class="gt-back" aria-label="رجوع"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.back}}"></path></svg></a>
+    <span class="k-col" style="gap: 0"><b style="font-size: 16px">{{headT}}</b><span class="gt-sl">{{stepLine}}</span></span>
+    <span class="k-sp"></span>
+    <span class="gt-logo"><img src="./logo.png" alt="" width="30" height="34" style="width: 30px; height: auto">ALFaheem</span>
+  </header>
+  <section class="k-hero gt-hero">
+    <div class="gt-in">
+      <span class="k-ruqaa gt-ruq">{{G.k}}</span>
+      <h2>{{G.h}}</h2>
+      <p>{{G.p}}</p>
+      <sc-if value="{{inFlow}}" hint-placeholder-val="{{ true }}"><ol class="py-steps" aria-label="الخطوات"><sc-for list="{{steps}}" as="t" hint-placeholder-count="4"><li class="{{t.k}}"><i><b style="width: {{t.w}}%"></b></i><span>{{t.n}}. {{t.l}}</span></li></sc-for></ol></sc-if>
+    </div>
+  </section>
+  <div class="gt-body">
+    <main class="k-card gt-main" style="--d: .05s">
+      <sc-if value="{{isReg}}" hint-placeholder-val="{{ false }}">
+        <h3 class="gt-h">وش نوع حسابك؟</h3>
+        <div class="gt-opts g3"><sc-for list="{{roles3}}" as="o" hint-placeholder-count="3"><button type="button" role="radio" class="py-sub m-jelly gt-opt" aria-checked="{{o.on}}" onClick="{{o.go}}"><span class="py-chk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg></span><span class="k-ico" style="background: {{o.bg}}; color: {{o.fg}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{o.i}}"></path></svg></span><b>{{o.t}}</b><span class="k-m">{{o.m}}</span></button></sc-for></div>
+        <div class="k-grid k-g2" style="gap: 12px"><sc-for list="{{regF}}" as="f" hint-placeholder-count="4"><label class="k-col" style="gap: 6px"><span class="k-lbl">{{f.l}}</span><span class="k-in gt-in2 {{f.c}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{f.i}}"></path></svg><bdi style="flex: 1; text-align: right" dir="{{f.dir}}">{{f.v}}</bdi></span></label></sc-for></div>
+        <div class="pa-hint"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.shield}}"></path></svg>حساب ولي الأمر ممكن يحتاج موافقة الإدارة قبل ما يتفعّل، ونعلمك برسالة أول ما يتم.</div>
+        <div class="gt-acts"><a href="Pa2Gate.dc.html?screen=role" class="k-btn">أنشئ الحساب</a><a href="#" class="k-btn ghost"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"></path><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"></path><path fill="#FBBC05" d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2z"></path><path fill="#EA4335" d="M12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10C7.2 7.7 9.4 6 12 6z"></path></svg>كمّل بحساب Google</a><a href="#" class="k-btn ghost gt-nafath"><span class="gt-nf" aria-hidden="true">ن</span>الدخول عبر نفاذ</a></div>
+        <span class="k-m" style="text-align: center">عندك حساب؟ <a href="#" class="k-link">سجّل دخول</a></span>
+      </sc-if>
+
+      <sc-if value="{{isRole}}" hint-placeholder-val="{{ true }}">
+        <h3 class="gt-h">مين أنت؟</h3>
+        <div class="gt-opts"><sc-for list="{{roles2}}" as="o" hint-placeholder-count="2"><button type="button" role="radio" class="py-sub m-jelly gt-opt big" aria-checked="{{o.on}}" onClick="{{o.go}}"><span class="py-chk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg></span><span class="k-ico" style="background: {{o.bg}}; color: {{o.fg}}; width: 52px; height: 52px; border-radius: 16px"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{o.i}}"></path></svg></span><b style="font-size: 19px">{{o.t}}</b><span class="k-m" style="font-size: 14px">{{o.m}}</span></button></sc-for></div>
+      </sc-if>
+
+      <sc-if value="{{isGrade}}" hint-placeholder-val="{{ false }}">
+        <h3 class="gt-h">من أي دولة؟</h3>
+        <div class="k-row" style="gap: 8px"><sc-for list="{{countries}}" as="c" hint-placeholder-count="5"><button type="button" class="k-chip" aria-pressed="{{c.on}}" onClick="{{c.go}}">{{c.l}}</button></sc-for></div>
+        <h3 class="gt-h">في أي صف ابنك أو بنتك؟</h3>
+        <div class="k-seg m-pill" style="max-width: 420px; --n: 3"><span class="m-pill-bg" style="--i: {{stI}}"></span><sc-for list="{{stages}}" as="t" hint-placeholder-count="3"><button type="button" aria-selected="{{t.on}}" onClick="{{t.go}}">{{t.l}}</button></sc-for></div>
+        <div class="gt-grades"><sc-for list="{{grades}}" as="g" hint-placeholder-count="6"><button type="button" class="gt-gr m-jelly" aria-pressed="{{g.on}}" onClick="{{g.go}}" style="--d: {{g.d}}"><b>{{g.n}}</b><span>{{g.l}}</span></button></sc-for></div>
+        <span class="k-m">عندك أكثر من ابن؟ تقدر تضيف الباقين بعد التسجيل من «ربط ابن».</span>
+      </sc-if>
+
+      <sc-if value="{{isMode}}" hint-placeholder-val="{{ false }}">
+        <h3 class="gt-h">كيف يبي يدرس؟</h3>
+        <div class="gt-opts"><sc-for list="{{modesO}}" as="o" hint-placeholder-count="2"><button type="button" role="radio" class="py-sub m-jelly gt-opt big" aria-checked="{{o.on}}" onClick="{{o.go}}"><span class="py-chk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg></span><span class="k-ico" style="background: {{o.bg}}; color: {{o.fg}}; width: 52px; height: 52px; border-radius: 16px"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{o.i}}"></path></svg></span><b style="font-size: 19px">{{o.t}}</b><span class="k-m" style="font-size: 14px">{{o.m}}</span></button></sc-for></div>
+        <sc-if value="{{needArea}}" hint-placeholder-val="{{ true }}">
+          <h3 class="gt-h">وين ساكنين؟</h3>
+          <div class="k-row" style="gap: 8px"><sc-for list="{{cities}}" as="c" hint-placeholder-count="4"><button type="button" class="k-chip" aria-pressed="{{c.on}}" onClick="{{c.go}}">{{c.l}}</button></sc-for></div>
+          <div class="k-row" style="gap: 8px"><sc-for list="{{dists}}" as="c" hint-placeholder-count="5"><button type="button" class="k-chip" aria-pressed="{{c.on}}" onClick="{{c.go}}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.pin}}"></path></svg>{{c.l}}</button></sc-for></div>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{isContact}}" hint-placeholder-val="{{ false }}">
+        <h3 class="gt-h">بياناتك</h3>
+        <div class="k-grid k-g2" style="gap: 12px"><sc-for list="{{conF}}" as="f" hint-placeholder-count="2"><label class="k-col" style="gap: 6px"><span class="k-lbl">{{f.l}}</span><span class="k-in gt-in2"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{f.i}}"></path></svg><bdi style="flex: 1; text-align: right" dir="{{f.dir}}">{{f.v}}</bdi></span></label></sc-for></div>
+        <div class="gt-code">
+          <span class="k-row" style="gap: 8px"><span class="k-ico" style="background: #E3F4F6; color: var(--k-acc); width: 38px; height: 38px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.link}}"></path></svg></span><b>كود ابنك أو بنتك</b><span class="k-tag n">اختياري</span></span>
+          <input class="mo-code" dir="ltr" maxlength="9" placeholder="K7Q29XM" value="{{code}}" onInput="{{onCode}}">
+          <span class="k-m">تلقاه في تطبيق الطالب: الملف الشخصي ‹ ولي الأمر. لو كتبته نربطه بحسابك على طول.</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isDone}}" hint-placeholder-val="{{ false }}">
+        <div class="gt-done"><span class="gt-ok"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.check}}"></path></svg></span><b style="font-size: 22px">حسابك جاهز</b><span class="k-m" style="font-size: 14.5px">وربطنا ريم بحسابك. تقدر الحين تتابعها وتحجز لها.</span></div>
+        <div class="py-who" style="padding: 14px"><span class="k-av lg" style="background: linear-gradient(150deg,#FFB37A,#F2545B)">ر</span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 17px">ريم العنزي</b><span class="k-m">الصف الثاني المتوسط، ٤ دورات</span></span><span class="k-tag g">مربوطة</span></div>
+        <div class="gt-acts"><a href="Pa2Pay.dc.html?screen=book" class="k-btn hot">تصفح مواد الصف الثاني المتوسط</a><a href="Pa2Today.dc.html" class="k-btn ghost">روح لصفحة اليوم</a></div>
+      </sc-if>
+
+      <sc-if value="{{isKidNew}}" hint-placeholder-val="{{ false }}">
+        <div class="gt-done"><span class="gt-ok"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.check}}"></path></svg></span><b style="font-size: 22px">حساب فيصل جاهز</b><span class="k-m" style="font-size: 14.5px">سوّينا له حسابه وربطناه بحسابك.</span></div>
+        <div class="gt-kid m-wipe" style="--d: .25s">
+          <div class="py-who"><span class="k-av lg m-pop" style="background: linear-gradient(150deg,#07B8EE,#1979C1); --d: .4s">ف</span><span class="k-col" style="gap: 0; flex: 1; min-width: 0"><b style="font-size: 17px">فيصل العنزي</b><span class="k-m">الثاني ثانوي، عن بعد</span></span><span class="k-tag g m-slap" style="--d: .7s">مربوط</span></div>
+          <div class="gt-kcode">
+            <span class="gt-kcl">كود دخول فيصل</span>
+            <bdi dir="ltr" class="gt-kdig" aria-label="٤٨٢ ٩١٧"><span class="m-pop" style="--d: .5s">٤٨٢</span><span class="m-pop" style="--d: .62s">٩١٧</span></bdi>
+            <span class="gt-ksend">أرسله لفيصل، يدخل فيه من جواله أول مرة</span>
+          </div>
+        </div>
+        <div class="pa-hint"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.clock}}"></path></svg>الكود يشتغل مرة وحدة ويخلص بعد ٤٨ ساعة. تقدر تطلع كود جديد من «الأبناء».</div>
+        <div class="gt-acts"><a href="#" class="k-btn gt-wa" onClick="{{sendWa}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.wa}}"></path></svg>أرسل الكود بالواتساب</a><a href="Pa2Today.dc.html" class="k-btn ghost gt-today">روح لصفحة اليوم</a></div>
+      </sc-if>
+
+      <sc-if value="{{isFee}}" hint-placeholder-val="{{ false }}">
+        <div class="gt-price"><span class="k-col" style="gap: 2px"><span class="k-m">رسوم تفعيل حساب ولي الأمر</span><b>٤٩ <small>ريال</small></b><span class="k-tag g" style="align-self: flex-start">تُدفع مرة وحدة بس</span><span class="k-m" style="font-size: 12px">شامل ضريبة القيمة المضافة ١٥٪</span></span><ul class="gt-ben"><sc-for list="{{bens}}" as="b" hint-placeholder-count="4"><li><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.check}}"></path></svg>{{b}}</li></sc-for></ul></div>
+        <sc-if value="{{pendingN}}" hint-placeholder-val="{{ false }}"><div class="gt-note y"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.clock}}"></path></svg><span><b>استلمنا إيصال التحويل وهو قيد المراجعة</b><br>نراجعه خلال يوم عمل، ونفتح حسابك أول ما يتأكد. ما يحتاج تدفع مرة ثانية.</span></div></sc-if>
+        <h3 class="gt-h">اختر طريقة الدفع</h3>
+        <div class="gt-opts g3"><sc-for list="{{pays}}" as="o" hint-placeholder-count="2"><button type="button" role="radio" class="py-sub m-jelly gt-opt" aria-checked="{{o.on}}" onClick="{{o.go}}"><span class="py-chk"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg></span><span class="k-ico" style="background: {{o.bg}}; color: {{o.fg}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{o.i}}"></path></svg></span><b>{{o.t}}</b><span class="k-m">{{o.m}}</span></button></sc-for></div>
+        <sc-if value="{{isBank}}" hint-placeholder-val="{{ false }}">
+          <div class="py-box" style="gap: 4px"><span class="k-m">حوّل على حساب</span><b>منصة الفهيم التعليمية، البنك الأهلي السعودي</b><span dir="ltr" class="gt-iban">SA00 1000 0000 0000 0000 0000</span></div>
+          <div class="mo-doc2 {{rcCls}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{rcI}}"></path></svg><span style="flex: 1">{{rcL}}</span><span class="k-btn ghost sm">{{rcB}}</span></div>
+        </sc-if>
+        <div class="gt-acts"><sc-if value="{{showPay}}" hint-placeholder-val="{{ true }}"><a href="#" class="k-btn" onClick="{{pay}}">{{payL}}</a></sc-if><a href="#" class="k-btn ghost" onClick="{{check}}">دفعت؟ تحقّق الحين</a></div>
+        <a href="#" class="gt-out">تسجيل الخروج</a>
+      </sc-if>
+
+      <sc-if value="{{inFlow}}" hint-placeholder-val="{{ true }}">
+        <div class="gt-nav"><a href="{{prevH}}" class="k-btn ghost">الخطوة اللي قبل</a><span class="k-sp"></span><a href="{{nextH}}" class="k-btn">{{nextL}}<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.chevL}}"></path></svg></a></div>
+      </sc-if>
+    </main>
+  </div>
+
+
+  <sc-if value="{{toast}}" hint-placeholder-val="{{ false }}"><div class="pa-toast" role="status"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg><span>{{toast}}</span></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"screen":"role","$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = this.props || {}, S = this.state || {};
+    const set = (o) => this.setState(o);
+    const ar = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+    const stop = (e) => { if (e && e.preventDefault) e.preventDefault(); };
+    const I = {
+      today: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+      kids: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a7 7 0 0 1 14 0v1M17 11a3 3 0 1 0 0-6M22 21v-1a5 5 0 0 0-4-4.9',
+      reports: 'M4 20V10M10 20V4M16 20v-7M22 20H2', bell: 'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
+      more: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', link: 'M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1',
+      book: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5', receipt: 'M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h4',
+      chat: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z', cal: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4', inbox: 'M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5',
+      search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3', back: 'M5 12h14M13 6l6 6-6 6', chevL: 'M15 6l-6 6 6 6', chevR: 'M9 6l6 6-6 6', chevD: 'M6 9l6 6 6-6',
+      check: 'M5 12l5 5L20 7', lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4', shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
+      games: 'M6 9h12a4 4 0 0 1 0 8c-2 0-3-2-6-2s-4 2-6 2a4 4 0 0 1 0-8zM8 11v4M6 13h4M16 12h.01M18 14h.01', quran: 'M12 6c-2-1.5-5-2-8-1v14c3-1 6-.5 8 1 2-1.5 5-2 8-1V5c-3-1-6-.5-8 1zM12 6v14',
+      nahw: 'M4 6h16M4 12h10M4 18h7', star: 'M12 3l2.7 5.6 6.3.9-4.5 4.4 1 6.1L12 17l-5.5 3 1-6.1L3 9.5l6.3-.9z', clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
+      warn: 'M12 3l10 18H2zM12 10v4M12 17h.01', x: 'M6 6l12 12M18 6L6 18', plus: 'M12 5v14M5 12h14', download: 'M12 4v12M6 10l6 6 6-6M4 20h16',
+      share: 'M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4', upload: 'M12 20V8M6 14l6-6 6 6M4 4h16',
+      card: 'M2 6h20v12H2zM2 10h20M6 15h4', user: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0', video: 'M3 6h12v12H3zM15 10l6-3v10l-6-3',
+      phone: 'M5 3h4l2 5-3 2a11 11 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A17 17 0 0 1 3 5a2 2 0 0 1 2-2z', dots: 'M12 5h.01M12 12h.01M12 19h.01', mail: 'M3 5h18v14H3zM3 6l9 7 9-7',
+      eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', trophy: 'M8 4h8v5a4 4 0 0 1-8 0zM8 6H4a3 3 0 0 0 4 4M16 6h4a3 3 0 0 1-4 4M12 13v4M8 21h8M10 17h4v4h-4z',
+      flame: 'M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-3-1-6 1-9z', logout: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11', trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+      globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18', moon: 'M20 14A8 8 0 1 1 10 4a6 6 0 0 0 10 10z',
+      help: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01', doc: 'M6 2h9l5 5v15H6zM14 2v6h6',
+      key: 'M15 7a4 4 0 1 1-3.5 6L4 20.5V17h3v-3h3l1.5-1.5', ai: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z', edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
+      filter: 'M3 5h18l-7 8v6l-4 2v-8z', school: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5', pin: 'M12 21s7-6 7-12a7 7 0 0 0-14 0c0 6 7 12 7 12zM12 7a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
+      math: 'M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2', atom: 'M12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 3c2.5 0 4.5 4 4.5 9s-2 9-4.5 9-4.5-4-4.5-9 2-9 4.5-9z',
+      en: 'M4 6h9M8.5 4v2M6 6c0 4 3 7 6 8M11 6c0 3-3 7-7 8M13 20l4-9 4 9M14.5 17h5', flask: 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7.5 15h9', pen: 'M4 20l4-1L19 8l-3-3L5 16zM14 7l3 3',
+      cert: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.5 14L7 22l5-3 5 3-1.5-8', grid2: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z', group: 'M8 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 21v-3a6 6 0 0 1 12 0v3M17.5 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM14.5 21v-2a3 3 0 0 1 6 0v2',
+      wa: 'M3 21l1.6-4.6A9 9 0 1 1 8 19.6zM9 9c0 3 3 6 6 6l1.5-1.5-2-1-1 1c-1 0-2.5-1.5-2.5-2.5l1-1-1-2z',
+      up: 'M7 14l5-5 5 5', down: 'M7 10l5 5 5-5', meet: 'M15 10l5-3v10l-5-3M3 6h12v12H3z', heart: 'M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z', send: 'M21 3L3 11l7 3 3 7zM10 14l11-11', clip: 'M20 11l-8.5 8.5a5 5 0 0 1-7-7L13 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L14 7'
+    };
+    const KIDS = [
+      { id: 'reem', n: 'ريم', full: 'ريم العنزي', ini: 'ر', g: 'الصف الثاني المتوسط', bg: 'linear-gradient(150deg,#FFB37A,#F2545B)', c: '#F2545B', t: '#FFEDE4', st: 'g', stl: 'على المسار الصحيح' },
+      { id: 'faisal', n: 'فيصل', full: 'فيصل العنزي', ini: 'ف', g: 'الصف الثاني الثانوي', bg: 'linear-gradient(150deg,#07B8EE,#1979C1)', c: '#1979C1', t: '#E2EFFA', st: 'y', stl: 'يحتاج متابعة' },
+      { id: 'sara', n: 'سارة', full: 'سارة العنزي', ini: 'س', g: 'الصف الرابع الابتدائي', bg: 'linear-gradient(150deg,#8B6CF0,#5F3DC4)', c: '#5F3DC4', t: '#EFE9FD', st: 'n', stl: 'أسبوع هادئ' }
+    ];
+    const KID = (id) => KIDS.find((k) => k.id === id) || KIDS[0];
+    const kidRaw = S.kid || P.kid || 'reem';
+    const shell = (o) => {
+      const allowAll = o.allowAll !== false;
+      const k0 = o.kid || kidRaw; const kid = !allowAll && k0 === 'all' ? 'reem' : k0;
+      const list = o.noKids ? [] : (allowAll ? [{ id: 'all', n: 'الكل', ini: '', bg: 'linear-gradient(150deg,#2FB5A8,#0B8FB8)', c: '#0B8FB8', t: '#E3F4F6', st: '' }] : []).concat(KIDS);
+      const NAV = [
+        ['today', 'اليوم', '', '', 'Pa2Today.dc.html'], ['kids', 'الأبناء', '', '', 'Pa2Kids.dc.html'], ['reports', 'التقارير', '', '', 'Pa2Reports.dc.html'], ['bell', 'التنبيهات', '', '٤', 'Pa2Alerts.dc.html'],
+        ['book', 'احجز لابنك', 'لأبنائي', '', 'Pa2Pay.dc.html?screen=book'], ['receipt', 'المدفوعات والفواتير', '', '', 'Pa2Pay.dc.html?screen=payments'], ['link', 'ربط ابن', '', '١', 'Pa2More.dc.html?screen=link'],
+        ['chat', 'الرسائل', 'التواصل', '٢', 'Pa2Shared.dc.html?screen=chat'], ['cal', 'التقويم', '', '', 'Pa2Shared.dc.html?screen=calendar'], ['inbox', 'الوارد', '', '٣', 'Pa2Shared.dc.html?screen=inbox'],
+        ['more', 'المزيد', 'حسابي', '', 'Pa2More.dc.html']
+      ];
+      const BN = [['today', 'اليوم', '', 'Pa2Today.dc.html'], ['kids', 'الأبناء', '', 'Pa2Kids.dc.html'], ['reports', 'التقارير', '', 'Pa2Reports.dc.html'], ['bell', 'التنبيهات', '٤', 'Pa2Alerts.dc.html'], ['more', 'المزيد', '١', 'Pa2More.dc.html']];
+      const bcur = o.btab || o.nav;
+      return {
+        title: o.title, sub: o.sub || 'ولي أمر', back: !!o.back, noBack: !o.back, kidsCount: ar(KIDS.length) + ' أبناء', addL: o.noKids ? 'ربط ابن' : '',
+        nav: NAV.map(([k, l, g, c, href]) => ({ l, g, c, href, i: I[k], cur: k === o.nav ? 'page' : 'false' })),
+        bnav: BN.map(([k, l, c, href]) => ({ l, c, href, i: I[k], cur: k === bcur ? 'page' : 'false' })),
+        tools: [['cal', 'التقويم', '', 'Pa2Shared.dc.html?screen=calendar'], ['chat', 'الرسائل', '٢', 'Pa2Shared.dc.html?screen=chat'], ['bell', 'الإشعارات', '٥', 'Pa2Shared.dc.html?screen=notifs']].map(([k, l, c, href]) => ({ l, c, href, i: I[k] })),
+        mtools: [['chat', 'الرسائل', '٢', 'Pa2Shared.dc.html?screen=chat'], ['bell', 'الإشعارات', '٥', 'Pa2Shared.dc.html?screen=notifs']].map(([k, l, c, href]) => ({ l, c, href, i: I[k] })),
+        kidsBar: list.map((c) => ({ ...c, ini: c.id === 'all' ? ar(KIDS.length) : c.ini, on: c.id === kid ? 'true' : 'false', pick: () => set({ kid: c.id }) })),
+        kp: (() => { const i = list.findIndex((c) => c.id === kid); const c = list[i] || {}; return { i, c: c.c || '', t: c.t || '', d: i < 0 ? 'none' : 'block', dm: i < 0 ? 'none' : '' }; })(),
+        bidx: Math.max(0, BN.findIndex((b) => b[0] === bcur)), bpd: BN.some((b) => b[0] === bcur) ? '' : 'none',
+        toast: S.toast || '', undo: S.undo || null
+      };
+    };
+    const flash = (msg, undo) => { set({ toast: msg, undo: undo || null }); clearTimeout(this.__t); this.__t = setTimeout(() => set({ toast: '', undo: null }), 3200); };
+
+    const scr = P.screen || 'role';
+    const FLOW = ['role', 'grade', 'mode', 'contact'];
+    const si = FLOW.indexOf(scr);
+    const inFlow = si >= 0;
+    const L = ['من أنت', 'الدولة والصف', 'طريقة الدراسة', 'بياناتك'];
+    const G = {
+      register: { k: 'أهلًا فيك', h: 'أنشئ حسابك في الفهيم', p: 'اختر «ولي أمر» عشان تتابع أبناءك وتحجز لهم وتراسل معلميهم.' },
+      role: { k: 'خطوة ١ من ٤', h: 'نجهّز لك الفهيم على مقاسك', p: 'أربع خطوات قصيرة، وبعدها نوريك المواد المناسبة لصف ابنك.' },
+      grade: { k: 'خطوة ٢ من ٤', h: 'نعرض لك مواد صفه بالضبط', p: 'المناهج والمعلمين يختلفون حسب الدولة والصف.' },
+      mode: { k: 'خطوة ٣ من ٤', h: 'عن بعد ولا حضوري؟', p: 'تقدر تغيّرها لكل مادة وقت الحجز.' },
+      contact: { k: 'خطوة ٤ من ٤', h: 'آخر خطوة: بياناتك', p: 'ولو معك كود ابنك نربطه بحسابك الحين.' },
+      done: { k: 'تم', h: 'حياك الله يا أحمد', p: 'حسابك جاهز، وهذي المواد المناسبة لصف ريم.' },
+      fee: { k: 'خطوة أخيرة', h: 'فعّل حسابك', p: 'رسوم لمرة وحدة تفتح حساب ولي الأمر وتتابع فيه كل أبنائك.' },
+      feepending: { k: 'خطوة أخيرة', h: 'فعّل حسابك', p: 'رسوم لمرة وحدة تفتح حساب ولي الأمر وتتابع فيه كل أبنائك.' }
+    }[scr];
+    // done + kid=new: parent made the account for his son from the landing sheet, so show the son's login code
+    const kidNew = scr === 'done' && P.kid === 'new';
+    const G2 = kidNew ? { k: 'تم', h: 'حياك الله يا أحمد', p: 'حساب فيصل جاهز ومربوط بحسابك. بقى بس يدخل بالكود.' } : G;
+    const pick = (k, d) => (S[k] !== undefined ? S[k] : d);
+    const role = pick('role', 'parent');
+    const stage = pick('stage', 'mid');
+    const grade = pick('grade', 1);
+    const country = pick('country', 'السعودية');
+    const md = pick('md', 'center');
+    const city = pick('city', 'الرياض'), dist = pick('dist', 'النرجس');
+    const isFee = scr === 'fee' || scr === 'feepending';
+    const pm = pick('pm', scr === 'feepending' ? 'bank' : 'card');
+    const pendingN = scr === 'feepending' || !!S.sentRc;
+    const opt = (k, cur, set2) => ({ on: k === cur ? 'true' : 'false', go: () => set(set2) });
+    const STG = { pri: ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس'], mid: ['الأول', 'الثاني', 'الثالث'], sec: ['الأول', 'الثاني', 'الثالث'] };
+    const STL = { pri: 'ابتدائي', mid: 'متوسط', sec: 'ثانوي' };
+    return {
+      I, G: G2, inFlow, isKidNew: kidNew,
+      sendWa: (e) => { stop(e); flash('نفتح لك واتساب برسالة فيها الكود'); }, headT: scr === 'register' ? 'إنشاء حساب' : isFee ? 'تفعيل الحساب' : scr === 'done' ? 'تم التسجيل' : 'ولي أمر',
+      stepLine: inFlow ? 'خطوة ' + ar(si + 1) + ' من ٤: ' + L[si] : isFee ? 'رسوم لمرة وحدة' : '',
+      steps: L.map((l, i) => ({ l, n: ar(i + 1), k: i <= si ? 'cur' : '', w: i < si ? 100 : i === si ? 55 : 0 })),
+      isReg: scr === 'register', isRole: scr === 'role', isGrade: scr === 'grade', isMode: scr === 'mode', isContact: scr === 'contact', isDone: scr === 'done' && !kidNew, isFee,
+      roles3: [['student', 'طالب', 'أدرس وأبي أتعلّم', 'school', '#E2EFFA', '#135F9A'], ['parent', 'ولي أمر', 'أتابع أبنائي', 'kids', '#E3F4F6', '#0B8FB8'], ['teacher', 'معلم', 'أدرّس في الفهيم', 'pen', '#EFE9FD', '#5F3DC4']].map(([k, t, m, ic, bg, fg]) => ({ t, m, i: I[ic], bg, fg, ...opt(k, role, { role: k }) })),
+      roles2: [['student', 'طالب', 'أدرس وأبي أتعلّم وأحجز موادي بنفسي.', 'school', '#E2EFFA', '#135F9A'], ['parent', 'ولي أمر', 'أتابع ابني أو بنتي، وأحجز لهم وأراسل معلميهم.', 'kids', '#E3F4F6', '#0B8FB8']].map(([k, t, m, ic, bg, fg]) => ({ t, m, i: I[ic], bg, fg, ...opt(k, role, { role: k }) })),
+      regF: [['الاسم', 'أحمد سعد العنزي', 'user', 'rtl', ''], ['رقم الجوال', '+966554127781', 'phone', 'ltr', ''], ['البريد الإلكتروني', 'ahmed.alenezi@gmail.com', 'mail', 'ltr', ''], ['كلمة المرور', '••••••••••', 'key', 'ltr', '']].map(([l, v, ic, dir, c]) => ({ l, v, i: I[ic], dir, c })),
+      countries: ['السعودية', 'الكويت', 'الإمارات', 'البحرين', 'قطر'].map((l) => ({ l, ...opt(l, country, { country: l }) })),
+      stI: ['pri', 'mid', 'sec'].indexOf(stage),
+      stages: [['pri', 'ابتدائي'], ['mid', 'متوسط'], ['sec', 'ثانوي']].map(([k, l]) => ({ l, ...opt(k, stage, { stage: k, grade: 0 }) })),
+      grades: STG[stage].map((n, i) => ({ n: ar(i + 1), l: n + ' ' + STL[stage], d: (0.05 + i * 0.04).toFixed(2) + 's', ...opt(i, grade, { grade: i }) })),
+      modesO: [['online', 'عن بعد', 'حصص مباشرة من البيت، الحصة ٥٠ دقيقة.', 'video', '#E2EFFA', '#135F9A'], ['center', 'حضوري', 'في مركز قريب منكم، مجموعات من ٥ إلى ١٠ طلاب.', 'pin', '#FFE8D6', '#A3480A']].map(([k, t, m, ic, bg, fg]) => ({ t, m, i: I[ic], bg, fg, ...opt(k, md, { md: k }) })),
+      needArea: md === 'center',
+      cities: ['الرياض', 'جدة', 'الدمام', 'مكة المكرمة'].map((l) => ({ l, ...opt(l, city, { city: l }) })),
+      dists: ['النرجس', 'الملقا', 'الياسمين', 'العليا', 'قرطبة'].map((l) => ({ l, ...opt(l, dist, { dist: l }) })),
+      conF: [['اسمك', 'أحمد سعد العنزي', 'user', 'rtl'], ['جوالك', '+966554127781', 'phone', 'ltr']].map(([l, v, ic, dir]) => ({ l, v, i: I[ic], dir })),
+      code: S.code !== undefined ? S.code : 'K7Q29XM', onCode: (e) => set({ code: String(e.target.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 9) }),
+      prevH: si > 0 ? 'Pa2Gate.dc.html?screen=' + FLOW[si - 1] : 'Pa2Gate.dc.html?screen=register', nextH: si < 3 ? 'Pa2Gate.dc.html?screen=' + FLOW[si + 1] : 'Pa2Gate.dc.html?screen=done', nextL: si < 3 ? 'التالي' : 'أكمل التسجيل',
+      bens: ['تتابع كل أبنائك من حساب واحد', 'تقارير أسبوعية وتنبيهات فورية', 'تحجز وتدفع لأبنائك من مكان واحد', 'تراسل معلميهم مباشرة'],
+      pays: [['card', 'مدى أو بطاقة', 'مدى، فيزا، ماستركارد', 'card', '#E2EFFA', '#135F9A'], ['wallet', 'Apple Pay أو STC Pay', 'من جوالك مباشرة', 'phone', '#EFE9FD', '#5F3DC4'], ['bank', 'تحويل بنكي', 'تحوّل وترفع صورة الإيصال', 'receipt', '#FFF3C4', '#855700']].map(([k, t, m, ic, bg, fg]) => ({ t, m, i: I[ic], bg, fg, ...opt(k, pm, { pm: k }) })),
+      isBank: pm === 'bank', pendingN, showPay: !(pm === 'bank' && pendingN),
+      rcCls: pendingN ? 'has' : '', rcI: pendingN ? I.check : I.upload, rcL: pendingN ? 'إيصال_التحويل.jpg، أُرسل ٢٤ نوفمبر' : 'ارفع صورة إيصال التحويل (JPG أو PDF)', rcB: pendingN ? 'تغيير' : 'اختيار',
+      payL: pm === 'bank' ? 'أرسل إيصال التحويل' : 'ادفع ٤٩ ريال',
+      pay: (e) => { stop(e); if (pm === 'bank') { set({ sentRc: true }); flash('أرسلنا الإيصال للمراجعة'); } else flash('نفتح لك صفحة الدفع الآمن'); },
+      check: (e) => { stop(e); flash(pendingN ? 'الإيصال للحين قيد المراجعة' : 'ما وصلنا دفع للحين'); },
+      toast: S.toast || ''
+    };
+
+  }
+}
+</script>
+</body>
+</html>

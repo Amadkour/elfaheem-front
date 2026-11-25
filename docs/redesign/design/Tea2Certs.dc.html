@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>المعلم: الشهادات</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* same teacher shell look as Tea1 */
+.t2 .k-btn{box-shadow:0 10px 22px -6px rgba(95,61,196,.45)}
+.t2 .k-btn.hot{background:linear-gradient(120deg,#E8364A,#F2545B,#E8364A);background-size:200% 100%;box-shadow:0 10px 22px -6px rgba(242,84,91,.55)}
+.t2 .k-btn.ghost,.t2 .k-btn.danger{box-shadow:none}
+.t2 .k-tile:hover{box-shadow:0 10px 22px rgba(95,61,196,.1)}
+.t2 .k-chip.on,.t2 .k-chip[aria-pressed="true"]{background:var(--k-acc);border-color:var(--k-acc)}
+.t2 .k-bnav a[aria-current="page"]{background:linear-gradient(160deg,#EFE9FD,#FFFFFF)}
+.t2-pinic{width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#FFFFFF;flex-shrink:0}
+.t2-ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.t2-pin{height:40px;font-size:13.5px}
+.t2-fade{animation:kIn .45s cubic-bezier(.2,.8,.2,1) both}
+.t2-hr{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
+.t2-hr > .k-col{flex:1 1 340px;gap:6px}
+.t2-acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.t2-gw{background:rgba(255,255,255,.1);color:#FFFFFF;border:1.5px solid rgba(255,255,255,.24);box-shadow:none;animation:none;backdrop-filter:blur(6px)}
+.t2-gw:hover{background:rgba(255,255,255,.18)}
+.t2-greet{font-size:19px;color:#D9CCFF}
+.t2-tabs{display:flex;gap:6px;margin-top:18px;flex-wrap:wrap}
+.t2-tabs a,.t2-tabs button{height:38px;padding:0 16px;border-radius:19px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:rgba(255,255,255,.82);font-size:13.5px;font-weight:700;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;transition:background .2s}
+.t2-tabs a[aria-selected="true"],.t2-tabs button[aria-selected="true"]{background:#FFFFFF;color:var(--k-navy);border-color:#FFFFFF}
+.t2-tabs .n{min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--k-coral);color:#FFFFFF;font-size:11px;display:inline-flex;align-items:center;justify-content:center}
+.t2-f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.t2-f .k-in{color:var(--k-text)}
+.t2-f .k-in.ph{color:#8A97AE}
+.t2-hint{font-size:12px;color:var(--k-muted);line-height:1.6}
+.t2-ok{color:var(--k-green);font-size:12px;font-weight:700;display:inline-flex;gap:4px;align-items:center}
+.t2-ta{min-height:96px;border-radius:14px;border:1.5px solid #D5E3F2;background:#FFFFFF;padding:12px 14px;font-size:14px;line-height:1.8;color:var(--k-text)}
+.t2-ff{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.t2-ff3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.t2-li{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #EDF2F8;min-width:0}
+.t2-li:last-child{border-bottom:none}
+.t2-opt{position:relative;display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;transition:border-color .2s,box-shadow .2s,transform .2s;text-align:right}
+.t2-opt:hover{transform:translateY(-2px)}
+.t2-opt.on{border-color:var(--k-acc);background:linear-gradient(160deg,#F5F1FF,#FFFFFF);box-shadow:0 12px 26px -14px rgba(95,61,196,.55)}
+.t2-opt .t2-ck{position:absolute;top:12px;left:12px;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--k-line);display:flex;align-items:center;justify-content:center;color:#FFFFFF}
+.t2-opt.on .t2-ck{background:var(--k-acc);border-color:var(--k-acc)}
+.t2-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:22px;border-radius:18px;border:2px dashed #C9D8EA;background:#F8FBFE;color:var(--k-muted);font-size:13.5px;text-align:center}
+.t2-drop b{color:var(--k-text)}
+.t2-note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:16px;background:#FFF6DF;color:#6B4A00;border:1px solid #F3DD9F;font-size:13.5px;line-height:1.7}
+.t2-note svg{flex-shrink:0;margin-top:2px}
+.t2-note.b{background:#EAF4FD;color:#134E7C;border-color:#CFE3F5}
+.t2-note.r{background:#FFF0EE;color:#9B2C22;border-color:#FFD2CB}
+.t2-note.g{background:#E7F7EF;color:#17643F;border-color:#BFE8D2}
+.t2-note.p{background:#F3EFFE;color:#4A2EA8;border-color:#DCD2FB}
+.t2-mrow{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid #EDF2F8;font-size:14.5px;font-weight:600;transition:background .2s}
+.t2-mrow:last-child{border-bottom:none}
+.t2-mrow:hover{background:#F8FBFE}
+.t2-mrow .k-ico{width:36px;height:36px;border-radius:11px}
+.t2-mrow .chev{margin-right:auto;color:#9AA8BF;display:flex;align-items:center;gap:8px}
+.t2-bars{display:flex;align-items:flex-end;gap:10px;height:170px;padding-top:10px}
+.t2-bars > span{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;min-width:0}
+.t2-bars i{display:block;width:100%;max-width:38px;border-radius:10px 10px 4px 4px;background:linear-gradient(180deg,var(--k-acc2),var(--k-acc));transform-origin:50% 100%;animation:t2Gy .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
+.t2-bars small{font-size:11.5px;color:var(--k-muted);white-space:nowrap}
+.t2-bars b{font-size:11.5px;color:var(--k-navy)}
+@keyframes t2Gy{from{transform:scaleY(0)}to{transform:none}}
+.t2-ring{transform:rotate(-90deg)}
+.t2-ring circle{fill:none;stroke-linecap:round}
+.t2-ring .arc{animation:t2Arc 1.3s cubic-bezier(.2,.8,.2,1) .2s both}
+@keyframes t2Arc{from{stroke-dasharray:0 100}}
+.t2-steps{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.t2-steps::-webkit-scrollbar{display:none}
+.t2-step{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:rgba(255,255,255,.6);white-space:nowrap}
+.t2-step i{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:12.5px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.25)}
+.t2-step.done{color:rgba(255,255,255,.9)}
+.t2-step.done i{background:var(--k-green);border-color:var(--k-green)}
+.t2-step.cur{color:#FFFFFF}
+.t2-step.cur i{background:#FFFFFF;color:var(--k-acc);border-color:#FFFFFF;box-shadow:0 0 0 5px rgba(255,255,255,.15)}
+.t2-step-sep{flex:0 0 26px;height:2px;border-radius:1px;background:rgba(255,255,255,.2)}
+.t2-sel{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.t2-mini{font-size:12px;color:var(--k-muted)}
+.t2-num{font-weight:700;color:var(--k-navy)}
+.t2-tw{overflow-x:auto;margin:0 -4px;padding:0 4px}
+.t2-avs{display:flex}
+.t2-avs .k-av{width:30px;height:30px;font-size:12px;border:2px solid #FFFFFF;margin-left:-8px}
+.t2-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:12px;padding:12px 18px;border-radius:18px;background:#0E2350;color:#FFFFFF;font-size:14px;box-shadow:0 18px 40px rgba(0,16,48,.4);animation:t2Toast .5s cubic-bezier(.2,.8,.2,1) both}
+@keyframes t2Toast{from{opacity:0;transform:translate(-50%,20px)}}
+.t2-pop{position:absolute;z-index:30;background:#FFFFFF;border-radius:18px;box-shadow:0 24px 50px -10px rgba(0,16,48,.35);border:1px solid var(--k-line);padding:8px;min-width:220px;animation:t2Pop .3s cubic-bezier(.2,.8,.2,1) both}
+@keyframes t2Pop{from{opacity:0;transform:translateY(-6px) scale(.97)}}
+.t2-pop a{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px;border-radius:12px;font-size:13.5px;font-weight:600}
+.t2-pop a:hover{background:#F3F8FD}
+.t2-pop a.dg{color:#C2410C}
+.t2-kv{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:7px 0;border-bottom:1px dashed var(--k-line)}
+.t2-kv:last-child{border-bottom:none}
+.t2-kv span{color:var(--k-muted)}
+.t2-kv b{font-weight:700;text-align:left}
+.k-drawer .k-ib{border-color:var(--k-line)}
+.k-db > *{flex-shrink:0}
+.t2-chips{display:flex;gap:8px;flex-wrap:wrap}
+.k-chip.pon{background:#F1ECFE;border-color:#CFC2F8;color:#4A2EA8}
+.t2-step-dots{display:none}
+@media (max-width:760px){
+.t2-ff,.t2-ff3{grid-template-columns:1fr}
+.t2-hr{align-items:stretch}
+.t2-hr > .k-col{flex-basis:auto}
+.t2-acts .k-btn{flex:1 1 auto}
+.t2-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-16px;margin-right:-16px;padding:0 16px}
+.t2-tabs::-webkit-scrollbar{display:none}
+.t2-step span{display:none}
+.t2-step.cur span{display:inline}
+.t2-step-sep{flex-basis:14px}
+.t2-hm{display:none !important}
+.t2-toast{width:calc(100% - 32px);bottom:84px}
+}
+@media (min-width:761px){.t2-ho{display:none !important}}
+/* WP11: compact teacher hero on phone (T-09), same as Tea1 */
+@media (max-width:760px){
+.t2 .k-hero .k-g4{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:14px !important}
+.t2 .k-hero .k-g3{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:14px !important}
+.t2 .k-hero .k-stat{padding:8px 4px;text-align:center;align-items:center;gap:0;min-width:0}
+.t2 .k-hero .k-stat b{font-size:17px;white-space:nowrap}
+.t2 .k-hero .k-stat small{font-size:10.5px;line-height:1.35}
+.t2 .k-hero h2{font-size:21px;line-height:1.5}
+.t2-greet{display:none}
+.t2 .k-hero p{font-size:13.5px;line-height:1.6}
+.t2-tabs{margin-top:14px}
+.t2 .k-hero .t2-acts .t2-gw{display:none}
+.t2 .k-hero:has(.k-stat) .t2-hr p{display:none}
+.t2 .k-hero{padding-bottom:74px !important}
+.t2 .k-body{margin-top:-56px}
+.t2 .k-hero .t2-acts{gap:8px}
+.t2 .k-hero .t2-hr{gap:12px}
+}
+
+.ce-cert{position:relative;aspect-ratio:1.414/1;border-radius:10px;background:var(--bg,#FFFBF2);color:#0E2350;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4%;padding:7%;overflow:hidden;box-shadow:0 12px 26px -12px rgba(0,20,64,.35);container-type:inline-size}
+.ce-cert::before{content:"";position:absolute;inset:4%;border:2px solid var(--ac,#B7791F);border-radius:6px;pointer-events:none}
+.ce-cert::after{content:"";position:absolute;inset:5.6%;border:1px solid var(--ac,#B7791F);opacity:.45;border-radius:4px;pointer-events:none}
+.ce-cert .lg{width:9cqw;height:9cqw;border-radius:50%;background:var(--ac,#B7791F);opacity:.9}
+.ce-cert .t{font-family:'Aref Ruqaa',serif;font-size:7.2cqw;line-height:1.2;color:var(--ac,#B7791F);font-weight:700}
+.ce-cert .s{font-size:2.6cqw;color:#4A5878}
+.ce-cert .n{font-size:5.6cqw;font-weight:700;line-height:1.3}
+.ce-cert .ft{display:flex;justify-content:space-between;width:80%;font-size:2.2cqw;color:#4A5878;margin-top:2%}
+.ce-cert .ft span{display:flex;flex-direction:column;align-items:center;gap:2px;border-top:1px solid #C9D3E2;padding-top:3px;min-width:28%}
+.ce-cert .seal{position:absolute;bottom:9%;left:9%;width:12cqw;height:12cqw;border-radius:50%;background:radial-gradient(circle,#F6C453,#B7791F);box-shadow:0 0 0 3px rgba(183,121,31,.25)}
+.ce-cert.dark{--bg:#0E2350;color:#FFFFFF;--ac:#F6C453}
+.ce-cert.dark .s,.ce-cert.dark .ft{color:rgba(255,255,255,.7)}
+.ce-cert.port{aspect-ratio:1/1.414}
+.ce-req{display:flex;align-items:center;gap:14px;padding:16px;border-radius:22px;background:#FFFFFF;box-shadow:0 20px 44px -20px rgba(0,20,64,.28);flex-wrap:wrap;animation:kRise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d)}
+.ce-ring{position:relative;width:58px;height:58px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--k-navy)}
+.ce-ring svg{position:absolute;inset:0}
+.ce-ds{display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:22px;background:#FFFFFF;border:1.5px solid var(--k-line);position:relative;animation:kRise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d);transition:transform .25s,box-shadow .25s}
+.ce-ds:hover{transform:translateY(-4px);box-shadow:0 20px 36px -18px rgba(0,32,94,.35)}
+.ce-ds.def{border-color:#CFC2F8;box-shadow:0 0 0 3px rgba(95,61,196,.12)}
+.ce-new{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border:2px dashed #CFC2F8;border-radius:22px;background:#FBF9FF;color:var(--k-acc);font-weight:700;min-height:260px}
+.ce-act{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;border-radius:20px;background:#FFFFFF;box-shadow:0 20px 44px -20px rgba(0,20,64,.28);animation:kRise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d);transition:transform .2s}
+.ce-act:hover{transform:translateY(-3px)}
+.ce-studio{display:grid;grid-template-columns:280px minmax(0,1fr);gap:0;border-radius:24px;overflow:hidden;background:#FFFFFF;box-shadow:0 20px 44px -20px rgba(0,20,64,.28);min-height:680px}
+.ce-panel{border-left:1px solid var(--k-line);display:flex;flex-direction:column}
+.ce-ptabs{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--k-line)}
+.ce-ptabs a{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 2px;font-size:10.5px;font-weight:700;color:var(--k-muted);border-bottom:2px solid transparent}
+.ce-ptabs a[aria-selected="true"]{color:var(--k-acc);border-bottom-color:var(--k-acc);background:#FBF9FF}
+.ce-var{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:14px;border:1.5px solid var(--k-line);font-size:13px;font-weight:700;cursor:grab}
+.ce-var code{font-family:inherit;font-size:11.5px;color:var(--k-acc);background:#F3EFFE;padding:2px 6px;border-radius:6px;margin-right:auto;direction:ltr}
+.ce-canvas{background:#E9EEF5;background-image:radial-gradient(#D3DCE8 1px,transparent 1px);background-size:18px 18px;display:flex;flex-direction:column}
+.ce-bar{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#FFFFFF;border-bottom:1px solid var(--k-line);flex-wrap:wrap}
+.ce-bar .k-ib{width:36px;height:36px}
+.ce-stage{flex:1;display:flex;align-items:center;justify-content:center;padding:34px}
+.ce-stage .ce-cert{width:100%;max-width:640px}
+.ce-selbox{position:relative;outline:2px solid var(--k-acc);outline-offset:4px;border-radius:2px}
+.ce-selbox i{position:absolute;width:9px;height:9px;background:#FFFFFF;border:2px solid var(--k-acc);border-radius:2px}
+.ce-guide{position:absolute;top:0;bottom:0;left:50%;width:0;border-left:1.5px dashed #F2545B;opacity:.7}
+.ce-tip{position:absolute;top:-34px;right:50%;transform:translateX(50%);display:flex;gap:2px;padding:4px;border-radius:10px;background:#0E2350;color:#FFFFFF;font-size:11px;white-space:nowrap}
+.ce-tip span{padding:3px 7px;border-radius:7px}
+.ce-tip span.on{background:rgba(255,255,255,.16)}
+.ce-steps{display:flex;gap:6px;align-items:center}
+.ce-fl{display:flex;flex-direction:column;gap:14px}
+.ce-mrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;border:1.5px solid var(--k-line);background:#FFFFFF;font-size:13.5px;flex-wrap:wrap}
+.ce-mrow.amb{border-color:#F3DD9F;background:#FFFBEF}
+.ce-mrow.dup{border-color:#FFD2CB;background:#FFF6F4}
+.ce-mrow.man{border-color:#CFE3F5;background:#F5FAFE}
+.ce-ph{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;font-size:12.5px;font-weight:700;text-align:center}
+.ce-ph .pic{width:72px;height:88px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-size:24px}
+.ce-ph .pic.none{background:#F3F6FB;border:2px dashed #C9D8EA;color:#9AA8BF}
+.ce-prog{display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px}
+.ce-batch{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF}
+.ce-batch[aria-current="true"]{border-color:var(--k-acc);background:linear-gradient(160deg,#F5F1FF,#FFFFFF)}
+.ce-hr{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #EDF2F8;flex-wrap:wrap}
+.ce-hr:last-child{border-bottom:none}
+.ce-no{font-size:12px;color:var(--k-muted);direction:ltr;font-weight:700}
+@media (max-width:760px){
+.ce-studio{grid-template-columns:1fr;min-height:0}
+.ce-panel{border-left:none;border-top:1px solid var(--k-line);order:2}
+.ce-stage{padding:30px 14px}
+.ce-req .k-btn{flex:1;white-space:nowrap}
+.ce-req > .k-row > .k-btn.ghost{flex:0 0 96px}
+.ce-req > .k-row{flex:1 1 100%}
+.ce-sty{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+.ce-ori{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+}
+@media (max-width:760px){#ceh{grid-template-columns:1fr !important}}</style>
+</helmet>
+<div class="k teacher t2" dir="rtl">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">معلم</span></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5"><a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{n.c}}</span></sc-if></a></sc-for>
+      <span class="k-navg">مثبّتة</span>
+      <sc-for list="{{pins}}" as="p" hint-placeholder-count="3"><a href="#" class="k-nav t2-pin"><span class="t2-pinic" style="background: {{p.bg}}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{p.i}}"></path></svg></span><span class="t2-ell">{{p.l}}</span><sc-if value="{{p.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{p.c}}</span></sc-if></a></sc-for>
+      <div class="k-me"><span class="k-av sm" style="background: linear-gradient(150deg, #8B6CF0, #5F3DC4)">م</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">أ. ماجد الشهري</b><small style="font-size: 11.5px; opacity: .7">معلم رياضيات وفيزياء</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <span><small>{{crumb}}</small><h1>{{title}}</h1></span>
+        <span class="k-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن دورة أو طالب أو حصة<kbd>Ctrl K</kbd></span>
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="4"><a href="#" class="k-ib" aria-label="{{t.l}}" title="{{t.l}}" style="{{t.st}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av" style="background: linear-gradient(150deg, #8B6CF0, #5F3DC4)">م</span>
+      </header>
+      <header class="k-mtop"><sc-if value="{{back}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-ib" aria-label="رجوع"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a></sc-if><sc-if value="{{logo}}" hint-placeholder-val="{{ true }}"><img src="./logo.png" alt="" width="28" height="31" style="width: 28px; height: auto"></sc-if><h1>{{title}}</h1><sc-for list="{{mtools}}" as="t" hint-placeholder-count="2"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for></header>
+      <main class="k-page">
+
+<sc-if value="{{withHero}}" hint-placeholder-val="{{ true }}">
+<section class="k-hero">
+  <div class="t2-hr"><div class="k-col"><span class="k-ruqaa t2-greet">الشهادات</span><h2>{{hero.h}}</h2><p>{{hero.p}}</p></div>
+    <div class="t2-acts"><a href="#" class="k-btn hot" onClick="{{goIssue}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.5 14L7 22l5-3 5 3-1.5-8"></path></svg>إصدار شهادات</a><a href="#" class="k-btn t2-gw" onClick="{{goWizard}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>تصميم جديد</a></div></div>
+  <div class="k-grid k-g4" style="margin-top: 20px"><sc-for list="{{stats}}" as="s" hint-placeholder-count="4"><span class="k-stat"><b>{{s.n}}</b><small>{{s.l}}</small></span></sc-for></div>
+  <div class="t2-tabs"><sc-for list="{{tabs}}" as="t" hint-placeholder-count="4"><button aria-selected="{{t.on}}" onClick="{{t.go}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg>{{t.l}}<sc-if value="{{t.n}}" hint-placeholder-val="{{ false }}"><span class="n">{{t.n}}</span></sc-if></button></sc-for></div>
+</section>
+</sc-if>
+<sc-if value="{{isReq}}" hint-placeholder-val="{{ true }}">
+<div class="k-body t2-fade">
+  <div class="k-grid k-side2">
+    <div class="k-col" style="gap: 14px">
+      <sc-for list="{{reqs}}" as="r" hint-placeholder-count="3"><div class="ce-req" style="--d: {{r.d}}">
+        <span class="ce-ring"><svg class="t2-ring" width="58" height="58" viewBox="0 0 58 58"><circle cx="29" cy="29" r="24" stroke="#EAF0F6" stroke-width="6"></circle><circle class="arc" cx="29" cy="29" r="24" stroke="{{r.c}}" stroke-width="6" pathLength="100" stroke-dasharray="{{r.p}} 100"></circle></svg>{{r.pt}}</span>
+        <span class="k-col" style="gap: 2px; flex: 1 1 200px"><a href="#" style="font-size: 15px; font-weight: 700">{{r.n}}</a><a href="#" class="k-m" style="color: var(--k-acc); font-weight: 600">{{r.c2}}</a><span class="t2-mini">طلبها {{r.when}}</span></span>
+        <sc-if value="{{r.rej}}" hint-placeholder-val="{{ false }}"><span class="k-col" style="gap: 8px; flex: 1 1 100%"><span class="k-in" style="color: var(--k-text)">ما كمّل اختبار الوحدة الأخيرة لين الحين</span><span class="k-row" style="gap: 8px"><a href="#" class="k-btn sm danger" style="flex: 1">تأكيد الرفض</a><a href="#" class="k-btn sm ghost" style="flex: 1">تراجع</a></span></span></sc-if>
+        <sc-if value="{{r.ok}}" hint-placeholder-val="{{ true }}"><span class="k-row" style="gap: 8px"><a href="#" class="k-btn sm"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"></path></svg>وافق وأرسل الشهادة</a><a href="#" class="k-btn sm ghost">رفض</a></span></sc-if>
+      </div></sc-for>
+      <div class="t2-note b"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5h.01"></path></svg><span>لما توافق، توصل الشهادة للطالب على الإيميل وداخل التطبيق، وتنضاف للسجل.</span></div>
+    </div>
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card" style="--d: .1s">
+        <div class="k-ch"><h3 style="font-size: 16px">تحقّق من شهادة</h3></div>
+        <span class="k-in" style="direction: ltr; justify-content: flex-end">ALF-2026-0412-88</span>
+        <div class="t2-note g"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg><span><b>شهادة سارية</b>، صادرة لفيصل العنزي في ٢ نوفمبر ٢٠٢٦</span></div>
+      </section>
+      <section class="k-card" style="--d: .16s">
+        <div class="k-ch"><h3 style="font-size: 16px">الإرسال التلقائي</h3></div>
+        <span class="k-sub">الطالب ياخذ شهادته تلقائيًا أول ما يكمّل ١٠٠٪ بدون ما يطلب.</span>
+        <sc-for list="{{auto}}" as="a" hint-placeholder-count="3"><div class="k-row" style="justify-content: space-between; flex-wrap: nowrap; padding: 4px 0"><span style="font-size: 14px; font-weight: 600">{{a.t}}</span><span class="k-tog {{a.on}}"><i></i></span></div></sc-for>
+      </section>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{isDes}}" hint-placeholder-val="{{ false }}">
+<div class="k-body t2-fade">
+  <div class="k-grid k-g4"><sc-for list="{{acts}}" as="a" hint-placeholder-count="4"><a href="#" class="ce-act" style="--d: {{a.d}}" onClick="{{a.go}}"><span class="k-ico" style="background: {{a.bg}}; color: {{a.fg}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{a.i}}"></path></svg></span><b style="font-size: 15px">{{a.t}}</b><span class="k-m">{{a.m}}</span></a></sc-for></div>
+  <section class="k-card" style="--d: .12s">
+    <div class="k-ch"><h3>تصاميمي</h3><div class="t2-chips t2-hm"><span class="k-chip on">الكل ٤</span><span class="k-chip">عربي</span><span class="k-chip">إنجليزي</span></div></div>
+    <div class="k-grid k-g4" style="gap: 16px">
+      <sc-for list="{{designs}}" as="x" hint-placeholder-count="3"><div class="ce-ds {{x.cls}}" style="--d: {{x.d}}">
+        <div class="ce-cert {{x.v}}" style="--bg: {{x.bg}}; --ac: {{x.ac}}"><span class="lg"></span><span class="t">{{x.ct}}</span><span class="s">تشهد منصة الفهيم بأن</span><span class="n">اسم الطالب</span><span class="s">أتمّ دورة «اسم الدورة»</span><span class="seal"></span></div>
+        <div class="k-row" style="flex-wrap: nowrap"><span class="k-col" style="gap: 2px; flex: 1"><b style="font-size: 15px">{{x.t}}</b><span class="k-row" style="gap: 4px"><sc-for list="{{x.tags}}" as="g" hint-placeholder-count="2"><span class="k-tag {{g.c}}">{{g.l}}</span></sc-for></span></span><a href="#" class="k-ib" style="width: 36px; height: 36px" aria-label="خيارات" onClick="{{x.menu}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg></a></div>
+        <sc-if value="{{x.pop}}" hint-placeholder-val="{{ false }}"><div class="t2-pop t2-hm" style="top: auto; bottom: 64px; left: 14px"><a href="#" onClick="{{goStudio}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"></path></svg>تعديل</a><a href="#"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9h11v11H9zM5 15H4V4h11v1"></path></svg>نسخ التصميم</a><a href="#"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"></path></svg>تعيين كافتراضي</a><a href="#"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14"></path></svg>استخدمه لدوراتي</a><a href="#" class="dg"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>حذف</a></div></sc-if>
+      </div></sc-for>
+      <a href="#" class="ce-new" onClick="{{goWizard}}"><span class="k-ico" style="background: #F1ECFE; width: 56px; height: 56px; border-radius: 18px"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg></span>تصميم جديد<span class="k-m" style="font-weight: 500">ابدأ من ألوان التطبيق أو قالبك</span></a>
+    </div>
+    <span class="t2-hint">لو حذفت تصميم مستخدم، الشهادات اللي عليه ترجع للتصميم الافتراضي.</span>
+  </section>
+</div>
+</sc-if>
+
+<sc-if value="{{isStudio}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero" style="padding-bottom: 88px"><div class="k-row" style="gap: 12px"><a href="#" class="k-ib t2-gw" style="color: #FFFFFF" aria-label="رجوع" onClick="{{goDes}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></a><span class="k-col" style="gap: 0; flex: 1 1 200px"><span class="k-ruqaa t2-greet" style="font-size: 16px">استوديو الشهادة</span><h2 style="font-size: 26px">الكلاسيكي الذهبي</h2><span style="font-size: 13px; opacity: .75">آخر حفظ قبل دقيقتين، فيه تعديلات ما انحفظت</span></span><div class="k-seg m-pill t2-hm" style="--n: 2; min-width: 190px; background: rgba(255,255,255,.1)"><span class="m-pill-bg" style="--i: 0"></span><button aria-selected="true">العربي</button><button aria-selected="false" style="color: rgba(255,255,255,.8)">English</button></div><a href="#" class="k-btn sm t2-gw"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path></svg>معاينة</a><a href="#" class="k-btn sm hot"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>حفظ</a></div></section>
+<div class="k-body t2-fade">
+  <div class="ce-studio">
+    <aside class="ce-panel">
+      <div class="ce-ptabs"><sc-for list="{{ptabs}}" as="t" hint-placeholder-count="5"><a href="#" aria-selected="{{t.on}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg>{{t.l}}</a></sc-for></div>
+      <div class="k-col" style="padding: 16px; gap: 10px">
+        <b style="font-size: 14px">المتغيرات</b><span class="t2-hint">اسحبها على الشهادة، وتتعبّى تلقائيًا لكل طالب.</span>
+        <sc-for list="{{vars}}" as="v" hint-placeholder-count="6"><span class="ce-var"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01"></path></svg>{{v.l}}<code>{{v.c}}</code></span></sc-for>
+        <a href="#" class="k-btn ghost sm"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>متغيّر جديد</a>
+        <div style="border-top: 1px solid var(--k-line); margin-top: 6px; padding-top: 12px" class="k-col"><b style="font-size: 14px">النص المحدد</b>
+          <div class="t2-ff" style="gap: 8px"><span class="k-in" style="height: 40px; color: var(--k-text)">نسخ رقعة</span><span class="k-in" style="height: 40px; color: var(--k-text)">٤٨</span></div>
+          <div class="k-row" style="gap: 6px"><span style="width: 30px; height: 30px; border-radius: 9px; background: #B7791F; box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #B7791F"></span><span style="width: 30px; height: 30px; border-radius: 9px; background: #0E2350"></span><span style="width: 30px; height: 30px; border-radius: 9px; background: #5F3DC4"></span><span style="width: 30px; height: 30px; border-radius: 9px; background: #1D9A63"></span></div>
+        </div>
+      </div>
+    </aside>
+    <div class="ce-canvas">
+      <div class="ce-bar"><a href="#" class="k-ib" aria-label="تراجع"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"></path></svg></a><a href="#" class="k-ib" aria-label="إعادة"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3"></path></svg></a><span style="width: 1px; height: 24px; background: var(--k-line)"></span><a href="#" class="k-chip" style="height: 34px"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"></path></svg>محاذاة</a><a href="#" class="k-chip" style="height: 34px"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3"></path></svg>انسخ من الإنجليزي</a><span class="k-sp"></span><span class="dl-zoom" style="display: flex; align-items: center; border: 1.5px solid var(--k-line); border-radius: 18px; height: 36px; font-size: 12.5px; font-weight: 700"><a href="#" style="width: 34px; display: flex; justify-content: center"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3M8 11h6"></path></svg></a>٨٠٪<a href="#" style="width: 34px; display: flex; justify-content: center"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3M8 11h6M11 8v6"></path></svg></a></span></div>
+      <div class="ce-stage"><div class="ce-cert" style="max-width: 640px"><span class="lg"></span><span class="t">شهادة إتمام</span><span class="s">تشهد منصة الفهيم بأن</span><span class="n ce-selbox">{الطالب}<i style="top: -6px; right: -6px"></i><i style="top: -6px; left: -6px"></i><i style="bottom: -6px; right: -6px"></i><i style="bottom: -6px; left: -6px"></i><span class="ce-tip"><span class="on">ع</span><span>B</span><span>توسيط</span><span>حذف</span></span></span><span class="s">أتمّ دورة «{الدورة}» بتقدير {التقدير}</span><span class="ft"><span><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3 0 4-8 6-8s1 6 3 6 2-4 4-4 2 3 5 3"></path></svg><small>توقيع المعلم</small></span><span>{التاريخ}<small>التاريخ</small></span></span><span class="seal"></span><span class="ce-guide"></span></div></div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{isWiz}}" hint-placeholder-val="{{ false }}">
+<section class="k-hero"><div class="t2-hr"><div class="k-col"><span class="k-ruqaa t2-greet">تصميم جديد</span><h2>خلّنا نجهّز لك أول مسودة</h2><p>اختر الاتجاه والطابع، ارفع شعارك وتوقيعك، وحنا نرتّب الباقي.</p></div></div></section>
+<div class="k-body t2-fade">
+  <div class="k-grid k-side2">
+    <section class="k-card" style="--d: .05s">
+      <div class="t2-f"><span class="k-lbl">الاتجاه</span><div class="k-grid k-g2 ce-ori" style="gap: 10px"><a href="#" class="t2-opt on" style="flex-direction: row; align-items: center; gap: 14px"><span class="t2-ck"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span style="width: 56px; height: 40px; border-radius: 6px; border: 2px solid var(--k-acc); background: #FBF9FF"></span><b>أفقي</b></a><a href="#" class="t2-opt" style="flex-direction: row; align-items: center; gap: 14px"><span class="t2-ck"></span><span style="width: 34px; height: 48px; border-radius: 6px; border: 2px solid #B9C7DA"></span><b>رأسي</b></a></div></div>
+      <div class="t2-f"><span class="k-lbl">الطابع</span><div class="k-grid k-g3 ce-sty" style="gap: 10px"><sc-for list="{{styles}}" as="x" hint-placeholder-count="3"><a href="#" class="t2-opt {{x.on}}" style="padding: 10px"><span class="t2-ck"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><div class="ce-cert {{x.v}}" style="--bg: {{x.bg}}; --ac: {{x.ac}}; box-shadow: none"><span class="lg"></span><span class="t">شهادة</span><span class="n">الاسم</span></div><b style="font-size: 13.5px; text-align: center">{{x.t}}</b></a></sc-for></div></div>
+      <div class="t2-ff">
+        <div class="t2-f"><span class="k-lbl">الشعار</span><div class="ce-mrow"><img src="./logo.png" alt="" width="34" height="38" style="width: 34px; height: auto"><b style="flex: 1">شعار الفهيم</b><a href="#" class="k-link">تغيير</a></div></div>
+        <div class="t2-f"><span class="k-lbl">صورة توقيعك</span><div class="ce-mrow" style="color: var(--k-navy)"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3 0 4-8 6-8s1 6 3 6 2-4 4-4 2 3 5 3"></path></svg><span class="k-col" style="gap: 0; flex: 1"><b>توقيع.jpg</b><span class="t2-ok"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>شلنا الخلفية</span></span></div></div>
+      </div>
+      <div class="t2-f"><span class="k-lbl">من وين تبدأ؟</span>
+        <div class="k-grid k-g3" style="gap: 10px"><a href="#" class="t2-opt on"><span class="t2-ck"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="k-ico" style="background: #F1ECFE; color: var(--k-acc)"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"></path></svg></span><b style="font-size: 14px">مسودة من ألوان التطبيق</b><span class="t2-hint">الأسرع، تعدّلها بعدين</span></a><a href="#" class="t2-opt"><span class="t2-ck"></span><span class="k-ico" style="background: #E2EFFA; color: #135F9A"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"></path></svg></span><b style="font-size: 14px">قالبي الخاص</b><span class="t2-hint">ارفع صورة أو PDF</span></a><a href="#" class="t2-opt"><span class="t2-ck"></span><span class="k-ico" style="background: #EEF2F7; color: #4A5878"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h4"></path></svg></span><b style="font-size: 14px">صفحة فاضية</b><span class="t2-hint">صمّم من الصفر</span></a></div>
+      </div>
+      <div class="k-row" style="justify-content: flex-end"><a href="#" class="k-btn ghost">إلغاء</a><a href="#" class="k-btn" onClick="{{goStudio}}">جهّز المسودة<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></a></div>
+    </section>
+    <section class="k-card" style="--d: .12s; position: sticky; top: 90px; align-self: start">
+      <div class="k-ch"><h3 style="font-size: 16px">معاينة</h3><span class="k-tag p">مسودة</span></div>
+      <div class="ce-cert "><span class="lg"></span><span class="t">شهادة إتمام</span><span class="s">تشهد منصة الفهيم بأن</span><span class="n">راكان الحربي</span><span class="s">أتمّ دورة «الرياضيات ٣ ثانوي» بتقدير ممتاز</span><span class="ft"><span>أ. ماجد الشهري<small>المعلم</small></span><span>٢٤ نوفمبر ٢٠٢٦<small>التاريخ</small></span></span><span class="seal"></span></div>
+      <span class="t2-hint">بنسوي نسخة عربية وإنجليزية، وتقدر تعكس وحدة من الثانية.</span>
+    </section>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{isIssue}}" hint-placeholder-val="{{ false }}">
+<div class="k-body t2-fade">
+  <section class="k-card" style="--d: .04s; background: linear-gradient(120deg, #00205E, #5F3DC4); color: #FFFFFF; padding: 16px 20px">
+    <div class="t2-steps"><sc-for list="{{steps}}" as="s" hint-placeholder-count="5"><sc-if value="{{s.sep}}" hint-placeholder-val="{{ false }}"><span class="t2-step-sep"></span></sc-if><a href="#" class="t2-step {{s.cls}}" onClick="{{s.go}}"><i>{{s.n}}</i><span>{{s.l}}</span></a></sc-for></div>
+  </section>
+  <div class="k-grid k-side2">
+    <section class="k-card" style="--d: .08s">
+      <sc-if value="{{st1}}" hint-placeholder-val="{{ false }}">
+        <div class="k-ch"><h3>كيف تبي تصدرها؟</h3></div>
+        <div class="k-grid k-g2" style="gap: 12px"><a href="#" class="t2-opt on" style="min-height: 150px"><span class="t2-ck"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="k-ico" style="background: #F1ECFE; color: var(--k-acc)"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14"></path></svg></span><b style="font-size: 16px">مرتبطة بدورة</b><span class="t2-hint">لكل الطلاب النشطين في الدورة، وتنحسب في ملفهم.</span></a><a href="#" class="t2-opt" style="min-height: 150px"><span class="t2-ck"></span><span class="k-ico" style="background: #FFE8D6; color: #A3480A"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a7 7 0 0 1 14 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a7 7 0 0 0-4-6.3"></path></svg></span><b style="font-size: 16px">مستقلة</b><span class="t2-hint">لأي أسماء: ورشة، مسابقة، حضور فعالية.</span></a></div>
+        <label class="t2-f"><span class="k-lbl">الدورة</span><span class="k-in">الرياضيات ٣ ثانوي، مجموعة أ (٨ طلاب)<span class="k-sp"></span><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></span></label>
+        <label class="t2-f"><span class="k-lbl">التصميم</span><span class="k-in">الكلاسيكي الذهبي (الافتراضي)<span class="k-sp"></span><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></span></label>
+      </sc-if>
+      <sc-if value="{{st2}}" hint-placeholder-val="{{ false }}">
+        <div class="k-ch"><h3>مين ياخذ الشهادة؟</h3><a href="#"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"></path></svg>القوائم المحفوظة</a></div>
+        <div class="k-seg m-pill" style="--n: 3"><span class="m-pill-bg" style="--i: 1"></span><button aria-selected="false">بحث</button><button aria-selected="true">لصق قائمة</button><button aria-selected="false">رفع ملف</button></div>
+        <div class="t2-note g"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg><span><b>٤ جاهزين، ٣ يحتاجون انتباهك</b>. راجع الصفوف الملوّنة قبل ما تكمل.</span></div>
+        <div class="k-col" style="gap: 8px"><sc-for list="{{matches}}" as="m" hint-placeholder-count="6"><div class="ce-mrow {{m.cls}}"><span class="k-av sm" style="background: {{m.bg}}; width: 30px; height: 30px; font-size: 12px">{{m.a}}</span><b style="flex: 1 1 120px">{{m.n}}</b><span class="t2-mini" style="direction: ltr">{{m.e}}</span><span class="k-tag {{m.tc}}">{{m.s}}</span><sc-if value="{{m.fix}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-link" style="font-size: 12.5px">{{m.fix}}</a></sc-if></div></sc-for></div>
+        <div class="k-row"><a href="#" class="k-chip"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>عمود الإيميل</a><a href="#" class="k-chip"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>احفظ القائمة</a></div>
+      </sc-if>
+      <sc-if value="{{st3}}" hint-placeholder-val="{{ false }}">
+        <div class="k-ch"><h3>صور الطلاب</h3><span class="k-tag o">٤ بدون صورة</span></div>
+        <span class="k-sub">التصميم فيه مكان لصورة الطالب. ارفع الصور وحدة وحدة، أو ارفعها كلها ونطابقها باسم الملف.</span>
+        <div class="t2-drop"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18v16H3zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 20"></path></svg><b>اسحب كل الصور هنا</b><span>نطابقها بالاسم، مثلًا «راكان_الحربي.jpg»</span></div>
+        <div class="k-grid" style="grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px"><sc-for list="{{photos}}" as="p" hint-placeholder-count="8"><span class="ce-ph"><span class="pic {{p.cls}}" style="background: {{p.bg}}">{{p.a}}</span>{{p.n}}<span class="t2-mini">{{p.s}}</span></span></sc-for></div>
+      </sc-if>
+      <sc-if value="{{st4}}" hint-placeholder-val="{{ false }}">
+        <div class="k-ch"><h3>معاينة قبل الإصدار</h3><div class="k-seg m-pill" style="--n: 2; min-width: 180px"><span class="m-pill-bg" style="--i: 0"></span><button aria-selected="true">العربي</button><button aria-selected="false">English</button></div></div>
+        <div class="ce-cert "><span class="lg"></span><span class="t">شهادة إتمام</span><span class="s">تشهد منصة الفهيم بأن</span><span class="n">راكان الحربي</span><span class="s">أتمّ دورة «الرياضيات ٣ ثانوي» بتقدير ممتاز</span><span class="ft"><span>أ. ماجد الشهري<small>المعلم</small></span><span>٢٤ نوفمبر ٢٠٢٦<small>التاريخ</small></span></span><span class="seal"></span></div>
+        <div class="k-row" style="justify-content: center; gap: 10px"><a href="#" class="k-btn ghost sm"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>السابق</a><span class="t2-mini">٢ من ٧، راكان الحربي</span><a href="#" class="k-btn ghost sm">التالي<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></a></div>
+        <label class="t2-f"><span class="k-lbl">اسم الدفعة (اختياري)</span><span class="k-in">شهادات الفصل الأول ١٤٤٨</span></label>
+      </sc-if>
+      <sc-if value="{{st5}}" hint-placeholder-val="{{ false }}">
+        <div class="ce-prog">
+          <span class="ce-ring" style="width: 150px; height: 150px; font-size: 30px"><svg class="t2-ring" width="150" height="150" viewBox="0 0 150 150"><circle cx="75" cy="75" r="64" stroke="#EAF0F6" stroke-width="12"></circle><circle class="arc" cx="75" cy="75" r="64" stroke="#5F3DC4" stroke-width="12" pathLength="100" stroke-dasharray="57 100"></circle></svg>٥٧٪</span>
+          <b style="font-size: 20px">نصدر الشهادات الحين…</b>
+          <span class="k-sub">جهزنا ٤ من ٧. تقدر تطلع من الصفحة، ونعلمك لما نخلص.</span>
+        </div>
+        <div class="k-col" style="gap: 0"><sc-for list="{{issued}}" as="x" hint-placeholder-count="4"><div class="t2-li"><span class="k-ico" style="width: 30px; height: 30px; border-radius: 50%; background: {{x.bg}}; color: {{x.fg}}"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span><b style="flex: 1; font-size: 14px">{{x.n}}</b><span class="t2-mini">{{x.s}}</span></div></sc-for></div>
+      </sc-if>
+      <div class="k-row" style="justify-content: space-between; border-top: 1px solid var(--k-line); padding-top: 14px"><a href="#" class="k-btn ghost" onClick="{{prev}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>رجوع</a><a href="#" class="k-btn" onClick="{{next}}">{{nextL}}<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></a></div>
+    </section>
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card" style="--d: .12s">
+        <div class="k-ch"><h3 style="font-size: 16px">اختياراتك</h3></div>
+        <div class="t2-kv"><span>الطريقة</span><b>مرتبطة بدورة</b></div>
+        <div class="t2-kv"><span>الدورة</span><b>الرياضيات ٣ ث، أ</b></div>
+        <div class="t2-kv"><span>التصميم</span><b>الكلاسيكي الذهبي</b></div>
+        <div class="t2-kv"><span>المستلمين</span><b>{{recv}}</b></div>
+        <div class="t2-kv"><span>اللغات</span><b>العربي والإنجليزي</b></div>
+      </section>
+      <div class="t2-note p"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 6l9 7 9-7"></path></svg><span>كل طالب يوصله إيميل فيه الشهادة ورابط التحقق، وتظهر في ملفه داخل التطبيق.</span></div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{isHist}}" hint-placeholder-val="{{ false }}">
+<div class="k-body t2-fade">
+  <div class="k-grid" style="grid-template-columns: 340px minmax(0, 1fr); gap: 18px; align-items: start" id="ceh">
+    <section class="k-card" style="--d: .05s"><div class="k-ch"><h3 style="font-size: 16px">الدفعات</h3></div><sc-for list="{{batches}}" as="b" hint-placeholder-count="4"><a href="#" class="ce-batch" aria-current="{{b.cur}}"><b style="font-size: 14.5px">{{b.t}}</b><span class="k-m">{{b.m}}</span><span class="k-row" style="gap: 6px"><span class="k-tag g">{{b.n}} سارية</span><sc-if value="{{b.r}}" hint-placeholder-val="{{ false }}"><span class="k-tag r">{{b.r}} ملغاة</span></sc-if></span></a></sc-for></section>
+    <section class="k-card" style="--d: .1s">
+      <div class="k-ch"><span class="k-col" style="gap: 0"><h3>شهادات الفصل الأول ١٤٤٨</h3><span class="t2-mini">الرياضيات ٣ ث، أ، صدرت ٢٠ نوفمبر</span></span><span class="k-row t2-hm" style="gap: 6px"><a href="#" class="k-chip"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"></path></svg>ZIP</a><a href="#" class="k-chip"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"></path></svg>PDF</a><a href="#" class="k-chip"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"></path></svg>Word</a></span></div>
+      <div class="k-row"><span class="k-in" style="flex: 1 1 220px; height: 42px"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث بالاسم أو رقم الشهادة</span><div class="k-seg m-pill" style="--n: 3; min-width: 220px"><span class="m-pill-bg" style="--i: 0"></span><button aria-selected="true">الكل</button><button aria-selected="false">سارية</button><button aria-selected="false">ملغاة</button></div></div>
+      <div><sc-for list="{{certs}}" as="c" hint-placeholder-count="6"><div class="ce-hr"><span class="k-av sm" style="background: {{c.bg}}">{{c.a}}</span><span class="k-col" style="gap: 0; flex: 1 1 160px"><b style="font-size: 14px">{{c.n}}</b><span class="ce-no">{{c.no}}</span></span><span class="k-tag {{c.tc}}">{{c.s}}</span><span class="k-row" style="gap: 4px"><a href="#" class="k-ib" style="width: 34px; height: 34px" aria-label="عرض"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path></svg></a><a href="#" class="k-ib" style="width: 34px; height: 34px" aria-label="نسخ رابط التحقق"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"></path></svg></a><a href="#" class="k-ib" style="width: 34px; height: 34px" aria-label="إعادة الإصدار"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3"></path></svg></a><a href="#" class="k-ib" style="width: 34px; height: 34px; color: #C2410C" aria-label="إلغاء الشهادة"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></a></span></div></sc-for></div>
+    </section>
+  </div>
+</div>
+</sc-if>
+
+      </main>
+      <nav class="k-bnav" aria-label="القائمة"><sc-for list="{{bnav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{n.c}}</span></sc-if></a></sc-for></nav>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const D = '٠١٢٣٤٥٦٧٨٩';
+    const ar = (x) => String(x).replace(/\d/g, (d) => D[d]);
+    const I = {"home": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z", "courses": "M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14", "schedule": "M3 5h18v16H3zM3 10h18M8 3v4M16 3v4", "analysis": "M4 20V10M10 20V4M16 20v-7M22 20H2", "profile": "M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0", "cal": "M3 5h18v16H3zM3 10h18M8 3v4M16 3v4", "chat": "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z", "ai": "M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z", "bell": "M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0", "back": "M9 5l7 7-7 7", "next": "M15 5l-7 7 7 7", "plus": "M12 5v14M5 12h14", "minus": "M5 12h14", "receipt": "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6", "math": "M5 5h14v14H5zM9 9h2M10 8v2M13 9h2M9 15h2M13 14h2M13 16h2", "vid": "M3 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM16 10l5-3v10l-5-3", "tack": "M9 4h6l-1 6 4 4H6l4-4zM12 14v7", "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3", "filter": "M3 5h18l-7 8v6l-4 2v-8z", "down": "M12 3v12M7 10l5 5 5-5M4 21h16", "up": "M12 15V3M7 8l5-5 5 5M4 21h16", "check": "M5 12.5l4.5 4.5L19 7.5", "x": "M6 6l12 12M18 6L6 18", "dots": "M5 12h.01M12 12h.01M19 12h.01", "copy": "M9 9h11v11H9zM5 15H4V4h11v1", "share": "M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4", "video": "M3 7h12v10H3zM15 10l6-3v10l-6-3", "pin": "M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z", "clock": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2", "users": "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a7 7 0 0 1 14 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a7 7 0 0 0-4-6.3", "user": "M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0", "repeat": "M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3", "link": "M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7", "exam": "M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9", "cert": "M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.5 14L7 22l5-3 5 3-1.5-8", "money": "M2 6h20v12H2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 12h.01M18 12h.01", "wallet": "M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7l12-4v4M16 13.5h.01", "bank": "M3 10h18M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18M12 3l9 5H3z", "phone": "M7 2h10v20H7zM11 18h2", "lock": "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4", "eye": "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z", "eyeoff": "M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3 3.7M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7a9.6 9.6 0 0 0 4.4-1", "edit": "M4 20h4L19 9l-4-4L4 16zM14 6l4 4", "trash": "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3", "star": "M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z", "flag": "M5 21V4M5 4h11l-2 4 2 4H5", "table": "M3 4h18v16H3zM3 10h18M3 15h18M9 4v16", "ad": "M3 11v3l12 5V6L3 11zM15 9a3 3 0 0 1 0 6M7 14v5h3", "store": "M4 7h16l-1.5 12h-13zM9 7V5a3 3 0 0 1 6 0v2", "quran": "M12 6c-2-1.5-5-2-8-1v14c3-1 6-.5 8 1 2-1.5 5-2 8-1V5c-3-1-6-.5-8 1zM12 6v14", "ticket": "M4 5h16v4a3 3 0 0 0 0 6v4H4v-4a3 3 0 0 0 0-6z", "sliders": "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M14 4v4M8 10v4M16 16v4", "moon": "M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z", "globe": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18", "logout": "M15 4h4v16h-4M10 17l-5-5 5-5M5 12h11", "key": "M15 7a4 4 0 1 1-3.9 5H3v3h3v3h3v-3h2.1A4 4 0 0 1 15 7z", "mic": "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3", "clip": "M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7", "send": "M22 2L11 13M22 2l-7 20-4-9-9-4z", "image": "M3 4h18v16H3zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 20", "file": "M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h4", "print": "M6 9V3h12v6M6 18H4v-7h16v7h-2M6 14h12v7H6z", "mail": "M3 5h18v14H3zM3 6l9 7 9-7", "qr": "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM18 18h3v3h-3zM6 6h1M17 6h1M6 17h1", "undo": "M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3", "redo": "M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3", "gift": "M3 8h18v4H3zM5 12v9h14v-9M12 8v13M12 8C10 4 6 4 6 7s4 1 6 1zM12 8c2-4 6-4 6-1s-4 1-6 1z", "rec": "M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "help": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01", "shield": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", "scan": "M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M4 12h16", "pen": "M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z", "pkg": "M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10", "live": "M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM7.8 16.2a6 6 0 0 1 0-8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2", "warn": "M12 3l10 18H2zM12 10v5M12 18h.01", "info": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5h.01", "trend": "M3 17l6-6 4 4 8-8M15 7h6v6", "col": "M4 4h16v16H4zM10 4v16M15 9v6M12 12h6", "zin": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3M8 11h6M11 8v6", "zout": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3M8 11h6", "full": "M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5", "hist": "M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2", "type": "M4 7V5h16v2M9 19h6M12 5v14", "move": "M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3", "grip": "M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01", "cam": "M3 8h4l2-3h6l2 3h4v12H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "school": "M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5", "target": "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01", "bolt": "M13 2L4 14h7l-1 8 9-12h-7z", "layers": "M12 3l9 5-9 5-9-5zM3 13l9 5 9-5M3 17l9 5 9-5", "mega": "M3 11v3l12 5V6L3 11z", "device": "M4 5h12v9H4zM2 18h16M19 8h3v11h-3z", "sig": "M3 17c3 0 4-8 6-8s1 6 3 6 2-4 4-4 2 3 5 3", "excel": "M4 3h16v18H4zM8 8l8 8M16 8l-8 8", "robot": "M5 9h14v10H5zM12 5v4M9 13h.01M15 13h.01M9 16h6M12 3a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"};
+    const S = this.state || {};
+    const P = this.props || {};
+    const set = (o) => () => this.setState(o);
+    const stg = (i, b, s) => ((b || 0.08) + i * (s || 0.05)).toFixed(2) + 's';
+    const shell = (cur, title, crumb, back, tool) => ({
+      title, crumb, back: !!back, logo: !back,
+      nav: [['home', 'الرئيسية', '٤'], ['courses', 'دوراتي', ''], ['schedule', 'جدولي', ''], ['analysis', 'التحليلات', ''], ['profile', 'حسابي', '٢']].map(([k, l, c]) => ({ l, c, i: I[k], cur: k === cur ? 'page' : 'false' })),
+      bnav: [['home', 'الرئيسية', '٤'], ['courses', 'دوراتي', ''], ['schedule', 'جدولي', ''], ['analysis', 'التحليلات', ''], ['profile', 'حسابي', '٢']].map(([k, l, c]) => ({ l, c, i: I[k], cur: k === cur ? 'page' : 'false' })),
+      pins: [['طلبات الدفع بالتحويل', 'receipt', 'linear-gradient(140deg,#FF9F5A,#F2545B)', '٣'], ['رياضيات ٣ ثانوي، مجموعة أ', 'math', 'linear-gradient(140deg,#5F3DC4,#8B6CF0)', ''], ['روابط الاجتماعات', 'vid', 'linear-gradient(140deg,#1979C1,#07B8EE)', '']].map(([l, i, bg, c]) => ({ l, i: I[i], bg, c })),
+      tools: [['vid', 'روابط الاجتماعات', ''], ['cal', 'التقويم', ''], ['chat', 'الرسائل', '٢'], ['ai', 'المساعد الذكي', ''], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k], st: k === tool ? 'background: var(--k-navy); color: #FFFFFF; border-color: var(--k-navy)' : '' })),
+      mtools: [['chat', 'الرسائل', '٢'], ['bell', 'الإشعارات', '٥']].map(([k, l, c]) => ({ l, c, i: I[k] }))
+    });
+
+    const scr = S.scr || P.screen || 'requests';
+    const step = +(S.step || P.step || 2);
+    const AV = ['linear-gradient(150deg, #FF9F5A, #F2545B)', 'linear-gradient(150deg, #07B8EE, #1979C1)', 'linear-gradient(150deg, #34C38F, #1D9A63)', 'linear-gradient(150deg, #8B6CF0, #5F3DC4)', 'linear-gradient(150deg, #F6C453, #E89B00)'];
+    const go = (k, x) => () => this.setState(Object.assign({ scr: k, pop: false }, x || {}));
+    const tabKey = { requests: 'requests', designs: 'designs', issue: 'issue', history: 'history' }[scr];
+    const heroT = { requests: ['٣ طلاب ينتظرون شهاداتهم', 'كمّلوا الدورة وطلبوا الشهادة. وافق وتوصلهم على طول.'], designs: ['تصاميم شهاداتك', 'صمّم مرة، واستخدمه لكل دوراتك أو لدورات معيّنة.'], issue: ['إصدار شهادات', 'خمس خطوات: الطريقة، المستلمين، الصور، المعاينة، الإصدار.'], history: ['سجل الإصدار', 'كل شهادة أصدرتها، مع رابط التحقق وخيارات الإلغاء وإعادة الإصدار.'] }[tabKey] || ['', ''];
+    const SL = ['الطريقة', 'المستلمين', 'الصور', 'المعاينة', 'الإصدار'];
+    const NAMES = ['فيصل العنزي', 'راكان الحربي', 'عبدالله الدوسري', 'سعد المطيري', 'نواف القحطاني', 'لؤي الزهراني', 'تركي السبيعي', 'جواد الغامدي'];
+    return Object.assign(shell('profile', scr === 'designer' ? 'استوديو الشهادة' : 'الشهادات', 'حسابي', true), {
+      withHero: !!tabKey, isReq: scr === 'requests', isDes: scr === 'designs', isStudio: scr === 'designer', isWiz: scr === 'wizard', isIssue: scr === 'issue', isHist: scr === 'history',
+      hero: { h: heroT[0], p: heroT[1] },
+      stats: [['٣', 'طلبات تنتظر'], ['٤', 'تصاميم'], ['٢١٥', 'شهادة صادرة'], ['٣٨', 'هالشهر']].map(([n, l]) => ({ n, l })),
+      tabs: [['requests', 'الطلبات', 'flag', '٣'], ['designs', 'التصاميم', 'image', ''], ['issue', 'الإصدار', 'send', ''], ['history', 'السجل', 'hist', '']].map(([k, l, i, n]) => ({ l, n, i: I[i], on: k === tabKey ? 'true' : 'false', go: go(k) })),
+      reqs: [['راكان الحربي', 'الرياضيات ٣ ثانوي، أ', 100, 'قبل ساعتين', 0], ['جواد الغامدي', 'تحصيلي رياضيات', 100, 'أمس', 0], ['تركي السبيعي', 'قدرات كمي', 86, 'قبل ٣ أيام', 1]].map(([n, c2, p, when, rej], i) => ({ n, c2, p, pt: ar(p) + '٪', when, rej: !!rej, ok: !rej, c: p === 100 ? '#1D9A63' : '#E89B00', d: stg(i) })),
+      auto: [['الرياضيات ٣ ثانوي، أ', 'on'], ['تحصيلي رياضيات', 'on'], ['قدرات كمي', '']].map(([t, on]) => ({ t, on })),
+      acts: [['إصدار شهادات', 'لدورة كاملة أو لقائمة أسماء', 'send', '#F1ECFE', '#5F3DC4', go('issue')], ['سجل الإصدار', '٢١٥ شهادة في ٩ دفعات', 'hist', '#E2EFFA', '#135F9A', go('history')], ['القوائم المحفوظة', '٣ قوائم أسماء جاهزة', 'users', '#DDF5E9', '#1D7A50', null], ['تحقّق من شهادة', 'برقمها أو رمز QR', 'shield', '#FFF3C4', '#855700', go('requests')]].map(([t, m, i, bg, fg, g], j) => ({ t, m, i: I[i], bg, fg, go: g, d: stg(j) })),
+      designs: [['الكلاسيكي الذهبي', 'شهادة إتمام', 'def', '', '#FFFBF2', '#B7791F', [['افتراضي', 'p'], ['عربي وإنجليزي', 'n']]], ['الليلي', 'شهادة تميّز', '', 'dark', '#0E2350', '#F6C453', [['عربي', 'n'], ['شخصي', 'n']]], ['البنفسجي', 'شهادة حضور', '', '', '#F8F5FF', '#5F3DC4', [['عربي وإنجليزي', 'n']]]].map(([t, ct, cls, v, bg, ac, tags], i) => ({ t, ct, cls, v, bg, ac, d: stg(i, 0.15), tags: tags.map(([l, c]) => ({ l, c })), pop: i === 1 && (S.pop !== undefined ? S.pop : true), menu: () => this.setState({ pop: !(S.pop !== undefined ? S.pop : true) }) })),
+      ptabs: [['تصاميم', 'layers'], ['الصفحة', 'image'], ['اللغات', 'globe'], ['النص', 'type'], ['متغيرات', 'sliders']].map(([l, i], j) => ({ l, i: I[i], on: j === 4 ? 'true' : 'false' })),
+      vars: [['اسم الطالب', '{الطالب}'], ['اسم الدورة', '{الدورة}'], ['التقدير', '{التقدير}'], ['التاريخ', '{التاريخ}'], ['رقم الشهادة', '{الرقم}'], ['رمز التحقق QR', '{QR}']].map(([l, c]) => ({ l, c })),
+      styles: [['كلاسيكي', 'on', '', '#FFFBF2', '#B7791F'], ['ليلي', '', 'dark', '#0E2350', '#F6C453'], ['بنفسجي', '', '', '#F8F5FF', '#5F3DC4']].map(([t, on, v, bg, ac]) => ({ t, on, v, bg, ac })),
+      steps: SL.map((l, i) => ({ l, n: i + 1 < step ? '✓' : ar(i + 1), sep: i > 0, cls: i + 1 < step ? 'done' : i + 1 === step ? 'cur' : '', go: set({ step: i + 1 }) })),
+      st1: step === 1, st2: step === 2, st3: step === 3, st4: step === 4, st5: step === 5,
+      nextL: step === 4 ? 'أصدر ٧ شهادات' : step === 5 ? 'روح للسجل' : 'التالي',
+      next: step === 5 ? go('history') : set({ step: Math.min(5, step + 1) }), prev: set({ step: Math.max(1, step - 1) }),
+      recv: step >= 2 ? '٧ طلاب' : '٨ طلاب نشطين',
+      matches: [['فيصل العنزي', 'faisal@mail.sa', 'مطابق', 'g', '', ''], ['راكان الحربي', 'rakan.h@mail.sa', 'مطابق', 'g', '', ''], ['عبدالله الدوسري', '', 'أكثر من تطابق', 'y', 'amb', 'اختر الصحيح'], ['سعد المطيري', 'saad.m@mail.sa', 'مطابق', 'g', '', ''], ['محمد الشمري', '', 'يدوي، مو مسجّل', '', 'man', 'أضف إيميل'], ['راكان الحربي', 'rakan.h@mail.sa', 'مكرر', 'r', 'dup', 'احذف']].map(([n, e, s, tc, cls, fix], i) => ({ n, e, s, tc, cls, fix, a: n[0], bg: AV[i % 5] })),
+      photos: NAMES.map((n, i) => ({ n, a: n[0], cls: [2, 5, 6, 7].includes(i) ? 'none' : '', bg: [2, 5, 6, 7].includes(i) ? '' : AV[i % 5], s: [2, 5, 6, 7].includes(i) ? 'بدون صورة' : 'تمت المطابقة' })),
+      issued: NAMES.slice(0, 5).map((n, i) => ({ n, s: i < 3 ? 'انرسلت' : i === 3 ? 'تتجهز…' : 'بالانتظار', i: I[i < 3 ? 'check' : i === 3 ? 'clock' : 'dots'], bg: i < 3 ? '#DDF5E9' : i === 3 ? '#F1ECFE' : '#EEF2F7', fg: i < 3 ? '#1D7A50' : i === 3 ? '#5F3DC4' : '#4A5878' })),
+      batches: [['شهادات الفصل الأول ١٤٤٨', 'الرياضيات ٣ ث، أ، ٢٠ نوفمبر', '٦', '١', 'true'], ['تحصيلي، دفعة نوفمبر', 'تحصيلي رياضيات، ١٢ نوفمبر', '١٨', '', 'false'], ['مسابقة الرياضيات المدرسية', 'مستقلة، ٢ نوفمبر', '٢٤', '', 'false'], ['قدرات كمي، أكتوبر', 'قدرات كمي، ٢٨ أكتوبر', '١٨', '٢', 'false']].map(([t, m, n, r, cur]) => ({ t, m, n, r, cur })),
+      certs: NAMES.slice(0, 7).map((n, i) => ({ n, a: n[0], bg: AV[i % 5], no: 'ALF-2026-1120-' + String(11 + i * 7), s: i === 4 ? 'ملغاة' : 'سارية', tc: i === 4 ? 'r' : 'g' })),
+      goIssue: go('issue', { step: 1 }), goWizard: go('wizard'), goStudio: go('designer'), goDes: go('designs')
+    });
+
+  }
+}
+</script>
+</body>
+</html>

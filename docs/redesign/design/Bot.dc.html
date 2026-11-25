@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>وش المساعد</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div data-bot-face="1" style="width: {{size}}px; height: {{size}}px; border-radius: 50%; box-shadow: 0 10px 26px rgba(10, 126, 164, 0.35); color: #12303D">
+  <svg aria-hidden="true" viewBox="0 0 64 64" width="{{size}}" height="{{size}}" style="display: block">
+    <defs>
+      <clipPath id="botClip"><circle cx="32" cy="32" r="31"></circle></clipPath>
+      <filter id="botBlur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"></feGaussianBlur></filter>
+    </defs>
+    <g clip-path="url(#botClip)">
+      <rect width="64" height="64" fill="#0A7EA4"></rect>
+      <g filter="url(#botBlur)">
+        <circle cx="18" cy="50" r="22" fill="#FF9F5A">
+          <animate attributeName="r" values="{{a1}}" dur="8s" repeatCount="indefinite"></animate>
+          <animate attributeName="cy" values="{{a2}}" dur="8s" repeatCount="indefinite"></animate>
+        </circle>
+        <circle cx="48" cy="14" r="22" fill="#7C5CFF">
+          <animate attributeName="r" values="{{a3}}" dur="8s" repeatCount="indefinite"></animate>
+          <animate attributeName="cx" values="{{a4}}" dur="8s" repeatCount="indefinite"></animate>
+        </circle>
+        <circle cx="50" cy="52" r="10" fill="#4FC3E8">
+          <animate attributeName="r" values="{{a5}}" dur="5s" repeatCount="indefinite"></animate>
+        </circle>
+      </g>
+    </g>
+    <circle cx="32" cy="32" r="30.5" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.85"></circle>
+
+    <ellipse cx="23" cy="29" rx="6.5" ry="{{eyeRy}}" fill="#FFFFFF"></ellipse>
+    <circle cx="{{lpx}}" cy="{{lpy}}" r="{{pupilR}}" fill="#12303D"></circle>
+
+    <path d="M35.5 30 Q41 25 46.5 30" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" opacity="{{winkOp}}"></path>
+    <g opacity="{{eyeOp}}">
+      <ellipse cx="41" cy="29" rx="6.5" ry="{{eyeRy}}" fill="#FFFFFF"></ellipse>
+      <circle cx="{{rpx}}" cy="{{rpy}}" r="{{pupilR}}" fill="#12303D"></circle>
+    </g>
+
+    <path d="{{mouth}}" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"></path>
+  </svg>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"size":{"editor":"int","default":64,"min":40,"max":160},"$preview":{"width":64,"height":64}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { dx: 0, dy: 0, wink: false, blink: false };
+    this._lastWink = 0;
+    this._lastY = 0;
+  }
+  componentDidMount() {
+    this._reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    this._look = (x, y) => {
+      if (this._raf) cancelAnimationFrame(this._raf);
+      this._raf = requestAnimationFrame(() => {
+        const el = document.querySelector('[data-bot-face]');
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        const ddx = x - cx, ddy = y - cy;
+        const d = Math.hypot(ddx, ddy) || 1;
+        const k = Math.min(1, d / 160);
+        this.setState({ dx: (ddx / d) * 2.6 * k, dy: (ddy / d) * 2.8 * k });
+        const now = Date.now();
+        if (d < 120 && now - this._lastWink > 2600 && !this._reduce) {
+          this._lastWink = now;
+          this.setState({ wink: true });
+          clearTimeout(this._wt);
+          this._wt = setTimeout(() => this.setState({ wink: false }), 650);
+        }
+      });
+    };
+    this._move = (e) => this._look(e.clientX, e.clientY);
+    this._scroll = (e) => {
+      const t = e.target && e.target.scrollTop !== undefined ? e.target : document.scrollingElement;
+      const y = (t && t.scrollTop) || 0;
+      const dir = y > this._lastY ? 1 : -1;
+      this._lastY = y;
+      this.setState({ dx: 0, dy: 2.8 * dir });
+      clearTimeout(this._st);
+      this._st = setTimeout(() => this.setState({ dx: 0, dy: 0 }), 900);
+    };
+    window.addEventListener('pointermove', this._move, { passive: true });
+    window.addEventListener('pointerdown', this._move, { passive: true });
+    document.addEventListener('scroll', this._scroll, { passive: true, capture: true });
+    if (!this._reduce) {
+      this._bi = setInterval(() => {
+        this.setState({ blink: true });
+        setTimeout(() => this.setState({ blink: false }), 140);
+      }, 4300);
+    }
+  }
+  componentWillUnmount() {
+    window.removeEventListener('pointermove', this._move);
+    window.removeEventListener('pointerdown', this._move);
+    document.removeEventListener('scroll', this._scroll, true);
+    clearInterval(this._bi);
+    clearTimeout(this._wt);
+    clearTimeout(this._st);
+    if (this._raf) cancelAnimationFrame(this._raf);
+  }
+  renderVals() {
+    const { dx, dy, wink, blink } = this.state;
+    const size = this.props.size ?? 64;
+    const m = !this._reduce;
+    return {
+      size,
+      a1: m ? '12;30;12' : '22;22;22',
+      a2: m ? '58;42;58' : '50;50;50',
+      a3: m ? '30;12;30' : '22;22;22',
+      a4: m ? '44;54;44' : '48;48;48',
+      a5: m ? '6;16;6' : '10;10;10',
+      winkOp: wink ? 1 : 0,
+      eyeOp: wink ? 0 : 1,
+      eyeRy: blink ? 0.8 : 7,
+      pupilR: blink ? 0 : 3,
+      lpx: 23 + dx, lpy: 29 + dy,
+      rpx: 41 + dx, rpy: 29 + dy,
+      mouth: wink ? 'M24 43 Q32 50 41 42' : 'M24 42 Q32 48 40 42'
+    };
+  }
+}
+</script>
+</body>
+</html>

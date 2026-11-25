@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>المشرف العام: الإصدارات</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+.su .k-side{gap:2px;padding:18px 12px;overflow-y:auto;scrollbar-width:none}
+.su .k-role{background:linear-gradient(120deg,#B7791F,#F6C453);color:#2B1700}
+.su-gh{display:flex;align-items:center;gap:11px;height:40px;padding:0 12px;border-radius:13px;color:rgba(255,255,255,.82);font-size:14px;font-weight:700;transition:background .2s}
+.su-gh:hover{background:rgba(255,255,255,.07)}
+.su-gh .su-cv{margin-right:auto;opacity:.6;transition:transform .25s}
+.su-gh[aria-expanded="true"]{color:#FFFFFF}
+.su-gh[aria-expanded="true"] .su-cv{transform:rotate(-90deg)}
+.su-gh[data-cur="true"]>svg:first-child{color:#F6C453}
+.su-sub{display:flex;flex-direction:column;gap:1px;margin:2px 22px 8px 0;padding-right:10px;border-right:1.5px solid rgba(255,255,255,.12);animation:kFade .3s both}
+.su .k-nav{white-space:nowrap;height:36px;font-size:13.5px;border-radius:11px;gap:10px}
+.su .k-nav svg{width:17px;height:17px}
+.su .k-nav[aria-current="page"]::before{right:-12px;background:linear-gradient(#F6C453,#B7791F)}
+.su .k-nav[aria-current="page"] svg{color:#F6C453}
+.su-sub .k-nav{color:rgba(255,255,255,.84);font-weight:600}
+.su.su-lock{height:var(--vh,100vh);overflow:hidden}
+.su-sub .k-nav svg{opacity:1}
+.su .k-me{margin-top:12px}
+.su .k-av.gold{background:linear-gradient(150deg,#F6C453,#B7791F);color:#2B1700}
+.su .k-btn{box-shadow:0 10px 22px -6px rgba(183,121,31,.45)}
+.su .k-btn{white-space:nowrap}
+.su .k-ch{flex-wrap:wrap}
+.su .k-btn.ghost,.su .k-btn.danger{box-shadow:none}
+.su .k-btn.dark{background:#00205E;animation:none;box-shadow:0 10px 22px -8px rgba(0,32,94,.5)}
+.su .k-btn.light{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);color:#FFFFFF;animation:none;box-shadow:none;backdrop-filter:blur(6px)}
+.su .k-btn.red{background:linear-gradient(120deg,#D9363E,#F2545B);animation:none;box-shadow:0 10px 22px -8px rgba(242,84,91,.55)}
+.su .k-bar i{background:linear-gradient(90deg,#B7791F,#F6C453)}
+.su .k-bar.blue i{background:linear-gradient(90deg,#1979C1,#07B8EE)}
+.su .k-bar.green i{background:linear-gradient(90deg,#1D9A63,#43C38A)}
+.su .k-bar.red i{background:linear-gradient(90deg,#D9363E,#F2545B)}
+.su .k-seg{overflow-x:auto;scrollbar-width:none;align-self:flex-start;max-width:100%}
+.su .k-seg button{flex:none;display:inline-flex;align-items:center;gap:6px}
+.su .k-seg button .k-tag{height:20px;padding:0 7px;font-size:10.5px}
+.su .k-chip.gold{background:#FFF3D6;border-color:#F3D59A;color:#7A4E0B}
+.su .k-tile{cursor:pointer}
+.su-pill{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:15px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);font-size:12.5px;font-weight:700;white-space:nowrap}
+.su-pill i{width:7px;height:7px;border-radius:50%;background:#43C38A;box-shadow:0 0 0 3px rgba(67,195,138,.25)}
+.su-kick{font-family:'Aref Ruqaa',serif;font-size:19px;color:#F6C453}
+.su-hact{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.su-hstat b small{font-size:13px;font-weight:600;opacity:.75;margin-right:4px}
+.su-delta{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#7BE3B0}
+.su-delta.dn{color:#FFB1A8}
+.su-delta.l{color:#1D7A50}.su-delta.l.dn{color:#B23A2E}
+.su-kpi{position:relative;overflow:hidden}
+.su-kpi .su-kn{font-size:28px;font-weight:700;color:var(--k-navy);line-height:1.2}
+.su-kpi .su-kn small{font-size:14px;color:var(--k-muted);font-weight:600;margin-right:4px}
+.su-spark{display:flex;align-items:flex-end;gap:3px;height:36px}
+.su-spark i{flex:1;border-radius:3px 3px 1px 1px;background:linear-gradient(#F6C453,#B7791F);opacity:.85;transform-origin:50% 100%;animation:suUp .8s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
+.su-spark.blue i{background:linear-gradient(#07B8EE,#1979C1)}
+.su-spark.green i{background:linear-gradient(#43C38A,#1D9A63)}
+@keyframes suUp{from{transform:scaleY(0)}to{transform:none}}
+.su-bars{display:flex;align-items:flex-end;gap:10px;height:200px;padding:0 4px;border-bottom:1.5px solid var(--k-line);position:relative}
+.su-bars .su-bc{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;min-width:0}
+.su-bars .su-bp{display:flex;align-items:flex-end;gap:3px;width:100%;justify-content:center;height:100%}
+.su-bars .su-bp i{width:42%;max-width:16px;border-radius:5px 5px 2px 2px;transform-origin:50% 100%;animation:suUp .8s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
+.su-bars .su-bp i.a{background:linear-gradient(#F6C453,#B7791F)}
+.su-bars .su-bp i.b{background:linear-gradient(#07B8EE,#1979C1)}
+.su-bx{display:flex;gap:10px;padding:6px 4px 0}
+.su-bx span{flex:1;text-align:center;font-size:11px;color:var(--k-muted);font-weight:600;min-width:0;white-space:nowrap}
+.su-grid-l{position:absolute;left:0;right:0;border-top:1px dashed #E7EEF6}
+.su-leg{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--k-muted);font-weight:600}
+.su-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-left:6px;vertical-align:-1px}
+.su-donut{width:150px;height:150px;border-radius:50%;flex-shrink:0;position:relative;animation:suSpin 1s cubic-bezier(.2,.8,.2,1) both}
+.su-donut::after{content:"";position:absolute;inset:22px;border-radius:50%;background:#FFFFFF}
+.su-donut span{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.25;text-align:center}
+.su-donut b{font-size:20px;color:var(--k-navy)}.su-donut small{font-size:11.5px;color:var(--k-muted)}
+@keyframes suSpin{from{transform:rotate(-90deg) scale(.85);opacity:0}to{transform:none;opacity:1}}
+.su-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px dashed var(--k-line)}
+.su-row:last-child{border-bottom:none}
+.su-row .k-ico{width:38px;height:38px;border-radius:12px}
+.su-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.su-q{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:#FFFFFF;border:1.5px solid var(--k-line);transition:transform .2s,box-shadow .2s;animation:kRise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s);cursor:pointer}
+.su-q:hover{transform:translateY(-2px);box-shadow:0 12px 24px -12px rgba(0,32,94,.25)}
+.su-q .k-ico{width:40px;height:40px}
+.su-n{font-size:22px;font-weight:700;color:var(--k-navy);line-height:1}
+.su-banner{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:18px;font-size:13.5px;line-height:1.6;animation:kRise .5s both;animation-delay:var(--d,0s)}
+.su-banner.warn{background:#FFF6DF;border:1.5px solid #F3D59A;color:#6B4605}
+.su-banner.info{background:#E8F3FC;border:1.5px solid #CFE3F5;color:#0E3F6B}
+.su-banner.bad{background:#FFEDEA;border:1.5px solid #FFC9C1;color:#8A2A20}
+.su-banner.ok{background:#E3F7EE;border:1.5px solid #B9E8D2;color:#165C3D}
+.su-banner b{font-weight:700}
+.su-banner .k-btn{margin-right:auto;flex-shrink:0}
+.su-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.su-field .k-in{color:var(--k-text);font-weight:600}
+.su-field .k-in.ph{color:#8A97AE;font-weight:400}
+.su-field .k-in.area{height:auto;min-height:92px;align-items:flex-start;padding:12px 14px;line-height:1.7}
+.su-field small{font-size:12px;color:var(--k-muted);line-height:1.5}
+.su-fg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.su-fg.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.su-sw{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #EDF2F8}
+.su-sw:last-child{border-bottom:none}
+.su-sw .k-col{gap:2px;flex:1}
+.su-sw .k-tog{cursor:pointer}
+.su-opt{display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;cursor:pointer;transition:border-color .2s,transform .2s;position:relative}
+.su-opt:hover{transform:translateY(-2px)}
+.su-opt[aria-checked="true"]{border-color:#B7791F;background:linear-gradient(160deg,#FFFFFF 40%,#FFF6E2);box-shadow:0 0 0 3px rgba(246,196,83,.25)}
+.su-opt[aria-checked="true"]::after{content:"";position:absolute;top:12px;left:12px;width:18px;height:18px;border-radius:50%;background:#B7791F url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center/12px no-repeat}
+.su-tw{overflow-x:auto;margin:0 -4px;padding:0 4px}
+.su .k-table td .k-m{display:block}
+.su-who{display:flex;align-items:center;gap:10px;min-width:0}
+.su-who .k-av{width:36px;height:36px;font-size:14px}
+.su-who b{font-size:14px;display:block;line-height:1.35}
+.su-who small{font-size:12px;color:var(--k-muted);display:block}
+.su-acts{display:flex;gap:6px;justify-content:flex-end}
+.su-ib{width:34px;height:34px;border-radius:11px;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-muted);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:color .2s,border-color .2s}
+.su-ib:hover{color:#B7791F;border-color:#F3D59A}
+.su-ib.red{color:#C2410C;border-color:#FFD2C2}
+.su-cur{font-size:11px;font-weight:700;color:#7A4E0B;background:#FFF3D6;border-radius:6px;padding:1px 6px;margin-right:4px;vertical-align:1px}
+.su-cur.eg{color:#135F9A;background:#E2EFFA}
+.su-modal{position:fixed;z-index:42;top:50%;left:50%;width:480px;max-width:calc(100% - 32px);transform:translate(-50%,-50%);background:#FFFFFF;border-radius:26px;box-shadow:0 40px 90px -20px rgba(0,16,48,.55);display:flex;flex-direction:column;gap:14px;padding:24px;animation:suPop .4s cubic-bezier(.2,1.2,.3,1) both}
+@keyframes suPop{from{opacity:0;transform:translate(-50%,-46%) scale(.94)}to{opacity:1;transform:translate(-50%,-50%)}}
+.su-modal h2{margin:0;font-size:20px;line-height:1.4}
+.su-modal p{margin:0;font-size:14px;color:var(--k-muted);line-height:1.75}
+.su-modal .su-mi{width:54px;height:54px;border-radius:18px;display:flex;align-items:center;justify-content:center}
+.su-modal .su-mf{display:flex;gap:10px;margin-top:4px}
+.su-modal .su-mf .k-btn{flex:1}
+.su-conseq{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:16px;background:#F8FBFE;border:1.5px solid var(--k-line);font-size:13px;line-height:1.6}
+.su-conseq span{display:flex;gap:8px;align-items:flex-start}
+.su-conseq svg{flex-shrink:0;margin-top:2px}
+.su-type{height:48px;border-radius:14px;border:2px dashed #FFC9C1;background:#FFF8F6;display:flex;align-items:center;padding:0 14px;font-size:14px;font-weight:700;color:#8A2A20;gap:8px}
+.su-type .su-caret{width:2px;height:20px;background:#D9363E;animation:suBlink 1s steps(2) infinite}
+@keyframes suBlink{50%{opacity:0}}
+.su-code{background:#0B1530;color:#C9D6F0;border-radius:18px;padding:14px 16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.85;direction:ltr;text-align:left;overflow:hidden}
+.su-code .g{color:#7BE3B0}.su-code .y{color:#F6C453}.su-code .r{color:#FF9C92}.su-code .m{color:#7F8DB0}
+.su-code .cur{display:inline-block;width:8px;height:14px;background:#F6C453;vertical-align:-2px;animation:suBlink 1s steps(2) infinite}
+.su-steps{display:flex;flex-direction:column;gap:0}
+.su-step{display:flex;gap:12px;align-items:flex-start;position:relative;padding-bottom:16px}
+.su-step:not(:last-child)::before{content:"";position:absolute;right:13px;top:28px;bottom:2px;width:2px;background:var(--k-line)}
+.su-step.done:not(:last-child)::before{background:#1D9A63}
+.su-step .su-sn{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;background:#EEF2F7;color:var(--k-muted)}
+.su-step.done .su-sn{background:#1D9A63;color:#FFFFFF}
+.su-step.now .su-sn{background:#B7791F;color:#FFFFFF;animation:kPulse 2s infinite}
+.su-mx{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+.su-mx th{font-size:12px;color:var(--k-muted);font-weight:700;padding:10px 8px;border-bottom:1.5px solid var(--k-line);text-align:center;white-space:nowrap}
+.su-mx th:first-child{text-align:right}
+.su-mx td{padding:10px 8px;border-bottom:1px solid #EDF2F8;text-align:center}
+.su-mx td:first-child{text-align:right;font-weight:700}
+.su-mx td small{display:block;font-weight:500;color:var(--k-muted);font-size:11.5px}
+.su-ck{display:inline-flex;width:24px;height:24px;border-radius:8px;align-items:center;justify-content:center}
+.su-ck.y{background:#1D9A63;color:#FFFFFF}.su-ck.v{background:#E2EFFA;color:#135F9A}.su-ck.n{background:#F1F4F8;color:#B4BFD0}
+.su-phone{width:250px;flex-shrink:0;border-radius:36px;padding:10px;background:#0B1530;box-shadow:0 30px 60px -20px rgba(0,16,48,.5);align-self:center}
+.su-phone .su-scr{border-radius:28px;overflow:hidden;background:#F3F8FD;height:480px;position:relative;display:flex;flex-direction:column}
+.su-notch{width:90px;height:20px;border-radius:10px;background:#0B1530;margin:8px auto 0;flex-shrink:0}
+.su-tl{display:flex;flex-direction:column;gap:0}
+.su-tl>div{display:flex;gap:12px;padding:10px 0;border-bottom:1px dashed var(--k-line);font-size:13.5px;align-items:flex-start}
+.su-tl>div:last-child{border-bottom:none}
+.su-tl time{font-size:12px;color:var(--k-muted);flex-shrink:0;width:74px}
+.su-sec{font-size:13px;font-weight:700;color:var(--k-muted);margin-top:4px}
+.su-hr{height:1px;background:var(--k-line);margin:2px 0}
+.su-gauge{height:12px;border-radius:6px;background:#EEF2F7;display:flex;overflow:hidden}
+.su-gauge i{height:100%;transform-origin:100% 50%;animation:kGrow 1s cubic-bezier(.2,.8,.2,1) .3s both}
+.su-big{font-size:34px;font-weight:700;line-height:1.1}
+.su-glow{position:relative}
+.su-glow::after{content:"";position:absolute;width:160px;height:160px;border-radius:50%;background:#F6C453;opacity:.18;filter:blur(40px);top:-60px;left:-40px;pointer-events:none}
+.su-mod{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:20px;border:1.5px solid var(--k-line);background:#FFFFFF;animation:kRise .5s both;animation-delay:var(--d,0s)}
+.su-mod.off{background:#F8FAFC}
+.su-mod.off .su-mt{color:var(--k-muted)}
+.su-src{font-size:11px;font-weight:700;color:var(--k-muted);background:#F1F4F8;border-radius:8px;padding:2px 8px}
+.su-src.here{color:#7A4E0B;background:#FFF3D6}
+.su-mobonly{display:none}
+.su .k-db>*{flex-shrink:0}
+.su .k-link{color:#B7791F}
+.su .k-grid>*{min-width:0}
+.su-s360{grid-template-columns:minmax(0,1fr) 330px}
+.su-s420{grid-template-columns:minmax(0,1fr) 420px}
+.su-t{display:flex;flex-direction:column;font-size:13.5px;min-width:0}
+.su-tr{display:grid;grid-template-columns:var(--cols);gap:12px;align-items:center;padding:11px 12px;border-bottom:1px solid #EDF2F8;animation:kRise .45s ease both;animation-delay:var(--d,0s);border-radius:12px}
+.su-tr>span{min-width:0}
+.su-th{font-size:12px;font-weight:700;color:var(--k-muted);padding:8px 12px;border-bottom:1.5px solid var(--k-line);animation:none;border-radius:0;white-space:nowrap}
+.su-tr:not(.su-th):hover{background:#F8FBFE}
+.su-tr.sel{background:#FFF8E8}
+.su-tr b{font-weight:700}
+.su-tr .k-m{display:block}
+.su-hm{display:grid;grid-template-columns:96px repeat(5,minmax(0,1fr));gap:4px;font-size:12px;align-items:center}
+.su-hm span{display:flex;height:34px;border-radius:9px;align-items:center;justify-content:center;font-weight:700}
+.su-hm .h{height:auto;color:var(--k-muted);font-weight:700}
+.su-hm .r{justify-content:flex-start;font-weight:700;color:var(--k-text)}
+@media (max-width:760px){
+ .su-mobonly{display:flex}
+ .su-webonly{display:none !important}
+ .su-s360,.su-s420{grid-template-columns:minmax(0,1fr)}
+ .su-fg,.su-fg.c3{grid-template-columns:1fr}
+ .su-bars{height:160px;gap:5px}
+ .su-bx{gap:5px}.su-bx span{font-size:9.5px}
+ .su-donut{width:126px;height:126px}.su-donut::after{inset:18px}
+ .su-t{gap:10px}
+ .su-tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 10px;align-items:start;padding:12px 14px 6px;border:1px solid var(--k-line);border-radius:16px;background:#FFFFFF}
+ .su-tr>span:first-child{grid-column:1;padding-bottom:8px}
+ .su-tr>.su-acts{grid-column:2;grid-row:1;justify-content:flex-end;margin:0}
+ .su-tr>[data-l]{grid-column:1 / -1;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px;padding:4px 0;border-top:1px dashed var(--k-line);text-align:left;flex-wrap:wrap}
+ .su-tr>[data-l]::before{content:attr(data-l);color:var(--k-muted);font-size:12.5px;font-weight:600;margin-left:auto;text-align:right}
+ .su-tr>[data-l] .k-m{display:inline;font-size:12.5px}
+ .su-tr>[data-l]:not(:has(> :nth-child(2)))>*{margin-right:0}
+ .su-tr .su-who{gap:8px}
+ .su-tr>.mh{display:none}
+ .su-tr.su-th{display:none}
+ .su-fl{width:96px !important}
+ .su-hm{grid-template-columns:70px repeat(5,minmax(0,1fr))}
+ .su-banner{flex-wrap:wrap}
+ .su-banner .k-btn{margin-right:0}
+ .su-modal{top:auto;bottom:0;left:0;width:100%;max-width:100%;transform:none;border-radius:26px 26px 0 0;padding:20px 18px 24px;animation:mSheet .5s cubic-bezier(.2,.8,.2,1) both}
+ .su-modal .su-mf{flex-direction:column-reverse}
+ .su-modal .su-mf .k-btn{flex:none;width:100%}
+ .su-hact .k-btn{flex:1}
+ .su-phone{width:230px}
+ .su .k-table td{font-size:13px}
+ .su .k-table .su-acts{margin-right:auto}
+ .su-kpi .su-kn{font-size:23px}
+ .su-big{font-size:27px}
+ .su-mx{font-size:12px}
+ .su .k-hero .k-g4 .k-stat b{font-size:19px}
+ .su .k-mtop .su-mbadge{height:22px;padding:0 8px;border-radius:11px;background:linear-gradient(120deg,#B7791F,#F6C453);color:#2B1700;font-size:10.5px;font-weight:700;display:flex;align-items:center}
+}
+
+.re-pf{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:22px;background:#FFFFFF;box-shadow:0 20px 44px -22px rgba(0,20,64,.3);animation:kRise .55s both;animation-delay:var(--d,0s)}
+.re-pf .re-v{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;direction:ltr;display:inline-block}
+.re-band{display:flex;height:12px;border-radius:6px;overflow:hidden}
+.re-band i{height:100%;transform-origin:100% 50%;animation:kGrow 1s cubic-bezier(.2,.8,.2,1) .3s both}
+.re-bl{display:flex;flex-direction:column;gap:4px;font-size:12.5px}
+.re-bl span{display:flex;align-items:center;gap:6px}
+.re-bl i{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.re-dlg{position:absolute;left:14px;right:14px;top:50%;transform:translateY(-50%);background:#FFFFFF;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:8px;box-shadow:0 20px 40px -10px rgba(0,16,48,.4);text-align:center;align-items:center;animation:suPop2 .5s cubic-bezier(.2,1.2,.3,1) .3s both}
+@keyframes suPop2{from{opacity:0;transform:translateY(-44%) scale(.9)}to{opacity:1;transform:translateY(-50%)}}
+.re-dim{position:absolute;inset:0;background:rgba(0,16,48,.45)}
+.re-plat{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;font-size:13px;font-weight:700;text-align:center}
+.re-plat[aria-checked="true"]{border-color:#B7791F;background:#FFFBF1;box-shadow:0 0 0 3px rgba(246,196,83,.25)}
+.re-art{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:#F8FBFE;border:1.5px solid var(--k-line)}
+.re-grid6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+@media (max-width:760px){.re-grid6{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* WP13: compact phone hero (AD-01) */
+@media (max-width:760px){
+ .k-hero .k-grid.k-g4{gap:8px !important;margin-top:14px !important}
+ .k-hero .k-stat{padding:10px 12px !important;gap:2px !important;border-radius:16px}
+ .k-hero .k-stat b{font-size:19px !important}
+ .k-hero .k-stat small{font-size:11.5px}
+ .k-hero h2{font-size:21px;line-height:1.45}
+ .k-hero p{font-size:13.5px;line-height:1.6}
+ .su .k-seg.m-pill.np{display:flex}
+ .su .k-seg.m-pill.np > .m-pill-bg{display:none}
+ .su .k-seg.m-pill.np button[aria-selected="true"]{background:#FFFFFF;box-shadow:0 4px 12px rgba(0,32,94,.12)}
+}
+.su .k-seg.m-pill{display:grid;grid-auto-flow:column;grid-auto-columns:1fr}
+</style>
+</helmet>
+<div class="k super su {{lock}}" dir="rtl">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">مشرف عام</span></div>
+      <sc-for list="{{nav}}" as="g" hint-placeholder-count="8">
+        <a href="#" class="su-gh" aria-expanded="{{g.open}}" data-cur="{{g.cur}}" onClick="{{g.go}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{g.i}}"></path></svg>{{g.l}}<sc-if value="{{g.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt" style="margin-right: auto">{{g.c}}</span></sc-if><svg class="su-cv" aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{{g.cvs}}"><path d="M15 6l-6 6 6 6"></path></svg></a>
+        <sc-if value="{{g.isopen}}" hint-placeholder-val="{{ false }}"><div class="su-sub"><sc-for list="{{g.items}}" as="n" hint-placeholder-count="4"><a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{n.c}}</span></sc-if></a></sc-for></div></sc-if>
+      </sc-for>
+      <div class="k-me"><span class="k-av sm gold">م</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">م. سلطان الدوسري</b><small style="font-size: 11.5px; opacity: .7">المشرف العام</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <span><small>{{grp}}</small><h1>{{title}}</h1></span>
+        <a href="#" class="k-search" onClick="{{open.search}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث في المنصة كلها، أو اكتب أمر<kbd>Ctrl K</kbd></a>
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="3"><a href="#" class="k-ib" aria-label="{{t.l}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av gold">م</span>
+      </header>
+      <header class="k-mtop"><img src="./logo.png" alt="" width="28" height="31" style="width: 28px; height: auto"><h1>{{title}}</h1><span class="su-mbadge">عام</span><a href="#" class="k-ib" aria-label="بحث" onClick="{{open.search}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg></a><a href="#" class="k-ib" aria-label="الإشعارات"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg><span class="k-dot">٩</span></a></header>
+      <main class="k-page"><sc-if value="{{is.versions}}" hint-placeholder-val="{{ false }}"><section class="k-hero">
+  <div class="k-row" style="align-items: flex-end; gap: 18px">
+    <div class="k-col" style="flex: 1 1 380px; gap: 6px">
+      <span class="su-kick">إصدارات التطبيق</span>
+      <h2>مين على أي إصدار، ومين لازم يحدّث</h2>
+      <p>أقل من «الأدنى» = محجوب لين يحدّث. بين الأدنى والأحدث = رسالة يقدر يأجلها ٣ أيام.</p>
+    </div>
+    <div class="su-hact"><button type="button" class="k-btn light"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"></path></svg>سجل رسائل التحديث</button><button type="button" class="k-btn "><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2M9 15l-3-3c1-4 4-8 11-9 0 7-5 10-9 11zM14 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path></svg>بناء إصدار</button></div>
+  </div><div class="k-grid k-g4" style="margin-top: 20px"><sc-for list="{{L2}}" as="x" hint-placeholder-count="4"><span class="k-stat su-hstat"><b>{{x.n}}<sc-if value="{{x.u}}" hint-placeholder-val="{{ false }}"><small>{{x.u}}</small></sc-if></b><small>{{x.l}}</small><sc-if value="{{x.dl}}" hint-placeholder-val="{{ false }}"><span class="su-delta {{x.dc}}">{{x.dl}}</span></sc-if></span></sc-for></div>
+</section>
+<div class="k-body">
+  <div class="su-banner warn" style="--d: .02s"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2zM12 10v5M12 18h.01"></path></svg><span><b>آيفون:</b> فيه بناء منشور على المتجر (3.8.1) أحدث من اللي تطلبه الرسالة (3.7.2).</span><a href="#" class="k-btn sm ghost">اعتمد 3.8.1</a></div>
+  <div class="k-grid k-g3"><sc-for list="{{L1}}" as="x" hint-placeholder-count="6"><div class="re-pf" style="--d: {{x.d}}"><div class="k-row" style="flex-wrap: nowrap"><span class="k-ico" style="background: #F3F8FD; color: var(--k-navy)"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span><b style="flex: 1; font-size: 16px">{{x.n}}</b><span class="k-tag g">مباشر {{x.live}}</span></div><div class="k-grid k-g2" style="gap: 8px"><span class="k-stat light" style="padding: 10px"><small>الأحدث</small><b style="font-size: 17px; direction: ltr; text-align: right">{{x.lt}}</b></span><span class="k-stat light" style="padding: 10px"><small>الأدنى المسموح</small><b style="font-size: 17px; direction: ltr; text-align: right">{{x.mn}}</b></span></div><sc-if value="{{x.web}}" hint-placeholder-val="{{ false }}"><span class="k-m">الويب يحمّل آخر نسخة دائمًا، وما يحتاج رسالة تحديث.</span></sc-if><div class="re-band"><i style="width: {{x.b.0}}%; background: #F2545B"></i><i style="width: {{x.b.1}}%; background: #F6C453"></i><i style="width: {{x.b.2}}%; background: #43C38A"></i></div><div class="re-bl"><span><i style="background: #F2545B"></i>محجوب لين يحدّث، {{x.ba.0}}٪</span><span><i style="background: #F6C453"></i>تظهر له رسالة ويقدر يأجّل، {{x.ba.1}}٪</span><span><i style="background: #43C38A"></i>على آخر إصدار، {{x.ba.2}}٪</span></div><sc-if value="{{x.warn}}" hint-placeholder-val="{{ false }}"><div class="su-banner warn" style="padding: 8px 12px; font-size: 12.5px"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2zM12 10v5M12 18h.01"></path></svg><span>{{x.warn}}</span></div></sc-if><div class="k-row"><button type="button" class="k-btn sm ghost"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg>تعديل السياسة</button></div></div></sc-for></div>
+</div></sc-if><sc-if value="{{is.prompt}}" hint-placeholder-val="{{ false }}"><section class="k-hero">
+  <div class="k-row" style="align-items: flex-end; gap: 18px">
+    <div class="k-col" style="flex: 1 1 380px; gap: 6px">
+      <span class="su-kick">رسالة التحديث</span>
+      <h2>وش يشوف المستخدم لما يكون إصداره قديم</h2>
+      <p>تعدّل لكل منصة: أحدث إصدار، وأقل إصدار مسموح، ونص الرسالة. المعاينة هي نفس الرسالة اللي تطلع في التطبيق.</p>
+    </div>
+    <div class="su-hact"><div class="k-seg" style="background: rgba(255,255,255,.12)"><button type="button" aria-selected="true">أندرويد</button><button type="button" aria-selected="false" style="color: #FFFFFF">آيفون</button><button type="button" aria-selected="false" style="color: #FFFFFF">ويندوز</button><button type="button" aria-selected="false" style="color: #FFFFFF">ماك</button></div></div>
+  </div>
+</section>
+<div class="k-body">
+  <div class="k-grid su-s360" style="align-items: start">
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card " style="--d: .06s; "><div class="k-ch"><h3>سياسة أندرويد</h3></div><sc-for list="{{L4}}" as="x" hint-placeholder-count="1"><div class="su-sw"><span class="k-col"><span class="k-t" style="font-size: 14.5px">{{x.t}}</span><span class="k-m">{{x.m}}</span></span><span class="k-tog {{x.on}}" role="switch" aria-checked="{{x.ck}}"><i></i></span></div></sc-for><div class="su-fg"><label class="su-field"><span class="k-lbl">أحدث إصدار</span><span class="k-in"><span class="re-v" style="font-family: ui-monospace, Menlo, Consolas, monospace; direction: ltr; display: inline-block; font-weight: 700">3.8.0</span><a href="#" class="k-link" style="margin-right: auto; font-size: 12.5px">استخدم المنشور</a></span></label><label class="su-field"><span class="k-lbl">أقل إصدار مسموح</span><span class="k-in"><span class="re-v" style="font-family: ui-monospace, Menlo, Consolas, monospace; direction: ltr; display: inline-block; font-weight: 700">3.5.0</span><a href="#" class="k-link" style="margin-right: auto; font-size: 12.5px" onClick="{{open.force}}">اجعل الأحدث إجباري</a></span></label></div><label class="su-field"><span class="k-lbl">نص الرسالة</span><span class="k-in area">إصدار 3.8.0 فيه دفتر أسرع، وإشعارات الحصص قبل ساعة، وإصلاحات.</span><small>تقدر تاخذه من ملاحظات الإصدار</small></label><label class="su-field"><span class="k-lbl">رابط التحديث</span><span class="k-in"><span style="direction: ltr">https://play.google.com/store/apps/details?id=sa.alfaheem</span></span></label></section>
+      <section class="k-card " style="--d: .12s; "><div class="k-ch"><h3>سجل رسائل التحديث</h3></div><sc-for list="{{L3}}" as="x" hint-placeholder-count="4"><div class="su-row"><b style="direction: ltr; font-family: ui-monospace, Menlo, Consolas, monospace; width: 56px">{{x.v}}</b><span style="flex: 1; font-size: 13.5px">{{x.p}}</span><span class="k-tag {{x.tc}}">{{x.ty}}</span><span class="k-tag {{x.sc}}">{{x.st}}</span></div></sc-for></section>
+    </div>
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card " style="--d: .1s; "><div class="k-ch"><h3>معاينة</h3></div><div class="su-phone"><div class="su-scr"><div class="su-notch"></div><div style="padding: 12px; display: flex; flex-direction: column; gap: 8px"><i style="display: block; height: 70px; border-radius: 14px; background: #00205E"></i><i style="display: block; height: 50px; border-radius: 12px; background: #FFFFFF"></i><i style="display: block; height: 90px; border-radius: 12px; background: #FFFFFF"></i></div>
+<div class="re-dim"></div><div class="re-dlg"><span class="k-ico" style="background: #FFF3D6; color: #B7791F; width: 48px; height: 48px"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2M9 15l-3-3c1-4 4-8 11-9 0 7-5 10-9 11zM14 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path></svg></span><b style="font-size: 15px">تحديث جديد متوفر</b><span style="font-size: 12px; color: var(--k-muted); line-height: 1.7">إصدار 3.8.0 فيه دفتر أسرع، وإشعارات الحصص قبل ساعة، وإصلاحات.</span><span style="width: 100%; height: 36px; border-radius: 18px; background: linear-gradient(120deg,#B7791F,#F6C453); color: #FFFFFF; font-size: 12.5px; font-weight: 700; display: flex; align-items: center; justify-content: center">حدّث الحين</span><span style="font-size: 12px; font-weight: 700; color: var(--k-muted)">بعدين</span></div></div></div><div class="su-fg"><label class="su-field"><span class="k-lbl">جرّب إصدار</span><span class="k-in"><span class="re-v" style="font-family: ui-monospace, Menlo, Consolas, monospace; direction: ltr; display: inline-block; font-weight: 700">3.6.4</span></span></label></div><div class="su-banner warn" style="padding: 10px 12px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2zM12 10v5M12 18h.01"></path></svg><span>3.6.4 بيشوف رسالة ويقدر يأجّلها ٣ أيام.</span></div></section>
+    </div>
+  </div>
+  <div class="su-hact"><button type="button" class="k-btn "><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>حفظ السياسة</button><button type="button" class="k-btn ghost">تراجع</button></div>
+</div></sc-if><sc-if value="{{is.build}}" hint-placeholder-val="{{ false }}"><section class="k-hero">
+  <div class="k-row" style="align-items: flex-end; gap: 18px">
+    <div class="k-col" style="flex: 1 1 380px; gap: 6px">
+      <span class="su-kick">بناء إصدار جديد</span>
+      <h2>من الكود للمتجر بخطوات واضحة</h2>
+      <p>البناء يشتغل على خادم البناء، ويطلب كلمة مرورك قبل البدء والنشر.</p>
+    </div>
+    <div class="su-hact"><span class="su-pill"><i></i>خادم البناء متصل، فاضي</span><button type="button" class="k-btn light"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7a4 4 0 1 1-3.9 4.9L3 20v-3h3v-3h3l2.1-2.1A4 4 0 0 1 15 7zM16 8h.01"></path></svg>رمز جديد للخادم</button></div>
+  </div>
+</section>
+<div class="k-body">
+  <div class="k-grid su-s360" style="align-items: start">
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card " style="--d: .06s; "><div class="k-ch"><h3>المنصات</h3></div><div class="re-grid6"><sc-for list="{{L5}}" as="x" hint-placeholder-count="6"><div class="re-plat" role="checkbox" aria-checked="{{x.ck}}"><span class="k-ico" style="background: #F3F8FD; color: var(--k-navy)"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span>{{x.n}}</div></sc-for></div></section>
+      <section class="k-card " style="--d: .1s; "><div class="k-ch"><h3>تفاصيل الإصدار</h3></div><div class="su-fg c3"><label class="su-field"><span class="k-lbl">رقم الإصدار</span><span class="k-in"><span class="re-v" style="font-family: ui-monospace, Menlo, Consolas, monospace; direction: ltr; display: inline-block; font-weight: 700">3.9.0</span></span></label><label class="su-field"><span class="k-lbl">رقم البناء</span><span class="k-in"><span class="re-v" style="font-family: ui-monospace, Menlo, Consolas, monospace; direction: ltr; display: inline-block; font-weight: 700">416</span></span><small>زِدناه ١ تلقائيًا</small></label><label class="su-field"><span class="k-lbl">قناة التنزيل</span><span class="k-in"><span style="flex: 1">المتجر</span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span></label></div><label class="su-field"><span class="k-lbl">ما الجديد (عربي)</span><span class="k-in area">دفتر أسرع بالقلم، وتنبيه قبل الحصة بساعة، وإصلاح مشكلة الصوت في البث.</span></label><label class="su-field"><span class="k-lbl">ما الجديد (English)</span><span class="k-in area"><span style="direction: ltr">Faster ink notebook, class reminders an hour before, live audio fix.</span></span></label><div class="su-fg"><label class="su-field"><span class="k-lbl">سياسة التحديث</span><span class="k-in"><span style="flex: 1">موصى به (رسالة قابلة للتأجيل)</span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span></label><label class="su-field"><span class="k-lbl">أقل إصدار مدعوم</span><span class="k-in"><span class="re-v" style="font-family: ui-monospace, Menlo, Consolas, monospace; direction: ltr; display: inline-block; font-weight: 700">3.5.0</span></span></label><label class="su-field"><span class="k-lbl">الفرع</span><span class="k-in"><span style="flex: 1">production</span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span></label><label class="su-field"><span class="k-lbl">مسار جوجل بلاي</span><span class="k-in"><span style="flex: 1">الإنتاج</span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span></label></div><sc-for list="{{L8}}" as="x" hint-placeholder-count="1"><div class="su-sw"><span class="k-col"><span class="k-t" style="font-size: 14.5px">{{x.t}}</span><span class="k-m">{{x.m}}</span></span><span class="k-tog {{x.on}}" role="switch" aria-checked="{{x.ck}}"><i></i></span></div></sc-for></section>
+    </div>
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card " style="--d: .08s; "><div class="k-ch"><h3>الجاهزية</h3></div><sc-for list="{{L6}}" as="x" hint-placeholder-count="4"><span class="k-row" style="gap: 8px; font-size: 13.5px; flex-wrap: nowrap"><span style="color: {{x.c}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{x.i}}"></path></svg></span>{{x.t}}</span></sc-for><button type="button" class="k-btn " onClick="{{open.pass}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2M9 15l-3-3c1-4 4-8 11-9 0 7-5 10-9 11zM14 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path></svg>ابدأ البناء</button></section>
+      <section class="k-card " style="--d: .14s; "><div class="k-ch"><h3>آخر الإصدارات</h3></div><sc-for list="{{L7}}" as="x" hint-placeholder-count="4"><div class="su-row"><b style="direction: ltr; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px">{{x.v}}</b><span style="flex: 1; font-size: 13.5px">{{x.p}}</span><span class="k-m">{{x.tm}}</span><span class="k-tag {{x.sc}}">{{x.st}}</span></div></sc-for></section>
+    </div>
+  </div>
+</div></sc-if><sc-if value="{{is.detail}}" hint-placeholder-val="{{ false }}"><section class="k-hero">
+  <div class="k-row" style="align-items: flex-end; gap: 18px">
+    <div class="k-col" style="flex: 1 1 380px; gap: 6px">
+      <span class="su-kick">بناء 3.9.0 (416)</span>
+      <h2>يبني أندرويد الحين، باقي تقريبًا ١١ دقيقة</h2>
+      <p>تقدر تطلع من الصفحة. يوصلك إشعار إذا نجح أو فشل.</p>
+    </div>
+    <div class="su-hact"><button type="button" class="k-btn light"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>إلغاء البناء</button><button type="button" class="k-btn light" onClick="{{open.rollback}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"></path></svg>ارجع للإصدار السابق</button></div>
+  </div><div style="margin-top: 18px; display: flex; flex-direction: column; gap: 6px"><span class="k-row" style="justify-content: space-between"><span style="font-size: 13px; opacity: .8">الخطوة ٤ من ٦</span><b style="color: #F6C453">٦٢٪</b></span><span class="k-bar" style="background: rgba(255,255,255,.12); height: 10px"><i style="width: 62%"></i></span></div>
+</section>
+<div class="k-body">
+  <div class="k-grid su-s360" style="align-items: start">
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card " style="--d: .06s; "><div class="k-ch"><h3>السجل المباشر</h3><span class="k-live" style="color: #1D9A63"><i style="background: #1D9A63"></i>مباشر</span><button type="button" class="k-btn sm ghost"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8h12v12H8zM16 8V4H4v12h4"></path></svg>نسخ</button></div><div class="su-code"><div><span class="m">19:42:10</span> <span class="g">✓</span> flutter test — 248 passed</div><div><span class="m">19:45:16</span> &gt; flutter build appbundle --release --build-number=416</div><div><span class="m">19:45:58</span> Running Gradle task 'bundleRelease'...</div><div><span class="m">19:46:31</span> <span class="y">!</span> 2 deprecation warnings (non-blocking)</div><div><span class="m">19:47:02</span> Compiling dart → arm64 ... 62%</div><div><span class="m">19:47:09</span> <span class="cur"></span></div></div></section>
+      <section class="k-card " style="--d: .12s; "><div class="k-ch"><h3>الملفات الناتجة</h3></div><sc-for list="{{L10}}" as="x" hint-placeholder-count="2"><div class="re-art"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"></path></svg><span class="k-col" style="gap: 0; flex: 1"><b style="direction: ltr; text-align: right; font-size: 13.5px">{{x.t}}</b><span class="k-m">{{x.s}}، {{x.r}}</span></span><button type="button" class="k-btn sm ghost" style="height: 32px" disabled>بعد البناء</button></div></sc-for></section>
+    </div>
+    <div class="k-col" style="gap: 18px">
+      <section class="k-card " style="--d: .08s; "><div class="k-ch"><h3>الخطوات</h3></div><div class="su-steps"><sc-for list="{{L9}}" as="x" hint-placeholder-count="6"><div class="su-step {{x.cls}}"><span class="su-sn">{{x.n}}</span><span class="k-col" style="gap: 0"><b style="font-size: 14px">{{x.t}}</b><span class="k-m">{{x.m}}</span></span></div></sc-for></div></section>
+      <section class="k-card " style="--d: .14s; "><div class="k-ch"><h3>تفاصيل</h3></div><div class="k-col" style="gap: 6px; font-size: 13.5px"><span class="k-row" style="justify-content: space-between; flex-wrap: nowrap"><span class="k-m">الفرع</span><b style="direction: ltr">production</b></span><span class="k-row" style="justify-content: space-between; flex-wrap: nowrap"><span class="k-m">الكود</span><b style="direction: ltr">9f3c1a2</b></span><span class="k-row" style="justify-content: space-between; flex-wrap: nowrap"><span class="k-m">بدأه</span><b style="direction: ltr">م. سلطان</b></span><span class="k-row" style="justify-content: space-between; flex-wrap: nowrap"><span class="k-m">بدأ</span><b style="direction: ltr">19:41</b></span><span class="k-row" style="justify-content: space-between; flex-wrap: nowrap"><span class="k-m">السياسة</span><b style="direction: ltr">موصى به</b></span></div><button type="button" class="k-btn sm"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2M9 15l-3-3c1-4 4-8 11-9 0 7-5 10-9 11zM14 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path></svg>انشره الحين</button></section>
+    </div>
+  </div>
+</div></sc-if></main>
+      <nav class="k-bnav m-pill" aria-label="القائمة" style="--n: 5"><span class="m-pill-bg" style="--i: {{bnI}}; opacity: {{bnO}}"></span><sc-for list="{{bnav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{n.c}}</span></sc-if></a></sc-for></nav>
+    </div>
+  </div>
+  <sc-if value="{{sh.force}}" hint-placeholder-val="{{ false }}">
+<div class="k-dim" onClick="{{close}}"></div>
+<div class="su-modal m-sheet" role="dialog" aria-modal="true" aria-label="تخلي 3.8.0 إصدار إجباري؟">
+  <span class="su-mi" style="background: #FFE3E0; color: #D9363E"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg></span>
+  <h2>تخلي 3.8.0 إصدار إجباري؟</h2><p>كل من على أندرويد بإصدار أقدم بيتوقف التطبيق عنده لين يحدّث.</p><div class="su-conseq"><span><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #D9363E"><path d="M12 3l10 18H2zM12 10v5M12 18h.01"></path></svg><span>٢٥٪ من مستخدمي أندرويد (٢٬٩٠٠ شخص) بيتحجبون الحين</span></span><span><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #E89B00"><path d="M12 3l10 18H2zM12 10v5M12 18h.01"></path></svg><span>اللي في حصة مباشرة بيطلع منها</span></span><span><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #1D9A63"><path d="M5 12l5 5 9-10"></path></svg><span>الأفضل تسويه بعد ١٠ المساء</span></span></div>
+  <div class="su-mf"><button type="button" class="k-btn ghost" onClick="{{close}}">إلغاء</button><button type="button" class="k-btn red" onClick="{{close}}">إيه، خله إجباري</button></div>
+</div></sc-if><sc-if value="{{sh.pass}}" hint-placeholder-val="{{ false }}">
+<div class="k-dim" onClick="{{close}}"></div>
+<div class="su-modal m-sheet" role="dialog" aria-modal="true" aria-label="أكّد إنه أنت">
+  <span class="su-mi" style="background: #FFF3D6; color: #B7791F"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"></path></svg></span>
+  <h2>أكّد إنه أنت</h2><p>البناء والنشر يحتاجون كلمة مرورك، حتى لو كنت داخل.</p><label class="su-field"><span class="k-lbl">كلمة المرور</span><span class="k-in">••••••••••</span></label><div class="su-conseq"><span><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #1D9A63"><path d="M5 12l5 5 9-10"></path></svg><span>أندرويد وآيفون، 3.9.0 (416)</span></span><span><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #1979C1"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01"></path></svg><span>ياخذ تقريبًا ١٨ دقيقة</span></span></div>
+  <div class="su-mf"><button type="button" class="k-btn ghost" onClick="{{close}}">إلغاء</button><button type="button" class="k-btn " onClick="{{close}}">ابدأ البناء</button></div>
+</div></sc-if><sc-if value="{{sh.rollback}}" hint-placeholder-val="{{ false }}">
+<div class="k-dim" onClick="{{close}}"></div>
+<div class="su-modal m-sheet" role="dialog" aria-modal="true" aria-label="ترجع أندرويد للإصدار 3.7.9؟">
+  <span class="su-mi" style="background: #FFE3E0; color: #D9363E"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"></path></svg></span>
+  <h2>ترجع أندرويد للإصدار 3.7.9؟</h2><p>الإصدار الحالي 3.8.0 ينسحب من «الأحدث»، والمستخدمين ما يُطلب منهم تحديث له.</p><div class="su-conseq"><span><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #D9363E"><path d="M12 3l10 18H2zM12 10v5M12 18h.01"></path></svg><span>اللي حدّثوا لـ 3.8.0 يبقون عليه، الرجوع ما يحذف التطبيق من أجهزتهم</span></span><span><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color: #1D9A63"><path d="M5 12l5 5 9-10"></path></svg><span>رسالة التحديث ترجع تشير لـ 3.7.9</span></span></div><label class="su-field"><span class="k-lbl">كلمة المرور</span><span class="k-in">••••••••••</span></label>
+  <div class="su-mf"><button type="button" class="k-btn ghost" onClick="{{close}}">إلغاء</button><button type="button" class="k-btn red" onClick="{{close}}">رجوع للسابق</button></div>
+</div></sc-if><sc-if value="{{sh.search}}" hint-placeholder-val="{{ false }}">
+<div class="k-dim" onClick="{{close}}"></div>
+<aside class="k-drawer m-sheet" role="dialog" aria-modal="true" aria-label="البحث في المنصة">
+  <div class="k-dh"><span style="flex: 1"><h2>البحث في المنصة</h2><small class="k-m" style="display: block">صفحات، أشخاص، دورات، مدفوعات، وأوامر</small></span><button type="button" class="k-ib" aria-label="إغلاق" onClick="{{close}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+  <div class="k-db"><div class="k-in" style="border-color: #F3D59A; box-shadow: 0 0 0 4px rgba(246,196,83,.2); color: var(--k-text); font-weight: 600"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ريم<span class="su-caret" style="width: 2px; height: 20px; background: #B7791F; animation: suBlink 1s steps(2) infinite"></span><kbd style="margin-right: auto; font-family: inherit; font-size: 11px; padding: 2px 6px; border-radius: 6px; background: var(--k-page); border: 1px solid var(--k-line); color: var(--k-muted)">Esc</kbd></div>
+<div class="k-row"><span class="k-chip on">الكل</span><span class="k-chip">الصفحات</span><span class="k-chip">الطلاب</span><span class="k-chip">المعلمون</span><span class="k-chip">المشرفون</span><span class="k-chip">المدفوعات</span></div><sc-for list="{{L11}}" as="x" hint-placeholder-count="3"><span class="su-sec">{{x.g}}</span><sc-for list="{{x.items}}" as="y" hint-placeholder-count="3"><a href="#" class="k-tile" style="padding: 9px 12px"><span class="k-ico" style="width: 34px; height: 34px; background: #FFF3D6; color: #B7791F"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{y.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><span class="k-t" style="font-size: 14px">{{y.t}}</span><span class="k-m">{{y.m}}</span></span><sc-if value="{{y.tag}}" hint-placeholder-val="{{ false }}"><span class="k-tag n">{{y.tag}}</span></sc-if></a></sc-for></sc-for>
+<span class="k-m">↑ ↓ للتنقل، Enter للفتح، Esc للإغلاق</span></div>
+  <div class="k-df"><button type="button" class="k-btn sm"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>افتح نتائج «ريم» كلها</button><button type="button" class="k-btn ghost sm" onClick="{{close}}">إغلاق</button></div>
+</aside></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const D = {"screens": ["versions", "prompt", "build", "detail"], "titles": {"versions": ["إصدارات التطبيق", "الإصدارات"], "prompt": ["رسالة التحديث", "الإصدارات"], "build": ["البناء والنشر", "الإصدارات"], "detail": ["تفاصيل البناء", "الإصدارات"]}, "tabs": {}, "sheets": ["force", "pass", "rollback", "search"], "alias": {"detail": "build", "editor": "ads"}, "nav": [{"k": "ov", "l": "نظرة عامة", "i": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z", "items": [{"k": "home", "l": "الرئيسية", "c": "", "i": "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"}, {"k": "analytics", "l": "التحليلات", "c": "", "i": "M3 17l6-6 4 4 8-8M15 7h6v6"}]}, {"k": "fin", "l": "المالية", "i": "M3 7a2 2 0 0 1 2-2h13v4M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14h.01", "items": [{"k": "money", "l": "الإيرادات والدفتر", "c": "", "i": "M4 20V10M10 20V4M16 20v-7M22 20H2"}, {"k": "payouts", "l": "مدفوعات المعلمين", "c": "٧", "i": "M22 2L11 13M22 2l-7 20-4-9-9-4z"}, {"k": "payments", "l": "التحويلات والمدفوعات", "c": "١٢", "i": "M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6"}, {"k": "store", "l": "طلبات المتجر", "c": "", "i": "M4 7h16l-1.5 12h-13zM9 7V5a3 3 0 0 1 6 0v2"}, {"k": "fees", "l": "الرسوم وسياستها", "c": "", "i": "M19 5L5 19M7 8.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17 18.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"}, {"k": "methods", "l": "الدفع والاشتراكات", "c": "", "i": "M2 6h20v12H2zM2 10h20M6 15h4"}, {"k": "rewards", "l": "المكافآت والقسائم", "c": "", "i": "M3 8h18v4H3zM5 12v9h14v-9M12 8v13M12 8S10.5 3 8 3.5 7 8 12 8zM12 8s1.5-5 4-4.5S17 8 12 8z"}]}, {"k": "ppl", "l": "المشرفين والصلاحيات", "i": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", "items": [{"k": "admins", "l": "المشرفون", "c": "", "i": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"}, {"k": "roles", "l": "الأدوار والصلاحيات", "c": "", "i": "M15 7a4 4 0 1 1-3.9 4.9L3 20v-3h3v-3h3l2.1-2.1A4 4 0 0 1 15 7zM16 8h.01"}, {"k": "viewas", "l": "عرض كمستخدم", "c": "", "i": "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"}]}, {"k": "cfg", "l": "إعدادات المنصة", "i": "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4", "items": [{"k": "settings", "l": "الإعدادات العامة", "c": "", "i": "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4"}, {"k": "modules", "l": "الوحدات والميزات", "c": "", "i": "M8 6h8a6 6 0 0 1 0 12H8A6 6 0 0 1 8 6zM16 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"}, {"k": "auth", "l": "الدخول والإشعارات", "c": "١", "i": "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"}, {"k": "live", "l": "البث المباشر", "c": "", "i": "M2 6h14v12H2zM16 10l6-3v10l-6-3"}, {"k": "exams", "l": "الاختبارات", "c": "", "i": "M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"}, {"k": "ai", "l": "نماذج الذكاء الاصطناعي", "c": "", "i": "M7 7h10v10H7zM10 10h4v4h-4zM9 3v4M15 3v4M9 17v4M15 17v4M3 9h4M3 15h4M17 9h4M17 15h4"}, {"k": "levels", "l": "المراحل الدراسية", "c": "", "i": "M12 3l9 5-9 5-9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5"}, {"k": "landing", "l": "الصفحة الرئيسية للموقع", "c": "", "i": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9S9.5 5.5 12 3z"}, {"k": "legal", "l": "من نحن والشروط", "c": "", "i": "M6 3h9l4 4v14H6zM14 3v5h5M9 13h6M9 17h6"}]}, {"k": "rel", "l": "الإصدارات", "i": "M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2M9 15l-3-3c1-4 4-8 11-9 0 7-5 10-9 11zM14 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z", "items": [{"k": "versions", "l": "إصدارات التطبيق", "c": "", "i": "M7 2h10v20H7zM11 18h2"}, {"k": "prompt", "l": "رسالة التحديث", "c": "", "i": "M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"}, {"k": "build", "l": "البناء والنشر", "c": "", "i": "M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2M9 15l-3-3c1-4 4-8 11-9 0 7-5 10-9 11zM14 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"}]}, {"k": "ads", "l": "الإعلانات", "i": "M3 10v4h3l7 5V5L6 10zM16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14", "items": [{"k": "ads", "l": "الإعلانات", "c": "٤", "i": "M3 10v4h3l7 5V5L6 10zM16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"}, {"k": "broadcast", "l": "رسالة لكل المستخدمين", "c": "", "i": "M22 2L11 13M22 2l-7 20-4-9-9-4z"}]}, {"k": "data", "l": "البيانات والتقارير", "i": "M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3zM4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6", "items": [{"k": "datacenter", "l": "مركز البيانات", "c": "", "i": "M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3zM4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"}, {"k": "exports", "l": "التصدير", "c": "", "i": "M12 4v12M7 11l5 5 5-5M5 20h14"}, {"k": "trash", "l": "سلة الدورات", "c": "", "i": "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"}]}, {"k": "me", "l": "حسابي", "i": "M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0", "items": [{"k": "account", "l": "حسابي", "c": "", "i": "M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0"}, {"k": "more", "l": "كل الخدمات", "c": "", "i": "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"}]}], "bnav": [["home", "الرئيسية", "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z", ["ov"], ""], ["fin", "المالية", "M3 7a2 2 0 0 1 2-2h13v4M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14h.01", ["fin"], "٣"], ["ppl", "المشرفين", "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", ["ppl"], ""], ["cfg", "الإعدادات", "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4", ["cfg", "rel"], ""], ["more", "المزيد", "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", ["ads", "data", "me"], ""]], "tools": [{"l": "عرض كمستخدم", "i": "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z", "c": ""}, {"l": "المساعدة", "i": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01", "c": ""}, {"l": "الإشعارات", "i": "M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0", "c": "٩"}], "L": {"L1": [{"n": "أندرويد", "i": "M6 10h12v8a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1zM6 10a6 6 0 0 1 12 0M9 7h.01M15 7h.01M4 11v5M20 11v5M9 19v3M15 19v3", "lt": "3.8.0", "mn": "3.5.0", "b": [4, 21, 75], "ba": ["٤", "٢١", "٧٥"], "live": "3.8.0 (412)", "warn": "", "web": false, "d": "0.06s"}, {"n": "آيفون", "i": "M15 3c0 2-1.5 3.5-3 3.5 0-2 1.5-3.5 3-3.5zM17.5 13c0 3 2 4 2 4-1 2.5-2.5 4.5-4 4.5-1.3 0-1.8-.8-3.5-.8s-2.2.8-3.5.8C6 21.5 3.5 17 3.5 13c0-3 2-5 4.3-5 1.5 0 2.5.9 3.5.9s2-.9 3.7-.9c1 0 2.8.5 3.8 2-1.5 1-1.8 2-1.3 3z", "lt": "3.7.2", "mn": "3.5.0", "b": [3, 30, 67], "ba": ["٣", "٣٠", "٦٧"], "live": "3.8.1 (415)", "warn": "فيه بناء أحدث منشور 3.8.1، اعتمده", "web": false, "d": "0.10s"}, {"n": "ويندوز", "i": "M3 5l8-1v8H3zM13 4l8-1v9h-8zM3 13h8v7l-8-1zM13 13h8v8l-8-1z", "lt": "3.8.0", "mn": "3.6.0", "b": [9, 12, 79], "ba": ["٩", "١٢", "٧٩"], "live": "3.8.0 (410)", "warn": "", "web": false, "d": "0.14s"}, {"n": "ماك", "i": "M15 3c0 2-1.5 3.5-3 3.5 0-2 1.5-3.5 3-3.5zM17.5 13c0 3 2 4 2 4-1 2.5-2.5 4.5-4 4.5-1.3 0-1.8-.8-3.5-.8s-2.2.8-3.5.8C6 21.5 3.5 17 3.5 13c0-3 2-5 4.3-5 1.5 0 2.5.9 3.5.9s2-.9 3.7-.9c1 0 2.8.5 3.8 2-1.5 1-1.8 2-1.3 3z", "lt": "3.8.0", "mn": "3.6.0", "b": [2, 18, 80], "ba": ["٢", "١٨", "٨٠"], "live": "3.8.0 (410)", "warn": "ما فيه رابط تحديث", "web": false, "d": "0.18s"}, {"n": "لينكس", "i": "M4 5h16v14H4zM7 9l3 3-3 3M12 15h5", "lt": "3.6.0", "mn": "بدون حد أدنى", "b": [0, 40, 60], "ba": ["٠", "٤٠", "٦٠"], "live": "3.6.0 (380)", "warn": "", "web": false, "d": "0.22s"}, {"n": "الويب", "i": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9S9.5 5.5 12 3z", "lt": "دائمًا الأحدث", "mn": "—", "b": [0, 0, 100], "ba": ["٠", "٠", "١٠٠"], "live": "نشر تلقائي", "warn": "", "web": true, "d": "0.26s"}], "L2": [{"n": "٦", "u": "", "l": "منصات", "dl": "", "dc": ""}, {"n": "٧٤٪", "u": "", "l": "على آخر إصدار", "dl": "", "dc": ""}, {"n": "٤٪", "u": "", "l": "محجوبين لين يحدّثون", "dl": "", "dc": "dn"}, {"n": "١", "u": "", "l": "بناء جاهز للنشر", "dl": "", "dc": ""}], "L3": [{"v": "3.8.0", "p": "أندرويد", "st": "نشط", "sc": "g", "ty": "موصى به", "tc": ""}, {"v": "3.5.0", "p": "أندرويد", "st": "نشط", "sc": "g", "ty": "إجباري", "tc": "r"}, {"v": "3.7.2", "p": "آيفون", "st": "نشط", "sc": "g", "ty": "موصى به", "tc": ""}, {"v": "3.4.0", "p": "الكل", "st": "غير نشط", "sc": "n", "ty": "إجباري", "tc": "r"}], "L4": [{"t": "اطلب من المستخدمين التحديث", "m": "إذا قفلته، ما تظهر أي رسالة حتى للإصدارات القديمة", "on": "on", "ck": "true"}], "L5": [{"n": "أندرويد", "i": "M6 10h12v8a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1zM6 10a6 6 0 0 1 12 0M9 7h.01M15 7h.01M4 11v5M20 11v5M9 19v3M15 19v3", "ck": "true"}, {"n": "آيفون", "i": "M15 3c0 2-1.5 3.5-3 3.5 0-2 1.5-3.5 3-3.5zM17.5 13c0 3 2 4 2 4-1 2.5-2.5 4.5-4 4.5-1.3 0-1.8-.8-3.5-.8s-2.2.8-3.5.8C6 21.5 3.5 17 3.5 13c0-3 2-5 4.3-5 1.5 0 2.5.9 3.5.9s2-.9 3.7-.9c1 0 2.8.5 3.8 2-1.5 1-1.8 2-1.3 3z", "ck": "true"}, {"n": "ويندوز", "i": "M3 5l8-1v8H3zM13 4l8-1v9h-8zM3 13h8v7l-8-1zM13 13h8v8l-8-1z", "ck": "false"}, {"n": "ماك", "i": "M15 3c0 2-1.5 3.5-3 3.5 0-2 1.5-3.5 3-3.5zM17.5 13c0 3 2 4 2 4-1 2.5-2.5 4.5-4 4.5-1.3 0-1.8-.8-3.5-.8s-2.2.8-3.5.8C6 21.5 3.5 17 3.5 13c0-3 2-5 4.3-5 1.5 0 2.5.9 3.5.9s2-.9 3.7-.9c1 0 2.8.5 3.8 2-1.5 1-1.8 2-1.3 3z", "ck": "false"}, {"n": "لينكس", "i": "M4 5h16v14H4zM7 9l3 3-3 3M12 15h5", "ck": "false"}, {"n": "الويب", "i": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9S9.5 5.5 12 3z", "ck": "false"}], "L6": [{"t": "خادم البناء متصل", "ok": true, "c": "#1D9A63", "i": "M5 12l5 5 9-10"}, {"t": "رقم البناء أكبر من المنشور", "ok": true, "c": "#1D9A63", "i": "M5 12l5 5 9-10"}, {"t": "ما الجديد مكتوب بالعربي والإنجليزي", "ok": true, "c": "#1D9A63", "i": "M5 12l5 5 9-10"}, {"t": "رابط المتجر لآيفون", "ok": false, "c": "#E89B00", "i": "M12 3l10 18H2zM12 10v5M12 18h.01"}], "L7": [{"v": "3.8.1 (415)", "p": "آيفون", "st": "منشور", "sc": "g", "tm": "أمس"}, {"v": "3.8.0 (412)", "p": "أندرويد", "st": "جاهز للنشر", "sc": "y", "tm": "اليوم"}, {"v": "3.8.0 (410)", "p": "ويندوز وماك", "st": "منشور", "sc": "g", "tm": "٢٠ نوفمبر"}, {"v": "3.7.9 (408)", "p": "أندرويد", "st": "فشل", "sc": "r", "tm": "١٩ نوفمبر"}], "L8": [{"t": "انشره تلقائيًا إذا نجح البناء", "m": "وإلا يبقى «جاهز للنشر» لين تنشره بنفسك", "on": "", "ck": "false"}], "L9": [{"t": "تجهيز", "m": "٠:٢٢", "cls": "done", "n": "١"}, {"t": "جلب الكود من production", "m": "commit 9f3c1a2، ٠:١٤", "cls": "done", "n": "٢"}, {"t": "الاختبارات", "m": "٢٤٨ نجح، ٠ فشل، ٣:٠٥", "cls": "done", "n": "٣"}, {"t": "بناء أندرويد", "m": "الحين، ٦٢٪", "cls": "now", "n": "٤"}, {"t": "التوقيع والرفع", "m": "ينتظر", "cls": "", "n": "٥"}, {"t": "النشر للمتجر", "m": "ينتظر قرارك", "cls": "", "n": "٦"}], "L10": [{"t": "app-release.aab", "s": "٤٨ MB", "r": "ارفعه يدويًا لـ Play Console"}, {"t": "app-release.apk", "s": "٦٢ MB", "r": "للتجربة الداخلية"}], "L11": [{"g": "أوامر سريعة", "items": [{"i": "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z", "t": "عرض كمستخدم…", "m": "افتح التطبيق بعين طالب أو معلم أو مشرف", "tag": "أمر"}, {"i": "M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2M9 15l-3-3c1-4 4-8 11-9 0 7-5 10-9 11zM14 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z", "t": "بناء إصدار جديد", "m": "الإصدارات", "tag": "أمر"}, {"i": "M8 6h8a6 6 0 0 1 0 12H8A6 6 0 0 1 8 6zM16 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z", "t": "إيقاف وحدة مؤقتًا", "m": "مفاتيح الوحدات", "tag": "أمر"}]}, {"g": "الصفحات", "items": [{"i": "M22 2L11 13M22 2l-7 20-4-9-9-4z", "t": "مدفوعات المعلمين", "m": "المالية", "tag": "٧ بانتظارك"}, {"i": "M19 5L5 19M7 8.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17 18.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z", "t": "الرسوم وسياستها", "m": "المالية", "tag": ""}]}, {"g": "الأشخاص", "items": [{"i": "M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0", "t": "ريم الحربي", "m": "طالبة، الصف الثاني الثانوي", "tag": "نشط"}, {"i": "M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0", "t": "أ. ماجد الشهري", "m": "معلم، الفيزياء", "tag": "نشط"}, {"i": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z", "t": "هند العتيبي", "m": "مشرفة", "tag": "نشط"}]}]}};
+    const S = this.state || {};
+    const scr = D.screens.indexOf(this.props.screen) >= 0 ? this.props.screen : D.screens[0];
+    const TB = D.tabs[scr] || [];
+    const tab = S.tab || this.props.tab || (TB[0] ? TB[0][0] : '');
+    const sheet = S.sheet !== undefined ? S.sheet : (this.props.sheet || '');
+    const is = {}; D.screens.forEach((k) => { is[k] = k === scr; });
+    const t = {}; TB.forEach(([k]) => { t[k] = k === tab; });
+    const sh = { any: !!sheet }; D.sheets.forEach((k) => { sh[k] = k === sheet; });
+    const open = {}; D.sheets.forEach((k) => { open[k] = () => this.setState({ sheet: k }); });
+    const close = () => this.setState({ sheet: '' });
+    const tabs = TB.map(([k, l, c]) => ({ l, c: c || '', sel: String(k === tab), go: () => this.setState({ tab: k }) }));
+    const navKey = D.alias[scr] || scr;
+    const og = S.og;
+    const nav = D.nav.map((g) => {
+      const cur = g.items.some((n) => n.k === navKey);
+      const isopen = og === undefined ? cur : og === g.k;
+      const c = isopen ? '' : g.items.map((n) => n.c).filter(Boolean).length ? g.items.filter((n) => n.c).map((n) => n.c)[0] : '';
+      return { l: g.l, i: g.i, cur: String(cur), open: String(isopen), isopen, c, cvs: '', go: () => this.setState({ og: isopen ? '' : g.k }),
+        items: g.items.map((n) => ({ l: n.l, i: n.i, c: n.c, cur: n.k === navKey ? 'page' : 'false' })) };
+    });
+    const grpOf = D.nav.find((g) => g.items.some((n) => n.k === navKey));
+    const bnav = D.bnav.map(([k, l, i, gs, c]) => ({ l, i, c: c || '', cur: grpOf && gs.indexOf(grpOf.k) >= 0 ? 'page' : 'false' }));
+    const wire = (v) => { if (Array.isArray(v)) v.forEach(wire); else if (v && typeof v === 'object') { if (v.sh && typeof v.sh === 'string') { const s = v.sh; v.op = () => this.setState({ sheet: s }); } if (v.tb) { const k = v.tb; v.op = () => this.setState({ tab: k }); } Object.keys(v).forEach((k) => { if (typeof v[k] === 'object') wire(v[k]); }); } };
+    const L = JSON.parse(JSON.stringify(D.L)); wire(L);
+    const ex = (typeof extra === 'function') ? extra.call(this, { scr, tab, sheet, S }) : {};
+    return Object.assign({}, L, { is, t, sh, open, close, tabs, nav, bnav, title: D.titles[scr][0], grp: D.titles[scr][1],
+      tools: D.tools, lock: sheet ? 'su-lock' : '', tabN: TB.length || 1, tabCls: TB.length >= 4 ? 'np' : '', tabI: Math.max(0, TB.findIndex(([k]) => k === tab)), bnI: Math.max(0, bnav.findIndex((n) => n.cur === 'page')), bnO: bnav.some((n) => n.cur === 'page') ? 1 : 0 }, ex);
+  }
+}
+</script>
+</body>
+</html>

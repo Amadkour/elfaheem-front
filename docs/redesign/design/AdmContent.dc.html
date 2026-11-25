@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>المشرف: المحتوى التعليمي</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* ---- admin shared pattern (ad-) ---- */
+.ad-rec{display:flex;align-items:center;gap:10px;height:32px;padding:0 12px;border-radius:10px;color:rgba(255,255,255,.72);font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .2s}
+.ad-rec:hover{background:rgba(255,255,255,.07);color:#FFFFFF}
+.ad-rec i{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ad-hsearch{display:flex;align-items:center;gap:10px;height:50px;padding:0 18px;border-radius:25px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.85);font-size:14.5px;backdrop-filter:blur(6px);max-width:520px}
+.ad-hsearch kbd{margin-right:auto;font-family:inherit;font-size:11.5px;padding:2px 8px;border-radius:7px;background:rgba(255,255,255,.14)}
+.ad-tb{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ad-sin{flex:1 1 240px;min-width:0;height:42px;border-radius:21px;border:1.5px solid var(--k-line);background:#F8FBFE;display:flex;align-items:center;gap:8px;padding:0 14px;color:#8A97AE;font-size:13.5px}
+.ad-sin input{flex:1;min-width:0;border:none;background:transparent;font-family:inherit;font-size:13.5px;color:var(--k-text);outline:none}
+.ad-sin b{color:var(--k-text);font-weight:600}
+.ad-badge{min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--k-acc);color:#FFFFFF;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.ad-fcs{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ad-fc{height:30px;padding:0 12px 0 6px;border-radius:15px;background:#E8F3FC;color:#135F9A;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:6px;border:none;animation:kRise .4s both;animation-delay:var(--d,0s)}
+.ad-fc span{width:18px;height:18px;border-radius:50%;background:#FFFFFF;display:inline-flex;align-items:center;justify-content:center}
+.ad-cnt{font-size:13px;color:var(--k-muted);font-weight:600}
+.ad-bulk{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px 10px 14px;border-radius:18px;background:linear-gradient(120deg,#00205E,#0B3F86);color:#FFFFFF;box-shadow:0 14px 30px -14px rgba(0,20,64,.6);animation:kRise .35s cubic-bezier(.2,.8,.2,1) both}
+.ad-bulk .k-btn.sm{height:34px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);box-shadow:none;animation:none;color:#FFFFFF}
+.ad-bulk .k-btn.sm.warn{background:#FFFFFF;color:#B23A2E}
+.ad-cb{width:20px;height:20px;border-radius:6px;border:2px solid #C5D5E8;background:#FFFFFF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#FFFFFF;cursor:pointer;transition:background .15s,border-color .15s}
+.ad-cb.on{background:var(--k-acc);border-color:var(--k-acc)}
+.ad-cb svg{opacity:0}.ad-cb.on svg{opacity:1}
+.ad-tw{overflow-x:auto;margin:0 -4px;padding:0 4px}
+.ad-t{display:table;width:100%;font-size:13.5px}
+.ad-tr{display:table-row;animation:kRise .45s ease both;animation-delay:var(--d,0s)}
+.ad-tr > span{display:table-cell;padding:12px;border-bottom:1px solid #EDF2F8;vertical-align:middle;white-space:nowrap;text-align:right}
+.ad-th{animation:none}
+.ad-th > span{font-size:12px;font-weight:700;color:var(--k-muted);padding:10px 12px;border-bottom:1.5px solid var(--k-line)}
+.ad-th > span svg{vertical-align:middle;opacity:.6}
+.ad-tr:not(.ad-th){cursor:pointer}
+.ad-tr:not(.ad-th):hover > span{background:#F8FBFE}
+.ad-tr.sel > span{background:#EAF4FD}
+.ad-tr.sel > span:first-child{box-shadow:inset -4px 0 0 var(--k-acc)}
+.ad-pp{display:flex;align-items:center;gap:10px;min-width:0}
+.ad-pp .k-av{width:36px;height:36px;font-size:14px}
+.ad-pp b{display:block;font-size:14px;line-height:1.4}
+.ad-pp small{display:block;font-size:12px;color:var(--k-muted);line-height:1.4}
+.ad-mini{display:inline-flex;align-items:center;gap:8px;min-width:90px}
+.ad-mini .k-bar{flex:1;height:6px}
+.ad-pg{display:flex;align-items:center;gap:6px;justify-content:space-between;flex-wrap:wrap}
+.ad-pg span.ad-pgs{display:flex;gap:4px}
+.ad-pg button{min-width:34px;height:34px;border-radius:11px;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-text);font-size:13px;font-weight:700;padding:0 8px}
+.ad-pg button.on{background:var(--k-navy);border-color:var(--k-navy);color:#FFFFFF}
+.ad-ib{width:34px;height:34px;border-radius:11px;border:1.5px solid var(--k-line);background:#FFFFFF;color:var(--k-muted);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.ad-ib:hover{color:var(--k-acc);border-color:#BFD8EE}
+.ad-md{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+.ad-md.open{grid-template-columns:minmax(0,1fr) 450px}
+.ad-dim{display:none}
+.ad-pane.k-drawer{position:sticky;top:84px;bottom:auto;left:auto;z-index:3;width:auto;max-width:none;border-radius:24px;box-shadow:0 24px 50px -22px rgba(0,20,64,.4);animation:adPane .45s cubic-bezier(.2,.8,.2,1) both;overflow:hidden}
+@keyframes adPane{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+.ad-pane .k-db{overflow:visible}
+.ad-pane .k-dh{background:linear-gradient(160deg,#F2F8FE,#FFFFFF)}
+.ad-pnav{display:flex;gap:6px}
+.ad-tabs{display:flex;gap:4px;padding:0 16px;border-bottom:1px solid #EDF2F8;overflow-x:auto}
+.ad-tabs button{height:44px;padding:0 12px;border:none;background:transparent;color:var(--k-muted);font-size:13.5px;font-weight:700;white-space:nowrap;position:relative}
+.ad-tabs button[aria-selected="true"]{color:var(--k-navy)}
+.ad-tabs button[aria-selected="true"]::after{content:"";position:absolute;right:10px;left:10px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:linear-gradient(90deg,var(--k-acc),var(--k-acc2))}
+.ad-fade{animation:kIn .4s cubic-bezier(.2,.8,.2,1) both}
+.ad-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ad-fact{padding:10px 12px;border-radius:14px;background:#F8FBFE;border:1px solid #EDF2F8;display:flex;flex-direction:column;gap:1px;min-width:0}
+.ad-fact small{font-size:11.5px;color:var(--k-muted);font-weight:600}
+.ad-fact b{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ad-sec{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:15px;font-weight:700;margin-top:4px}
+.ad-sec small{font-size:12px;color:var(--k-muted);font-weight:600}
+.ad-dz{border:1.5px dashed #F5B8B0;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;background:#FFF8F7}
+.ad-dz h4{margin:0;font-size:14.5px;color:#B23A2E}
+.ad-li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--k-line);font-size:13.5px}
+.ad-li:last-child{border-bottom:none}
+.ad-svc{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:20px;background:#FFFFFF;border:1.5px solid var(--k-line);transition:transform .25s,box-shadow .25s,border-color .25s;animation:kRise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s);position:relative;min-width:0}
+.ad-svc:hover{transform:translateY(-4px);box-shadow:0 18px 34px -18px rgba(0,32,94,.35);border-color:#BFD8EE}
+.ad-svc .k-ico{width:46px;height:46px;border-radius:14px}
+.ad-svc .ad-badge{position:absolute;top:14px;left:14px;background:var(--k-coral)}
+.ad-svc .k-m{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ad-banner{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:#FFF7E6;border:1.5px solid #FBDDA0;color:#6E4A00;font-size:13.5px;font-weight:600}
+.ad-banner.blue{background:#EAF4FD;border-color:#CFE3F5;color:#135F9A}
+.ad-banner.red{background:#FFF1EF;border-color:#F8CBC4;color:#9E2F24}
+.ad-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ad-field .k-in{color:var(--k-text)}
+.ad-field .k-in.ph{color:#8A97AE}
+.ad-field small{font-size:12px;color:var(--k-muted)}
+.ad-ta{min-height:96px;border-radius:14px;border:1.5px solid #D5E3F2;background:#FFFFFF;padding:12px 14px;font-size:14px;line-height:1.8;color:var(--k-text)}
+.ad-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;border:1.5px solid var(--k-line);background:#FFFFFF;transition:border-color .2s,background .2s;cursor:pointer}
+.ad-opt.on{border-color:var(--k-acc);background:#F2F8FE;box-shadow:inset 0 0 0 1px var(--k-acc)}
+.ad-rad{width:20px;height:20px;border-radius:50%;border:2px solid #C5D5E8;flex-shrink:0;position:relative}
+.ad-opt.on .ad-rad{border-color:var(--k-acc)}
+.ad-opt.on .ad-rad::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--k-acc)}
+.ad-sw{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #EDF2F8}
+.ad-sw:last-child{border-bottom:none}
+.ad-dlg{position:fixed;z-index:42;top:50%;left:50%;width:560px;max-width:calc(100% - 32px);max-height:calc(100% - 60px);transform:translate(-50%,-50%);background:#FFFFFF;border-radius:26px;box-shadow:0 40px 80px -20px rgba(0,16,48,.55);display:flex;flex-direction:column;overflow:hidden;animation:adPop .4s cubic-bezier(.2,.8,.2,1) both}
+@keyframes adPop{from{opacity:0;transform:translate(-50%,-46%) scale(.97)}to{opacity:1;transform:translate(-50%,-50%)}}
+.ad-ring{width:84px;height:84px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative}
+.ad-ring::after{content:"";position:absolute;inset:9px;border-radius:50%;background:#FFFFFF}
+.ad-ring b{position:relative;z-index:1;font-size:18px;color:var(--k-navy)}
+.ad-back{display:none}
+.ad-md.open .ad-oc{display:none}
+.ad-hm{}
+.ad-om{display:none}
+.ad-scroll{overflow-x:auto}
+@media (max-width:760px){
+.ad-md.open{grid-template-columns:minmax(0,1fr)}
+.ad-md.open .ad-list{display:none}
+.ad-pane.k-drawer{position:relative;top:auto;height:auto;border-radius:20px;animation:kRise .45s both}
+.ad-back{display:inline-flex}
+.k-hero.ad-hdet{display:none}
+.k-hero.ad-hdet + .k-body{margin-top:14px}
+.ad-hm{display:none !important}
+.ad-om{display:flex}
+.ad-tw{overflow:visible;margin:0;padding:0}
+.ad-t{display:block}
+.ad-tr.ad-th{display:none}
+.ad-tr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:12px 6px;border-bottom:1px solid #EDF2F8}
+.ad-tr > span{display:block;padding:0;border:none;white-space:normal}
+.ad-tr.sel{background:#EAF4FD;border-radius:14px}
+.ad-tr.sel > span{background:transparent;box-shadow:none !important}
+.ad-tr > span.ad-full{flex:1 1 60%;min-width:0}
+.ad-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ad-hsearch{height:46px;font-size:13.5px}
+.ad-hsearch kbd{display:none}
+.ad-dlg{top:auto;bottom:0;left:0;right:0;width:100%;max-width:100%;max-height:92%;transform:none;border-radius:24px 24px 0 0;animation:kUp .45s cubic-bezier(.2,.8,.2,1) both}
+.ad-tb .k-btn{flex:1 1 auto}
+.ad-pg{justify-content:center}
+}
+.ad-pal{position:fixed;z-index:45;top:80px;left:50%;width:660px;max-width:calc(100% - 32px);transform:translateX(-50%);background:#FFFFFF;border-radius:24px;box-shadow:0 40px 90px -20px rgba(0,16,48,.6);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100% - 140px);animation:adPalIn .35s cubic-bezier(.2,.8,.2,1) both}
+@keyframes adPalIn{from{opacity:0;transform:translate(-50%,-10px) scale(.98)}to{opacity:1;transform:translateX(-50%)}}
+.ad-palh{display:flex;align-items:center;gap:10px;padding:0 18px;height:62px;border-bottom:1px solid #EDF2F8;color:var(--k-acc)}
+.ad-palh input{flex:1;min-width:0;border:none;outline:none;font-family:inherit;font-size:17px;color:var(--k-text);background:transparent}
+.ad-palh kbd,.ad-palf kbd{font-family:inherit;font-size:11px;padding:2px 7px;border-radius:6px;background:var(--k-page);border:1px solid var(--k-line);color:var(--k-muted);margin-left:3px}
+.ad-palb{overflow:auto;padding:8px 10px 14px}
+.ad-palg{font-size:11.5px;font-weight:700;color:var(--k-muted);padding:12px 10px 6px}
+.ad-palr{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:14px;transition:background .15s}
+.ad-palr:hover,.ad-palr[aria-selected="true"]{background:#EEF6FD}
+.ad-palr[aria-selected="true"]{box-shadow:inset -3px 0 0 var(--k-acc)}
+.ad-palrec{display:flex;gap:8px;flex-wrap:wrap;padding:0 8px}
+.ad-palf{display:flex;gap:16px;align-items:center;padding:10px 18px;border-top:1px solid #EDF2F8;font-size:12px;color:var(--k-muted);background:#FAFCFE}
+@media (max-width:760px){
+.ad-pal{top:0;left:0;right:0;bottom:0;width:100%;max-width:100%;max-height:none;transform:none;border-radius:0;animation:kUp .4s cubic-bezier(.2,.8,.2,1) both}
+.ad-palh kbd{display:none}
+}
+.k a.k-btn{color:#FFFFFF}
+.k a.k-btn.ghost{color:var(--k-acc)}
+.k a.k-btn.danger{color:#C2410C}
+.as-cov{width:40px;height:48px;border-radius:4px 10px 10px 4px;flex-shrink:0;box-shadow:inset -5px 0 0 rgba(0,0,0,.18)}
+.as-act{display:flex;gap:8px;flex-wrap:wrap}
+.as-act .k-btn{flex:1 1 auto}
+@media (max-width:760px){.as-hact{width:100%}.as-hact .k-btn{flex:1}}
+.as-subf{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.as-subf span{display:flex;flex-direction:column;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.1);line-height:1.35}
+.as-subf small{font-size:11px;opacity:.75}.as-subf b{font-size:13.5px}
+.as-subf{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:760px){.as-subf{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.ad-hubg{gap:10px}.ad-svc{padding:12px}}
+.at-q{display:flex;align-items:center;gap:12px;padding:12px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;cursor:pointer;transition:border-color .2s,background .2s,transform .2s;animation:kRise .45s both;animation-delay:var(--d,0s)}
+.at-q:hover{transform:translateX(-3px)}
+.at-q.on{border-color:var(--k-acc);background:#F2F8FE;box-shadow:inset -4px 0 0 var(--k-acc)}
+.at-doc{display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:#F8FBFE;border:1.5px solid var(--k-line);animation:kRise .45s both;animation-delay:var(--d,0s)}
+.at-doc .k-ico{width:44px;height:52px;border-radius:6px 12px 12px 6px;background:linear-gradient(160deg,#FFFFFF,#E8F1FA);border:1.5px solid #CFE3F5;color:#1979C1}
+.at-dec{position:sticky;bottom:12px;display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:20px;background:#FFFFFF;border:1.5px solid var(--k-line);box-shadow:0 18px 40px -20px rgba(0,20,64,.4)}
+.at-cnt{font-size:11.5px;color:var(--k-muted);text-align:left}
+.at-rd{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;animation:kRise .45s both;animation-delay:var(--d,0s);cursor:pointer;transition:border-color .2s}
+.at-rd.on{border-color:var(--k-acc);box-shadow:inset 0 0 0 1px var(--k-acc);background:#F7FBFF}
+
+.cn-dg{grid-template-columns:minmax(0,1fr) 420px;align-items:start}
+.cn-dg2{grid-template-columns:340px minmax(0,1fr);align-items:start}
+.cn-q{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:22px;background:#FFFFFF;border:1.5px solid var(--k-line);animation:kRise .5s both;animation-delay:var(--d,0s);transition:transform .25s,box-shadow .25s}
+.cn-q:hover{transform:translateY(-4px);box-shadow:0 18px 34px -18px rgba(0,32,94,.35)}
+.cn-goal{display:flex;gap:6px;flex-wrap:wrap}
+.cn-g{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:18px;border:1.5px solid var(--k-line);background:#FFFFFF;animation:kRise .45s both;animation-delay:var(--d,0s);cursor:pointer;transition:border-color .2s}
+.cn-g.on{border-color:var(--k-acc);background:#F7FBFF;box-shadow:inset -4px 0 0 var(--k-acc)}
+.cn-g .cn-drag{color:#9AA8BE;cursor:grab}
+.cn-gc{width:52px;height:52px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#FFFFFF}
+.cn-prev{border-radius:22px;padding:18px;background:radial-gradient(120% 120% at 80% 0%,#5F3DC4,#00205E 70%);color:#FFFFFF;display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden}
+.cn-prev::after{content:"";position:absolute;width:160px;height:160px;border-radius:50%;background:#07B8EE;opacity:.3;filter:blur(40px);left:-40px;bottom:-60px}
+.cn-prev > *{position:relative;z-index:1}
+.cn-ans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.cn-ans span{padding:12px;border-radius:14px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.18);font-weight:700;font-size:14px;text-align:center;transition:transform .2s}
+.cn-ans span.ok{background:#1D9A63;border-color:#1D9A63;animation:cnPop .6s .6s both}
+@keyframes cnPop{0%{transform:scale(1)}40%{transform:scale(1.06)}100%{transform:scale(1)}}
+.cn-timer{height:6px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}
+.cn-timer i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#F6C453,#FF9F5A);transform-origin:100% 50%;animation:cnT 8s linear infinite}
+@keyframes cnT{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.cn-book{width:150px;aspect-ratio:3/4;border-radius:6px 16px 16px 6px;position:relative;overflow:hidden;color:#FFFFFF;padding:14px;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;box-shadow:-4px 4px 0 #EFE8DA,0 18px 30px -12px rgba(0,0,0,.45);flex-shrink:0}
+.cn-book::after{content:"";position:absolute;top:0;bottom:0;right:0;width:10px;background:rgba(0,0,0,.2)}
+.cn-pages{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
+.cn-pg{width:96px;aspect-ratio:3/4;flex-shrink:0;border-radius:8px;background:#FFFFFF;border:1.5px solid var(--k-line);padding:10px 8px;display:flex;flex-direction:column;gap:5px;box-shadow:0 8px 16px -10px rgba(0,20,64,.3)}
+.cn-pg i{height:5px;border-radius:3px;background:#E2EAF4}
+.cn-pg i.h{height:8px;width:60%;background:#BFD4EA}
+.cn-sec{border:1.5px solid var(--k-line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;background:#FFFFFF}
+.cn-step{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#F8FBFE;border:1px dashed #CFE3F5;font-size:13.5px}
+.cn-step b.n{width:24px;height:24px;border-radius:50%;background:var(--k-navy);color:#FFFFFF;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cn-key{font-family:monospace;font-size:12px;direction:ltr;padding:2px 8px;border-radius:7px;background:#EEF2F7;color:#4A5878}
+.cn-f3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:760px){
+.cn-f3{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cn-dg,.cn-dg2{grid-template-columns:minmax(0,1fr)}
+.cn-book{width:120px}
+}
+
+/* WP13: an open overlay locks the page to the viewport (board = what the user sees) */
+.k.admin:has(.k-dim){height:var(--vh,100vh);overflow:hidden}
+/* WP13: compact phone hero (AD-01) */
+@media (max-width:760px){
+ .k-hero .k-grid.k-g4{gap:8px !important;margin-top:14px !important}
+ .k-hero .k-stat{padding:10px 12px !important;gap:2px !important;border-radius:16px}
+ .k-hero .k-stat b{font-size:19px !important}
+ .k-hero .k-stat small{font-size:11.5px}
+ .k-hero h2{font-size:21px;line-height:1.45}
+ .k-hero p{font-size:13.5px;line-height:1.6}
+}
+</style>
+</helmet>
+<div class="k admin" dir="rtl">
+  <div class="k-shell">
+    <aside class="k-side" aria-label="القائمة">
+      <div class="k-logo"><img src="./logo.png" alt="" width="34" height="38">ALFaheem<span class="k-role">مشرف</span></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="9">
+        <sc-if value="{{n.g}}" hint-placeholder-val="{{ false }}"><span class="k-navg">{{n.g}}</span></sc-if>
+        <a href="#" class="k-nav" aria-current="{{n.cur}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{n.c}}</span></sc-if></a>
+      </sc-for>
+      <span class="k-navg">فُتحت مؤخرًا</span>
+      <sc-for list="{{recent}}" as="r" hint-placeholder-count="3"><a href="#" class="ad-rec"><i style="background: {{r.c}}"></i>{{r.l}}</a></sc-for>
+      <div class="k-me"><span class="k-av sm" style="background: linear-gradient(150deg, #1979C1, #07B8EE)">س</span><span style="display: flex; flex-direction: column; line-height: 1.35"><b style="font-size: 14px">سلمان الدوسري</b><small style="font-size: 11.5px; opacity: .7">مشرف المحتوى والمستخدمين</small></span></div>
+    </aside>
+    <div class="k-main">
+      <header class="k-top">
+        <span><small>{{crumb}}</small><h1>{{title}}</h1></span>
+        <a href="#" class="k-search" onClick="{{openSearch}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg>ابحث عن طالب أو معلم أو دورة<kbd>Ctrl K</kbd></a>
+        <sc-for list="{{tools}}" as="t" hint-placeholder-count="3"><a href="#" class="k-ib" aria-label="{{t.l}}" title="{{t.l}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for>
+        <span class="k-av" style="background: linear-gradient(150deg, #1979C1, #07B8EE)">س</span>
+      </header>
+      <header class="k-mtop"><sc-if value="{{mback}}" hint-placeholder-val="{{ false }}"><a href="#" class="k-ib" aria-label="رجوع" onClick="{{mbackFn}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></a></sc-if><sc-if value="{{mlogo}}" hint-placeholder-val="{{ true }}"><img src="./logo.png" alt="" width="28" height="31" style="width: 28px; height: auto"></sc-if><h1>{{mtitle}}</h1><sc-for list="{{mtools}}" as="t" hint-placeholder-count="2"><a href="#" class="k-ib" aria-label="{{t.l}}" onClick="{{t.fn}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.i}}"></path></svg><sc-if value="{{t.c}}" hint-placeholder-val="{{ false }}"><span class="k-dot">{{t.c}}</span></sc-if></a></sc-for></header>
+
+      <main class="k-page">
+        <section class="k-hero {{heroCls}}">
+          <div class="k-row" style="align-items: flex-end; gap: 18px">
+            <div class="k-col" style="flex: 1 1 320px; gap: 6px">
+              <span class="k-ruqaa" style="font-size: 19px; color: #FFC9A1">{{hk}}</span>
+              <h2>{{hh}}</h2>
+              <p>{{hp}}</p>
+            </div>
+            <div class="k-row as-hact"><sc-for list="{{hbtn}}" as="b" hint-placeholder-count="1"><a href="#" class="k-btn {{b.c}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{b.i}}"></path></svg>{{b.l}}</a></sc-for></div>
+          </div>
+          <div class="k-grid k-g4" style="margin-top: 20px">
+            <sc-for list="{{stats}}" as="s" hint-placeholder-count="4"><span class="k-stat"><b>{{s.n}}</b><small>{{s.l}}</small></span></sc-for>
+          </div>
+        </section>
+        <div class="k-body">
+          <sc-if value="{{isHub}}" hint-placeholder-val="{{ true }}">
+          <section class="k-card" style="--d: .05s">
+            <div class="k-ch"><h3>{{hubT}}</h3><span class="k-m">{{hubN}}</span></div>
+            <label class="ad-sin" style="flex: 0 0 auto; height: 46px; border-radius: 23px"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.search}}"></path></svg><input value="{{hubQ}}" onInput="{{hubIn}}" placeholder="{{hubPh}}" aria-label="{{hubPh}}"></label>
+            <sc-if value="{{hubNone}}" hint-placeholder-val="{{ false }}"><div class="k-empty"><span class="k-ico" style="background: #EAF4FD; color: #1979C1"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.search}}"></path></svg></span><b>ما فيه خدمة بهالاسم</b><span>جرّب كلمة ثانية</span></div></sc-if>
+            <div class="k-grid k-g4 ad-hubg"><sc-for list="{{hubItems}}" as="s" hint-placeholder-count="6"><a href="#" class="ad-svc" style="--d: {{s.d}}" onClick="{{s.fn}}"><span class="k-ico" style="background: {{s.bg}}; color: {{s.fg}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{s.i}}"></path></svg></span><sc-if value="{{s.c}}" hint-placeholder-val="{{ false }}"><span class="ad-badge">{{s.c}}</span></sc-if><span class="k-t">{{s.l}}</span><span class="k-m">{{s.m}}</span></a></sc-for></div>
+          </section>
+
+          <section class="k-card" style="--d: .25s">
+            <div class="k-ch"><h3>آخر التعديلات على المحتوى</h3><a href="#">سجل العمليات</a></div>
+            <sc-for list="{{edits}}" as="e" hint-placeholder-count="4"><div class="ad-li"><span class="k-ico" style="width: 34px; height: 34px; border-radius: 10px; background: {{e.bg}}; color: {{e.fg}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{e.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><b>{{e.t}}</b><span class="k-m">{{e.m}}</span></span><span class="k-m">{{e.w}}</span></div></sc-for>
+          </section>
+          </sc-if>
+
+          <sc-if value="{{isCats}}" hint-placeholder-val="{{ false }}">
+          <div class="ad-md {{mdCls}}">
+            <section class="k-card ad-list" style="--d: .06s">
+              <div class="ad-tb"><label class="ad-sin"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.search}}"></path></svg><input value="{{q}}" onInput="{{qIn}}" placeholder="ابحث في الأقسام" aria-label="بحث"></label><span class="k-chip"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.filter}}"></path></svg>فيها دورات</span><span class="k-chip ad-hm"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.download}}"></path></svg>تصدير</span></div>
+              <div class="ad-tw">
+                <div role="table" class="k-table ad-t">
+                  <div role="row" class="ad-tr ad-th"><span role="columnheader">القسم</span><span role="columnheader" class="ad-hm ad-oc">الوصف</span><span role="columnheader">الدورات</span><span role="columnheader" class="ad-oc">المعلمين</span><span role="columnheader" class="ad-hm ad-oc">الطلاب</span></div>
+                  
+                    <sc-for list="{{cats}}" as="r" hint-placeholder-count="8">
+                      <div role="row" class="ad-tr {{r.cls}}" style="--d: {{r.d}}" onClick="{{r.open}}">
+                        <span role="cell" class="ad-full"><span class="ad-pp"><span class="k-ico" style="width: 36px; height: 36px; border-radius: 11px; background: {{r.bg}}; color: {{r.fg}}"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.i}}"></path></svg></span><span><b>{{r.n}}</b><small>{{r.en}}</small></span></span></span>
+                        <span role="cell" class="ad-hm ad-oc" style="color: #4A5878; max-width: 260px; overflow: hidden; text-overflow: ellipsis">{{r.m}}</span>
+                        <span role="cell"><b>{{r.c}}</b><span class="ad-om k-m" style="display: inline">&nbsp;دورة</span></span>
+                        <span role="cell" class="ad-oc">{{r.t}}</span>
+                        <span role="cell" class="ad-hm ad-oc">{{r.s}}</span>
+                      </div>
+                    </sc-for>
+                  
+                </div>
+              </div>
+            </section>
+            <sc-if value="{{open}}" hint-placeholder-val="{{ false }}">
+            <aside class="k-drawer ad-pane" aria-label="تفاصيل القسم">
+              <div class="k-dh"><a href="#" class="ad-ib ad-back" onClick="{{close}}" aria-label="رجوع"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.chevR}}"></path></svg></a><span class="k-ico" style="width: 40px; height: 40px; background: {{pc.bg}}; color: {{pc.fg}}"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{pc.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><h2 style="font-size: 18px">{{pc.n}}</h2><span class="k-m">{{pc.c}} دورة، {{pc.t}} معلم، {{pc.s}} طالب</span></span><a href="#" class="ad-ib ad-hm" onClick="{{close}}" aria-label="إغلاق"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.x}}"></path></svg></a></div>
+              <div class="k-db">
+                <div class="ad-sec">تعديل القسم</div>
+                <div class="k-grid k-g2" style="gap: 10px"><label class="ad-field"><span class="k-lbl">الاسم بالعربي *</span><span class="k-in" style="color: #0E2350">{{pc.n}}</span></label><label class="ad-field"><span class="k-lbl">بالإنجليزي</span><span class="k-in" style="color: #0E2350; direction: ltr; justify-content: flex-end">{{pc.en}}</span></label></div>
+                <label class="ad-field"><span class="k-lbl">الوصف</span><span class="ad-ta" style="min-height: 64px">{{pc.m}}</span></label>
+                <a href="#" class="k-btn sm" style="align-self: flex-start">احفظ التعديل</a>
+                <div class="ad-sec">أكثر الدورات<small>{{pc.c}} دورة</small></div>
+                <div><sc-for list="{{ccourses}}" as="c" hint-placeholder-count="3"><div class="ad-li"><span class="as-cov" style="width: 30px; height: 36px; background: {{c.bg}}"></span><span class="k-col" style="gap: 0; flex: 1"><b>{{c.t}}</b><span class="k-m">{{c.m}}</span></span></div></sc-for></div>
+                <div class="ad-dz"><h4>حذف القسم</h4><span class="k-m">ما تقدر تحذفه لأن فيه {{pc.c}} دورة. انقل الدورات لقسم ثاني أول.</span><a href="#" class="k-btn danger sm" style="align-self: flex-start; opacity: .55"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.trash}}"></path></svg>حذف</a></div>
+              </div>
+            </aside>
+            </sc-if>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{isQuran}}" hint-placeholder-val="{{ false }}">
+          <section class="k-card" style="--d: .05s">
+            <div class="ad-tb"><div class="k-seg" style="flex: 0 0 auto"><sc-for list="{{qseg}}" as="g" hint-placeholder-count="3"><button aria-selected="{{g.on}}" onClick="{{g.fn}}">{{g.l}}</button></sc-for></div><span class="k-sp"></span><a href="#" class="k-link">ملفات المعلمين العامة في «مراجعة المعلمين»</a></div>
+            <div class="k-grid k-g3"><sc-for list="{{qt}}" as="c" hint-placeholder-count="3"><div class="cn-q" style="--d: {{c.d}}"><div class="k-row" style="gap: 10px; flex-wrap: nowrap"><span class="k-av" style="background: {{c.bg}}">{{c.a}}</span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 15px">{{c.n}}</b><span class="k-m">{{c.g}}</span></span><span class="k-tag {{c.vc}}">{{c.v}}</span></div><div class="ad-fact"><small>الإجازة</small><b>{{c.ij}}</b></div><div class="cn-goal"><sc-for list="{{c.goals}}" as="x" hint-placeholder-count="3"><span class="k-tag n">{{x}}</span></sc-for></div><div class="k-row"><a href="#" class="k-btn sm" style="flex: 1"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.check}}"></path></svg>اعتمد وانشر</a><a href="#" class="k-btn ghost sm">{{c.vb}}</a></div></div></sc-for></div>
+          </section>
+          </sc-if>
+
+          <sc-if value="{{isGames}}" hint-placeholder-val="{{ false }}">
+          <div class="k-grid cn-dg">
+            <section class="k-card" style="--d: .05s">
+              <div class="ad-tb"><label class="ad-sin"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.search}}"></path></svg><input placeholder="ابحث في الألعاب" aria-label="بحث"></label><span class="k-chip"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.filter}}"></path></svg>كل المواد</span></div>
+              <span class="k-m">اسحب لترتيبها كما تظهر للطلاب. اللعبة اللي لعبها أحد تنخفي بدل ما تنحذف.</span>
+              <sc-for list="{{games}}" as="g" hint-placeholder-count="6"><div class="cn-g {{g.on}}" style="--d: {{g.d}}" onClick="{{g.fn}}"><span class="cn-drag"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.drag}}"></path></svg></span><span class="cn-gc" style="background: {{g.bg}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{g.i}}"></path></svg></span><span class="k-col" style="gap: 2px; flex: 1; min-width: 0"><b style="font-size: 14px">{{g.t}}</b><span class="k-m">{{g.m}}</span></span><span class="k-col ad-hm" style="gap: 0; align-items: center"><b style="font-size: 13px">{{g.p}}</b><span class="k-m">لعبة</span></span><span class="k-tog {{g.pub}}" onClick="{{g.tog}}" role="switch" aria-checked="{{g.ac}}"><i></i></span></div></sc-for>
+            </section>
+            <section class="k-card tint" style="--d: .1s">
+              <div class="k-ch"><h3>{{gp.t}}</h3><span class="k-tag {{gp.sc}}">{{gp.s}}</span></div>
+              <div class="cn-prev"><div class="k-row"><span class="k-tag" style="background: rgba(255,255,255,.16); color: #FFFFFF">السؤال ٣ من ١٠</span><span class="k-sp"></span><b style="color: #F6C453">+٢٠ نقطة</b></div><div class="cn-timer"><i></i></div><b style="font-size: 18px; line-height: 1.6">{{gp.q}}</b><div class="cn-ans"><sc-for list="{{gp.ans}}" as="a" hint-placeholder-count="4"><span class="{{a.c}}">{{a.t}}</span></sc-for></div></div>
+              <div class="ad-facts"><sc-for list="{{gp.f}}" as="f" hint-placeholder-count="6"><span class="ad-fact"><small>{{f.l}}</small><b>{{f.v}}</b></span></sc-for></div>
+              <div class="k-row"><a href="#" class="k-btn" style="flex: 1"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.edit}}"></path></svg>عدّل المحتوى</a><a href="#" class="k-btn ghost"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.play}}"></path></svg>جرّبها</a></div>
+            </section>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{isStore}}" hint-placeholder-val="{{ false }}">
+          <div class="k-grid cn-dg2">
+            <section class="k-card" style="--d: .05s">
+              <div class="k-seg"><button aria-selected="true">بانتظار المراجعة ٢</button><button aria-selected="false">منشورة</button></div>
+              <sc-for list="{{sq}}" as="c" hint-placeholder-count="3"><div class="at-q {{c.on}}" style="--d: {{c.d}}" onClick="{{c.fn}}"><span class="as-cov" style="background: {{c.bg}}; width: 38px; height: 48px"></span><span class="k-col" style="gap: 2px; flex: 1"><b style="font-size: 14px">{{c.t}}</b><span class="k-m">{{c.m}}</span></span><span class="k-tag {{c.tc}}">{{c.tag}}</span></div></sc-for>
+            </section>
+            <section class="k-card" style="--d: .1s">
+              <div class="k-row" style="gap: 18px; align-items: flex-start"><span class="cn-book" style="background: {{si.bg}}"><span class="k-tag" style="align-self: flex-start; background: rgba(255,255,255,.2); color: #FFFFFF">{{si.k}}</span><b style="font-size: 15px; line-height: 1.4; position: relative">{{si.t}}</b></span><span class="k-col" style="gap: 8px; flex: 1 1 260px"><h3 style="margin: 0; font-size: 20px">{{si.t}}</h3><span class="k-m">{{si.by}}، أرسله قبل يومين</span><span class="k-row" style="gap: 6px"><span class="k-tag y">بانتظار المراجعة</span><span class="k-tag {{si.pc}}">{{si.pv}}</span></span><p class="k-sub" style="margin: 0; font-size: 14px; color: #0E2350">{{si.d}}</p></span></div>
+              <div class="ad-sec">صفحات المعاينة<small>يشوفها الطالب قبل يشتري</small></div>
+              <div class="cn-pages"><sc-for list="{{pages}}" as="p" hint-placeholder-count="5"><span class="cn-pg"><i class="h"></i><i></i><i></i><i style="width: 70%"></i><i></i><i style="width: 50%"></i></span></sc-for></div>
+              <div class="ad-facts cn-f3"><sc-for list="{{si.f}}" as="f" hint-placeholder-count="6"><span class="ad-fact"><small>{{f.l}}</small><b>{{f.v}}</b></span></sc-for></div>
+              <div class="ad-li" style="border: none"><span class="k-ico" style="width: 36px; height: 36px; border-radius: 10px; background: #FFE3E0; color: #B23A2E"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.file}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><b>{{si.file}}</b><span class="k-m">تم الفحص، بدون مشاكل</span></span><a href="#" class="k-btn ghost sm"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.eye}}"></path></svg>افتح الملف</a></div>
+              <div class="at-dec" style="position: static"><sc-if value="{{rej}}" hint-placeholder-val="{{ false }}"><label class="ad-field ad-fade"><span class="k-lbl">سبب الرفض (يرجع العنصر مسودة للمعلم)</span><span class="ad-ta" style="min-height: 64px">الغلاف فيه شعار جهة ثانية، غيّره وأرسله مرة ثانية.</span></label></sc-if><div class="k-row"><a href="#" class="k-btn" style="flex: 1"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.check}}"></path></svg>وافق وانشر</a><a href="#" class="k-btn danger" onClick="{{togRej}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.x}}"></path></svg>{{rejL}}</a></div></div>
+            </section>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{isHelp}}" hint-placeholder-val="{{ false }}">
+          <div class="k-grid cn-dg2">
+            <section class="k-card" style="--d: .05s">
+              <div class="k-seg"><sc-for list="{{hseg}}" as="g" hint-placeholder-count="2"><button aria-selected="{{g.on}}" onClick="{{g.fn}}">{{g.l}}</button></sc-for></div>
+              <div class="k-row" style="gap: 6px"><sc-for list="{{hrole}}" as="r" hint-placeholder-count="4"><button class="k-chip" aria-pressed="{{r.on}}" onClick="{{r.fn}}" style="height: 30px; font-size: 12.5px">{{r.l}}</button></sc-for></div>
+              <sc-for list="{{hpages}}" as="c" hint-placeholder-count="6"><div class="at-q {{c.on}}" style="--d: {{c.d}}; padding: 10px 12px" onClick="{{c.fn}}"><span class="k-ico" style="width: 34px; height: 34px; background: #EAF4FD; color: #1979C1"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{c.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1; min-width: 0"><b style="font-size: 13.5px">{{c.t}}</b><span class="cn-key" style="align-self: flex-start">{{c.k}}</span></span><span class="k-tag {{c.sc}}">{{c.s}}</span></div></sc-for>
+            </section>
+            <section class="k-card" style="--d: .1s">
+              <div class="k-ch"><h3>{{hp1.t}}</h3><span class="k-row" style="gap: 6px"><div class="k-seg"><button aria-selected="true">عربي</button><button aria-selected="false">English</button></div><a href="#" class="ad-ib" aria-label="تصدير"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.download}}"></path></svg></a></span></div>
+              <label class="ad-field"><span class="k-lbl">العنوان</span><span class="k-in" style="color: #0E2350">{{hp1.t}}</span></label>
+              <label class="ad-field"><span class="k-lbl">الملخص</span><span class="ad-ta" style="min-height: 64px">{{hp1.m}}</span></label>
+              <div class="ad-sec">الأقسام<a href="#" class="k-link" style="font-size: 12.5px">+ قسم</a></div>
+              <sc-for list="{{hsecs}}" as="x" hint-placeholder-count="2"><div class="cn-sec"><div class="k-row"><span class="cn-key">{{x.k}}</span><b style="flex: 1">{{x.t}}</b><span class="ad-ib"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.edit}}"></path></svg></span></div><sc-for list="{{x.items}}" as="it" hint-placeholder-count="2"><div class="ad-li" style="padding: 6px 0"><b style="font-size: 13px; min-width: 110px">{{it.n}}</b><span class="k-m" style="flex: 1">{{it.e}}</span></div></sc-for></div></sc-for>
+              <div class="ad-sec">الجولة التعريفية<small>تظهر أول مرة يفتح الصفحة</small></div>
+              <sc-for list="{{tour}}" as="t" hint-placeholder-count="3"><div class="cn-step"><b class="n">{{t.n}}</b><span class="cn-key">{{t.k}}</span><span style="flex: 1">{{t.t}}</span></div></sc-for>
+              <div class="k-row"><a href="#" class="k-btn" style="flex: 1">احفظ</a><a href="#" class="k-btn ghost"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{I.eye}}"></path></svg>معاينة</a></div>
+            </section>
+          </div>
+          </sc-if>
+        </div>
+
+      </main>
+      <nav class="k-bnav m-pill" aria-label="القائمة" style="--n: 5"><span class="m-pill-bg" style="--i: {{bnI}}; opacity: {{bnO}}"></span><sc-for list="{{bnav}}" as="n" hint-placeholder-count="5"><a href="#" aria-current="{{n.cur}}"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.i}}"></path></svg>{{n.l}}<sc-if value="{{n.c}}" hint-placeholder-val="{{ false }}"><span class="k-cnt">{{n.c}}</span></sc-if></a></sc-for></nav>
+    </div>
+  </div>
+
+  <sc-if value="{{palOpen}}" hint-placeholder-val="{{ false }}">
+    <div class="k-dim" onClick="{{closePal}}"></div>
+    <div class="ad-pal" role="dialog" aria-label="البحث في لوحة الإدارة">
+      <div class="ad-palh"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3"></path></svg><input value="{{palQ}}" onInput="{{palInput}}" placeholder="ابحث عن طالب أو معلم أو دورة أو رقم دفعة" aria-label="بحث"><kbd>Esc</kbd><button class="ad-ib ad-om" aria-label="إغلاق" onClick="{{closePal}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div>
+      <div class="ad-palb">
+        <sc-if value="{{palEmpty}}" hint-placeholder-val="{{ false }}"><div class="k-empty" style="padding: 14px"><span>اكتب للبحث في لوحة الإدارة</span></div></sc-if>
+        <sc-if value="{{palShort}}" hint-placeholder-val="{{ false }}"><div class="k-empty" style="padding: 14px"><span>اكتب حرفين على الأقل عشان نبحث في الطلاب والمعلمين والدورات</span></div></sc-if>
+        <sc-if value="{{palNone}}" hint-placeholder-val="{{ false }}"><div class="k-empty" style="padding: 14px"><span>ما لقينا شي لـ «{{palQ}}». جرّب الاسم الأول أو رقم الجوال</span></div></sc-if>
+        <sc-for list="{{palGroups}}" as="g" hint-placeholder-count="3">
+          <div class="ad-palg">{{g.t}}</div>
+          <sc-for list="{{g.items}}" as="it" hint-placeholder-count="2"><a href="#" class="ad-palr" aria-selected="{{it.cur}}"><span class="k-ico" style="width: 36px; height: 36px; border-radius: 11px; background: #EAF4FD; color: #1979C1"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{it.i}}"></path></svg></span><span class="k-col" style="gap: 0; flex: 1"><b style="font-size: 14px">{{it.l}}</b><small class="k-m">{{it.m}}</small></span><sc-if value="{{it.has}}" hint-placeholder-val="{{ false }}"><span class="k-tag {{it.sc}}">{{it.s}}</span></sc-if></a></sc-for>
+        </sc-for>
+        <div class="ad-palg">الأحدث</div>
+        <div class="ad-palrec"><sc-for list="{{palRecent}}" as="r" hint-placeholder-count="3"><a href="#" class="k-chip"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.i}}"></path></svg>{{r.l}}</a></sc-for></div>
+      </div>
+      <div class="ad-palf ad-hm"><span><kbd>↑</kbd><kbd>↓</kbd> للتنقل</span><span><kbd>Enter</kbd> للفتح</span><span><kbd>Esc</kbd> للإغلاق</span><span style="margin-right: auto">ابحث برقم الدفعة مثل #٤٨٢١٣</span></div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1000}}'>
+// TITLE: المشرف: المحتوى التعليمي
+class Component extends DCLogic {
+  A(s) { return String(s).replace(/(\d),(?=\d)/g, '$1٬').replace(/(\d)\.(?=\d)/g, '$1٫').replace(/%/g, '٪').replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]); }
+  scr(def) { return this.state.scr || this.props.screen || def; }
+  go(k, extra) { return () => this.setState(Object.assign({ scr: k, pal: false }, extra || {})); }
+  dl(i, base, step) { return ((base || 0.1) + i * (step || 0.05)).toFixed(2) + 's'; }
+  get IC() {
+    return {
+      home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z',
+      users: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a7 7 0 0 1 14 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a7 7 0 0 0-4-6.3',
+      book: 'M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14',
+      teacher: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5M22 9v6',
+      people: 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12zM8 12h.01M12 12h.01M16 12h.01',
+      approve: 'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9',
+      layers: 'M12 2l10 5-10 5L2 7zM2 12l10 5 10-5M2 17l10 5 10-5',
+      shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4',
+      account: 'M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM3 21a9 9 0 0 1 18 0',
+      search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3',
+      bell: 'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
+      inbox: 'M3 13h5l1.5 3h5l1.5-3h5M5 5h14l2 8v6H3v-6z',
+      filter: 'M3 5h18l-7 8v6l-4-2v-4z',
+      download: 'M12 3v12M7 10l5 5 5-5M4 21h16',
+      upload: 'M12 15V3M7 8l5-5 5 5M4 21h16',
+      plus: 'M12 5v14M5 12h14',
+      grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+      chevL: 'M15 6l-6 6 6 6', chevR: 'M9 6l6 6-6 6', chevD: 'M6 9l6 6 6-6', chevU: 'M6 15l6-6 6 6',
+      check: 'M5 12l5 5L20 7', x: 'M6 6l12 12M18 6L6 18',
+      eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+      edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
+      trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+      lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4',
+      mail: 'M3 5h18v14H3zM3 7l9 6 9-6',
+      phone: 'M5 3h4l2 5-3 2a11 11 0 0 0 6 6l2-3 5 2v4a2 2 0 0 1-2 2A17 17 0 0 1 3 5a2 2 0 0 1 2-2z',
+      clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
+      star: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z',
+      device: 'M7 2h10v20H7zM11 18h2',
+      laptop: 'M4 5h16v11H4zM2 19h20',
+      receipt: 'M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6',
+      file: 'M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h4',
+      chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+      globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
+      quran: 'M12 6c-2-1.5-5-2-8-1v14c3-1 6-.5 8 1 2-1.5 5-2 8-1V5c-3-1-6-.5-8 1zM12 6v14',
+      game: 'M6 9h12a4 4 0 0 1 0 8c-2 0-3-2-6-2s-4 2-6 2a4 4 0 0 1 0-8zM8 11v4M6 13h4M16 12h.01M18 14h.01',
+      store: 'M4 7h16l-1.5 12h-13zM9 7V5a3 3 0 0 1 6 0v2',
+      help: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01',
+      key: 'M15 3a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM10.5 13.5L3 21M6 18l2 2M8 16l2 2',
+      refresh: 'M20 11a8 8 0 0 0-14.9-3.5M4 4v4h4M4 13a8 8 0 0 0 14.9 3.5M20 20v-4h-4',
+      link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+      cal: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4',
+      send: 'M22 2L11 13M22 2l-7 20-4-9-9-4z',
+      cols: 'M4 4h16v16H4zM10 4v16M15 4v16',
+      sort: 'M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4',
+      flag: 'M5 21V4h11l-2 4 2 4H5',
+      tag: 'M3 3h8l10 10-8 8L3 11zM7.5 7.5h.01',
+      more: 'M5 12h.01M12 12h.01M19 12h.01',
+      logout: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11',
+      money: 'M3 6h18v12H3zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM6 9v.01M18 15v.01',
+      cert: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.5 13.5L7 22l5-3 5 3-1.5-8.5',
+      mega: 'M3 10v4h4l6 4V6L7 10zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12',
+      ai: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z',
+      history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2',
+      db: 'M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3zM4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6',
+      alert: 'M12 3l10 18H2zM12 10v4M12 17h.01',
+      parent: 'M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 21v-6a5 5 0 0 1 10 0M17 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM14 21v-3a3 3 0 0 1 6 0v3',
+      copy: 'M8 8h12v12H8zM4 16V4h12',
+      bolt: 'M13 2L4 14h7l-1 8 9-12h-7z',
+      folder: 'M3 6h6l2 2h10v11H3z',
+      list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+      moon: 'M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z',
+      lang: 'M4 6h9M8.5 4v2M6 6c0 4 3 7 6 8M11 6c0 3-3 7-7 8M13 20l4-9 4 9M14.5 17h5',
+      zoom: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3M11 8v6M8 11h6',
+      drag: 'M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01',
+      play: 'M8 5v14l11-7z',
+      pause: 'M7 5h3v14H7zM14 5h3v14h-3z',
+      qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2'
+    };
+  }
+  pal() {
+    const I = this.IC, A = (s) => this.A(s);
+    const q = (this.state.q == null ? 'ريم' : this.state.q).trim();
+    const G = [
+      ['الصفحات', [['الطلبات والموافقات', 'الطلبات والموافقات، ٢٣ طلب', 'approve', ''], ['إرسال رسالة', 'الناس والرسائل', 'send', '']]],
+      ['الطلاب', [['ريم الحربي', 'reem.alharbi@mail.sa، الثاني الثانوي', 'users', 'نشط|g'], ['ريم العتيبي', 'reem.o@mail.sa، الثالث المتوسط', 'users', 'غير نشط|n'], ['ريماس القرني', 'rimas.q@mail.sa، الأول الثانوي', 'users', 'نشط|g']]],
+      ['المعلمين', [['أ. ريم السبيعي', 'الكيمياء، ٤ دورات', 'teacher', 'بانتظار|y']]],
+      ['الدورات', [['الكيمياء العضوية مع أ. ريم', 'الكيمياء، ٢١٤ طالب', 'book', 'منشورة|g']]],
+      ['المدفوعات', [['دفعة #٤٨٢١٣: ريم الحربي', 'تحويل بنكي، ٤٥٠ ريال', 'receipt', 'بانتظار|y']]]
+    ];
+    const R = [['أ. نورة القحطاني', 'معلم', 'teacher'], ['الرياضيات: الدوال الأسية', 'دورة', 'book'], ['تحويلات بنكية للمراجعة', 'صفحة', 'approve']];
+    let n = 0;
+    const groups = q.length < 2 ? [] : G.map(([t, items]) => ({ t, items: items.filter((it) => (it[0] + it[1]).indexOf(q) >= 0).map(([l, m, ic, st]) => { const [s, c] = (st || '|').split('|'); n++; return { l, m, i: I[ic], s, sc: c, has: !!s, cur: n === 1 ? 'true' : 'false' }; }) })).filter((g) => g.items.length);
+    return {
+      palOpen: !!this.state.pal || this.scr() === 'search',
+      palQ: q, palShort: q.length === 1, palEmpty: q.length === 0, palNone: q.length >= 2 && groups.length === 0, palHas: groups.length > 0,
+      palGroups: groups,
+      palRecent: R.map(([l, m, ic]) => ({ l, m, i: I[ic] })),
+      palInput: (e) => this.setState({ q: e.target.value }),
+      closePal: () => this.setState({ pal: false, scr: this.scr() === 'search' ? 'overview' : this.state.scr })
+    };
+  }
+  hub(t, ph, L) {
+    const I = this.IC, q = (this.state.hq || '').trim();
+    const items = L.filter((x) => !q || (x[0] + ' ' + x[1]).indexOf(q) >= 0).map(([l, m, ic, bg, fg, c, fn], i) => ({ l, m, i: I[ic], bg, fg, c, fn: fn || (() => {}), d: this.dl(i, 0.08, 0.04) }));
+    return { hubT: t, hubPh: ph, hubN: this.A(L.length) + ' خدمات', hubQ: this.state.hq || '', hubIn: (e) => this.setState({ hq: e.target.value }), hubItems: items, hubNone: items.length === 0 };
+  }
+  shell(area, title, crumb, opt) {
+    const I = this.IC; opt = opt || {};
+    const NAV = [['overview', 'نظرة عامة', 'home', '', '٧'], ['students', 'الطلاب', 'users', 'الإدارة اليومية', ''], ['courses', 'الدورات', 'book', '', ''], ['teachers', 'المعلمين', 'teacher', '', '٣'],
+      ['people', 'الناس والرسائل', 'people', 'المراكز', '٣'], ['approvals', 'الطلبات والموافقات', 'approve', '', '٢٣'], ['content', 'المحتوى التعليمي', 'layers', '', ''], ['support', 'الدعم والأمان', 'shield', '', '٤'], ['account', 'حسابي', 'account', 'حسابي', '']];
+    const bmap = { overview: 'overview', students: 'students', courses: 'courses', teachers: 'teachers' };
+    const bcur = bmap[area] || 'more';
+    return Object.assign({
+      title, crumb: crumb || 'لوحة الإدارة', mtitle: opt.mtitle || title, mback: !!opt.mback, mbackFn: opt.mbackFn || (() => {}), mlogo: !opt.mback,
+      nav: NAV.map(([k, l, ic, g, c]) => ({ l, g, c, i: I[ic], cur: k === area ? 'page' : 'false' })),
+      recent: [['أ. نورة القحطاني', '#8B6CF0'], ['الرياضيات: الدوال الأسية', '#07B8EE'], ['تحويلات بنكية', '#FF9F5A']].map(([l, c]) => ({ l, c })),
+      tools: [['الطلبات والموافقات', 'inbox', '٢٣'], ['الإشعارات', 'bell', '٥'], ['المساعدة', 'help', '']].map(([l, ic, c]) => ({ l, c, i: I[ic] })),
+      mtools: [['البحث', 'search', '', () => this.setState({ pal: true })], ['الإشعارات', 'bell', '٥', () => {}]].map(([l, ic, c, fn]) => ({ l, c, i: I[ic], fn })),
+      bnav: [['overview', 'نظرة عامة', 'home', '٧'], ['students', 'الطلاب', 'users', ''], ['courses', 'الدورات', 'book', ''], ['teachers', 'المعلمين', 'teacher', ''], ['more', 'المزيد', 'grid', '']].map(([k, l, ic, c]) => ({ l, c, i: I[ic], cur: k === bcur ? 'page' : 'false' })), bnI: Math.max(0, ['overview', 'students', 'courses', 'teachers', 'more'].indexOf(bcur)), bnO: ['overview', 'students', 'courses', 'teachers', 'more'].indexOf(bcur) >= 0 ? 1 : 0,
+      openSearch: () => this.setState({ pal: true })
+    }, this.pal());
+  }
+
+  renderVals() {
+    const I = this.IC, A = (s) => this.A(s), st = this.state;
+    const s = this.scr('hub');
+    const GR = ['linear-gradient(150deg,#2FB5A8,#0B8FB8)', 'linear-gradient(150deg,#07B8EE,#1979C1)', 'linear-gradient(150deg,#8B6CF0,#5F3DC4)', 'linear-gradient(150deg,#FFB37A,#F2545B)', 'linear-gradient(150deg,#F6C453,#E89B00)'];
+    const H = {
+      hub: ['المحتوى التعليمي', 'الأقسام والقرآن والألعاب والمتجر والمساعدة', 'كل المحتوى اللي يشوفه الطالب يمر من هنا قبل ما يظهر.', [['٢٤', 'قسم'], ['٢', 'معلمين قرآن للمراجعة'], ['٤٨', 'لعبة منشورة'], ['٢', 'عناصر متجر للمراجعة']], []],
+      cats: ['الأقسام', '٢٤ قسم فيها ١٬٢٤٠ دورة', 'الأقسام ترتب الدورات في البحث والمتجر. ما تقدر تحذف قسم فيه دورات.', [['٢٤', 'قسم'], ['٢١', 'فيها دورات'], ['٣١٨', 'معلم'], ['٢٤٬٨١٠', 'طالب']], [['قسم جديد', 'plus', 'hot']]],
+      quran: ['معلمو القرآن', 'بطاقتين تنتظر التوثيق والنشر', 'تأكد من الإجازة وأهداف المعلم قبل ما تظهر بطاقته في قسم تحفيظ القرآن.', [['٢', 'بانتظار المراجعة'], ['٢٨', 'منشورة'], ['٢١', 'موثّق'], ['٥', 'مسودات']], []],
+      games: ['الألعاب التعليمية', '٤٨ لعبة منشورة في ٩ مواد', 'رتّب الألعاب، أخفِ أو انشر، وشوف معاينة حيّة لكل لعبة قبل ما توصل للطلاب.', [['٤٨', 'منشورة'], ['١٢٬٤٠٠', 'لعبة اليوم'], ['٧٤٪', 'نسبة الإنهاء'], ['٦', 'مخفية']], [['لعبة جديدة', 'plus', 'hot']]],
+      store: ['مراجعة المتجر', 'عنصرين من المعلمين ينتظرون النشر', 'راجع الغلاف وصفحات المعاينة والسعر. الرفض يرجّع العنصر مسودة للمعلم مع السبب.', [['٢', 'بانتظار المراجعة'], ['١٨٦', 'منشور'], ['٣٫٢', 'يوم متوسط المراجعة'], ['٩', 'رُفض هالشهر']], []],
+      help: ['إدارة المساعدة', 'صفحات المساعدة والجولات التعريفية', 'كل صفحة في التطبيق لها زر «i» يعرض محتواها من هنا، بالعربي والإنجليزي.', [['٨٦', 'صفحة'], ['١٤', 'مسار'], ['٩١٪', 'مترجمة'], ['٤', 'تحتاج تحديث']], [['تصدير دليل Word', 'download', '']]]
+    };
+    const [hk, hh, hp, hs, hb] = H[s] || H.hub;
+    const CT = [['الرياضيات', 'Mathematics', 'من الابتدائي للثانوي، مع القدرات الكمي', '214', '38', '6,120', 'chart', '#E2EFFA', '#135F9A'], ['الفيزياء', 'Physics', 'الميكانيكا والكهرباء للمرحلة الثانوية', '96', '17', '2,410', 'bolt', '#EFE9FD', '#5F3DC4'], ['الكيمياء', 'Chemistry', 'العامة والعضوية مع التجارب', '88', '15', '2,040', 'ai', '#FFE3E0', '#B23A2E'], ['اللغة العربية والنحو', 'Arabic', 'النحو والبلاغة والأدب', '120', '24', '3,300', 'lang', '#E0F4F1', '#0F7A6E'], ['الإنجليزي', 'English', 'من الصفر لاختبار STEP', '142', '29', '4,800', 'globe', '#FFF1E3', '#B45309'], ['القدرات والتحصيلي', 'Qudrat & Tahsili', 'تجهيز شامل لاختبارات قياس', '76', '21', '5,900', 'approve', '#FFF3C4', '#855700'], ['البرمجة', 'Programming', 'Python والويب للمبتدئين', '41', '9', '1,120', 'grid', '#EEF2F7', '#4A5878'], ['القرآن الكريم', 'Quran', 'التحفيظ والتجويد', '62', '28', '1,860', 'quran', '#DDF5E9', '#1D7A50']];
+    const q = (st.q || '').trim();
+    const sel = st.sel !== undefined ? st.sel : (s === 'cats' && this.props.open === '1' ? 0 : -1);
+    const C = CT[Math.max(sel, 0)];
+    const gsel = st.gsel !== undefined ? st.gsel : 0;
+    const pub = st.pub || [true, true, true, false, true, true];
+    const GM = [['تحدي الكسور', 'اختيار من متعدد، الرياضيات، سهل', '٢٬٤١٠', 'linear-gradient(140deg,#FF9F5A,#F2545B)', 'chart', 'كم يساوي ¾ + ⅛ ؟', ['⅞', '⅝', '1', '¼'], 0], ['سباق المعادلات', 'سباق وقت، الرياضيات، متوسط', '١٬٨٢٠', 'linear-gradient(140deg,#1979C1,#07B8EE)', 'bolt', 'حل المعادلة: ٢س + ٦ = ١٤', ['س = ٤', 'س = ٣', 'س = ١٠', 'س = ٨'], 0], ['أصوات الحروف', 'استماع، الإنجليزي، سهل', '٣٬٠٤٠', 'linear-gradient(140deg,#1D9A63,#2FB5A8)', 'lang', 'وش الكلمة اللي تبدأ بصوت /θ/ ؟', ['Think', 'Sink', 'Tink', 'Fink'], 0], ['ترتيب الآيات', 'سحب وإفلات، القرآن، متوسط', '٠', 'linear-gradient(140deg,#0F6E6D,#1D9A63)', 'quran', 'رتّب آيات سورة العصر', ['والعصر', 'إن الإنسان لفي خسر', 'إلا الذين آمنوا', '…'], 0], ['المرفوع والمنصوب', 'تصنيف، النحو، صعب', '٩٦٠', 'linear-gradient(140deg,#5F3DC4,#8B6CF0)', 'list', 'صنّف «الطالبُ» في: جاء الطالبُ', ['مرفوع', 'منصوب', 'مجرور', 'مجزوم'], 0], ['عناصر الجدول الدوري', 'مطابقة، الكيمياء، متوسط', '١٬١٤٠', 'linear-gradient(140deg,#B91C3C,#F2545B)', 'ai', 'وش رمز عنصر الصوديوم؟', ['Na', 'So', 'Sd', 'N'], 0]];
+    const G = GM[gsel];
+    const ssel = st.ssel !== undefined ? st.ssel : 0;
+    const SQ = [['ملخص التفاضل والتكامل', 'أ. ماجد الشهري، ملخص PDF', 'فيه معاينة', 'g', 'linear-gradient(140deg,#00205E,#1979C1)', 'ملخص', 'ملخص مركّز للتفاضل والتكامل للثالث الثانوي في ٤٢ صفحة، مع ١٢٠ مسألة محلولة خطوة بخطوة.', 'تفاضل.pdf، ٨٫٤ م.ب'], ['بنك أسئلة القدرات', 'أ. فهد العتيبي، كتاب EPUB', 'بلا معاينة', 'y', 'linear-gradient(140deg,#E89B00,#F6C453)', 'كتاب', '٦٠٠ سؤال قدرات كمي ولفظي مع شرح مختصر لكل إجابة.', 'قدرات.epub، ٣٫١ م.ب']];
+    const SI = SQ[ssel];
+    const hsel = st.hsel !== undefined ? st.hsel : 0;
+    const HP = [['صفحة الطلاب للمشرف', 'admin.students', 'مكتملة', 'g', 'users'], ['جدولي (الطالب)', 'student.schedule', 'مكتملة', 'g', 'cal'], ['محفظتي ونقاطي', 'student.wallet', 'تحتاج تحديث', 'y', 'money'], ['الحصة المباشرة', 'teacher.live', 'مكتملة', 'g', 'play'], ['ربط ولي الأمر', 'parent.link', 'ناقصة إنجليزي', 'y', 'link'], ['الشهادات', 'teacher.certificates', 'مكتملة', 'g', 'cert']];
+    const titles = { hub: 'المحتوى التعليمي', cats: 'الأقسام', quran: 'معلمو القرآن', games: 'الألعاب التعليمية', store: 'مراجعة المتجر', help: 'إدارة المساعدة' };
+    const det = s === 'cats' && sel >= 0;
+    const sh = this.shell('content', titles[s], s === 'hub' ? 'المراكز' : 'المحتوى التعليمي', { mtitle: det ? C[0] : titles[s], mback: s !== 'hub', mbackFn: det ? () => this.setState({ sel: -1 }) : this.go('hub') });
+    const role = st.hrole || 'all';
+    return Object.assign(sh, this.hub('خدمات المحتوى التعليمي', 'ابحث في المحتوى التعليمي', [
+      ['الأقسام', 'تصنيفات الدورات وترتيبها في البحث', 'tag', '#EFE9FD', '#5F3DC4', '', this.go('cats')],
+      ['معلمو القرآن', 'توثيق بطاقات معلمي التحفيظ ونشرها', 'quran', '#DDF5E9', '#1D7A50', '٢', this.go('quran')],
+      ['الألعاب التعليمية', 'محتوى الألعاب والأسئلة وترتيبها', 'game', '#E2EFFA', '#135F9A', '', this.go('games')],
+      ['مراجعة المتجر', 'كتب وملخصات المعلمين قبل النشر', 'store', '#FFF1E3', '#B45309', '٢', this.go('store')],
+      ['إدارة المساعدة', 'صفحات المساعدة والجولات التعريفية', 'help', '#E0F4F1', '#0F7A6E', '', this.go('help')],
+      ['دورات بانتظار النشر', 'راجع محتوى الدورة قبل يظهر', 'book', '#FFE3E0', '#B23A2E', '٢'],
+      ['المستندات المطلوبة', 'وش يرفع المعلم الجديد', 'file', '#EEF2F7', '#4A5878', ''],
+      ['مراجعة المعلمين', 'ملفات المعلمين الجدد', 'teacher', '#EFE9FD', '#5F3DC4', '٧']
+    ]), {
+      I, hk, hh, hp, stats: hs.map(([n, l]) => ({ n, l })), hbtn: hb.map(([l, ic, c]) => ({ l, i: I[ic], c })), heroCls: det ? 'ad-hdet' : '',
+      isHub: s === 'hub', isCats: s === 'cats', isQuran: s === 'quran', isGames: s === 'games', isStore: s === 'store', isHelp: s === 'help',
+      edits: [['نشرت لعبة «سباق المعادلات»', 'الألعاب، سلمان الدوسري', 'قبل ساعة', 'game', '#E2EFFA', '#135F9A'], ['وثّقت أ. سلطان القرني', 'معلمو القرآن، سلمان الدوسري', 'أمس', 'quran', '#DDF5E9', '#1D7A50'], ['عدّلت وصف قسم الفيزياء', 'الأقسام، نوف السالم', 'قبل يومين', 'tag', '#EFE9FD', '#5F3DC4'], ['رفضت «ملخص الأحياء»', 'المتجر، سلمان الدوسري', 'قبل ٣ أيام', 'store', '#FFE3E0', '#B23A2E']].map(([t, m, w, ic, bg, fg]) => ({ t, m, w, i: I[ic], bg, fg })),
+      q: st.q || '', qIn: (e) => this.setState({ q: e.target.value }),
+      cats: CT.map((r, i) => [r, i]).filter(([r]) => !q || (r[0] + r[1]).indexOf(q) >= 0).map(([r, i], k) => ({ n: r[0], en: r[1], m: r[2], c: A(r[3]), t: A(r[4]), s: A(r[5]), i: I[r[6]], bg: r[7], fg: r[8], d: this.dl(k, 0.1, 0.04), cls: i === sel ? 'sel' : '', open: () => this.setState({ sel: i }) })),
+      mdCls: sel >= 0 ? 'open' : '', open: sel >= 0, close: () => this.setState({ sel: -1 }),
+      pc: { n: C[0], en: C[1], m: C[2], c: A(C[3]), t: A(C[4]), s: A(C[5]), i: I[C[6]], bg: C[7], fg: C[8] },
+      ccourses: [['الدوال الأسية', 'أ. نورة القحطاني، ٣١٢ طالب', 'linear-gradient(140deg,#FF9F5A,#F2545B)'], ['تحصيلي رياضيات', 'أ. نورة القحطاني، ٥٤٠ طالب', 'linear-gradient(140deg,#00205E,#1979C1)'], ['التفاضل للثالث الثانوي', 'أ. نورة القحطاني، ٢٠٨ طالب', 'linear-gradient(140deg,#5F3DC4,#8B6CF0)']].map(([t, m, bg]) => ({ t, m, bg })),
+      qseg: [['p', 'بانتظار المراجعة ٢'], ['pub', 'منشورة'], ['d', 'مسودات']].map(([k, l]) => ({ l, on: k === (st.qseg || 'p') ? 'true' : 'false', fn: () => this.setState({ qseg: k }) })),
+      qt: [['أ. سلطان القرني', 'حفص عن عاصم، ١١ سنة تدريس', 'موثّق', 'g', 'إجازة بالسند المتصل في رواية حفص', ['تحفيظ للأطفال', 'تصحيح التلاوة', 'مراجعة الحفظ'], 'إزالة التوثيق'], ['أ. فاطمة الحارثي', 'للطالبات، ٨ سنوات تدريس', 'غير موثّق', 'y', 'إجازة في الجزرية ورواية حفص', ['تجويد للمبتدئات', 'تحفيظ جزء عمّ'], 'وثّقها'], ['أ. يوسف البلوي', 'قراءات، ١٥ سنة تدريس', 'غير موثّق', 'y', 'إجازة في القراءات العشر الصغرى', ['القراءات', 'إتقان المتون', 'الإجازة'], 'وثّقه']].map(([n, g, v, vc, ij, goals, vb], i) => ({ n, g, v, vc, ij, goals, vb, a: n.replace('أ. ', '')[0], bg: GR[i], d: this.dl(i, 0.1, 0.06) })),
+      games: GM.map((g, i) => ({ t: g[0], m: g[1], p: g[2], bg: g[3], i: I[g[4]], d: this.dl(i, 0.06), on: i === gsel ? 'on' : '', pub: pub[i] ? 'on' : '', ac: pub[i] ? 'true' : 'false', fn: () => this.setState({ gsel: i }), tog: (e) => { e.stopPropagation(); const p = pub.slice(); p[i] = !p[i]; this.setState({ pub: p }); } })),
+      gp: { t: G[0], q: G[5], s: pub[gsel] ? 'منشورة' : 'مخفية', sc: pub[gsel] ? 'g' : 'n', ans: G[6].map((t, i) => ({ t, c: i === G[7] ? 'ok' : '' })), f: [['النوع', G[1].split('، ')[0]], ['المادة', G[1].split('، ')[1]], ['الصعوبة', G[1].split('، ')[2]], ['نقاط الجولة', '٢٠٠'], ['الأسئلة', '٤٠ سؤال'], ['لُعبت', G[2] + ' مرة']].map(([l, v]) => ({ l, v })) },
+      sq: SQ.map((x, i) => ({ t: x[0], m: x[1], tag: x[2], tc: x[3], bg: x[4], d: this.dl(i, 0.08), on: i === ssel ? 'on' : '', fn: () => this.setState({ ssel: i, rej: false }) })),
+      si: { t: SI[0], by: SI[1].split('، ')[0], bg: SI[4], k: SI[5], d: SI[6], file: SI[7], pv: SI[2], pc: SI[3], f: [['النوع', SI[5]], ['القسم', ssel ? 'القدرات' : 'الرياضيات'], ['الصفحات', ssel ? '٢١٠' : '٤٢'], ['لمن', ssel ? 'الثالث الثانوي' : 'الثالث الثانوي، علمي'], ['السعر', ssel ? '٧٩ ريال' : '٤٥ ريال'], ['بالنقاط', ssel ? '٨٠٠ نقطة' : '٤٥٠ نقطة']].map(([l, v]) => ({ l, v })) },
+      pages: [1, 2, 3, 4, 5, 6], rej: !!st.rej, togRej: () => this.setState({ rej: !st.rej }), rejL: st.rej ? 'أرسل الرفض' : 'ارفض',
+      hseg: [['p', 'الصفحات'], ['f', 'المسارات']].map(([k, l]) => ({ l, on: k === (st.hseg || 'p') ? 'true' : 'false', fn: () => this.setState({ hseg: k }) })),
+      hrole: [['all', 'الكل'], ['s', 'طالب'], ['t', 'معلم'], ['a', 'مشرف']].map(([k, l]) => ({ l, on: k === role ? 'true' : 'false', fn: () => this.setState({ hrole: k }) })),
+      hpages: HP.map(([t, k, s2, sc, ic], i) => ({ t, k, s: s2, sc, i: I[ic], d: this.dl(i, 0.06), on: i === hsel ? 'on' : '', fn: () => this.setState({ hsel: i }) })),
+      hp1: { t: HP[hsel][0], m: 'من هنا تشوف كل الطلاب، تبحث وتفلتر، وتفتح أي طالب عشان تشوف دوراته واشتراكه وأجهزته.' },
+      hsecs: [['toolbar', 'شريط الأدوات', [['البحث', 'بالاسم أو البريد أو الجوال'], ['الفلاتر', 'الحالة والاشتراك وآخر دخول']]], ['panel', 'لوحة التفاصيل', [['الدورات', 'تسجيل وإزالة وإعادة تفعيل'], ['الأجهزة', 'حذف جهاز أو إعادة تعيين الكل']]]].map(([k, t, items]) => ({ k, t, items: items.map(([n, e]) => ({ n, e })) })),
+      tour: [['١', '#search', 'ابدأ من هنا، اكتب اسم الطالب'], ['٢', '#filters', 'الفلاتر تحصر النتائج'], ['٣', '#row', 'اضغط على أي صف عشان تفتح تفاصيله']].map(([n, k, t]) => ({ n, k, t }))
+    });
+  }
+}
+
+</script>
+</body>
+</html>

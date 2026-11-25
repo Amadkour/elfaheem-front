@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>صفحة المادة</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&amp;family=Aref+Ruqaa:wght@400;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./kit.css">
+<style>
+body{margin:0}
+/* SubjectProfile — THE page of a subject (area a-learn). Signature: M12 book wobble, M1 page flip on cards and lesson rows,
+   M2 ink ring on "مسارك" and on the live board graph, M8 on "ادخل الحصة", M14 sheets on phone, M2 path-draw in the notebook.
+   Math notation = Saudi textbook style: د(س)، ص = ٢<sup>س</sup>. */
+.sp{font-family:'Noto Naskh Arabic',serif;color:#0E2350;background:#F3F8FD;min-height:var(--vh,100vh);overflow-x:hidden}
+.sp button{font-family:inherit;line-height:1.3}
+.sp button:focus-visible,.sp a:focus-visible,.sp [tabindex]:focus-visible{outline:3px solid #07B8EE;outline-offset:2px}
+.sp-head{position:sticky;top:0;z-index:20;background:rgba(0,26,78,.92);backdrop-filter:blur(12px);color:#FFFFFF;border-bottom:1px solid rgba(255,255,255,.1)}
+.sp-head-in{display:flex;align-items:center;gap:14px;height:64px;padding:0 32px;box-sizing:border-box;max-width:1200px;margin:0 auto}
+.sp-logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:18px}
+.sp-dot{width:10px;height:10px;border-radius:50%;background:#FFFFFF;animation:spPing 1.4s ease-out infinite}
+@keyframes spPing{0%{box-shadow:0 0 0 0 rgba(255,255,255,.7)}100%{box-shadow:0 0 0 10px rgba(255,255,255,0)}}
+.sup{font-size:.62em;vertical-align:super;line-height:0}
+.pv-math{font-weight:700;font-size:22px;color:#0E2350;white-space:nowrap}
+.pv-math sup{font-size:.62em;line-height:0}
+/* panels (web: drawer from the left; phone: M14 peek sheet) */
+.pv-dim{position:fixed;inset:0;z-index:40;background:rgba(0,16,48,.5);backdrop-filter:blur(3px);animation:pvFade .3s ease both}
+@keyframes pvFade{from{opacity:0}to{opacity:1}}
+.pv{position:fixed;top:0;bottom:0;left:0;z-index:41;width:560px;max-width:100%;background:#FFFFFF;display:flex;flex-direction:column;box-shadow:24px 0 60px rgba(0,16,48,.35);animation:pvIn .45s cubic-bezier(.2,.8,.2,1) both}
+.pv.wide{width:820px}
+@keyframes pvIn{from{transform:translateX(-100%)}to{transform:none}}
+.pv-h{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #EDF2F8}
+.pv-h h2{margin:0;font-size:19px;font-weight:700;flex:1;line-height:1.4}
+.pv-x{width:44px;height:44px;border-radius:50%;border:1.5px solid #E2EAF4;background:#FFFFFF;color:#0E2350;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.pv-b{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+.pv-f{padding:14px 20px;border-top:1px solid #EDF2F8;display:flex;gap:10px;align-items:center}
+.pv-tabs{display:flex;gap:4px;padding:4px;border-radius:22px;background:#EEF4FA;flex-shrink:0}
+.pv-tab{flex:1;height:38px;border:none;border-radius:19px;background:transparent;color:#4A5878;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;transition:color .2s}
+.pv-tab[aria-selected="true"]{color:#00205E}
+.pv-in{animation:mWipe .55s cubic-bezier(.6,0,.2,1) backwards}
+.pv-video{position:relative;aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:radial-gradient(120% 140% at 80% 0%,#FF8A4C,#7A2E5E 55%,#001440);color:#FFFFFF;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pv-board{position:absolute;inset:18px 18px 52px;border-radius:12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.pv-board .pv-bt{font-family:'Aref Ruqaa',serif;font-size:20px}
+.pv-board .pv-math{color:#FFFFFF;font-size:26px}
+.pv-pbtn{position:relative;width:64px;height:64px;border-radius:50%;background:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 10px rgba(255,255,255,.15)}
+.pv-ctrl{position:absolute;left:14px;right:14px;bottom:10px;display:flex;align-items:center;gap:10px;font-size:12px;font-weight:600}
+.pv-bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.25);overflow:hidden}
+.pv-bar i{display:block;height:100%;width:35%;background:#FFC53D;border-radius:3px}
+.pv-chap{display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 12px;border-radius:14px;background:#F8FBFE;border:1.5px solid #E2EAF4;font-size:14px;font-weight:600}
+.pv-chap > span:first-child{width:28px;height:28px;border-radius:50%;background:#FFE8D6;color:#A3480A;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.pv-chap.on{border-color:#FF9F5A;background:#FFF4EC}
+.pv-chap small{margin-right:auto;color:#4A5878;font-weight:600;font-size:12.5px}
+.pv-page{position:relative;border-radius:14px;background:#FFFDF8;border:1px solid #EFE5D2;box-shadow:0 14px 30px rgba(90,55,20,.12);padding:26px 24px;display:flex;flex-direction:column;gap:12px;min-height:260px}
+.pv-page h3{margin:0;font-family:'Aref Ruqaa',serif;font-size:26px;color:#C2410C}
+.pv-page p{margin:0;font-size:15px;line-height:1.9}
+.pv-eq{align-self:center;padding:8px 22px;border-radius:12px;background:#FFF4E0;color:#8A4310 !important}
+.pv-pnav{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13.5px;color:#4A5878;font-weight:600}
+.pv-pnav button{height:44px;padding:0 16px;border-radius:22px;border:1.5px solid #E2EAF4;background:#FFFFFF;color:#0E2350;font-weight:700;cursor:pointer}
+.pv-imgs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pv-img{border-radius:16px;overflow:hidden;background:#F8FBFE;border:1.5px solid #E2EAF4;display:flex;flex-direction:column}
+.pv-img > span:first-child{aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#FFFFFF}
+.pv-img > span:last-child{padding:8px 12px;font-size:13px;font-weight:600}
+.pv-q{border-radius:16px;border:1.5px solid #E2EAF4;padding:14px;display:flex;flex-direction:column;gap:10px}
+.pv-q b{font-size:15px}
+.pv-opts{display:flex;flex-wrap:wrap;gap:8px}
+.pv-opt{min-width:56px;height:44px;padding:0 16px;border-radius:22px;border:1.5px solid #D5E3F2;background:#FFFFFF;font-size:15px;font-weight:700;color:#0E2350;cursor:pointer}
+.pv-opt.ok{border-color:#19C29B;background:#D9F7EE;color:#0C6B55;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) .4s backwards}
+/* chat bubbles: M3 pop from the tail */
+.pv-msgs{display:flex;flex-direction:column;gap:10px}
+.pv-msg{max-width:80%;padding:10px 14px;border-radius:18px;font-size:14.5px;line-height:1.75;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d)}
+.pv-msg.t{align-self:flex-start;background:#F1F5FA;border-top-right-radius:6px;transform-origin:100% 0}
+.pv-msg.me{align-self:flex-end;background:linear-gradient(120deg,#FF8A4C,#F2545B);color:#FFFFFF;border-top-left-radius:6px;transform-origin:0 0}
+.pv-msg.bot{align-self:flex-start;background:#ECE5FF;color:#2A1A6E;border-top-right-radius:6px;transform-origin:100% 0;display:flex;flex-direction:column;gap:8px}
+.pv-msg small{display:block;font-size:11px;opacity:.7;margin-top:2px}
+.pv-day{align-self:center;font-size:12px;color:#7C8AA5;font-weight:600}
+.pv-input{flex:1;min-width:0;height:48px;border-radius:24px;border:1.5px solid #E2EAF4;background:#F8FBFE;display:flex;align-items:center;padding:0 16px;font-size:14px;color:#7C8AA5}
+.pv-send{width:48px;height:48px;border-radius:50%;border:none;background:linear-gradient(120deg,#FF8A4C,#F2545B);color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.pv-send[aria-disabled="true"]{background:#C9D6E6;cursor:not-allowed}
+/* bot */
+.pv-bh{display:flex;align-items:center;gap:14px;padding:14px;border-radius:20px;background:linear-gradient(120deg,#ECE5FF,#FFFFFF)}
+.pv-bh > span:last-child{flex:1;min-width:0}
+.pv-bot{width:60px;height:60px;flex-shrink:0;display:block}
+.pv-bh b{display:block;font-size:17px;line-height:1.5}
+.pv-bh small{font-size:13px;color:#4A5878}
+.pv-steps{display:flex;flex-wrap:wrap;gap:6px}
+.pv-steps span{height:34px;padding:0 12px;border-radius:12px;background:#FFFFFF;color:#4A28B8;font-weight:700;font-size:15px;display:inline-flex;align-items:center;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:calc(.7s + var(--i,0)*90ms)}
+.pv-steps sup{font-size:.75em;line-height:0;margin-left:3px}
+.pv-msg sup{font-size:.8em;line-height:0}
+.pv-off{display:flex;gap:12px;align-items:flex-start;border-radius:18px;padding:14px 16px;background:#FFF4EA;border:1.5px solid #FFD9BC;color:#8A4310;font-size:14px;line-height:1.7}
+.pv-sugg{display:flex;flex-wrap:wrap;gap:8px}
+.pv-sugg button{height:40px;padding:0 14px;border-radius:20px;border:1.5px solid #D5C8FA;background:#FFFFFF;color:#4A28B8;display:flex;align-items:center;font-size:13.5px;font-weight:700;cursor:pointer}
+.pv-sugg.off button{border-style:dashed;border-color:#D5E3F2;color:#9AA8BF;cursor:default}
+/* notebook */
+.pv-add{height:48px;border-radius:24px;border:1.5px dashed #FFB37A;background:#FFF7F0;color:#A3480A;font-size:15px;font-weight:700;cursor:pointer}
+.pv-add.pen{display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(120deg,#FFF4EA,#FFE8D6);border-style:solid}
+.nb-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border-radius:16px;background:#F1F5FA}
+.nb-tools button{height:36px;padding:0 12px;border-radius:18px;border:1.5px solid #E2EAF4;background:#FFFFFF;color:#0E2350;font-size:13px;font-weight:700;cursor:pointer}
+.nb-tools button.on{background:#00205E;border-color:#00205E;color:#FFFFFF}
+.nb-tools .nb-dot{width:32px;height:32px;padding:0;border-radius:50%;background:var(--c);border:3px solid #FFFFFF;box-shadow:0 0 0 1.5px #D5E3F2}
+.nb-tools .nb-dot.on{background:var(--c);box-shadow:0 0 0 2.5px var(--c)}
+.nb-sep{width:1px;height:24px;background:#D5E3F2}
+.nb-typed{display:inline-block;max-width:100%;clip-path:inset(0 0 0 0);animation:nbType 2.6s steps(26,end) .4s backwards}
+@keyframes nbType{from{clip-path:inset(0 0 0 100%)}to{clip-path:inset(0 0 0 0)}}
+.nb-caret{display:inline-block;width:2px;height:22px;background:#F2545B;vertical-align:middle;margin-right:2px;animation:nbBlink 1s steps(1) infinite}
+@keyframes nbBlink{50%{opacity:0}}
+.nb-canvas{position:relative;min-height:330px}
+.nb-ink{display:block;margin-top:4px}
+.nb-s{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.nb-t{animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d);transform-box:fill-box;transform-origin:50% 50%}
+.nb-finger{position:absolute;width:34px;height:34px;border-radius:50%;background:rgba(14,35,80,.18);border:2px solid #FFFFFF;box-shadow:0 4px 12px rgba(0,0,0,.25);animation:nbFinger 4.6s ease-in-out .2s both}
+@keyframes nbFinger{0%{top:82%;left:88%;opacity:1}20%{top:20%;left:88%}45%{top:18%;left:14%}60%{top:30%;left:22%}78%{top:44%;left:48%}100%{top:52%;left:64%;opacity:0}}
+.pv-nb{position:relative;border-radius:16px;background:#FFFDF6;background-image:repeating-linear-gradient(#FFFDF6 0,#FFFDF6 33px,#D9E6F2 33px,#D9E6F2 34px);border:1px solid #EFE5D2;box-shadow:0 14px 30px rgba(90,55,20,.12);padding:18px 52px 18px 20px;line-height:34px}
+.pv-nb::before{content:"";position:absolute;top:0;bottom:0;right:38px;width:2px;background:#F2A3A3}
+.pv-nb h3{margin:0;font-family:'Aref Ruqaa',serif;font-size:24px;line-height:34px;color:#C2410C}
+.pv-nb p{margin:0;font-size:15px}
+.pv-nb small{display:block;font-size:12px;color:#9AA8BF;line-height:34px}
+.pv-hl{background:linear-gradient(transparent 55%,#FFE08A 55%)}
+.pv-sticky{position:absolute;left:16px;top:70px;width:150px;padding:12px;background:#FFE88A;transform:rotate(-4deg);box-shadow:0 10px 18px rgba(120,90,0,.2);font-size:13px;line-height:1.6;font-weight:600;color:#5C4600}
+.pv-sticky.m-slap{--d:.5s}
+/* calendar */
+.pv-calh{display:flex;align-items:center;justify-content:space-between}
+.pv-calh b{font-size:18px}
+.pv-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.pv-dn{font-size:12px;font-weight:700;color:#7C8AA5;text-align:center;padding-bottom:4px}
+.pv-dc{min-height:62px;border-radius:12px;background:#F8FBFE;border:1.5px solid #EDF2F8;padding:6px;display:flex;flex-direction:column;gap:3px;font-size:13px;font-weight:700;font-family:inherit;color:#0E2350;text-align:right;cursor:pointer;animation:mPop .4s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d)}
+.pv-dc.mute{opacity:.35;cursor:default}
+.pv-dc.today{background:#FFF4EC}
+.pv-dc.sel{border-color:#FF8A4C;box-shadow:0 0 0 2px rgba(255,138,76,.25)}
+.pv-ev{height:16px;border-radius:5px;font-size:10px;font-weight:700;color:#FFFFFF;display:flex;align-items:center;padding:0 5px;overflow:hidden;white-space:nowrap}
+.pv-dl{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:16px;background:#F8FBFE;border:1.5px solid #E2EAF4}
+.pv-dl > b{font-size:14.5px}
+.pv-di{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;animation:mWipe .55s cubic-bezier(.6,0,.2,1) backwards}
+.pv-di i{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.pv-di small{margin-right:auto;color:#4A5878;font-size:13px;font-weight:700}
+.pv-tog{display:flex;align-items:center;gap:10px;height:44px;padding:0 6px 0 14px;border-radius:22px;border:1.5px solid #E2EAF4;background:#FFFFFF;font-size:14px;font-weight:700;color:#0E2350;cursor:pointer;align-self:flex-start}
+.pv-sw{width:44px;height:26px;border-radius:13px;background:#D5E3F2;position:relative;transition:background .25s}
+.pv-sw i{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:right .25s}
+.pv-tog[aria-pressed="true"] .pv-sw{background:#FF8A4C}
+.pv-tog[aria-pressed="true"] .pv-sw i{right:21px}
+.pv-leg{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;font-weight:600;color:#4A5878}
+.pv-leg span{display:flex;align-items:center;gap:6px}
+.pv-leg i{width:10px;height:10px;border-radius:3px}
+/* live room: board = real lesson content (graph of ص = ٢^س drawn with M2) */
+.pv-room{position:relative;border-radius:20px;overflow:hidden;background:radial-gradient(120% 120% at 70% 0%,#173A75,#0B1530);aspect-ratio:16/10;flex-shrink:0}
+.pv-wb{position:absolute;inset:14px;border-radius:14px;background:#FFFFFF;padding:16px 18px 14px;display:flex;flex-direction:column;gap:6px}
+.pv-wbh{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding-left:150px}
+.pv-wbh b{font-family:'Aref Ruqaa',serif;font-size:22px;color:#C2410C;font-weight:700}
+.pv-graph{flex:1;min-height:0;width:100%}
+.pv-graph .ax{stroke:#0E2350;stroke-width:2;fill:none}
+.pv-graph .gr{stroke:#E6EEF6;stroke-width:1}
+.pv-graph .cv{fill:none;stroke:#F2545B;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.pv-graph .pt{fill:#1979C1;animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d);transform-box:fill-box;transform-origin:50% 50%}
+.pv-graph text{font-family:'Noto Naskh Arabic',serif;font-weight:700;fill:#0E2350;direction:ltr;unicode-bidi:bidi-override}
+.pv-wbf{display:flex;align-items:center;gap:10px}
+.pv-wbf .pv-math{font-size:18px}
+.pv-cam{position:absolute;left:24px;top:24px;width:130px;aspect-ratio:4/3;border-radius:12px;background:linear-gradient(160deg,#FFB37A,#F2545B);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#FFFFFF;font-weight:700;font-size:12px;box-shadow:0 0 0 3px #19C29B,0 10px 20px rgba(0,0,0,.25);z-index:2;text-align:center;line-height:1.4}
+.pv-cam b{font-size:24px}
+.pv-livetag{align-self:center;height:28px;padding:0 10px;border-radius:14px;background:#F2545B;color:#FFFFFF;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
+.pv-fsb{width:44px;height:44px;border-radius:12px;border:none;background:rgba(14,35,80,.08);color:#0E2350;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-left:auto;order:-1}
+.pv-video .pv-fsb{background:rgba(255,255,255,.16);color:#FFFFFF;margin:0;order:0}
+.pv-who{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700}
+.pv-who .k-av{width:36px;height:36px;font-size:14px;box-shadow:0 0 0 2px #19C29B}
+.pv-ctl{display:flex;justify-content:center;gap:10px}
+.pv-ctl button{width:52px;height:52px;border-radius:50%;border:none;background:#EEF4FA;color:#0E2350;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.pv-ctl button.hand{background:#FFF4EA;color:#C2410C}
+.pv-ctl button.end{width:auto;padding:0 20px;border-radius:26px;background:#FFE3E0;color:#B23A2E;font-weight:700;font-size:14px}
+/* full screen */
+.fs{position:fixed;inset:0;z-index:60;background:#000814;display:flex;flex-direction:column;animation:fsIn .45s cubic-bezier(.2,.8,.2,1) both}
+@keyframes fsIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+.fs-video{position:relative;flex:1;min-height:0;background:radial-gradient(120% 140% at 80% 0%,#FF8A4C,#7A2E5E 50%,#001440);display:flex;align-items:center;justify-content:center;color:#FFFFFF;overflow:hidden}
+.fs-board{position:absolute;inset:7% 6% 9%;border-radius:20px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);padding:4%;display:flex;flex-direction:column;gap:22px}
+.fs-board .pv-math{color:#FFFFFF;font-size:46px}
+.fs-wb{position:absolute;inset:20px 20px 20px 20px;border-radius:18px;background:#FFFFFF;padding:22px 28px;display:flex;flex-direction:column;gap:8px}
+.fs-wb .pv-wbh{padding-left:200px}
+.fs-wb .pv-wbh b{font-size:34px}
+.fs-wb .pv-math{font-size:30px}
+.fs-play{position:relative;width:96px;height:96px;border-radius:50%;background:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 14px rgba(255,255,255,.15)}
+.fs-bar{display:flex;align-items:center;gap:14px;padding:14px 28px;background:#0B1530;color:#FFFFFF;font-size:14px;font-weight:600}
+.fs-bar .pv-ctl button{width:48px;height:48px}
+.fs-bar .pv-ctl button.end{width:auto;padding:0 18px;border-radius:24px;white-space:nowrap}
+.fs-t{font-weight:700;margin-left:12px}
+.fs-sp{height:30px;padding:0 10px;border-radius:15px;background:rgba(255,255,255,.12);display:flex;align-items:center}
+.fs-x{position:absolute;top:18px;left:18px;z-index:3;height:44px;padding:0 16px;border-radius:22px;border:1px solid rgba(255,255,255,.25);background:rgba(0,8,20,.55);backdrop-filter:blur(8px);color:#FFFFFF;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer}
+.fs-min{height:44px;padding:0 16px;border-radius:22px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#FFFFFF;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer}
+.fs .pv-cam{width:190px;left:34px;top:34px}
+
+/* ---------- subject / course profile (shared with LandingW course page: see pf_snippet.html) ---------- */
+.pf{display:flex;flex-direction:column;color:#0E2350}
+.pf-hero{position:relative;overflow:hidden;background:radial-gradient(120% 160% at 85% -30%,var(--hero-a,#1979C1) 0%,var(--hero-b,#00205E) 45%,#001440 100%);color:#FFFFFF;padding:22px 0 118px}
+/* M16 hero shapes (circle, squircle, plus) replace the blurred glows */
+.pf-shapes{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.pf-shapes i{position:absolute;display:block}
+.pf-shapes i:nth-child(1){width:300px;height:300px;border-radius:50%;background:var(--k-acc2,#07B8EE);opacity:.22;top:-150px;left:4%}
+.pf-shapes i:nth-child(2){width:120px;height:120px;border-radius:40px;background:var(--s-sun,#FFC53D);opacity:.1;top:-50px;left:26%}
+.pf-shapes i:nth-child(3){width:70px;height:70px;opacity:.13;top:40px;left:46%;background:linear-gradient(#FFFFFF,#FFFFFF) center/100% 20px no-repeat,linear-gradient(#FFFFFF,#FFFFFF) center/20px 100% no-repeat;border-radius:6px;transform:rotate(18deg)}
+.pf-in{position:relative;max-width:1200px;margin:0 auto;padding:0 32px;box-sizing:border-box}
+.pf-back{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 16px 0 12px;border-radius:22px;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#FFFFFF;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.pf-top{display:flex;align-items:center;gap:56px;margin-top:22px}
+/* big spiral-bound book: hover (or tap) opens it on the subject's numbers; enters with M12 wobble */
+.pf-stage{position:relative;flex-shrink:0;width:620px;height:470px;display:flex;flex-direction:column;align-items:center;justify-content:center;perspective:2200px;cursor:pointer;outline:none;margin:-10px -80px -10px 0}
+.pf-halo{position:absolute;top:40px;width:420px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(255,197,61,.38),rgba(255,197,61,0) 65%);filter:blur(14px);opacity:.6;transition:transform 1s,opacity 1s}
+.pf-book{position:relative;width:290px;height:400px;transform-style:preserve-3d;transform:rotateY(-20deg) rotateX(5deg);transition:transform 1.1s cubic-bezier(.2,.8,.2,1)}
+.pf-pg,.pf-cv-f,.pf-cv-b{position:absolute;inset:0;box-sizing:border-box}
+.pf-pg{border-radius:4px 14px 14px 4px;background-color:#FFFDF8;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 25px,#E4ECF2 25px,#E4ECF2 26px);box-shadow:-2px 2px 0 #EFE8DA,-4px 4px 0 #E5DCCB,-6px 6px 0 #DBD0BC,0 30px 40px -12px rgba(0,0,0,.55);padding:26px 34px 22px 20px;display:flex;flex-direction:column;gap:14px;color:#0E2350;transform:translateZ(0)}
+.pf-stats{flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.pf-st{border-radius:16px;padding:12px;display:flex;flex-direction:column;justify-content:center;gap:4px;line-height:1.2}
+.pf-st b{font-size:30px;font-weight:700}
+.pf-st small{font-size:12.5px;color:#4A5878;font-weight:600}
+.pf-pgf{font-size:12.5px;color:#7C8AA5;font-weight:600}
+.pf-cv{position:absolute;inset:0;transform-style:preserve-3d;transform-origin:100% 50%;transform:translateZ(4px);transition:transform 1.15s cubic-bezier(.45,0,.2,1)}
+.pf-cv-f{border-radius:16px 6px 6px 16px;backface-visibility:hidden;color:#FFFFFF;padding:24px 40px 22px 22px;display:flex;flex-direction:column;gap:6px;overflow:hidden;box-shadow:0 0 0 2px rgba(255,255,255,.35) inset,0 30px 40px -12px rgba(0,0,0,.55)}
+.pf-cv-f::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 70% at 0% 100%,rgba(0,0,0,.28),transparent 60%),repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 2px,transparent 2px 14px);pointer-events:none}
+.pf-cv-b{border-radius:6px 16px 16px 6px;transform:rotateY(180deg);backface-visibility:hidden;background-color:#FFF8F2;background-image:radial-gradient(rgba(242,84,91,.12) 1px,transparent 1.2px);background-size:12px 12px;box-shadow:inset -12px 0 14px -6px rgba(120,40,30,.22);padding:26px 22px 22px 34px;display:flex;flex-direction:column;gap:12px;color:#0E2350}
+.pf-ribbon{position:absolute;top:-4px;left:26px;width:18px;height:64px;background:linear-gradient(90deg,#E8A400,#FFD66B 50%,#E8A400);clip-path:polygon(0 0,100% 0,100% 100%,50% calc(100% - 8px),0 100%);z-index:1}
+.pf-brand{position:relative;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;opacity:.95}
+.pf-cvk{position:relative;font-size:13px;font-weight:700;color:#FFF1C9}
+.pf-cvt{position:relative;font-size:28px;font-weight:700;line-height:1.35;text-shadow:0 2px 10px rgba(0,0,0,.3)}
+.pf-cvs{position:relative;font-size:13.5px;opacity:.9}
+.pf-cvb{position:relative;margin-top:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700}
+.pf-open{height:28px;padding:0 11px;border-radius:14px;background:#FFFFFF;color:#A8381C;display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;transition:opacity .3s}
+.pf-ring{display:flex;align-items:center;gap:12px;border-radius:16px;background:#FFFFFF;padding:12px}
+.pf-toc{display:flex;gap:10px;font-size:13.5px;font-weight:600;line-height:1.5;border-bottom:1px dashed #F3CFC4;padding-bottom:6px}
+.pf-toc b{color:#C2410C}
+.pf-coil{position:absolute;top:14px;bottom:14px;right:-13px;width:26px;display:flex;flex-direction:column;justify-content:space-between;transform:translateZ(6px);pointer-events:none}
+.pf-coil i{display:block;height:13px;border-radius:8px;border:3px solid transparent;background:linear-gradient(#E9EEF5,#9AA6B8) border-box;-webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;box-shadow:0 2px 3px rgba(0,0,0,.35)}
+.pf-coil::before{content:"";position:absolute;top:0;bottom:0;right:10px;width:6px;background:repeating-linear-gradient(to bottom,rgba(0,16,48,.55) 0 7px,transparent 7px 26.6px);border-radius:3px}
+.pf-shadow{position:absolute;bottom:26px;width:280px;height:26px;border-radius:50%;background:rgba(0,0,0,.45);filter:blur(12px);transition:width 1s,opacity 1s}
+.pf-hint{position:absolute;bottom:0;height:32px;padding:0 14px;border-radius:16px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;white-space:nowrap;transition:opacity .4s}
+.pf-hint.m-pop{--d:.9s}
+.pf-stage.open .pf-book,.pf-stage:focus-visible .pf-book{transform:translateX(-145px) rotateY(0) rotateX(0)}
+.pf-stage.open .pf-cv,.pf-stage:focus-visible .pf-cv{transform:translateZ(4px) rotateY(180deg)}
+.pf-stage.open .pf-halo{transform:scale(1.3);opacity:1}
+.pf-stage.open .pf-shadow{width:560px;opacity:.7}
+.pf-stage.open .pf-hint,.pf-stage.open .pf-open{opacity:0}
+.pf-stage.open .pf-st{animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d)}
+@media (hover:hover){
+.pf-stage:hover .pf-book{transform:translateX(-145px) rotateY(0) rotateX(0)}
+.pf-stage:hover .pf-cv{transform:translateZ(4px) rotateY(180deg)}
+.pf-stage:hover .pf-halo{transform:scale(1.3);opacity:1}
+.pf-stage:hover .pf-shadow{width:560px;opacity:.7}
+.pf-stage:hover .pf-hint,.pf-stage:hover .pf-open{opacity:0}
+.pf-stage:hover .pf-st{animation:mPop .45s cubic-bezier(.3,1.4,.5,1) backwards;animation-delay:var(--d)}
+}
+.pf-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px}
+.pf-tags{display:flex;flex-wrap:wrap;gap:8px}
+.pf-tag{height:28px;padding:0 12px;border-radius:14px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;font-size:12.5px;font-weight:600}
+.pf-badge{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:14px;background:rgba(25,194,155,.2);border:1px solid rgba(25,194,155,.6);color:#A6F0DA;font-size:12.5px;font-weight:700}
+.pf-h1{margin:0;font-family:'Noto Naskh Arabic',serif;font-size:40px;font-weight:700;line-height:1.4}
+.pf-who{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pf-av{width:46px;height:46px;border-radius:50%;flex-shrink:0;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;box-shadow:0 0 0 3px rgba(255,255,255,.25)}
+.pf-mode:empty{display:none}
+.pf-mode{height:28px;padding:0 12px;border-radius:14px;background:rgba(255,197,61,.2);color:#FFE29A;display:flex;align-items:center;font-size:12.5px;font-weight:700}
+/* two hero chips only (SUB-09) */
+.pf-hcs{display:flex;flex-wrap:wrap;gap:8px}
+.pf-hc{height:36px;padding:0 14px;border-radius:18px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:700}
+.pf-hc svg{color:#FFC53D}
+.pf-body{position:relative;z-index:2;max-width:1200px;width:100%;margin:-84px auto 0;padding:0 32px 56px;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:22px;align-items:start}
+.pf-col{display:flex;flex-direction:column;gap:18px;min-width:0}
+.pf-card{background:#FFFFFF;border-radius:24px;padding:22px;box-shadow:0 22px 46px -18px rgba(0,20,64,.3);display:flex;flex-direction:column;gap:14px}
+.pf-h2{margin:0;font-size:20px;font-weight:700;line-height:1.45}
+.pf-h3{font-size:15.5px;font-weight:700}
+.pf-buy{flex-direction:row;flex-wrap:wrap;align-items:center;gap:14px 22px}
+.pf-buy-p{display:flex;flex-direction:column;line-height:1.35}
+.pf-price{font-size:30px;font-weight:700;color:#00205E}
+.pf-buy-a{display:flex;flex-wrap:wrap;gap:10px;margin-right:auto}
+.pf-sub{position:relative;height:54px;padding:0 26px;border:none;border-radius:27px;background:linear-gradient(120deg,#FF9F5A,#F2545B);color:#FFFFFF;font-family:inherit;font-size:16.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;box-shadow:0 12px 24px -8px rgba(242,84,91,.55);transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.pf-sub:active,.pf-ghost:active{transform:scale(.94,1.04)}
+.pf-ghost{height:54px;padding:0 18px;border-radius:27px;border:1.5px solid #D5E3F2;background:#FFFFFF;color:#A3480A;font-family:inherit;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.pf-play{position:relative;aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:linear-gradient(135deg,#7A2E5E,#F2545B 60%,#FF9F5A);display:flex;align-items:center;justify-content:center}
+.pf-playb{width:72px;height:72px;border-radius:50%;background:#FFFFFF;display:flex;align-items:center;justify-content:center}
+.pf-play-t{position:absolute;top:14px;right:16px;color:#FFFFFF;font-size:14px;font-weight:700}
+.pf-prog{position:absolute;left:16px;right:16px;bottom:14px;height:5px;border-radius:3px;background:rgba(255,255,255,.25);overflow:hidden}
+.pf-prog span{display:block;height:100%;width:100%;background:#FFC53D;transform-origin:100% 50%;animation:pfProg 12s linear both}
+@keyframes pfProg{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+/* next / live class card */
+.pf-next{background:linear-gradient(150deg,#FFFFFF 55%,#FFF1E6);border:1.5px solid #FFD9BC}
+.pf-live{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#A3480A}
+.pf-live i{width:9px;height:9px;border-radius:50%;background:#FF9F5A}
+.pf-wait{height:50px;border-radius:25px;border:1.5px dashed #E8C7B0;background:#FFFFFF;color:#A08A7C;font-family:inherit;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;cursor:not-allowed}
+.pf-wait.on{border-style:solid;border-color:#D5E3F2;color:#A3480A;cursor:pointer}
+.pf-note{font-size:13px;color:#4A5878;text-align:center;font-weight:600}
+.pf-lv{background:linear-gradient(150deg,#FFFFFF 45%,#FFE9E6);border:1.5px solid #FFC9C2}
+.pf-lv-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pf-lvtag{height:28px;padding:0 12px;border-radius:14px;background:#F2545B;color:#FFFFFF;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700}
+.pf-lvtag i{width:8px;height:8px;border-radius:50%;background:#FFFFFF;animation:spPing 1.4s ease-out infinite}
+.pf-lv-top small{font-size:13px;color:#4A5878;font-weight:600}
+.pf-lv-row{display:flex;align-items:center;gap:14px}
+.pf-lv-row .pf-av{width:56px;height:56px;font-size:21px;box-shadow:0 0 0 3px #FFFFFF,0 0 0 5px #F2545B}
+.pf-lv-row b{display:block;font-size:20px;line-height:1.45}
+.pf-lv-row small{font-size:13.5px;color:#4A5878;font-weight:600}
+.k .pf-go2{height:54px;font-size:17px;width:100%;--halo:#F2545B}
+/* M8 on a wide pill: the halo grows mostly in height so it reads as a ring, not a slab */
+.k .pf-go2.m-breathe{animation-name:pfBreathe}
+.k .pf-go2.m-breathe::before,.k .pf-go2.m-breathe::after{animation-name:pfHalo}
+@keyframes pfBreathe{50%{transform:scale(1.015,1.04)}}
+@keyframes pfHalo{0%{opacity:.55;transform:none}100%{opacity:0;transform:scale(1.04,1.45)}}
+/* path: M1 rows + M2 ring */
+.pf-ph{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pf-pring{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#A3480A}
+.pf-pring svg{width:38px;height:38px;transform:rotate(-90deg)}
+.pf-pring circle{fill:none;stroke-width:5}
+.pf-step{display:flex;align-items:center;gap:14px;min-height:64px;padding:10px 14px;border-radius:18px;background:#F8FBFE;border:1.5px solid #E2EAF4;color:#0E2350;text-decoration:none;transition:transform .2s,box-shadow .2s}
+.pf-step:hover{transform:translateX(-4px);box-shadow:0 10px 22px rgba(242,84,91,.1)}
+.pf-step.cur{background:linear-gradient(120deg,#FFFFFF,#FFF1E6);border-color:#FFB37A}
+.pf-step.now{background:linear-gradient(120deg,#FFFFFF,#FFECEA);border-color:#FFB1AA}
+.pf-step.done .pf-num{background:#D9F7EE !important;color:#0C6B55 !important}
+.pf-num{width:38px;height:38px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.pf-chip{flex-shrink:0;height:30px;padding:0 12px;border-radius:15px;background:#D9F7EE;color:#0C6B55;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700}
+.pf-chip.r{background:#FFE3E0;color:#B23A2E}
+.pf-chip.r i{width:7px;height:7px;border-radius:50%;background:#F2545B}
+.pf-go{flex-shrink:0;height:34px;padding:0 14px;border-radius:17px;background:linear-gradient(120deg,#FF9F5A,#F2545B);color:#FFFFFF;display:flex;align-items:center;font-size:13px;font-weight:700}
+.pf-out{height:48px;border-radius:24px;border:1.5px solid #D5E3F2;background:#FFFFFF;color:#A3480A;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
+.pf-inc{display:flex;align-items:center;gap:10px;font-size:14px;line-height:1.5}
+.pf-tool{display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 12px;border-radius:16px;background:#F8FBFE;font-size:14.5px;font-weight:700;color:#0E2350;border:1.5px solid #E2EAF4;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.pf-tool:hover{transform:translateX(-4px);box-shadow:0 10px 22px rgba(242,84,91,.1)}
+.pf-tool > span:first-child{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pf-tool small{margin-right:auto;font-size:12.5px;color:#4A5878;font-weight:600}
+.pf-toast{position:fixed;top:80px;left:50%;z-index:30;transform:translateX(-50%);display:flex;align-items:center;gap:10px;height:46px;padding:0 18px;border-radius:23px;background:#0E2350;color:#FFFFFF;font-size:14px;font-weight:700;box-shadow:0 14px 30px rgba(0,0,0,.3);animation:pfToast 4.5s ease both;white-space:nowrap;pointer-events:none}
+@keyframes pfToast{0%{opacity:0;transform:translate(-50%,-14px)}10%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-14px);visibility:hidden}}
+.pf-bar{display:none}
+@media (max-width:760px){
+.sp-head-in{height:58px;padding:0 14px}
+.pv,.pv.wide{top:auto;width:100%;height:calc(var(--vh,100vh)*0.92);border-radius:24px 24px 0 0;animation:mSheet .5s cubic-bezier(.2,.8,.2,1) both}
+.pv-b{padding:16px}
+.pv-imgs{grid-template-columns:1fr 1fr}
+.pv-dc{min-height:46px;padding:4px;font-size:12px}
+.pv-ev{height:6px;font-size:0;padding:0}
+.pv-room{aspect-ratio:auto;height:440px}
+.pv-wb{inset:10px;padding:12px}
+.pv-wbh{padding-left:0;padding-top:84px}
+.pv-cam{width:96px;left:18px;top:18px;font-size:10.5px}
+.pv-cam b{font-size:18px}
+.pv-sticky{position:static;transform:rotate(-2deg);width:auto;margin-top:8px}
+.pv-nb{padding:14px 46px 14px 14px}
+.pv-video .pv-board .pv-math{font-size:20px}
+.pv-board{inset:12px 12px 48px;padding:12px}
+.pv-board .pv-bt{font-size:16px}
+.fs-board{inset:14% 5% 26%;gap:12px}.fs-board .pv-math{font-size:28px !important}.fs-board .pv-bt{font-size:22px !important}
+.fs-bar{padding:12px 14px;gap:8px;font-size:12px;flex-wrap:wrap}.fs-t{flex-basis:100%;margin:0}.fs-play{width:70px;height:70px}.fs-x{top:12px;left:12px;font-size:12px}
+.fs-wb{inset:12px;padding:14px}
+.fs-wb .pv-wbh{padding-left:0;padding-top:96px}
+.fs-wb .pv-wbh b{font-size:24px}
+.fs-wb .pv-math{font-size:22px}
+.fs .pv-cam{width:110px;left:24px;top:24px}
+.fs-bar .fs-who{flex-basis:100%}
+.pf-hero{padding:14px 0 92px}
+.pf-in{padding:0 16px}
+.pf-shapes i:nth-child(1){width:170px;height:170px;top:-80px;left:-30px}
+.pf-shapes i:nth-child(2){width:80px;height:80px;border-radius:26px;top:auto;bottom:40px;left:8%}
+.pf-shapes i:nth-child(3){width:42px;height:42px;top:16px;left:40%;background-size:100% 12px,12px 100%}
+.pf-top{flex-direction:column;align-items:stretch;gap:12px;margin-top:6px}
+.pf-h1{font-size:27px}
+.pf-hc{height:32px;font-size:13px;padding:0 12px}
+.pf-body{grid-template-columns:1fr;padding:0 12px 24px;margin-top:-72px;gap:14px}
+.pf-col{gap:14px}
+.pf-card{padding:16px;border-radius:20px}
+.pf-price{font-size:24px}
+.pf-buy{gap:12px}
+.pf-buy-a{margin-right:0;width:100%;flex-direction:column}
+.pf-buy-a .pf-sub{display:none}
+.pf-buy-a .pf-ghost{width:100%;height:46px;font-size:15px}
+.pf-toast{font-size:12.5px;height:40px;top:68px}
+.pf-bar{display:flex;position:sticky;bottom:0;z-index:9;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px 16px;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid #D5E3F2}
+.pf-bar .pf-sub{flex:0 0 auto;height:52px;padding:0 22px}
+.pf-lv-row b{font-size:18px}
+/* phone book (guest): 160 px wide */
+.pf-stage{align-self:center;width:100%;height:292px;margin:0}
+.pf-halo{width:240px;height:240px;top:16px}
+.pf-book{width:160px;height:220px}
+.pf-pg{padding:12px 18px 10px 10px;gap:7px;background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 17px,#E4ECF2 17px,#E4ECF2 18px)}
+.pf-stats{gap:6px}
+.pf-st{padding:6px;border-radius:11px;gap:1px}
+.pf-st svg{width:13px;height:13px}
+.pf-st b{font-size:17px}
+.pf-st small{font-size:10px}
+.pf-pgf{font-size:10px}
+.pf-cv-f{padding:14px 24px 12px 12px;gap:4px}
+.pf-cvt{font-size:18px}
+.pf-cvs,.pf-cvk,.pf-brand{font-size:11px}
+.pf-cvb{font-size:11px;margin-top:4px;padding-top:8px}
+.pf-ribbon{width:13px;height:44px;left:16px}
+.pf-cv-b{padding:12px 12px 10px 20px;gap:7px}
+.pf-ring{padding:8px;gap:8px}.pf-ring svg{width:44px;height:44px}
+.pf-toc{font-size:11px;padding-bottom:4px}
+.pf-cv-b .pf-toc:nth-of-type(n+3){display:none}
+.pf-coil{right:-9px;width:18px;top:10px;bottom:10px}
+.pf-coil i{height:9px;border-width:2px}
+.pf-coil::before{right:7px;width:4px;background:repeating-linear-gradient(to bottom,rgba(0,16,48,.55) 0 5px,transparent 5px 15.5px)}
+.pf-shadow{width:150px;bottom:40px}
+.pf-hint{bottom:0}
+.pf-stage.open .pf-book,.pf-stage:focus-visible .pf-book{transform:translateX(-80px) rotateY(0) rotateX(0)}
+.pf-stage.open .pf-shadow{width:320px}
+.pf-stage:hover .pf-book{transform:translateX(-80px) rotateY(0) rotateX(0)}
+.pf-stage:hover .pf-shadow{width:320px}
+/* compact enrolled hero (SUB-10): small book beside the title, the class card right under it */
+.pf.cmp .pf-hero{padding:12px 0 84px}
+.pf.cmp .pf-top{flex-direction:row;align-items:center;gap:14px;margin-top:4px}
+.pf.cmp .pf-stage{width:112px;height:160px;flex-shrink:0;cursor:default}
+.pf.cmp .pf-book{width:100px;height:138px}
+.pf.cmp .pf-hint,.pf.cmp .pf-halo,.pf.cmp .pf-brand,.pf.cmp .pf-cvb,.pf.cmp .pf-cvs{display:none}
+.pf.cmp .pf-pg > *{display:none}
+.pf.cmp .pf-shadow{width:92px;bottom:2px;height:16px}
+.pf.cmp .pf-cv-f{padding:10px 16px 10px 8px;border-radius:10px 4px 4px 10px}
+.pf.cmp .pf-cvk{font-size:9.5px}
+.pf.cmp .pf-cvt{font-size:14px}
+.pf.cmp .pf-ribbon{width:9px;height:28px;left:10px}
+.pf.cmp .pf-coil{right:-6px;width:12px;top:6px;bottom:6px}
+.pf.cmp .pf-coil i{height:6px;border-width:1.5px}
+.pf.cmp .pf-coil::before{display:none}
+.pf.cmp .pf-stage .pf-book,.pf.cmp .pf-stage:hover .pf-book,.pf.cmp .pf-stage.open .pf-book{transform:rotateY(-18deg) rotateX(4deg)}
+.pf.cmp .pf-stage .pf-cv,.pf.cmp .pf-stage:hover .pf-cv,.pf.cmp .pf-stage.open .pf-cv{transform:translateZ(4px)}
+.pf.cmp .pf-info{gap:8px}
+.pf.cmp .pf-h1{font-size:25px;line-height:1.3}
+.pf.cmp .pf-tags .pf-tag{display:none}
+.pf.cmp .pf-who{gap:8px}
+.pf.cmp .pf-who .pf-av{width:34px;height:34px;font-size:14px}
+.pf.cmp .pf-mode{display:none}
+.pf.cmp .pf-hcs{display:none}
+}
+@media (prefers-reduced-motion: reduce){.sp *,.sp *::before,.sp *::after{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div class="sp k a-learn" dir="rtl">
+  <sc-if value="{{showHead}}" hint-placeholder-val="{{ true }}">
+  <header class="sp-head">
+    <div class="sp-head-in">
+      <span style="display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 16px; font-weight: 700">{{pf.title}}</span><span style="font-size: 12.5px; opacity: .75">{{headSub}}</span></span>
+      <span style="flex: 1"></span>
+      <span class="sp-logo"><img src="./logo.png" alt="" width="30" height="34" style="width: 30px; height: auto">ALFaheem</span>
+    </div>
+  </header>
+  </sc-if>
+  <div class="pf {{pf.cls}}">
+    <sc-if value="{{pf.showToast}}" hint-placeholder-val="{{ false }}">
+      <div class="pf-toast" role="status"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#19C29B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"></path></svg>{{pf.toast}}</div>
+    </sc-if>
+    <section class="pf-hero" style="--ca: {{pf.ca}}">
+      <span class="pf-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i></i></span>
+      <div class="pf-in">
+        <sc-if value="{{pf.hasBack}}" hint-placeholder-val="{{ true }}">
+          <button type="button" class="pf-back" onClick="{{pf.back}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>{{pf.backL}}</button>
+        </sc-if>
+        <div class="pf-top">
+          <div class="pf-stage m-wobble {{pf.bookCls}}" tabindex="0" role="button" aria-label="اضغط على الكتاب وشوف وش فيه" onClick="{{pf.bookTap}}">
+            <span class="pf-halo" aria-hidden="true"></span>
+            <div class="pf-book">
+              <div class="pf-pg">
+                <span class="pf-stats">
+                  <sc-for list="{{pf.facts}}" as="f" hint-placeholder-count="4">
+                    <span class="pf-st" style="background: {{f.bg}}; --d: {{f.d}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{f.fg}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{f.ic}}"></path></svg><b style="color: {{f.fg}}">{{f.n}}</b><small>{{f.l}}</small></span>
+                  </sc-for>
+                </span>
+                <span class="pf-pgf">{{pf.pageNote}}</span>
+              </div>
+              <div class="pf-cv">
+                <div class="pf-cv-f" style="background: {{pf.cover}}">
+                  <span class="pf-ribbon" aria-hidden="true"></span>
+                  <span class="pf-brand"><img src="./logo.png" alt="" width="22" height="25" style="width: 22px; height: auto; filter: brightness(0) invert(1)">ALFaheem</span>
+                  <span style="flex: 1"></span>
+                  <span class="pf-cvk">{{pf.kindL}}</span>
+                  <span class="pf-cvt">{{pf.title}}</span>
+                  <span class="pf-cvs">{{pf.rt}}</span>
+                  <span class="pf-cvb"><span>{{pf.teacher}}</span><span class="pf-open">افتحه<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"></path></svg></span></span>
+                </div>
+                <div class="pf-cv-b">
+                  <sc-if value="{{pf.enrolled}}" hint-placeholder-val="{{ false }}">
+                    <span class="pf-ring"><svg aria-hidden="true" width="64" height="64" viewBox="0 0 56 56"><circle cx="28" cy="28" r="23" fill="none" stroke="#FFE8D6" stroke-width="7"></circle><circle cx="28" cy="28" r="23" fill="none" stroke="#FF7A59" stroke-width="7" stroke-linecap="round" stroke-dasharray="{{pf.ringDash}}" transform="rotate(-90 28 28)"></circle><text x="28" y="33" text-anchor="middle" font-size="13" font-weight="700" fill="#0E2350">{{pf.pct}}</text></svg><span style="display: flex; flex-direction: column; line-height: 1.5"><b style="font-size: 14px">{{pf.ringT}}</b><small style="font-size: 12px; color: #4A5878">٢٤ درس</small></span></span>
+                  </sc-if>
+                  <sc-for list="{{pf.toc}}" as="x" hint-placeholder-count="4"><span class="pf-toc"><b>{{x.n}}</b>{{x.t}}</span></sc-for>
+                </div>
+              </div>
+              <span class="pf-coil" aria-hidden="true"><sc-for list="{{pf.coil}}" as="c" hint-placeholder-count="14"><i></i></sc-for></span>
+            </div>
+            <span class="pf-shadow" aria-hidden="true"></span>
+            <span class="pf-hint m-pop"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5a2 2 0 0 1 4 0v6M13 10a2 2 0 0 1 4 0v1a2 2 0 0 1 4 0v3a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-3.4L4 14a2 2 0 0 1 3.4-2L9 14"></path></svg>اضغط على الكتاب</span>
+          </div>
+          <div class="pf-info">
+            <div class="pf-tags">
+              <sc-if value="{{pf.enrolled}}" hint-placeholder-val="{{ false }}"><span class="pf-badge"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"></path></svg>مشترك</span></sc-if>
+              <sc-for list="{{pf.tags}}" as="g" hint-placeholder-count="3"><span class="pf-tag">{{g.label}}</span></sc-for>
+            </div>
+            <h1 class="pf-h1">{{pf.title}}</h1>
+            <div class="pf-who"><span class="pf-av" style="background: {{pf.cover}}">{{pf.tInit}}</span><span style="display: flex; flex-direction: column; line-height: 1.45"><span style="font-size: 12.5px; opacity: .78">{{pf.teacherL}}</span><span style="font-size: 16px; font-weight: 700">{{pf.teacher}}</span></span><span class="pf-mode">{{pf.mode}}</span></div>
+            <div class="pf-hcs">
+              <span class="pf-hc"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14"></path></svg>{{pf.chipA}}</span>
+              <span class="pf-hc"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.6 5.4 5.9.9-4.3 4.1 1 5.9L12 16.5 6.8 19.3l1-5.9L3.5 9.3l5.9-.9z"></path></svg>{{pf.chipB}}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="pf-body">
+      <div class="pf-col">
+        <sc-if value="{{pf.guest}}" hint-placeholder-val="{{ true }}">
+          <section class="pf-card pf-buy m-flip" style="--i: 0" aria-label="الاشتراك">
+            <div class="pf-buy-p"><span class="pf-price">{{pf.price}}</span><span style="font-size: 13px; color: #4A5878">{{pf.priceNote}}</span></div>
+            <div class="pf-buy-a">
+              <button type="button" class="pf-sub" onClick="{{pf.sub}}">{{pf.subL}}<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg></button>
+              <button type="button" class="pf-ghost" onClick="{{pf.preview}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>شوف مقدمة {{pf.kindL}}</button>
+            </div>
+          </section>
+          <sc-if value="{{pf.showPrev}}" hint-placeholder-val="{{ false }}">
+            <section class="pf-card m-flip" aria-label="مقدمة {{pf.kindL}}">
+              <div class="pf-play"><span class="pf-playb"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="#F2545B"><path d="M8 5v14l11-7z"></path></svg></span><span class="pf-play-t">مقدمة {{pf.kindL}}، ١٢ دقيقة</span><span class="pf-prog"><span></span></span></div>
+            </section>
+          </sc-if>
+        </sc-if>
+        <sc-if value="{{pf.liveNow}}" hint-placeholder-val="{{ false }}">
+          <section class="pf-card pf-lv m-flip" style="--i: 0" aria-labelledby="pf-lvt">
+            <div class="pf-lv-top"><span class="pf-lvtag m-slap"><i></i>مباشر الحين</span><small>بدأت قبل ٥ دقايق</small></div>
+            <div class="pf-lv-row"><span class="pf-av" style="background: {{pf.cover}}">{{pf.tInit}}</span><span style="min-width: 0"><b id="pf-lvt">{{pf.liveT}}</b><small>{{pf.teacher}} يشرح الحين</small></span></div>
+            <button type="button" class="k-btn hot m-breathe pf-go2" onClick="{{pf.openLive}}">ادخل الحصة<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"></path></svg></button>
+          </section>
+        </sc-if>
+        <sc-if value="{{pf.nextOn}}" hint-placeholder-val="{{ false }}">
+          <section class="pf-card pf-next m-flip" style="--i: 0" aria-labelledby="pf-n">
+            <span class="pf-live"><i></i>حصتك الجاية</span>
+            <h2 id="pf-n" class="pf-h2">{{pf.next}}</h2>
+            <div class="k-count" aria-label="باقي يومين و٣ ساعات و٤٥ دقيقة"><span><b class="m-roll"><i style="--v: 2" aria-hidden="true"></i></b><small>يوم</small></span><span><b class="m-roll"><i style="--v: 0" aria-hidden="true"></i><i style="--v: 3; --i: 1" aria-hidden="true"></i></b><small>ساعة</small></span><span><b class="m-roll"><i style="--v: 4; --i: 2" aria-hidden="true"></i><i style="--v: 5; --i: 3" aria-hidden="true"></i></b><small>دقيقة</small></span></div>
+            <button type="button" class="pf-wait {{pf.waitCls}}" aria-disabled="{{pf.waitDis}}" onClick="{{pf.waitGo}}">{{pf.joinL}}</button>
+            <span class="pf-note">{{pf.joinNote}}</span>
+          </section>
+        </sc-if>
+        <section class="pf-card m-flip" style="--i: 1" aria-labelledby="pf-path">
+          <div class="pf-ph"><h2 id="pf-path" class="pf-h2">{{pf.pathH}}</h2>
+            <sc-if value="{{pf.enrolled}}" hint-placeholder-val="{{ false }}"><span class="pf-pring"><svg aria-hidden="true" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" stroke="#FFE8D6"></circle><circle class="m-ink" cx="18" cy="18" r="14" stroke="#FF7A59" stroke-linecap="round" pathLength="100" style="--len: 100; --to: {{pf.ringTo}}; --d: .4s"></circle></svg>{{pf.pathP}}</span></sc-if>
+            <sc-if value="{{pf.guest}}" hint-placeholder-val="{{ true }}"><span style="font-size: 13px; color: #4A5878">{{pf.pathP}}</span></sc-if>
+          </div>
+          <sc-for list="{{pf.lessons}}" as="l" hint-placeholder-count="6">
+            <a href="{{l.href}}" class="pf-step m-flip {{l.cls}}" onClick="{{l.go}}" style="--i: {{l.i}}">
+              <span class="pf-num" style="background: {{l.bg}}; color: {{l.fg}}">{{l.n}}</span>
+              <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.45"><span style="font-size: 15px; font-weight: 700">{{l.t}}</span><span style="font-size: 12.5px; color: #4A5878">{{l.m}}</span></span>
+              <sc-if value="{{l.free}}" hint-placeholder-val="{{ false }}"><span class="pf-chip"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg>شغّل</span></sc-if>
+              <sc-if value="{{l.done}}" hint-placeholder-val="{{ false }}"><span class="pf-chip"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"></path></svg>خلّصته</span></sc-if>
+              <sc-if value="{{l.live}}" hint-placeholder-val="{{ false }}"><span class="pf-chip r"><i></i>مباشر</span></sc-if>
+              <sc-if value="{{l.cur}}" hint-placeholder-val="{{ false }}"><span class="pf-go">ابدأ هنا</span></sc-if>
+              <sc-if value="{{l.locked}}" hint-placeholder-val="{{ false }}"><svg aria-label="يفتح بعد الاشتراك" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9AA8BF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3"></path></svg></sc-if>
+            </a>
+          </sc-for>
+        </section>
+      </div>
+      <div class="pf-col">
+        <section class="pf-card m-flip" style="--i: 2" aria-label="المعلم">
+          <div style="display: flex; align-items: center; gap: 12px"><span class="pf-av" style="background: {{pf.cover}}; width: 54px; height: 54px; font-size: 20px; box-shadow: none">{{pf.tInit}}</span><span style="display: flex; flex-direction: column; line-height: 1.45"><span style="font-size: 16px; font-weight: 700">{{pf.teacher}}</span><span style="font-size: 13px; color: #4A5878">{{pf.years}} سنوات خبرة</span></span></div>
+          <p style="margin: 0; font-size: 14px; line-height: 1.75; color: #4A5878">{{pf.bio}}</p>
+          <sc-if value="{{pf.enrolled}}" hint-placeholder-val="{{ false }}"><button type="button" class="pf-out" onClick="{{pf.openChat}}">راسل المعلم</button></sc-if>
+        </section>
+        <sc-if value="{{pf.guest}}" hint-placeholder-val="{{ true }}">
+          <section class="pf-card m-flip" style="--i: 3" aria-label="وش تشمل">
+            <span class="pf-h3">تشمل</span>
+            <sc-for list="{{pf.includes}}" as="x" hint-placeholder-count="4"><span class="pf-inc"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#19C29B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"></path></svg>{{x.t}}</span></sc-for>
+          </section>
+        </sc-if>
+        <sc-if value="{{pf.enrolled}}" hint-placeholder-val="{{ false }}">
+          <section class="pf-card m-flip" style="--i: 3" aria-label="أدواتك في المادة">
+            <span class="pf-tool m-jelly" role="button" tabindex="0" onClick="{{pf.openBot}}"><span style="background: #ECE5FF; color: #4A28B8"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"></path></svg></span>اسأل المساعد الذكي</span>
+            <span class="pf-tool m-jelly" role="button" tabindex="0" onClick="{{pf.openNotes}}"><span style="background: #FFE8D6; color: #A3480A"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg></span>دفتر {{pf.kindL}}</span>
+            <span class="pf-tool m-jelly" role="button" tabindex="0" onClick="{{pf.openCal}}"><span style="background: #E0F0FF; color: #0F5CA8"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18v16H3zM3 9h18M8 2v4M16 2v4"></path></svg></span>جدول حصصي</span>
+            <a class="pf-tool m-jelly" href="Stu2Exams.dc.html?screen=list"><span style="background: #ECE5FF; color: #4A28B8"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6v3H9zM7 5H5v16h14V5h-2M8.5 13l2 2 5-5"></path></svg></span>اختبارات المادة<small>{{pf.examsN}}</small></a>
+            <a class="pf-tool m-jelly" href="Stu1Learn.dc.html?screen=attend"><span style="background: #D9F7EE; color: #0C6B55"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 12l3 3 5-6"></path></svg></span>حضوري<small>{{pf.attN}}</small></a>
+          </section>
+        </sc-if>
+      </div>
+    </div>
+    <sc-if value="{{pf.guest}}" hint-placeholder-val="{{ true }}">
+      <div class="pf-bar"><span style="display: flex; flex-direction: column; line-height: 1.35"><span style="font-size: 12px; color: #4A5878">{{pf.priceNote}}</span><span style="font-size: 18px; font-weight: 700; color: #00205E">{{pf.price}}</span></span><button type="button" class="pf-sub" onClick="{{pf.sub}}">{{pf.subL}}</button></div>
+    </sc-if>
+  </div>
+
+
+  <sc-if value="{{pv}}" hint-placeholder-val="{{ false }}">
+    <div class="pv-dim" onClick="{{close}}"></div>
+    <section class="pv {{pvCls}}" role="dialog" aria-modal="true" aria-labelledby="pv-t">
+      <div class="pv-h">
+        <h2 id="pv-t">{{pvTitle}}</h2>
+        <button type="button" class="pv-x" onClick="{{close}}" aria-label="قفل"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+      </div>
+
+      <!-- lesson content (recorded درس) -->
+      <sc-if value="{{pLesson}}" hint-placeholder-val="{{ false }}">
+        <div class="pv-b">
+          <div class="pv-tabs k-seg m-pill" role="tablist" style="--n: 4"><span class="m-pill-bg" style="--i: {{ltIdx}}"></span><sc-for list="{{ltabs}}" as="t" hint-placeholder-count="4"><button type="button" role="tab" class="pv-tab" aria-selected="{{t.on}}" onClick="{{t.go}}">{{t.l}}</button></sc-for></div>
+          <sc-if value="{{ltVideo}}" hint-placeholder-val="{{ true }}">
+            <div class="pv-in" style="display: flex; flex-direction: column; gap: 10px">
+              <div class="pv-video"><div class="pv-board"><span class="pv-bt">الدالة: كل مدخل له مخرج واحد</span><span class="pv-math">د(س) = ٢س + ٣</span></div><span class="pv-pbtn"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="#F2545B"><path d="M8 5v14l11-7z"></path></svg></span><div class="pv-ctrl"><span>٠٨:١٢</span><span class="pv-bar"><i></i></span><span>٢٣:٠٠</span><button type="button" class="pv-fsb" onClick="{{fsVideo}}" aria-label="ملء الشاشة"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"></path></svg></button></div></div>
+              <sc-for list="{{chaps}}" as="c" hint-placeholder-count="3"><div class="pv-chap {{c.cls}}"><span>{{c.n}}</span>{{c.t}}<small>{{c.m}}</small></div></sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ltBook}}" hint-placeholder-val="{{ false }}">
+            <div class="pv-in" style="display: flex; flex-direction: column; gap: 12px">
+              <div class="pv-page"><h3>الدوال</h3><p>الدالة علاقة تربط كل عنصر في المجال بعنصر <span class="pv-hl">واحد فقط</span> في المجال المقابل. نرمز لها بالحرف د، ونكتب د(س).</p><span class="pv-math pv-eq">د(س) = ٢س + ٣</span><p>مثال: إذا كانت س = ٤ فإن د(٤) = ٢ × ٤ + ٣ = ١١. جرّب تحسب د(٠) و د(−٢) قبل ما تكمل.</p></div>
+              <div class="pv-pnav"><button type="button">الصفحة اللي قبل</button><span>صفحة ٣ من ٢٤</span><button type="button">اللي بعدها</button></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ltImgs}}" hint-placeholder-val="{{ false }}">
+            <div class="pv-imgs pv-in">
+              <sc-for list="{{imgs}}" as="m" hint-placeholder-count="4"><div class="pv-img m-flip" style="--i: {{m.i}}"><span style="background: {{m.bg}}">{{m.t}}</span><span>{{m.c}}</span></div></sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{ltQuiz}}" hint-placeholder-val="{{ false }}">
+            <div class="pv-in" style="display: flex; flex-direction: column; gap: 12px">
+              <sc-for list="{{quiz}}" as="q" hint-placeholder-count="3"><div class="pv-q"><b>{{q.q}}</b><div class="pv-opts"><sc-for list="{{q.o}}" as="o" hint-placeholder-count="3"><button type="button" class="pv-opt m-jelly {{o.cls}}">{{o.t}}</button></sc-for></div></div></sc-for>
+            </div>
+          </sc-if>
+        </div>
+        <div class="pv-f"><button type="button" class="k-btn hot" style="flex: 1" onClick="{{lNext}}">{{lNextL}}</button></div>
+      </sc-if>
+
+      <!-- chat with the teacher (private, one to one) -->
+      <sc-if value="{{pChat}}" hint-placeholder-val="{{ false }}">
+        <div class="pv-b"><div class="pv-msgs">
+          <span class="pv-day">اليوم</span>
+          <sc-for list="{{msgs}}" as="m" hint-placeholder-count="4"><div class="pv-msg {{m.cls}}" style="--d: {{m.d}}">{{m.t}}<small>{{m.time}}</small></div></sc-for>
+        </div></div>
+        <div class="pv-f"><span class="pv-input">اكتب رسالتك للمعلم…</span><button type="button" class="pv-send m-jelly" aria-label="أرسل"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10l7 3 3 7 8-17z"></path></svg></button></div>
+      </sc-if>
+
+      <!-- AI assistant: active chat by default, prop bot="off" shows the switched-off state -->
+      <sc-if value="{{pBot}}" hint-placeholder-val="{{ false }}">
+        <div class="pv-b">
+          <div class="pv-bh pv-in">
+            <span class="pv-bot"><dc-import name="Bot" size="60" hint-size="60px,60px"></dc-import></span>
+            <span><b>مساعدك في {{pf.title}}</b><small>يشرح لك، يعطيك أمثلة، ويختبرك</small></span>
+          </div>
+          <sc-if value="{{botOn}}" hint-placeholder-val="{{ true }}">
+            <div class="pv-msgs">
+              <div class="pv-msg me" style="--d: .15s">ليش ٢<sup>٠</sup> = ١؟ ما دخلت مخي</div>
+              <div class="pv-msg bot" style="--d: .45s"><span><b>سؤال حلو!</b> شف النمط: كل ما ننقص الأس واحد، نقسم على ٢.</span><span class="pv-steps"><span style="--i: 0">٢<sup>٣</sup> = ٨</span><span style="--i: 1">٢<sup>٢</sup> = ٤</span><span style="--i: 2">٢<sup>١</sup> = ٢</span><span style="--i: 3">٢<sup>٠</sup> = ١</span></span><span>يعني أي عدد غير الصفر، أُسّه صفر، يساوي ١.</span></div>
+            </div>
+            <div class="pv-sugg"><button type="button" class="m-pop" style="--d: 1.1s">أعطني مثال ثاني</button><button type="button" class="m-pop" style="--d: 1.18s">اختبرني بسؤال</button><button type="button" class="m-pop" style="--d: 1.26s">لخّص لي الدرس</button></div>
+          </sc-if>
+          <sc-if value="{{botOff}}" hint-placeholder-val="{{ false }}">
+            <div class="pv-off pv-in"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 3px"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01"></path></svg><span><b>المساعد مقفل في هالمادة الحين.</b><br>نعلمك أول ما يشتغل.</span></div>
+            <div class="pv-sugg off"><button type="button" aria-disabled="true">أعطني مثال ثاني</button><button type="button" aria-disabled="true">اختبرني بسؤال</button><button type="button" aria-disabled="true">لخّص لي الدرس</button></div>
+          </sc-if>
+        </div>
+        <div class="pv-f"><span class="pv-input">{{botPh}}</span><button type="button" class="pv-send m-jelly" aria-disabled="{{botDis}}" aria-label="أرسل"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10l7 3 3 7 8-17z"></path></svg></button></div>
+      </sc-if>
+
+      <!-- notebook -->
+      <sc-if value="{{pNotes}}" hint-placeholder-val="{{ false }}">
+      <sc-if value="{{nView}}" hint-placeholder-val="{{ false }}">
+        <div class="pv-b">
+          <div class="pv-nb m-flip">
+            <small>الدرس ١، المجال والمدى</small>
+            <h3>الدوال</h3>
+            <p>الدالة: كل س لها ص <span class="pv-hl">وحدة بس</span>.</p>
+            <p>اختبار الخط الرأسي: إذا قطع الرسم في أكثر من نقطة، ما هي دالة.</p>
+            <p style="font-weight: 700">د(س) = ٢س + ٣ ← د(٤) = ١١</p>
+            <small>حصة اليوم، مع أ. ماجد</small>
+            <h3>الدوال الأسية</h3>
+            <p>ص = ٢<sup>س</sup> تتضاعف بسرعة. راجع مثال البكتيريا.</p>
+            <span class="pv-sticky m-slap">واجب: تمارين صفحة ٢٨ من ١ إلى ٦ قبل الثلاثاء</span>
+          </div>
+          <div style="display: flex; gap: 10px"><button type="button" class="pv-add m-jelly" style="flex: 1" onClick="{{nType}}">اكتب ملاحظة</button><button type="button" class="pv-add pen m-jelly" style="flex: 1" onClick="{{nPen}}"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg>اكتب بإصبعك</button></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{nEdit}}" hint-placeholder-val="{{ false }}">
+        <div class="pv-b">
+          <div class="pv-tabs k-seg m-pill" role="tablist" style="--n: 2"><span class="m-pill-bg" style="--i: {{nIdx}}"></span><button type="button" role="tab" class="pv-tab" aria-selected="{{nTypeOn}}" onClick="{{nType}}">بالكيبورد</button><button type="button" role="tab" class="pv-tab" aria-selected="{{nPenOn}}" onClick="{{nPen}}">بإصبعك أو القلم</button></div>
+          <sc-if value="{{nIsType}}" hint-placeholder-val="{{ true }}">
+            <div class="nb-tools pv-in"><button type="button" class="on">عنوان</button><button type="button">نقاط</button><button type="button">تظليل</button><button type="button">معادلة</button><button type="button">صورة من السبورة</button></div>
+            <div class="pv-nb pv-in" style="min-height: 300px">
+              <small>اليوم، الحصة الثانية</small>
+              <h3>الدوال الأسية</h3>
+              <p>ص = ٢<sup>س</sup> تتضاعف بسرعة.</p>
+              <p><span class="nb-typed">مثال: البكتيريا تتضاعف كل ساعة، بعد ٣ ساعات تصير ٢<sup>٣</sup> = ٨ أضعاف</span><span class="nb-caret"></span></p>
+            </div>
+          </sc-if>
+          <sc-if value="{{nIsPen}}" hint-placeholder-val="{{ false }}">
+            <div class="nb-tools pv-in"><sc-for list="{{pens}}" as="c" hint-placeholder-count="3"><button type="button" class="nb-dot {{c.cls}}" style="--c: {{c.c}}" aria-label="{{c.l}}"></button></sc-for><span class="nb-sep"></span><button type="button" class="on">قلم</button><button type="button">هايلايتر</button><button type="button">ممحاة</button><span class="nb-sep"></span><button type="button" aria-label="تراجع"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3"></path></svg></button></div>
+            <div class="pv-nb nb-canvas pv-in">
+              <small>اليوم، الحصة الثانية</small>
+              <h3>الدوال الأسية</h3>
+              <svg class="nb-ink" viewBox="0 0 440 250" width="100%" aria-label="رسم الطالب بإصبعه: منحنى ص يساوي ٢ أس س">
+                <path class="nb-s m-ink" style="--len: 600; --d: 0s" d="M40 220 L40 30 M40 220 L410 220" stroke="#0E2350" stroke-width="3"></path>
+                <path class="nb-s m-ink" style="--len: 420; --d: .9s" d="M50 212 C 150 208, 230 196, 280 160 C 320 130, 350 80, 372 32" stroke="#F2545B" stroke-width="4"></path>
+                <path class="nb-s m-ink" style="--len: 200; --d: 2.1s" d="M60 70 q 20 -26 64 -22 q 40 6 34 36 q -8 28 -56 22 q -44 -8 -42 -36" stroke="#7A4DF0" stroke-width="3"></path>
+                <text class="nb-t" style="--d: 2.9s" x="112" y="78" text-anchor="middle" font-family="Noto Naskh Arabic, serif" font-weight="700" font-size="24" fill="#7A4DF0">ص = ٢<tspan font-size="15" dy="-11">س</tspan></text>
+                <path class="nb-s m-ink" style="--len: 140; --d: 3.2s" d="M214 110 l 44 30 m -14 -14 l 14 14 l -20 3" stroke="#E89B00" stroke-width="3"></path>
+                <text class="nb-t" style="--d: 3.8s" x="226" y="98" text-anchor="middle" font-family="Aref Ruqaa, serif" font-size="22" fill="#B7791F">تتضاعف بسرعة!</text>
+              </svg>
+              <span class="nb-finger" aria-hidden="true"></span>
+            </div>
+          </sc-if>
+        </div>
+        <div class="pv-f"><button type="button" class="pv-add" style="flex: 1; border-style: solid" onClick="{{nViewGo}}">رجوع للدفتر</button><button type="button" class="k-btn" onClick="{{nViewGo}}">احفظ</button></div>
+      </sc-if>
+      </sc-if>
+
+      <!-- calendar: subject colours from --sub-*; tap a day to see its times -->
+      <sc-if value="{{pCal}}" hint-placeholder-val="{{ false }}">
+        <div class="pv-b">
+          <div class="pv-calh"><b>ديسمبر ٢٠٢٦</b></div>
+          <button type="button" class="pv-tog" aria-pressed="{{allOn}}" onClick="{{togAll}}"><span class="pv-sw"><i></i></span>اعرض حصص المواد الثانية</button>
+          <div class="pv-cal">
+            <sc-for list="{{dnames}}" as="d" hint-placeholder-count="7"><span class="pv-dn">{{d}}</span></sc-for>
+            <sc-for list="{{cells}}" as="c" hint-placeholder-count="35">
+              <button type="button" class="pv-dc {{c.cls}}" style="--d: {{c.d}}" onClick="{{c.go}}" aria-label="{{c.al}}"><span>{{c.n}}</span><sc-for list="{{c.ev}}" as="e" hint-placeholder-count="1"><span class="pv-ev" style="background: {{e.c}}">{{e.t}}</span></sc-for></button>
+            </sc-for>
+          </div>
+          <div class="pv-dl">
+            <b>{{dayH}}</b>
+            <sc-for list="{{dayList}}" as="x" hint-placeholder-count="1"><span class="pv-di" style="animation-delay: {{x.d}}"><i style="background: {{x.c}}"></i>{{x.t}}<small>{{x.time}}</small></span></sc-for>
+            <sc-if value="{{dayEmpty}}" hint-placeholder-val="{{ false }}"><span style="font-size: 14px; color: #4A5878">ما عندك حصص هاليوم.</span></sc-if>
+          </div>
+          <div class="pv-leg"><sc-for list="{{legend}}" as="l" hint-placeholder-count="3"><span><i style="background: {{l.c}}"></i>{{l.t}}</span></sc-for></div>
+        </div>
+      </sc-if>
+
+      <!-- live room: only "أنت والمعلم" -->
+      <sc-if value="{{pLive}}" hint-placeholder-val="{{ false }}">
+        <div class="pv-b">
+          <div class="pv-room pv-in">
+            <div class="pv-wb">
+              <div class="pv-wbh"><span class="pv-livetag"><span class="sp-dot" style="width: 8px; height: 8px"></span>مباشر ٠٥:١٢</span><b>الدوال الأسية</b><span class="pv-math">ص = ٢<sup>س</sup></span></div>
+              <svg class="pv-graph" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid meet" aria-label="رسم المعلم على السبورة: منحنى ص يساوي ٢ أس س">
+                <path class="gr" d="M40 0V190M80 0V190M160 0V190M200 0V190M240 0V190M280 0V190M10 140H310M10 100H310M10 60H310M10 20H310"></path>
+                <path class="ax" d="M10 180H310M120 192V6"></path>
+                <path class="cv m-ink" style="--len: 330; --d: .2s" d="M24 176.5 L40 175 L60 173 L80 170 L100 166 L120 160 L140 152 L160 140 L180 123 L200 100 L220 67 L240 20 L244 8"></path>
+                <circle class="pt" style="--d: 1.1s" cx="120" cy="160" r="5"></circle><circle class="pt" style="--d: 1.2s" cx="160" cy="140" r="5"></circle><circle class="pt" style="--d: 1.3s" cx="200" cy="100" r="5"></circle><circle class="pt" style="--d: 1.4s" cx="240" cy="20" r="5"></circle>
+                <text x="112" y="152" font-size="11" text-anchor="end">(٠، ١)</text><text x="166" y="158" font-size="11">(١، ٢)</text><text x="208" y="112" font-size="11">(٢، ٤)</text><text x="232" y="24" font-size="11" text-anchor="end">(٣، ٨)</text>
+                <text x="306" y="196" font-size="12" text-anchor="end">س</text><text x="128" y="14" font-size="12">ص</text>
+              </svg>
+              <div class="pv-wbf"><span class="pv-math">د(٣) = ٢<sup>٣</sup> = ٨</span><button type="button" class="pv-fsb" onClick="{{fsLive}}" aria-label="ملء الشاشة"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"></path></svg></button></div>
+            </div>
+            <div class="pv-cam"><b>م</b>أ. ماجد الشهري</div>
+          </div>
+          <div class="pv-who"><span class="k-av">م</span>أنت والمعلم</div>
+          <div class="pv-ctl">
+            <button type="button" class="m-jelly" aria-label="المايك مقفل"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9v3a3 3 0 0 0 5 2.2M15 9.3V5a3 3 0 0 0-5.7-1.3M19 11a7 7 0 0 1-1.2 3.9M5 11a7 7 0 0 0 11 5.7M12 18v3M3 3l18 18"></path></svg></button>
+            <button type="button" class="hand m-jelly" aria-label="ارفع يدك"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0"></path></svg></button>
+            <button type="button" class="m-jelly" aria-label="اسأل المعلم"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg></button>
+            <button type="button" class="end m-jelly" onClick="{{close}}">اطلع من الحصة</button>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{fsOn}}" hint-placeholder-val="{{ false }}">
+    <section class="fs" role="dialog" aria-modal="true" aria-label="ملء الشاشة">
+      <sc-if value="{{fsIsVideo}}" hint-placeholder-val="{{ true }}">
+        <div class="fs-video"><div class="fs-board"><span class="pv-bt" style="font-family: 'Aref Ruqaa', serif; font-size: 40px">الدالة: كل مدخل له مخرج واحد</span><span class="pv-math">د(س) = ٢س + ٣</span><span class="pv-math" style="opacity: .75">د(٤) = ١١</span></div><span class="fs-play"><svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="#F2545B"><path d="M8 5v14l11-7z"></path></svg></span></div>
+        <div class="fs-bar"><span class="fs-t">الدرس ١: الدوال، المجال والمدى</span><span>٠٨:١٢</span><span class="pv-bar" style="flex: 1"><i></i></span><span>٢٣:٠٠</span><span class="fs-sp">١٫٢٥×</span></div>
+        <button type="button" class="fs-x" onClick="{{fsExit}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"></path></svg>صغّر الشاشة</button>
+      </sc-if>
+      <sc-if value="{{fsIsLive}}" hint-placeholder-val="{{ false }}">
+        <div class="fs-video" style="background: radial-gradient(120% 120% at 70% 0%, #173A75, #0B1530)">
+          <div class="fs-wb">
+            <div class="pv-wbh"><span class="pv-livetag"><span class="sp-dot" style="width: 8px; height: 8px"></span>مباشر ٠٥:١٢</span><b>الدوال الأسية</b><span class="pv-math">ص = ٢<sup>س</sup></span></div>
+            <svg class="pv-graph" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid meet" aria-label="رسم المعلم على السبورة: منحنى ص يساوي ٢ أس س">
+              <path class="gr" d="M40 0V190M80 0V190M160 0V190M200 0V190M240 0V190M280 0V190M10 140H310M10 100H310M10 60H310M10 20H310"></path>
+              <path class="ax" d="M10 180H310M120 192V6"></path>
+              <path class="cv m-ink" style="--len: 330; --d: .2s" d="M24 176.5 L40 175 L60 173 L80 170 L100 166 L120 160 L140 152 L160 140 L180 123 L200 100 L220 67 L240 20 L244 8"></path>
+              <circle class="pt" style="--d: 1.1s" cx="120" cy="160" r="5"></circle><circle class="pt" style="--d: 1.2s" cx="160" cy="140" r="5"></circle><circle class="pt" style="--d: 1.3s" cx="200" cy="100" r="5"></circle><circle class="pt" style="--d: 1.4s" cx="240" cy="20" r="5"></circle>
+              <text x="112" y="152" font-size="11" text-anchor="end">(٠، ١)</text><text x="166" y="158" font-size="11">(١، ٢)</text><text x="208" y="112" font-size="11">(٢، ٤)</text><text x="232" y="24" font-size="11" text-anchor="end">(٣، ٨)</text>
+              <text x="306" y="196" font-size="12" text-anchor="end">س</text><text x="128" y="14" font-size="12">ص</text>
+            </svg>
+            <div class="pv-wbf"><span class="pv-math">د(٣) = ٢<sup>٣</sup> = ٨</span></div>
+          </div>
+          <div class="pv-cam"><b>م</b>أ. ماجد الشهري</div>
+          
+        </div>
+        <div class="fs-bar"><span class="pv-who fs-who"><span class="k-av">م</span>أنت والمعلم</span><span class="pv-ctl" style="margin-right: auto"><button type="button" class="hand m-jelly" aria-label="ارفع يدك"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0"></path></svg></button><button type="button" class="end m-jelly" onClick="{{fsExit}}">اطلع من الحصة</button></span><button type="button" class="fs-min" onClick="{{fsExit}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"></path></svg>صغّر</button></div>
+      </sc-if>
+    </section>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"panel":"","enrolled":"1","live":"","typ":"group","att":"online","bare":"","bot":"","welcome":"","$preview":{"width":1360,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {}, P = this.props || {};
+    const set = (o) => this.setState(o);
+    const ar = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+    const panel = s.panel !== undefined ? s.panel : (P.panel || '');
+    const enrV = s.enr !== undefined ? s.enr : P.enrolled;
+    const enrolled = enrV === undefined ? true : (enrV !== '' && enrV !== '0' && enrV !== false);
+    const live = enrolled && (s.live !== undefined ? s.live : P.live) === '1';
+    const typ = P.typ || 'group', att = P.att || 'online';
+    const open = (k) => (e) => { if (e && e.preventDefault) e.preventDefault(); if (e && e.stopPropagation) e.stopPropagation(); set({ panel: k }); };
+    const pass = () => {};
+    const ltab = s.ltab || P.ltab || 'video';
+    const allOn = s.all !== undefined ? s.all : P.all === '1';
+    const cover = 'linear-gradient(160deg, #FFA184, #FF7A59 55%, #E04A30)';
+    const FXS = [['M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14', '#FFEAE4', '#A8381C'], ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2', '#ECE5FF', '#4A28B8'], ['M9 4h6v3H9zM7 5H5v16h14V5h-2M8.5 13l2 2 5-5', '#D9F7EE', '#0C6B55'], ['M12 3l2.6 5.4 5.9.9-4.3 4.1 1 5.9L12 16.5 6.8 19.3l1-5.9L3.5 9.3l5.9-.9z', '#FFF4CC', '#7A5200']];
+    // درس = recorded/reading item, حصة = live with the teacher (50 minutes), اختبار = exam (opens the exam area)
+    const LS = [['الدوال: المجال والمدى', 'درس، ٢٣ دقيقة مع ملخص', 'lesson'], ['الدوال الأسية', 'حصة مباشرة، ٥٠ دقيقة', 'live'], ['اختبار قصير', 'اختبار، ١٠ أسئلة', 'exam'], ['اللوغاريتمات', 'حصة مباشرة، ٥٠ دقيقة', 'live'], ['مراجعة الوحدة', 'درس، فيديو وملخص', 'lesson'], ['اختبار الوحدة', 'اختبار، ٢٠ سؤال', 'exam']];
+    const doneN = live ? 1 : 0;
+    // calendar: Dec 2026 starts on a Tuesday; week starts Saturday. Times are 50-minute classes.
+    const DN = ['سبت', 'أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة'];
+    const DNF = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+    const SUBJ = { m: ['الرياضيات', 'var(--sub-math)', '٧:٣٠ إلى ٨:٢٠ م'], p: ['الفيزياء', 'var(--sub-physics)', '٤:٠٠ إلى ٤:٥٠ م'], e: ['الإنجليزي', 'var(--sub-english)', '٤:٠٠ إلى ٤:٥٠ م'] };
+    const first = 3;
+    const selDay = s.day !== undefined ? s.day : 1;
+    const evOf = (wd) => { const ev = []; if (wd === 2 || wd === 4) { if (allOn) ev.push('p'); } if (wd === 1 || wd === 3) ev.push('m'); if (allOn && wd === 5) ev.push('e'); return ev; };
+    const cells = [];
+    for (let i = 0; i < 35; i++) {
+      const day = i - first + 1, wd = i % 7, inM = day >= 1 && day <= 31;
+      const ev = inM ? evOf(wd).map((k) => ({ t: SUBJ[k][0], c: SUBJ[k][1] })) : [];
+      cells.push({ n: inM ? ar(day) : '', ev, d: (i * 0.012).toFixed(3) + 's', al: inM ? DNF[wd] + ' ' + ar(day) + ' ديسمبر' : '',
+        cls: !inM ? 'mute' : [day === 1 ? 'today' : '', day === selDay ? 'sel' : ''].join(' '),
+        go: inM ? () => set({ day }) : pass });
+    }
+    const selWd = (selDay + first - 1) % 7;
+    const dayList = evOf(selWd).map((k, i) => ({ t: SUBJ[k][0], c: SUBJ[k][1], time: SUBJ[k][2], d: (i * 0.08).toFixed(2) + 's' }));
+    const TITLES = { lesson: 'الدرس ١: الدوال', chat: 'أ. ماجد الشهري', bot: 'المساعد الذكي', notes: 'دفتر الرياضيات', cal: 'جدول حصصي', live: 'حصة الرياضيات، مباشر' };
+    const pctN = Math.round(doneN / 24 * 100);
+    const pf = {
+      enrolled, guest: !enrolled, cls: enrolled ? 'cmp' : '', hasBack: false, back: null, backL: '',
+      title: P.title || 'الرياضيات', kindL: 'المادة', rt: P.grade || 'الصف الثاني الثانوي', ca: '#FF7A59', cover,
+      teacher: 'أ. ماجد الشهري', teacherL: enrolled ? 'معلمك' : 'المعلم', tInit: 'م', years: '٩',
+      bio: 'يدرّس الرياضيات بأسلوب بسيط، ويحب يربط الدرس بأمثلة من حياة الطالب. يرد على أسئلتك بعد كل حصة.',
+      mode: enrolled ? (typ === 'solo' ? 'فردي' : 'مجموعة') + '، ' + (att === 'center' ? 'حضوري' : 'عن بعد') : '',
+      tags: enrolled ? [{ label: 'الصف الثاني الثانوي' }] : [{ label: 'الصف الثاني الثانوي' }, { label: 'حصص مباشرة ودروس مسجّلة' }],
+      chipA: '٢٤ درس', chipB: '٤٫٨ تقييم',
+      facts: [['٢٤', 'درس'], ['٥٠', 'دقيقة لكل حصة'], ['١٢٠', 'تمرين'], ['٤٫٨', 'تقييم الطلاب']].map(([n, l], i) => ({ n, l, ic: FXS[i][0], bg: FXS[i][1], fg: FXS[i][2], d: (0.5 + i * 0.1).toFixed(2) + 's' })),
+      pageNote: enrolled ? 'كل أحد وثلاثاء، ٧:٣٠ م' : 'مع كل درس دفتر وتمارين',
+      coil: Array.from({ length: 14 }, (_, i) => i),
+      toc: LS.slice(0, 4).map(([t], i) => ({ n: ar(i + 1), t })),
+      ringDash: (pctN / 100 * 144.5).toFixed(1) + ' 144.5', pct: ar(pctN) + '٪', ringT: doneN ? 'خلّصت الدرس ١' : 'بدايتك من الدرس ١',
+      bookCls: s.book ? 'open' : '', bookTap: () => set({ book: !this.state.book }),
+      price: '١٩٩ ريال', priceNote: 'في الشهر', subL: 'احجز المادة', sub: pass, preview: () => set({ prev: true }), showPrev: !!s.prev,
+      includes: ['مسار كامل يمشي مع المنهج', 'كل حصة مباشرة تتسجل وترجع لها أي وقت', 'دفتر وتمارين لكل درس', 'المساعد الذكي يرد على أسئلتك'].map((t) => ({ t })),
+      liveNow: live, nextOn: enrolled && !live, liveT: 'الدوال الأسية',
+      next: 'الثلاثاء ١ ديسمبر، ٧:٣٠ إلى ٨:٢٠ م',
+      joinL: att === 'center' ? 'شوف موقع الحصة' : 'ادخل الحصة', waitCls: att === 'center' ? 'on' : '', waitDis: att === 'center' ? 'false' : 'true', waitGo: pass,
+      joinNote: att === 'center' ? 'وصّل قبل الحصة بعشر دقايق' : 'يفتح قبل الحصة بعشر دقايق',
+      showToast: enrolled && !live && (P.welcome === '1' || P.bare === '1') && !panel,
+      toast: 'أهلًا فيك في الرياضيات، حجزك تأكد',
+      pathH: enrolled ? 'مسارك في المادة' : 'وش بتاخذ في المادة', pathP: enrolled ? ar(doneN) + ' من ٢٤ درس' : 'كل خطوة تفتح اللي بعدها',
+      ringTo: 100 - Math.max(pctN, 0),
+      examsN: '٢ قريب', attN: live ? 'حاضر الحين' : 'أول حصة الثلاثاء',
+      lessons: LS.map(([t, m, k], i) => {
+        const done = enrolled && i < doneN, isLive = live && i === 1, cur = enrolled && !live && i === 0;
+        return { t, m: isLive ? 'حصة مباشرة الحين مع أ. ماجد' : m, n: ar(i + 1), i: i + 2,
+          done, live: isLive, cur, free: !enrolled && i === 0, locked: !enrolled && i > 0,
+          cls: [cur ? 'cur' : '', isLive ? 'now' : '', done ? 'done' : ''].join(' '),
+          bg: cur || isLive ? 'linear-gradient(140deg, #FF9F5A, #F2545B)' : '#FFEAE4', fg: cur || isLive ? '#FFFFFF' : '#A8381C',
+          href: enrolled && k === 'exam' ? 'Stu2Exams.dc.html?screen=list' : '#',
+          go: !enrolled ? (e) => { if (e && e.preventDefault) e.preventDefault(); } : (k === 'exam' ? pass : open(isLive ? 'live' : 'lesson')) };
+      }),
+      openChat: open('chat'), openLive: open('live'), openBot: open('bot'), openNotes: open('notes'), openCal: open('cal')
+    };
+    const fs = s.fs !== undefined ? s.fs : (P.fs || '');
+    const nmode = s.nmode !== undefined ? s.nmode : (P.nmode || 'view');
+    const botOn = (s.bot !== undefined ? s.bot : P.bot) !== 'off';
+    const LT = [['video', 'فيديو'], ['book', 'الكتاب'], ['imgs', 'ملخصات'], ['quiz', 'تمارين']];
+    return {
+      nView: nmode === 'view', nEdit: nmode !== 'view', nIsType: nmode === 'type', nIsPen: nmode === 'pen', nTypeOn: nmode === 'type' ? 'true' : 'false', nPenOn: nmode === 'pen' ? 'true' : 'false', nIdx: nmode === 'pen' ? 1 : 0,
+      nType: () => set({ nmode: 'type' }), nPen: () => set({ nmode: 'pen' }), nViewGo: () => set({ nmode: 'view' }),
+      pens: [['#0E2350', 'كحلي'], ['#F2545B', 'أحمر'], ['#7A4DF0', 'بنفسجي'], ['#E89B00', 'برتقالي']].map(([c, l], i) => ({ c, l, cls: i === 0 ? 'on' : '' })),
+      fsOn: !!fs, fsIsVideo: fs === 'video', fsIsLive: fs === 'live', fsVideo: () => set({ fs: 'video' }), fsLive: () => set({ fs: 'live' }), fsExit: () => set({ fs: '' }),
+      pf, showHead: P.bare !== '1', headSub: enrolled ? 'مشترك' : 'تتصفح المادة',
+      pv: !!panel, pvCls: panel === 'live' || panel === 'lesson' || panel === 'cal' ? 'wide' : '', pvTitle: TITLES[panel] || '',
+      close: () => set({ panel: '', nmode: 'view', fs: '' }),
+      pLesson: panel === 'lesson', pChat: panel === 'chat', pBot: panel === 'bot', pNotes: panel === 'notes', pCal: panel === 'cal', pLive: panel === 'live',
+      botOn, botOff: !botOn, botPh: botOn ? 'اكتب سؤالك…' : 'المساعد مقفل الحين', botDis: botOn ? 'false' : 'true',
+      ltIdx: Math.max(0, LT.findIndex(([k]) => k === ltab)),
+      ltabs: LT.map(([k, l]) => ({ l, on: ltab === k ? 'true' : 'false', go: () => set({ ltab: k }) })),
+      lNextL: ltab === 'quiz' ? 'خلّصت الدرس، كمّل للي بعده' : 'حل التمارين', lNext: ltab === 'quiz' ? () => set({ panel: '' }) : () => set({ ltab: 'quiz' }),
+      ltVideo: ltab === 'video', ltBook: ltab === 'book', ltImgs: ltab === 'imgs', ltQuiz: ltab === 'quiz',
+      chaps: [['١', 'وش هي الدالة؟', '٨ دقايق'], ['٢', 'المجال والمدى', '٨ دقايق'], ['٣', 'أمثلة محلولة', '٧ دقايق']].map(([n, t, m], i) => ({ n, t, m, cls: i === 1 ? 'on' : '' })),
+      imgs: [['د(س)', 'سبورة الدرس: تعريف الدالة', 'linear-gradient(150deg, #FF9F5A, #F2545B)'], ['المجال', 'ملخص المجال والمدى', 'linear-gradient(150deg, #7A4DF0, #A57BFF)'], ['ص = ٢س', 'رسم دالة خطية', 'linear-gradient(150deg, #0F8F78, #19C29B)'], ['الوحدة ١', 'خريطة ذهنية للوحدة', 'linear-gradient(150deg, #1979C1, #3DA5FF)']].map(([t, c, bg], i) => ({ t, c, bg, i })),
+      quiz: [['إذا د(س) = ٢س + ٣، كم د(٢)؟', ['٥', '٧', '٩'], 1], ['أي علاقة هي دالة؟', ['ص = س²', 'س² + ص² = ١', 'س = ٣'], 0], ['إذا د(س) = ٤س − ١، كم د(٠)؟', ['−١', '٠', '٤'], 0]]
+        .map(([q, o, k]) => ({ q, o: o.map((t, i) => ({ t, cls: i === k ? 'ok' : '' })) })),
+      msgs: [['t', 'أهلًا فيصل! حيّاك في المادة. إذا وقفت عند أي نقطة في الدوال ارسلها لي هنا.', '٤:١٠ م'], ['me', 'الله يحييك أستاذ. ما فهمت ليش س = ٣ مو دالة؟', '٤:١٢ م'], ['t', 'لأن س قيمتها وحدة وتطلع لها قيم ص كثيرة. ارسمها وطبّق اختبار الخط الرأسي وبتشوف.', '٤:١٥ م'], ['me', 'وضحت، مشكور!', '٤:١٦ م']]
+        .map(([cls, t, time], i) => ({ cls, t, time, d: (0.1 + i * 0.14).toFixed(2) + 's' })),
+      dnames: DN, cells, allOn: allOn ? 'true' : 'false', togAll: () => set({ all: !allOn }),
+      dayH: DNF[selWd] + ' ' + ar(selDay) + ' ديسمبر', dayList, dayEmpty: dayList.length === 0,
+      legend: [{ t: 'الرياضيات', c: 'var(--sub-math)' }].concat(allOn ? [{ t: 'الفيزياء', c: 'var(--sub-physics)' }, { t: 'الإنجليزي', c: 'var(--sub-english)' }] : [])
+    };
+  }
+}
+</script>
+</body>
+</html>
