@@ -244,7 +244,7 @@ class T2bShortcutCard extends StatelessWidget {
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             AppIconBox(icon: item.icon, tone: tone, solid: true),
             const Spacer(),
-            if (badge != null) AppStatusBadge(label: appDigits(badge), dense: true),
+            if (badge != null) Flexible(child: AppStatusBadge(label: appDigits(badge), dense: true)),
           ]),
           const SizedBox(height: AppSpace.sm),
           Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context)),

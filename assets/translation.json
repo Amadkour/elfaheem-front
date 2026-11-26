@@ -25124,5 +25124,8 @@
   "t2_pub_title": {"en": "My public profile", "ar": "ملفي العام"},
   "t2_pub_headline": {"en": "This is what visitors and students see", "ar": "هذا اللي يشوفه الزوار والطلاب"},
   "t2_pub_sub": {"en": "Choose what shows, and share your link with your students and their parents.", "ar": "تحكم وش يظهر، وشارك رابطك مع طلابك وأولياء أمورهم."},
-  "t2_chub_sub": {"en": "Our team usually answers within 24 hours.", "ar": "فريقنا يرد عادة خلال ٢٤ ساعة."}
+  "t2_chub_sub": {"en": "Our team usually answers within 24 hours.", "ar": "فريقنا يرد عادة خلال ٢٤ ساعة."},
+  "t2_chat_calm": {"en": "You're all caught up", "ar": "ما عندك شي ينتظرك"},
+  "t2_chat_waiting": {"en": "You have {what}", "ar": "عندك {what}"},
+  "t2_chat_sub": {"en": "Talk to your students, their parents and your colleagues in one place.", "ar": "كلّم طلابك وأولياء أمورهم وزملاءك من مكان واحد."}
 }

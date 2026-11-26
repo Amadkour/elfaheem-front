@@ -10,7 +10,7 @@ import 't2_fakes.dart';
 
 /// The teacher signed in over FakeApi: T2's routes, [extra] on top, an empty answer for anything else.
 Future<void> t2bSetUp({Map<String, FakeHandler>? extra}) async {
-  await t2SetUp(FakeApi({...t2Routes(), 'GET /api/v1/live/meeting/*': (_) => <dynamic>[], 'POST /api/v1/auth/teacher-documents/overview': (_) => t2bDocs(), 'GET /api/v1/me/public-profile': (_) => t2bPublic(), 'GET /api/v1/complaints': (_) => t2bComplaints(), ...?extra},
+  await t2SetUp(FakeApi({...t2Routes(), 'GET /api/v1/live/meeting/*': (_) => <dynamic>[], 'POST /api/v1/auth/teacher-documents/overview': (_) => t2bDocs(), 'GET /api/v1/me/public-profile': (_) => t2bPublic(), 'GET /api/v1/complaints': (_) => t2bComplaints(), 'GET /api/v1/chat/conversations': (_) => t2bChats(), ...?extra},
       latency: Duration.zero, fallback: (_) => <String, dynamic>{}));
 }
 
@@ -189,5 +189,31 @@ Map<String, dynamic> t2bComplaints() {
       c(4652, 'طلب تعديل اسم دورة منشورة', 'Rename a published course', 'course_content', 'closed', '2026-11-12T10:00:00'),
       c(4510, 'طالب ينشر محتوى الدورة', 'A student is sharing the course content', 'student', 'closed', '2026-11-02T10:00:00'),
     ],
+  };
+}
+
+/// The teacher's chats (Tea2Chat): a student waiting, his announcements, a colleague, a parent; two requests.
+Map<String, dynamic> t2bChats() {
+  Map<String, dynamic> c(int id, int peer, String name, String role, String body, String at, {int unread = 0, bool pinned = false, bool online = false}) => {
+        'id': id,
+        'kind': 'direct',
+        'peer': {'id': peer, 'name': name, 'role': role},
+        'online': online,
+        'unread': unread,
+        'pinned': pinned,
+        'last_message': {'id': id * 10, 'kind': 'text', 'body': body, 'sender_id': peer, 'sender_name': name, 'created_at': at},
+        'last_message_at': at,
+      };
+  return {
+    'items': [
+      c(1, 101, 'راكان الحربي', 'student', _t('أستاذ، ممكن تشرح لي س٤؟', 'Sir, could you explain question 4?'), '2026-11-24T16:40:00',
+          unread: 2, pinned: true, online: true),
+      c(2, 21, 'أ. خالد العتيبي', 'teacher', _t('تمام، نثبت اجتماع الخميس', "Fine, let's keep Thursday's meeting"), '2026-11-24T12:05:00', online: true),
+      c(3, 102, 'نواف القحطاني', 'student', _t('شكرًا أستاذ', 'Thank you, sir'), '2026-11-23T10:00:00'),
+    ],
+    'has_more': false,
+    'total': 3,
+    'filters': {'roles': ['student', 'parent', 'teacher'], 'courses': const []},
+    'requests': {'count': 2},
   };
 }
