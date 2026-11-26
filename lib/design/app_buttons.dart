@@ -431,9 +431,10 @@ class _AppButtonState extends State<AppButton> {
 
 enum AppIconButtonVariant { standard, tonal, filled }
 
-/// An icon-only button: a 40 px square (radius 10, concentric with the 48 px hit area at 14) — standard draws the
-/// icon alone, tonal on the emerald tint, filled on the solid primary. [tooltip] is required: it is the tooltip and
-/// the screen reader label.
+/// An icon-only button in a 48 px hit area. Standard is the kit's round button (KIT_SPEC §5.4: a 42 px circle on the
+/// card with a `kit.line` edge); [onHero] draws it 38 px on the hero glass with the on-hero ink (the phone top bar);
+/// tonal (a 40 px square on the primary tint) and filled (on the brand fill) are unchanged. [tooltip] is required: it
+/// is the tooltip and the screen reader label.
 class AppIconButton extends StatefulWidget {
   const AppIconButton({
     super.key,
@@ -443,12 +444,19 @@ class AppIconButton extends StatefulWidget {
     this.variant = AppIconButtonVariant.standard,
     this.badge = 0,
     this.busy = false,
+    this.onHero = false,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
   final AppIconButtonVariant variant;
+
+  /// On a hero / the phone top bar: 38 px glass with the on-hero ink (standard variant only).
+  final bool onHero;
+
+  /// The visual size of the round standard button on a hero (in its 48 px hit area).
+  static const double heroSize = 38;
 
   /// A count drawn on the top-end corner (0 = none).
   final int badge;
@@ -470,7 +478,9 @@ class _AppIconButtonState extends State<AppIconButton> {
     final filled = widget.variant == AppIconButtonVariant.filled;
     final tonal = widget.variant == AppIconButtonVariant.tonal;
     final lit = enabled && (_hover || _pressed);
-    final ink = filled
+    final round = !filled && !tonal;
+    final hero = round && widget.onHero;
+    final ink = filled || hero
         ? c.onHero
         : tonal
             ? ensureContrast(appInk(context, c.primary), [Color.alphaBlend(c.primaryTint, c.cardBg)])
@@ -487,13 +497,16 @@ class _AppIconButtonState extends State<AppIconButton> {
         ? c.primary
         : tonal
             ? (lit ? Color.lerp(c.primaryTint, c.primary, 0.08) : c.primaryTint)
-            : (lit ? c.inputBg : null);
+            : hero
+                ? (lit ? Color.alphaBlend(c.heroGlass, c.heroGlass) : c.heroGlass)
+                : (lit ? Color.alphaBlend(c.kit.well, c.cardBg) : c.cardBg);
     final motion = AppMotion.of(context);
+    final side = hero ? AppIconButton.heroSize : round ? AppDashSize.glyph : AppTouch.min - AppSpace.xs;
     final visual = AnimatedContainer(
       duration: motion.fast,
       curve: AppEase.out,
-      width: AppTouch.min - AppSpace.xs,
-      height: AppTouch.min - AppSpace.xs,
+      width: side,
+      height: side,
       alignment: Alignment.center,
       // D-650 r2: filled wears the brand fill, its cream end past the centred glyph
       decoration: filled && enabled
@@ -508,7 +521,11 @@ class _AppIconButtonState extends State<AppIconButton> {
           : BoxDecoration(
               color: gradient == null ? fill : null,
               gradient: gradient,
-              borderRadius: AppRadius.chipAll,
+              shape: round ? BoxShape.circle : BoxShape.rectangle,
+              borderRadius: round ? null : AppRadius.chipAll,
+              border: round
+                  ? Border.all(color: hero ? c.heroGlassBorder : c.kit.line, width: AppBorder.strong)
+                  : null,
               boxShadow: _focus && enabled && appKeyboardFocus() ? appFocusRing(context) : null,
             ),
       child: widget.busy
@@ -519,7 +536,7 @@ class _AppIconButtonState extends State<AppIconButton> {
           // D-650: a tonal (primary action) chip's glyph wears the green → gold family at rest
           : tonal && enabled && !lit
               ? AppGradientIcon(widget.icon, size: AppIconSize.lg, on: [for (final b in [c.cardBg, c.background]) Color.alphaBlend(c.primaryTint, b)])
-              : Icon(widget.icon, size: AppIconSize.lg, color: ink),
+              : Icon(widget.icon, size: round ? AppIconSize.md : AppIconSize.lg, color: ink),
     );
     Widget out = SizedBox(
       width: AppTouch.min,
