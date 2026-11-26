@@ -198,7 +198,7 @@ class _QuranTeacherHubPageState extends State<QuranTeacherHubPage> {
           ),
         AppCard(
           title: t('برامجي', 'My programs'),
-          action: c.courses.isEmpty ? null : Flexible(child: _addProgramButton()),
+          action: c.courses.isEmpty ? null : _addProgramButton(),
           child: c.courses.isEmpty
               ? AppEmpty(
                   icon: Icons.event_note_rounded,

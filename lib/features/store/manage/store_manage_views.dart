@@ -681,14 +681,15 @@ class _StoreRejectSheetState extends State<StoreRejectSheet> {
   @override
   Widget build(BuildContext context) {
     final ready = _ctl.text.trim().isNotEmpty;
+    // the redesign (SupFinance reject item): the kit's danger-toned sheet head
     return Padding(
-      padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.md + MediaQuery.of(context).viewInsets.bottom),
-      child: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(t('رفض «${widget.title}»', 'Reject "${widget.title}"'), style: AppType.section(context), maxLines: 2, overflow: TextOverflow.ellipsis),
-          AppSpace.gapXs,
-          Text(t('يعود العنصر مسودةً ويصل السبب لصاحبه.', 'The item goes back to draft and its owner gets the reason.'), style: AppType.meta(context)),
-          AppSpace.gapMd,
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: AppSheetContent(
+        title: t('رفض «${widget.title}»', 'Reject "${widget.title}"'),
+        subtitle: t('يعود العنصر مسودةً ويصل السبب لصاحبه.', 'The item goes back to draft and its owner gets the reason.'),
+        icon: Icons.block_rounded,
+        tone: AppTone.danger,
+        children: [
           AppField(controller: _ctl, label: t('السبب', 'Reason'), maxLines: 3, maxLength: 500, onChanged: (_) => setState(() {})),
           AppSpace.gapMd,
           Row(children: [
@@ -696,7 +697,7 @@ class _StoreRejectSheetState extends State<StoreRejectSheet> {
             AppSpace.gapSm,
             Expanded(child: AppButton.danger(label: t('رفض', 'Reject'), onPressed: ready ? () => Navigator.of(context).pop(_ctl.text.trim()) : null)),
           ]),
-        ]),
+        ],
       ),
     );
   }

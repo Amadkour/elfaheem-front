@@ -195,14 +195,12 @@ class _AccountsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AppCard(
         title: 'admin_payout_accounts'.tr,
-        action: Flexible(
-          child: AppButton.ghost(
-            key: const ValueKey('teacher_payouts.add_account'),
-            size: AppButtonSize.sm,
-            label: 't2_pay_add'.tr,
-            icon: Icons.add_rounded,
-            onPressed: p.allowed ? () => _accountSheet(context, p) : null,
-          ),
+        action: AppButton.ghost(
+          key: const ValueKey('teacher_payouts.add_account'),
+          size: AppButtonSize.sm,
+          label: 't2_pay_add'.tr,
+          icon: Icons.add_rounded,
+          onPressed: p.allowed ? () => _accountSheet(context, p) : null,
         ),
         child: p.accounts.isEmpty
             ? Padding(
