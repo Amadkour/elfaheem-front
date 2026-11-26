@@ -219,7 +219,9 @@ class _TabStripState extends State<_TabStrip> {
                     Icon(it.icon!, size: AppIconSize.md, color: sel ? set.ink : ink),
                     const SizedBox(width: _gap),
                   ],
-                  Text(it.label, maxLines: 1, softWrap: false, overflow: TextOverflow.visible, style: ts),
+                  // Flexible: on a split strip (three tabs at 316 px) a label that is a hair too wide ellipsizes
+                  // instead of overflowing the tab
+                  Flexible(child: Text(it.label, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: ts)),
                   if (it.count != null) ...[
                     const SizedBox(width: _gap),
                     AnimatedContainer(
