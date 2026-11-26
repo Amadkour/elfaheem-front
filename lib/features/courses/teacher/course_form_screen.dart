@@ -3,25 +3,25 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_errors.dart' show appSharedFix, showAppError;
-import 'package:flutter_education_app/design/app_kit.dart' show AppHeader, AppSpace, showAppSheet;
+import 'package:flutter_education_app/design/app_kit.dart' show AppButton, AppHeader, AppHero, showAppSheet;
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter_education_app/features/courses/course_setup_views.dart' show courseAreaRequiredText;
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart' show RoadmapApi, kRoadmapPathKey, roadmapOff;
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_editor.dart' show showRoadmapEditor;
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_tab.dart' show roadmapAllowedHere;
-import 'package:flutter_education_app/features/courses/teacher/component/course_progress_status_card.dart';
 import 'package:flutter_education_app/features/courses/teacher/course_form_provider.dart';
 import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/courses/teacher/wizard/course_form_draft.dart';
-import 'package:flutter_education_app/features/courses/teacher/wizard/form_parts.dart';
-import 'package:flutter_education_app/features/courses/teacher/wizard/form_sections.dart';
+import 'package:flutter_education_app/features/courses/teacher/wizard/step_panels.dart';
+import 'package:flutter_education_app/features/courses/teacher/wizard/wizard_kit.dart';
+import 'package:flutter_education_app/features/courses/teacher/wizard/wizard_steps.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 import 'package:flutter_education_app/features/courses/teacher/wizard/weekly_slot_sheet.dart';
 import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter_education_app/features/home/student/models.dart' show CourseStatus;
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
 
@@ -63,8 +63,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   late final CourseFormDraft _draft;
-  bool _advancedOpen = false;
-  bool _optionalOpen = false;
+  CourseWizardStep _step = CourseWizardStep.basics;
 
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
@@ -131,14 +130,14 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     required TeacherCoursesProvider listProvider,
     required CourseFormProvider formProvider,
   }) async {
-    if (!_formKey.currentState!.validate()) {
-      setState(() => _advancedOpen = true); // an invalid discount may be hidden
-      return;
-    }
-    if (formProvider.deliveryMode != 'online' && formProvider.area1 == null) {
-      // in person needs an area: say so before any request (the server refuses it too, `course_area_required`)
-      formProvider.markAreaMissing();
-      _showSnack(courseAreaRequiredText(), context.colors.danger);
+    // one rule per step (title, discount, area, code); the form shows the first step that stops the save
+    final issue = wizardFirstIssue(_draft, formProvider);
+    if (issue != null) {
+      if (issue == CourseWizardStep.audience) formProvider.markAreaMissing();
+      final text = wizardStepIssue(issue, _draft, formProvider)!;
+      setState(() => _step = issue);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _formKey.currentState?.validate());
+      _showSnack(text, context.colors.danger);
       return;
     }
     final type =
@@ -330,24 +329,34 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       );
     }
   }
+  // ── Weekly slots: added before the course is saved, staged until Save ─────
 
-  // ── Add a weekly appointment before the course is saved ────────────────────
-
-  Future<void> _showAddAppointmentSheet() async {
+  /// [editIndex]: the slot being changed (a saved one is removed and added again with the new values).
+  Future<void> _openSlotSheet({int? editIndex}) async {
     final formProvider = context.read<CourseFormProvider>();
-    final existingDays = {
-      ...formProvider.form.schedules.map((s) => s.day),
-      ...formProvider.pendingSchedules.map((s) => s.day),
-    };
+    final all = wizardSlots(formProvider);
+    final initial = editIndex == null ? null : all[editIndex];
     await showAppSheet<void>(
       context,
       (_) => LocalAddScheduleSheet(
-        existingDays: existingDays,
-        onAdd: (day, start, end) => formProvider.addPendingSchedule(
-          PendingSchedule(day: day, startTime: start, endTime: end),
-        ),
+        existing: [for (var i = 0; i < all.length; i++) if (i != editIndex) all[i]],
+        initial: initial,
+        onAdd: (day, start, end) {
+          if (editIndex != null) _deleteSlot(editIndex);
+          formProvider.addPendingSchedule(PendingSchedule(day: day, startTime: start, endTime: end));
+        },
       ),
     );
+  }
+
+  void _deleteSlot(int i) {
+    final p = context.read<CourseFormProvider>();
+    final existingCount = p.form.schedules.length;
+    if (i < existingCount) {
+      p.removeFormSchedule(i);
+    } else {
+      p.removePendingSchedule(i - existingCount);
+    }
   }
 
   /// [color] picks the notice's tone: the danger colour is an error notice, anything else a plain one.
@@ -355,155 +364,142 @@ class _CourseFormInnerState extends State<_CourseFormInner>
     showAppNotice(msg, error: color == context.colors.danger);
   }
 
+
+  // ── Moving between steps ───────────────────────────────────────────────────
+
+  /// The step's fields and rule: shows the field errors on the visible step.
+  bool _stepOk(CourseWizardStep s) {
+    final p = context.read<CourseFormProvider>();
+    final fieldsOk = s != _step || (_formKey.currentState?.validate() ?? true);
+    final issue = wizardStepIssue(s, _draft, p);
+    if (issue != null) {
+      if (s == CourseWizardStep.audience) p.markAreaMissing();
+      if (s != _step || fieldsOk) _showSnack(issue, context.colors.danger);
+    }
+    return fieldsOk && issue == null;
+  }
+
+  void _setStep(CourseWizardStep s) => setState(() => _step = s);
+
+  /// A tap on a step or an "Edit" of the review: any step when editing a course; when creating, backwards freely and
+  /// forwards through the steps in between (each must pass).
+  void _goTo(CourseWizardStep target) {
+    if (target == _step) return;
+    if (_isEdit || target.index < _step.index) return _setStep(target);
+    for (var i = _step.index; i < target.index; i++) {
+      final s = CourseWizardStep.values[i];
+      if (!_stepOk(s)) return _setStep(s);
+    }
+    _setStep(target);
+  }
+
+  void _next() {
+    if (_step.index + 1 >= CourseWizardStep.values.length) return;
+    if (_stepOk(_step)) _setStep(CourseWizardStep.values[_step.index + 1]);
+  }
+
+  void _back() {
+    if (_step.index > 0) _setStep(CourseWizardStep.values[_step.index - 1]);
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final TeacherCoursesProvider listProvider = context
-        .read<TeacherCoursesProvider>();
+    final TeacherCoursesProvider listProvider = context.read<TeacherCoursesProvider>();
     final provider = context.watch<CourseFormProvider>();
     final canSave = (_draft.hasChanges(provider) || provider.listsChanged) && _draft.hasBasics;
+    final last = _step == CourseWizardStep.review;
+    final busy = provider.isLoading;
+    final ready = canSave && !busy;
 
-    return BasePage(
-      key: const ValueKey('course_form'),
-      useWebCard: true,
-      width: AppWidth.reading,
-      appBar: AppHeader(
-        title: _isEdit ? 'edit_course_title'.tr : 'create_new_course_title'.tr,
-        subtitle: _isEdit ? 'edit_badge'.tr : 'new_badge'.tr,
-        actions: const [HelpInfoButton(pageId: 'teacher.course_editor')],
-      ),
-      child: FadeTransition(
-        opacity: _fadeAnim,
-        child: Column(
-          children: [
-            // ── Scrollable form ────────────────────────────────────────────
+    void save({bool publish = true}) => _submit(publish: publish, listProvider: listProvider, formProvider: provider);
+
+    final actions = WizardActions(
+      removeCover: _removeCover,
+      openPath: _openPathEditor,
+      goTo: _goTo,
+      toggleStatus: () => _toggleStatus(listProvider: listProvider),
+      changeProgress: (s) => _changeProgressStatus(s, listProvider),
+      addSlot: () => _openSlotSheet(),
+      editSlot: (i) => _openSlotSheet(editIndex: i),
+      deleteSlot: _deleteSlot,
+    );
+
+    final hero = AppHero(
+      kicker: '${'t1_wz_crumb_courses'.tr}  ›  ${_isEdit ? 'edit_course_title'.tr : 't1_wz_new'.tr}',
+      title: _isEdit ? 't1_wz_hero_edit'.tr : 't1_wz_hero_new'.tr,
+      subtitle: _isEdit ? 't1_wz_hero_sub_edit'.tr : 't1_wz_hero_sub'.tr,
+      bottom: WzBand(step: _step),
+    );
+
+    final Widget primary = last
+        ? AppButton.primary(
+            key: const ValueKey('wizard.publish'),
+            label: canSave
+                ? (_isEdit ? 'btn_save_edits'.tr : 'publish_course_btn'.tr)
+                : (_isEdit ? 'no_changes_to_save'.tr : 'enter_course_title_first'.tr),
+            icon: Icons.public_rounded,
+            expand: true,
+            busy: busy,
+            onPressed: ready ? () => save() : null,
+          )
+        : AppButton.primary(
+            key: const ValueKey('wizard.next'),
+            label: 't1_wz_next'.tr,
+            icon: Icons.arrow_forward_rounded,
+            expand: true,
+            onPressed: _next,
+          );
+
+    // the header holds the one save that is always there: a draft while creating, the edits while editing
+    final headerSave = IconButton(
+      key: ValueKey(_isEdit ? 'wizard.save_edits' : 'wizard.save_draft'),
+      tooltip: _isEdit ? 'btn_save_edits'.tr : 'save_as_draft_btn'.tr,
+      icon: Icon(_isEdit ? Icons.save_outlined : Icons.bookmark_border_rounded),
+      onPressed: ready ? () => save(publish: _isEdit) : null,
+    );
+
+    return T2Scope(
+      child: BasePage(
+        key: const ValueKey('course_form'),
+        enableFooterWidget: false,
+        appBar: AppHeader(
+          title: _isEdit ? 'edit_course_title'.tr : 't1_wz_new'.tr,
+          actions: [headerSave, const HelpInfoButton(pageId: 'teacher.course_editor')],
+        ),
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: Column(children: [
             Expanded(
               child: Form(
                 key: _formKey,
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.xs),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CfCoverSection(draft: _draft, onRemove: _removeCover),
-                      // Basic info (always visible)
-                      ParentComponent(
-                          featureKey: 'course_form.basic_info',
-                          child: CfFormCard(
-                            icon: Icons.info_outline_rounded,
-                            title: 'cf_basic_info'.tr,
-                            children: [
-                              CfBasicsFields(draft: _draft),
-                              const SizedBox(height: AppSpace.md),
-                              CfPricingFields(draft: _draft),
-                            ],
-                          )),
-                      const SizedBox(height: AppSpace.md),
-
-                      // Who it's for / Where (D-1314)
-                      ParentComponent(
-                          featureKey: 'course_form.audience',
-                          child: CfFormCard(
-                            icon: Icons.groups_2_outlined,
-                            title: AppConfig.lang == 'ar' ? 'لمن هذا الكورس وأين' : "Who it's for / Where",
-                            children: [CfAudienceFields(draft: _draft)],
-                          )),
-                      const SizedBox(height: AppSpace.md),
-
-                      // edit mode: publish / progress status stay visible
-                      if (_isEdit) ...[
-                        ParentComponent(
-                            featureKey: 'course_form.publish_status',
-                            child: CfStatusCard(
-                              isPublished: _draft.isPublished,
-                              isLoading: _draft.statusLoading,
-                              onToggle: () =>
-                                  _toggleStatus(listProvider: listProvider),
-                            )),
-                        const SizedBox(height: AppSpace.md),
-                        CourseProgressStatusCard(
-                          status: _draft.progressStatus,
-                          isLoading: _draft.progressStatusLoading,
-                          onChanged: (s) =>
-                              _changeProgressStatus(s, listProvider),
-                        ),
-                        const SizedBox(height: AppSpace.md),
-                      ],
-
-                      // ═══ ADVANCED — collapsed ════════════════════════════════════════
-                      ParentComponent(
-                          featureKey: 'course_form.advanced',
-                          child: CfCollapsibleSection(
-                            icon: Icons.tune_rounded,
-                            title: 'cf_advanced'.tr,
-                            subtitle: 'cf_advanced_sub'.tr,
-                            expanded: _advancedOpen,
-                            onToggle: () =>
-                                setState(() => _advancedOpen = !_advancedOpen),
-                            children: [
-                              CfHoursDiscountFields(draft: _draft),
-                              const SizedBox(height: AppSpace.sm),
-                              CfPrivacyField(draft: _draft),
-                              const SizedBox(height: AppSpace.md),
-                              ParentComponent(
-                                  featureKey: 'course_form.relations',
-                                  child: CfFormCard(
-                                    icon: Icons.route_rounded,
-                                    title: 'course_relations_title'.tr,
-                                    children: [CfRelationsFields(draft: _draft, onOpenPath: _openPathEditor)],
-                                  )),
-                              const SizedBox(height: AppSpace.md),
-                              // Appointments (both modes). Existing, already-saved
-                              // appointments come from provider.form.schedules (edit
-                              // mode) and are staged for removal on save, same as
-                              // certificates/tools/prerequisites. Newly added ones
-                              // aren't sent to the server until save is pressed.
-                              CfScheduleSection(onAdd: _showAddAppointmentSheet),
-                            ],
-                          )),
-                      const SizedBox(height: AppSpace.md),
-
-                      // ═══ OPTIONAL — collapsed ═════════════════════════════════════════════
-                      ParentComponent(
-                          featureKey: 'course_form.optional',
-                          child: CfCollapsibleSection(
-                            icon: Icons.add_circle_outline_rounded,
-                            title: 'cf_optional'.tr,
-                            subtitle: 'cf_optional_sub'.tr,
-                            expanded: _optionalOpen,
-                            onToggle: () =>
-                                setState(() => _optionalOpen = !_optionalOpen),
-                            children: [CfExtrasFields(draft: _draft)],
-                          )),
-                      const SizedBox(height: AppSpace.lg),
-                    ],
-                  ),
+                child: T2HeroScroll(
+                  // a new step opens at its top
+                  key: ValueKey(_step),
+                  hero: hero,
+                  width: AppWidth.content,
+                  children: [
+                    if (_isEdit)
+                      T2Steps(
+                        key: const ValueKey('wizard.steps'),
+                        labels: [for (final s in CourseWizardStep.values) s.label],
+                        index: _step.index,
+                        onTap: (i) => _goTo(CourseWizardStep.values[i]),
+                      ),
+                    WizardStepBody(step: _step, draft: _draft, actions: actions),
+                  ],
                 ),
               ),
             ),
-
-            // ── Sticky footer ──────────────────────────────────────────────
-            CfStickyFooter(
-              isEdit: _isEdit,
-              canSave: canSave,
-              isLoading: provider.isLoading,
-              onSave: () => _submit(
-                publish: true,
-                listProvider: listProvider,
-                formProvider: provider,
-              ),
-              onSaveDraft: _isEdit
-                  ? null
-                  : () => _submit(
-                publish: false,
-                listProvider: listProvider,
-                formProvider: provider,
-              ),
-              course: widget.course,
+            WzBar(
+              primary: primary,
+              secondary: [
+                if (_step.index > 0)
+                  AppButton.secondary(key: const ValueKey('wizard.back'), label: 't1_wz_back'.tr, icon: Icons.arrow_back_rounded, onPressed: _back),
+              ],
             ),
-          ],
+          ]),
         ),
       ),
     );

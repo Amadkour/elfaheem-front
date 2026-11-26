@@ -45,6 +45,17 @@ Future<void> _pumpForm(WidgetTester tester, {TeacherCourse? course}) async {
   }
 }
 
+/// The course form is a wizard (T1): the audience and place block is its third step.
+Future<void> _toAudienceStep(WidgetTester tester) async {
+  for (var i = 0; i < 2; i++) {
+    await tester.ensureVisible(find.byKey(const ValueKey('wizard.next')));
+    await tester.tap(find.byKey(const ValueKey('wizard.next')));
+    for (var k = 0; k < 4; k++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+  }
+}
+
 void main() {
   final json = jsonDecode(File('test/fixtures/payloads/course_setup.json').readAsStringSync()) as Map<String, dynamic>;
   final cat = EduCountryCatalog.fromJson(
@@ -190,6 +201,8 @@ void main() {
 
     testWidgets('create: a stage chip opens its grades', (tester) async {
       await _pumpForm(tester);
+      await tester.enterText(find.byType(TextFormField).first, 'Algebra'); // the first step needs a title
+      await _toAudienceStep(tester);
       await tester.ensureVisible(find.text('Primary'));
       await tester.tap(find.text('Primary'));
       await tester.pump(const Duration(milliseconds: 100));
@@ -198,6 +211,7 @@ void main() {
 
     testWidgets('edit: a failed detail call shows Retry instead of the section; Retry loads it', (tester) async {
       await _pumpForm(tester, course: TeacherCourse.fromJson(json));
+      await _toAudienceStep(tester);
       expect(find.byType(CourseSetupLoadError), findsOneWidget);
       expect(find.byType(CourseSetupSection), findsNothing);
       detailFails = false;

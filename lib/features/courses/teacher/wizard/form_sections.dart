@@ -6,30 +6,21 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/core/app_time.dart';
-import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart' show EduGeoLabels;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/courses/course_setup_views.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_editor.dart' show RoadmapLevelChips, RoadmapTagsInput;
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_tab.dart' show roadmapAllowedHere;
-import 'package:flutter_education_app/features/courses/teacher/component/add_item_dialog.dart';
-import 'package:flutter_education_app/features/courses/teacher/component/currency_selector.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/next_courses_field.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/number_pair.dart';
 import 'package:flutter_education_app/features/courses/teacher/component/recommended_courses_field.dart';
-import 'package:flutter_education_app/features/courses/teacher/component/section_card.dart';
 import 'package:flutter_education_app/features/courses/teacher/course_form_provider.dart';
 import 'package:flutter_education_app/features/courses/teacher/course_privacy_card.dart';
-import 'package:flutter_education_app/features/courses/teacher/course_reel_field.dart';
 import 'package:flutter_education_app/features/courses/teacher/wizard/course_form_draft.dart';
 import 'package:flutter_education_app/features/courses/teacher/wizard/form_parts.dart';
-import 'package:flutter_education_app/features/home/teacher/schedules/schedules_provider.dart' show slotDayLabel;
 import 'package:flutter_education_app/features/quran/quran_api.dart' show quranOff;
-import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/widget/primary_menue.dart';
 import 'package:flutter_education_app/utils/widget/text_field.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
@@ -89,48 +80,6 @@ class CfBasicsFields extends StatelessWidget {
   }
 }
 
-/// Yearly / six-month / monthly price, the default plan and the currency.
-class CfPricingFields extends StatelessWidget {
-  const CfPricingFields({super.key, required this.draft});
-
-  final CourseFormDraft draft;
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<CourseFormProvider>();
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Yearly = the existing price field; the other two plans are optional (empty = not offered).
-      AppNumberField(controller: draft.price, label: 'price_yearly_label'.tr, min: 0, step: 10, decimals: 2),
-      const SizedBox(height: AppSpace.md),
-      NumberPair(
-        first: AppNumberField(controller: draft.priceSixMonths, label: 'price_six_months_label'.tr, min: 0, step: 10, decimals: 2),
-        second: AppNumberField(controller: draft.priceMonthly, label: 'price_monthly_label'.tr, min: 0, step: 10, decimals: 2),
-      ),
-      const SizedBox(height: AppSpace.xs),
-      Text('price_plans_hint'.tr, style: AppType.meta(context)),
-      const SizedBox(height: AppSpace.md),
-      // Plan students see first (course profile + home).
-      CfLabeledField(
-        label: 'default_plan_label'.tr,
-        child: Wrap(spacing: AppSpace.xs, children: [
-          for (final e in {
-            0: 'price_yearly_label'.tr,
-            1: 'price_six_months_label'.tr,
-            2: 'price_monthly_label'.tr,
-          }.entries)
-            ChoiceChip(
-              label: Text(e.value, style: TextStyle(fontFamily: AppFonts.family)),
-              selected: provider.defaultPlanIndex == e.key,
-              onSelected: (_) => provider.onChangeDefaultPlan(e.key),
-            ),
-        ]),
-      ),
-      const SizedBox(height: AppSpace.md),
-      CurrencySelector(label: 'currency_label'.tr, selected: provider.selectedCurrency, onChanged: provider.onChangeCurrency),
-    ]);
-  }
-}
-
 /// Who it's for and where (D-1314): the program type, stages and grades, subject, delivery mode, area and address.
 class CfAudienceFields extends StatelessWidget {
   const CfAudienceFields({super.key, required this.draft});
@@ -173,17 +122,26 @@ class CfAudienceFields extends StatelessWidget {
   }
 }
 
-/// Expected hours and the discount (percent, days, remove).
-class CfHoursDiscountFields extends StatelessWidget {
-  const CfHoursDiscountFields({super.key, required this.draft});
+/// Expected hours.
+class CfHoursField extends StatelessWidget {
+  const CfHoursField({super.key, required this.draft});
+
+  final CourseFormDraft draft;
+
+  @override
+  Widget build(BuildContext context) =>
+      AppNumberField(controller: draft.hours, label: 'expected_hours_label'.tr, min: 0, decimals: 1);
+}
+
+/// The discount (percent, days, remove).
+class CfDiscountFields extends StatelessWidget {
+  const CfDiscountFields({super.key, required this.draft});
 
   final CourseFormDraft draft;
 
   @override
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      AppNumberField(controller: draft.hours, label: 'expected_hours_label'.tr, min: 0, decimals: 1),
-      const SizedBox(height: AppSpace.lg),
       Text('discount_section_title'.tr, style: AppType.label(context)),
       const SizedBox(height: AppSpace.xxs),
       Text('discount_section_hint'.tr, style: AppType.meta(context)),
@@ -311,98 +269,3 @@ class CfPrivacyField extends StatelessWidget {
       );
 }
 
-/// The weekly appointments: the saved ones (edit mode) and the new ones, staged until Save.
-class CfScheduleSection extends StatelessWidget {
-  const CfScheduleSection({super.key, required this.onAdd});
-
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<CourseFormProvider>();
-    return SectionCard(
-      featureKey: 'course_details.schedule',
-      icon: Icons.event_available_rounded,
-      title: 'weekly_schedule'.tr,
-      items: [
-        ...provider.form.schedules.map((s) => '${slotDayLabel(s.day)} • ${AppTime.clock(s.startTime)} – ${AppTime.clock(s.endTime)}'),
-        ...provider.pendingSchedules.map((s) => '${slotDayLabel(s.day)} • ${AppTime.clock(s.startTime)} – ${AppTime.clock(s.endTime)}'),
-      ],
-      onAdd: onAdd,
-      onRemove: (i) {
-        final existingCount = provider.form.schedules.length;
-        if (i < existingCount) {
-          provider.removeFormSchedule(i);
-        } else {
-          provider.removePendingSchedule(i - existingCount);
-        }
-      },
-    );
-  }
-}
-
-/// The reel, the certificate designs link and the certificates / tools / prerequisites lists.
-class CfExtrasFields extends StatelessWidget {
-  const CfExtrasFields({super.key, required this.draft});
-
-  final CourseFormDraft draft;
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<CourseFormProvider>();
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Course reel (عرض أولي): an optional intro video shown instead of the course image on the course profile.
-      CourseReelField(controller: draft.reelCtrl, posterUrl: draft.logoBytes != null ? null : draft.coverUrl),
-      const SizedBox(height: AppSpace.md),
-      const ParentComponent(featureKey: 'course_form.certificate_template', child: CfCertificateDesignsLink()),
-      const SizedBox(height: AppSpace.sm),
-      SectionCard(
-        featureKey: 'course_details.certificates',
-        icon: Icons.workspace_premium_rounded,
-        title: 'certificates_section'.tr,
-        items: provider.form.certificates,
-        onAdd: () => addItemDialog('add_certificate'.tr, provider.addFormCertificate, context),
-        onRemove: provider.removeFormCertificate,
-      ),
-      const SizedBox(height: AppSpace.sm),
-      SectionCard(
-        featureKey: 'course_details.tools',
-        icon: Icons.build_rounded,
-        title: 'tools_section'.tr,
-        items: provider.form.tools,
-        onAdd: () => addItemDialog('add_tool'.tr, provider.addFormTool, context),
-        onRemove: provider.removeFormTool,
-      ),
-      const SizedBox(height: AppSpace.sm),
-      SectionCard(
-        featureKey: 'course_details.prerequisites',
-        icon: Icons.checklist_rounded,
-        title: 'prerequisites_section'.tr,
-        items: provider.form.prerequisites,
-        onAdd: () => addItemDialog('add_prerequisite'.tr, provider.addFormPrerequisite, context),
-        onRemove: provider.removeFormPrerequisite,
-      ),
-    ]);
-  }
-}
-
-/// The cover at the top of the form (a thin wrapper that hands the pick to the draft).
-class CfCoverSection extends StatelessWidget {
-  const CfCoverSection({super.key, required this.draft, required this.onRemove});
-
-  final CourseFormDraft draft;
-  final Future<void> Function() onRemove;
-
-  @override
-  Widget build(BuildContext context) => CfCoverPicker(
-        logoBytes: draft.logoBytes,
-        imageUrl: draft.coverUrl,
-        logoFile: draft.logoFile,
-        onRemove: onRemove,
-        onChange: (XFile file) async {
-          draft.logoBytes = await file.readAsBytes();
-          draft.logoFile = file;
-          draft.touch();
-        },
-      );
-}
