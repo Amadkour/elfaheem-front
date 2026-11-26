@@ -12,6 +12,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -146,7 +147,7 @@ class _StoreLibraryPageState extends State<StoreLibraryPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
+    return SdArea(area: AppArea.store, child: BasePage(
       width: AppWidth.content,
       appBar: ScreenAppBar(title: t('مكتبتي', 'My Library'), helpPageId: 'store.library'),
       child: SafeArea(
@@ -167,7 +168,7 @@ class _StoreLibraryPageState extends State<StoreLibraryPage> {
           onRemoveCopy: _removeCopy,
         ),
       ),
-    );
+    ));
   }
 }
 

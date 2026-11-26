@@ -10,6 +10,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/routing/pending_intent.dart';
@@ -167,7 +168,7 @@ class _StoreItemPageState extends State<StoreItemPage> {
   @override
   Widget build(BuildContext context) {
     final it = _item;
-    return BasePage(
+    return SdArea(area: AppArea.store, child: BasePage(
       width: AppWidth.content,
       // the item's title is the page's headline; the header names the place (a long title broke it in two, D-1339)
       appBar: ScreenAppBar(title: it == null ? t('المتجر', 'Store') : storeKindLabel(it.kind), helpPageId: 'store.item'),
@@ -187,7 +188,7 @@ class _StoreItemPageState extends State<StoreItemPage> {
                 onPreview: it.previewUrl == null || it.previewIsImage ? null : _preview,
               ),
       ),
-    );
+    ));
   }
 }
 

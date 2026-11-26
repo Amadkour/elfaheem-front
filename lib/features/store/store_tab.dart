@@ -16,6 +16,9 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
 import 'package:flutter_education_app/features/courses/course_filters.dart';
 import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/store/store_api.dart';
 import 'package:flutter_education_app/features/store/store_checkout.dart';
 import 'package:flutter_education_app/features/store/store_item_page.dart';
@@ -219,60 +222,47 @@ class _StoreTabState extends State<StoreTab> {
   @override
   Widget build(BuildContext context) {
     final cart = StoreCart.instance.value.length;
-    return BasePage(
-      width: AppWidth.wide,
-      appBar: ScreenAppBar(
-        title: t('المتجر', 'Store'),
-        showBack: false,
-        helpPageId: 'store.browse',
-        actions: [
-          IconButton(
-            key: const ValueKey('store.library'),
-            tooltip: t('مكتبتي', 'My Library'),
-            icon: const Icon(Icons.local_library_rounded),
-            onPressed: _openLibrary,
+    return SdArea(
+      area: AppArea.store,
+      child: BasePage(
+        width: AppWidth.wide,
+        appBar: ScreenAppBar(title: t('المتجر', 'Store'), showBack: false, helpPageId: 'store.browse'),
+        child: SafeArea(
+          child: StoreBrowseView(
+            filters: _filters,
+            edu: _edu,
+            loadEdu: _loadEdu,
+            onFilters: _onFilters,
+            categories: _categories,
+            categoryId: _categoryId,
+            onCategory: _onCategory,
+            onSearch: _onSearch,
+            items: _items,
+            total: _loading ? null : _total,
+            loading: _loading,
+            loadingMore: _loadingMore,
+            hasMore: _hasMore,
+            error: _error,
+            offline: _offline,
+            cartIds: {for (final e in StoreCart.instance.value) e.id},
+            cartCount: cart,
+            onOpen: _open,
+            onAdd: (it) => StoreCart.instance.add(it),
+            onCart: cart == 0 ? null : _openCart,
+            onLibrary: _openLibrary,
+            onRetry: _load,
+            onLoadMore: () => _load(more: true),
+            onRefresh: _load,
           ),
-          IconButton(
-            key: const ValueKey('store.cart'),
-            tooltip: cart == 0 ? t('السلة', 'Cart') : '${t('السلة', 'Cart')} ($cart)',
-            icon: Badge(
-              isLabelVisible: cart > 0,
-              label: Text('$cart'),
-              child: const Icon(Icons.shopping_cart_rounded),
-            ),
-            onPressed: cart == 0 ? null : _openCart,
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: StoreBrowseView(
-          filters: _filters,
-          edu: _edu,
-          loadEdu: _loadEdu,
-          onFilters: _onFilters,
-          categories: _categories,
-          categoryId: _categoryId,
-          onCategory: _onCategory,
-          onSearch: _onSearch,
-          items: _items,
-          total: _loading ? null : _total,
-          loading: _loading,
-          loadingMore: _loadingMore,
-          hasMore: _hasMore,
-          error: _error,
-          offline: _offline,
-          cartIds: {for (final e in StoreCart.instance.value) e.id},
-          onOpen: _open,
-          onRetry: _load,
-          onLoadMore: () => _load(more: true),
-          onRefresh: _load,
         ),
       ),
     );
   }
 }
 
-/// The browse body with plain values.
+/// The browse body with plain values (Stu2Store `screen=store`): the hero ("ملخصات وكتب من معلمينك") with the search
+/// pill, My Library and the cart; the filter card riding up over it (level and subject, the count, the kind chips);
+/// then the shelf of book cards, dealt in (M5).
 class StoreBrowseView extends StatelessWidget {
   const StoreBrowseView({
     super.key,
@@ -292,7 +282,11 @@ class StoreBrowseView extends StatelessWidget {
     this.error,
     this.offline = false,
     this.cartIds = const {},
+    this.cartCount = 0,
     this.onOpen,
+    this.onAdd,
+    this.onCart,
+    this.onLibrary,
     this.onRetry,
     this.onLoadMore,
     this.onRefresh,
@@ -314,78 +308,118 @@ class StoreBrowseView extends StatelessWidget {
   /// [error] is the connection's (QA_PHASE7 W-4): with nothing on screen, "needs a connection" instead of the error.
   final bool offline;
   final Set<int> cartIds;
-  final ValueChanged<StoreItem>? onOpen;
+  final int cartCount;
+  final ValueChanged<StoreItem>? onOpen, onAdd;
+  final VoidCallback? onCart, onLibrary;
   final VoidCallback? onRetry, onLoadMore;
   final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    final head = <Widget>[
-      AppSearchField(
-        key: const ValueKey('store.search'),
-        hint: t('ابحث في المتجر', 'Search the store'),
-        onChanged: (q) => onSearch?.call(q),
-      ),
-      const SizedBox(height: AppSpace.sm),
-      ParentComponent(
-        featureKey: kCourseFiltersKey,
-        child: CourseFilterBar(
-          value: filters,
-          edu: edu,
-          loadEdu: loadEdu,
-          resultCount: total,
-          withPlace: false,
-          countLabel: storeCountText,
-          sheetTitle: t('تصفية المتجر', 'Filter the store'),
-          applyLabel: t('عرض النتائج', 'Show results'),
-          onChanged: onFilters,
+    final hero = AppHero(
+      title: 'sd_store_title'.tr,
+      icon: Icons.local_mall_outlined,
+      bottom: Row(children: [
+        Expanded(
+          child: AppSearchField(
+            key: const ValueKey('store.search'),
+            hint: 'sd_store_search'.tr,
+            onChanged: (q) => onSearch?.call(q),
+          ),
         ),
-      ),
-      if (categories.isNotEmpty) ...[
-        const SizedBox(height: AppSpace.sm),
-        SingleChildScrollView(
-          key: const ValueKey('store.categories'),
-          scrollDirection: Axis.horizontal,
-          child: Row(children: [
-            AppChoiceChip(label: t('كل الأقسام', 'All categories'), selected: categoryId == null, onTap: () => onCategory?.call(null)),
-            for (final c in categories) ...[
-              const SizedBox(width: AppSpace.xs),
-              AppChoiceChip(
-                key: ValueKey('store.category.${c.id}'),
-                label: c.name,
-                selected: c.id == categoryId,
-                onTap: () => onCategory?.call(c.id == categoryId ? null : c.id),
-              ),
-            ],
-          ]),
+        const SizedBox(width: AppSpace.xs),
+        AppIconButton(
+          key: const ValueKey('store.library'),
+          icon: Icons.local_library_outlined,
+          tooltip: t('مكتبتي', 'My Library'),
+          onHero: true,
+          onPressed: onLibrary,
         ),
-      ],
-      const SizedBox(height: AppSpace.md),
-    ];
+        const SizedBox(width: AppSpace.xs),
+        AppIconButton(
+          key: const ValueKey('store.cart'),
+          icon: Icons.shopping_cart_outlined,
+          tooltip: cartCount == 0 ? t('السلة', 'Cart') : '${t('السلة', 'Cart')} ($cartCount)',
+          onHero: true,
+          badge: cartCount,
+          onPressed: onCart,
+        ),
+      ]),
+    );
+    // a tighter card: the filter bar needs the room on a 320 px phone
+    final filterCard = AppCard(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        ParentComponent(
+          featureKey: kCourseFiltersKey,
+          child: CourseFilterBar(
+            value: filters,
+            edu: edu,
+            loadEdu: loadEdu,
+            resultCount: total,
+            withPlace: false,
+            countLabel: storeCountText,
+            sheetTitle: t('تصفية المتجر', 'Filter the store'),
+            applyLabel: t('عرض النتائج', 'Show results'),
+            onChanged: onFilters,
+          ),
+        ),
+        if (categories.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.sm),
+          SingleChildScrollView(
+            key: const ValueKey('store.categories'),
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              AppChip(label: 'sd_all'.tr, selected: categoryId == null, onTap: () => onCategory?.call(null)),
+              for (final c in categories) ...[
+                const SizedBox(width: AppSpace.xs),
+                AppChip(
+                  key: ValueKey('store.category.${c.id}'),
+                  label: c.name,
+                  selected: c.id == categoryId,
+                  onTap: () => onCategory?.call(c.id == categoryId ? null : c.id),
+                ),
+              ],
+            ]),
+          ),
+        ],
+      ]),
+    );
     final Widget body;
     if (loading && items.isEmpty) {
       body = const AppListSkeleton(items: 4, padding: EdgeInsets.zero);
     } else if (error != null && offline && items.isEmpty) {
-      body = AppNeedsConnection(onRetry: onRetry);
+      body = AppCard(child: AppNeedsConnection(onRetry: onRetry));
     } else if (error != null) {
-      body = AppErrorState(message: error, onRetry: onRetry);
+      body = AppCard(child: AppErrorState(message: error, onRetry: onRetry));
     } else if (items.isEmpty) {
-      body = AppEmpty(
-        key: const ValueKey('store.empty'),
-        icon: Icons.local_mall_rounded,
-        title: filters.hasLevel || categoryId != null
-            ? t('لا توجد عناصر لهذه الاختيارات بعد', 'Nothing for these choices yet')
-            : t('المتجر فارغ الآن', 'The store is empty for now'),
-        message: filters.hasLevel || categoryId != null ? t('غيّر الاختيارات أو امسح التصفية.', 'Change the choices or clear the filters.') : null,
-        actionLabel: filters.hasLevel ? t('اعرض كل المستويات', 'Show every level') : null,
-        onAction: filters.hasLevel ? () => onFilters(filters.withLevel(null, null)) : null,
+      final narrowed = filters.hasLevel || categoryId != null;
+      body = AppCard(
+        child: AppEmpty(
+          key: const ValueKey('store.empty'),
+          icon: Icons.local_mall_outlined,
+          title: narrowed ? 'sd_store_empty_title'.tr : t('المتجر فارغ الآن', 'The store is empty for now'),
+          message: narrowed ? 'sd_store_empty_msg'.tr : null,
+          actionLabel: filters.hasLevel ? 'sd_store_empty_action'.tr : null,
+          onAction: filters.hasLevel ? () => onFilters(filters.withLevel(null, null)) : null,
+        ),
       );
     } else {
       body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppGrid(
-          minTile: 140,
+          minTile: _tile,
           children: [
-            for (final it in items) StoreItemCard(item: it, inCart: cartIds.contains(it.id), onTap: () => onOpen?.call(it)),
+            for (final (i, it) in items.indexed)
+              AppDeal(
+                index: i,
+                group: 'store.shelf',
+                child: StoreItemCard(
+                  item: it,
+                  inCart: cartIds.contains(it.id),
+                  onTap: () => onOpen?.call(it),
+                  onAdd: onAdd == null ? null : () => onAdd!(it),
+                ),
+              ),
           ],
         ),
         if (hasMore) ...[
@@ -401,10 +435,13 @@ class StoreBrowseView extends StatelessWidget {
         ],
       ]);
     }
-    final list = ListView(
-      padding: const EdgeInsets.all(AppSpace.md),
-      children: [...head, body, const SizedBox(height: AppSpace.lg)],
+    final list = SdHeroList(
+      hero: hero,
+      width: AppWidth.wide,
+      children: [filterCard, const SizedBox(height: AppSpace.md), body],
     );
     return onRefresh == null ? list : AppRefresh(onRefresh: onRefresh!, child: list);
   }
+
+  static const double _tile = 156;
 }
