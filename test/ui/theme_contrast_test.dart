@@ -150,10 +150,13 @@ void main() {
       }
     });
 
-    test('the warm editorial default (D-610): warm captions that also read on the peach and sky blocks', () {
+    test('the kit default (D-1811): green-grey captions that also read on the warm and green blocks', () {
       double hue(Color c) => HSLColor.fromColor(c).hue;
-      for (final c in [AppTheme.textLight, AppTheme.darkTextLight, AppTheme.textMedium, AppTheme.darkTextMuted]) {
-        expect(hue(c), inInclusiveRange(20, 45), reason: _hex(c)); // warm, never the old cold slate
+      for (final c in [AppTheme.textLight, AppTheme.textMedium]) {
+        expect(hue(c), inInclusiveRange(140, 170), reason: _hex(c)); // the brand green's grey, never a cold slate
+      }
+      for (final c in [AppTheme.darkTextLight, AppTheme.darkTextMuted]) {
+        expect(hue(c), inInclusiveRange(20, 45), reason: _hex(c)); // dark mode keeps its own neutrals (P14)
       }
       for (final block in [AppTheme.accent, AppTheme.accent3]) {
         expect(contrastRatio(AppTheme.textLight, block), greaterThanOrEqualTo(4.5), reason: _hex(block));

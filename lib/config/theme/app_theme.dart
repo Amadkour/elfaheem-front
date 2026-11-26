@@ -1,6 +1,7 @@
 /// ─────────────────────────────────────────────────────────────────────────────
 /// app_theme.dart
-/// Warm Editorial — the built-in DEFAULT palette (D-610, `.interface-design/system.md` §2)
+/// The built-in DEFAULT palette: preset `kit_default` (D-1810, docs/redesign/KIT_SPEC.md §2.3; the brand roles of
+/// the redesign kit, generated from the logo by tool/redesign/kit_palette.py). Was Warm Editorial (D-610).
 ///
 /// This file holds only:
 ///   • Raw static design tokens (colours, radii, text styles, gradients,
@@ -9,7 +10,7 @@
 ///
 /// This file IS the default theme: it is what the app shows on first launch,
 /// offline, or whenever the API / cache has no value for a token. The values are
-/// the server's built-in preset `warm_editorial` (back services/theme_presets.py),
+/// the server's built-in preset `kit_default` (back features/platform/theme_presets.py),
 /// so a first launch looks like the platform after its first theme fetch. The live
 /// palette (fetched from the API, cached in SharedPreferences) overrides it —
 /// see theme_config_provider.dart.
@@ -30,47 +31,47 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 class AppTheme {
   AppTheme._();
 
-  // ── Brand palette (DEFAULT theme: warm_editorial) ─────────────────────────
-  static const Color primary         = Color(0xFF0B6B4F);   // deep emerald: the primary action, success / correct
-  static const Color primaryDark     = Color(0xFF064733);
-  static const Color primaryLight    = Color(0xFF3E9C78);
-  static const Color lightPrimary    = Color(0x0F0B6B4F);   // primary @ 6 % (D-728: was 12 %)
+  // ── Brand palette (DEFAULT theme: kit_default) ─────────────────────────
+  static const Color primary         = Color(0xFF186848);   // deep emerald: the primary action, success / correct
+  static const Color primaryDark     = Color(0xFF0F3F2C);
+  static const Color primaryLight    = Color(0xFF2FA26C);
+  static const Color lightPrimary    = Color(0x0F186848);   // primary @ 6 % (D-728: was 12 %)
 
-  static const Color charcoal        = Color(0xFF2A251F);   // warm charcoal: ink, the shadow tone
-  static const Color charcoalLight   = Color(0xFF4D463E);
-  static const Color charcoalDark    = Color(0xFF211D18);
+  static const Color charcoal        = Color(0xFF102B20);   // warm charcoal: ink, the shadow tone
+  static const Color charcoalLight   = Color(0xFF51675E);
+  static const Color charcoalDark    = Color(0xFF08261A);
 
-  static const Color accent          = Color(0xFFFBE2D3);   // block peach (accent1): learning / progress blocks
-  static const Color accent2         = Color(0xFFD46A4C);   // terracotta (D-860): streaks, achievements, top marks; text via context.colors.accent2 (D-740 ink)
-  static const Color accent3         = Color(0xFFE4ECE3);   // block sage (the `sky` tone, D-630): schedule / information blocks
+  static const Color accent          = Color(0xFFF6EEE3);   // block warm tint (accent1, kit warm_tint): learning / progress blocks
+  static const Color accent2         = Color(0xFFC08838);   // the logo gold (kit warm): streaks, achievements, top marks; text via context.colors.accent2 (D-740 ink)
+  static const Color accent3         = Color(0xFFDFEAE5);   // block green tint (kit primary_tint; the `sky` tone, D-630): schedule / information blocks
   static const Color success         = Color(0xFF12805C);
-  static const Color danger          = Color(0xFFE0245E);   // raspberry red (D-861): cooler than the terracotta accent2
+  static const Color danger          = Color(0xFFE0245E);   // raspberry red (D-861): apart from the gold accent2
   static const Color warning         = Color(0xFFB7791F);   // 2.9 – 3.6:1: icons and fills, never small text
-  static const Color secondText      = Color(0xFF6E655A);   // light mode; 4.5:1+ on every light surface and block
+  static const Color secondText      = Color(0xFF576C64);   // light mode; 4.5:1+ on every light surface and block
   static const Color darkSecondText  = Color(0xFFA99C8A);   // dark mode; 4.5:1+ on every dark surface (WCAG AA)
   static const Color purple          = Color(0xFF6F58C9);
 
   // ── Tints & shadow base colours ───────────────────────────────────────────
-  static const Color primaryTint            = Color(0x0F0B6B4F);   // 6 % (D-728: 12 % was too heavy behind components)
-  static const Color primaryTintDark        = Color(0x330B6B4F);   // 20 %
-  static const Color primaryShadowColor     = Color(0x4D0B6B4F);   // light mode, 30 %
-  static const Color primaryShadowColorDark = Color(0x260B6B4F);   // dark mode, 15 %
-  static const Color cardShadowColor        = Color(0xFF2A251F);   // light mode: the warm charcoal shadow tone
+  static const Color primaryTint            = Color(0x0F186848);   // 6 % (D-728: 12 % was too heavy behind components)
+  static const Color primaryTintDark        = Color(0x33186848);   // 20 %
+  static const Color primaryShadowColor     = Color(0x4D186848);   // light mode, 30 %
+  static const Color primaryShadowColorDark = Color(0x26186848);   // dark mode, 15 %
+  static const Color cardShadowColor        = Color(0xFF08261A);   // light mode: the warm charcoal shadow tone
   static const Color cardShadowColorDark    = Color(0xFF000000);   // dark mode
 
   // ── Light surfaces ────────────────────────────────────────────────────────
-  static const Color background           = Color(0xFFF1F4F0);   // canvas: pale sage-grey (D-632), white cards lift off it
+  static const Color background           = Color(0xFFF5F8F7);   // canvas: kit page (D-1810), white cards lift off it
   static const Color surfaceCard          = Color(0xFFFFFFFF);   // the card: pure white
   static const Color cardBg               = Color(0xFFFFFFFF);
-  static const Color textFieldBackground  = Color(0xFFF4F6F2);
-  static const Color inputBg              = Color(0xFFF4F6F2);
-  static const Color divider              = Color(0xFFE6EAE3);   // neutral sage hairline
+  static const Color textFieldBackground  = Color(0xFFF9FBFA);
+  static const Color inputBg              = Color(0xFFF9FBFA);
+  static const Color divider              = Color(0xFFDFEAE5);   // kit line
 
   // ── Light text ────────────────────────────────────────────────────────────
-  static const Color textDark     = Color(0xFF211D18);   // 15.4:1 on canvas
-  static const Color textMedium   = Color(0xFF4D463E);
-  static const Color textLight    = Color(0xFF6E655A);   // 4.5:1+ on canvas / paper / input / peach / sage (WCAG AA)
-  static const Color textAction   = Color(0xFF0B6B4F);
+  static const Color textDark     = Color(0xFF102B20);   // 15.4:1 on canvas
+  static const Color textMedium   = Color(0xFF51675E);
+  static const Color textLight    = Color(0xFF576C64);   // 4.5:1+ on canvas / paper / input / peach / sage (WCAG AA)
+  static const Color textAction   = Color(0xFF186848);
 
   // ── Dark surfaces (D-650: neutral grey, the brown read muddy) ─────────────
   static const Color darkBackground  = Color(0xFF121414);
@@ -88,9 +89,9 @@ class AppTheme {
   // ── Radii (D-612: by hierarchy) ───────────────────────────────────────────
   static const double radiusSmall   = 10;   // chip
   static const double radiusControl = 14;   // button, input
-  static const double radiusMedium  = 16;   // card
+  static const double radiusMedium  = 20;   // card (24 from 700 px: AppRadius.cardFor)
   static const double radiusLarge   = 24;   // block
-  static const double radiusSheet   = 28;   // bottom sheet, dialog
+  static const double radiusSheet   = 24;   // bottom sheet, dialog
   static const double radiusXL      = 32;   // hero
 
   // ── Gradients (derived from the palette above) ───────────────────────────
@@ -125,7 +126,7 @@ class AppTheme {
     colors: [charcoal, charcoalLight, charcoal],
   );
   static const LinearGradient accentGradient = LinearGradient(
-    colors: [accent2, Color(0xFFE39E8B)],   // terracotta → a lighter terracotta (D-864; was a cream)
+    colors: [accent2, Color(0xFFCEA264)],   // warm → the kit's hot_a (KIT_SPEC 2.3; was terracotta, D-864)
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

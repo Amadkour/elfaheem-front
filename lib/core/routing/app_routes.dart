@@ -134,6 +134,9 @@ class AppRoutes {
       signIn: false, description: "A member onboarding intake link: the public preview, then sign in and start the application (D-1200)");
 
   /// Every page, in match order.
+  static const kitGallery = AppRouteDef('admin.kit_gallery', '/kit_gallery',
+      description: 'The redesign kit component gallery (super admin / developer; KIT_SPEC 7.1)');
+
   static const all = <AppRouteDef>[
     login, register, forgotPassword,
     studentHome, teacherHome, adminHome, parentHome, orgHome,
@@ -141,7 +144,7 @@ class AppRoutes {
     downloads, exports, exportLog, exportSchedules, exportLinks, entityView, meetingLinks, storeLibrary, storeItem,
     gamesProgress, gamesChallenge, gamePlay, nahwLesson, selfLearning, quranProgress, quranTeacher,
     courseLink, profileLink, liveLink, verifyHome, verifyLink, exportLink, orgJoinLink, orgInvitationLink, onboardIntakeLink, shareLink,
-    privacy, terms,
+    privacy, terms, kitGallery,
   ];
 
   /// The role homes, by path (their tabs are `<home>/<tab>`).

@@ -30,9 +30,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api_client.dart';
 import '../../core/display/display_settings.dart';
+import '../../core/app_digits.dart';
 import '../../core/app_time.dart';
 import '../app_config.dart';
 import 'app_theme.dart';
+import 'kit_palette.dart';
+import 'kit_palette_defaults.dart';
 import 'theme_config_model.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_canvas.dart';
@@ -52,12 +55,19 @@ String get _currentPlatform {
   return 'android';
 }
 
-class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
+class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver implements KitSurfaces {
   final ApiClient _api;
 
   ThemeConfigProvider({required ApiClient api}) : _api = api {
     WidgetsBinding.instance.addObserver(this);
     _live = this;
+  }
+
+  /// A copy of [source]'s palette in [dark] mode for a preview (the kit gallery's dark switch): never the app's
+  /// provider, no lifecycle observer, no fetch.
+  ThemeConfigProvider.preview(ThemeConfigProvider source, {required bool dark}) : _api = source._api {
+    _model = source._model;
+    isDark = dark;
   }
 
   /// The app's provider (the last one made), for [accountChanged] from code that has no context.
@@ -272,10 +282,12 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     return isDark ? Color.lerp(cardBg, textDark, 0.07)! : shadowTone.withValues(alpha: 0.06);
   }
 
+  @override
   Color get inputBg => isDark
       ? (_model?.inputBgDark ?? AppTheme.inputBgDark)
       : (_model?.inputBg ?? AppTheme.inputBg);
 
+  @override
   Color get divider => _contrast(
       isDark ? (_model?.darkDivider ?? AppTheme.darkDivider) : (_model?.divider ?? AppTheme.divider), textMedium, 0.35);
 
@@ -283,6 +295,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   /// fill barely steps off it, so a form on a card read as floating labels. A third of the way from the divider to
   /// the caption ink (about 1.8:1 on paper, light mode; a quarter in dark mode, where the well's raised tone already
   /// separates it) outlines the well without boxing the form in. Focus is the 2 px primary ring as before.
+  @override
   Color get fieldEdge => Color.lerp(divider, textLight, isDark ? 0.25 : 0.3)!;
 
   /// The edge of a small control whose outline IS its shape (an unchecked checkbox, an off switch, a radio): 3:1 on
@@ -613,6 +626,12 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   /// The dark tone a hero gradient fades into — use [heroEnd].
   Color get heroShade => _model?.heroShade ?? _model?.charcoalDark ?? AppTheme.charcoalDark;
 
+  /// The redesign kit's palette (KIT_SPEC §2.1): the server's `colors.kit`, else the built-in defaults.
+  KitPalette get kitPalette => _model?.kit ?? kKitPaletteDefaults;
+
+  /// The kit resolved for the brightness: areas, accents, subjects, status, button and hero stops.
+  KitColors get kit => KitColors(kitPalette, dark: isDark, surfaces: this);
+
   /// The darker end of a hero gradient built on [base] (the old `alphaBlend(black @ .3, base)`).
   Color heroEnd(Color base, [double amount = 0.30]) => Color.alphaBlend(heroShade.withValues(alpha: amount), base);
 
@@ -884,9 +903,9 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       BoxShadow(color: base.withValues(alpha: 0.26), blurRadius: 18, offset: const Offset(0, 6)),
       BoxShadow(color: base.withValues(alpha: 0.16), blurRadius: 3, offset: const Offset(0, 1)),
     ]
+        // the kit card shadow (KIT_SPEC §3.4): `0 20 44 -20` in the deep tone at .28
         : [
-      BoxShadow(color: base.withValues(alpha: 0.06), blurRadius: 24, offset: const Offset(0, 8)),
-      BoxShadow(color: base.withValues(alpha: 0.05), blurRadius: 2, offset: const Offset(0, 1)),
+      BoxShadow(color: base.withValues(alpha: 0.28), blurRadius: 44, offset: const Offset(0, 20), spreadRadius: -20),
     ];
   }
 
@@ -1589,6 +1608,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       timeFormat: (p['time_format'] as String?) ?? '12h',
     );
     AppConfig.setOrgsEnabled(p['orgs_enabled'] != false);
+    AppDigits.configure(p['digits']);
   }
 }
 

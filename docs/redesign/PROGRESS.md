@@ -11,7 +11,7 @@ Statuses: todo / doing / done / verified. On a resume, continue from the first l
 | 0.6 | Phase 0 docs ported to NextBrain (brand-neutral), BRANDS.md (NextBrain palette from the logo) | done |
 | 0.5 | Reference screenshots (D:/platform/redesign-ref/ref/, 1140 PNGs, 0 failures; rerun: tool/redesign/ref_shots.mjs) | done |
 | 1a | Kit spec (KIT_SPEC.md, palette from the logo, contrast table) | done |
-| 1b | Kit build (rd/kit: tokens, theme seed, motion M1-M16, components, shells, gallery, tests) | doing |
+| 1b | Kit build (rd/kit + rd/kit-shell + rd/kit-back 0135: tokens, theme seed, motion M1-M16, components, shells, gallery, tests) | done (merged) |
 | B1 | Backend WP5 international + WP7 child code (0130, 0131) | done (merged back feature/redesign) |
 | B2 | Backend WP6 booking/groups + WP12 centres (0140) | done (merged) |
 | B3 | Backend WP1-3 privacy (live room, payloads, course chat; D-1950) | done (merged) |

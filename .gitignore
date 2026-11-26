@@ -104,3 +104,4 @@ tools/runner/runner.env
 !.agents/skills/extension-to-functions-codebase/
 !.agents/skills/firebase-*/
 !.agents/skills/xcode-project-setup/
+test/visual/redesign/goldens/

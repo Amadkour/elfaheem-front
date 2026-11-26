@@ -61,16 +61,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import 'app_area.dart';
 import 'app_badges.dart';
 import 'app_buttons.dart';
 import 'app_contrast.dart' show ensureContrast;
-import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon;
+import 'app_gradients.dart' show AppBrandLayer;
 import 'app_inputs.dart';
 import 'app_motion_kit.dart';
+import 'app_responsive.dart' show Breakpoints;
 import 'app_search_field.dart';
 import 'app_sheet_header.dart';
 import 'app_side_sheet.dart' show appScrimColor, AppSheetMode;
+import 'app_chips.dart';
+import 'app_tiles.dart';
 import 'app_tokens.dart';
+import '../core/app_digits.dart';
 import '../features/admin/admin_common.dart' as admin;
 import '../features/org/org_ui.dart' as org;
 import 'package:flutter_education_app/features/data_lab/data_lab_widgets.dart' as dl;
@@ -78,10 +83,17 @@ import 'package:flutter_education_app/features/data_lab/data_lab_widgets.dart' a
 // The design system (D-180, lib/design/README.md): tokens, the gradient rules and the components added on top of
 // the Data Lab / org kits below.
 export 'app_tokens.dart';
+export 'app_hero.dart';
+export 'app_live.dart';
 export 'app_blocks.dart';
 export 'app_gradients.dart';
 export 'app_buttons.dart';
 export 'app_badges.dart';
+export 'app_area.dart';
+export 'app_subject_colors.dart';
+export 'app_tiles.dart';
+export 'app_chips.dart';
+export 'app_progress.dart';
 export 'app_tabs.dart';
 export 'app_inputs.dart';
 export 'app_search_field.dart';
@@ -119,8 +131,6 @@ export '../features/org/org_ui.dart'
         fileSizeLabel;
 
 // ── Data Lab language ───────────────────────────────────────────────────────
-typedef AppHero = dl.DlHero;
-typedef AppHeroStat = dl.DlHeroStat;
 typedef AppPill = dl.DlActionPill;
 typedef AppProgressBar = dl.DlBar;
 typedef AppRing = dl.DlRing;
@@ -130,7 +140,7 @@ typedef AppSectionTitle = dl.DlSectionTitle;
 typedef AppPrimaryButton = dl.DlPrimaryButton;
 // AppField is the kit's own text field now (app_inputs.dart, exported above): the same constructor as the Data
 // Lab's DlField, in the Warm Editorial field language (label above, warm well, the 2 px ring).
-typedef AppChoiceChip = dl.DlChoiceChip;
+typedef AppChoiceChip = AppChip;
 typedef AppStatChip = dl.DlStatChip;
 typedef AppShimmer = dl.DlShimmer;
 typedef AppBanner = dl.DlBanner;
@@ -297,67 +307,147 @@ class AppHighlightEdge extends StatelessWidget {
       );
 }
 
-// ── Cards (Warm Editorial, system.md §4: paper on a warm hairline, radius 16, no resting shadow) ───────────────
+// ── Cards (the redesign kit, KIT_SPEC §5.3) ─────────────────────────────────────────────────────────────────────
 
-/// The paper card: the card surface on a warm hairline (depth is tone first, D-612 — a resting card casts no
-/// shadow), corner radius `card`. A tappable card presses in (D-582) and ripples. [highlight] (D-1081) gives the ONE
-/// main card of a screen (Needs attention, the lesson in progress) a thin primary → gold edge — never two per screen.
+/// The four card looks: raised (the default: the card on the page with the kit shadow), flat (the kit line, no
+/// shadow), tint (a soft wash of a tone with a darker edge), dark (the area gradient, on-hero inks).
+enum AppCardVariant { raised, flat, tint, dark }
+
+/// The card: radius 20 on phones, 24 from 700 px (`AppRadius.cardFor`); padding `AppSpace.card` / `cardWide` unless
+/// [padding] is given. [title] / [action] draw a head row above [child]. A tappable card presses in (AppJelly under
+/// a student area, AppPressScale otherwise) and rises under the mouse. [highlight] (D-1081) gives the ONE main card
+/// of a screen a thin primary → gold edge — never two per screen.
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
     required this.child,
-    this.padding = AppSpace.card,
+    this.padding,
     this.margin,
     this.onTap,
     this.onLongPress,
     this.highlight = false,
+    this.variant = AppCardVariant.raised,
+    this.tone,
+    this.title,
+    this.action,
   });
 
   final Widget child;
-  final EdgeInsetsGeometry padding;
+
+  /// Null: `AppSpace.card` below 700 px, `AppSpace.cardWide` from it.
+  final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
   final VoidCallback? onTap;
 
-  /// D-1081: the screen's ONE main card: a primary → gold edge instead of the hairline.
+  /// D-1081: the screen's ONE main card: a primary → gold edge.
   final bool highlight;
 
   /// A long press (e.g. starts a selection); null: none.
   final VoidCallback? onLongPress;
+  final AppCardVariant variant;
 
-  Widget _highlightEdge(BuildContext context, Widget card) => highlight ? AppHighlightEdge(child: card) : card;
+  /// The tone of a [AppCardVariant.tint] card (default: the area set's tone).
+  final KitTone? tone;
+
+  /// A head row: the title (AppType.section) and an [action] at the end.
+  final String? title;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final kit = c.kit;
+    final width = MediaQuery.sizeOf(context).width;
+    final r = AppRadius.cardFor(width);
+    final radius = BorderRadius.circular(r);
     final tappable = onTap != null || onLongPress != null;
-    final body = Padding(padding: padding, child: child);
-    return AppPressScale(
-      enabled: tappable,
-      child: Padding(
-        padding: margin ?? EdgeInsets.zero,
-        // the white card on the tinted page: one soft shadow, a near-invisible edge (D-632)
-        // D-948: a tappable card rises one level under the mouse
-        child: AppLift(
-          hover: tappable,
-          child: _highlightEdge(
-            context,
-            Material(
-              color: c.cardBg,
-              shape: RoundedRectangleBorder(
-                  borderRadius: AppRadius.cardAll,
-                  side: highlight ? BorderSide.none : AppShadow.cardEdge(context)),
-              clipBehavior: Clip.antiAlias,
-              child: tappable ? InkWell(onTap: onTap, onLongPress: onLongPress, child: body) : body,
-            ),
+    final dark = variant == AppCardVariant.dark;
+    final set = AppAreaScope.of(context);
+
+    Widget content = child;
+    if (title != null || action != null) {
+      content = Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          if (title != null)
+            Expanded(
+              child: Text(title!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.section(context).copyWith(color: dark ? c.onHero : null)),
+            )
+          else
+            const Spacer(),
+          if (action != null) ...[AppSpace.gapSm, action!],
+        ]),
+        const SizedBox(height: AppSpace.sm + AppSpace.xxs / 2),
+        child,
+      ]);
+    }
+    if (dark) {
+      content = DefaultTextStyle.merge(
+        style: TextStyle(color: c.onHero),
+        child: IconTheme.merge(data: IconThemeData(color: c.onHero), child: content),
+      );
+    }
+    final pad = padding ?? (width < Breakpoints.mobile ? AppSpace.card : AppSpace.cardWide);
+    final body = Padding(padding: pad, child: content);
+
+    final Decoration deco;
+    final t = tone ?? set.tone;
+    switch (variant) {
+      case AppCardVariant.raised:
+        deco = BoxDecoration(color: c.cardBg, borderRadius: radius);
+      case AppCardVariant.flat:
+        deco = BoxDecoration(
+            color: c.cardBg, borderRadius: radius, border: Border.all(color: kit.line, width: AppBorder.strong));
+      case AppCardVariant.tint:
+        deco = BoxDecoration(
+          gradient: LinearGradient(
+            begin: AlignmentDirectional.topStart,
+            end: AlignmentDirectional.bottomEnd,
+            colors: [c.cardBg, c.cardBg, t.tint],
+            stops: const [0, .5, 1],
           ),
-        ),
+          borderRadius: radius,
+          border: Border.all(color: Color.lerp(t.tint, t.color, .25)!, width: AppBorder.strong),
+        );
+      case AppCardVariant.dark:
+        final rtl = Directionality.of(context) == TextDirection.rtl;
+        deco = BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment((rtl ? 1 : -1) * 0.7, -1.6),
+            radius: 1.4,
+            colors: set.heroStops,
+            stops: const [0, .45, 1],
+          ),
+          borderRadius: radius,
+        );
+    }
+
+    Widget card = Material(
+      type: MaterialType.transparency,
+      child: Ink(
+        decoration: deco,
+        child: tappable ? InkWell(onTap: onTap, onLongPress: onLongPress, borderRadius: radius, child: body) : body,
       ),
     );
+    card = ClipRRect(borderRadius: radius, child: card);
+    if (highlight) card = AppHighlightEdge(radius: r, child: card);
+    final shadowed = variant == AppCardVariant.raised || dark;
+    if (shadowed) {
+      card = AppLift(hover: tappable, radius: radius, child: card);
+    }
+    if (tappable) {
+      card = AppAreaScope.playful(context)
+          ? AppJelly(wide: true, child: card)
+          : AppPressScale(enabled: true, child: card);
+    }
+    return Padding(padding: margin ?? EdgeInsets.zero, child: card);
   }
 }
 
-/// A tappable card that leads somewhere: a tinted icon, a title, one human sentence, a count. The icon's tint
-/// carries the colour (never a wash over the card), the chevron mirrors by itself.
+/// A tappable row that leads somewhere: the kit's [AppTile] with a tinted icon, a title, one human sentence and a
+/// count over the icon. The chevron mirrors by itself.
 class AppActionCard extends StatelessWidget {
   const AppActionCard({
     super.key,
@@ -374,7 +464,7 @@ class AppActionCard extends StatelessWidget {
   final String title;
   final String? subtitle;
 
-  /// The icon's tone (the primary by default).
+  /// The icon's tone (the area set's by default).
   final Color? color;
 
   /// A count over the icon (0 = none).
@@ -384,50 +474,37 @@ class AppActionCard extends StatelessWidget {
   /// Replaces the chevron (a pill, a switch); at most 150 px wide.
   final Widget? trailing;
 
-  static const double _iconBox = AppTouch.min - AppSpace.xxs;
   static const double _trailingMax = 150;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final col = color ?? c.primary;
-    final tint = appTintOn(context, col);
-    final iconBox = Container(
-      width: _iconBox,
-      height: _iconBox,
-      decoration: BoxDecoration(color: tint, borderRadius: AppRadius.chipAll),
-      // D-650 r3: a brand card (no colour of its own) wears the gradient glyph on its tint
-      child: color == null
-          ? AppGradientIcon(icon, size: AppIconSize.lg, on: [Color.alphaBlend(tint, c.cardBg)])
-          : Icon(icon, size: AppIconSize.lg, color: appInkOn(context, col, tint)),
-    );
-    return AppCard(
+    final tone = appToneFor(context, color);
+    return AppTile(
+      leading: AppCountBadge(count: badge, child: AppIconBox(icon: icon, tone: tone)),
+      tone: tone,
+      title: title,
+      subtitle: subtitle,
       onTap: onTap,
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        AppCountBadge(count: badge, child: iconBox),
-        AppSpace.gapSm,
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
-            if (subtitle != null && subtitle!.isNotEmpty) ...[
-              const SizedBox(height: AppSpace.xxs / 2),
-              Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-            ],
-          ]),
-        ),
-        if (trailing != null)
-          ConstrainedBox(constraints: const BoxConstraints(maxWidth: _trailingMax), child: trailing) // a long pill ellipsizes
-        else
-          Icon(Icons.chevron_right_rounded, color: c.textLight),
-      ]),
+      trailing: trailing != null
+          ? ConstrainedBox(constraints: const BoxConstraints(maxWidth: _trailingMax), child: trailing)
+          : Icon(Icons.chevron_right_rounded, color: c.textLight),
     );
   }
 }
 
-/// A small counter tile on paper (two per row on phones, a strip on wide screens): a tinted icon, the figure
-/// (counts up once, D-581) and a two-line label. The page's one key figure is an [AppKpiCard] with `highlight`.
+/// A [KitTone] for an old caller's single [color] (null: the area set's tone).
+KitTone appToneFor(BuildContext context, Color? color) {
+  if (color == null) return AppAreaScope.of(context).tone;
+  final tint = appTintOn(context, color);
+  return KitTone(color, tint, appInkOn(context, color, tint));
+}
+
+/// A small counter tile on the well (two per row on phones, a strip of up to 4 on wide screens): an icon box, the
+/// figure (rolls once, M10, remembered by its label), a two-line label and an optional [delta].
 class AppStatTile extends StatelessWidget {
-  const AppStatTile({super.key, required this.icon, required this.label, required this.value, this.color, this.onTap});
+  const AppStatTile(
+      {super.key, required this.icon, required this.label, required this.value, this.color, this.onTap, this.delta});
 
   final IconData icon;
   final String label;
@@ -435,51 +512,67 @@ class AppStatTile extends StatelessWidget {
   /// A number or an already formatted string.
   final dynamic value;
 
-  /// The icon's tone (the primary by default).
+  /// The icon's tone (the area set's by default).
   final Color? color;
   final VoidCallback? onTap;
 
-  static const double _iconBox = AppIconSize.hero;
+  /// A signed, already formatted change ("+12%"), drawn in the ok ink.
+  final String? delta;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final col = color ?? c.primary;
-    final tint = appTintOn(context, col);
+    final kit = c.kit;
     final text = '${value ?? 0}';
+    final wide = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
+    final radius = BorderRadius.circular(AppRadius.tile);
+    Widget tile = Container(
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(
+        color: kit.well,
+        borderRadius: radius,
+        border: Border.all(color: kit.line, width: AppBorder.strong),
+      ),
+      child: Row(children: [
+        AppIconBox(icon: icon, tone: appToneFor(context, color)),
+        AppSpace.gapSm,
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Row(children: [
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: AppOdometer(text, memoryKey: 'stat:$label', style: AppType.statFigure(context, wide: wide)),
+                ),
+              ),
+              if (delta != null && delta!.isNotEmpty) ...[
+                AppSpace.gapXs,
+                Text(appDigits(delta!),
+                    maxLines: 1,
+                    textDirection: TextDirection.ltr,
+                    style: AppType.meta(context).copyWith(color: kit.ok.ink, fontWeight: FontWeight.w600)),
+              ],
+            ]),
+            const SizedBox(height: AppSpace.xxs / 2),
+            Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+          ]),
+        ),
+      ]),
+    );
+    if (onTap != null) {
+      tile = Material(
+        type: MaterialType.transparency,
+        child: InkWell(onTap: onTap, borderRadius: radius, child: tile),
+      );
+      tile = AppAreaScope.playful(context) ? AppJelly(wide: true, child: tile) : AppPressScale(enabled: true, child: tile);
+    }
     return Semantics(
       container: true,
       button: onTap != null,
-      label: '$label: $text',
+      label: '$label: ${appDigits(text)}${delta == null ? '' : ' ($delta)'}',
       excludeSemantics: true,
-      child: AppCard(
-        onTap: onTap,
-        padding: const EdgeInsets.all(AppSpace.sm + 2),
-        child: Row(children: [
-          Container(
-            width: _iconBox,
-            height: _iconBox,
-            decoration: BoxDecoration(color: tint, borderRadius: AppRadius.chipAll),
-            // D-650: the brand stat's glyph wears the green → gold family; a stat in its own tone stays flat
-            child: color == null
-                ? AppGradientIcon(icon, size: AppIconSize.md + 2, on: [Color.alphaBlend(tint, c.cardBg)])
-                : Icon(icon, size: AppIconSize.md + 2, color: appInkOn(context, col, tint)),
-          ),
-          AppSpace.gapSm,
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: AlignmentDirectional.centerStart,
-                child: AppCountUp(text, memoryKey: 'stat:$label', style: AppType.figureLarge(context)),
-              ),
-              const SizedBox(height: AppSpace.xxs / 2),
-              // two lines: one cut "Live even…" / "مهام فش…" on every 3-up strip (docs/polish/visual-review.md)
-              Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-            ]),
-          ),
-        ]),
-      ),
+      child: tile,
     );
   }
 }
@@ -500,8 +593,9 @@ class AppSkeletonBox extends StatelessWidget {
     return Container(
       width: width,
       height: height,
+      // the kit's bones (KIT_SPEC §5.9): the track tone (the divider in dark mode)
       decoration: BoxDecoration(
-        color: Color.lerp(c.inputBg, c.divider, 0.55),
+        color: c.kit.track,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
@@ -533,7 +627,7 @@ class AppListSkeleton extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpace.sm + 2),
           decoration: BoxDecoration(
             color: c.cardBg,
-            borderRadius: AppRadius.cardAll,
+            borderRadius: BorderRadius.circular(AppRadius.tile),
             border: Border.all(color: c.divider, width: AppBorder.hairline),
           ),
           child: Row(children: [

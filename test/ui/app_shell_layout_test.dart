@@ -208,8 +208,8 @@ void main() {
         await tester.pump();
         final l = BrandLayer.of(t);
         final card = find.byWidgetPredicate((w) =>
-            w is DecoratedBox && w.decoration is BoxDecoration && (w.decoration as BoxDecoration).gradient is LinearGradient &&
-            ((w.decoration as BoxDecoration).gradient! as LinearGradient).colors.first == l.sidebar.first);
+            w is DecoratedBox && w.decoration is BoxDecoration && (w.decoration as BoxDecoration).gradient is RadialGradient &&
+            ((w.decoration as BoxDecoration).gradient! as RadialGradient).colors.first == l.sideRadial.first);
         expect(card, findsOneWidget);
         final box = tester.getRect(card);
         final texts = find.descendant(of: card, matching: find.byType(Text));

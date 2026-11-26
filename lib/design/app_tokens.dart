@@ -6,8 +6,8 @@
 // Never write a raw number for these in a screen: `AppSpace.md`, `AppRadius.card`, `AppMotion.of(context).base`.
 //
 //   AppSpace    4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 (8 pt grid with the 4 pt half step; D-612)
-//   AppRadius   by hierarchy (D-612): chip 10 · control 14 (button, input) · card 16 · block 24 · sheet 28 · hero 32
-//               · pill (a full stadium for status badges)
+//   AppRadius   by hierarchy (D-612, KIT_SPEC §3.1): chip 10 · glyph 13 · control 14 (button, input) · nav 16 ·
+//               tile 18 · card 20 (24 from 700 px: cardFor) · block 24 · sheet 24 · hero 32 · plate · pill
 //   AppMotion   fast 180 ms · base 220 ms · slow 300 ms on easeOutCubic; every duration is zero under Reduce motion
 //   AppTouch    48 px minimum target (Material / WCAG), 56 px for a primary action on phones
 //   AppShadow   the theme's soft card / raised shadows, by role
@@ -17,7 +17,9 @@
 //               what floats casts the clearer shadows, in the theme's shadow tone (D-612)
 //   AppIconSize   xs 14 · sm 16 · md 20 · lg 24 · xl 32 · hero 40
 //   AppBorder     hairline 1 · strong 1.5 · focus 2
-//   AppDashSize   the dashboard kit's fixed sizes: avatar 56 / 72 · disc 64 · ring 76 · course tile 220
+//   AppDashSize   the dashboard kit's fixed sizes: avatar 56 / 72 · disc 64 · ring 76 · course tile 220 · the kit's
+//               glyph 42 · ringSm 44 · navItem 44 · top bars 68 / 58 · bottom bar 70 · sidebar 260
+//   AppHeroMetrics  the redesign hero's overlap and height budget (KIT_SPEC §3.2)
 //   AppType     the type roles (display · headline · page title · section · body · row · label · meta · overline ·
 //               figure · figureLarge) mapped onto the theme's styles; display → section are EDITORIAL (Amiri /
 //               Playfair Display, AppFonts.editorial, D-611, D-631) unless the person chose "Headings: Same as text"
@@ -35,12 +37,16 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart' show ReadingSpacing;
 
+import 'app_responsive.dart' show Breakpoints;
+
 /// The spacing scale. Between sections: [lg]; inside a card: [md]; between a label and its value: [xs].
 abstract final class AppSpace {
   static const double xxs = 4;
   static const double xs = 8;
   static const double sm = 12;
   static const double md = 16;
+  /// A card's padding from 700 px (KIT_SPEC §3.2).
+  static const double ml = 20;
   static const double lg = 24;
   static const double xl = 32;
   static const double xxl = 48;
@@ -52,6 +58,9 @@ abstract final class AppSpace {
   static double gutter(double width) => width < 600 ? md : lg;
 
   static const EdgeInsets card = EdgeInsets.all(md);
+
+  /// A card's padding from 700 px.
+  static const EdgeInsets cardWide = EdgeInsets.all(ml);
   static const SizedBox gapXs = SizedBox(width: xs, height: xs);
   static const SizedBox gapSm = SizedBox(width: sm, height: sm);
   static const SizedBox gapMd = SizedBox(width: md, height: md);
@@ -69,8 +78,9 @@ abstract final class AppSpace {
 }
 
 /// Corner radii by hierarchy (D-612), never one radius on everything: the smaller the thing, the tighter the corner.
-///   chip 10 · control 14 (buttons, inputs) · card 16 · block 24 (AppBlock, a KPI highlight) · sheet 28 (bottom
-///   sheets, dialogs) · hero 32 · pill (status badges, a selected pill tab)
+///   chip 10 · glyph 13 (an icon box) · control 14 (buttons, inputs) · nav 16 (a bottom-bar item, a count box) ·
+///   tile 18 (tiles, stat tiles) · card 20 (24 from 700 px, [cardFor]) · block 24 (AppBlock, a KPI highlight) ·
+///   sheet 24 (bottom sheets, dialogs) · hero 32 (the old floating heroes) · plate (an empty-state plate) · pill
 abstract final class AppRadius {
   static const double chip = AppTheme.radiusSmall;
   static const double control = AppTheme.radiusControl;
@@ -78,6 +88,29 @@ abstract final class AppRadius {
   static const double block = AppTheme.radiusLarge;
   static const double sheet = AppTheme.radiusSheet;
   static const double hero = AppTheme.radiusXL;
+
+  /// An icon box (`AppIconBox`).
+  static const double glyph = 13;
+
+  /// A bottom-bar item, a count box, the sidebar's user box.
+  static const double nav = 16;
+
+  /// A tile, a stat tile, a rule row.
+  static const double tile = 18;
+
+  /// A card from 700 px.
+  static const double cardWide = 24;
+
+  /// The card radius at [width]: [card] on phones, [cardWide] from [Breakpoints.mobile].
+  static double cardFor(double width) => width < Breakpoints.mobile ? card : cardWide;
+
+  /// The empty-state plate: 34 on three corners, 10 on the bottom end.
+  static const BorderRadiusDirectional plate = BorderRadiusDirectional.only(
+    topStart: Radius.circular(_plateR),
+    topEnd: Radius.circular(_plateR),
+    bottomStart: Radius.circular(_plateR),
+    bottomEnd: Radius.circular(_plateTail),
+  );
 
   /// A full stadium at any height a badge or pill reaches.
   static const double pill = 999;
@@ -117,6 +150,25 @@ abstract final class AppTouch {
 abstract final class AppShadow {
   static List<BoxShadow> card(BuildContext context) => context.colors.cardShadow;
   static List<BoxShadow> raised(BuildContext context) => context.colors.primaryShadow;
+
+  /// A filled button's glow in its first stop (KIT_SPEC §3.4): `0 10 22 -6` at .45 (.30 in dark mode).
+  static List<BoxShadow> button(BuildContext context, Color stop) => [
+        BoxShadow(
+          color: stop.withValues(alpha: context.colors.isDark ? 0.30 : 0.45),
+          blurRadius: 22,
+          offset: const Offset(0, 10),
+          spreadRadius: -6,
+        ),
+      ];
+
+  /// The selected pill of a segmented strip: `0 4 12` in the ink at .12.
+  static List<BoxShadow> pill(BuildContext context) => [
+        BoxShadow(
+          color: context.colors.kit.ink.withValues(alpha: context.colors.isDark ? 0.30 : 0.12),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
+        ),
+      ];
 
   /// The edge of a resting card (D-632): a near-invisible hairline in light mode, a quiet step in dark mode.
   static BorderSide cardEdge(BuildContext context) =>
@@ -212,6 +264,51 @@ abstract final class AppDashSize {
   static const double disc = 64;
   static const double ring = 76;
   static const double courseTile = 220;
+
+  /// The kit's icon box (`AppIconBox`).
+  static const double glyph = 42;
+
+  /// The small progress ring of a course row.
+  static const double ringSm = 44;
+
+  /// A sidebar row.
+  static const double navItem = 44;
+
+  /// The web top bar.
+  static const double topBarWide = 68;
+
+  /// The phone top bar.
+  static const double topBarPhone = 58;
+
+  /// The phone bottom bar (8 + 50 + 12).
+  static const double bottomBar = 70;
+
+  /// The web sidebar ([Breakpoints.sidebarW]).
+  static const double sidebar = 260;
+}
+
+/// The redesign hero's metrics (KIT_SPEC §3.2).
+abstract final class AppHeroMetrics {
+  /// How far the body rides up over a student hero below 700 px.
+  static const double overlapStudentPhone = 54;
+
+  /// The same for the other roles.
+  static const double overlapPhone = 62;
+
+  /// From 700 px.
+  static const double overlapWide = 66;
+
+  /// The tallest a student hero may be at 390 px, text scale 1.0.
+  static const double maxStudentPhone = 190;
+
+  /// The first card's top edge, same conditions.
+  static const double firstCardBy = 260;
+
+  static const double padTopPhone = AppSpace.sm;
+  static const double padTopWide = AppSpace.lg;
+
+  /// The hero's bottom padding: the overlap plus [AppSpace.md].
+  static double padBottom(double overlap) => overlap + AppSpace.md;
 }
 
 /// Border widths.
@@ -296,6 +393,22 @@ abstract final class AppType {
       context.colors.caption.copyWith(fontWeight: FontWeight.w400, color: context.colors.textMedium);
   static TextStyle figure(BuildContext context) =>
       context.colors.h3.copyWith(fontWeight: FontWeight.w600, color: context.colors.textDark);
+
+  /// The hero's greeting line (KIT_SPEC §3.3): the editorial face, w600; the caller sets the colour
+  /// (`kit.warmOnDark` on a hero). 20 from 700 px, 18 below.
+  static TextStyle kicker(BuildContext context) {
+    final wide = (MediaQuery.maybeSizeOf(context)?.width ?? Breakpoints.mobile) >= Breakpoints.mobile;
+    return heading(context, optical: wide ? 20 : 18, sans: wide ? 18 : 16, height: 1.3);
+  }
+
+  /// A tile's title: the body style at 15, w600, `textDark`.
+  static TextStyle tileTitle(BuildContext context) =>
+      context.colors.body.copyWith(fontSize: 15, fontWeight: FontWeight.w600, color: context.colors.textDark);
+
+  /// A stat figure: [figureLarge] (28) from 700 px, [figure] scaled to 21 below; tabular digits.
+  static TextStyle statFigure(BuildContext context, {required bool wide}) => wide
+      ? figureLarge(context)
+      : figure(context).copyWith(fontSize: 21, height: 1.15, fontFeatures: const [FontFeature.tabularFigures()]);
 }
 
 /// THE page-width roles (D-304). A page names what its body is and gets the matching max width; no screen writes its
@@ -332,3 +445,6 @@ enum AppWidth {
     return math.min(cap, room);
   }
 }
+
+const double _plateR = 34;
+const double _plateTail = 10;

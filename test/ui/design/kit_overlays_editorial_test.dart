@@ -256,7 +256,7 @@ void main() {
       expect(find.text('Sure?'), findsNothing);
     });
 
-    testWidgets('showAppModalSheet on a phone keeps the sheet motion (280 in / 200 out)', (tester) async {
+    testWidgets('showAppModalSheet on a phone keeps the sheet motion (M14: 500 in / 200 out)', (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(390, 844);
       addTearDown(tester.view.resetPhysicalSize);
@@ -271,7 +271,7 @@ void main() {
           ))));
       await tester.tap(find.text('open'));
       await tester.pump();
-      expect(route.transitionDuration, const Duration(milliseconds: 280));
+      expect(route.transitionDuration, const Duration(milliseconds: 500)); // M14 peek (KIT_SPEC 5.8; was 280)
       expect(route.reverseTransitionDuration, const Duration(milliseconds: 200));
       await tester.pump(const Duration(seconds: 1));
       expect(find.text('sheet body'), findsOneWidget);

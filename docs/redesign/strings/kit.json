@@ -1,0 +1,90 @@
+{
+  "kit_live_now": {
+    "en": "Live",
+    "ar": "مباشر"
+  },
+  "kit_gallery_title": {
+    "en": "Component gallery",
+    "ar": "معرض المكوّنات"
+  },
+  "kit_gallery_controls": {
+    "en": "Preview",
+    "ar": "المعاينة"
+  },
+  "kit_gallery_area": {
+    "en": "Area",
+    "ar": "القسم"
+  },
+  "kit_gallery_role": {
+    "en": "Role accent",
+    "ar": "لون الدور"
+  },
+  "kit_gallery_view": {
+    "en": "View",
+    "ar": "العرض"
+  },
+  "kit_gallery_none": {
+    "en": "None",
+    "ar": "بدون"
+  },
+  "kit_gallery_dark": {
+    "en": "Dark",
+    "ar": "داكن"
+  },
+  "kit_gallery_reduce": {
+    "en": "Reduce motion",
+    "ar": "تقليل الحركة"
+  },
+  "kit_gallery_rule": {
+    "en": "One filled button above the fold on a student phone screen; the gold forward button only for the action that moves the student forward.",
+    "ar": "زر ممتلئ واحد في أعلى شاشة الطالب على الجوال؛ والزر الذهبي فقط للخطوة التي تنقل الطالب للأمام."
+  },
+  "kit_gallery_colours": {
+    "en": "Colours",
+    "ar": "الألوان"
+  },
+  "kit_gallery_type": {
+    "en": "Type",
+    "ar": "الخطوط"
+  },
+  "kit_gallery_buttons": {
+    "en": "Buttons",
+    "ar": "الأزرار"
+  },
+  "kit_gallery_cards": {
+    "en": "Cards and tiles",
+    "ar": "البطاقات والصفوف"
+  },
+  "kit_gallery_hero": {
+    "en": "Hero",
+    "ar": "الواجهة"
+  },
+  "kit_gallery_chips": {
+    "en": "Chips and tabs",
+    "ar": "الرقائق والتبويبات"
+  },
+  "kit_gallery_states": {
+    "en": "States",
+    "ar": "الحالات"
+  },
+  "kit_gallery_progress": {
+    "en": "Progress",
+    "ar": "التقدّم"
+  },
+  "kit_gallery_live": {
+    "en": "Live and badges",
+    "ar": "المباشر والشارات"
+  },
+  "kit_gallery_sheets": {
+    "en": "Sheets",
+    "ar": "الأوراق"
+  },
+  "kit_gallery_motion": {
+    "en": "Motion",
+    "ar": "الحركة"
+  },
+  "kit_gallery_replay": {
+    "en": "Replay",
+    "ar": "أعد"
+  }
+}

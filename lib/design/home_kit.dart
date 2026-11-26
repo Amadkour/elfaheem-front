@@ -552,7 +552,7 @@ class HomeHeroCard extends StatelessWidget {
   const HomeHeroCard({super.key, required this.child, this.tone, this.gradient, this.glow, this.onTap, this.margin});
   final Widget child;
 
-  /// Null = peach (the forest is the home's ONE hero, D-630; this is a second block).
+  /// Kept for existing callers: the card is drawn on the redesign hero surface now (KIT_SPEC §5.2).
   final AppBlockTone? tone;
 
   /// Kept for existing callers: a hero is a tinted block now, no gradient paints it.
@@ -565,7 +565,6 @@ class HomeHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final blockTone = tone ?? AppBlockTone.peach;
     return Padding(
       padding: margin ?? const EdgeInsets.symmetric(horizontal: AppSpace.md + AppSpace.xxs),
       // depth (D-583): a gentle tilt toward the mouse with a soft glare, a press depth on touch; the ring floats
@@ -573,10 +572,16 @@ class HomeHeroCard extends StatelessWidget {
         radius: AppRadius.block,
         maxTilt: 2.5,
         glare: true,
-        child: AppBlock(
-          tone: blockTone,
+        // the redesign hero surface (KIT_SPEC §5.2); the content reads the forest block's on-hero inks
+        child: AppBlock.inkScope(
+          context,
+          tone: AppBlockTone.forest,
+          child: AppHeroSurface(
+          borderRadius: BorderRadius.circular(AppRadius.block),
+          child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
           onTap: onTap,
-          padding: EdgeInsets.zero,
           child: Builder(builder: (context) {
             final ink = AppBlock.colorsOf(context).ink;
             return Stack(children: [
@@ -600,6 +605,9 @@ class HomeHeroCard extends StatelessWidget {
               Padding(padding: AppSpace.block, child: child),
             ]);
           }),
+        ),
+        ),
+        ),
         ),
       ),
     );
@@ -1907,8 +1915,10 @@ class _HomeSectionState extends State<HomeSection> {
 /// A small dot that sends out a soft ring, for "this is happening now". A decorative loop: Reduce motion parks it
 /// (the dot stays, the ring goes).
 class HomePulseDot extends StatefulWidget {
-  const HomePulseDot({super.key, required this.color, this.size = 8});
-  final Color color;
+  const HomePulseDot({super.key, this.color, this.size = 8});
+
+  /// Default: the kit's live colour.
+  final Color? color;
   final double size;
 
   @override
@@ -1940,13 +1950,14 @@ class _HomePulseDotState extends State<HomePulseDot> with SingleTickerProviderSt
         animation: _a,
         builder: (context, _) {
           final t = Curves.easeOut.transform(_a.value);
+          final color = widget.color ?? context.colors.kit.live.color;
           return Stack(alignment: Alignment.center, children: [
             Container(
               width: s * (1 + 1.4 * t),
               height: s * (1 + 1.4 * t),
-              decoration: BoxDecoration(shape: BoxShape.circle, color: widget.color.withValues(alpha: 0.45 * (1 - t))),
+              decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.45 * (1 - t))),
             ),
-            Container(width: s, height: s, decoration: BoxDecoration(shape: BoxShape.circle, color: widget.color)),
+            Container(width: s, height: s, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
           ]);
         },
       ),
@@ -2056,7 +2067,7 @@ class _HomeLiveBannerState extends State<HomeLiveBanner> {
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 for (var i = 0; i < items.length; i++) ...[
                   if (i > 0) const SizedBox(height: AppSpace.xs),
-                  _LiveCard(item: items[i], now: now),
+                  _LiveCard(item: items[i], now: now, index: i),
                 ],
               ]),
             ),
@@ -2065,132 +2076,38 @@ class _HomeLiveBannerState extends State<HomeLiveBanner> {
 }
 
 class _LiveCard extends StatelessWidget {
-  const _LiveCard({required this.item, required this.now});
+  const _LiveCard({required this.item, required this.now, this.index = 0});
   final HomeLiveItem item;
   final DateTime now;
+  final int index;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final x = item;
-    final red = c.danger;
-    final redInk = appInk(context, red);
-    final r = BorderRadius.circular(c.radiusLarge);
     final since = x.startedAt == null ? null : homeLiveFor(now.difference(x.startedAt!));
     final who = [
       if (x.hostName != null && x.hostName!.isNotEmpty) 'home_live_with'.tr.replaceAll('{name}', x.hostName!),
       if (x.subtitle != null && x.subtitle!.isNotEmpty) x.subtitle!,
     ].join(' · ');
     final title = x.title.isEmpty ? (x.kindLabel ?? 'home_live'.tr) : x.title;
-
-    final join = FilledButton.icon(
-      onPressed: x.onJoin,
-      icon: const Icon(Icons.videocam_rounded, size: 18),
-      label: Text('home_live_join'.tr, maxLines: 1, overflow: TextOverflow.ellipsis),
-      // the primary action in emerald (D-630): the pulsing dot, the label and the ring already say "live" in red
-      style: FilledButton.styleFrom(
-        backgroundColor: ensureContrast(c.primary, [c.onHero]),
-        foregroundColor: c.onHero,
-        minimumSize: const Size(0, 44),
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        textStyle: appText(14, w: FontWeight.w600),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.chip)),
-        elevation: 0,
-      ),
-    );
-
-    Widget avatar(double size) => _HostAvatar(name: x.hostName ?? title, url: x.hostImageUrl, ring: red.withValues(alpha: 0.55), size: size);
-
-    final text = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-      Row(children: [
-        HomePulseDot(color: red, size: 7),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(
-            [x.kindLabel ?? 'home_live_badge'.tr, ?since].join(' · '),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: appText(12.5, w: FontWeight.w500, c: redInk).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-          ),
-        ),
-      ]),
-      const SizedBox(height: AppSpace.xxs),
-      Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w600, c: c.textDark, h: 1.3)),
-      if (who.isNotEmpty) ...[
-        const SizedBox(height: 2),
-        Text(who, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textMedium, h: 1.35)),
-      ],
-    ]);
-
+    final name = (x.hostName ?? title).trim();
+    final u = x.hostImageUrl;
+    // the redesign live banner (KIT_SPEC §5.10): the live gradient, the host, ONE breathing Join
     return Semantics(
       container: true,
       label: [x.kindLabel ?? 'home_live'.tr, title, if (who.isNotEmpty) who].join(', '),
-      child: Material(
-        color: c.cardBg,
-        borderRadius: r,
-        child: InkWell(
-          borderRadius: r,
-          onTap: x.onOpen ?? x.onJoin,
-          child: Ink(
-            // calm: the card surface with a hairline in the live tone — the dot and the button carry the accent
-            decoration: BoxDecoration(borderRadius: r, border: Border.all(color: red.withValues(alpha: 0.28))),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpace.md),
-              child: LayoutBuilder(builder: (context, box) {
-                // the button sits at the end while the text keeps room; on a narrow phone (or big text) it goes under
-                final roomy = box.maxWidth >= 300 * MediaQuery.textScalerOf(context).scale(1);
-                if (roomy) {
-                  final wide = box.maxWidth >= 480;
-                  return Row(children: [
-                    avatar(wide ? 48 : 40),
-                    SizedBox(width: wide ? 16 : 12),
-                    Expanded(child: text),
-                    SizedBox(width: wide ? 16 : 12),
-                    ConstrainedBox(constraints: BoxConstraints(maxWidth: box.maxWidth * 0.36), child: join),
-                  ]);
-                }
-                return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [avatar(40), const SizedBox(width: AppSpace.sm), Expanded(child: text)]),
-                  const SizedBox(height: AppSpace.md),
-                  join,
-                ]);
-              }),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The host's photo in a red ring (initials over the brand tint without one).
-class _HostAvatar extends StatelessWidget {
-  const _HostAvatar({required this.name, required this.url, required this.ring, this.size = 48});
-  final String name;
-  final String? url;
-  final Color ring;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final initials = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).take(2).map((p) => p.characters.first).join();
-    final u = url;
-    return Container(
-      width: size,
-      height: size,
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: ring, width: 1.5)),
-      child: ClipOval(
-        child: u != null && u.startsWith('http')
-            ? AppNetworkImage(url: u, width: size - 6, height: size - 6)
-            : ColoredBox(
-                color: c.primaryTint,
-                child: Center(
-                  child: Text(initials.isEmpty ? '•' : initials.toUpperCase(),
-                      maxLines: 1, style: appText(size * 0.3, w: FontWeight.w600, c: appInk(context, c.primary))),
-                ),
-              ),
+      child: AppLiveBanner(
+        index: index,
+        title: title,
+        subtitle: who.isEmpty ? null : who,
+        tag: [x.kindLabel ?? 'home_live_badge'.tr, ?since].join(' · '),
+        host: u != null && u.startsWith('http')
+            ? AppNetworkImage(url: u, width: AppDashSize.ringSm, height: AppDashSize.ringSm)
+            : null,
+        hostInitial: name.isEmpty ? null : name.characters.first.toUpperCase(),
+        actionLabel: 'home_live_join'.tr,
+        onAction: x.onJoin,
+        onTap: x.onOpen ?? x.onJoin,
       ),
     );
   }

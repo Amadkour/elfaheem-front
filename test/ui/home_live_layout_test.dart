@@ -2,6 +2,7 @@
 // "Live now" banner (long titles, two rooms, no photo / no start), a folding section (folded and open), the compact
 // agenda with "Show all", the compact "This week" list.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/calendar/calendar_models.dart';
@@ -66,7 +67,8 @@ void main() {
     )));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Council'), findsOneWidget);
-    await tester.tap(find.byType(FilledButton));
+    // the redesign live banner (KIT_SPEC 5.10): the Join is the banner's breathing white pill, found by its label
+    await tester.tap(find.text('home_live_join'.tr));
     expect(joined, 1);
     await tester.pumpWidget(const SizedBox());
   });
