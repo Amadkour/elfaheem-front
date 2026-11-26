@@ -129,7 +129,7 @@ re-applies them (idempotent); `check_identity.py` fails on a missing hook, on a 
 `sync/keep_paths.txt`. When an upstream edit moves a hook's anchor, apply_identity prints `! ... update sync/hooks.py`
 and the gate fails: update the anchor there.
 
-## A-008 The redesign and the NextBrain sync (2026-11-25) — PENDING OWNER, default (a)
+## A-008 The redesign and the NextBrain sync (2026-11-25; decided by the owner 2026-11-26: built upstream)
 
 The approved Alfaheem redesign (`docs/redesign/`) rebuilds most of `lib/` UI and the kit. Applied in place, every later
 `sync/sync.sh` from NextBrain would conflict on the same screens. Options (START.md):
@@ -142,4 +142,9 @@ The approved Alfaheem redesign (`docs/redesign/`) rebuilds most of `lib/` UI and
 - (c) Put the new UI in Alfaheem-only files behind `sync/hooks.py`. Workable for a few hooks; at about 570 screen
   states the hook list would be the size of the app.
 
-Default if the owner does not answer: **(a)**. Status: waiting for the owner's choice (asked at the end of phase 0).
+**Decision (owner, 2026-11-26): (b) with one palette per product.** Every feature of both apps stays. The redesign is built
+in NextBrain as shared code (its D-1810, branch `feature/redesign`) and arrives here through `sync/sync.sh`. NextBrain
+wears a palette derived from its logo (green and gold); Alfaheem keeps the reference design's palette, which lives in
+this repository's theme defaults and the backend theme seed, re-applied by the identity step (`sync/keep_paths.txt`
+or a hook). Market defaults are data: Alfaheem = Saudi Arabia (Asia/Riyadh, SAR, Moyasar). This branch keeps the
+handoff, the phase 0 inventory and the reference screenshots; the build happens upstream.
