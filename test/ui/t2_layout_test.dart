@@ -17,7 +17,6 @@ import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 import 'package:flutter_education_app/features/quran/quran_teacher_hub.dart';
 import 'package:flutter_education_app/features/store/manage/store_manage_pages.dart';
 import 'package:flutter_education_app/features/teachers/teacher_onboarding.dart';
-import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
