@@ -7,9 +7,10 @@ import 'package:flutter_education_app/features/analytics/student/flags/student_f
 /// Backs the per-course "Review bank" / "Read flags" screen.
 class StudentFlagsProvider extends ChangeNotifier {
   final StudentFlagsApi _api;
-  final int courseId;
+  /// Null: every course (the Exams area's Review page).
+  final int? courseId;
 
-  StudentFlagsProvider({required this.courseId, StudentFlagsApi? api})
+  StudentFlagsProvider({this.courseId, StudentFlagsApi? api})
       : _api = api ?? StudentFlagsApi();
 
   bool loading = false;
