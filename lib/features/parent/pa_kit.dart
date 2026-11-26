@@ -22,6 +22,10 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
+import 'package:provider/single_child_widget.dart';
+
+import 'parent_link_providers.dart';
+import 'parent_overview.dart';
 
 /// One chip of the switcher.
 @immutable
@@ -321,7 +325,10 @@ class _DashedCircle extends CustomPainter {
 /// The band under the phone top bar that carries the switcher (the top bar's colour, so both read as one); on a wide
 /// screen a plain row above the hero.
 class PaSwitcherBand extends StatelessWidget {
-  const PaSwitcherBand({super.key, this.showAll = true, this.onAdd, this.onSelect});
+  const PaSwitcherBand({super.key, this.showAll = true, this.onAdd, this.onSelect, this.selectedId});
+
+  /// The chip shown picked (a page about one child); null = the one in [PaKids].
+  final int? selectedId;
 
   final bool showAll;
   final VoidCallback? onAdd;
@@ -339,7 +346,7 @@ class PaSwitcherBand extends StatelessWidget {
     final c = context.colors;
     final row = PaKidSwitcher(
       kids: kids?.kids ?? const [],
-      selected: kids?.selected,
+      selected: selectedId ?? kids?.selected,
       showAll: showAll && (kids?.kids.length ?? 0) > 0,
       onAdd: onAdd,
       onHero: !wide,
@@ -515,4 +522,25 @@ class PaNote extends StatelessWidget {
       ]),
     );
   }
+}
+
+/// Pushes a parent page with the dashboard's providers it reads (the child switcher, the children, the overview, the
+/// alerts) carried over, in the parent's accent.
+Future<T?> paPush<T>(BuildContext context, Widget page) {
+  final providers = <SingleChildWidget>[];
+  void add<P extends ChangeNotifier>() {
+    try {
+      providers.add(ChangeNotifierProvider<P>.value(value: context.read<P>()));
+    } on ProviderNotFoundException {
+      // not under the dashboard: the page loads what it needs itself
+    }
+  }
+
+  add<PaKids>();
+  add<ParentLinkProvider>();
+  add<ParentOverviewProvider>();
+  add<ParentAlertsProvider>();
+  return Navigator.of(context).push<T>(MaterialPageRoute<T>(
+    builder: (_) => paRole(providers.isEmpty ? page : MultiProvider(providers: providers, child: page)),
+  ));
 }

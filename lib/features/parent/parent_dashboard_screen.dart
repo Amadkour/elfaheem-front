@@ -192,6 +192,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
           'children',
           _ParentTab(
             titleKey: 'pl_tab_children',
+            band: true,
             epoch: _epochs['children'],
             child: ParentChildrenPage(onOpenLinkTab: () => _go('link')),
           ),
