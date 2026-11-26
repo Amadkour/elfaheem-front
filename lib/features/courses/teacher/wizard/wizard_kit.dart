@@ -264,7 +264,7 @@ class WzSlotRow extends StatelessWidget {
   final VoidCallback onEdit, onDelete;
 
   /// Below this width the buttons drop under the text.
-  static const double narrow = 330;
+  static const double narrow = 290;
 
   @override
   Widget build(BuildContext context) {
@@ -298,7 +298,7 @@ class WzSlotRow extends StatelessWidget {
       child: Text(day, maxLines: 1, textAlign: TextAlign.center, style: AppType.label(context).copyWith(color: set.ink, fontWeight: FontWeight.w600)),
     );
     final text = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-      Text(range, style: AppType.tileTitle(context)),
+      FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: Text(range, maxLines: 1, style: AppType.tileTitle(context))),
       Text(length, style: AppType.meta(context)),
     ]);
     final edit = action(Icons.edit_outlined, 't1_wz_edit'.tr, onEdit, c.textMedium);
@@ -424,7 +424,7 @@ class WzBar extends StatelessWidget {
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: AppWidth.wide.inside(MediaQuery.of(context).size.width)),
           child: Row(children: [
-            for (final s in secondary) ...[Flexible(child: s), const SizedBox(width: AppSpace.sm)],
+            for (final s in secondary) ...[s, const SizedBox(width: AppSpace.sm)],
             Expanded(flex: 2, child: primary),
           ]),
         ),
