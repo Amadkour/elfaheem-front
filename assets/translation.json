@@ -24976,5 +24976,6 @@
   "sd_store_buy": {"en": "Buy now", "ar": "اشترِ الحين"},
   "sd_store_get": {"en": "Get it now", "ar": "خذه الحين"},
   "sd_store_cart_remove": {"en": "Remove from cart", "ar": "شيله من السلة"},
-  "sd_teacher_verified": {"en": "Verified teacher", "ar": "معلم موثّق"}
+  "sd_teacher_verified": {"en": "Verified teacher", "ar": "معلم موثّق"},
+  "sd_reader_page": {"en": "Page {n} of {of}", "ar": "صفحة {n} من {of}"}
 }
