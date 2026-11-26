@@ -45,6 +45,7 @@ import 'package:flutter_education_app/features/sessions/material/components/add_
 import 'package:flutter_education_app/features/sessions/material/components/material_title.dart' show RatingShow, ratingShow, sessionRateable;
 import 'package:flutter_education_app/features/sessions/material/components/session_material_grid.dart';
 import 'package:flutter_education_app/features/sessions/material/components/session_shared_widgets.dart';
+import 'package:flutter_education_app/features/sessions/material/lesson_material_page.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_attendance_flag.dart' show courseAttendanceFlagAvailable, setSessionAttendanceFlag;
 
 class SessionMaterialCard extends StatefulWidget {
@@ -180,6 +181,11 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
   Future<void> _toggleExpanded() async {
     if (_isLocked) {
       _showLockedMessage();
+      return;
+    }
+    // a student's lesson opens as its own page (Stu1Learn material): the video, the files and the quiz
+    if (!widget.isTeacher) {
+      await openLessonMaterialPage(context, session: _session, number: widget.sessionNumber, onOpenExam: _openSessionExam);
       return;
     }
     setState(() => _expanded = !_expanded);
@@ -636,7 +642,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
             ],
           )
         : expandable
-        ? CourseSessionChevron(open: _expanded)
+        ? const CourseSessionChevron(open: false)
         : null;
 
     Widget tile = CourseSessionTile(
@@ -648,7 +654,9 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       trailing: trailing,
       below: _isLocked ? null : _below(prov),
       panel: expandable
-          ? SizeTransition(
+          ? !widget.isTeacher
+              ? null
+              : SizeTransition(
               sizeFactor: _expandAnim,
               child: CourseSessionPanel(
                 title: 'attachments'.tr,

@@ -39,6 +39,11 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/sessions/video/vod_player_parts.dart';
 import 'package:flutter_education_app/features/sessions/video/vod_listen.dart';
+import 'package:flutter_education_app/features/sessions/video/vod_lesson_page.dart';
+import 'package:flutter_education_app/features/home/student/models.dart' show SessionModel;
+import 'package:flutter_education_app/core/share/external_link.dart' show openExternalLink;
+import 'package:flutter_education_app/core/app_digits.dart';
+import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
 import 'package:flutter_education_app/core/media_focus.dart';
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant;
@@ -1559,10 +1564,119 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       child: StudyTracker(
         courseId: int.tryParse(_progressProvider?.course.id.toString() ?? ''),
         child: Scaffold(
-          backgroundColor: VodInk.letterbox,
-          body: _buildBody(),
+          backgroundColor: _paged ? context.colors.kit.deep : VodInk.letterbox,
+          body: _paged ? _buildPagedBody() : _buildBody(),
         ),
       ),
+    );
+  }
+
+  // ── The student's lesson page (Stu1Learn player) ──────────────────────────
+
+  /// A student playing a lesson of an enrolled course, not full screen: the player sits in [VodLessonLayout] with
+  /// the deep header, the actions and the course's lessons. Records, guest links and the teacher keep the stage.
+  bool get _paged {
+    if (_isFullScreen || _inPip || widget.actions.isNotEmpty || widget.actionsFor != null) return false;
+    final p = _progressProvider;
+    if (p == null || !p.course.isEnrolled) return false;
+    final sid = _mat.sessionId;
+    return sid != 0 && p.sessions.any((x) => x.id == sid);
+  }
+
+  Widget _buildPagedBody() {
+    final p = _progressProvider!;
+    final lessons = p.sessions;
+    final here = lessons.indexWhere((x) => x.id == _mat.sessionId);
+    final w = MediaQuery.sizeOf(context).width;
+    final wide = w >= Breakpoints.desktop;
+    final ar = AppConfig.lang == 'ar';
+    final course = (ar ? p.course.titleAr : p.course.titleEn) ?? p.course.titleAr ?? '';
+    final teacher = p.course.teacher?.name;
+    final box = MediaQuery.removePadding(
+      context: context,
+      removeTop: true,
+      removeBottom: true,
+      removeLeft: true,
+      removeRight: true,
+      child: _buildPlayerBody(),
+    );
+    final player = wide
+        ? ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.cardWide),
+            child: AspectRatio(aspectRatio: 16 / 9, child: box),
+          )
+        : SizedBox(height: (w * 0.78).clamp(300.0, 440.0).toDouble(), child: box);
+    SessionMaterialModel? summary;
+    for (final m in widget.playlist ?? const <SessionMaterialModel>[]) {
+      if (m.type == SessionMaterialType.pdf || m.type == SessionMaterialType.document) {
+        summary = m;
+        break;
+      }
+    }
+    final svc = OfflineVideoService.instance;
+    return VodLessonLayout(
+      wide: wide,
+      header: VodLessonHeader(
+        title: '${appDigits('${here + 1}')}. ${here >= 0 ? lessons[here].name : _mat.name}',
+        subtitle: [course, ?teacher].where((x) => x.isNotEmpty).join(ar ? '، ' : ', '),
+        onBack: () => Navigator.maybePop(context),
+        trailing: _viewsNote == null ? null : VodPagePill(label: _viewsNote!),
+      ),
+      player: player,
+      actions: ValueListenableBuilder<Map<String, double>>(
+        valueListenable: svc.downloading,
+        builder: (_, map, _) => VodLessonActions(
+          onDownload: _canDownload ? _onDownloadTap : null,
+          downloaded: _downloaded,
+          downloading: map[svc.idOf(_mat.sessionId, _mat.id)],
+          onSummary: summary == null || (summary.urlLow ?? summary.urlHigh ?? '').isEmpty
+              ? null
+              : () => openExternalLink(summary!.urlLow ?? summary.urlHigh!),
+        ),
+      ),
+      list: VodLessonList(
+        position: here >= 0 ? here + 1 : null,
+        total: lessons.length,
+        entries: [
+          for (final (i, x) in lessons.indexed) _lessonEntry(p, x, i + 1, current: i == here),
+        ],
+      ),
+    );
+  }
+
+  VodLessonEntry _lessonEntry(CourseDetailProvider p, SessionModel x, int n, {required bool current}) {
+    final unlocked = p.isSessionUnlockedById(x.id);
+    final done = x.isCompleted || (x.totalMaterial > 0 && x.completeMaterial >= x.totalMaterial);
+    final state = current
+        ? VodLessonState.current
+        : x.isLiveActive
+            ? VodLessonState.live
+            : !unlocked
+                ? VodLessonState.locked
+                : done
+                    ? VodLessonState.done
+                    : VodLessonState.open;
+    final v = _vc?.value;
+    final pct = current && v != null && v.isInitialized && v.duration.inMilliseconds > 0
+        ? (v.position.inMilliseconds * 100 / v.duration.inMilliseconds).round()
+        : null;
+    return VodLessonEntry(
+      number: n,
+      title: x.name,
+      state: state,
+      caption: current && pct != null ? 'sb_learn_player_now_pct'.tr.replaceAll('{p}', appDigits('$pct%')) : null,
+      badge: x.isLiveActive
+          ? 'sb_learn_player_live_badge'.tr
+          : x.durationMinutes > 0
+              ? appDigits(vodFmt(Duration(minutes: x.durationMinutes)))
+              : null,
+      // another lesson: back to the course page, which opens it (focusSession → the lesson page)
+      onTap: current || !unlocked
+          ? null
+          : () {
+              Navigator.maybePop(context);
+              p.focusSession(x.id);
+            },
     );
   }
 
@@ -1964,8 +2078,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   Widget _buildTopBar(TextDirection appDir) {
     final mq = MediaQuery.of(context).padding;
     final width = MediaQuery.sizeOf(context).width;
-    final top = _isFullScreen ? AppSpace.xs : mq.top;
-    final stacked = width < 600;
+    final paged = _paged;
+    final top = _isFullScreen || paged ? AppSpace.xs : mq.top;
+    final stacked = width < 600 && !paged;
 
     final title = Directionality(
       // Titles follow the app language direction (Arabic = right aligned).
@@ -2049,7 +2164,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       ),
       // Respect notch / camera cut-out in landscape.
       padding: EdgeInsets.fromLTRB(AppSpace.xxs + mq.left, top, AppSpace.xs + mq.right, AppSpace.lg),
-      child: stacked
+      // the lesson page's header carries Back and the title: the stage keeps its tools only
+      child: paged
+          ? Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Row(mainAxisSize: MainAxisSize.min, children: buttons),
+              ),
+            )
+          : stacked
           ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
               Row(children: [
                 back,

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
@@ -134,6 +136,9 @@ class VodNextUpCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = seconds;
+    final c = context.colors;
+    // Stu1Learn mode=end: the seconds in a draining ring, "the next lesson in 5 seconds", its name, the forward
+    // button and Cancel; once cancelled only the name and Play now stay.
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxWidth),
       child: DecoratedBox(
@@ -141,80 +146,61 @@ class VodNextUpCard extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(AppRadius.block),
           child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              if (s != null) _Countdown(fraction: total <= 0 ? 0 : ((s - 1) / total).clamp(0.0, 1.0).toDouble()),
-              Padding(
-                padding: EdgeInsets.fromLTRB(AppSpace.md, s == null ? AppSpace.md : AppSpace.sm, AppSpace.md, AppSpace.md),
-                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Row(children: [
-                    Icon(Icons.skip_next_rounded, color: VodInk.textMid, size: AppIconSize.sm),
-                    const SizedBox(width: AppSpace.xxs),
-                    Flexible(
-                      child: Text(s == null ? t('التالي', 'Up next') : t('التالي خلال $s ث', 'Up next in ${s}s'),
-                          style: vodText(AppType.label(context), VodInk.textMid).copyWith(fontFeatures: vodTabular),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                  ]),
-                  const SizedBox(height: AppSpace.xs),
-                  Text(next.name, style: vodText(AppType.section(context)), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  if (next.durationSeconds != null) ...[
-                    const SizedBox(height: AppSpace.xxs),
-                    Text(vodFmt(Duration(seconds: next.durationSeconds!)),
-                        textDirection: TextDirection.ltr,
-                        style: vodText(AppType.meta(context), VodInk.textSoft).copyWith(fontFeatures: vodTabular)),
-                  ],
-                  const SizedBox(height: AppSpace.md),
-                  Wrap(
-                    spacing: AppSpace.xs,
-                    runSpacing: AppSpace.xs,
-                    alignment: WrapAlignment.end,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (s != null)
-                        TextButton(
-                          onPressed: onCancel,
-                          style: TextButton.styleFrom(
-                            foregroundColor: VodInk.textMid,
-                            minimumSize: const Size(AppTouch.min, AppTouch.min),
-                            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-                            shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
-                          ),
-                          child: Text(t('إلغاء', 'Cancel'), style: vodText(AppType.label(context), VodInk.textMid)),
+            padding: const EdgeInsets.all(AppSpace.md),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              if (s != null) ...[
+                SizedBox.square(
+                  dimension: AppDashSize.ring - AppSpace.xxs,
+                  child: Stack(alignment: Alignment.center, children: [
+                    Positioned.fill(
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 1, end: total <= 0 ? 0 : ((s - 1) / total).clamp(0.0, 1.0).toDouble()),
+                        duration: AppMotion.of(context).off ? Duration.zero : const Duration(seconds: 1),
+                        builder: (_, v, _) => CircularProgressIndicator(
+                          value: v,
+                          strokeWidth: AppSpace.xxs + AppSpace.xxs / 2,
+                          color: c.kit.hotB,
+                          backgroundColor: VodInk.ink(0.14),
                         ),
-                      AppButton.primary(label: t('تشغيل الآن', 'Play now'), icon: Icons.skip_next_rounded, onPressed: onPlay),
-                    ],
-                  ),
-                ]),
+                      ),
+                    ),
+                    Text(appDigits('$s'), style: vodText(AppType.figureLarge(context)).copyWith(fontFeatures: vodTabular)),
+                  ]),
+                ),
+                const SizedBox(height: AppSpace.sm),
+                Text(
+                  'sb_learn_player_next_in'.tr.replaceAll('{n}', appDigits(countText(s,
+                      ar1: 'ثانية', ar2: 'ثانيتين', arFew: '{n} ثواني', arMany: '{n} ثانية', en1: '1 second', en: '{n} seconds'))),
+                  textAlign: TextAlign.center,
+                  style: vodText(AppType.label(context), VodInk.textMid),
+                ),
+              ] else
+                Text(t('التالي', 'Up next'), style: vodText(AppType.label(context), VodInk.textMid)),
+              const SizedBox(height: AppSpace.xs),
+              Text(next.name,
+                  textAlign: TextAlign.center, style: vodText(AppType.section(context)), maxLines: 2, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: AppSpace.md),
+              Wrap(
+                spacing: AppSpace.xs,
+                runSpacing: AppSpace.xs,
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  AppButton.hot(label: 'sb_learn_player_play_now'.tr, onPressed: onPlay),
+                  if (s != null)
+                    TextButton(
+                      onPressed: onCancel,
+                      style: TextButton.styleFrom(
+                        foregroundColor: VodInk.textMid,
+                        minimumSize: const Size(AppTouch.min, AppTouch.min),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                        shape: StadiumBorder(side: BorderSide(color: VodInk.ink(0.3), width: AppBorder.strong)),
+                      ),
+                      child: Text(t('إلغاء', 'Cancel'), style: vodText(AppType.label(context))),
+                    ),
+                ],
               ),
             ]),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The next-up countdown: a 3 px emerald line that drains linearly, one second per step (still under Reduce motion).
-class _Countdown extends StatelessWidget {
-  const _Countdown({required this.fraction});
-
-  final double fraction;
-
-  @override
-  Widget build(BuildContext context) {
-    final off = AppMotion.of(context).off;
-    return SizedBox(
-      height: AppSpace.xxs - 1,
-      child: ColoredBox(
-        color: VodInk.ink(0.10),
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 1, end: fraction),
-          duration: off ? Duration.zero : const Duration(seconds: 1),
-          builder: (context, v, _) => FractionallySizedBox(
-            alignment: AlignmentDirectional.centerStart,
-            widthFactor: v,
-            child: ColoredBox(color: context.colors.primary),
           ),
         ),
       ),
