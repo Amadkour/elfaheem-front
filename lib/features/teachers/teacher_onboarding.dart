@@ -339,7 +339,7 @@ class _StatusPath extends StatelessWidget {
         child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           for (var i = 0; i < labels.length; i++)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs + AppSpace.xxs / 2),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
               decoration: BoxDecoration(
                 color: i == at ? c.cardBg : tone.tint,
                 borderRadius: BorderRadius.circular(AppRadius.pill),

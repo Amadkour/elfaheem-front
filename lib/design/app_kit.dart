@@ -378,7 +378,7 @@ class AppCard extends StatelessWidget {
           else
             const Spacer(),
           // Flexible: a long action shrinks on a 320 px phone instead of overflowing; a short one keeps its size.
-          if (action != null) ...[AppSpace.gapSm, Flexible(child: action!)],
+          if (action != null) ...[AppSpace.gapSm, action is Flexible ? action! : Flexible(child: action!)],
         ]),
         const SizedBox(height: AppSpace.sm + AppSpace.xxs / 2),
         child,
