@@ -32,6 +32,10 @@ import 'package:flutter_education_app/features/store/store_models.dart' show Sto
 import 'package:flutter_education_app/features/teachers/teachers_api.dart';
 import 'package:flutter_education_app/features/teachers/teachers_models.dart';
 import 'package:flutter_education_app/features/teachers/teachers_parts.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -115,39 +119,44 @@ class _TeachersTabState extends State<TeachersTab> {
       ));
 
   @override
-  Widget build(BuildContext context) => BasePage(
-        width: AppWidth.wide,
-        appBar: ScreenAppBar(
-          title: t('المعلمون', 'Teachers'),
-          showBack: false,
-          actions: [
-            IconButton(
-              key: const ValueKey('teachers.mine'),
-              tooltip: t('معلميّ', 'My teachers'),
-              icon: const Icon(Icons.how_to_reg_rounded),
-              onPressed: _mine,
+  Widget build(BuildContext context) => SdArea(
+        area: AppArea.learn,
+        child: BasePage(
+          width: AppWidth.wide,
+          appBar: ScreenAppBar(
+            title: 'sd_teachers_title'.tr,
+            showBack: false,
+            actions: [
+              AppIconButton(
+                key: const ValueKey('teachers.mine'),
+                tooltip: t('معلميّ', 'My teachers'),
+                icon: Icons.how_to_reg_outlined,
+                onPressed: _mine,
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: TeachersBrowseView(
+              filters: _f,
+              onFilters: _setFilters,
+              items: _items,
+              total: _total,
+              loading: _loading,
+              loadingMore: _more,
+              error: _error,
+              onRetry: _load,
+              onNearEnd: () => _load(next: true),
+              onOpen: _open,
+              onMine: _mine,
             ),
-          ],
-        ),
-        child: SafeArea(
-          child: TeachersBrowseView(
-            filters: _f,
-            onFilters: _setFilters,
-            items: _items,
-            total: _total,
-            loading: _loading,
-            loadingMore: _more,
-            error: _error,
-            onRetry: _load,
-            onNearEnd: () => _load(next: true),
-            onOpen: _open,
-            onMine: _mine,
           ),
         ),
       );
 }
 
-/// The list with plain values.
+/// The list with plain values (Stu2Teachers `screen=list`): the hero "لقِ معلمك" with the search and the filters
+/// button (the screen's one forward button), the subject chips riding up over it, then the teacher cards, dealt in
+/// (M5), one column on a phone, two or three on wider windows.
 class TeachersBrowseView extends StatelessWidget {
   const TeachersBrowseView({
     super.key,
@@ -175,11 +184,13 @@ class TeachersBrowseView extends StatelessWidget {
   final ValueChanged<TeacherProfile>? onOpen;
   final VoidCallback? onMine;
 
+  static const double _sideBySide = 420;
+
   Future<void> _more(BuildContext context) async {
     final f = await showAppSheet<TeacherFilters>(
       context,
       (_) => AppSheetContent(
-        title: t('تصفية المعلمين', 'Filter teachers'),
+        title: 'sd_teachers_filters'.tr,
         icon: Icons.tune_rounded,
         tone: AppTone.neutral,
         children: [TeacherFiltersForm(initial: filters)],
@@ -192,38 +203,47 @@ class TeachersBrowseView extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final extra = filters.count - (filters.subject == null ? 0 : 1);
-    final head = <Widget>[
+    final hero = AppHero(
+      title: 'sd_teachers_hero'.tr,
+      icon: Icons.person_search_outlined,
       // the filter button sits beside the search, never at the end of the scrolling chips (off-screen in RTL, D-1654)
-      Row(children: [
-        Expanded(
-          child: AppSearchField(
-            key: const ValueKey('teachers.search'),
-            hint: t('ابحث باسم المعلم أو المادة', 'Search a teacher or a subject'),
-            onChanged: (q) => onFilters(filters.copyWith(q: q)),
-          ),
-        ),
-        const SizedBox(width: AppSpace.xs),
-        AppChoiceChip(
+      bottom: LayoutBuilder(builder: (context, box) {
+        final search = AppSearchField(
+          key: const ValueKey('teachers.search'),
+          hint: 'sd_teachers_search'.tr,
+          onChanged: (q) => onFilters(filters.copyWith(q: q)),
+        );
+        final button = AppButton.hot(
           key: const ValueKey('teachers.filters'),
-          label: extra > 0 ? '${t('تصفية', 'Filters')} · $extra' : t('تصفية', 'Filters'),
-          icon: Icons.tune_rounded,
-          selected: extra > 0,
-          onTap: () => _more(context),
-        ),
-      ]),
-      const SizedBox(height: AppSpace.sm),
-      SingleChildScrollView(
+          label: extra > 0 ? '${'sd_teachers_filters'.tr} (${appDigits('$extra')})' : 'sd_teachers_filters'.tr,
+          icon: Icons.filter_alt_outlined,
+          onPressed: () => _more(context),
+        );
+        // a narrow phone stacks the button under the search
+        if (box.maxWidth < _sideBySide) {
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+            search,
+            const SizedBox(height: AppSpace.xs),
+            Align(alignment: AlignmentDirectional.centerStart, child: button),
+          ]);
+        }
+        return Row(children: [Expanded(child: search), const SizedBox(width: AppSpace.xs), button]);
+      }),
+    );
+    final chips = AppCard(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(children: [
-          AppChoiceChip(
+          AppChip(
             key: const ValueKey('teachers.subject.all'),
-            label: t('الكل', 'All'),
+            label: 'sd_teachers_all_subjects'.tr,
             selected: filters.subject == null,
             onTap: () => onFilters(filters.copyWith(subject: null)),
           ),
           for (final s in kTeacherSubjects) ...[
             const SizedBox(width: AppSpace.xs),
-            AppChoiceChip(
+            AppChip(
               key: ValueKey('teachers.subject.$s'),
               label: teacherSubjectLabel(s),
               icon: teacherSubjectIcon(s),
@@ -233,20 +253,22 @@ class TeachersBrowseView extends StatelessWidget {
           ],
         ]),
       ),
-      const SizedBox(height: AppSpace.md),
-    ];
+    );
     final Widget body;
     if (loading && items.isEmpty) {
-      body = const AppListSkeleton(items: 5, padding: EdgeInsets.zero);
+      body = const AppListSkeleton(items: 4, padding: EdgeInsets.zero);
     } else if (error != null && items.isEmpty) {
-      body = AppErrorState(message: error, onRetry: onRetry);
+      body = AppCard(child: AppErrorState(message: error, onRetry: onRetry));
     } else if (items.isEmpty) {
-      body = AppEmpty(
-        icon: Icons.person_search_rounded,
-        title: t('لا معلمين بهذه الشروط', 'No teachers match'),
-        message: t('خفّف التصفية أو جرّب مادة أخرى.', 'Loosen the filters or try another subject.'),
-        actionLabel: filters.count > 0 || filters.q.isNotEmpty ? t('امسح التصفية', 'Clear the filters') : t('معلميّ', 'My teachers'),
-        onAction: filters.count > 0 || filters.q.isNotEmpty ? () => onFilters(TeacherFilters.none) : onMine,
+      final narrowed = filters.count > 0 || filters.q.isNotEmpty;
+      body = AppCard(
+        child: AppEmpty(
+          icon: Icons.person_search_outlined,
+          title: t('لا معلمين بهذه الشروط', 'No teachers match'),
+          message: t('خفّف التصفية أو جرّب مادة أخرى.', 'Loosen the filters or try another subject.'),
+          actionLabel: narrowed ? t('امسح التصفية', 'Clear the filters') : t('معلميّ', 'My teachers'),
+          onAction: narrowed ? () => onFilters(TeacherFilters.none) : onMine,
+        ),
       );
     } else {
       body = LayoutBuilder(builder: (context, box) {
@@ -261,7 +283,12 @@ class TeachersBrowseView extends StatelessWidget {
                   if (j > 0) const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: i + j < items.length
-                        ? TeacherListCard(teacher: items[i + j], onTap: onOpen == null ? null : () => onOpen!(items[i + j]))
+                        ? AppDeal(
+                            index: i + j,
+                            group: 'teachers.list',
+                            child: TeacherListCard(
+                                teacher: items[i + j], onTap: onOpen == null ? null : () => onOpen!(items[i + j])),
+                          )
                         : const SizedBox.shrink(),
                   ),
                 ],
@@ -279,19 +306,16 @@ class TeachersBrowseView extends StatelessWidget {
       },
       child: AppRefresh(
         onRefresh: onRetry ?? () async {},
-        child: ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
-          ...head,
+        child: SdHeroList(hero: hero, width: AppWidth.wide, children: [
+          chips,
+          const SizedBox(height: AppSpace.md),
           if (!loading && items.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpace.sm),
-              child: Text(
-                teachersText(total),
-                style: AppType.meta(context).copyWith(color: c.textMedium),
-              ),
+              child: Text(appDigits(teachersText(total)), style: AppType.meta(context).copyWith(color: c.textMedium)),
             ),
           body,
           if (loadingMore) const AppListSkeleton(items: 1, padding: EdgeInsets.zero),
-          const SizedBox(height: AppSpace.lg),
         ]),
       ),
     );
@@ -398,6 +422,16 @@ class _TeacherFiltersFormState extends State<TeacherFiltersForm> {
   }
 }
 
+/// The kit subject of a teacher's subject (the same colour on every screen).
+String teacherKitSubject(String s) => switch (s) {
+      'quran' || 'tajweed' => 'quran',
+      'fiqh' => 'islamic',
+      'nahw' => 'arabic',
+      _ => 'other',
+    };
+
+/// A teacher in the list (Stu2Teachers): a card tinted in the first subject's colour, the initial on the solid
+/// colour, the name, "معلم" / "معلمة", the subjects, how the classes are held, the rating and "شوف الملف".
 class TeacherListCard extends StatelessWidget {
   const TeacherListCard({super.key, required this.teacher, this.onTap});
 
@@ -408,39 +442,70 @@ class TeacherListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final p = teacher;
+    final sub = c.kit.subject(teacherKitSubject(p.subjects.isEmpty ? '' : p.subjects.first));
+    final tone = sub.tone;
+    final initial = teacherInitialName(p.name).trim();
+    final tags = <String>[
+      for (final d in p.delivery) d == 'offline' ? 'sd_in_person'.tr : 'sd_remote'.tr,
+      if (p.sessionTypes.isNotEmpty)
+        p.sessionTypes.length > 1 ? 'sd_group_and_individual'.tr : teacherSessionTypeLabel(p.sessionTypes.first),
+    ];
     return AppCard(
       key: ValueKey('teachers.card.${p.userId}'),
+      variant: AppCardVariant.tint,
+      tone: tone,
       onTap: onTap,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        Row(children: [
-          AppAvatar(name: teacherInitialName(p.name), url: p.avatarUrl, size: AppTouch.primary),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          ExcludeSemantics(
+            child: p.avatarUrl != null && p.avatarUrl!.isNotEmpty
+                ? AppAvatar(name: initial, url: p.avatarUrl, size: AppTouch.primary)
+                : Container(
+                    width: AppTouch.primary,
+                    height: AppTouch.primary,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: tone.color, borderRadius: BorderRadius.circular(AppRadius.tile)),
+                    child: Text(initial.isEmpty ? '؟' : initial.characters.first,
+                        style: AppType.section(context).copyWith(color: sub.fg)),
+                  ),
+          ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              UserText(block: false, p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600)),
-              const SizedBox(height: AppSpace.xxs),
-              TeacherRatingLine(rating: p.rating, count: p.reviewsCount),
+              UserText(block: false, p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context)),
+              if (p.gender != null)
+                Text(teacherGenderLabel(p.gender), style: AppType.label(context).copyWith(color: tone.ink, fontWeight: FontWeight.w600)),
+              if (p.subjects.isNotEmpty)
+                Text(teachersJoin(p.subjects.map(teacherSubjectLabel)),
+                    maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
             ]),
           ),
         ]),
-        const SizedBox(height: AppSpace.sm),
-        TeacherSubjectBadges(subjects: p.subjects),
-        if (p.bio.trim().isNotEmpty) ...[
-          const SizedBox(height: AppSpace.xs),
-          UserText(p.bio.trim(), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium)),
+        if (tags.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.sm),
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+            for (final (i, s) in tags.indexed) AppStatusBadge(label: s, tone: i == 0 ? AppTone.info : AppTone.neutral, dense: true),
+          ]),
         ],
-        const SizedBox(height: AppSpace.xs),
-        AppInfoRow(Icons.inventory_2_outlined, [
-          packagesText(p.packagesCount),
-          if (p.yearsExperience > 0) yearsText(p.yearsExperience),
-        ].join(' · ')),
-        // a bare start date (no schedule yet) has no time of day: midnight UTC would read as 2:00 AM (D-1656)
-        if (p.nextFree != null)
+        const SizedBox(height: AppSpace.sm),
+        TeacherRatingLine(rating: p.rating, count: p.reviewsCount),
+        if (p.nextFree != null) ...[
+          const SizedBox(height: AppSpace.xxs),
+          // a bare start date (no schedule yet) has no time of day: midnight UTC would read as 2:00 AM (D-1656)
           AppInfoRow(
-              Icons.event_available_rounded,
+              Icons.event_available_outlined,
               p.nextFreeIsDay
                   ? '${t('تبدأ', 'Starts')}: ${packageDayLabel(p.nextFree!)}'
                   : '${t('أقرب موعد', 'Next opening')}: ${AppTime.dateTime(p.nextFree!)}'),
+        ],
+        const SizedBox(height: AppSpace.xs),
+        Row(children: [
+          Flexible(
+            child: Text('sd_teachers_open'.tr,
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: tone.ink, fontWeight: FontWeight.w600)),
+          ),
+          Icon(Icons.chevron_right_rounded, size: AppIconSize.sm, color: tone.ink),
+        ]),
       ]),
     );
   }
@@ -507,7 +572,7 @@ class _TeacherProfilePageState extends State<TeacherProfilePage> {
   @override
   Widget build(BuildContext context) {
     final p = _p;
-    return BasePage(
+    return SdArea(area: AppArea.learn, child: BasePage(
       width: AppWidth.content,
       appBar: ScreenAppBar(title: p?.name.isNotEmpty == true ? p!.name : t('المعلم', 'Teacher')),
       child: SafeArea(
@@ -515,7 +580,7 @@ class _TeacherProfilePageState extends State<TeacherProfilePage> {
             ? (_loading ? const AppListSkeleton(items: 4) : AppErrorState(message: _error, onRetry: _load))
             : TeacherProfileView(teacher: p, packagesLoading: _loading && p.packages.isEmpty, onPackage: _openPackage, onRefresh: _load),
       ),
-    );
+    ));
   }
 }
 
@@ -782,7 +847,7 @@ class _PackagePageState extends State<PackagePage> {
   @override
   Widget build(BuildContext context) {
     final p = _p;
-    return BasePage(
+    return SdArea(area: AppArea.learn, child: BasePage(
       width: AppWidth.reading,
       appBar: ScreenAppBar(title: t('الباقة', 'Package')),
       child: SafeArea(
@@ -797,7 +862,7 @@ class _PackagePageState extends State<PackagePage> {
                 onRefresh: () async => _load(),
               ),
       ),
-    );
+    ));
   }
 }
 
@@ -1077,7 +1142,7 @@ class _MyTeachersPageState extends State<MyTeachersPage> {
   }
 
   @override
-  Widget build(BuildContext context) => BasePage(
+  Widget build(BuildContext context) => SdArea(area: AppArea.learn, child: BasePage(
         width: AppWidth.reading,
         appBar: ScreenAppBar(title: t('معلميّ', 'My teachers')),
         child: SafeArea(
@@ -1096,7 +1161,7 @@ class _MyTeachersPageState extends State<MyTeachersPage> {
                   },
                 ),
         ),
-      );
+      ));
 }
 
 class MyTeachersView extends StatelessWidget {
