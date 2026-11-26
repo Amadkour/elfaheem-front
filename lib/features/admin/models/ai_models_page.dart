@@ -25,7 +25,6 @@ import '../../../design/app_notice.dart';
 import '../../../design/app_tokens.dart';
 import '../../../config/app_config.dart';
 import '../../../utils/live_events.dart';
-import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../admin_common.dart' show t;
@@ -33,6 +32,7 @@ import 'ai_models_bench.dart';
 import 'ai_models_sheets.dart';
 import 'ai_models_view.dart';
 import 'models_hub_text.dart';
+import '../sup/sup_kit.dart';
 
 /// The model's name with its variant when another model of the role shares the name (models_hub_text.hubModelLabel).
 String _modelName(HubModel? m, String fallback, [HubRole? r]) => hubModelLabel(m, role: r, ref: fallback);
@@ -684,17 +684,18 @@ class AiModelsPageState extends State<AiModelsPage> {
     );
     return BasePage(
       key: const ValueKey(kModelsAdminFeatureKey),
-      appBar: ScreenAppBar(helpPageId: 'admin.models', 
+      child: SupPage(
         title: t('نماذج الذكاء الاصطناعي', 'AI Models'),
-        actions: [
-          IconButton(key: const ValueKey('add_model'), tooltip: t('إضافة نموذج', 'Add model'), onPressed: _add, icon: const Icon(Icons.add_rounded)),
-          AppRefreshAction(onRefresh: _load),
-        ],
-      ),
-      child: AppRefresh(
+        kicker: 'a2_ai_kicker'.tr,
+        headline: 'a2_ai_head'.tr,
+        line: 'a2_ai_line'.tr,
+        helpPageId: 'admin.models',
         onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxl * 2),
+        actions: [
+          SupHeroButton(key: const ValueKey('add_model'), label: 'a2_ai_add'.tr, icon: Icons.add_rounded, onTap: _add),
+        ],
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xxl * 2),
           children: [
             Center(
               child: ConstrainedBox(

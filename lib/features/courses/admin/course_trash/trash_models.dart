@@ -354,13 +354,13 @@ String trashTableLabel(String table) => switch (table) {
 
 /// Bilingual text of the trash's server error codes; anything else keeps the server's own message.
 String trashErrorText(String? code, String fallback) => switch (code) {
-      'course_not_found' => t('الكورس غير موجود', 'Course not found'),
-      'not_in_trash' => t('هذا الكورس ليس في سلة المحذوفات', 'This course is not in the trash'),
-      'course_purged' => t('حُذف هذا الكورس نهائياً ولا يمكن استرجاعه', 'This course was permanently deleted and cannot be restored'),
-      'course_erased' => t('مُسح هذا الكورس بالكامل', 'This course was erased completely'),
-      'purge_blocked' => t('لا يمكن حذف هذا الكورس نهائياً الآن', 'This course cannot be permanently deleted right now'),
+      'course_not_found' => t('الدورة غير موجودة', 'Course not found'),
+      'not_in_trash' => t('هذه الدورة ليست في سلة المحذوفات', 'This course is not in the trash'),
+      'course_purged' => t('حُذفت هذه الدورة نهائيًا ولا يمكن استرجاعه', 'This course was permanently deleted and cannot be restored'),
+      'course_erased' => t('مُسحت هذه الدورة بالكامل', 'This course was erased completely'),
+      'purge_blocked' => t('لا يمكن حذف هذه الدورة نهائيًا الآن', 'This course cannot be permanently deleted right now'),
       'reason_required' => t('اكتب سبباً لا يقل عن 5 أحرف', 'Write a reason of at least 5 characters'),
-      'confirm_mismatch' => t('رقم الكورس المكتوب غير مطابق', 'The course id you typed does not match'),
+      'confirm_mismatch' => t('رقم الدورة المكتوب غير مطابق', 'The course id you typed does not match'),
       'super_admin_required' || 'forbidden' => t('هذه الصفحة للمشرف العام فقط', 'This page is for the super admin only'),
       _ => fallback,
     };

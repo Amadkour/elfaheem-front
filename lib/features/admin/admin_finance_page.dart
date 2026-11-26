@@ -31,6 +31,7 @@ import 'package:flutter_education_app/core/share/external_link.dart'; // already
 import 'admin_bulk.dart';
 import 'admin_common.dart' hide StatusChip;
 import 'admin_page.dart';
+import 'sup/sup_kit.dart';
 import 'admin_premium_widgets.dart' show AdminPalette;
 import 'admin_finance_provider.dart';
 import 'admin_fees_page.dart';
@@ -79,59 +80,99 @@ class _View extends StatelessWidget {
     );
   }
 
+  /// The height the lists need on a short window.
+  static const double _listMin = 740;
+
+  /// The first currency's figure, "+N" when the period holds more than one currency.
+  static String _figure(dynamic agg) {
+    final lines = _moneyLines(agg);
+    return lines.length > 1 ? '${ltrIsolate(lines.first)} ${ltrIsolate('+${lines.length - 1}')}' : ltrIsolate(lines.first);
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminFinanceProvider>();
-    return AdminPage(
+    final pay = asMap(p.summary['payments']);
+    final out = asMap(p.summary['payouts']);
+    final waiting = p.pendingBadge;
+    int? badge(int n) => n > 0 ? n : null;
+    void history(String status) {
+      p.historyFilters
+        ..reset()
+        ..statuses = {status};
+      p.setTab(1);
+      p.load(1);
+    }
+
+    return SupPage(
       helpPageId: 'admin.payments',
-      width: AppWidth.wide,
-      title: t('المدفوعات والتحويلات', 'Payments & payouts'),
-      icon: Icons.receipt_long_rounded,
-      onRefresh: () {
+      title: 'a2_pay_title'.tr,
+      kicker: 'a2_pay_title'.tr,
+      headline: waiting > 0
+          ? countText(waiting,
+              ar1: 'تحويل واحد ينتظر مراجعتك',
+              ar2: 'تحويلان ينتظران مراجعتك',
+              arFew: '{n} تحويلات تنتظر مراجعتك',
+              arMany: '{n} تحويل ينتظر مراجعتك',
+              en1: 'One transfer is waiting for your review',
+              en: '{n} transfers are waiting for your review')
+          : 'a2_pay_head_none'.tr,
+      line: 'a2_pay_line'.tr,
+      onRefresh: () async {
         p.loadSummary();
         p.load(p.tab, silent: p.list(p.tab).loaded);
       },
-      primaryAction: p.tab == 1
-          ? AppButton.primary(
-              label: t('تصدير', 'Export'),
-              icon: Icons.ios_share_rounded,
-              onPressed: p.history.loaded && p.history.items.isNotEmpty ? () => _export(context, p) : null,
-            )
-          : null,
       actions: [
-        // the fee policy (Round C: it lives on the Fees page, Policy tab)
-        AppIconButton(
-          tooltip: t('الرسوم وسياسة الرسوم', 'Fees & fee policy'),
-          icon: Icons.account_balance_wallet_outlined,
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeesPage(initialTab: 1))),
+        SupHeroButton(
+          label: 'a2_export'.tr,
+          icon: Icons.download_rounded,
+          onTap: p.tab == 1 && p.history.loaded && p.history.items.isNotEmpty ? () => _export(context, p) : null,
         ),
-        AppIconButton(
-          tooltip: t('معالجة استرداد معلّق', 'Resolve a pending refund'),
-          icon: Icons.sync_alt_rounded,
-          onPressed: () => showRefundResolveSheet(context),
-        ),
+        SupMoreButton(items: [
+          // the fee policy (Round C: it lives on the Fees page, Policy tab)
+          SupMenuItem(
+            label: t('الرسوم وسياسة الرسوم', 'Fees & fee policy'),
+            icon: Icons.account_balance_wallet_outlined,
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeesPage(initialTab: 1))),
+          ),
+          SupMenuItem(
+            label: t('معالجة استرداد معلّق', 'Resolve a pending refund'),
+            icon: Icons.sync_alt_rounded,
+            onTap: () => showRefundResolveSheet(context),
+          ),
+        ]),
       ],
-      // A tall window keeps the overview and tabs on top and lets the list fill the rest; a short one (a phone) scrolls
-      // the whole page and gives the list a fixed height, so the overview never squeezes the list to nothing.
+      heroBottom: Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: AppTabs(
+          index: switch (p.summaryDays) { 7 => 0, 30 => 1, _ => 2 },
+          onChanged: (i) => p.setSummaryDays(const [7, 30, 0][i]),
+          items: [AppTabItem(t('7 أيام', '7d')), AppTabItem(t('30 يومًا', '30d')), AppTabItem(t('الكل', 'All'))],
+        ),
+      ),
+      stats: [
+        AppHeroStat(value: _figure(pay['completed']), label: 'a2_revenue'.tr, onTap: () => history('completed')),
+        AppHeroStat(value: _figure(pay['pending_transfers']), label: 'a2_awaiting_review'.tr, onTap: () => p.setTab(0)),
+        AppHeroStat(
+            value: _figure(out['pending']), label: 'a2_payout_requests'.tr, onTap: () => p.openPayoutsWithStatus('pending')),
+        AppHeroStat(value: _figure(pay['refunded']), label: 'a2_refunded'.tr, onTap: () => history('refunded')),
+      ],
+      tabs: [
+        supTab(t('بانتظار المراجعة', 'Pending'), count: badge(waiting)),
+        supTab(t('السجل', 'History')),
+        supTab(t('السحوبات', 'Payouts'), count: badge(_countOf(out['pending']))),
+      ],
+      tab: p.tab,
+      onTab: p.setTab,
+      // a short window (a phone) scrolls the page and gives the lists a fixed height, so the filters never squeeze
+      // a list to nothing
       body: LayoutBuilder(builder: (context, box) {
-        final stack = IndexedStack(
+        final stack = SupTabStack(
           index: p.tab,
-          children: const [
-            _TabBody(tab: 0),
-            _TabBody(tab: 1),
-            _TabBody(tab: 2),
-          ],
+          children: const [_TabBody(tab: 0), _TabBody(tab: 1), _TabBody(tab: 2)],
         );
-        if (box.maxHeight >= 900) {
-          return Column(children: [const _SummaryStrip(), const _Tabs(), Expanded(child: stack)]);
-        }
-        return SingleChildScrollView(
-          child: Column(children: [
-            const _SummaryStrip(),
-            const _Tabs(),
-            SizedBox(height: 740, child: stack),
-          ]),
-        );
+        if (box.maxHeight >= _listMin) return stack;
+        return SingleChildScrollView(child: SizedBox(height: _listMin, child: stack));
       }),
     );
   }
@@ -225,139 +266,6 @@ int _countOf(dynamic agg) => asInt(asMap(agg)['count']);
 void _copy(String text) {
   Clipboard.setData(ClipboardData(text: text));
   toast(t('تم النسخ', 'Copied'));
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Overview cards
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SummaryStrip extends StatelessWidget {
-  const _SummaryStrip();
-
-  /// The first currency's figure, "+N" when the period holds more than one currency.
-  String _value(List<String> lines) =>
-      lines.length > 1 ? '${ltrIsolate(lines.first)} ${ltrIsolate('+${lines.length - 1}')}' : ltrIsolate(lines.first);
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.watch<AdminFinanceProvider>();
-    final pay = asMap(p.summary['payments']);
-    final out = asMap(p.summary['payouts']);
-    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
-
-    String count(dynamic agg, String ar1, String ar2, String arFew, String arMany, String en1, String en) =>
-        countText(_countOf(agg), ar1: ar1, ar2: ar2, arFew: arFew, arMany: arMany, en1: en1, en: en);
-    String payments(dynamic a) => count(a, 'عملية واحدة', 'عمليتان', '{n} عمليات', '{n} عملية', '1 payment', '{n} payments');
-
-    return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.sm, gutter, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: AppSpace.sm,
-            runSpacing: AppSpace.xs,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(t('نظرة عامة', 'Overview'), style: AppType.section(context)),
-              if (p.summaryLoading)
-                const SizedBox(width: AppIconSize.xs, height: AppIconSize.xs, child: CircularProgressIndicator(strokeWidth: 2)),
-              AppTabs(
-                index: switch (p.summaryDays) { 7 => 0, 30 => 1, _ => 2 },
-                onChanged: (i) => p.setSummaryDays(const [7, 30, 0][i]),
-                items: [
-                  AppTabItem(t('7 أيام', '7d')),
-                  AppTabItem(t('30 يومًا', '30d')),
-                  AppTabItem(t('الكل', 'All')),
-                ],
-              ),
-            ],
-          ),
-          AppSpace.gapXs,
-          AppKpiGrid(
-            maxColumns: 5,
-            children: [
-              AppKpiCard(
-                icon: Icons.trending_up_rounded,
-                label: t('الإيرادات', 'Revenue'),
-                value: _value(_moneyLines(pay['completed'])),
-                footnote: payments(pay['completed']),
-                highlight: true,
-                onTap: () {
-                  p.historyFilters
-                    ..reset()
-                    ..statuses = {'completed'};
-                  p.setTab(1);
-                  p.load(1);
-                },
-              ),
-              AppStatCard(
-                icon: Icons.hourglass_top_rounded,
-                label: t('بانتظار المراجعة', 'Awaiting review'),
-                value: _value(_moneyLines(pay['pending_transfers'])),
-                footer: count(pay['pending_transfers'], 'تحويل واحد', 'تحويلان', '{n} تحويلات', '{n} تحويلًا', '1 transfer', '{n} transfers'),
-                onTap: () => p.setTab(0),),
-              AppStatCard(
-                icon: Icons.account_balance_wallet_rounded,
-                label: t('طلبات السحب', 'Payout requests'),
-                value: _value(_moneyLines(out['pending'])),
-                footer: count(out['pending'], 'طلب واحد', 'طلبان', '{n} طلبات', '{n} طلبًا', '1 request', '{n} requests'),
-                onTap: () => p.openPayoutsWithStatus('pending'),),
-              AppStatCard(
-                icon: Icons.payments_rounded,
-                label: t('المدفوع للمعلمين', 'Paid to teachers'),
-                value: _value(_moneyLines(out['paid'])),
-                footer: payments(out['paid']),
-                onTap: () => p.openPayoutsWithStatus('paid'),),
-              AppStatCard(
-                icon: Icons.undo_rounded,
-                label: t('المبالغ المستردة', 'Refunded'),
-                value: _value(_moneyLines(pay['refunded'])),
-                footer: payments(pay['refunded']),
-                onTap: () {
-                  p.historyFilters
-                    ..reset()
-                    ..statuses = {'refunded'};
-                  p.setTab(1);
-                  p.load(1);
-                },),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Tabs
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _Tabs extends StatelessWidget {
-  const _Tabs();
-
-  @override
-  Widget build(BuildContext context) {
-    final p = context.watch<AdminFinanceProvider>();
-    final out = asMap(p.summary['payouts']);
-    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
-    int? badge(int n) => n > 0 ? n : null;
-    return Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.sm, gutter, AppSpace.xs),
-      child: Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: AppTabs(
-          index: p.tab,
-          onChanged: p.setTab,
-          items: [
-            AppTabItem(t('بانتظار المراجعة', 'Pending'), icon: Icons.pending_actions_rounded, count: badge(p.pendingBadge)),
-            AppTabItem(t('السجل', 'History'), icon: Icons.receipt_long_rounded),
-            AppTabItem(t('السحوبات', 'Payouts'), icon: Icons.account_balance_wallet_rounded, count: badge(_countOf(out['pending']))),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

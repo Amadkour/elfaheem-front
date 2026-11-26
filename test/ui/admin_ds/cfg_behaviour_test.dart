@@ -25,7 +25,7 @@ import 'cfg_support.dart';
 void main() {
   setUp(() => AppConfig.lang = 'en');
 
-  Future<FakeApi> open(WidgetTester tester, Widget page, {Map<String, FakeHandler>? routes, Size size = const Size(1400, 1000)}) async {
+  Future<FakeApi> open(WidgetTester tester, Widget page, {Map<String, FakeHandler>? routes, Size size = const Size(1400, 1400)}) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = size;
     addTearDown(() {

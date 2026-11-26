@@ -18,6 +18,7 @@ import 'dart:typed_data';
 
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -25,7 +26,7 @@ import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoin
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import 'package:flutter_education_app/features/exams/exam_engine_api.dart' show EngineResult, engineCall;
-import 'admin_page.dart';
+import 'sup/sup_kit.dart';
 import 'admin_common.dart' show asBool, asDouble, asInt, asMap, asMapList, asStr, asStrOrNull, isSuperNow, money, shortDateTime, t;
 
 // ── shared pure helpers (also used by the feedback / RAG library screens) ───────────────────────────────────────
@@ -491,26 +492,30 @@ class _AdminMoneyPageState extends State<AdminMoneyPage> {
     return BasePage(
       // the kill switch (a super admin can switch the fee screens off)
       key: const ValueKey('admin.fee_policy'),
-      child: AdminPage(
-        width: AppWidth.wide,
+      child: SupPage(
         title: t('الرسوم والتقارير المالية', 'Fees & financial reports'),
-        icon: Icons.account_balance_rounded,
+        kicker: 'a2_money_kicker'.tr,
+        headline: 'a2_money_head'.tr,
+        line: 'a2_money_line'.tr,
         onRefresh: _refresh,
-        body: Column(children: [
-          Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.md, gutter, AppSpace.xxs),
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: AppTabs(index: _tab, onChanged: (i) => setState(() => _tab = i), items: [for (final x in tabs) AppTabItem(x)]),
-            ),
+        actions: [
+          SupHeroButton(
+            label: t('معالجة استرداد معلّق', 'Resolve a pending refund'),
+            icon: Icons.sync_alt_rounded,
+            onTap: () => showRefundResolveSheet(context),
           ),
+        ],
+        tabs: [for (final x in tabs) supTab(x)],
+        tab: _tab,
+        onTab: (i) => setState(() => _tab = i),
+        body: Column(children: [
           if (!sup)
             Padding(
-              padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.xxs, gutter, 0),
+              padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.sm, gutter, 0),
               child: AppBanner(icon: Icons.lock_outline_rounded, text: t('عرض فقط — تعديل الرسوم للمشرف العام', 'Read-only — only the super admin can change fees')),
             ),
           Expanded(
-            child: IndexedStack(index: _tab, children: [
+            child: SupTabStack(index: _tab, children: [
               FeePolicyTab(key: _policyKey, superAdmin: sup),
               if (sup) _OrgFeesTab(key: _orgsKey, superAdmin: sup) else AppEmpty(icon: Icons.lock_outline_rounded, title: t('رسوم المؤسسات للمشرف العام فقط', 'Organization fees are for the super admin only')),
               _LedgerTab(key: _ledgerKey),

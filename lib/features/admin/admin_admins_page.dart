@@ -42,6 +42,7 @@ import '../auth/username.dart' show UsernameError;
 import '../auth/username_field.dart' show UsernameStatus;
 import 'admin_username_field.dart';
 import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
+import 'sup/sup_kit.dart';
 
 class _AdminsApi {
   static const list = '/api/v1/admin/users';
@@ -296,9 +297,9 @@ class AdminAdminsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     // Defence in depth: the server enforces super-admin on every call anyway.
     if (!isSuperNow(context)) {
-      return AdminPage(
+      return SupPage(
+        kicker: 'a2_people_kicker'.tr, headline: 'a2_admins_head'.tr,
         title: 'admin_admins'.tr,
-        icon: Icons.admin_panel_settings_rounded,
         showBack: !embedded,
         body: Center(child: EmptyState('admin_super_admin_only'.tr, icon: Icons.lock_rounded)),
       );
@@ -339,7 +340,6 @@ class _AdminsViewState extends State<_AdminsView> {
   Widget build(BuildContext context) {
     final p = context.watch<AdminAdminsProvider>();
     final me = context.read<MyAuthProvider>().currentUser?.id;
-    final wide = MediaQuery.sizeOf(context).width >= 600;
     final rows = [for (final r in p.items) AdminUser(r)];
 
     // a failed reload keeps the rows (a banner with Retry sits above them); only a first load can fail empty
@@ -485,23 +485,12 @@ class _AdminsViewState extends State<_AdminsView> {
       loadingMore: p.loadingMore,
     );
 
-    return AdminPage(
-      title: 'admin_admins'.tr,
-      icon: Icons.admin_panel_settings_rounded,
-      subtitle: wide && !p.failed && !p.loading
-          ? countText(p.total,
-              ar1: 'مشرف واحد', ar2: 'مشرفان', arFew: '{n} مشرفين', arMany: '{n} مشرفاً', en1: '1 admin', en: '{n} admins')
-          : null,
-      showBack: !widget.embedded,
-      maxWidth: double.infinity,
-      onRefresh: p.refresh,
-      primaryAction: AppButton.primary(
-        key: const ValueKey('admins_add'),
-        label: 'admin_add_admin'.tr,
-        icon: Icons.admin_panel_settings_rounded,
-        onPressed: () => _openAdminForm(context, p),
-      ),
-      body: Padding(
+    return SupPage(
+        kicker: 'a2_people_kicker'.tr, headline: p.failed || p.loading ? 'a2_admins_head'.tr : countText(p.total, ar1: 'شخص واحد يقدر يدخل لوحة التحكم', ar2: 'شخصان يقدرون يدخلون لوحة التحكم', arFew: '{n} أشخاص يقدرون يدخلون لوحة التحكم', arMany: '{n} شخصًا يقدرون يدخلون لوحة التحكم', en1: 'One person can open the dashboard', en: '{n} people can open the dashboard'), line: 'a2_admins_line'.tr,
+        title: 'admin_admins'.tr,
+        showBack: !widget.embedded,
+        onRefresh: p.refresh,
+        body: Padding(
         padding: AdminPage.bodyPadding(context),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           if (p.failed && p.items.isNotEmpty)
@@ -518,7 +507,13 @@ class _AdminsViewState extends State<_AdminsView> {
           Expanded(child: table),
         ]),
       ),
-    );
+        actions: [AppButton.primary(
+        key: const ValueKey('admins_add'),
+        label: 'admin_add_admin'.tr,
+        icon: Icons.admin_panel_settings_rounded,
+        onPressed: () => _openAdminForm(context, p),
+      )],
+      );
   }
 }
 
@@ -670,4 +665,4 @@ class _AdminFormState extends State<_AdminForm> {
       ],
     );
   }
-}
+}

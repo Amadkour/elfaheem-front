@@ -11,6 +11,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter/services.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
@@ -24,6 +25,7 @@ import 'app_release_form.dart';
 import 'app_releases_api.dart';
 import 'app_releases_models.dart';
 import 'app_releases_view.dart';
+import '../sup/sup_kit.dart';
 
 /// Kill-switch key (services/feature_catalog.py).
 const String kAppReleasesFeatureKey = 'admin.app_releases';
@@ -207,21 +209,14 @@ class AppReleasesPageState extends State<AppReleasesPage> {
   @override
   Widget build(BuildContext context) {
     final page = _page;
-    return AdminPage(
-      helpPageId: 'admin.app_releases',
-      key: const ValueKey(kAppReleasesFeatureKey),
-      title: t('إصدارات التطبيق', 'App versions'),
-      icon: Icons.rocket_launch_rounded,
-      width: AppWidth.wide,
-      onRefresh: _load,
-      primaryAction: AppButton.primary(
-        key: const ValueKey('releases.new'),
-        label: t('إصدار جديد', 'New version'),
-        icon: Icons.add_rounded,
-        busy: _preparingNew,
-        onPressed: _preparingNew ? null : _new,
-      ),
-      body: AppRefresh(
+    return SupPage(
+        kicker: 'a2_rel_kicker'.tr, headline: 'a2_build_head'.tr, line: 'a2_build_line'.tr,
+        helpPageId: 'admin.app_releases',
+        key: const ValueKey(kAppReleasesFeatureKey),
+        title: t('إصدارات التطبيق', 'App versions'),
+        width: AppWidth.wide,
+        onRefresh: _load,
+        body: AppRefresh(
         onRefresh: _load,
         child: ListView(
           padding: AdminPage.bodyPadding(context),
@@ -237,7 +232,6 @@ class AppReleasesPageState extends State<AppReleasesPage> {
                   ] else if (_config != null)
                     CodemagicStatusBanner(config: _config!)
                   else
-                    // an older server (no Codemagic config): the D-143 build server strip
                     BuilderStatusBanner(
                       status: _builder,
                       onRotateToken: _rotate,
@@ -280,7 +274,14 @@ class AppReleasesPageState extends State<AppReleasesPage> {
           ],
         ),
       ),
-    );
+        actions: [AppButton.primary(
+        key: const ValueKey('releases.new'),
+        label: t('إصدار جديد', 'New version'),
+        icon: Icons.add_rounded,
+        busy: _preparingNew,
+        onPressed: _preparingNew ? null : _new,
+      )],
+      );
   }
 }
 

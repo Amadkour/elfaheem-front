@@ -20,6 +20,7 @@ import 'admin_common.dart';
 import 'admin_fee_rates.dart';
 import 'admin_money_p8.dart';
 import 'admin_page.dart';
+import 'sup/sup_kit.dart';
 
 class AdminFeesPage extends StatelessWidget {
   const AdminFeesPage({super.key, this.initialTab = 0, this.superAdmin});
@@ -72,39 +73,27 @@ class _ViewState extends State<_View> {
     final tab = policyOn ? _tab.clamp(0, 1) : 0;
     final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
 
-    return AdminPage(
-      width: AppWidth.wide,
+    return SupPage(
       title: t('الرسوم', 'Fees'),
-      subtitle: t('نسب الرسوم وسياسة من يتحمّلها', 'Fee rates and who bears them'),
-      icon: Icons.percent_rounded,
+      kicker: 'a2_fees_kicker'.tr,
+      headline: 'a2_fees_head'.tr,
+      line: 'a2_fees_line'.tr,
       onRefresh: _refresh,
       dirty: _policyDirty,
+      tabs: policyOn ? [supTab(t('النسب', 'Rates')), supTab(t('السياسة', 'Policy'))] : null,
+      tab: tab,
+      onTab: (i) => setState(() => _tab = i),
       body: Column(children: [
-        if (policyOn)
-          Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.md, gutter, AppSpace.xxs),
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: AppTabs(
-                index: tab,
-                onChanged: (i) => setState(() => _tab = i),
-                items: [
-                  AppTabItem(t('النسب', 'Rates'), icon: Icons.receipt_long_rounded),
-                  AppTabItem(t('السياسة', 'Policy'), icon: Icons.tune_rounded),
-                ],
-              ),
-            ),
-          ),
         if (policyOn && !sup && tab == 1)
           Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.xxs, gutter, 0),
+            padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.sm, gutter, 0),
             child: AppBanner(
                 icon: Icons.lock_outline_rounded,
                 text: t('عرض فقط — تعديل الرسوم للمشرف العام', 'Read-only — only the super admin can change fees')),
           ),
         Expanded(
           // both stay built so an edit in the policy form survives a visit to the other tab
-          child: IndexedStack(index: tab, children: [
+          child: SupTabStack(index: tab, children: [
             const _RatesTab(),
             if (policyOn)
               FeePolicyTab(

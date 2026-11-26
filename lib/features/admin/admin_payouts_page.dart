@@ -14,6 +14,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart' show EntityKind;
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:provider/provider.dart';
 
@@ -24,7 +25,7 @@ import 'admin_common.dart';
 import 'admin_list.dart';
 import 'admin_models.dart';
 import 'admin_money_p8.dart' show numText, parseAmountLoose;
-import 'admin_page.dart';
+import 'sup/sup_kit.dart';
 import 'admin_providers.dart';
 import 'admin_table_export.dart' show adminWithdrawalsExport, exportFetched;
 import 'receipt_viewer.dart';
@@ -95,55 +96,52 @@ class _AdminPayoutsPageState extends State<AdminPayoutsPage> {
       ],
       child: ListenableBuilder(
         listenable: _requests,
-        builder: (context, _) => AdminPage(
-          width: AppWidth.wide,
-          title: 'admin_teacher_payouts'.tr,
-          icon: Icons.account_balance_wallet_rounded,
-          onRefresh: () => _load(_tab),
-          updatedAt: _tab == 0 ? _requests.loadedAt : null,
-          primaryAction: _tab == 0
-              ? AppButton.primary(
-                  label: t('تصدير', 'Export'),
-                  icon: Icons.ios_share_rounded,
-                  onPressed: _requests.loaded && _requests.rows.isNotEmpty ? _export : null,
-                )
-              : null,
-          body: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  AppSpace.gutter(MediaQuery.sizeOf(context).width),
-                  AppSpace.md,
-                  AppSpace.gutter(MediaQuery.sizeOf(context).width),
-                  AppSpace.xs,
-                ),
-                child: Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: AppTabs(
-                    index: _tab,
-                    onChanged: _go,
-                    items: [
-                      AppTabItem('admin_requests'.tr, count: _requests.pendingCount > 0 ? _requests.pendingCount : null),
-                      AppTabItem('admin_teachers'.tr),
-                      AppTabItem('admin_settings'.tr),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                child: IndexedStack(
-                  index: _tab,
-                  children: [
-                    const _RequestsView(),
-                    _visited.contains(1) ? const _TeachersView() : const SizedBox.shrink(),
-                    _visited.contains(2) ? const _SettingsView() : const SizedBox.shrink(),
-                  ],
-                ),
+        builder: (context, _) {
+          final waiting = _requests.pendingCount;
+          final money0 = (_requests.pendingMoney.entries.toList()..sort((a, b) => a.key.compareTo(b.key))).firstOrNull;
+          return SupPage(
+            title: 'admin_teacher_payouts'.tr,
+            kicker: 'admin_teacher_payouts'.tr,
+            headline: waiting > 0
+                ? countText(waiting,
+                    ar1: 'طلب سحب واحد ينتظرك',
+                    ar2: 'طلبا سحب ينتظرانك',
+                    arFew: '{n} طلبات سحب تنتظرك',
+                    arMany: '{n} طلب سحب ينتظرك',
+                    en1: 'One withdrawal request is waiting for you',
+                    en: '{n} withdrawal requests are waiting for you')
+                : 'a2_payouts_head_none'.tr,
+            line: 'a2_payouts_line'.tr,
+            onRefresh: () async => _load(_tab),
+            updatedAt: _tab == 0 ? _requests.loadedAt : null,
+            actions: [
+              SupHeroButton(
+                label: 'a2_export'.tr,
+                icon: Icons.download_rounded,
+                onTap: _tab == 0 && _requests.loaded && _requests.rows.isNotEmpty ? _export : null,
               ),
             ],
-          ),
-        ),
+            stats: [
+              AppHeroStat(value: '$waiting', label: 'a2_payouts_waiting'.tr, onTap: () => _go(0)),
+              if (money0 != null) AppHeroStat(value: money(money0.value, money0.key), label: 'a2_payouts_money'.tr),
+            ],
+            tabs: [
+              supTab('admin_requests'.tr, count: waiting),
+              supTab('admin_teachers'.tr),
+              supTab('admin_settings'.tr),
+            ],
+            tab: _tab,
+            onTab: _go,
+            body: SupTabStack(
+              index: _tab,
+              children: [
+                const _RequestsView(),
+                _visited.contains(1) ? const _TeachersView() : const SizedBox.shrink(),
+                _visited.contains(2) ? const _SettingsView() : const SizedBox.shrink(),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

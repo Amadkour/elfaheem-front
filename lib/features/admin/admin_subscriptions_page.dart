@@ -14,8 +14,6 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../design/app_switch.dart';
-import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_filter_models.dart';
@@ -25,6 +23,7 @@ import 'admin_list.dart';
 import 'admin_table_export.dart' show adminSubscriptionsExport;
 import 'admin_models.dart';
 import 'admin_providers.dart';
+import 'sup/sup_kit.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminSubscriptionsPage extends StatelessWidget {
@@ -105,12 +104,12 @@ class _View extends StatelessWidget {
       const SizedBox(height: AppSpace.xs),
     ]);
 
-    return BasePage(
-
-      useWebCard: true,
-      width: AppWidth.wide,
-      appBar: ScreenAppBar(title: 'subscriptions'.tr),
-      child: PagedList<AdminSubscriptionsProvider>(
+    return SupPage(
+      title: 'subscriptions'.tr,
+      kicker: 'a2_methods_kicker'.tr,
+      headline: 'a2_subs_head'.tr,
+      line: 'a2_subs_line'.tr,
+      body: PagedList<AdminSubscriptionsProvider>(
         export: adminSubscriptionsExport,
         header: header,
         countIcon: Icons.card_membership_rounded,

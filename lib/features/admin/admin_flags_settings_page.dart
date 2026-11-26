@@ -18,6 +18,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'admin_common.dart' show asMap, t;
 import 'admin_page.dart';
 import 'cfg_common.dart';
+import 'sup/sup_kit.dart';
 
 const _settingsPath = '/api/v1/admin/settings';
 
@@ -145,16 +146,13 @@ class _AdminFlagsSettingsPageState extends State<AdminFlagsSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AdminPage(
-      width: AppWidth.reading,
-      title: t('علامات المراجعة والقراءة للطلاب', 'Student review & read flags'),
-      subtitle: t('العلامات التي يضعها الطالب على أسئلة الاختبار وفقرات الدروس ليعود إليها — وليست مفاتيح ميزات التطبيق.',
-          'The bookmarks students put on exam questions and lesson passages to come back to — not the app’s feature switches.'),
-      icon: Icons.bookmark_rounded,
-      onRefresh: _load,
-      dirty: _dirty,
-      primaryAction: cfgSaveButton(dirty: _dirty, enabled: _valid && _saved.isNotEmpty, busy: _saving, onSave: _save),
-      body: _loading
+    return SupPage(
+        kicker: 'a2_platform_kicker'.tr, headline: t('العلامات اللي يحطها الطالب عشان يرجع لها', 'The marks students set to come back to'),
+        width: AppWidth.reading,
+        title: t('علامات المراجعة والقراءة للطلاب', 'Student review & read flags'),
+        onRefresh: _load,
+        dirty: _dirty,
+        body: _loading
           ? const AppListSkeleton()
           : _error != null
               ? cfgErrorState(_error, onRetry: _load)
@@ -225,7 +223,8 @@ class _AdminFlagsSettingsPageState extends State<AdminFlagsSettingsPage> {
                     ),
                   ],
                 ),
-    );
+        actions: [cfgSaveButton(dirty: _dirty, enabled: _valid && _saved.isNotEmpty, busy: _saving, onSave: _save)],
+      );
   }
 }
 

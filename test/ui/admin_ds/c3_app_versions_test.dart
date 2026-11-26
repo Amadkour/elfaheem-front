@@ -117,7 +117,7 @@ void main() {
 
   Future<void> open(WidgetTester tester, {String role = 'super-admin'}) async {
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.physicalSize = const Size(1400, 1600);
     addTearDown(() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();

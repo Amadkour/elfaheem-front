@@ -9,6 +9,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 
 import '../../config/theme/theme_config_provider.dart';
 import '../../core/api_client.dart';
@@ -17,6 +18,7 @@ import 'admin_page.dart';
 import 'cfg_common.dart';
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart';
 import 'admin_common.dart' show t;
+import 'sup/sup_kit.dart';
 
 class AdminRecommendationsPage extends StatefulWidget {
   const AdminRecommendationsPage({super.key, this.api = const RoadmapApi()});
@@ -123,17 +125,13 @@ class _AdminRecommendationsPageState extends State<AdminRecommendationsPage> {
   @override
   Widget build(BuildContext context) {
     final s = _stats;
-    return AdminPage(
-      key: const ValueKey(kRecsAdminKey),
-      title: t('التوصيات', 'Recommendations'),
-      subtitle: t('ما يُقترح على الطلاب: الأرقام حسب السبب، وأوزان المحرّك', 'What students are suggested: numbers per reason and the engine’s weights'),
-      icon: Icons.auto_awesome_rounded,
-      onRefresh: _load,
-      dirty: _dirty,
-      primaryAction: s == null
-          ? null
-          : cfgSaveButton(dirty: _dirty, busy: _saving, enabled: _total > 0, onSave: _save),
-      body: _error != null && s == null
+    return SupPage(
+        kicker: 'a2_recs_kicker'.tr, headline: 'a2_recs_head'.tr,
+        key: const ValueKey(kRecsAdminKey),
+        title: t('التوصيات', 'Recommendations'),
+        onRefresh: _load,
+        dirty: _dirty,
+        body: _error != null && s == null
           ? cfgErrorState(_error, onRetry: _load)
           : s == null
               ? const AppListSkeleton(items: 5, withAvatar: false)
@@ -155,7 +153,10 @@ class _AdminRecommendationsPageState extends State<AdminRecommendationsPage> {
                     ],
                   ),
                 ),
-    );
+        actions: [?(s == null
+          ? null
+          : cfgSaveButton(dirty: _dirty, busy: _saving, enabled: _total > 0, onSave: _save))],
+      );
   }
 }
 

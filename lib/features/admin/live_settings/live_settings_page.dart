@@ -19,6 +19,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -26,9 +27,9 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppEase, AppReveal;
 
 import '../admin_common.dart' show t;
-import '../admin_page.dart';
 import '../cfg_common.dart';
 import 'live_settings_draft.dart';
+import '../sup/sup_kit.dart';
 
 export 'live_settings_draft.dart' show kLiveSettingsFeatureKey;
 
@@ -154,31 +155,30 @@ class _LiveSettingsPageState extends State<LiveSettingsPage> {
       );
     }
     final pending = _pending;
-    return AdminPage(
-      title: liveSettingsTitle(),
-      subtitle: t('الترميز، ضعف الشبكة، جودة الكاميرات والشاشة، ومكان التسجيل — لكل الأجهزة دون تحديث',
-          'Codec, weak networks, camera and screen quality, and where classes are recorded — no app update'),
-      icon: Icons.speed_rounded,
-      width: AppWidth.content,
-      onRefresh: _load,
-      dirty: pending > 0,
-      primaryAction: info == null
+    return SupPage(
+        kicker: 'a2_live_kicker'.tr, headline: 'a2_live_head'.tr, line: 'a2_live_line'.tr,
+        title: liveSettingsTitle(),
+        width: AppWidth.content,
+        onRefresh: _load,
+        dirty: pending > 0,
+        body: body,
+        actions: [?(info == null
           ? null
-          : cfgSaveButton(dirty: pending > 0, busy: _saving, onSave: _save),
-      actions: [
+          : cfgSaveButton(dirty: pending > 0, busy: _saving, onSave: _save)), ...[
         if (info != null && pending > 0)
           AppIconButton(
+              onHero: true,
               icon: Icons.undo_rounded,
               tooltip: t('تراجع عن التغييرات', 'Discard changes'),
               onPressed: _saving ? null : () => setState(() => _draft = info.settings)),
         if (info != null)
           AppIconButton(
+              onHero: true,
               icon: Icons.restart_alt_rounded,
               tooltip: t('الرجوع إلى المستحسن', 'Reset to recommended'),
               onPressed: _saving || draft?.differencesFrom(info.recommended) == 0 ? null : _reset),
-      ],
-      body: body,
-    );
+      ]],
+      );
   }
 }
 

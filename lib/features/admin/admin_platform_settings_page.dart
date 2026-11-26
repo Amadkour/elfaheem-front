@@ -13,6 +13,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -28,6 +29,7 @@ import 'admin_features_page.dart';
 import 'admin_feedback_settings.dart' show AdminFeedbackSettingsPage;
 import 'admin_account_fee_widgets.dart';
 import 'admin_platform_widgets.dart';
+import 'sup/sup_kit.dart';
 
 const _path = '/api/v1/admin/platform-settings';
 
@@ -203,22 +205,21 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AdminPage(
-      width: AppWidth.reading,
-      title: t('إعدادات المنصة', 'Platform settings'),
-      subtitle: t('المؤسسات، الوقت والمنطقة، والميزات — في مكان واحد.', 'Organizations, time & region, and features — in one place.'),
-      icon: Icons.settings_suggest_rounded,
-      onRefresh: _load,
-      dirty: _canEdit && _dirty,
-      primaryAction: _canEdit
-          ? cfgSaveButton(dirty: _dirty && _amountError == null, busy: _saving, onSave: _save)
-          : null,
-      body: _error != null
+    return SupPage(
+        kicker: 'a2_platform_kicker'.tr, headline: 'a2_settings_head'.tr, line: 'a2_settings_line'.tr,
+        width: AppWidth.reading,
+        title: t('إعدادات المنصة', 'Platform settings'),
+        onRefresh: _load,
+        dirty: _canEdit && _dirty,
+        body: _error != null
           ? cfgErrorState(_error, onRetry: _load)
           : _s == null
               ? const AppListSkeleton(items: 5)
               : _content(context),
-    );
+        actions: [?(_canEdit
+          ? cfgSaveButton(dirty: _dirty && _amountError == null, busy: _saving, onSave: _save)
+          : null)],
+      );
   }
 
   Widget _content(BuildContext context) {
@@ -558,13 +559,13 @@ class _AdminOrgFeePaymentsPageState extends State<AdminOrgFeePaymentsPage> {
       'rejected': t('مرفوضة', 'Rejected'),
       '': t('الكل', 'All'),
     };
-    return AdminPage(
-      title: widget.purpose == 'account'
+    return SupPage(
+        kicker: 'a2_platform_kicker'.tr, headline: 'a2_fee_receipts_head'.tr,
+        title: widget.purpose == 'account'
           ? t('إيصالات رسوم الحسابات', 'Account fee receipts')
           : t('إيصالات رسوم المؤسسات', 'Organization fee receipts'),
-      icon: Icons.receipt_long_rounded,
-      onRefresh: () => _load(keep: _items != null),
-      body: Column(children: [
+        onRefresh: () => _load(keep: _items != null),
+        body: Column(children: [
         // no fixed height: the chips grow with the text size
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -641,6 +642,6 @@ class _AdminOrgFeePaymentsPageState extends State<AdminOrgFeePaymentsPage> {
                     ),
         ),
       ]),
-    );
+      );
   }
 }
