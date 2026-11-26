@@ -19,6 +19,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter_education_app/features/guest/sa_hero_page.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -201,7 +203,7 @@ class _TermsScreenState extends State<TermsScreen> {
           showBack: Navigator.of(context).canPop(), // the public /terms and /privacy links open with nothing behind them
           actions: canAsk && doc != null ? [AskAboutPageAction(onTap: _ask)] : null,
         ),
-        child: SafeArea(child: _body(p, canAsk)),
+        child: SafeArea(child: SaHeroPage(area: AppArea.me, kicker: 'sa_legal_kicker'.tr, title: title, child: _body(p, canAsk))),
       ),
     );
   }

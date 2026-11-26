@@ -614,6 +614,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
+      kicker: 'sa_verify_kicker'.tr,
+      heroTitle: 'sa_verify_hero'.tr,
+      squiggle: 'sa_verify_squiggle'.tr,
       title: 'verification'.tr,
       subtitle: _isReg ? 'auth_verify_sub'.tr : 'auth_reset_code_sub'.tr,
       maxWidth: 480,

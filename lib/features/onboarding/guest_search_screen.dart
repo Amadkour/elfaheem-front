@@ -7,6 +7,8 @@
 // well) and the live count glides when a choice changes it (AppCountUp). The emerald is only "Show courses".
 library;
 
+import 'package:flutter_education_app/features/guest/sa_hero_page.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -122,7 +124,7 @@ class _GuestSearchScreenState extends State<GuestSearchScreen> {
     return Scaffold(
       backgroundColor: c.background,
       body: SafeArea(
-        child: Center(
+        child: SaHeroPage(area: AppArea.home, kicker: 'sa_gs_kicker'.tr, title: 'sa_gs_title'.tr, squiggle: 'sa_gs_squiggle'.tr, child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: AppWidth.form.max),
             child: SingleChildScrollView(
@@ -246,7 +248,7 @@ class _GuestSearchScreenState extends State<GuestSearchScreen> {
               ]),
             ),
           ),
-        ),
+        )),
       ),
     );
   }

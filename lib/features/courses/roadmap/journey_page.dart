@@ -18,6 +18,9 @@
 // button; "The whole path" is an editorial section under it.
 library;
 
+import 'package:flutter_education_app/features/guest/sa_hero_page.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -100,7 +103,7 @@ class _JourneyPageState extends State<JourneyPage> {
     return BasePage(
       key: const ValueKey(kRoadmapJourneyKey),
       appBar: ScreenAppBar(title: t('مساري التعليمي', 'My learning path')),
-      child: AppRefresh(
+      child: SaHeroPage(area: AppArea.learn, kicker: 'sa_journey_kicker'.tr, title: 'sa_journey_title'.tr, squiggle: 'sa_journey_squiggle'.tr, child: AppRefresh(
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xl),
@@ -123,7 +126,7 @@ class _JourneyPageState extends State<JourneyPage> {
                             ? AppEmpty(
                                 icon: Icons.route_rounded,
                                 title: t('لا مسار بعد', 'No path yet'),
-                                message: t('أكمل كورساً أو اختر اهتماماتك ليظهر طريقك هنا.', 'Complete a course or pick your interests and your way shows here.'),
+                                message: t('أكمل دورة أو اختر اهتماماتك ليظهر طريقك هنا.', 'Complete a course or pick your interests and your way shows here.'),
                                 actionLabel: recsOn ? t('اختر اهتماماتك', 'Pick your interests') : null,
                                 onAction: recsOn ? _interests : null,
                               )
@@ -132,7 +135,7 @@ class _JourneyPageState extends State<JourneyPage> {
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 }
@@ -189,7 +192,7 @@ class JourneyContent extends StatelessWidget {
                 if (j.source == 'interest') ...[
                   AppSpace.gapXs,
                   Text(
-                    t('اقتراح من اهتماماتك والكورسات التي أكملتها.', 'Suggested from your interests and the courses you completed.'),
+                    t('اقتراح من اهتماماتك والدورات التي أكملتها.', 'Suggested from your interests and the courses you completed.'),
                     style: AppType.body(context).copyWith(color: b.muted),
                   ),
                 ],
@@ -225,7 +228,7 @@ class JourneyContent extends StatelessWidget {
               if (onMoreForYou != null)
                 AppButton.ghost(
                   key: const ValueKey('journey.more'),
-                  label: t('كورسات مقترحة لك', 'More courses for you'),
+                  label: t('دورات مقترحة لك', 'More courses for you'),
                   icon: Icons.auto_awesome_rounded,
                   size: AppButtonSize.sm,
                   onPressed: onMoreForYou,

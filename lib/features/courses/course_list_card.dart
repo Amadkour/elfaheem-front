@@ -50,6 +50,8 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
+import 'package:flutter_education_app/design/app_progress.dart' show AppProgressRing;
+import 'package:flutter_education_app/design/app_subject_colors.dart' show kSubjectKeys, subjectKeyFor;
 
 enum CourseCardShape { row, tile }
 
@@ -91,6 +93,98 @@ String courseInitialOf(String title) {
   final w = words.first;
   final stem = w.startsWith('ال') && w.characters.length > 3 ? w.substring(2) : w;
   return stem.characters.first.toUpperCase();
+}
+
+/// The kit subject key of a course (redesign: the same subject has the same colour on every screen): [subject]
+/// when the server sends one, else the first words of [title] that name a subject ("الرياضيات ٢ ثانوي" → math),
+/// else `other`.
+String courseSubjectKeyOf(String title, {String? subject}) {
+  final direct = subjectKeyFor(subject);
+  if (direct != 'other') return direct;
+  final words = title.toLowerCase().split(RegExp(r'[\s:،,()\-–]+')).where((w) => w.isNotEmpty).toList();
+  for (var n = 2; n >= 1; n--) {
+    for (var i = 0; i + n <= words.length; i++) {
+      final w = words.sublist(i, i + n).join(' ');
+      var k = subjectKeyFor(w);
+      // "الإنجليزي" → "إنجليزي": the article is not in every alias
+      if (k == 'other' && w.startsWith('ال')) k = subjectKeyFor(w.substring(2));
+      if (k == 'other') k = const {'لغتي': 'arabic', 'تحصيلي': 'qudurat', 'التحصيلي': 'qudurat'}[w] ?? 'other';
+      if (k != 'other') return k;
+    }
+  }
+  return 'other';
+}
+
+/// The glyph of a kit subject key (the course cover, the subject tiles of Explore).
+IconData courseSubjectIcon(String key) => switch (key) {
+      'math' => Icons.calculate_rounded,
+      'physics' => Icons.track_changes_rounded,
+      'chem' => Icons.science_rounded,
+      'bio' => Icons.eco_rounded,
+      'english' => Icons.translate_rounded,
+      'arabic' => Icons.text_fields_rounded,
+      'qudurat' => Icons.psychology_rounded,
+      'code' => Icons.code_rounded,
+      'quran' => Icons.auto_stories_rounded,
+      'islamic' => Icons.mosque_rounded,
+      _ => Icons.school_rounded,
+    };
+
+/// A course cover with no picture in the redesign: the subject's colour fading toward its ink, a large faint glyph
+/// on the start-bottom corner and the glyph again in a glass box. Decorative: never read out.
+class CourseSubjectCover extends StatelessWidget {
+  const CourseSubjectCover({super.key, required this.subjectKey, this.width, this.height});
+
+  final String subjectKey;
+  final double? width, height;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final s = c.kit.subject(kSubjectKeys.contains(subjectKey) ? subjectKey : 'other');
+    final icon = courseSubjectIcon(subjectKey);
+    return ExcludeSemantics(
+      child: SizedBox(
+        width: width ?? double.infinity,
+        height: height,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: AlignmentDirectional.topStart,
+              end: AlignmentDirectional.bottomEnd,
+              colors: [Color.lerp(s.tone.color, c.onHero, .18)!, s.tone.color, Color.lerp(s.tone.color, s.tone.ink, .25)!],
+            ),
+          ),
+          child: LayoutBuilder(builder: (context, box) {
+            final short = box.hasBoundedHeight ? math.min(box.maxWidth, box.maxHeight) : box.maxWidth;
+            final big = short.isFinite ? short * .9 : AppDashSize.avatar;
+            final glass = (short.isFinite ? short * .42 : AppDashSize.glyph).clamp(AppIconSize.xl, AppDashSize.avatarSm);
+            return Stack(clipBehavior: Clip.hardEdge, children: [
+              PositionedDirectional(
+                start: -big * .22,
+                bottom: -big * .22,
+                child: Transform.rotate(
+                  angle: -.2,
+                  child: Icon(icon, size: big, color: s.fg.withValues(alpha: .16)),
+                ),
+              ),
+              Center(
+                child: Container(
+                  width: glass,
+                  height: glass,
+                  decoration: BoxDecoration(
+                    color: s.fg.withValues(alpha: .2),
+                    borderRadius: BorderRadius.circular(AppRadius.tile),
+                  ),
+                  child: Icon(icon, size: glass * .5, color: s.fg),
+                ),
+              ),
+            ]);
+          }),
+        ),
+      ),
+    );
+  }
 }
 
 /// The cover of a course with no picture: a book. Its block tone comes from [toneKey] (the title in a list; the
@@ -189,6 +283,7 @@ class CourseListCard extends StatelessWidget {
     this.metaLead,
     this.isPrivate = false,
     this.onTap,
+    this.subject,
   });
 
   final CourseCardShape shape;
@@ -202,6 +297,9 @@ class CourseListCard extends StatelessWidget {
   final bool isPrivate;
   final Widget footer;
   final VoidCallback? onTap;
+
+  /// The course's subject as the server names it (slug or name); null = read from the title.
+  final String? subject;
 
   /// The text block and footer under a tile's cover at text scale 1 (two editorial title lines, the meta line, the
   /// footer and the insets).
@@ -218,11 +316,11 @@ class CourseListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final radius = AppRadius.cardAll;
-    // depth (D-620): leans 2 degrees under the mouse, presses in on touch; the cover drifts with the scroll
+    final r = AppRadius.cardFor(MediaQuery.sizeOf(context).width);
+    final radius = BorderRadius.circular(r);
+    // redesign (KIT_SPEC §5.3): paper; leans under the mouse, presses in on touch, the cover drifts with the scroll
     return AppTilt.subtle(
-      radius: AppRadius.card,
-      // the white card on the tinted page, one soft shadow (D-632)
+      radius: r,
       child: AppLift(
         radius: radius,
         child: Material(
@@ -243,7 +341,7 @@ class CourseListCard extends StatelessWidget {
         title,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: AppType.section(context),
+        style: shape == CourseCardShape.row ? AppType.tileTitle(context) : AppType.section(context),
       );
 
   Widget _meta(BuildContext context) {
@@ -301,7 +399,7 @@ class CourseListCard extends StatelessWidget {
   Widget _picture({double? width, double? height}) => ParentComponent(
         featureKey: 'course_card.thumbnail',
         child: imageUrl.trim().isEmpty
-            ? CourseCoverArt(seed: title.hashCode, width: width, height: height, label: title, toneKey: title)
+            ? CourseSubjectCover(subjectKey: courseSubjectKeyOf(title, subject: subject), width: width, height: height)
             : AppNetworkImage(
           url: imageUrl,
           width: width ?? double.infinity,
@@ -313,29 +411,13 @@ class CourseListCard extends StatelessWidget {
       );
 
   Widget _row(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpace.sm),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        ClipRRect(
-          // concentric with the card: its radius less the inset
-          borderRadius: BorderRadius.circular(AppRadius.card - AppSpace.xxs),
-          child: SizedBox.fromSize(
-            size: _thumb,
-            child: Stack(children: [
-              Positioned.fill(child: AppParallaxImage(maxShift: AppSpace.xxs, image: _picture())),
-              if (chip case final chip?)
-                PositionedDirectional(
-                  start: AppSpace.xxs,
-                  end: AppSpace.xxs,
-                  bottom: AppSpace.xxs,
-                  // the chip ellipsizes inside the picture instead of running off its edge
-                  child: Align(alignment: AlignmentDirectional.centerStart, child: chip),
-                ),
-            ]),
-          ),
-        ),
-        const SizedBox(width: AppSpace.sm),
-        Expanded(
+    // redesign (Stu1Discover): the text at the start, the subject cover full height on the end side (a Stack, not
+    // IntrinsicHeight: the meta line and the cover lay out with LayoutBuilders)
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: _thumb.height + AppSpace.xl),
+      child: Stack(children: [
+        Padding(
+          padding: EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, _thumb.width + AppSpace.sm, AppSpace.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Expanded(child: _title(context)),
@@ -345,6 +427,23 @@ class CourseListCard extends StatelessWidget {
             _meta(context),
             const SizedBox(height: AppSpace.sm),
             footer,
+          ]),
+        ),
+        PositionedDirectional(
+          end: 0,
+          top: 0,
+          bottom: 0,
+          width: _thumb.width,
+          child: Stack(children: [
+            Positioned.fill(child: AppParallaxImage(maxShift: AppSpace.xxs, image: _picture())),
+            if (chip case final chip?)
+              PositionedDirectional(
+                start: AppSpace.xs,
+                end: AppSpace.xs,
+                bottom: AppSpace.xs,
+                // the chip ellipsizes inside the picture instead of running off its edge
+                child: Center(child: chip),
+              ),
           ]),
         ),
       ]),
@@ -609,28 +708,14 @@ class CourseProgressFooter extends StatelessWidget {
         label: 'course_list_progress_sem'.tr.replaceAll('{n}', '$p'),
         excludeSemantics: true,
         child: Row(children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              child: AppFill(
-                value: p / 100,
-                builder: (_, v) => LinearProgressIndicator(
-                  value: v,
-                  minHeight: AppSpace.xxs + 2,
-                  backgroundColor: c.divider,
-                  valueColor: AlwaysStoppedAnimation(done ? c.success : coursePrimaryInk(context)),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpace.xs),
-          Text(
-            '$p%',
-            style: AppType.label(context).copyWith(
-              fontWeight: FontWeight.w600,
-              color: done ? c.success : c.textDark,
-              height: 1.2,
-              fontFeatures: const [FontFeature.tabularFigures()],
+          AppProgressRing(value: p / 100, tone: done ? c.kit.ok : null),
+          const SizedBox(width: AppSpace.sm),
+          Flexible(
+            child: Text(
+              done ? 'sa_course_done'.tr : 'sa_course_progress'.tr,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.label(context).copyWith(color: c.textMedium, height: 1.2),
             ),
           ),
         ]),
@@ -795,16 +880,15 @@ class CourseListSkeleton extends StatelessWidget {
         );
         if (shape == CourseCardShape.row) {
           return Container(
-            padding: const EdgeInsets.all(AppSpace.sm),
             decoration: deco,
+            clipBehavior: Clip.antiAlias,
             child: Row(children: [
+              Expanded(child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: lines)),
               AppSkeletonBox(
                 width: CourseListCard._thumb.width,
-                height: CourseListCard._thumb.height,
-                radius: AppRadius.card - AppSpace.xxs,
+                height: CourseListCard._thumb.height + AppSpace.xl,
+                radius: 0,
               ),
-              const SizedBox(width: AppSpace.sm),
-              Expanded(child: lines),
             ]),
           );
         }

@@ -30,6 +30,8 @@ import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppJelly;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // State
@@ -364,6 +366,8 @@ class GuestGate extends StatelessWidget {
   );
 }
 
+/// The locked tab (redesign Stu1Public?screen=gate): the area hero, a card with the lock, one line, Sign in and
+/// "No account? Create one", then three short reasons as tiles.
 class _GuestLocked extends StatelessWidget {
   const _GuestLocked({required this.icon, required this.messageKey});
 
@@ -372,36 +376,52 @@ class _GuestLocked extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final ink = AppAreaScope.of(context).ink;
     return Material(
       color: Colors.transparent,
-      child: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: AppWidth.form.max * 0.7),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpace.lg),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _GradientIcon(icon: icon, size: AppTouch.primary + AppSpace.lg),
+      child: SingleChildScrollView(
+        child: AppHeroOverlap(
+          hero: AppHero(kicker: 'sa_gate_kicker'.tr, title: 'sa_gate_title'.tr, squiggle: 'sa_gate_squiggle'.tr),
+          body: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  AppCard(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      AppIconBox(icon: Icons.lock_outline_rounded, size: AppDashSize.avatar + AppSpace.lg),
+                      const SizedBox(height: AppSpace.md),
+                      Semantics(
+                        header: true,
+                        child: Text('guest_locked_title'.tr, textAlign: TextAlign.center, style: AppType.pageTitle(context)),
+                      ),
+                      const SizedBox(height: AppSpace.xs),
+                      Text(messageKey.tr, textAlign: TextAlign.center, style: AppType.body(context).copyWith(color: c.textMedium, height: 1.5)),
+                      const SizedBox(height: AppSpace.lg),
+                      AppButton.primary(label: 'login'.tr, onPressed: GuestGuard.goToLogin),
+                      Wrap(alignment: WrapAlignment.center, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                        Text('sa_gate_no_account'.tr, style: AppType.body(context).copyWith(color: c.textMedium)),
+                        TextButton(
+                          onPressed: GuestGuard.goToRegister,
+                          style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: ink),
+                          child: Text('sa_gate_create'.tr, style: AppType.bodyStrong(context).copyWith(color: ink)),
+                        ),
+                      ]),
+                    ]),
+                  ),
                   const SizedBox(height: AppSpace.md),
-                  Semantics(
-                    header: true,
-                    child: Text('guest_locked_title'.tr, textAlign: TextAlign.center, style: AppType.headline(context)),
-                  ),
-                  const SizedBox(height: AppSpace.xs),
-                  Text(
-                    messageKey.tr,
-                    textAlign: TextAlign.center,
-                    style: AppType.body(context).copyWith(height: 1.5),
-                  ),
+                  for (final (i, glyph, title, sub, accent) in [
+                    (0, Icons.insights_rounded, 'sa_gate_r1', 'sa_gate_r1_sub', AppAccent.sky),
+                    (1, Icons.videocam_outlined, 'sa_gate_r2', 'sa_gate_r2_sub', AppAccent.pink),
+                    (2, Icons.favorite_border_rounded, 'sa_gate_r3', 'sa_gate_r3_sub', AppAccent.grape),
+                  ]) ...[
+                    if (i > 0) const SizedBox(height: AppSpace.sm),
+                    AppTile(icon: glyph, tone: c.kit.accent(accent), title: title.tr, subtitle: sub.tr),
+                  ],
                   const SizedBox(height: AppSpace.lg),
-                  AppButton.primary(
-                    icon: DirIcons.login,
-                    label: 'login'.tr,
-                    onPressed: GuestGuard.goToLogin,
-                  ),
-                ],
+                ]),
               ),
             ),
           ),
@@ -418,41 +438,35 @@ class _GuestLocked extends StatelessWidget {
 class GuestPromoCard extends StatelessWidget {
   const GuestPromoCard({super.key});
 
-  /// A peach block (learning, system.md §5): the invitation in the editorial section role, one line under it, the
-  /// ONE emerald action, and the subject's mark on a paper disc — no gradient, no glow.
+  /// Redesign (Stu1Public?screen=guesthome): the forward gradient banner "Set up your account in a minute" with ONE
+  /// paper button, riding first under the guest hero.
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
-      child: AppBlock(
-        tone: AppBlockTone.peach,
-        child: Builder(builder: (context) {
-          final ink = AppBlock.colorsOf(context);
-          return Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('guest_promo_title'.tr, style: AppType.section(context).copyWith(color: ink.ink)),
-                    const SizedBox(height: AppSpace.xxs),
-                    Text('guest_promo_sub'.tr, style: AppType.label(context).copyWith(color: ink.muted, height: 1.4)),
-                    const SizedBox(height: AppSpace.sm),
-                    AppButton.primary(size: AppButtonSize.sm, label: 'create_account'.tr, onPressed: GuestGuard.goToRegister),
-                  ],
-                ),
+    final radius = BorderRadius.circular(AppRadius.cardFor(MediaQuery.sizeOf(context).width));
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(borderRadius: radius, gradient: c.kit.hotButton, boxShadow: AppShadow.button(context, c.kit.hotB)),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSpace.sm,
+        runSpacing: AppSpace.sm,
+        children: [
+          Text('sa_guest_promo'.tr, style: AppType.section(context).copyWith(color: c.kit.hotFg)),
+          AppJelly(
+            child: FilledButton(
+              onPressed: GuestGuard.goToRegister,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(AppTouch.min, AppTouch.min),
+                backgroundColor: c.cardBg,
+                foregroundColor: c.kit.hot,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.pill)),
               ),
-              const SizedBox(width: AppSpace.sm),
-              Container(
-                width: AppTouch.primary,
-                height: AppTouch.primary,
-                decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
-                child: Icon(Icons.school_rounded, color: ink.ink, size: AppIconSize.lg),
-              ),
-            ],
-          );
-        }),
+              child: Text('sa_guest_promo_cta'.tr, style: AppType.bodyStrong(context).copyWith(color: c.kit.hotTone.ink)),
+            ),
+          ),
+        ],
       ),
     );
   }

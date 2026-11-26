@@ -9,6 +9,8 @@
 //   wide    a paper column of categories on the start side · search, the block and the cards beside it
 library;
 
+import 'package:flutter_education_app/features/guest/sa_hero_page.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -144,11 +146,11 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
       width: AppWidth.wide,
       appBar: ScreenAppBar(title: 'categories'.tr),
       child: SafeArea(
-        child: LayoutBuilder(
+        child: SaHeroPage(area: AppArea.learn, kicker: 'sa_cat_kicker'.tr, title: 'sa_cat_title'.tr, child: LayoutBuilder(
           builder: (context, constraints) => constraints.maxWidth >= _kWideBreakpoint
               ? _WideLayout(searchCtrl: _searchCtrl, filterBar: bar)
               : _NarrowLayout(searchCtrl: _searchCtrl, filterBar: bar),
-        ),
+        )),
       ),
     );
   }

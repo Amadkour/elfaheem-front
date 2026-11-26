@@ -10,12 +10,15 @@
 // reuses `EduAreaPicker` with its optional street address.
 library;
 
+import 'package:flutter_education_app/features/auth/world_phone_field.dart';
+import 'package:flutter_education_app/features/auth/auth_shell.dart' show AuthLayout;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart';
 import 'package:flutter_education_app/core/edu/edu_countries.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppJelly, AppWipeSwitcher;
 import 'package:flutter_education_app/design/edu_pickers.dart';
 import 'package:flutter_education_app/features/auth/register_levels_step.dart' show ContactOnlyNote, TeachingLevelsStep;
 
@@ -38,7 +41,7 @@ String joinRoleName(String role) => switch (role) {
     };
 
 String joinDeliveryName(String? d) => switch (d) {
-      'online' => _t('أونلاين', 'Online'),
+      'online' => _t('عن بعد', 'Remote'),
       'in_person' => _t('حضوري في مركز', 'In person, at a centre'),
       _ => _t('أيهما', 'Either'),
     };
@@ -52,9 +55,13 @@ class JoinOptionCard extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.subtitle,
+    this.tone,
   });
 
   final IconData icon;
+
+  /// The glyph box's tone (default: the area's).
+  final KitTone? tone;
   final String title;
   final String? subtitle;
   final bool selected;
@@ -63,51 +70,61 @@ class JoinOptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final set = AppAreaScope.of(context);
+    final radius = BorderRadius.circular(AppRadius.cardFor(MediaQuery.sizeOf(context).width));
     return Semantics(
       button: true,
       selected: selected,
       label: [title, ?subtitle].join('. '),
       child: ExcludeSemantics(
-        child: Material(
-          color: selected ? c.primaryTint : c.cardBg,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.cardAll,
-            side: BorderSide(
-                color: selected ? c.primary : c.controlEdge, width: selected ? AppBorder.strong : AppBorder.hairline),
-          ),
-          child: InkWell(
-            borderRadius: AppRadius.cardAll,
-            onTap: onTap,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: AppTouch.primary),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpace.md),
-                child: Row(
-                  children: [
-                    Container(
-                      width: AppTouch.min,
-                      height: AppTouch.min,
-                      decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.controlAll),
-                      child: Icon(icon, size: AppIconSize.lg, color: c.primary),
+        child: AppJelly(
+          wide: true,
+          child: Material(
+            color: c.cardBg,
+            shape: RoundedRectangleBorder(
+              borderRadius: radius,
+              side: BorderSide(color: selected ? set.a : c.kit.line, width: selected ? AppBorder.focus : AppBorder.strong),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              child: Ink(
+                decoration: selected ? BoxDecoration(gradient: LinearGradient(colors: [c.cardBg, set.tint])) : null,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: AppTouch.primary),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpace.md),
+                    child: Row(
+                      children: [
+                        AppIconBox(icon: icon, tone: tone ?? set.tone, size: AppTouch.min + AppSpace.xxs),
+                        AppSpace.gapMd,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(title, style: AppType.tileTitle(context)),
+                              if (subtitle != null) ...[
+                                const SizedBox(height: AppSpace.xxs),
+                                Text(subtitle!, style: AppType.meta(context)),
+                              ],
+                            ],
+                          ),
+                        ),
+                        AppSpace.gapSm,
+                        Container(
+                          width: AppIconSize.xl,
+                          height: AppIconSize.xl,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: selected ? set.ink : null,
+                            border: selected ? null : Border.all(color: c.kit.fieldEdge, width: AppBorder.strong),
+                          ),
+                          child: selected ? Icon(Icons.check_rounded, size: AppIconSize.md, color: c.cardBg) : null,
+                        ),
+                      ],
                     ),
-                    AppSpace.gapMd,
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(title, style: AppType.section(context)),
-                          if (subtitle != null) ...[
-                            const SizedBox(height: AppSpace.xxs),
-                            Text(subtitle!, style: AppType.meta(context)),
-                          ],
-                        ],
-                      ),
-                    ),
-                    AppSpace.gapSm,
-                    Icon(selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                        size: AppIconSize.lg, color: selected ? c.primary : c.textLight),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -182,69 +199,56 @@ class JoinFlowView extends StatelessWidget {
     final steps = _steps;
     final at = steps.indexOf(step).clamp(0, steps.length - 1);
     final (title, subtitle) = _heading();
+    // redesign (Stu1Auth?screen=join): the auth hero ("Start right"), the card with the step rule, the question,
+    // the answers and the buttons
     return Scaffold(
       backgroundColor: c.background,
-      body: SafeArea(
-        child: Column(
+      body: AuthLayout(
+        showBack: false,
+        kicker: _t('ابدأ صح', 'Start right'),
+        heroTitle: _t('نرتّب لك كل شي من أول يوم', 'We set everything up from day one'),
+        squiggle: _t('أول يوم', 'day one'),
+        title: title,
+        subtitle: subtitle,
+        maxWidth: AppWidth.form.max,
+        body: (context, wide) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
-              child: Row(
-                children: [
-                  if (onBack != null) AppBackButton(onPressed: onBack) else const SizedBox(width: AppTouch.min),
-                  AppSpace.gapSm,
-                  Expanded(
-                    child: Semantics(
-                      label: _t('الخطوة ${at + 1} من ${steps.length}', 'Step ${at + 1} of ${steps.length}'),
-                      child: ClipRRect(
-                        borderRadius: AppRadius.chipAll,
-                        child: LinearProgressIndicator(
-                          value: (at + 1) / steps.length,
-                          minHeight: AppSpace.xxs,
-                          color: c.primary,
-                          backgroundColor: c.divider,
+            Row(children: [
+              if (onBack != null) ...[AppBackButton(onPressed: onBack), AppSpace.gapXs],
+              Expanded(
+                child: Semantics(
+                  label: _t('الخطوة ${at + 1} من ${steps.length}', 'Step ${at + 1} of ${steps.length}'),
+                  child: ExcludeSemantics(
+                    child: Row(children: [
+                      for (var i = 0; i < steps.length; i++) ...[
+                        if (i > 0) const SizedBox(width: AppSpace.xxs),
+                        Expanded(
+                          child: AnimatedContainer(
+                            duration: AppMotion.of(context).base,
+                            height: AppSpace.xxs + 2,
+                            decoration: BoxDecoration(
+                              color: i <= at ? AppAreaScope.of(context).a : c.kit.track,
+                              borderRadius: BorderRadius.circular(AppRadius.pill),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                  AppSpace.gapSm,
-                  Text('${at + 1}/${steps.length}', style: AppType.meta(context)),
-                ],
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpace.md),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: AppWidth.form.max),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        AppSpace.gapSm,
-                        Semantics(header: true, child: Text(title, style: AppType.display(context))),
-                        AppSpace.gapXs,
-                        Text(subtitle, style: AppType.body(context)),
-                        AppSpace.gapLg,
-                        _body(context),
                       ],
-                    ),
+                    ]),
                   ),
                 ),
               ),
-            ),
-            DecoratedBox(
-              decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline))),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpace.md),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: AppWidth.form.max),
-                    child: _actions(),
-                  ),
-                ),
+              AppSpace.gapSm,
+              Flexible(
+                child: Text(_t('خطوة ${at + 1} من ${steps.length}', 'Step ${at + 1} of ${steps.length}'),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
               ),
-            ),
+            ]),
+            AppSpace.gapMd,
+            AppWipeSwitcher(switchKey: step, child: _body(context)),
+            AppSpace.gapLg,
+            _actions(),
           ],
         ),
       ),
@@ -417,13 +421,11 @@ class JoinFlowView extends StatelessWidget {
           icon: Icons.person_outline_rounded,
           textInputAction: TextInputAction.next,
         ),
-        AppField(
-          key: const ValueKey('join.phone'),
+        // any country (RULES §3): the picker builds the E.164 number
+        WorldPhoneField(
+          fieldKey: const ValueKey('join.phone'),
           controller: phone,
           label: _t('رقم الهاتف', 'Phone number'),
-          icon: Icons.phone_outlined,
-          keyboard: TextInputType.phone,
-          ltr: true,
         ),
         if (draft.isParent)
           AppField(

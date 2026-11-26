@@ -32,10 +32,11 @@ import 'package:flutter_education_app/design/app_contrast.dart' show ensureContr
 import 'package:flutter_education_app/design/app_buttons.dart' show appFocusRing, appKeyboardFocus;
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_gradients.dart'
-    show AppBrandInk, AppBrandLabel, AppBrandLayer, AppBrandPanel, AppBrandSpan, AppGradientIcon, BrandInk;
+    show AppBrandInk, AppBrandLabel, AppBrandPanel, AppBrandSpan, AppGradientIcon, BrandInk;
 import 'package:flutter_education_app/design/app_inputs.dart'
     show validateEmail, kEmailRegex, appFieldDecoration, appFieldTextStyle, appFieldFocusInk;
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppEase, AppPressScale;
+import 'package:flutter_education_app/design/app_area.dart' show AppAreaScope;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppEase, AppJelly, AppPressScale;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:provider/provider.dart';
@@ -918,10 +919,11 @@ class _AuthButtonState extends State<AuthButton> {
     final lit = active || widget.loading;
     final base = widget.tone ?? c.primary;
     final deep = widget.tone == null ? c.primaryDark : Color.lerp(base, c.textDark, 0.3)!;
-    final fg = lit ? c.onHero : c.textMedium;
-    // D-649: the brand button (no tone) is the gradient primary → primary_dark on a soft tinted shadow
+    // redesign (KIT_SPEC §5.4): the brand button (no tone) is the area set's button gradient, a pill, its own ink
+    final set = AppAreaScope.of(context);
     final brand = widget.tone == null && lit;
-    final radius = AppRadius.controlAll;
+    final fg = lit ? (brand ? set.btnFg : c.onHero) : c.textMedium;
+    final radius = BorderRadius.circular(AppRadius.pill);
 
     final label = Text(
       widget.label,
@@ -963,8 +965,8 @@ class _AuthButtonState extends State<AuthButton> {
     return LayoutBuilder(
       builder: (context, box) => SizedBox(
         width: box.hasBoundedWidth ? double.infinity : null,
-        child: AppPressScale(
-          scale: 0.97,
+        child: AppJelly(
+          wide: true,
           enabled: active,
           child: AnimatedContainer(
             duration: AppMotion.of(context).fast,
@@ -974,7 +976,7 @@ class _AuthButtonState extends State<AuthButton> {
               boxShadow: _focused && active && appKeyboardFocus()
                   ? appFocusRing(context)
                   : brand
-                      ? AppBrandLayer.buttonShadow(context)
+                      ? AppShadow.button(context, set.btnA)
                       : const [],
             ),
             child: FilledButton(
@@ -1005,11 +1007,11 @@ class _AuthButtonState extends State<AuthButton> {
                 // the brand gradient (D-649) or the solid fill above, not the theme's painter for raw FilledButtons
                 backgroundBuilder: (context, states, child) => brand
                     ? DecoratedBox(
-                        decoration: AppBrandLayer.buttonFill(context,
-                            hover: states.contains(WidgetState.hovered),
-                            pressed: states.contains(WidgetState.pressed),
-                            span: _span,
-                            borderRadius: radius),
+                        decoration: BoxDecoration(
+                          borderRadius: radius,
+                          gradient: set.button,
+                          color: states.contains(WidgetState.pressed) ? set.btnB : null,
+                        ),
                         child: child ?? const SizedBox.shrink(),
                       )
                     : child ?? const SizedBox.shrink(),

@@ -15,6 +15,9 @@
 // Presentational parts take plain values (test/ui/roadmap_layout_test.dart).
 library;
 
+import 'package:flutter_education_app/features/guest/sa_hero_page.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -71,7 +74,7 @@ class _ProfileRecommendationsState extends State<ProfileRecommendations> {
     try {
       await widget.api.dismiss(item.course.id);
       showAppNotice(
-        t('لن نقترح هذا الكورس مجدداً', 'We won’t suggest this course again'),
+        t('لن نقترح هذه الدورة مجدداً', 'We won’t suggest this course again'),
         actionLabel: t('تراجع', 'Undo'),
         onAction: () => _undo(item),
       );
@@ -160,7 +163,7 @@ class RecommendationsSectionView extends StatelessWidget {
     } else if (p.items.isEmpty) {
       body = _SlimRow(
         icon: Icons.explore_outlined,
-        text: t('سنقترح كورسات حين تبدأ كورساً أو تختار اهتماماتك.', 'We’ll suggest courses once you start one or pick your interests.'),
+        text: t('سنقترح دورات حين تبدأ دورة أو تختار اهتماماتك.', 'We’ll suggest courses once you start one or pick your interests.'),
         action: t('اهتماماتي', 'My interests'),
         onTap: onInterests,
       );
@@ -366,7 +369,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
         setState(() => _page = RecPage(items: [for (final x in p.items) if (x.course.id != item.course.id) x], total: p.total - 1));
       }
       showAppNotice(
-        t('لن نقترح هذا الكورس مجدداً', 'We won’t suggest this course again'),
+        t('لن نقترح هذه الدورة مجدداً', 'We won’t suggest this course again'),
         actionLabel: t('تراجع', 'Undo'),
         onAction: () async {
           try {
@@ -388,7 +391,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
     return BasePage(
       key: const ValueKey(kRoadmapRecsKey),
       appBar: ScreenAppBar(title: t('مقترح لك', 'Recommended for you')),
-      child: AppRefresh(
+      child: SaHeroPage(area: AppArea.learn, kicker: 'sa_recs_kicker'.tr, title: 'sa_recs_title'.tr, squiggle: 'sa_recs_squiggle'.tr, child: AppRefresh(
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -411,7 +414,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                 ),
           ],
         ),
-      ),
+      )),
     );
   }
 }
@@ -512,7 +515,7 @@ class _InterestsSheetState extends State<_InterestsSheet> {
         if (p != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.check_rounded, busy: _saving, onPressed: _save),
+            child: AppButton.primary(label: t('احفظ اهتماماتي', 'Save my interests'), expand: true, busy: _saving, onPressed: _save),
           ),
       ],
     );
@@ -554,13 +557,12 @@ class InterestsForm extends StatelessWidget {
   final VoidCallback? onShowHidden;
 
   Widget _chip(BuildContext context, RmField f) {
-    final c = context.colors;
-    return FilterChip(
-      label: Text(f.name, style: AppType.label(context).copyWith(color: picked.contains(f.id) ? appInk(context, c.primary) : c.textDark)),
+    // redesign (Stu1Discover?sheet=interests): the kit chip, a tick on the chosen ones
+    return AppChip(
+      label: f.name,
+      icon: picked.contains(f.id) ? Icons.check_rounded : null,
       selected: picked.contains(f.id),
-      onSelected: (_) => onToggle(f.id),
-      showCheckmark: true,
-      materialTapTargetSize: MaterialTapTargetSize.padded,
+      onTap: () => onToggle(f.id),
     );
   }
 
@@ -572,7 +574,7 @@ class InterestsForm extends StatelessWidget {
       children: [
         AppSwitchTile(
           title: t('أظهر التوصيات', 'Show recommendations'),
-          subtitle: t('كورسات مقترحة في ملفك الشخصي وبطاقة رحلتك في الرئيسية', 'Suggested courses on your profile and the journey card on your home'),
+          subtitle: t('دورات مقترحة في ملفك وبطاقة مسارك في الرئيسية', 'Suggested courses on your profile and the journey card on your home'),
           value: show,
           onChanged: onShow,
         ),
@@ -581,8 +583,8 @@ class InterestsForm extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           inferred
-              ? t('اخترناها من كورساتك. غيّرها كما تحب.', 'We picked these from your courses. Change them as you like.')
-              : t('اختر ما يناسبك، أو لا شيء لنختار من كورساتك.', 'Pick what suits you, or none and we’ll go by your courses.'),
+              ? t('اخترناها من دوراتك. غيّرها كما تحب.', 'We picked these from your courses. Change them as you like.')
+              : t('اختر اللي يناسبك، أو خلّها ونختار من دوراتك.', 'Pick what suits you, or none and we’ll go by your courses.'),
           style: AppType.meta(context),
         ),
         const SizedBox(height: 12),
@@ -623,7 +625,7 @@ class InterestsForm extends StatelessWidget {
               onPressed: onShowHidden,
               style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
               icon: const Icon(Icons.visibility_outlined, size: 18),
-              label: Text(t('أظهر الكورسات المخفية مجدداً ($hidden)', 'Show hidden courses again ($hidden)')),
+              label: Text(t('أظهر الدورات المخفية مجدداً ($hidden)', 'Show hidden courses again ($hidden)')),
             ),
           ),
       ],

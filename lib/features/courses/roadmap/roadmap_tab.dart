@@ -190,7 +190,7 @@ class RoadmapTabContent extends StatelessWidget {
               child: Semantics(
                 header: true,
                 child: Text(
-                  staff ? t('مسار هذا الكورس', 'This course’s path') : t('رحلتك في هذا المسار', 'Your way through this path'),
+                  staff ? t('مسار هذه الدورة', 'This course’s path') : t('رحلتك في هذا المسار', 'Your way through this path'),
                   style: AppType.section(context),
                 ),
               ),
@@ -218,7 +218,7 @@ class RoadmapTabContent extends StatelessWidget {
         const SizedBox(height: AppSpace.xxs),
         Text(
           staff
-              ? t('ما يدرسه الطالب بعد هذا الكورس، بالترتيب.', 'What a student takes after this course, in order.')
+              ? t('ما يدرسه الطالب بعد هذه الدورة، بالترتيب.', 'What a student takes after this course, in order.')
               : t('ما درسته قبله، وأين أنت، وما يأتي بعده.', 'What you took before, where you are, and what comes next.'),
           style: AppType.body(context),
         ),
@@ -229,7 +229,7 @@ class RoadmapTabContent extends StatelessWidget {
           if (staff)
             AppBanner(
               icon: Icons.add_road_rounded,
-              text: t('أضف الكورسات التي تأتي بعد هذا الكورس ليرى طلابك طريقهم.', 'Add the courses that come after this one so your students see their way.'),
+              text: t('أضف الدورات التي تأتي بعد هذه الدورة ليرى طلابك طريقهم.', 'Add the courses that come after this one so your students see their way.'),
               action: onEdit == null ? null : TextButton(onPressed: onEdit, child: Text(t('إضافة', 'Add'))),
             )
           else
@@ -240,7 +240,7 @@ class RoadmapTabContent extends StatelessWidget {
           const SizedBox(height: AppSpace.sm),
           AppBanner(
             icon: Icons.sell_outlined,
-            text: t('أضف مستوى الكورس وكلماته المفتاحية ليُقترح على الطلاب المناسبين.', 'Add the course’s level and topic words so it is suggested to the right students.'),
+            text: t('أضف مستوى الدورة وكلماتها المفتاحية ليُقترح على الطلاب المناسبين.', 'Add the course’s level and topic words so it is suggested to the right students.'),
             action: TextButton(onPressed: onEdit, child: Text(t('إضافة', 'Add'))),
           ),
         ],

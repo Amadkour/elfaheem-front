@@ -16,10 +16,10 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/live_events_client.dart';
-import 'package:flutter_education_app/design/app_icons.dart' show DirIcons;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -30,6 +30,8 @@ import '../org/org_v3.dart' show orgCall, orgErrorText;
 import '../profile/about/about_and_terms_screen.dart' show AboutScreen;
 import 'account_fee_page.dart' show AccountFeePage;
 import 'auth_provider.dart';
+import 'auth_shell.dart';
+import 'auth_widgets.dart' show AuthButton;
 
 class AccountApprovalPage extends StatefulWidget {
   const AccountApprovalPage({super.key});
@@ -125,43 +127,47 @@ class _AccountApprovalPageState extends State<AccountApprovalPage> with WidgetsB
 
   @override
   Widget build(BuildContext context) {
+    final rejected = _s?['state'] == 'rejected';
     return PopScope(
       canPop: false,
       child: BasePage(
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.lg),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: AppWidth.form.max),
-                child: _s == null
-                    ? (_error != null
-                        ? AppCard(
-                            child: AppErrorState(
-                                title: t('تعذّر تحميل حالة حسابك', 'Could not load your account status'),
-                                message: _error,
-                                onRetry: _load,
-                                compact: true))
-                        : const AppListSkeleton(items: 2))
-                    : AccountApprovalView(
-                        rejected: _s!['state'] == 'rejected',
-                        reason: _s!['reason'] as String?,
-                        paidFirst: _s!['mode'] == 'paid_approval',
-                        checking: _checking,
-                        onCheck: _load,
-                        onContact: _contact,
-                        onSignOut: _signOut,
-                      ),
-              ),
-            ),
-          ),
+        child: AuthLayout(
+          showBack: false,
+          kicker: rejected ? 'sa_appr_kicker_rejected'.tr : 'sa_appr_kicker'.tr,
+          heroTitle: rejected ? 'sa_appr_hero_rejected'.tr : 'sa_appr_hero'.tr,
+          squiggle: rejected ? 'sa_appr_squiggle_rejected'.tr : 'sa_appr_squiggle'.tr,
+          glyph: rejected ? Icons.edit_note_rounded : Icons.hourglass_top_rounded,
+          glyphTone: rejected ? context.colors.kit.accent(AppAccent.pink) : null,
+          title: rejected ? 'sa_appr_title_rejected'.tr : 'sa_appr_title'.tr,
+          subtitle: rejected ? 'sa_appr_sub_rejected'.tr : 'sa_appr_sub'.tr,
+          actions: (onHero) => AuthSwitches(onHero: onHero),
+          body: (context, wide) => _s == null
+              ? (_error != null
+                  ? AppErrorState(
+                      title: t('تعذّر تحميل حالة حسابك', 'Could not load your account status'),
+                      message: _error,
+                      onRetry: _load,
+                      compact: true)
+                  : const AppListSkeleton(items: 2))
+              : AccountApprovalView(
+                  rejected: rejected,
+                  reason: _s!['reason'] as String?,
+                  paidFirst: _s!['mode'] == 'paid_approval',
+                  checking: _checking,
+                  onCheck: _load,
+                  onContact: _contact,
+                  onSignOut: _signOut,
+                  // the public catalogue route (guest explore) while the account waits
+                  onBrowse: () => Navigator.of(context).pushNamed('/explore'),
+                ),
         ),
       ),
     );
   }
 }
 
-/// The waiting page's content from plain values (what the layout harness tests).
+/// The waiting page's content from plain values (what the layout harness tests): the steps as one path (done ·
+/// now · soon), ONE button (check now) and two quiet links (contact · sign out). It sits in the auth card.
 class AccountApprovalView extends StatelessWidget {
   /// An admin turned the account down ([reason] may say why); otherwise it is waiting.
   final bool rejected;
@@ -172,6 +178,9 @@ class AccountApprovalView extends StatelessWidget {
   final bool checking;
   final VoidCallback onCheck, onContact, onSignOut;
 
+  /// Browse the courses while waiting; null = no link.
+  final VoidCallback? onBrowse;
+
   const AccountApprovalView({
     super.key,
     required this.rejected,
@@ -181,107 +190,64 @@ class AccountApprovalView extends StatelessWidget {
     required this.onCheck,
     required this.onContact,
     required this.onSignOut,
+    this.onBrowse,
   });
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final tone = rejected ? c.danger : c.primary;
     final why = (reason ?? '').trim();
-    final steps = [
-      if (paidFirst) (Icons.check_circle_rounded, t('استلمنا رسوم الحساب', 'We received your account fee'), true),
-      (Icons.check_circle_rounded, t('أنشأت حسابك وأكدت بياناتك', 'You created your account and confirmed your details'), true),
-      (
-        rejected ? Icons.cancel_rounded : Icons.hourglass_top_rounded,
-        rejected ? t('لم تتم الموافقة', 'Not approved') : t('مراجعة إدارة المنصة', 'Review by the platform team'),
-        false,
-      ),
-      if (!rejected)
-        (Icons.notifications_active_rounded, t('نخبرك بإشعار وبريد فور القرار', 'We let you know by notification and e-mail'), false),
-    ];
-
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppCard(
-        key: const ValueKey('account_approval.card'),
-        highlight: !rejected,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpace.sm),
-              decoration: BoxDecoration(
-                  color: rejected ? c.dangerTint : c.primaryTint, borderRadius: AppRadius.controlAll),
-              child: Icon(rejected ? Icons.person_off_rounded : Icons.verified_user_rounded,
-                  color: tone, size: AppIconSize.lg),
-            ),
-            const SizedBox(width: AppSpace.sm),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(
-                  rejected ? t('لم تتم الموافقة على حسابك', 'Your account was not approved') : t('حسابك قيد المراجعة', 'Your account is being reviewed'),
-                  key: const ValueKey('account_approval.title'),
-                  style: AppType.section(context),
-                ),
-                const SizedBox(height: AppSpace.xxs),
-                Text(
-                  rejected
-                      ? t('يمكنك التواصل مع إدارة المنصة لمعرفة التفاصيل أو تصحيح بياناتك.',
-                          'You can contact the platform team for details or to correct your information.')
-                      : t('تراجع إدارة المنصة الحسابات الجديدة قبل فتحها. لا تحتاج لفعل شيء الآن.',
-                          'The platform team reviews new accounts before they open. There is nothing you need to do now.'),
-                  style: AppType.meta(context),
-                ),
-              ]),
-            ),
-          ]),
-          if (rejected && why.isNotEmpty) ...[
-            AppSpace.gapMd,
-            AppBanner(
-              key: const ValueKey('account_approval.reason'),
-              icon: Icons.info_outline_rounded,
-              color: c.danger,
-              text: t('السبب: $why', 'Reason: $why'),
-            ),
-          ],
-          AppSpace.gapMd,
-          for (final (icon, label, done) in steps)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpace.xs),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(icon,
-                    size: AppIconSize.md,
-                    color: done ? c.success : (rejected && icon == Icons.cancel_rounded ? c.danger : c.textLight)),
-                const SizedBox(width: AppSpace.xs),
-                Expanded(
-                  child: Text(label,
-                      style: AppType.body(context).copyWith(color: done ? c.textMedium : c.textDark)),
-                ),
-              ]),
-            ),
-          AppSpace.gapXs,
-          AppButton.secondary(
-            key: const ValueKey('account_approval.contact'),
-            expand: true,
-            label: t('تواصل مع إدارة المنصة', 'Contact the platform team'),
-            icon: Icons.support_agent_rounded,
-            onPressed: onContact,
+    final ink = AppAreaScope.of(context).ink;
+    Widget link(String key, String label, VoidCallback? onTap, Color color) => TextButton(
+          key: ValueKey(key),
+          onPressed: onTap,
+          style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: color),
+          child: Text(label, style: AppType.bodyStrong(context).copyWith(color: color)),
+        );
+    return Column(
+      key: const ValueKey('account_approval.card'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (rejected && why.isNotEmpty) ...[
+          AppBanner(
+            key: const ValueKey('account_approval.reason'),
+            icon: Icons.info_outline_rounded,
+            color: c.danger,
+            text: t('السبب: $why', 'Reason: $why'),
           ),
-        ]),
-      ),
-      AppSpace.gapSm,
-      Wrap(alignment: WrapAlignment.center, spacing: AppSpace.sm, runSpacing: AppSpace.xxs, children: [
-        TextButton.icon(
+          AppSpace.gapMd,
+        ],
+        AppRoadmap(
+          dense: true,
+          axis: Axis.vertical,
+          nodes: [
+            if (paidFirst) AppRoadmapNode(title: 'sa_appr_step_paid'.tr, state: AppRoadmapState.done),
+            AppRoadmapNode(title: 'sa_appr_step_signed'.tr, state: AppRoadmapState.done),
+            AppRoadmapNode(
+              title: rejected ? 'sa_appr_step_fix'.tr : 'sa_appr_step_review'.tr,
+              subtitle: 'sa_appr_now'.tr,
+              state: rejected ? AppRoadmapState.warn : AppRoadmapState.current,
+            ),
+            AppRoadmapNode(title: 'sa_appr_step_open'.tr, subtitle: 'sa_appr_soon'.tr),
+          ],
+        ),
+        AppSpace.gapLg,
+        KeyedSubtree(
           key: const ValueKey('account_approval.check'),
-          onPressed: checking ? null : onCheck,
-          icon: const Icon(Icons.refresh_rounded, size: AppIconSize.md),
-          label: Text(t('تحقّق الآن', 'Check now')),
+          child: AuthButton(label: 'sa_appr_check'.tr, loading: checking, onPressed: onCheck),
         ),
-        TextButton.icon(
-          key: const ValueKey('account_approval.sign_out'),
-          onPressed: onSignOut,
-          icon: Icon(DirIcons.logout, size: AppIconSize.md),
-          label: Text(t('تسجيل الخروج', 'Sign out')),
-        ),
-      ]),
-    ]);
+        AppSpace.gapXs,
+        Wrap(alignment: WrapAlignment.center, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          if (onBrowse != null) ...[
+            link('account_approval.browse', 'sa_appr_browse'.tr, onBrowse, ink),
+            ExcludeSemantics(child: Text('•', style: AppType.meta(context).copyWith(color: c.textLight))),
+          ],
+          link('account_approval.contact', 'sa_appr_contact'.tr, onContact, ink),
+          ExcludeSemantics(child: Text('•', style: AppType.meta(context).copyWith(color: c.textLight))),
+          link('account_approval.sign_out', 'sa_appr_sign_out'.tr, onSignOut, c.kit.error.ink),
+        ]),
+      ],
+    );
   }
 }

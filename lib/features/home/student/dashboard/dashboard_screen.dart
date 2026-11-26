@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
 import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/calendar/schedule_page.dart';
@@ -127,6 +128,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const HomeScreen(),
         // badges (GET /me/attention): Home = my to-dos, Profile = complaint replies — a guest has no account
         attentionKeys: GuestState.active ? const [] : const [AttentionTabs.home],
+        area: AppArea.home,
       ),
       DashboardItem(
         CupertinoIcons.book,
@@ -138,6 +140,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           messageKey: 'guest_locked_my_courses',
           child: MyCoursesScreen(courses: context.read<HomeProvider>().myCourses),
         ),
+        area: AppArea.learn,
+      ),
+      DashboardItem(
+        Icons.calendar_month_outlined,
+        Icons.calendar_month_rounded,
+        'my_schedule',
+        () async => CalendarStore.instance.invalidate(), // the one schedule page (D-085) reloads its range
+        const GuestGate(
+          icon: Icons.calendar_month_rounded,
+          messageKey: 'guest_locked_schedule',
+          child: SchedulePage(asTab: true),
+        ),
+        area: AppArea.sched,
       ),
       // the digital store (D-1333): browsing works for a guest, buying asks them to sign in
       DashboardItem(
@@ -148,6 +163,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const StoreTab(),
         mobileGroup: _learn,
         hint: 'learn_hint_store',
+        area: AppArea.store,
       ),
       // educational games (D-1346, kill switch student_tab_games): a guest plays without saving
       DashboardItem(
@@ -158,6 +174,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const GamesTab(),
         mobileGroup: _learn,
         hint: 'learn_hint_games',
+        area: AppArea.games,
       ),
       // Quran memorization (D-1347, kill switch student_tab_quran): teachers browse for a guest, progress needs sign-in
       DashboardItem(
@@ -168,6 +185,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const QuranTab(),
         mobileGroup: _learn,
         hint: 'learn_hint_quran',
+        area: AppArea.quran,
       ),
       // every subject's teachers and their packages (Learning Hub v2, D-1629; kill switch teacher_discovery)
       DashboardItem(
@@ -182,6 +200,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         mobileGroup: _learn,
         hint: 'learn_hint_teachers',
+        area: AppArea.learn,
       ),
       // Arabic grammar (D-1349, kill switch student_tab_nahw): levels, lessons, exercises graded on the device
       DashboardItem(
@@ -192,8 +211,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const NahwTab(),
         mobileGroup: _learn,
         hint: 'learn_hint_nahw',
+        area: AppArea.nahw,
       ),
-      // D-1340: analysis sits with the Learn group, so the phone bar reads Home · My courses · Learn · Schedule · Profile
+      // D-1340: analysis sits with the Learn group, so the phone bar reads Home · My courses · Schedule · Learn · Profile (the redesign's order)
       DashboardItem(
         Icons.analytics_outlined,
         Icons.analytics,
@@ -206,17 +226,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         mobileGroup: _learn,
         hint: 'learn_hint_analysis',
-      ),
-      DashboardItem(
-        Icons.calendar_month_outlined,
-        Icons.calendar_month_rounded,
-        'my_schedule',
-        () async => CalendarStore.instance.invalidate(), // the one schedule page (D-085) reloads its range
-        const GuestGate(
-          icon: Icons.calendar_month_rounded,
-          messageKey: 'guest_locked_schedule',
-          child: SchedulePage(asTab: true),
-        ),
+        area: AppArea.exam,
       ),
       DashboardItem(
         CupertinoIcons.person,
@@ -229,6 +239,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: ProfileScreen(),
         ),
         attentionKeys: GuestState.active ? const [] : const [AttentionTabs.profile],
+        area: AppArea.me,
       ),
     ]);
     _applyDisableList();

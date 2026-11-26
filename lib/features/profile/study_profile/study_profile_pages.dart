@@ -116,10 +116,13 @@ class _StudyProfileStepPageState extends State<StudyProfileStepPage> {
 
   @override
   Widget build(BuildContext context) {
+    // redesign (Stu1Auth?screen=study, S-A row 16): the auth hero, the card's one question
     return AuthScaffold(
-      title: t('دراستك', 'Your studies'),
-      subtitle: t('خطوة أخيرة قصيرة: مرحلتك وصفك ليعرف معلموك من يدرّسون.',
-          'One short last step: your stage and grade, so your teachers know who they teach.'),
+      kicker: t('خطوة صغيرة', 'One small step'),
+      heroTitle: t('خلّنا نعرفك أكثر', 'Let us get to know you'),
+      squiggle: t('نعرفك', 'know'),
+      title: t('سؤالين ونرتّب لك', "Two questions and you're set"),
+      subtitle: null,
       pageKey: const ValueKey('register.study'),
       maxWidth: 640,
       builder: (context, isWide) => Column(

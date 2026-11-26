@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'world_phone_field.dart';
 import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -35,7 +36,6 @@ import 'package:flutter_education_app/features/profile/study_profile/study_profi
 import 'package:flutter_education_app/features/onboarding/join/join_draft.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_pages.dart' show StudyProfileStepPage;
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
-import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_buttons.dart' show AppButton, AppButtonSize;
@@ -59,6 +59,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
+
+  /// The country picked on the phone field (sent as `phone_country`; never the residence).
+  String? _phoneCountry;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmedPasswordController = TextEditingController();
@@ -257,6 +260,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final success = await authProvider.register(
       gmail: _emailController.text.trim(),
       phone: _phoneController.text.trim(),
+      phoneCountry: _phoneCountry,
       dob: _dobController.text.trim(),
       password: _passwordController.text,
       name: _fullNameController.text.trim(),
@@ -310,8 +314,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Consumer<MyAuthProvider>(
       builder: (context, provider, _) {
         return AuthScaffold(
-          title: 'auth_register_title'.tr,
-          subtitle: 'auth_register_sub'.tr,
+          kicker: 'sa_register_kicker'.tr,
+          heroTitle: 'sa_register_hero'.tr,
+          squiggle: 'sa_register_squiggle'.tr,
+          title: 'sa_register_title'.tr,
+          subtitle: 'sa_register_sub'.tr,
           pageKey: const ValueKey('register'),
           // the longest form of the module: a wider card on desktop (phones are limited by the screen anyway)
           maxWidth: 640,
@@ -381,8 +388,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    PhoneInputField(
+                    WorldPhoneField(
                       controller: _phoneController,
+                      onCountry: (k) => _phoneCountry = k.code,
                       label: needsPhone
                           ? 'phone_with_country_code'.tr
                           : 'phone'.tr,
