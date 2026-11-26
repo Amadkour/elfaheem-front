@@ -354,7 +354,8 @@ class MyRewardsView extends StatelessWidget {
         width: AppWidth.content,
         children: [
           if (cut > 0) ...[
-            AppCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children.sublist(0, cut))),
+            // a tighter card: the kit's 3-slot pill rounds 0.3 px over at 316 px (reported to the lead)
+            AppCard(padding: const EdgeInsets.all(AppSpace.sm), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children.sublist(0, cut))),
             ...children.sublist(cut),
           ] else
             ...children,
