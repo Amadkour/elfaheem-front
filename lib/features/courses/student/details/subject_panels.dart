@@ -480,8 +480,7 @@ class _SuggestChip extends StatelessWidget {
     final grape = c.kit.accent(AppAccent.grape);
     final chip = Container(
       constraints: const BoxConstraints(minHeight: AppTouch.min),
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -609,6 +608,17 @@ class _SubjectSchedulePanelState extends State<SubjectSchedulePanel> {
     super.initState();
     _items = widget.items;
     if (_items == null) _load();
+    _pickFirstDay();
+  }
+
+  /// Another month than today's: its first day with a class of this subject is the one open.
+  void _pickFirstDay() {
+    if (_day != null) return;
+    final mine = [
+      for (final x in _items ?? const <BkCalItem>[])
+        if (x.courseId == widget.courseId && AppTime.toZone(x.start).month == _month.month) calDay(AppTime.toZone(x.start)),
+    ]..sort();
+    _day = mine.firstOrNull;
   }
 
   Future<void> _load() async {
@@ -636,6 +646,7 @@ class _SubjectSchedulePanelState extends State<SubjectSchedulePanel> {
               BkCalItem(courseId: x.courseId, title: x.subtitle ?? x.title, start: x.start, end: x.end),
         ];
         _loading = false;
+        _pickFirstDay();
       });
     } catch (e) {
       if (mounted) {

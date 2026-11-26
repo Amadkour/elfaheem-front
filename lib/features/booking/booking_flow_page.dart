@@ -287,17 +287,17 @@ class _BookFlowPageState extends State<BookFlowPage> {
       ),
     ]);
     final band = Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+      BkMiniBook(subject: c.subjectKey ?? c.options?.subject.en ?? title),
+      const SizedBox(width: AppSpace.md),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           Text(c.step == 5 ? 'bk_kicker_done'.tr : 'bk_kicker'.tr,
               style: AppType.label(context).copyWith(color: col.kit.warmOnDark)),
           const SizedBox(height: AppSpace.xxs),
           Text(whole, maxLines: 2, overflow: TextOverflow.ellipsis,
-              style: (phone ? AppType.headline(context) : AppType.pageTitle(context)).copyWith(color: col.onHero)),
+              style: AppType.pageTitle(context).copyWith(color: col.onHero)),
         ]),
       ),
-      const SizedBox(width: AppSpace.md),
-      BkMiniBook(subject: c.subjectKey ?? c.options?.subject.en ?? title),
     ]);
     return AppHeroSurface(
       child: SafeArea(

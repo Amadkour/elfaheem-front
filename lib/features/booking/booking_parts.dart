@@ -1079,8 +1079,8 @@ class BkStepBar extends StatelessWidget {
     final c = context.colors;
     final kit = c.kit;
     final grad = LinearGradient(
-      begin: AlignmentDirectional.centerStart,
-      end: AlignmentDirectional.centerEnd,
+      begin: AlignmentDirectional.centerEnd,
+      end: AlignmentDirectional.centerStart,
       colors: [kit.hotA, c.onHero],
     );
     Widget seg(int i) {
@@ -1088,9 +1088,9 @@ class BkStepBar extends StatelessWidget {
       final fill = n < step ? 1.0 : (n == step ? .4 : 0.0);
       return Container(
         height: AppSpace.xs,
-        decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(AppRadius.pill)),
+        decoration: BoxDecoration(color: c.onHero.withValues(alpha: .22), borderRadius: BorderRadius.circular(AppRadius.pill)),
         child: FractionallySizedBox(
-          alignment: AlignmentDirectional.centerEnd,
+          alignment: AlignmentDirectional.centerStart,
           widthFactor: fill,
           child: Container(decoration: BoxDecoration(gradient: grad, borderRadius: BorderRadius.circular(AppRadius.pill))),
         ),
