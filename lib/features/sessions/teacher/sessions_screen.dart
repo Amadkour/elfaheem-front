@@ -517,7 +517,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
             },
           ),
         if (page?.setup != null)
-          CourseSetupBar(steps: page!.setup!, onStep: _onSetupStep)
+          CourseSetupBar(steps: page!.setup!, onStep: _onSetupStep, badge: course.isPublished ? null : _t('مسودة', 'Draft'))
         else if (_loaded && page == null)
           CourseReadinessCard(
             items: [
