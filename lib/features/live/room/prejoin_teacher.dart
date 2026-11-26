@@ -572,8 +572,8 @@ class _ShapeRow extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.pill),
           onTap: () => onShape(s),
           child: Container(
-            constraints: const BoxConstraints(minHeight: AppTouch.min, minWidth: AppDashSize.disc + AppSpace.md),
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+            constraints: const BoxConstraints(minHeight: AppTouch.min, minWidth: AppTouch.min),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: on ? c.cardBg : null,
@@ -581,6 +581,8 @@ class _ShapeRow extends StatelessWidget {
               boxShadow: on ? AppShadow.card(context) : null,
             ),
             child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AppType.label(context).copyWith(color: on ? set.ink : c.textMedium, fontWeight: FontWeight.w700)),
           ),
         ),
@@ -600,8 +602,8 @@ class _ShapeRow extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              option(SelfViewShape.box, 't1_lv_shape_box'.tr),
-              option(SelfViewShape.circle, 't1_lv_shape_circle'.tr),
+              Flexible(child: option(SelfViewShape.box, 't1_lv_shape_box'.tr)),
+              Flexible(child: option(SelfViewShape.circle, 't1_lv_shape_circle'.tr)),
             ],
           ),
         ),

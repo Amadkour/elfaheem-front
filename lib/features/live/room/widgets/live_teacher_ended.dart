@@ -226,14 +226,16 @@ class _Stats extends StatelessWidget {
       (appDigits('${summary.attended}'), 't1_lv_end_came'.tr),
       (appDigits('${summary.guests}'), 't1_lv_end_guests'.tr),
     ];
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final (i, t) in tiles.indexed) ...[
-          if (i > 0) const SizedBox(width: AppSpace.sm),
-          Expanded(child: _StatTile(value: t.$1, label: t.$2)),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final (i, t) in tiles.indexed) ...[
+            if (i > 0) const SizedBox(width: AppSpace.sm),
+            Expanded(child: _StatTile(value: t.$1, label: t.$2)),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
