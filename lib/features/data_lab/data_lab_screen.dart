@@ -49,7 +49,7 @@ import 'package:flutter_education_app/features/data_lab/data_lab_requests.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_style_sheet.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_widgets.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppBackButton, AppGradients, showAppSideSheet, AppHeaderStrip, AppWidthBox, AppWidth, AppBlock, AppBlockTone, AppBlockColors,
+    show AppBackButton, AppGradients, showAppSideSheet, AppHeroSurface, AppHeroStat, AppWidthBox, AppWidth, AppBlock, AppBlockTone, AppBlockColors,
         AppButton, AppElevation, AppType, AppSpace, AppRadius, AppTouch, AppIconSize, AppBorder,
         AppMotion, appFieldDecoration, appFieldTextStyle, appInk;
 import 'package:flutter_education_app/features/exams/marks/marks_links.dart' show markTemplatePicker;
@@ -57,6 +57,7 @@ import 'package:flutter_education_app/features/exams/marks/review/grade_review_e
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal, AppCountUp, AppPressScale;
 import 'package:flutter_education_app/features/exams/marks/review/grade_review_start.dart' show GradeColumn;
 import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
 
 // Base sizes at 100% zoom. Everything in the sheet is multiplied by the zoom factor,
 // so rows and columns always stay perfectly aligned.
@@ -199,7 +200,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
       },
       child: Directionality(
         textDirection: pageDirection,
-        child: Scaffold(
+        child: T2Scope(child: Scaffold(
           backgroundColor: c.background,
           body: SafeArea(
             child: Column(children: [
@@ -213,8 +214,10 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
                     color: c.background,
                     border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline)),
                   ),
+                  // the redesign (Tea2Analysis lab): the course and its live numbers on the teacher's hero band, the
+                  // tools on the page under it
                   child: _barVisible
-                      ? Column(children: [const AppHeaderStrip(), _topBar(context, p), _panel(context, p)])
+                      ? Column(children: [_topBar(context, p), _panel(context, p)])
                       : _miniBar(context, p),
                 ),
               ),
@@ -245,7 +248,7 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
               ),
             ]),
           ),
-        ),
+        )),
       ),
     );
   }
@@ -297,44 +300,47 @@ Widget build(BuildContext context) => LazyFontGate(families: const ['tajawal', '
           ),
         ),
     ];
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.xs),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          const AppBackButton(),
-          const SizedBox(width: AppSpace.xs),
-          // the Data Lab's mark: a sky tile (an information surface), never a gradient
-          Container(
-            width: AppTouch.min - AppSpace.xs,
-            height: AppTouch.min - AppSpace.xs,
-            decoration: BoxDecoration(color: c.blockSky, borderRadius: BorderRadius.circular(AppRadius.control)),
-            child: Icon(Icons.science_rounded, color: AppBlockColors.of(context, AppBlockTone.sky).accentInk(c.primary), size: AppIconSize.md),
-          ),
-          const SizedBox(width: AppSpace.sm),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(widget.courseTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
-              Text(_tr('dl_header_sub', 'Grades, attendance and everything you track — in one sheet'),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-            ]),
-          ),
-          const SizedBox(width: AppSpace.xs),
-          const HelpInfoButton(pageId: 'teacher.data_lab'),
-          ..._modeButtons(p),
+    final heroStats = <Widget>[
+      _HeroFigure(value: '$students', label: 'dl_students'.tr),
+      if (prog != null) _HeroFigure(value: '${prog.round()}%', label: 'dl_progress'.tr),
+      if (att != null) _HeroFigure(value: '${att.round()}%', label: 'dl_attendance'.tr),
+      if (p.lockedCount > 0) _HeroFigure(value: '${p.lockedCount}', label: _tr('dl_locked_cols', 'locked')),
+    ];
+    final extra = [for (final w in stats) if (w is! DlStatChip) w]; // the hidden-columns chip opens a sheet: kept
+    return AppHeroSurface(
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.md),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const AppBackButton(onHero: true),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('t2_dl_kicker'.tr, maxLines: 1, style: AppType.kicker(context).copyWith(color: c.kit.warmOnDark)),
+                Text(widget.courseTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context).copyWith(color: c.onHero)),
+                Text(_tr('dl_header_sub', 'Grades, attendance and everything you track — in one sheet'),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
+              ]),
+            ),
+            const SizedBox(width: AppSpace.xs),
+            const HelpInfoButton(pageId: 'teacher.data_lab'),
+            ..._modeButtons(p),
+          ]),
+          if (p.grid != null) ...[
+            const SizedBox(height: AppSpace.sm),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                for (var i = 0; i < heroStats.length; i++) ...[
+                  if (i > 0) const SizedBox(width: AppSpace.xs),
+                  AppReveal(index: i, group: 'dl.stats', child: heroStats[i]),
+                ],
+                for (final w in extra) ...[const SizedBox(width: AppSpace.xs), w],
+              ]),
+            ),
+          ],
         ]),
-        if (p.grid != null) ...[
-          const SizedBox(height: AppSpace.sm),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(children: [
-              for (var i = 0; i < stats.length; i++) ...[
-                if (i > 0) const SizedBox(width: AppSpace.xs),
-                AppReveal(index: i, group: 'dl.stats', child: stats[i]),
-              ],
-            ]),
-          ),
-        ],
-      ]),
+      ),
     );
   }
 
@@ -2586,4 +2592,17 @@ class _CellEditorState extends State<_CellEditor> {
             ),
     );
   }
+}
+
+/// One live number on the Data Lab's hero band: the kit's glass stat at a fixed width (the row scrolls on a phone).
+class _HeroFigure extends StatelessWidget {
+  const _HeroFigure({required this.value, required this.label});
+
+  final String value, label;
+
+  /// A tile's width in the scrolling row.
+  static const double _width = AppTouch.min * 3;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(width: _width, child: AppHeroStat(value: value, label: label));
 }

@@ -27,7 +27,6 @@ import 'package:flutter_education_app/features/exams/exam_insights_screen.dart' 
 import 'package:flutter_education_app/features/exams/exam_scan_review.dart';
 import 'package:flutter_education_app/features/exams/marks/marks_links.dart' show openGradeReviewForExam;
 import 'package:flutter_education_app/features/exams/offline/offline_exam_teacher.dart';
-import 'package:flutter_education_app/features/exams/exam_page_width.dart';
 import 'package:flutter_education_app/features/exams/exam_taking.dart' show examCodeText;
 import 'package:flutter_education_app/features/exams/exam_quick_screen.dart' show openQuickExam;
 import 'package:flutter_education_app/features/exams/exam_results_screen.dart' show ExamResultsScreen;
@@ -35,6 +34,7 @@ import 'package:flutter_education_app/features/exams/paper/omr_counts.dart' show
 import 'package:flutter_education_app/features/exams/paper/review/omr_review.dart' show OmrAudience, OmrReviewApi;
 import 'package:flutter_education_app/features/exams/paper/scan/omr_audience_picker.dart' show kOmrAudiencePage;
 import 'package:flutter_education_app/features/exams/paper/scan/omr_routes.dart' show OmrRoutes, openOmrReview;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 String _pts(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(v * 2 == (v * 2).roundToDouble() ? 1 : 2);
 
@@ -554,7 +554,8 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
     final q = _queue;
     final c = context.colors;
     final gradeReview = widget.onOpenGradeReview ?? ExamReviewScreen.openGradeReviewHook ?? openGradeReviewForExam;
-    return BasePage(
+    return T2Scope(
+      child: BasePage(
       key: const ValueKey('exam.review'),
       appBar: AppHeader(title: t('مراجعة التصحيح', 'Review marking'), actions: [
         IconButton(onPressed: _scans, icon: const Icon(Icons.document_scanner_outlined), tooltip: t('الأوراق الممسوحة', 'Scanned pages')),
@@ -596,9 +597,20 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
       ]),
       child: AppRefresh(
         onRefresh: _load,
-        child: ExamPageWidth(width: AppWidth.content, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 8, side, 32), children: [
-          AppHero(title: widget.examTitle, subtitle: t('يقترح المصحح الآلي وتقرر أنت · الأقل ثقة أولاً', 'The grader proposes, you decide · lowest confidence first'),
-              icon: Icons.rate_review_outlined),
+        child: T2HeroScroll(
+            width: AppWidth.content,
+            hero: AppHero(
+              kicker: t('مراجعة الدرجات', 'Review grades'),
+              title: widget.examTitle,
+              subtitle: t('يقترح المصحح الآلي وتقرر أنت، الأقل ثقة أولاً', 'The grader proposes, you decide, lowest confidence first'),
+              stats: q == null
+                  ? const []
+                  : [
+                      AppHeroStat(value: '${q.items.length}', label: t('إجابة', 'Answers')),
+                      AppHeroStat(value: '${q.approvable(q.threshold)}', label: t('ثقة عالية', 'High confidence')),
+                    ],
+            ),
+            children: [
           Wrap(spacing: 8, runSpacing: 8, children: [
             AppChoiceChip(label: t('المفتوحة', 'Open'), selected: _state == 'open', onTap: () => setState(() { _state = 'open'; _load(); })),
             AppChoiceChip(label: t('الكل', 'All'), selected: _state == 'all', onTap: () => setState(() { _state = 'all'; _load(); })),
@@ -634,8 +646,9 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
                   onScan: it.scanPageId == null ? null : () => _scans(pageId: it.scanPageId),
                   onSheet: _omrReview && it.fromPaperReader ? () => _openSheetReview(it) : null,
                   crop: _crop(it), onMemory: () => _memory(it)),
-        ])),
+        ]),
       ),
+    ),
     );
   }
 }

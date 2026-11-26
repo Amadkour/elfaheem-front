@@ -36,6 +36,7 @@ import 'package:flutter_education_app/features/exams/hub/result/exam_result_shee
 import 'package:flutter_education_app/features/exams/hub/result/exam_result_widgets.dart';
 import 'package:flutter_education_app/features/exams/hub/result/key_fix.dart' show KeyFixCandidate;
 import 'package:flutter_education_app/features/exams/hub/result/key_fix_sheet.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 Future<void> openExamGetResult(BuildContext context, {required int examId, required String title, int? courseId}) async {
   await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamGetResultScreen(examId: examId, title: title, courseId: courseId)));
@@ -271,18 +272,18 @@ class _ExamGetResultScreenState extends State<ExamGetResultScreen> {
   @override
   Widget build(BuildContext context) {
     final b = _board;
-    return BasePage(
+    return T2Scope(
+      child: BasePage(
       key: const ValueKey('exam.hub.result'),
       appBar: AppHeader(
         title: widget.title,
         actions: [AppRefreshAction(onRefresh: () => _load())],
       ),
       child: LayoutBuilder(builder: (context, box) {
-        final pad = AppSpace.gutter(box.maxWidth);
         final wide = box.maxWidth >= Breakpoints.desktop;
         return AppRefresh(
           onRefresh: () => _load(),
-          child: ListView(padding: EdgeInsets.fromLTRB(pad, AppSpace.md, pad, AppSpace.xl), children: [
+          child: T2HeroScroll(hero: AppHero(kicker: t('النتائج', 'Results'), title: widget.title), children: [
             Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
@@ -297,6 +298,7 @@ class _ExamGetResultScreenState extends State<ExamGetResultScreen> {
           ]),
         );
       }),
+      ),
     );
   }
 }

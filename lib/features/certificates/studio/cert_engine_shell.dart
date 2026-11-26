@@ -27,6 +27,7 @@ import 'package:flutter_education_app/design/export_layout/layout_model.dart';
 import 'package:flutter_education_app/design/studio/studio.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/certificates/studio/cert_engine_api.dart' show CertServerTemplate;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
 
 /// What the save status says.
 enum CertSaveState { saved, unsaved, saving, conflict }
@@ -988,8 +989,38 @@ class CertStudioShellState extends State<CertStudioShell> {
 
   void _toggle(CertTool tool) => setState(() => _tool = _tool == tool ? null : tool);
 
+  /// The redesign (Tea2Certs designer): from a tablet up the workspace is a paper card riding on the teacher's hero
+  /// band, which names the studio and the design; a phone keeps the whole screen for the work.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => T2Scope(
+        child: LayoutBuilder(builder: (context, box) {
+          if (box.maxWidth < kCertCompact) return _workspace(context);
+          final c = context.colors;
+          return AppHeroSurface(
+            child: SafeArea(
+              bottom: false,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.sm),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                    Text(t('استوديو الشهادة', 'Certificate studio'),
+                        style: AppType.kicker(context).copyWith(color: c.kit.warmOnDark)),
+                    Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context).copyWith(color: c.onHero)),
+                  ]),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(AppSpace.lg, 0, AppSpace.lg, AppSpace.lg),
+                    child: ClipRRect(borderRadius: BorderRadius.circular(AppRadius.cardWide), child: _workspace(context)),
+                  ),
+                ),
+              ]),
+            ),
+          );
+        }),
+      );
+
+  Widget _workspace(BuildContext context) {
     final c = context.colors;
     return Material(
       color: c.cardBg,

@@ -23,6 +23,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/exams/exam_all.dart';
 import 'package:flutter_education_app/features/exams/exam_all_screen.dart' show allExamTypeIcon;
 import 'package:flutter_education_app/features/exams/hub/hub_logic.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2HeroScroll;
 
 /// From this width the page is a list beside the selected exam's details.
 const hubSplitFrom = 1040.0;
@@ -790,7 +791,12 @@ class ExamHubBody extends StatelessWidget {
     this.onOpen,
     this.searchController,
     this.now,
+    this.hero,
   });
+
+  /// The redesign's hero band (Tea2Exams.dc.html?screen=hub): the whole page becomes one scroll whose body rides up
+  /// over it (null: the older layout with its own scrolls, kept for the course tab and the tests).
+  final Widget? hero;
 
   /// null = still loading.
   final AllExamsData? data;
@@ -877,10 +883,13 @@ class ExamHubBody extends StatelessWidget {
       final wide = box.maxWidth >= hubSplitFrom;
       // the body lines up with the header's gutters
       final side = AppSpace.gutter(box.maxWidth);
+      final h = hero;
       if (error != null && d == null) {
+        if (h != null) return T2HeroScroll(hero: h, children: [AppCard(child: AppErrorState(message: error, onRetry: onRetry))]);
         return ListView(physics: const AlwaysScrollableScrollPhysics(), padding: EdgeInsets.symmetric(horizontal: side, vertical: AppSpace.md), children: [AppErrorState(message: error, onRetry: onRetry)]);
       }
       if (d == null) {
+        if (h != null) return T2HeroScroll(hero: h, children: const [AppListSkeleton(items: 5)]);
         return ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.symmetric(horizontal: side, vertical: AppSpace.md),
@@ -913,6 +922,7 @@ class ExamHubBody extends StatelessWidget {
             onAction: (a) => onAction(e, a),
             onOpen: open,
           );
+      if (h != null) return AppRefresh(onRefresh: onRefresh, child: _oneScroll(context, h, d, wide: wide, box: box, cards: cards, toolbar: toolbar, shown: shown, tile: tile));
       if (!wide) {
         return AppRefresh(
           onRefresh: onRefresh,
@@ -1000,5 +1010,72 @@ class ExamHubBody extends StatelessWidget {
         ]),
       );
     });
+  }
+
+  /// The redesign: the hero, then the cards, the toolbar and the list riding up over it in ONE scroll; from
+  /// [hubSplitFrom] the selected exam's steps stand beside the list (no inner scrolls).
+  Widget _oneScroll(
+    BuildContext context,
+    Widget hero,
+    AllExamsData d, {
+    required bool wide,
+    required BoxConstraints box,
+    required Widget? cards,
+    required Widget? toolbar,
+    required List<AllExam> shown,
+    required Widget Function(AllExam e, {bool selected, VoidCallback? open}) tile,
+  }) {
+    final c = context.colors;
+    final selected = wide ? (shown.where((e) => e.id == selectedId).firstOrNull ?? shown.firstOrNull) : null;
+    final list = <Widget>[
+      if (d.fallback) _fallbackBanner(),
+      if (shown.isEmpty)
+        AppCard(child: _empty(d))
+      else
+        AppCard(
+          padding: const EdgeInsets.all(AppSpace.sm),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (toolbar != null) ...[toolbar, const SizedBox(height: AppSpace.sm)],
+            for (var i = 0; i < shown.length; i++) ...[
+              if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, indent: AppSpace.md, endIndent: AppSpace.md, color: c.kit.line),
+              AppReveal(
+                index: i + 1,
+                group: _revealGroup,
+                cap: 6,
+                child: wide
+                    ? tile(shown[i], selected: shown[i].id == selected?.id, open: onSelect == null ? null : () => onSelect!(shown[i]))
+                    : tile(shown[i], open: onOpen == null ? null : () => onOpen!(shown[i])),
+              ),
+            ],
+          ]),
+        ),
+    ];
+    if (shown.isEmpty && toolbar != null) list.insert(0, toolbar);
+    final children = <Widget>[
+      ?cards,
+      if (selected == null)
+        ...list
+      else
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (var i = 0; i < list.length; i++) ...[if (i > 0) AppSpace.gapMd, list[i]],
+          ])),
+          AppSpace.gapLg,
+          SizedBox(
+            width: (box.maxWidth * 0.3).clamp(360.0, 460.0),
+            child: AppCard(
+              child: HubExamDetail(
+                exam: selected,
+                course: d.courseName(selected),
+                org: d.orgName(selected),
+                busy: busy.contains(selected.id),
+                now: now,
+                onAction: (a) => onAction(selected, a),
+              ),
+            ),
+          ),
+        ]),
+    ];
+    return T2HeroScroll(hero: hero, children: children);
   }
 }

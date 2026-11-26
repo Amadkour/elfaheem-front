@@ -19,6 +19,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/certificates/studio/cert_engine_api.dart';
 import 'package:flutter_education_app/features/certificates/studio/cert_engine_panels.dart';
 import 'package:flutter_education_app/features/certificates/studio/cert_template_colours.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
 
 /// What the gallery returned: a starter (a document) or a server template, with the colour the person chose.
 class CertGalleryPick {
@@ -163,25 +164,26 @@ class _CertTemplateGalleryViewState extends State<CertTemplateGalleryView> {
       final pad = box.maxWidth > 700 ? AppSpace.xl : AppSpace.md;
       final cols = (box.maxWidth - 2 * pad + AppSpace.md) ~/ 300;
       return CustomScrollView(slivers: [
-        SliverPadding(
-          padding: EdgeInsets.fromLTRB(pad, AppSpace.md, pad, AppSpace.sm),
-          sliver: SliverToBoxAdapter(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(child: Text(t('اختر تصميم شهادتك', 'Choose your certificate design'), style: AppType.pageTitle(context))),
-                IconButton(tooltip: t('إغلاق', 'Close'), onPressed: widget.onClose, icon: Icon(Icons.close_rounded, color: c.textMedium)),
-              ]),
-              Text(t('تصاميم جاهزة بعناية. اضغط على تصميم لتبدأ به، ثم عدّل كل عنصر فيه كما تشاء.', 'Ready-made designs, drawn with care. Tap one to start, then edit every part of it.'), style: appText(13.5, c: c.textMedium)),
-              const SizedBox(height: AppSpace.md),
-              Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        // the redesign (Tea2Certs wizard): the choice on the teacher's hero, the filters on it, the designs below
+        SliverToBoxAdapter(
+          child: T2Scope(
+            child: AppHero(
+              wipe: false,
+              kicker: t('تصميم شهادة جديد', 'New certificate design'),
+              title: t('اختر تصميم شهادتك', 'Choose your certificate design'),
+              subtitle: t('تصاميم جاهزة بعناية. اضغط على تصميم لتبدأ به، ثم عدّل كل عنصر فيه كما تشاء.',
+                  'Ready-made designs, drawn with care. Tap one to start, then edit every part of it.'),
+              actions: [AppButton.secondary(label: t('إغلاق', 'Close'), icon: Icons.close_rounded, onPressed: widget.onClose)],
+              bottom: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, crossAxisAlignment: WrapCrossAlignment.center, children: [
                 ...chips,
-                Container(width: 1, height: 24, color: c.divider),
+                Container(width: AppBorder.hairline, height: AppSpace.lg, color: c.heroGlassBorder),
                 AppChoiceChip(label: t('عربي', 'Arabic'), selected: _lang == 'ar', onTap: () => setState(() => _lang = 'ar')),
                 AppChoiceChip(label: t('إنجليزي', 'English'), selected: _lang == 'en', onTap: () => setState(() => _lang = 'en')),
               ]),
-            ]),
+            ),
           ),
         ),
+        const SliverToBoxAdapter(child: SizedBox(height: AppSpace.md)),
         if (widget.templates.isEmpty && widget.starters.isEmpty)
           SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(AppSpace.xl), child: AppEmpty(icon: Icons.dashboard_customize_outlined, title: t('لا توجد تصاميم جاهزة الآن', 'No ready designs right now'))))
         else ...[

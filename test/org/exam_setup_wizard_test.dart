@@ -275,7 +275,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('setup.form.add')));
     await _frames(tester, 2);
     expect(find.text('How do we tell the models apart?'), findsOneWidget);
-    await tester.scrollUntilVisible(find.byKey(const ValueKey('setup.policy.blank.zero')), 200, scrollable: find.byType(Scrollable).first);
+    // the step rides on a hero now: bring the chip into view however far down the scroll it is
+    await tester.ensureVisible(find.byKey(const ValueKey('setup.policy.blank.zero')));
+    await _frames(tester, 2);
     await tester.tap(find.byKey(const ValueKey('setup.policy.blank.zero')));
     await _frames(tester, 2);
     expect(find.text('Unclear marks always go to review — we never guess'), findsOneWidget);

@@ -24,7 +24,7 @@ import 'package:flutter_education_app/features/exams/paper/paper_exam_entry.dart
 import 'package:flutter_education_app/features/exams/paper/review/omr_review.dart' show omrLtr;
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/exams/exam_page_width.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 /// A student's answer as one line of text (choice ids, text, file name …).
 String answerSummary(Map<String, dynamic> answer) {
@@ -206,37 +206,32 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
     final paper = v == null ? null : paperFileOf(v.exam.toJsonForCopy());
     final canPublishResults = v != null && v.exam.resultsPolicy == 'when_published' && v.exam.resultsPublishedAt == null && v.exam.status != 'draft';
     final isPublished = v != null && v.exam.resultsPolicy == 'when_published' && v.exam.resultsPublishedAt != null;
-    return BasePage(
+    final avgHero = avg == null ? '—' : '${avg.toStringAsFixed(0)}%';
+    return T2Scope(
+      child: BasePage(
       key: const ValueKey('exam.results'),
-      appBar: AppHeader(title: widget.examTitle),
+      appBar: AppHeader(title: t('النتائج', 'Results')),
       child: AppRefresh(
         onRefresh: _load,
-        child: ExamPageWidth(width: AppWidth.wide, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 24), children: [
+        // the redesign (Tea2Exams results): the exam on the teacher's hero with its three figures, the rest riding up
+        child: T2HeroScroll(
+            hero: AppHero(
+              kicker: t('النتائج', 'Results'),
+              title: widget.examTitle,
+              stats: rows == null
+                  ? const []
+                  : [
+                      AppHeroStat(value: '$done', label: t('سلّموا', 'Submitted')),
+                      AppHeroStat(value: avgHero, label: t('المتوسط', 'Average')),
+                      AppHeroStat(value: '$waiting', label: t('ينتظر التصحيح', 'Waiting for you')),
+                    ],
+            ),
+            children: [
           if (_error != null) AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!),
           PaperExamEntry(examId: widget.examId, examTitle: widget.examTitle, onChanged: _load, margin: const EdgeInsets.only(bottom: 12)),
           if (isPublished) Padding(padding: const EdgeInsets.only(bottom: 12), child: PublishedBanner(outcome: _outcome, publishedAt: v.exam.resultsPublishedAt, busy: _busy, onUnpublish: _unpublishResults)),
           if (rows == null && _error == null) const AppListSkeleton(items: 5),
           if (rows != null) ...[
-            // the list already has its gutter (the grid's own 16 px indented the tiles past the cards); on a phone the
-            // three numbers sit on one line as chips instead of three stacked full-width tiles
-            LayoutBuilder(builder: (context, box) {
-              final avgText = avg == null ? '—' : '${avg.toStringAsFixed(0)}%';
-              if (box.maxWidth < 520) {
-                return Wrap(key: const ValueKey('exam.results.stats'), spacing: 8, runSpacing: 8, children: [
-                  AppStatChip(icon: Icons.assignment_turned_in_rounded, value: '$done', label: t('سلّموا', 'Submitted'), color: c.primary),
-                  AppStatChip(icon: Icons.insights_rounded, value: avgText, label: t('المتوسط', 'Average'), color: c.primary),
-                  AppStatChip(icon: Icons.rate_review_rounded, value: '$waiting', label: t('ينتظر التصحيح', 'Waiting for you'),
-                      color: waiting > 0 ? c.warning : c.primary),
-                ]);
-              }
-              return AppGrid(key: const ValueKey('exam.results.stats'), padding: EdgeInsets.zero, children: [
-                // D-1081: the soft-wash counts; what waits for me turns gold while there is some
-                AppStatCard(label: t('سلّموا', 'Submitted'), value: '$done', icon: Icons.assignment_turned_in_rounded, tone: AppBlockTone.emerald),
-                AppStatCard(label: t('المتوسط', 'Average'), value: avgText, icon: Icons.insights_rounded, tone: AppBlockTone.sky),
-                AppStatCard(label: t('ينتظر التصحيح', 'Waiting for you'), value: '$waiting', icon: Icons.rate_review_rounded,
-                    tone: waiting > 0 ? AppBlockTone.gold : AppBlockTone.peach),
-              ]);
-            }),
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: [
               if (waiting > 0)
@@ -269,7 +264,8 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
               ]);
             }),
           ],
-        ])),
+        ]),
+      ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 // lib/features/teacher/payout/teacher_payout_provider.dart
 //
 //   GET    /api/v1/teacher/payout/status        allowed? methods · min amount · accounts · earnings summary
+//   GET    /api/v1/teacher/payout/methods       the fields each method asks for in the teacher's country (WP8)
 //   POST   /api/v1/teacher/payout/accounts      PUT/DELETE /accounts/{id} · POST /accounts/{id}/default
 //   GET    /api/v1/teacher/withdrawals          history
 //   POST   /api/v1/teacher/withdrawals          {amount, payout_account_id, note}
@@ -18,6 +19,12 @@ class PayoutMethodInfo {
   String get label => t(asStr(j['label_ar']), asStr(j['label_en']));
   bool get automatic => asBool(j['automatic']);
   String? get currency => asStrOrNull(j['currency']);
+
+  /// The fields this method asks for in the teacher's residence country (GET /payout/methods, WP8): an IBAN country
+  /// asks for the IBAN, a country without one for the account number and SWIFT. Empty = the app's own field list.
+  List<({String key, bool required})> get fields => [
+        for (final f in asMapList(j['fields'])) (key: asStr(f['key']), required: asBool(f['required'])),
+      ];
 }
 
 class PayoutAccount {
@@ -64,6 +71,12 @@ class TeacherPayoutProvider extends AdminBase {
       error = errorMessage ?? t('تعذر تحميل البيانات', 'Could not load data');
     }
     if (hist is Map) withdrawals = asMapList(hist['items']).map(Withdrawal.new).toList();
+    // the per-country fields (WP8); an older server without the route keeps the app's own field lists
+    final per = await run(() => api.get('/api/v1/teacher/payout/methods'), makLoading: false);
+    if (per is Map && per['methods'] is List) {
+      final byId = {for (final m in asMapList(per['methods'])) asStr(m['id']): m};
+      methods = [for (final m in methods) PayoutMethodInfo({...m.j, ...?byId[m.id]})];
+    }
     loaded = true;
     notifyListeners();
   }
