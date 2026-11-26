@@ -10,7 +10,7 @@
 //     actions: [SupHeroButton(label: …, icon: …, onTap: …)],
 //     stats: [AppHeroStat(value: '3', label: …)],
 //     tabs: [AppTabItem('Rates'), AppTabItem('Policy')], tab: i, onTab: (v) => setState(() => i = v),
-//     onRefresh: reload, dirty: _dirty, helpPageId: 'admin.fees',
+//     onRefresh: reload, dirty: _dirty, helpPageId: 'admin.payments',
 //     body: ListView(padding: SupPage.bodyPadding(context), children: […]),
 //   )
 //
