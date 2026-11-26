@@ -88,7 +88,7 @@ class TrashLegacyChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Tooltip(
-        message: t('حُذف قبل وجود سلة المحذوفات: الاسترجاع يعيد الكورس فقط دون طلابه', 'Deleted before the trash existed: restoring brings back the course only, not its students'),
+        message: t('حُذف قبل وجود سلة المحذوفات: الاسترجاع يعيد الدورة فقط دون طلابها', 'Deleted before the trash existed: restoring brings back the course only, not its students'),
         child: AppBadgePill(t('قديم', 'Legacy'), color: context.colors.warning, icon: Icons.history_rounded),
       );
 }
@@ -248,17 +248,17 @@ class _TrashPurgePlanViewState extends State<TrashPurgePlanView> {
     final Color tone;
     final IconData icon;
     if (p.erased) {
-      text = t('سيُمسح كل شيء: الكورس وكل محتواه، ولا يبقى منه أثر.', 'Everything is erased: the course and all of its content, leaving no trace.');
+      text = t('سيُمسح كل شيء: الدورة وكل محتواها، ولا يبقى منها أثر.', 'Everything is erased: the course and all of its content, leaving no trace.');
       tone = c.danger;
       icon = Icons.delete_forever_outlined;
     } else if (p.purged) {
-      text = t('سيُمسح محتوى الكورس، وتبقى مدفوعاته وأرباحه وشهاداته كسجلات مالية.',
+      text = t('سيُمسح محتوى الدورة، وتبقى مدفوعاتها وأرباحها وشهاداتها كسجلات مالية.',
           "The course's content is erased; its payments, earnings and certificates are kept as financial records.");
       tone = c.warning;
       icon = Icons.receipt_long_outlined;
     } else {
       final why = p.blockedBy == null ? '' : ' (${p.blockedBy})';
-      text = t('لا يمكن حذف هذا الكورس نهائياً الآن$why. أزل ما يمنع ذلك أولاً.', 'This course cannot be permanently deleted right now$why. Remove what blocks it first.');
+      text = t('لا يمكن حذف هذه الدورة نهائيًا الآن$why. أزل ما يمنع ذلك أولاً.', 'This course cannot be permanently deleted right now$why. Remove what blocks it first.');
       tone = c.danger;
       icon = Icons.block_rounded;
     }
@@ -293,7 +293,7 @@ class _TrashPurgePlanViewState extends State<TrashPurgePlanView> {
           ],
           if (!p.detached.isEmpty) ...[
             const SizedBox(height: AppSpace.xs),
-            Text(t('يُفصل عن الكورس', 'Detached from the course'), style: AppType.section(context)),
+            Text(t('يُفصل عن الدورة', 'Detached from the course'), style: AppType.section(context)),
             _CountList(p.detached),
           ],
         ],
@@ -399,8 +399,8 @@ class TrashDetailBody extends StatelessWidget {
         icon: Icons.info_outline_rounded,
         color: c.primary,
         text: it.legacy
-            ? t('الاسترجاع يعيد الكورس فقط، ولا يعيد طلابه لأنه حُذف قبل وجود سلة المحذوفات.', 'Restoring brings back the course only, not its students, because it was deleted before the trash existed.')
-            : t('الاسترجاع يعيد الكورس بحالة نشره السابقة، وطلابه بحالة اشتراكهم السابقة.', 'Restoring brings back the course with its previous published state, and its students with their previous status.'),
+            ? t('الاسترجاع يعيد الدورة فقط، ولا يعيد طلابها لأنها حُذفت قبل وجود سلة المحذوفات.', 'Restoring brings back the course only, not its students, because it was deleted before the trash existed.')
+            : t('الاسترجاع يعيد الدورة بحالة نشرها السابقة، وطلابها بحالة اشتراكهم السابقة.', 'Restoring brings back the course with its previous published state, and its students with their previous status.'),
       ),
       const SizedBox(height: AppSpace.md),
       Text(t('السجل', 'History'), style: AppType.section(context)),
@@ -441,8 +441,8 @@ class _TrashRestoreFormState extends State<TrashRestoreForm> {
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(
         it.legacy
-            ? t('سيعود الكورس فقط. لن يعود طلابه لأنه حُذف قبل وجود سلة المحذوفات.', 'Only the course comes back. Its students do not, because it was deleted before the trash existed.')
-            : t('سيعود الكورس بحالة نشره السابقة، ويعود طلابه بحالة اشتراكهم السابقة. الاشتراكات التي انتهت أثناء الحذف تبقى منتهية ويمكن تمديدها.',
+            ? t('ستعود الدورة فقط. لن يعود طلابها لأنها حُذفت قبل وجود سلة المحذوفات.', 'Only the course comes back. Its students do not, because it was deleted before the trash existed.')
+            : t('ستعود الدورة بحالة نشرها السابقة، ويعود طلابها بحالة اشتراكهم السابقة. الاشتراكات التي انتهت أثناء الحذف تبقى منتهية ويمكن تمديدها.',
                 'The course comes back with its previous published state, and its students with their previous status. Subscriptions that ended while it was deleted stay ended and can be extended.'),
         style: AppType.meta(context),
       ),
@@ -493,7 +493,7 @@ class _TrashPurgeFormState extends State<TrashPurgeForm> {
               AppField(controller: _reason, label: t('السبب (5 أحرف على الأقل)', 'Reason (at least 5 characters)'), maxLines: 2, onChanged: (_) => setState(() {})),
               AppField(
                 controller: _confirm,
-                label: t('اكتب رقم الكورس ${widget.courseId} للتأكيد', 'Type the course id ${widget.courseId} to confirm'),
+                label: t('اكتب رقم الدورة ${widget.courseId} للتأكيد', 'Type the course id ${widget.courseId} to confirm'),
                 ltr: true,
                 keyboard: TextInputType.number,
                 onChanged: (_) => setState(() {}),
