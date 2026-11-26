@@ -10,6 +10,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
@@ -135,7 +136,7 @@ class _QuranProgressPageState extends State<QuranProgressPage> {
     final canRecord = !GuestState.active &&
         ((widget._source == _Source.mine && _selfLog) || widget._source == _Source.student);
     final m = _meta, p = _progress;
-    return BasePage(
+    return SdArea(area: AppArea.quran, child: BasePage(
       width: AppWidth.content,
       appBar: ScreenAppBar(title: _title),
       child: SafeArea(
@@ -151,7 +152,7 @@ class _QuranProgressPageState extends State<QuranProgressPage> {
                 onRefresh: _load,
               ),
       ),
-    );
+    ));
   }
 }
 

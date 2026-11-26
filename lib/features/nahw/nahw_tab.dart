@@ -13,6 +13,9 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/courses/course_filters.dart' show CourseFilterStore;
 import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter_education_app/features/parent/parent_consent.dart' show ParentConsentRequired, isConsentRequired;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -104,6 +107,7 @@ class _NahwTabState extends State<NahwTab> {
         onOpen: _open,
         // today's grammar lesson and reviews (Learning Hub v2 §5, D-1603)
         top: const SelfLearningSection(subjects: {'nahw'}),
+        hero: true,
         mine: _stageId == null ? null : _mine,
         onMine: (v) {
           setState(() => _mine = v);
@@ -111,14 +115,21 @@ class _NahwTabState extends State<NahwTab> {
         },
       );
     }
-    return BasePage(
-      width: AppWidth.reading,
-      appBar: ScreenAppBar(title: t('النحو', 'Arabic grammar'), showBack: false),
-      child: SafeArea(child: body),
+    return SdArea(
+      area: AppArea.nahw,
+      child: BasePage(
+        width: AppWidth.reading,
+        appBar: ScreenAppBar(title: t('النحو', 'Arabic grammar'), showBack: false),
+        child: SafeArea(child: body),
+      ),
     );
   }
 }
 
+/// The levels (Stu2Nahw `screen=nahw`): with [hero] (the student's tab) the calm hero "النحو" and the daily lesson
+/// riding up over it, then "دروس النحو" with the For my grade / Every level pill, and each level as a card: its
+/// number, its progress bar (drawn in once, M2) and its lessons with a done tick, the next one's number or a ring.
+/// Without [hero] (a parent's read-only view) the same cards in a plain list.
 class NahwLevelsView extends StatelessWidget {
   const NahwLevelsView({
     super.key,
@@ -129,6 +140,7 @@ class NahwLevelsView extends StatelessWidget {
     this.mine,
     this.onMine,
     this.top,
+    this.hero = false,
   });
 
   /// Drawn first (the tab's daily learning section).
@@ -146,53 +158,57 @@ class NahwLevelsView extends StatelessWidget {
   final bool? mine;
   final ValueChanged<bool>? onMine;
 
+  /// The student's tab: the hero band on top.
+  final bool hero;
+
   @override
   Widget build(BuildContext context) {
     final list = levels;
-    final head = <Widget>[
-      ?top,
-      if (mine != null) ...[
-        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          AppChoiceChip(
-            key: const ValueKey('nahw.mine'),
-            label: t('لصفّي', 'For my grade'),
-            icon: Icons.school_rounded,
-            selected: mine!,
-            onTap: () => onMine?.call(true),
-          ),
-          AppChoiceChip(
-            key: const ValueKey('nahw.all'),
-            label: t('كل المستويات', 'Every level'),
-            selected: !mine!,
-            onTap: () => onMine?.call(false),
-          ),
-        ]),
-        AppSpace.gapMd,
-      ],
-    ];
-    if (list == null) {
-      return ListView(padding: AppSpace.card, children: [
-        ...head,
-        if (error != null) AppErrorState(message: error, onRetry: onRetry) else const AppListSkeleton(items: 4),
-      ]);
-    }
-    if (list.isEmpty) {
-      return ListView(padding: AppSpace.card, children: [
-        ...head,
-        AppEmpty(
-          icon: Icons.translate_rounded,
-          title: t('لا توجد دروس بعد', 'No lessons yet'),
-          message: t('ستظهر دروس النحو هنا عند إضافتها', 'Grammar lessons show here once they are added'),
+    final head = Row(children: [
+      Expanded(child: Semantics(header: true, child: Text('sd_nahw_lessons'.tr, style: AppType.section(context)))),
+      if (mine != null)
+        AppTabs(
+          key: const ValueKey('nahw.mine'),
+          hug: true,
+          items: [AppTabItem(t('لصفّي', 'For my grade')), AppTabItem(t('كل المستويات', 'Every level'))],
+          index: mine! ? 0 : 1,
+          onChanged: (i) => onMine?.call(i == 0),
         ),
-      ]);
-    }
-    return ListView(padding: AppSpace.card, children: [
-      ...head,
-      for (var i = 0; i < list.length; i++) ...[
-        if (i > 0) AppSpace.gapMd,
-        _LevelCard(level: list[i], step: i + 1, onOpen: onOpen),
-      ],
     ]);
+    final List<Widget> body;
+    if (list == null) {
+      body = [if (error != null) AppErrorState(message: error, onRetry: onRetry) else const AppListSkeleton(items: 4)];
+    } else if (list.isEmpty) {
+      body = [
+        AppCard(
+          child: AppEmpty(
+            icon: Icons.translate_rounded,
+            title: t('لا توجد دروس بعد', 'No lessons yet'),
+            message: t('ستظهر دروس النحو هنا عند إضافتها', 'Grammar lessons show here once they are added'),
+          ),
+        ),
+      ];
+    } else {
+      body = [
+        for (var i = 0; i < list.length; i++) ...[
+          if (i > 0) AppSpace.gapMd,
+          _LevelCard(level: list[i], step: i + 1, onOpen: onOpen),
+        ],
+      ];
+    }
+    final children = <Widget>[
+      if (top != null) ...[top!, AppSpace.gapLg],
+      head,
+      AppSpace.gapSm,
+      ...body,
+    ];
+    if (hero) {
+      return SdHeroList(
+        hero: AppHero(title: t('النحو', 'Arabic grammar'), subtitle: 'sd_nahw_sub'.tr, icon: Icons.translate_rounded),
+        children: children,
+      );
+    }
+    return ListView(padding: AppSpace.card, children: children);
   }
 }
 
@@ -205,83 +221,96 @@ class _LevelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final set = AppAreaScope.of(context);
     final c = context.colors;
+    // the first lesson not done is the one to do next
+    final next = level.lessons.indexWhere((l) => l.progress?.completed != true);
     return AppCard(
       key: ValueKey('nahw.level.${level.id}'),
-      padding: AppSpace.card,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Expanded(child: Text(level.title, style: AppType.section(context))),
+          Container(
+            width: AppDashSize.glyph,
+            height: AppDashSize.glyph,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(gradient: set.button, borderRadius: BorderRadius.circular(AppRadius.glyph)),
+            child: Text(appDigits('$step'), style: AppType.section(context).copyWith(color: set.btnFg)),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(level.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context)),
+              const SizedBox(height: AppSpace.xs),
+              Semantics(
+                label: t('أتممت ${level.completed} من ${level.total}', '${level.completed} of ${level.total} done'),
+                child: AppProgressBar(value: level.fraction, max: 1),
+              ),
+            ]),
+          ),
           const SizedBox(width: AppSpace.xs),
           AppStatusBadge(
-            label: '${level.completed} / ${level.total}',
+            label: appDigits('${level.completed} / ${level.total}'),
             tone: level.total > 0 && level.completed >= level.total ? AppTone.success : AppTone.neutral,
             dense: true,
           ),
         ]),
-        const SizedBox(height: AppSpace.xs),
-        Semantics(
-          label: t('أتممت ${level.completed} من ${level.total}', '${level.completed} of ${level.total} done'),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-            child: LinearProgressIndicator(
-              value: level.fraction,
-              minHeight: AppSpace.xs,
-              color: c.primary,
-              backgroundColor: c.divider,
-            ),
-          ),
-        ),
         AppSpace.gapSm,
-        for (final l in level.lessons) _LessonRow(lesson: l, onOpen: onOpen),
+        for (final (i, l) in level.lessons.indexed) ...[
+          if (i > 0) const SizedBox(height: AppSpace.xs),
+          _LessonRow(lesson: l, number: i + 1, next: i == next, onOpen: onOpen),
+        ],
+        if (level.lessons.isEmpty) Text(t('لا توجد دروس بعد', 'No lessons yet'), style: AppType.meta(context).copyWith(color: c.textMedium)),
       ]),
     );
   }
 }
 
 class _LessonRow extends StatelessWidget {
-  const _LessonRow({required this.lesson, this.onOpen});
+  const _LessonRow({required this.lesson, required this.number, required this.next, this.onOpen});
 
   final NahwLessonRef lesson;
+  final int number;
+  final bool next;
   final ValueChanged<NahwLessonRef>? onOpen;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final kit = context.colors.kit;
+    final set = AppAreaScope.of(context);
     final p = lesson.progress;
     final done = p?.completed == true;
-    final status = p == null
-        ? t('جديد', 'New')
-        : done
-            ? t('أتممته · ${p.percent}%', 'Done · ${p.percent}%')
-            : t('أفضل نتيجة ${p.percent}%', 'Best ${p.percent}%');
-    final row = ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: AppTouch.min),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
-        child: Row(children: [
-          Icon(
-            done ? Icons.check_circle_rounded : (p == null ? Icons.circle_outlined : Icons.timelapse_rounded),
-            size: AppIconSize.md,
-            color: done ? c.success : c.textMedium,
-          ),
-          const SizedBox(width: AppSpace.sm),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(lesson.title, style: AppType.row(context)),
-              Text(status, style: AppType.meta(context)),
-            ]),
-          ),
-          if (onOpen != null) Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
-        ]),
-      ),
-    );
-    if (onOpen == null) return row;
-    return InkWell(
+    final status = done || (p != null && p.percent > 0)
+        ? 'sd_nahw_best'.tr.replaceAll('{n}', appDigits('${p!.percent}'))
+        : next
+            ? 'sd_nahw_continue'.tr
+            : t('جديد', 'New');
+    final Widget mark = done
+        ? Container(
+            width: AppIconSize.xl + AppSpace.xs,
+            height: AppIconSize.xl + AppSpace.xs,
+            decoration: BoxDecoration(color: kit.ok.color, shape: BoxShape.circle),
+            child: Icon(Icons.check_rounded, color: context.colors.onHero, size: AppIconSize.md),
+          )
+        : Container(
+            width: AppIconSize.xl + AppSpace.xs,
+            height: AppIconSize.xl + AppSpace.xs,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: next ? set.a : kit.track,
+              shape: BoxShape.circle,
+              border: next ? Border.all(color: set.tint, width: AppBorder.focus * 2) : null,
+            ),
+            child: Text(appDigits('$number'),
+                style: AppType.label(context).copyWith(color: next ? set.btnFg : context.colors.textMedium, fontWeight: FontWeight.w600)),
+          );
+    return AppTile(
       key: ValueKey('nahw.lesson.${lesson.id}'),
-      borderRadius: AppRadius.cardAll,
-      onTap: () => onOpen!(lesson),
-      child: row,
+      dense: true,
+      leading: ExcludeSemantics(child: mark),
+      title: lesson.title,
+      subtitle: status,
+      selected: next,
+      onTap: onOpen == null ? null : () => onOpen!(lesson),
     );
   }
 }

@@ -8,6 +8,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
@@ -77,7 +78,7 @@ class _QuranTeacherPageState extends State<QuranTeacherPage> {
   @override
   Widget build(BuildContext context) {
     final tr = _teacher;
-    return BasePage(
+    return SdArea(area: AppArea.quran, child: BasePage(
       width: AppWidth.content,
       appBar: ScreenAppBar(title: t('معلم القرآن', 'Quran teacher')),
       child: SafeArea(
@@ -95,7 +96,7 @@ class _QuranTeacherPageState extends State<QuranTeacherPage> {
                 onRefresh: _load,
               ),
       ),
-    );
+    ));
   }
 }
 
