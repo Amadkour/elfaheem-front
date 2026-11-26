@@ -78,6 +78,8 @@ import 'package:flutter_education_app/features/data_lab/data_lab_widgets.dart' a
 // The design system (D-180, lib/design/README.md): tokens, the gradient rules and the components added on top of
 // the Data Lab / org kits below.
 export 'app_tokens.dart';
+export 'app_hero.dart';
+export 'app_live.dart';
 export 'app_blocks.dart';
 export 'app_gradients.dart';
 export 'app_buttons.dart';
@@ -119,8 +121,6 @@ export '../features/org/org_ui.dart'
         fileSizeLabel;
 
 // ── Data Lab language ───────────────────────────────────────────────────────
-typedef AppHero = dl.DlHero;
-typedef AppHeroStat = dl.DlHeroStat;
 typedef AppPill = dl.DlActionPill;
 typedef AppProgressBar = dl.DlBar;
 typedef AppRing = dl.DlRing;
@@ -500,8 +500,9 @@ class AppSkeletonBox extends StatelessWidget {
     return Container(
       width: width,
       height: height,
+      // the kit's bones (KIT_SPEC §5.9): the track tone (the divider in dark mode)
       decoration: BoxDecoration(
-        color: Color.lerp(c.inputBg, c.divider, 0.55),
+        color: c.kit.track,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
@@ -533,7 +534,7 @@ class AppListSkeleton extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpace.sm + 2),
           decoration: BoxDecoration(
             color: c.cardBg,
-            borderRadius: AppRadius.cardAll,
+            borderRadius: BorderRadius.circular(AppRadius.tile),
             border: Border.all(color: c.divider, width: AppBorder.hairline),
           ),
           child: Row(children: [
