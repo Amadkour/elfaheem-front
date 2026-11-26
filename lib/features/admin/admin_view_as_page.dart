@@ -20,6 +20,7 @@ import 'package:flutter_education_app/design/app_states.dart' show appErrorMessa
 import 'package:flutter_education_app/design/app_tabs.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_username.dart';
+import 'sup/sup_kit.dart';
 
 /// Starts view-as for [id] and lands on that user's own home. ONE place for every entry point
 /// (this page, the student/teacher lists, the user detail sheet).
@@ -158,9 +159,9 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
   @override
   Widget build(BuildContext context) {
     if (!isSuperNow(context)) {
-      return AdminPage(
+      return SupPage(
+        kicker: 'a2_people_kicker'.tr, headline: 'a2_viewas_head'.tr,
         title: 'view_as_user'.tr,
-        icon: Icons.visibility_rounded,
         body: Center(child: EmptyState('admin_super_admin_only'.tr, icon: Icons.lock_rounded)),
       );
     }
@@ -234,13 +235,12 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
       loadingMore: _loadingMore,
     );
 
-    return AdminPage(
-      title: 'view_as_user'.tr,
-      subtitle: 'admin_view_only'.tr,
-      icon: Icons.visibility_rounded,
-      onRefresh: _load,
-      width: AppWidth.content,
-      body: Padding(
+    return SupPage(
+        kicker: 'a2_people_kicker'.tr, headline: 'a2_viewas_head'.tr, line: 'a2_viewas_line'.tr,
+        title: 'view_as_user'.tr,
+        onRefresh: _load,
+        width: AppWidth.content,
+        body: Padding(
         padding: AdminPage.bodyPadding(context),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           AppTabs(
@@ -261,7 +261,7 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
           Expanded(child: table),
         ]),
       ),
-    );
+      );
   }
 }
 

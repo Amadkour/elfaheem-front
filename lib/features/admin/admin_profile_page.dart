@@ -30,6 +30,7 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppCard, AppList
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_states.dart' show AppErrorState, appErrorMessage;
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'sup/sup_kit.dart';
 
 class _ProfileApi {
   static const me = '/api/v1/admin/me';
@@ -243,13 +244,12 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
       );
     }
 
-    return AdminPage(
-      title: 'admin_my_account'.tr,
-      icon: Icons.account_circle_rounded,
-      maxWidth: 720,
-      dirty: dirty,
-      // Save is the page's one primary action; disabled while nothing changed
-      primaryAction: _loading || _failed
+    return SupPage(
+        kicker: 'a2_account_kicker'.tr, headline: 'a2_account_head'.tr,
+        title: 'admin_my_account'.tr,
+        dirty: dirty,
+        body: body,
+        actions: [?(_loading || _failed
           ? null
           : AppButton.primary(
               key: const ValueKey('profile_save'),
@@ -257,9 +257,8 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
               icon: Icons.check_rounded,
               busy: _saving,
               onPressed: dirty ? _save : null,
-            ),
-      body: body,
-    );
+            ))],
+      );
   }
 
   // Picture (tap to change), name, e-mail and role on a calm card.
