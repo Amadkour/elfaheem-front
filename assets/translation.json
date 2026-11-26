@@ -24934,5 +24934,15 @@
   "sc_chat_reached_teacher_only": {"en": "Reached only the teacher", "ar": "وصل للمعلم بس"},
   "sc_chat_reply_private": {"en": "Your reply went to the teacher only", "ar": "ردّك راح للمعلم بس"},
   "sc_chat_open_private": {"en": "Open the chat", "ar": "افتح المحادثة"},
-  "sc_inbox_all_done": {"en": "Nothing is waiting for you", "ar": "ما فيه شي ينتظرك"}
+  "sc_inbox_all_done": {"en": "Nothing is waiting for you", "ar": "ما فيه شي ينتظرك"},
+  "sc_sch_on_now": {"en": "is on now", "ar": "شغّالة الحين"},
+  "sc_sch_next": {"en": "Next: {title}", "ar": "الجاي: {title}"},
+  "sc_sch_nothing": {"en": "Nothing coming up", "ar": "ما فيه شي قادم"},
+  "sc_sch_join": {"en": "Join the class", "ar": "ادخل الحصة"},
+  "sc_sch_empty_title": {"en": "Your next two weeks are free", "ar": "جدولك فاضي الأسبوعين الجايين"},
+  "sc_sch_empty_sub": {"en": "Once you join a course, its classes show up here", "ar": "أول ما تسجّل في دورة، تطلع حصصها هنا"},
+  "sc_sch_browse": {"en": "Browse courses", "ar": "تصفّح الدورات"},
+  "sc_sch_error_title": {"en": "We couldn't get your schedule", "ar": "ما قدرنا نجيب جدولك"},
+  "sc_sch_error_sub": {"en": "Try again in a moment", "ar": "جرّب بعد شوي"},
+  "sc_ai_title": {"en": "Smart assistant", "ar": "المساعد الذكي"}
 }

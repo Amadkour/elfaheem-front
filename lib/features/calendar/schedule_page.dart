@@ -43,7 +43,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/core/live/live_events_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppBreathe, AppReveal;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/org/org_member_changes.dart' show respondToChange, undoChange;
 import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgTimetableScreen;
@@ -639,9 +639,29 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   Widget build(BuildContext context) {
     // a student's schedule is the schedule area (redesign S-C, Stu2Schedule): its accent on the selected states,
     // buttons and empty plates; every other role keeps its own
-    final student = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role == 'student';
+    final student = (widget.role ?? Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role) == 'student';
+    _student = student;
     final page = _page(context);
     return student ? AppAreaScope(area: AppArea.sched, child: page) : page;
+  }
+
+  /// The signed-in person is a student: the schedule area's hero, words and forward button (redesign S-C).
+  bool _student = false;
+
+  /// A student's hero (Stu2Schedule?screen=list): today's date, what is on now or next, and ONE forward button,
+  /// "Join the class", while a class is live.
+  Widget _studentHero(BuildContext context, List<CalEvent> shown) {
+    final now = _nowUtc, keys = _liveKeys;
+    final coming = calComing(shown, now, liveKeys: keys)..sort((a, b) => a.start.compareTo(b.start));
+    final live = [for (final e in coming) if (calIsLive(e, now, liveKeys: keys)) e];
+    final next = [for (final e in coming) if (!live.contains(e) && !e.cancelled && !e.declined) e];
+    return ScScheduleHero(
+      date: AppTime.date(now, pattern: 'EEEE d MMMM'),
+      liveTitle: live.isEmpty ? null : live.first.title,
+      nextTitle: next.isEmpty ? null : next.first.title,
+      nextAt: next.isEmpty ? null : AppTime.dateTime(next.first.start),
+      onJoin: live.isEmpty ? null : () => _join(live.first),
+    );
   }
 
   Widget _page(BuildContext context) {
@@ -930,6 +950,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     final firstPending = all.where((e) => e.isMeeting && e.myStatus == 'pending' && !calIsOver(e, _nowUtc)).firstOrNull;
     final grid = view != CalView.agenda;
     final children = <Widget>[
+      if (_student && view == CalView.agenda) _studentHero(context, shown),
       if (wide || tablet) _toolbar(context, view, wide: wide) else ...[
         _header(context, view),
         Padding(
@@ -1017,8 +1038,8 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             padding: const EdgeInsets.all(AppSpace.lg),
             child: AppEmpty(
               icon: Icons.cloud_off_rounded,
-              title: t('تعذر تحميل جدولك', 'Could not load your schedule'),
-              message: _error,
+              title: _student ? 'sc_sch_error_title'.tr : t('تعذر تحميل جدولك', 'Could not load your schedule'),
+              message: _student ? 'sc_sch_error_sub'.tr : _error,
               actionLabel: t('أعد المحاولة', 'Try again'),
               onAction: _refresh,
             ),
@@ -1158,7 +1179,17 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             const SizedBox(height: AppSpace.sm),
           ],
         ]),
-        emptyRange: live.isNotEmpty ? null : _NothingAhead(filtered: _filters.any, onClear: () => _setFilters(const CalFilters()), onNew: _dept ? null : () => _add()),
+        emptyRange: live.isNotEmpty
+            ? null
+            : _student && !_filters.any
+                ? AppEmpty(
+                    icon: Icons.event_available_outlined,
+                    title: 'sc_sch_empty_title'.tr,
+                    message: 'sc_sch_empty_sub'.tr,
+                    actionLabel: 'sc_sch_browse'.tr,
+                    onAction: () => AppNavigator.requestedTab.value = 'my_courses',
+                  )
+                : _NothingAhead(filtered: _filters.any, onClear: () => _setFilters(const CalFilters()), onNew: _dept ? null : () => _add()),
         footer: _agendaDays < 56
             ? more('cal.agenda.more', Icons.expand_more_rounded, t('عرض أسبوعين آخرين', 'Show the next two weeks'), () {
                 setState(() => _agendaDays += calAgendaDays);
@@ -1421,6 +1452,39 @@ class _NothingAhead extends StatelessWidget {
           AppButton.primary(label: t('اجتماع جديد', 'New meeting'), icon: Icons.add_rounded, onPressed: onNew),
         ],
       ]),
+    );
+  }
+}
+
+/// A student's schedule hero (plain values): the date as the kicker, the live class (with "Join the class", the
+/// page's ONE forward button) or the next thing, or a calm "nothing coming".
+class ScScheduleHero extends StatelessWidget {
+  const ScScheduleHero({super.key, required this.date, this.liveTitle, this.nextTitle, this.nextAt, this.onJoin});
+  final String date;
+  final String? liveTitle, nextTitle, nextAt;
+  final VoidCallback? onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    final word = 'sc_sch_on_now'.tr;
+    final title = liveTitle != null
+        ? '$liveTitle $word'
+        : nextTitle != null
+            ? 'sc_sch_next'.tr.replaceAll('{title}', nextTitle!)
+            : 'sc_sch_nothing'.tr;
+    return AppHero(
+      overlap: false,
+      kicker: date,
+      title: title,
+      squiggle: liveTitle != null ? word : null,
+      subtitle: liveTitle == null ? nextAt : null,
+      actions: [
+        if (liveTitle != null && onJoin != null)
+          AppBreathe(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            child: AppButton.hot(label: 'sc_sch_join'.tr, icon: Icons.play_arrow_rounded, onPressed: onJoin),
+          ),
+      ],
     );
   }
 }
