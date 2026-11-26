@@ -35,6 +35,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
+import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
@@ -528,6 +529,7 @@ class _LobbySheetState extends State<LobbySheet> {
           onEveryoneNeedsApproval: (v) => _c.setAdmission(v ? LiveAdmission.approve : LiveAdmission.open),
           onGuestsJoinAutomatically: (v) => _c.setGuestAdmission(v ? LiveGuestAdmission.auto : LiveGuestAdmission.approve),
           quickLink: _quickLinkOn ? _quickLinkCard() : null,
+          courseClass: widget.ref.kind == LiveRoomKind.session,
         ),
       );
 }
@@ -549,10 +551,14 @@ class LobbyBody extends StatelessWidget {
     required this.onGuestsJoinAutomatically,
     this.busyIds = const {},
     this.quickLink,
+    this.courseClass = false,
   });
 
-  /// The top card (QuickGuestLinkCard), null → none (share links switched off, tests).
+  /// The card at the end of the entry rules (QuickGuestLinkCard), null → none (share links switched off, tests).
   final Widget? quickLink;
+
+  /// A course class: the first rule reads «طلاب الدورة يدخلون مباشرة» (the same switch, read the other way round).
+  final bool courseClass;
 
   final bool loading;
   final String? error;
@@ -573,9 +579,9 @@ class LobbyBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final allBusy = busyIds.contains('*');
-    return Column(mainAxisSize: MainAxisSize.min, children: [
+    return AppAreaScope.role(role: AppRoleAccent.teacher, child: Column(mainAxisSize: MainAxisSize.min, children: [
       AppSheetHeader(
-        t('غرفة الانتظار', 'Lobby'),
+        waiting.isEmpty ? t('غرفة الانتظار', 'Lobby') : '${t('غرفة الانتظار', 'Lobby')} (${appDigits('${waiting.length}')})',
         trailing: IconButton(
           key: const ValueKey('lobby.refresh'),
           tooltip: t('تحديث', 'Refresh'),
@@ -587,35 +593,31 @@ class LobbyBody extends StatelessWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(AppSpace.lg, 0, AppSpace.lg, AppSpace.lg),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            ?quickLink,
             // ── Waiting ──────────────────────────────────────────────────
             Padding(
-              padding: EdgeInsetsDirectional.only(top: quickLink == null ? AppSpace.xs : AppSpace.xl, bottom: AppSpace.xs),
+              padding: const EdgeInsetsDirectional.only(top: AppSpace.xs, bottom: AppSpace.xs),
               child: Row(children: [
                 Expanded(
-                  child: Row(children: [
-                    Flexible(
-                      child: Text(
-                        t('بانتظار الدخول', 'Waiting to join'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppType.section(context),
-                      ),
+                  child: AppBump(
+                    trigger: waiting.length,
+                    child: Text(
+                      't1_lv_lobby_asked'.tr,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.meta(context).copyWith(color: c.textMedium),
                     ),
-                    if (waiting.isNotEmpty) ...[
-                      const SizedBox(width: AppSpace.xs),
-                      AppBump(trigger: waiting.length, child: AppCountBadge(count: waiting.length)),
-                    ],
-                  ]),
+                  ),
                 ),
-                if (waiting.length > 1)
-                  AppButton.tonal(
+                if (waiting.length > 1) ...[
+                  const SizedBox(width: AppSpace.sm),
+                  AppButton.primary(
                     key: const ValueKey('lobby.admit_all'),
-                    icon: Icons.done_all_rounded,
+                    icon: Icons.check_rounded,
                     label: t('قبول الكل', 'Admit all'),
                     size: AppButtonSize.sm,
                     onPressed: allBusy || loading ? null : onAdmitAll,
                   ),
+                ],
               ]),
             ),
             if (loading)
@@ -654,31 +656,50 @@ class LobbyBody extends StatelessWidget {
               AppBanner(icon: Icons.wifi_off_rounded, text: error!, color: c.textMedium),
             ],
 
-            // ── Rules ────────────────────────────────────────────────────
+            // ── Entry rules ──────────────────────────────────────────────
             Padding(
               padding: AppSpace.sectionHead,
-              child: Text(t('من يدخل مباشرة؟', 'Who gets in without asking?'), style: AppType.section(context)),
+              child: Text(courseClass ? 't1_lv_lobby_entry'.tr : t('من يدخل مباشرة؟', 'Who gets in without asking?'),
+                  style: AppType.section(context)),
             ),
-            AppSwitchTile(
-              key: const ValueKey('lobby.everyone_approval'),
-              title: t('الجميع يحتاج موافقتي', 'Everyone needs my approval'),
-              subtitle: t('حتى الطلاب والمدعوون ينتظرون حتى تقبلهم.', 'Even students and invitees wait until you admit them.'),
-              icon: Icons.how_to_reg_rounded,
-              value: everyoneNeedsApproval,
-              onChanged: onEveryoneNeedsApproval,
+            AppCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                if (courseClass)
+                  AppSwitchTile(
+                    key: const ValueKey('lobby.everyone_approval'),
+                    title: 't1_lv_lobby_students_direct'.tr,
+                    subtitle: 't1_lv_lobby_students_direct_sub'.tr,
+                    icon: Icons.how_to_reg_rounded,
+                    value: !everyoneNeedsApproval,
+                    onChanged: onEveryoneNeedsApproval == null ? null : (v) => onEveryoneNeedsApproval!(!v),
+                  )
+                else
+                  AppSwitchTile(
+                    key: const ValueKey('lobby.everyone_approval'),
+                    title: t('الجميع يحتاج موافقتي', 'Everyone needs my approval'),
+                    subtitle: t('حتى الطلاب والمدعوون ينتظرون حتى تقبلهم.', 'Even students and invitees wait until you admit them.'),
+                    icon: Icons.how_to_reg_rounded,
+                    value: everyoneNeedsApproval,
+                    onChanged: onEveryoneNeedsApproval,
+                  ),
+                AppSwitchTile(
+                  key: const ValueKey('lobby.guests_auto'),
+                  title: t('الزوار يدخلون تلقائياً', 'Guests join automatically'),
+                  subtitle: t('من يأتي عبر رابط المشاركة يدخل دون انتظار.', 'Visitors from the share link come straight in.'),
+                  icon: Icons.link_rounded,
+                  value: guestsJoinAutomatically,
+                  onChanged: onGuestsJoinAutomatically,
+                ),
+              ]),
             ),
-            AppSwitchTile(
-              key: const ValueKey('lobby.guests_auto'),
-              title: t('الزوار يدخلون تلقائياً', 'Guests join automatically'),
-              subtitle: t('من يأتي عبر رابط المشاركة يدخل دون انتظار.', 'Visitors from the share link come straight in.'),
-              icon: Icons.link_rounded,
-              value: guestsJoinAutomatically,
-              onChanged: onGuestsJoinAutomatically,
-            ),
+            if (quickLink != null) ...[
+              const SizedBox(height: AppSpace.md),
+              quickLink!,
+            ],
           ]),
         ),
       ),
-    ]);
+    ]));
   }
 }
 
@@ -697,6 +718,7 @@ class LobbyRequestRow extends StatelessWidget {
     final c = context.colors;
     final r = request;
     final since = r.requestedAt == null ? '' : AppTime.time(r.requestedAt!);
+    final role = r.isGuest ? 't1_lv_lobby_guest'.tr : 't1_lv_lobby_member'.tr;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
       child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
@@ -706,15 +728,12 @@ class LobbyRequestRow extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(r.displayName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
             const SizedBox(height: AppSpace.xxs),
-            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              AppStatusBadge(
-                label: r.isGuest ? t('زائر', 'Guest') : t('عضو', 'Member'),
-                icon: r.isGuest ? Icons.link_rounded : Icons.school_rounded,
-                tone: r.isGuest ? AppTone.warning : AppTone.neutral,
-                dense: true,
-              ),
-              if (since.isNotEmpty) Text(since, style: AppType.meta(context)),
-            ]),
+            Text(
+              since.isEmpty ? role : '$role · $since',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.meta(context).copyWith(color: c.textMedium),
+            ),
           ]),
         ),
         const SizedBox(width: AppSpace.xs),
@@ -724,22 +743,18 @@ class LobbyRequestRow extends StatelessWidget {
             child: SizedBox.square(dimension: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: 2)),
           )
         else ...[
-          IconButton(
+          AppIconButton(
             key: ValueKey('lobby.reject.${r.id}'),
+            icon: Icons.close_rounded,
             tooltip: t('رفض', 'Reject'),
             onPressed: onReject,
-            icon: Icon(Icons.close_rounded, color: appInk(context, c.danger)),
           ),
-          IconButton.filled(
+          const SizedBox(width: AppSpace.xs),
+          AppButton.primary(
             key: ValueKey('lobby.admit.${r.id}'),
-            tooltip: t('قبول', 'Admit'),
+            label: t('قبول', 'Admit'),
+            size: AppButtonSize.sm,
             onPressed: onAdmit,
-            style: IconButton.styleFrom(
-              backgroundColor: c.primary,
-              foregroundColor: c.onHero,
-              shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll),
-            ),
-            icon: const Icon(Icons.check_rounded),
           ),
         ],
       ]),
