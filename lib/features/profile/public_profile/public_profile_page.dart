@@ -42,6 +42,9 @@ import 'package:flutter_education_app/features/profile/course_instractor_profile
 import 'package:flutter_education_app/features/profile/update_account_widget.dart' show EditAccountScreen;
 import 'package:flutter_education_app/features/profile/public_profile/public_profile.dart';
 import 'package:flutter_education_app/features/profile/public_profile/public_profile_view.dart';
+import 'package:flutter_education_app/design/app_header.dart' show AppHeader;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
+import 'package:flutter_education_app/features/profile/teacher/t2b_parts.dart' show T2bHeroButton;
 
 /// True when the signed-in person is [username] (a confirmed name): their link opens the owner's page.
 bool _isMe(BuildContext context, String username) {
@@ -212,6 +215,60 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         : (p == null
             ? const PublicProfileResult(PublicProfileStatus.notFound)
             : PublicProfileResult(PublicProfileStatus.found, profile: p));
+    final view = PublicProfileView(
+      result: result,
+      onRetry: _load,
+      onOpenCourse: (c) {
+        final id = int.tryParse(c.id);
+        if (id != null) AppNavigator.openCourse(id);
+      },
+      onOpenCourseId: (id) => AppNavigator.openCourse(id),
+      ownerPanel: m == null
+          ? null
+          : ProfileOwnerPanel(
+              mine: m,
+              busy: _busy,
+              onPublic: (v) => _save(isPublic: v),
+              onField: (k, v) => _save(fields: {k: v}),
+              onEdit: _edit,
+              onShare: share,
+              onAccount: () => Navigator.of(context).pushNamed('/profile'),
+              onDocuments: _documents(),
+            ),
+    );
+    // a teacher's own page (redesign T2b, Tea2Account public): the teacher hero says what this page is, with Edit
+    // profile and Share on it; the page as visitors see it scrolls under it
+    if (context.read<MyAuthProvider>().isTeacher) {
+      return T2Scope(
+        child: BasePage(
+          key: const ValueKey(kMyProfileFeatureKey),
+          enableFooterWidget: false,
+          appBar: AppHeader(title: 't2_pub_title'.tr),
+          child: NestedScrollView(
+            headerSliverBuilder: (context, _) => [
+              SliverToBoxAdapter(
+                child: AppHero(
+                  overlap: false,
+                  wipe: false,
+                  title: 't2_pub_headline'.tr,
+                  subtitle: 't2_pub_sub'.tr,
+                  actions: [
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, children: [
+                        AppButton.primary(label: t('تعديل الملف', 'Edit profile'), icon: Icons.edit_outlined, onPressed: _edit),
+                        if (share != null) T2bHeroButton(label: t('مشاركة', 'Share'), icon: Icons.qr_code_2_rounded, onTap: share),
+                      ]),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            body: view,
+          ),
+        ),
+      );
+    }
     return BasePage(
       key: const ValueKey(kMyProfileFeatureKey),
       enableFooterWidget: false,

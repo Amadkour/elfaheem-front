@@ -16,6 +16,7 @@ import 'package:flutter_education_app/features/home/student/models.dart' show Te
 import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/profile/profile_screen.dart';
+import 'package:flutter_education_app/features/profile/public_profile/public_profile_page.dart' show MyProfileScreen;
 import 'package:flutter_education_app/features/profile/update_account_widget.dart';
 import 'package:flutter_education_app/features/profile/teacher/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:flutter_education_app/features/profile/teacher/t2b_parts.dart';
@@ -81,6 +82,7 @@ void main() {
   }
 
   testWidgets('account', (t) => render(t, 't2b_account', () => const ProfileScreen()));
+  testWidgets('public', (t) => render(t, 't2b_public', () => const MyProfileScreen()));
   testWidgets('edit', (t) => render(t, 't2b_edit', () => const EditAccountScreen(isTeacher: true)));
   testWidgets('edit docs', (t) async {
     await t2bSetUp();

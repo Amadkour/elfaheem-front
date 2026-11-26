@@ -10,7 +10,7 @@ import 't2_fakes.dart';
 
 /// The teacher signed in over FakeApi: T2's routes, [extra] on top, an empty answer for anything else.
 Future<void> t2bSetUp({Map<String, FakeHandler>? extra}) async {
-  await t2SetUp(FakeApi({...t2Routes(), 'GET /api/v1/live/meeting/*': (_) => <dynamic>[], 'POST /api/v1/auth/teacher-documents/overview': (_) => t2bDocs(), ...?extra},
+  await t2SetUp(FakeApi({...t2Routes(), 'GET /api/v1/live/meeting/*': (_) => <dynamic>[], 'POST /api/v1/auth/teacher-documents/overview': (_) => t2bDocs(), 'GET /api/v1/me/public-profile': (_) => t2bPublic(), ...?extra},
       latency: Duration.zero, fallback: (_) => <String, dynamic>{}));
 }
 
@@ -139,3 +139,29 @@ Map<String, dynamic> t2bDocs() {
     'custom_documents': const [],
   };
 }
+
+/// The owner's view of the public page (GET /me/public-profile).
+Map<String, dynamic> t2bPublic() => {
+      'settings': {
+        'is_public': true,
+        'fields': {'bio': true, 'stats': true, 'courses': true, 'growth': true, 'reviews': true},
+      },
+      'available': ['bio', 'stats', 'courses', 'growth', 'reviews'],
+      'username': 'majed.math',
+      'username_confirmed': true,
+      'live': true,
+      'link': 'https://nextbrain.site/@majed.math',
+      'profile': {
+        'id': 7,
+        'kind': 'teacher',
+        'name': _t('أ. ماجد الشهري', 'Mr Majed Alshehri'),
+        'username': 'majed.math',
+        'headline': _t('معلم رياضيات، ثانوي وقدرات وتحصيلي', 'Maths teacher: secondary, Qudurat and Tahsili'),
+        'bio': _t('معلم رياضيات من ١٢ سنة، أدرّس الثانوي والقدرات والتحصيلي.', 'A maths teacher for 12 years: secondary, Qudurat and Tahsili.'),
+        'experience_years': 12,
+        'courses_count': 4,
+        'sections': ['bio', 'stats', 'courses'],
+        'stats': {'students': 640, 'live_sessions': 312, 'hours': 180, 'certificates': 215, 'rating': 4.8, 'reviews': 212},
+        'courses': const [],
+      },
+    };
