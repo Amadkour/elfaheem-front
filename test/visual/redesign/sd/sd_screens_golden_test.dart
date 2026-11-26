@@ -19,6 +19,8 @@ import 'package:flutter_education_app/features/profile/student_profile_view.dart
 import 'package:flutter_education_app/features/rewards/my_rewards_page.dart';
 import 'package:flutter_education_app/features/rewards/rewards_models.dart';
 import 'package:flutter_education_app/features/store/store_models.dart';
+import 'package:flutter_education_app/features/store/store_item_page.dart';
+import 'package:flutter_education_app/features/payments/enrollment/enrollment_widgets.dart' show PaymentResultView, ResultKind;
 import 'package:flutter_education_app/features/store/store_tab.dart';
 import 'package:flutter_education_app/features/teachers/teacher_discovery.dart';
 import 'package:flutter_education_app/features/teachers/teachers_models.dart';
@@ -214,4 +216,42 @@ void main() {
       modes: const [false],
     );
   });
+
+  testWidgets('store item', (tester) async {
+    await kitRender(
+      tester,
+      'sd_store_item',
+      () => SdArea(
+        area: AppArea.store,
+        child: StoreItemView(item: _item(1, 'summary', 'ملخص الرياضيات ٢ ث، الفصل الأول', 'Maths 2 summary, first term', 45, 450, 86), inCart: true, onBuy: () {}, onToggleCart: () {}),
+      ),
+      storage: storage,
+      modes: const [false],
+    );
+  });
+
+  for (final kind in ResultKind.values) {
+    testWidgets('payment result ${kind.name}', (tester) async {
+      await kitRender(
+        tester,
+        'sd_pay_${kind.name}',
+        () => SdArea(
+          area: AppArea.money,
+          child: PaymentResultView(
+            kind: kind,
+            title: sdT(['الدورة صارت لك', 'نراجع التحويل', 'ما اكتمل الدفع'][kind.index], ['The course is yours', 'We are checking the transfer', 'The payment did not go through'][kind.index]),
+            message: sdT('الرياضيات ٢ ث مع أ. ماجد الشهري', 'Maths 2 with Mr Majed Alshehri'),
+            primaryLabel: sdT(['ابدأ التعلّم', 'تمام', 'جرّب مرة ثانية'][kind.index], ['Start learning', 'OK', 'Try again'][kind.index]),
+            onPrimary: () {},
+            secondaryLabel: kind == ResultKind.failed ? sdT('الرئيسية', 'Home') : null,
+            onSecondary: () {},
+          ),
+        ),
+        storage: storage,
+        modes: const [false],
+        grow: false,
+        langs: const ['ar'],
+      );
+    });
+  }
 }
