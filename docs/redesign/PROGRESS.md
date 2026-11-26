@@ -18,11 +18,11 @@ Statuses: todo / doing / done / verified. On a resume, continue from the first l
 | B4 | Backend WP4 nicknames, WP10 notebook, WP11 meetings/bot (0150, 0151) | done (merged) |
 | B5 | Backend WP8 payments per country + WP9 teacher demand (0160-0162) | done (merged; head 0162; 6 suites = 688 checks green) |
 | B6 | Demand card subject keys + front contract snapshot refresh (rd/demand-key) | done |
-| 2 | Student | todo |
+| 2 | Student | doing: S-C merged; S-A (rd/s-a), S-B (rd/s-b), S-D (rd/s-d) in progress |
 | 3 | Booking and subject flow | todo |
 | 4 | Parent (incl. child code login) | todo |
-| 5 | Teacher | todo |
-| 6 | Admin and super admin | todo |
+| 5 | Teacher | doing: T2 merged (incl. super admin ads/store); T2b (rd/t2b: schedule, account, complaints, chat) in progress; T1 todo |
+| 6 | Admin and super admin | doing: A2 merged; A1 (rd/a1) in progress |
 | 7 | Landing (persona pages; rd/landing merged) | done (visual verify in phase 9) |
 | 8 | International pass | todo |
 | 9 | Final check and REPORT.md | todo |
