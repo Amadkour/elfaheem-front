@@ -4498,6 +4498,13 @@ class _RoomPageState extends State<RoomPage>
       focused: _focusOn,
       onMinimize: scope == null || _endingSession ? null : scope.minimize,
       pulse: _recDotOpacity,
+      // The host's head count and the amber "N waiting" pill (Tea1Live); a student or a guest never sees either.
+      peopleCount: _canModerate && !_endingSession
+          ? math.max(_peopleCount, _roster?.items.where((p) => !p.companion).length ?? 0)
+          : null,
+      onPeople: _canModerate && !_endingSession ? _toggleParticipantPanel : null,
+      waitingCount: _lobby?.waitingCount ?? 0,
+      onWaiting: _lobby == null || _endingSession ? null : _openLobby,
     );
   }
 

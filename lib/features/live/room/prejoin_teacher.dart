@@ -31,9 +31,9 @@ import 'package:flutter_education_app/features/live/room/student/student_live_pa
 /// The paper card's width on a wide window.
 const double kTeacherPreJoinPanel = 380;
 
-const double _kPreviewAspectPhone = 16 / 10;
+const double _kPreviewAspectPhone = 4 / 3;
 const double _kPreviewAspectWide = 16 / 10;
-const double _kPreviewAvatar = 96;
+const double _kPreviewAvatar = AppDashSize.avatar + AppSpace.md;
 
 class TeacherPreJoinLayout extends StatelessWidget {
   const TeacherPreJoinLayout({
@@ -140,12 +140,18 @@ class TeacherPreJoinLayout extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.fromLTRB(gutter, AppSpace.xs, gutter, AppSpace.lg),
-                        child: Center(
+                      child: LayoutBuilder(
+                        builder: (context, view) => SingleChildScrollView(
+                          padding: EdgeInsets.fromLTRB(gutter, AppSpace.xs, gutter, AppSpace.lg),
+                          // a wide window centres the pair vertically; a phone starts at the top
                           child: ConstrainedBox(
-                            constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
-                            child: wide ? _wide(context) : _phone(context),
+                            constraints: BoxConstraints(minHeight: wide ? view.maxHeight - AppSpace.xs - AppSpace.lg : 0),
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(maxWidth: AppWidth.content.max),
+                                child: wide ? _wide(context) : _phone(context),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -372,6 +378,7 @@ class TeacherPreviewCard extends StatelessWidget {
                     icon: micOn ? Icons.mic_rounded : Icons.mic_off_rounded,
                     tooltip: micOn ? 'sb_live_mic_on'.tr : 'sb_live_mic_off'.tr,
                     selected: micOn,
+                    size: AppTouch.min,
                     tone: micOn ? StudentLiveTone.glass : StudentLiveTone.danger,
                     onTap: onToggleMic,
                   ),
@@ -380,6 +387,7 @@ class TeacherPreviewCard extends StatelessWidget {
                     icon: camOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
                     tooltip: camOn ? 'sb_live_cam_on'.tr : 'sb_live_cam_off'.tr,
                     selected: camOn,
+                    size: AppTouch.min,
                     tone: camOn ? StudentLiveTone.glass : StudentLiveTone.danger,
                     onTap: onToggleCam,
                   ),
@@ -388,8 +396,8 @@ class TeacherPreviewCard extends StatelessWidget {
             ),
             if (micOn && micLevel != null)
               PositionedDirectional(
-                top: AppSpace.md,
-                start: AppSpace.md,
+                bottom: AppSpace.md,
+                end: AppSpace.md,
                 child: _MicBars(level: micLevel!),
               ),
           ],

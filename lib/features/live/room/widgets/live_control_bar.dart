@@ -232,7 +232,7 @@ class LiveControlBar extends StatelessWidget {
                 ),
               ),
             ),
-          Expanded(child: _MobileButton(action: end, size: size, danger: true)),
+          Expanded(flex: 2, child: _MobileButton(action: end, size: size, danger: true)),
         ]),
       ),
     );
@@ -288,24 +288,24 @@ class _Look {
                 ? LiveControlBar._textLow
                 : a.off
                     ? LivePalette.danger
-                    : a.active
-                        ? (a.color ?? LivePalette.accent)
-                        : LiveControlBar._textHigh,
+                    : (a.active && a.color != null ? a.color! : LiveControlBar._textHigh),
         fill = danger
             ? LivePalette.danger
             : !a.enabled && !a.loading
                 ? LivePalette.glassFaint
                 : a.off
                     ? LivePalette.danger.withValues(alpha: 0.18)
-                    : a.active
-                        ? (a.color ?? LivePalette.accent).withValues(alpha: 0.22)
-                        : LiveControlBar._glass,
+                    : a.color != null && a.active
+                        ? a.color!.withValues(alpha: 0.22)
+                        : a.active
+                            ? LivePalette.ink(0.24)
+                            : LiveControlBar._glass,
         border = danger
             ? LivePalette.danger.withValues(alpha: 0.6)
             : a.off
                 ? LivePalette.danger.withValues(alpha: 0.55)
-                : a.active && a.enabled
-                    ? (a.color ?? LivePalette.accent).withValues(alpha: 0.55)
+                : a.color != null && a.active && a.enabled
+                    ? a.color!.withValues(alpha: 0.55)
                     : LiveControlBar._glassBdr;
   // State reads from the fill and the edge alone (tone first): no coloured glow under a button.
   final Color fg;
@@ -338,6 +338,45 @@ class _MobileButton extends StatelessWidget {
             ((a.menu != null && a.menu!.isNotEmpty)
                 ? () => showAppSheet<void>(context, (ctx) => _MoreSheet(actions: [a]))
                 : null);
+    // Tea1Live: End is a red pill with its word beside the handset («إنهاء»).
+    if (danger) {
+      return Semantics(
+        button: true,
+        enabled: tap != null,
+        label: a.label,
+        excludeSemantics: true,
+        child: GestureDetector(
+          key: a.key,
+          behavior: HitTestBehavior.opaque,
+          onTap: tap,
+          child: AppPressScale(
+            enabled: tap != null,
+            scale: 0.96,
+            child: Container(
+              height: size,
+              margin: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: look.fill, borderRadius: BorderRadius.circular(AppRadius.pill)),
+              child: a.loading
+                  ? _spinner(look.fg, size * 0.4)
+                  : Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(a.icon, color: look.fg, size: size * 0.42),
+                      const SizedBox(width: AppSpace.xs),
+                      Flexible(
+                        child: Text(
+                          a.compactLabel ?? a.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.label(context).copyWith(color: look.fg, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ]),
+            ),
+          ),
+        ),
+      );
+    }
     return Semantics(
       button: true,
       enabled: tap != null,
@@ -347,7 +386,7 @@ class _MobileButton extends StatelessWidget {
         key: a.key,
         behavior: HitTestBehavior.opaque,
         onTap: tap,
-        // press depth on the round button only: the label under it stays still
+        // press depth on the round button only
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           AppPressScale(
             enabled: tap != null,
@@ -367,18 +406,6 @@ class _MobileButton extends StatelessWidget {
               ),
               if (a.badge > 0) PositionedDirectional(top: -AppSpace.xxs, end: -AppSpace.xxs - 2, child: _CountBadge(a.badge)),
             ]),
-          ),
-          const SizedBox(height: AppSpace.xxs + 2),
-          Text(
-            a.compactLabel ?? a.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: AppType.overline(context).copyWith(
-              letterSpacing: 0,
-              height: 1.2,
-              color: danger ? LivePalette.danger : look.fg,
-            ),
           ),
         ]),
       ),

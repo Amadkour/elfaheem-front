@@ -137,7 +137,7 @@ class TeacherEndedView extends StatelessWidget {
           child: Text(
             't1_lv_end_title'.tr,
             textAlign: TextAlign.center,
-            style: AppType.display(context).copyWith(color: c.onHero),
+            style: AppType.headline(context).copyWith(color: c.onHero),
           ),
         ),
         const SizedBox(height: AppSpace.sm),
