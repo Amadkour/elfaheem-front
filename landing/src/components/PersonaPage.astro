@@ -1,0 +1,842 @@
+---
+// The three persona pages of the redesign (phase 7): /ar|en/students/, /parents/, /teachers/ (design: LandingStudentM/W,
+// LandingM/W, LandingTeacherM/W). One component, three variants. Every number on the page is real or absent: the
+// course showcase and the reviews come from GET /highlights, the counts from /stats, the grades and subjects from
+// /options, the teacher demand card from the public teacher-demand endpoint (hidden when it is missing, fails or says
+// unavailable). The product illustrations (phone, weekly report, teacher board, chat) are labelled examples.
+// Brand roles are the NextBrain kit values (docs/redesign/KIT_SPEC.md §1.2); neutrals follow the live theme (D-949).
+import Base from '../layouts/Base.astro';
+import { arP, enP, PERSONA_PATH, type PersonaKey } from '../i18n/personas';
+import { APP, API, DEMAND_API, jsonForScript } from '../config';
+import testimonials from '../content/testimonials.json';
+import { loadBuildData } from '../data/remote';
+import logo from '../assets/logo_mark.png';
+import { Image } from 'astro:assets';
+import '../styles/persona.css';
+
+interface Props {
+  lang: 'ar' | 'en';
+  who: PersonaKey;
+  preload: string[];
+}
+const { lang, who, preload } = Astro.props;
+const t = lang === 'ar' ? arP : enP;
+const v = t.persona[who];
+const other = lang === 'ar' ? 'en' : 'ar';
+const seg = PERSONA_PATH[who];
+const path = `/${lang}/${seg}/`;
+const q = `lang=${lang}`;
+const year = new Date().getFullYear();
+const joinRole = who === 'parent' ? 'parent' : who === 'teacher' ? 'teacher' : 'student';
+const joinHref = `${APP}/join?role=${joinRole}&${q}`;
+const exploreHref = `${APP}/explore?${q}`;
+
+const { stats, options } = await loadBuildData();
+const fmt = new Intl.NumberFormat(t.locale);
+function approx(n: unknown): string {
+  if (typeof n !== 'number' || !isFinite(n) || n <= 0) return '';
+  if (n < 10) return fmt.format(n);
+  const mag = Math.pow(10, Math.floor(Math.log10(n)) - (n >= 100 ? 1 : 0));
+  return fmt.format(Math.floor(n / mag) * mag) + '+';
+}
+const statKeys = ['students', 'teachers', 'courses'] as const;
+const hasBakedStats = !!stats && statKeys.some((k) => approx(stats[k]));
+
+// Static reviews (src/content/testimonials.json, real and permitted only); /highlights adds the live ones.
+const items = ((testimonials as Array<Record<string, string>>) || []).filter((x) => x && x.name);
+
+const isStudent = who === 'student';
+const isParent = who === 'parent';
+const isTeacher = who === 'teacher';
+
+const ICON = {
+  student: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5M22 9v6',
+  parent:
+    'M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM22 19v-1a4 4 0 0 0-3-3.9M16 3.1a3.5 3.5 0 0 1 0 6.8',
+  teacher: 'M3 4h18v12H3zM8 20h8M12 16v4M8 9h5',
+  check: 'm5 12 5 5 9-10',
+  arrow: lang === 'ar' ? 'M19 12H5M11 6l-6 6 6 6' : 'M5 12h14M13 6l6 6-6 6',
+  phone: 'M7 2h10v20H7zM11 18h2',
+};
+const whyIcons = [
+  ICON.parent,
+  'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4',
+  'M2 6h14v12H2zM16 10l6-3v10l-6-3',
+  'M3 7h18v12H3zM3 11h18M7 15h3',
+];
+const toolIcons = [
+  'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4',
+  'M4 20V10M10 20V4M16 20v-7M22 20H2',
+  'M9 3h6v4H9zM7 5H5v16h14V5h-2M9 14l2 2 4-4',
+  'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z',
+];
+const reportIcons = [
+  'M4 4h16v16H4zM8 9h8M8 13h8M8 17h5',
+  'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
+  'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z',
+  ICON.parent,
+];
+// a tiny bookshelf (the reference's mini books): height, width, tint index
+const books = [
+  [46, 14, 0],
+  [56, 16, 1],
+  [50, 13, 2],
+  [60, 15, 3],
+  [44, 14, 0],
+  [54, 16, 2],
+  [48, 13, 1],
+] as const;
+// week of slots on the teacher's tools card: 1 = booked
+const week = [
+  [1, 0],
+  [0, 1],
+  [1, 1],
+  [0, 0],
+  [1, 0],
+];
+
+// the helper's face (the reference's Bot), drawn over the brand-coloured disc of .pp-bot
+const bot =
+  '<svg viewBox="0 0 40 40" aria-hidden="true"><ellipse cx="14" cy="17" rx="4.2" ry="5" fill="#fff"/><ellipse cx="26" cy="17" rx="4.2" ry="5" fill="#fff"/><circle cx="14.8" cy="18" r="2.2" fill="#0f3f2c"/><circle cx="26.8" cy="18" r="2.2" fill="#0f3f2c"/><path d="M13 26c3.6 3.4 10.4 3.4 14 0" fill="none" stroke="#0f3f2c" stroke-width="2.4" stroke-linecap="round"/></svg>';
+
+const dictForScript = {
+  courses: t.courses,
+  show: t.show,
+  stars: t.quotes.stars,
+  demand: { waiting: t.demand.waiting, booked: t.demand.booked, groups: t.demand.groups },
+};
+---
+
+<Base
+  lang={lang}
+  title={v.title}
+  description={v.description}
+  path={path}
+  ogAlt={t.name}
+  preload={preload}
+  alternates={{ ar: `/ar/${seg}/`, en: `/en/${seg}/`, xdefault: `/ar/${seg}/` }}
+>
+  <div class="pp" data-who={who}>
+    <a class="skip" href="#pp-main">{t.skip}</a>
+    <header class="pp-head">
+      <div class="pp-w pp-head__in">
+        <a class="pp-brand" href={`/${lang}/`} aria-label={`${t.name}, ${t.home}`}>
+          <Image src={logo} alt="" width={96} height={54} loading="eager" />
+          <span>{t.name}</span>
+        </a>
+        <span class="pp-grow"></span>
+        <a class="pp-lang" href={`/${other}/${seg}/`} hreflang={other} lang={other} data-setlang={other}
+          >{lang === 'ar' ? 'English' : 'العربية'}</a
+        >
+        <a class="pp-login pp-hide-m" href={`${APP}/login?${q}`}>{t.login}</a>
+        <a class="pp-navcta m-jelly" href="#book">{v.navCta}</a>
+      </div>
+    </header>
+
+    <main
+      id="pp-main"
+      data-lang={lang}
+      data-who={who}
+      data-api={API}
+      data-demand={DEMAND_API}
+      data-app={APP}
+      data-dict={JSON.stringify(dictForScript)}
+    >
+      <!-- the course showcase: hero band, M6 wipe on entry, M16 drifting shapes -->
+      <section class="pp-show" aria-labelledby="pp-show-h">
+        <span class="pp-shapes" aria-hidden="true"><i class="m-drift-a"></i><i class="m-drift-b"></i><i class="m-drift-c"></i></span>
+        <div class="pp-w pp-show__head m-wipe">
+          <div class="pp-show__txt">
+            <span class="pp-live" id="pp-live" hidden><span class="pp-live__dot" aria-hidden="true"></span><span id="pp-live-t"></span></span>
+            <h2 id="pp-show-h" class="pp-show__h">{t.show.h} <span>{t.show.hi}</span></h2>
+            <p class="pp-show__p">{t.show.p}</p>
+          </div>
+          <a class="pp-hot m-jelly" href="#who"
+            >{v.showCta}<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"
+              ><path d={ICON.arrow} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+              ></path></svg
+            ></a
+          >
+        </div>
+        <div class="pp-wave" id="pp-wave" aria-label={t.show.region} hidden>
+          <div class="pp-wave__track" id="pp-wave-track"></div>
+        </div>
+      </section>
+
+      <nav id="who" aria-label={t.personaNav} class="pp-w pp-who">
+        <div class="pp-pgrid">
+          {
+            (['student', 'parent', 'teacher'] as const).map((k) => (
+              <a
+                href={`/${lang}/${PERSONA_PATH[k]}/`}
+                class={`pp-pcard m-jelly pp-pcard--${k}`}
+                aria-current={who === k ? 'page' : undefined}
+              >
+                <span class="pp-pico">
+                  <svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24">
+                    <path d={ICON[k]} fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+                <span class="pp-ptx">
+                  <span class="pp-pt">{t.personas[k].t}</span>
+                  <span class="pp-pd pp-hide-m">{t.personas[k].d}</span>
+                </span>
+                <span class="pp-pchk" aria-hidden="true">
+                  <svg width="15" height="15" viewBox="0 0 24 24">
+                    <path d={ICON.check} fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+              </a>
+            ))
+          }
+        </div>
+      </nav>
+
+      <!-- the persona's own hero: H1 with the M7 squiggle, the picker, the results / demand card, the illustration -->
+      <section class="pp-w pp-intro">
+        <div class="pp-intro__grid">
+          <div class="pp-intro__main">
+            <h1 class="pp-h1">
+              {v.h1a}<br /><span class="m-squig"
+                ><span class="pp-grad">{v.h1b}</span><svg viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true"
+                  ><path pathLength="240" d="M2 6 Q 17 0 32 6 T 62 6 T 92 6 T 118 5"></path></svg
+                ></span
+              >
+            </h1>
+            <p class="pp-lead">{v.sub}</p>
+            <ul class="pp-checks">
+              {
+                v.bullets.map((b) => (
+                  <li>
+                    <span aria-hidden="true">
+                      <svg width="12" height="12" viewBox="0 0 24 24">
+                        <path d={ICON.check} fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                    {b}
+                  </li>
+                ))
+              }
+            </ul>
+
+            <form id="book" class="pp-card pp-pick" aria-label={v.cta} onsubmit="return false" hidden={isTeacher}>
+              <div class="pp-pick__grp" id="pp-chips-wrap" hidden>
+                <span id="pp-chips-l" class="pp-pick__l">{v.pickLabel}</span>
+                <div role="radiogroup" aria-labelledby="pp-chips-l" class="pp-chips" id="pp-chips"></div>
+              </div>
+              <a id="pp-go" class="pp-btn m-jelly" href={isTeacher ? joinHref : exploreHref}
+                >{v.cta}<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"
+                  ><path d={ICON.arrow} fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+                  ></path></svg
+                ></a
+              >
+              <span class="pp-pick__note">{v.formNote}</span>
+            </form>
+
+            {
+              !isTeacher && (
+                <section id="pp-res" class="pp-card pp-res" aria-labelledby="pp-res-t" hidden>
+                  <div class="pp-res__head">
+                    <span class="pp-res__tt">
+                      <span class="pp-res__k">{v.resEyebrow}</span>
+                      <span class="pp-res__t" id="pp-res-t" />
+                    </span>
+                    <button type="button" class="pp-ghost m-jelly" id="pp-res-change">
+                      {t.change}
+                    </button>
+                  </div>
+                  <div class="pp-res__subj" id="pp-res-subj" />
+                  <a class="pp-res__all" id="pp-res-all" href={exploreHref}>
+                    {t.browseAll}
+                  </a>
+                  <a class="pp-btn pp-btn--ink m-jelly" href={joinHref}>
+                    {v.resCta}
+                  </a>
+                </section>
+              )
+            }
+
+            {
+              isTeacher && (
+                <section id="pp-demand" class="pp-card pp-demand" aria-labelledby="pp-demand-t">
+                  <span class="pp-res__tt">
+                    <span class="pp-res__k" id="pp-demand-k" hidden>
+                      {v.resEyebrow}
+                    </span>
+                    <span class="pp-res__t" id="pp-demand-t">
+                      {t.demand.joinH}
+                    </span>
+                  </span>
+                  <div class="pp-dstats" id="pp-dstats" role="list" aria-label={t.demand.region} hidden />
+                  <span class="pp-dnote" id="pp-dnote" hidden>
+                    {t.demand.note}
+                  </span>
+                  <ol class="pp-dsteps">
+                    {t.demand.steps.map((s, i) => (
+                      <li>
+                        <span aria-hidden="true">{fmt.format(i + 1)}</span>
+                        {s}
+                      </li>
+                    ))}
+                  </ol>
+                  <a class="pp-btn pp-btn--teacher m-jelly" href={joinHref}>
+                    {v.resCta}
+                  </a>
+                </section>
+              )
+            }
+            {options?.subjects?.length ? <script type="application/json" id="pp-options" set:html={jsonForScript(options)} /> : null}
+          </div>
+
+          <div class="pp-art" aria-hidden="true">
+            <div class="pp-blob"></div>
+            <svg class="pp-march" width="460" height="460" viewBox="0 0 460 460"
+              ><path d="M20 380 C 90 300, 120 420, 210 350 S 330 170, 440 110" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 10"
+              ></path></svg
+            >
+            {
+              !isTeacher && (
+                <>
+                  <div class="pp-phone">
+                    <div class="pp-phone__in">
+                      <span class="pp-phone__hi">{v.phoneHi}</span>
+                      <div class="pp-phone__path">
+                        <svg viewBox="0 0 350 130">
+                          <path class="pp-s-done" d="M340 64 C 310 46, 268 46, 238 66 C 226 76, 226 100, 212 100 C 192 100, 188 44, 168 44" />
+                          <path class="pp-s-todo" d="M168 44 C 146 44, 144 100, 124 100 C 114 100, 112 76, 104 70 C 80 52, 40 50, 14 64" />
+                          <circle cx="340" cy="64" r="10" class="pp-f-primary" />
+                          <circle cx="212" cy="100" r="12" class="pp-f-primary" />
+                          <path d="m206 100 4 4 8-8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+                          <circle cx="168" cy="44" r="30" class="pp-f-warm" opacity="0.2" />
+                          <circle cx="168" cy="44" r="20" class="pp-f-warm" />
+                          <path d="M163 35v18l13-9z" class="pp-f-ink" />
+                          <circle cx="124" cy="100" r="11" fill="#fff" class="pp-s-soft" stroke-width="3" />
+                          <circle cx="14" cy="64" r="12" fill="#fff" class="pp-s-partner" stroke-width="3" />
+                        </svg>
+                      </div>
+                      <span class="pp-phone__lib">{t.library}</span>
+                      <div class="pp-shelf">
+                        <div class="pp-shelf__in">
+                          {books.map(([h, w, c]) => (
+                            <span class={`pp-book pp-book--${c}`} style={`height:${h}px;flex-basis:${w}px`} />
+                          ))}
+                        </div>
+                        <div class="pp-shelf__base" />
+                      </div>
+                      <div class="pp-phone__tiles">
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="pp-pop pp-pop--a">
+                    <span class="pp-pop__ic">
+                      <svg width="18" height="18" viewBox="0 0 24 24">
+                        <path d={reportIcons[1]} fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </span>
+                    <span class="pp-pop__tx">
+                      <span class="pp-pop__k">{v.pop1L}</span>
+                      <span class="pp-pop__t">{v.pop1T}</span>
+                    </span>
+                  </div>
+                  <div class="pp-pop pp-pop--b">
+                    <span class="pp-bot pp-bot--44" set:html={bot} />
+                    <span class="pp-pop__t2">{v.pop2T}</span>
+                  </div>
+                </>
+              )
+            }
+            {
+              isTeacher && (
+                <>
+                  <div class="pp-board" role="img" aria-label={t.board.label}>
+                    <div class="pp-board__head">
+                      <span class="pp-res__tt">
+                        <span class="pp-res__k">{t.board.k}</span>
+                        <span class="pp-board__t">{t.board.t}</span>
+                      </span>
+                      <span class="pp-tag pp-tag--teacher">{t.board.count}</span>
+                    </div>
+                    {t.board.rows.map((r, i) => (
+                      <div class={`pp-board__row${i === 0 ? ' is-now' : ''}`}>
+                        <span class="pp-board__time">{r.time}</span>
+                        <span class="pp-board__tx">
+                          <b>{r.t}</b>
+                          <span>{r.m}</span>
+                        </span>
+                        <span class="pp-board__btn">{r.b}</span>
+                      </div>
+                    ))}
+                    <div class="pp-board__tiles">
+                      <div>
+                        <span class="pp-board__k">{t.board.progK}</span>
+                        <b class="pp-board__v">{t.board.progV}</b>
+                        <span class="pp-bar">
+                          <span style="width:72%" />
+                        </span>
+                      </div>
+                      <div class="is-alt">
+                        <span class="pp-board__k">{t.board.rateK}</span>
+                        <b class="pp-board__v">
+                          {t.board.rateV} <span class="pp-star">★</span>
+                        </b>
+                        <span class="pp-board__k">{t.board.rateN}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="pp-pop pp-pop--t">
+                    <span class="pp-pop__ic pp-pop__ic--ok">
+                      <svg width="18" height="18" viewBox="0 0 24 24">
+                        <path
+                          d="M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM19 8v6M16 11h6"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2.2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </span>
+                    <span class="pp-pop__tx">
+                      <span class="pp-pop__k">{v.pop1L}</span>
+                      <span class="pp-pop__t">{v.pop1T}</span>
+                    </span>
+                  </div>
+                </>
+              )
+            }
+          </div>
+        </div>
+      </section>
+
+      {
+        !isStudent && (
+          <section class="pp-w pp-sec-b" aria-label={t.statsLabel} id="pp-stats" hidden={!hasBakedStats}>
+            <div class="pp-stats">
+              {statKeys.map((k) => (
+                <div class="pp-stat" hidden={hasBakedStats && !approx(stats?.[k])}>
+                  <b data-stat={k} data-baked={hasBakedStats ? '1' : '0'}>
+                    {hasBakedStats ? approx(stats?.[k]) : ''}
+                  </b>
+                  <span>{t.stats[k]}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )
+      }
+
+      {
+        !isTeacher && (
+          <section class="pp-w pp-sec-b pp-col" aria-labelledby="pp-inside">
+            <div class="pp-sh">
+              <h2 id="pp-inside" class="pp-h2">
+                {v.insideH}
+              </h2>
+              <p class="pp-lead">{v.insideP}</p>
+            </div>
+            <div class="pp-bento">
+              <article class="pp-tile pp-wide">
+                <div class="pp-tile__tx">
+                  <h3>{t.bento.path.t}</h3>
+                  <p>{t.bento.path.d}</p>
+                </div>
+                <svg class="pp-path" aria-hidden="true" viewBox="0 0 640 150">
+                  <path class="pp-s-done" stroke-width="5" d="M620 80 C 570 40, 520 40, 470 80 S 380 130, 330 90 S 250 30, 200 70" />
+                  <path class="pp-s-todo pp-marchp" stroke-width="5" stroke-dasharray="1 11" d="M200 70 C 160 100, 120 120, 70 95 S 30 60, 20 70" />
+                  <circle cx="620" cy="80" r="14" class="pp-f-primary" />
+                  <path d="m613 80 5 5 9-9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                  <circle cx="470" cy="80" r="14" class="pp-f-primary" />
+                  <path d="m463 80 5 5 9-9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                  <rect x="318" y="78" width="24" height="24" rx="6" transform="rotate(45 330 90)" class="pp-f-tint pp-s-primary" stroke-width="3" />
+                  <circle class="pp-pulse pp-f-warm" cx="200" cy="70" r="36" opacity=".2" />
+                  <circle cx="200" cy="70" r="24" class="pp-f-warm" />
+                  <path d="M194 59v22l16-11z" class="pp-f-ink" />
+                  <circle cx="70" cy="95" r="13" fill="#fff" class="pp-s-soft" stroke-width="3" />
+                  <circle cx="20" cy="70" r="15" fill="#fff" class="pp-s-partner" stroke-width="3" />
+                  <text x="200" y="128" text-anchor="middle" class="pp-here">
+                    {t.bento.path.here}
+                  </text>
+                </svg>
+              </article>
+              {isParent && (
+                <article class="pp-tile pp-tile--warm">
+                  <span class="pp-bot pp-bot--64" set:html={bot} />
+                  <h3>{t.bento.bot.t}</h3>
+                  <p>{t.bento.bot.d}</p>
+                </article>
+              )}
+              <article class="pp-tile">
+                <div class="pp-minishelf" aria-hidden="true">
+                  {books.map(([h, w, c]) => (
+                    <span class={`pp-book pp-book--${c}`} style={`height:${h}px;flex-basis:${w}px`} />
+                  ))}
+                </div>
+                <h3>{t.bento.shelf.t}</h3>
+                <p>{t.bento.shelf.d}</p>
+              </article>
+              <article class="pp-tile">
+                <div class="pp-notebook" aria-hidden="true">
+                  <span>{t.bento.notes.word}</span>
+                </div>
+                <h3>{t.bento.notes.t}</h3>
+                <p>{t.bento.notes.d}</p>
+              </article>
+              <article class={`pp-tile pp-tile--live${isStudent ? ' pp-wide' : ''}`}>
+                <div class="pp-livetags" aria-hidden="true">
+                  <span>
+                    <i />
+                    {t.bento.live.on}
+                  </span>
+                  <span>{t.bento.live.rec}</span>
+                </div>
+                <h3>{t.bento.live.t}</h3>
+                <p>{t.bento.live.d}</p>
+              </article>
+            </div>
+          </section>
+        )
+      }
+
+      {
+        isTeacher && (
+          <section class="pp-w pp-sec-b pp-col" aria-labelledby="pp-why">
+            <div class="pp-sh">
+              <h2 id="pp-why" class="pp-h2">
+                {t.why.h}
+              </h2>
+              <p class="pp-lead">{t.why.p}</p>
+            </div>
+            <div class="pp-tcards">
+              {t.why.items.map((w, i) => (
+                <article class="pp-tile">
+                  <span class={`pp-glyph pp-glyph--${i}`} aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24">
+                      <path d={whyIcons[i]} fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  <h3>{w.t}</h3>
+                  <p>{w.d}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        )
+      }
+
+      {
+        isParent && (
+          <section class="pp-dark" aria-labelledby="pp-par-h">
+            <div class="pp-w pp-split">
+              <div class="pp-split__tx">
+                <span class="pp-kick">{t.report.kicker}</span>
+                <h2 id="pp-par-h" class="pp-h2">
+                  {t.report.h}
+                </h2>
+                <p class="pp-lead">{t.report.p}</p>
+                <ul class="pp-pts">
+                  {t.report.pts.map((p, i) => (
+                    <li>
+                      <span aria-hidden="true">
+                        <svg width="20" height="20" viewBox="0 0 24 24">
+                          <path d={reportIcons[i]} fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </span>
+                      <span>
+                        <b>{p.t}</b>
+                        <span>{p.d}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div class="pp-split__art" role="img" aria-label={t.report.cardLabel}>
+                <div class="pp-report">
+                  <div class="pp-report__head">
+                    <span class="pp-res__tt">
+                      <span class="pp-res__k">{t.report.cardK}</span>
+                      <span class="pp-board__t">{t.report.cardT}</span>
+                    </span>
+                    <svg width="58" height="58" viewBox="0 0 56 56" aria-hidden="true">
+                      <circle cx="28" cy="28" r="23" fill="none" class="pp-s-tint" stroke-width="7" />
+                      <circle
+                        class="pp-s-primary m-ink"
+                        cx="28"
+                        cy="28"
+                        r="23"
+                        fill="none"
+                        stroke-width="7"
+                        stroke-linecap="round"
+                        style="--len:145"
+                        transform="rotate(-90 28 28)"
+                      />
+                      <text x="28" y="33" text-anchor="middle" class="pp-ringt">
+                        4/4
+                      </text>
+                    </svg>
+                  </div>
+                  {t.report.rows.map((r, i) => (
+                    <div class="pp-report__row">
+                      <div>
+                        <span>{r.s}</span>
+                        <b class={`pp-c${i}`}>{r.v}</b>
+                      </div>
+                      <span class="pp-bar pp-bar--lg">
+                        <span class={`pp-b${i}`} style={`width:${r.p}%`} />
+                      </span>
+                    </div>
+                  ))}
+                  <div class="pp-report__note">
+                    <b>{t.report.noteK}</b>
+                    <span>{t.report.note}</span>
+                  </div>
+                  <span class="pp-report__btn">{t.report.talk}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        )
+      }
+
+      {
+        isStudent && (
+          <section class="pp-dark" aria-labelledby="pp-bot-h">
+            <div class="pp-w pp-split">
+              <div class="pp-split__tx">
+                <span class="pp-bot pp-bot--72" aria-hidden="true" set:html={bot} />
+                <h2 id="pp-bot-h" class="pp-h2">
+                  {t.bot.h}
+                </h2>
+                <p class="pp-lead">{t.bot.p}</p>
+                <ul class="pp-checks pp-checks--dark">
+                  {t.bot.pts.map((p) => (
+                    <li>
+                      <span aria-hidden="true">
+                        <svg width="12" height="12" viewBox="0 0 24 24">
+                          <path d={ICON.check} fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </span>
+                      {p}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div class="pp-split__art" role="img" aria-label={t.bot.cardLabel}>
+                <div class="pp-chat">
+                  <span class="pp-chat__q">{t.bot.q}</span>
+                  <span class="pp-chat__a">{t.bot.a}</span>
+                  <div class="pp-chat__chips">
+                    {t.bot.chips.map((c) => (
+                      <span>{c}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )
+      }
+
+      {
+        isTeacher && (
+          <section class="pp-dark" aria-labelledby="pp-tool-h">
+            <div class="pp-w pp-split">
+              <div class="pp-split__tx">
+                <span class="pp-kick">{t.tools.kicker}</span>
+                <h2 id="pp-tool-h" class="pp-h2">
+                  {t.tools.h}
+                </h2>
+                <p class="pp-lead">{t.tools.p}</p>
+                <ul class="pp-pts">
+                  {t.tools.pts.map((p, i) => (
+                    <li>
+                      <span aria-hidden="true">
+                        <svg width="20" height="20" viewBox="0 0 24 24">
+                          <path d={toolIcons[i]} fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </span>
+                      <span>
+                        <b>{p.t}</b>
+                        <span>{p.d}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div class="pp-split__art" role="img" aria-label={t.tools.weekLabel}>
+                <div class="pp-week">
+                  <span class="pp-board__t">{t.tools.weekT}</span>
+                  <div class="pp-week__grid">
+                    {t.tools.days.map((d, i) => (
+                      <div class="pp-week__day">
+                        <span>{d}</span>
+                        {week[i].map((b, j) => (
+                          <span class={b ? 'is-on' : ''}>{t.tools.slots[j]}</span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                  <div class="pp-week__key">
+                    <span>
+                      <i class="is-on" />
+                      {t.tools.booked}
+                    </span>
+                    <span>
+                      <i />
+                      {t.tools.open}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )
+      }
+
+      {
+        v.steps.length > 0 && (
+          <section class="pp-w pp-sec pp-col pp-center" aria-labelledby="pp-how-h">
+            <div class="pp-sh pp-sh--c">
+              <h2 id="pp-how-h" class="pp-h2">
+                {v.howH}
+              </h2>
+              <p class="pp-lead">{v.howP}</p>
+            </div>
+            <ol class="pp-steps">
+              {v.steps.map((s, i) => (
+                <li class="pp-tile">
+                  <span class={`pp-num${i === v.steps.length - 1 ? ' is-last' : ''}`} aria-hidden="true">
+                    {fmt.format(i + 1)}
+                  </span>
+                  <h3>{s.t}</h3>
+                  <p>{s.d}</p>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )
+      }
+
+      <section class="pp-band" aria-labelledby="pp-t-h">
+        <div class="pp-w pp-vet">
+          <div class="pp-sh">
+            <h2 id="pp-t-h" class="pp-h2">{v.tH}</h2>
+            <p class="pp-lead">{v.tP}</p>
+          </div>
+          <ul class="pp-vet__chips">
+            {
+              t.vet.map((x) => (
+                <li>
+                  <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24">
+                    <path d={ICON.check} fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  {x}
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </section>
+
+      {
+        !isStudent && (
+          <section class="pp-w pp-sec pp-col" aria-labelledby="pp-subj-h" id="pp-subjects" hidden>
+            <div class="pp-sh">
+              <h2 id="pp-subj-h" class="pp-h2">
+                {v.subjH}
+              </h2>
+              <p class="pp-lead">{v.subjP}</p>
+            </div>
+            <div class="pp-marq" id="pp-marq" />
+          </section>
+        )
+      }
+
+      <section class="pp-w pp-sec-b pp-col" aria-labelledby="pp-q-h" id="pp-quotes" hidden={items.length === 0}>
+        <h2 id="pp-q-h" class="pp-h2">{v.qH}</h2>
+        <ul class="pp-quotes" id="pp-qlist">
+          {
+            items.map((x, i) => (
+              <li class={`pp-qcard pp-q${i % 3}`}>
+                <span class="pp-qmark" aria-hidden="true">
+                  “
+                </span>
+                <blockquote dir={t.dir}>
+                  <p>{lang === 'ar' ? x.quote_ar : x.quote_en}</p>
+                </blockquote>
+                <span class="pp-qwho" dir="auto">
+                  {x.name}{lang === 'ar' ? '، ' + x.role_ar : ', ' + x.role_en}
+                </span>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <section class="pp-band pp-faqsec" aria-labelledby="pp-faq-h">
+        <div class="pp-w pp-faqw">
+          <h2 id="pp-faq-h" class="pp-h2 pp-tc">{t.faqH}</h2>
+          <div class="pp-faq">
+            {
+              v.faq.map((f, i) => (
+                <details open={i === 0}>
+                  <summary>
+                    <span>{f.q}</span>
+                    <i aria-hidden="true" />
+                  </summary>
+                  <p>{f.a}</p>
+                </details>
+              ))
+            }
+          </div>
+        </div>
+      </section>
+
+      <section class="pp-w pp-sec-e">
+        <div class="pp-end">
+          <svg class="pp-end__dots" aria-hidden="true" viewBox="0 0 1000 120" preserveAspectRatio="none"
+            ><path d="M0 100 C 200 40, 350 120, 520 70 S 800 20, 1000 60" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 12"
+            ></path></svg
+          >
+          <h2 class="pp-h2">{v.endH}</h2>
+          <p>{v.endP}</p>
+          <div class="pp-end__acts">
+            <a class="pp-end__cta m-jelly" href={joinHref}>{v.endCta}</a>
+            <a class="pp-end__ghost m-jelly" href={`/${lang}/download/`}
+              ><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24"
+                ><path d={ICON.phone} fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg
+              >{t.download}</a
+            >
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="pp-foot">
+      <div class="pp-w pp-foot__in">
+        <a class="pp-brand pp-brand--sm" href={`/${lang}/`}>
+          <Image src={logo} alt="" width={64} height={36} loading="lazy" />
+          <span>{t.name}</span>
+        </a>
+        <nav aria-label={t.footer.links} class="pp-foot__nav">
+          {
+            (['student', 'parent', 'teacher'] as const)
+              .filter((k) => k !== who)
+              .map((k) => <a href={`/${lang}/${PERSONA_PATH[k]}/`}>{t.forWhom[k]}</a>)
+          }
+          <a href={`/${lang}/download/`}>{t.footer.download}</a>
+          <a href={`/${lang}/privacy/`}>{t.footer.privacy}</a>
+          <a href={`/${lang}/terms/`}>{t.footer.terms}</a>
+          <a href={`${APP}/login?${q}`}>{t.login}</a>
+        </nav>
+        <small class="pp-foot__c">© {year} {t.name}. {t.footer.rights}.</small>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    import '../scripts/persona.ts';
+  </script>
+</Base>
