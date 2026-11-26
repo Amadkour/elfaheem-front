@@ -10,6 +10,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -139,7 +140,7 @@ class _QuranProgressPageState extends State<QuranProgressPage> {
     return SdArea(area: AppArea.quran, child: BasePage(
       width: AppWidth.content,
       appBar: ScreenAppBar(title: _title),
-      child: SafeArea(
+      child: SdHeroColumn(title: 'sd_h_quran_progress'.tr, subtitle: 'sd_quran_progress_sub'.tr, icon: Icons.auto_graph_rounded, child: SafeArea(
         child: _consent
             ? ParentConsentRequired(studentId: widget.personId!, childName: widget.personName, onGranted: _load)
             : m == null || p == null
@@ -151,7 +152,7 @@ class _QuranProgressPageState extends State<QuranProgressPage> {
                 onRecord: canRecord ? _record : null,
                 onRefresh: _load,
               ),
-      ),
+      )),
     ));
   }
 }

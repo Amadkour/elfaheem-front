@@ -182,7 +182,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       appBar: ScreenAppBar(helpPageId: 'account.change_password', title: 'change_password'.tr),
       // the sign-in sidebar belongs to the password-reset flow (signed out); from the Account page the form
       // stands alone in its centred column
-      child: SafeArea(child: isWide && !widget.fromProfile ? _webLayout(p, c) : _mobileLayout(p, c)),
+      child: SdHeroColumn(title: 'sd_h_security'.tr, subtitle: 'sd_h_security_d'.tr, icon: Icons.verified_user_outlined, child: SafeArea(child: isWide && !widget.fromProfile ? _webLayout(p, c) : _mobileLayout(p, c))),
     ));
   }
 

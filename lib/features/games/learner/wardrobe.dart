@@ -315,7 +315,7 @@ class _WardrobePageState extends State<WardrobePage> {
       key: const ValueKey(kGamesCosmeticsKey),
       width: AppWidth.wide,
       appBar: ScreenAppBar(title: t('خزانتي', 'My wardrobe'), helpPageId: 'games.wardrobe'),
-      child: SafeArea(child: body),
+      child: SdHeroColumn(title: 'sd_h_wardrobe'.tr, subtitle: 'sd_h_wardrobe_d'.tr, icon: Icons.checkroom_rounded, child: SafeArea(child: body)),
     ));
   }
 }

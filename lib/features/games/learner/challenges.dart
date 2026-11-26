@@ -611,7 +611,7 @@ class _GamesChallengesPageState extends State<GamesChallengesPage> {
     return SdArea(area: AppArea.games, child: BasePage(
       width: AppWidth.reading,
       appBar: ScreenAppBar(title: t('التحدّيات', 'Challenges'), helpPageId: 'games.challenges'),
-      child: SafeArea(
+      child: SdHeroColumn(title: 'sd_h_challenges'.tr, subtitle: 'sd_h_challenges_d'.tr, icon: Icons.bolt_rounded, child: SafeArea(
         child: LayoutBuilder(builder: (context, box) {
           final gutter = AppSpace.gutter(box.maxWidth);
           return ListView(
@@ -638,7 +638,7 @@ class _GamesChallengesPageState extends State<GamesChallengesPage> {
             ],
           );
         }),
-      ),
+      )),
     ));
   }
 }

@@ -9,6 +9,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
@@ -96,9 +97,9 @@ class _GamesProgressPageState extends State<GamesProgressPage> {
   Widget build(BuildContext context) => SdArea(area: AppArea.games, child: BasePage(
         width: AppWidth.content,
         appBar: ScreenAppBar(title: t('تقدّمي في الألعاب', 'My games progress')),
-        child: SafeArea(
+        child: SdHeroColumn(title: 'sd_h_games_progress'.tr, subtitle: 'sd_h_games_progress_d'.tr, icon: Icons.bar_chart_rounded, child: SafeArea(
           child: GamesProgressView(report: _report, loading: _loading, error: _error, onRetry: _load, onRefresh: _load),
-        ),
+        )),
       ));
 }
 

@@ -53,10 +53,10 @@ class DisplaySettingsPage extends StatelessWidget {
     return SdArea(area: AppArea.me, child: BasePage(
       key: const ValueKey('profile.display'),
       appBar: ScreenAppBar(title: t('العرض والقراءة', 'Display & reading')), // the app's back chip + title (L4)
-      child: ListenableBuilder(
+      child: SdHeroColumn(title: 'sd_h_display'.tr, subtitle: 'sd_h_display_d'.tr, icon: Icons.text_fields_rounded, child: ListenableBuilder(
         listenable: s,
         builder: (context, _) => DisplaySettingsView(prefs: s.prefs, onChanged: s.update),
-      ),
+      ),)
     ));
   }
 }

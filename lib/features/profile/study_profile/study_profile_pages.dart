@@ -312,12 +312,12 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
       useWebCard: true, // the form width role on a wide screen (D-805), not a 1400 px wide form
       width: AppWidth.form,
       appBar: ScreenAppBar(title: t('بيانات الدراسة', 'Study details')),
-      child: SafeArea(
+      child: SdHeroColumn(title: 'sd_h_study'.tr, subtitle: 'sd_h_study_d'.tr, icon: Icons.school_outlined, child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpace.md),
           child: AppUnsavedGuard(dirty: dirty, child: body),
         ),
-      ),
+      )),
     ));
   }
 }

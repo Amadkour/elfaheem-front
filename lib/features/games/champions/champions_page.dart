@@ -16,6 +16,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
@@ -203,7 +204,7 @@ class _HallOfChampionsPageState extends State<HallOfChampionsPage> {
       key: const ValueKey(kGamesChampionsKey),
       width: AppWidth.content,
       appBar: ScreenAppBar(title: t('لوحة الأبطال', 'Hall of Champions'), helpPageId: 'games.champions'),
-      child: SafeArea(
+      child: SdHeroColumn(title: 'sd_h_champions'.tr, subtitle: 'sd_h_champions_d'.tr, icon: Icons.emoji_events_outlined, child: SafeArea(
         child: HallOfChampionsView(
           scopes: _scopes,
           scope: _scope,
@@ -234,7 +235,7 @@ class _HallOfChampionsPageState extends State<HallOfChampionsPage> {
           onMore: past != null && past.hasMore && !_loadingMore ? () => _loadPast(more: true) : null,
           now: DateTime.now().toUtc(),
         ),
-      ),
+      )),
     ));
   }
 }

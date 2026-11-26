@@ -166,7 +166,7 @@ class _TwoListsPageState extends State<_TwoListsPage> {
       useWebCard: true,
       width: AppWidth.wide,
       appBar: ScreenAppBar(title: widget.title),
-      child: SafeArea(
+      child: SdHeroColumn(title: widget.title, subtitle: widget.pageKey.contains('money') ? 'sd_h_payments_d'.tr : 'sd_h_grades_d'.tr, icon: Icons.workspace_premium_outlined, child: SafeArea(
         bottom: false,
         child: me == null
             ? const SizedBox.shrink()
@@ -177,7 +177,7 @@ class _TwoListsPageState extends State<_TwoListsPage> {
                 ),
                 Expanded(child: KeyedSubtree(key: ValueKey('${widget.pageKey}.$_tab'), child: widget.builder(context, _tab, me))),
               ]),
-      ),
+      )),
     ));
   }
 }

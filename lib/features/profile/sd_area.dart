@@ -107,3 +107,25 @@ class SdSection extends StatelessWidget {
         ]),
       );
 }
+
+/// A student sub-page whose body keeps its own scrolling: the hero band (no ride-up) on top, the body under it.
+/// On a short phone window the hero is left out so the body keeps the room.
+class SdHeroColumn extends StatelessWidget {
+  const SdHeroColumn({super.key, required this.title, this.subtitle, this.icon, required this.child});
+
+  final String title;
+  final String? subtitle;
+  final IconData? icon;
+  final Widget child;
+
+  static const double _minHeight = 560;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        if (box.hasBoundedHeight && box.maxHeight < _minHeight) return child;
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppHero(title: title, subtitle: subtitle, icon: icon, overlap: false),
+          Expanded(child: child),
+        ]);
+      });
+}

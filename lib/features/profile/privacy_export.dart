@@ -15,6 +15,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -367,7 +368,7 @@ class _DataExportPageState extends State<DataExportPage> {
       appBar: ScreenAppBar(title: t('تنزيل بياناتي', 'Download my data'), actions: [
         IconButton(tooltip: t('تحديث', 'Refresh'), icon: const Icon(Icons.refresh_rounded), onPressed: _load),
       ]),
-      child: DataExportView(
+      child: SdHeroColumn(title: 'sd_h_data'.tr, subtitle: 'sd_h_data_d'.tr, icon: Icons.inventory_2_outlined, child: DataExportView(
         status: _s,
         loading: _loading,
         requesting: _requesting,
@@ -376,7 +377,7 @@ class _DataExportPageState extends State<DataExportPage> {
         onRequest: _request,
         onDownload: _download,
         onRetry: _load,
-      ),
+      )),
     ));
   }
 }

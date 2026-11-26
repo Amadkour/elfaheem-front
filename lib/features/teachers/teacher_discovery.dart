@@ -1146,7 +1146,7 @@ class _MyTeachersPageState extends State<MyTeachersPage> {
   Widget build(BuildContext context) => SdArea(area: AppArea.learn, child: BasePage(
         width: AppWidth.reading,
         appBar: ScreenAppBar(title: t('معلميّ', 'My teachers')),
-        child: SafeArea(
+        child: SdHeroColumn(title: 'sd_h_my_teachers'.tr, subtitle: 'sd_h_my_teachers_d'.tr, icon: Icons.how_to_reg_outlined, child: SafeArea(
           child: _items == null
               ? (_error == null ? const AppListSkeleton(items: 3) : AppErrorState(message: _error, onRetry: _load))
               : MyTeachersView(
@@ -1161,7 +1161,7 @@ class _MyTeachersPageState extends State<MyTeachersPage> {
                     if (mounted) unawaited(_load());
                   },
                 ),
-        ),
+        )),
       ));
 }
 

@@ -12,6 +12,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
@@ -304,7 +305,7 @@ class _SelfLearningPageState extends State<SelfLearningPage> {
     return SdArea(area: AppArea.quran, child: BasePage(
       width: AppWidth.reading,
       appBar: ScreenAppBar(title: t('تعلّمي اليومي', 'My daily learning')),
-      child: SafeArea(
+      child: SdHeroColumn(title: 'sd_h_daily'.tr, subtitle: 'sd_h_daily_d'.tr, icon: Icons.today_rounded, child: SafeArea(
         child: AppRefresh(
           onRefresh: () => _store.load(force: true),
           child: SlDailyView(
@@ -320,7 +321,7 @@ class _SelfLearningPageState extends State<SelfLearningPage> {
             onReviewed: (item, right) => _store.reviewed(item, right: right),
           ),
         ),
-      ),
+      )),
     ));
   }
 }
