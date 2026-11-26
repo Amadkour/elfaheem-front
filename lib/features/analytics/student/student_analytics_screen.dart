@@ -16,7 +16,9 @@
 // Uses the dashboard's StudentAnalyticsProvider when there is one (so the dashboard's refresh button refreshes what
 // you see), otherwise creates its own.
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppFlipIn, AppReveal;
+import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
+import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -189,9 +191,8 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
       body = _summary(prov);
     }
 
-    return BasePage(
+    return AppAreaScope(area: AppArea.me, child: BasePage(
       key: const ValueKey('analytics'),
-      useWebCard: true,
       width: AppWidth.wide,
       child: ColoredBox(
         color: c.background,
@@ -203,28 +204,35 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
           ),
         ),
       ),
-    );
+    ));
   }
 
-  Widget _header(StudentAnalyticsProvider prov) {
-    final first = (prov.profile?.name ?? '').trim().split(RegExp(r'\s+')).first;
-    return AnalyticsMasthead(
-      title: anTr('an2_title', 'Analytics'),
-      subtitle: first.isEmpty
-          ? anTr('an2_sub_student', 'How your learning is going')
-          : anFmt('an2_sub_student_name', {'name': first}, 'Hi {name}, here is how your learning is going.'),
-      actions: [AnalyticsHeaderAction(icon: Icons.refresh_rounded, tooltip: anTr('an_refresh', 'Refresh'), onTap: prov.loadCourses)],
-    );
-  }
-
-  Widget _withHeader(StudentAnalyticsProvider prov, Widget child) => Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xl),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          _header(prov),
-          AppSpace.gapLg,
-          child,
-        ]),
+  // redesign S-C (Stu2Analysis?screen=overview): the "me" area. A hero that says how it is going in one line (the
+  // key words underlined, M7), "For you now" (what to do next, ONE forward button), "Your courses" (a bar per
+  // course in its subject's colour, the full profile one tap away), then the counts and the exam results.
+  Widget _withHeader(StudentAnalyticsProvider prov, Widget child) => ListView(
+        padding: const EdgeInsets.only(bottom: AppSpace.xl),
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          AppHeroOverlap(
+            hero: AppHero(kicker: _kicker(prov), title: 'sc_an_title'.tr, actions: const []),
+            body: Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.md), child: AppCard(child: child)),
+          ),
+        ],
       );
+
+  String _kicker(StudentAnalyticsProvider prov) {
+    final first = (prov.profile?.name ?? '').trim().split(RegExp(r'\s+')).first;
+    return first.isEmpty ? 'sc_an_kicker_plain'.tr : 'sc_an_kicker'.tr.replaceAll('{name}', first);
+  }
+
+  IconData _insightIcon(AnInsight i) => switch (i.target) {
+        AnTarget.attendance => Icons.event_available_outlined,
+        AnTarget.exams => Icons.quiz_outlined,
+        AnTarget.review => Icons.bookmark_border_rounded,
+        _ => Icons.menu_book_outlined,
+      };
 
   Widget _summary(StudentAnalyticsProvider prov) {
     final facts = studentCourseFacts(prov);
@@ -232,40 +240,102 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
     final p = prov.profile;
     final metrics = p == null ? const [AnMetric.progress] : anAvailableMetrics(facts);
     final metric = metrics.contains(_metric) ? _metric : (metrics.isEmpty ? AnMetric.progress : metrics.first);
+    final wide = MediaQuery.sizeOf(context).width >= Breakpoints.desktop;
+    final k = context.colors.kit;
 
-    // ── hero: the page's one memorable element, the learner's rings on the peach block
-    final rings = [
-      for (final m in p == null ? const [AnMetric.progress] : AnMetric.values)
-        AnRingSpec(
-          metric: m,
-          value: totals.value(m),
-          delta: totals.delta(m),
-          detail: m == AnMetric.attendance && totals.held > 0
-              ? anFmt('an2_sessions_of', {'a': totals.attended, 'sessions': anSessionsWord(totals.held)}, '{a} of {sessions}')
-              : null,
-        ),
-    ];
+    // ── hero: one line, the good words underlined; the overall figures sit on it on the web only
+    final good = facts.where((f) => !anCourseNeedsAttention(f)).length;
+    final word = 'sc_an_going_well'.tr;
     final hero = ParentComponent(
       featureKey: 'analytics.header',
-      child: AnalyticsHeroBlock(
-        headline: anHeadlineText(studentHeadline(facts)),
-        rings: rings,
-        overall: p == null ? totals.progress : totals.overall,
-        overallLabel: p == null ? anMetricLabel(AnMetric.progress) : null,
-        memoryKey: 'analytics.overall',
-        footer: p == null
-            ? null
-            : ParentComponent(
-                featureKey: 'data_lab.my_profile',
-                child: AnShowAllRow(
-                  label: anTr('an_full_profile', 'My full analytics profile'),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentAnalyticsProfileScreen.forStudent())),
-                ),
-              ),
+      child: AppHero(
+        kicker: _kicker(prov),
+        title: appDigits('sc_an_headline'.tr.replaceAll('{word}', word).replaceAll('{n}', '$good').replaceAll('{m}', '${facts.length}')),
+        squiggle: word,
+        stats: [
+          AppHeroStat(icon: Icons.trending_up_rounded, value: '${(totals.value(AnMetric.progress) ?? 0).round()}%', label: anMetricLabel(AnMetric.progress)),
+          if (p != null && totals.value(AnMetric.attendance) != null)
+            AppHeroStat(icon: Icons.event_available_outlined, value: '${totals.value(AnMetric.attendance)!.round()}%', label: anMetricLabel(AnMetric.attendance)),
+          if (p != null && totals.value(AnMetric.exams) != null)
+            AppHeroStat(icon: Icons.quiz_outlined, value: '${totals.value(AnMetric.exams)!.round()}%', label: anMetricLabel(AnMetric.exams)),
+        ],
       ),
     );
 
-    // ── tiles: four soft-wash counts (D-1081); the key one (exams passed, or what is finished without the profile) leads
+    // ── for you now: what to do next, the first one moves the student forward
+    final insights = studentInsights(facts);
+    final forYou = insights.isEmpty
+        ? null
+        : AppCard(
+            title: 'sc_an_for_you_now'.tr,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              for (final (n, i) in insights.indexed) ...[
+                if (n > 0) const SizedBox(height: AppSpace.sm),
+                AppTile(
+                  icon: _insightIcon(i),
+                  tone: switch (i.tone) { AnTone.warn => k.warn, AnTone.good => k.ok, AnTone.info => null },
+                  title: anInsightText(i),
+                  subtitle: i.course.isEmpty ? null : i.course,
+                  selected: n == 0 && _insightAction(i) != null,
+                  onTap: _insightAction(i),
+                  trailing: _insightAction(i) == null
+                      ? null
+                      : n == 0
+                          ? AppButton.hot(label: 'sc_an_open'.tr, size: AppButtonSize.sm, onPressed: _insightAction(i))
+                          : AppButton.secondary(label: 'sc_an_look'.tr, size: AppButtonSize.sm, onPressed: _insightAction(i)),
+                ),
+              ],
+            ]),
+          );
+
+    // ── your courses: one bar per course in the subject's colour
+    final tab = switch (metric) {
+      AnMetric.progress => 0,
+      AnMetric.attendance => 1,
+      AnMetric.exams => 2,
+    };
+    final rows = anRankBy(facts, metric);
+    final courses = AppCard(
+      title: 'sc_an_your_courses'.tr,
+      action: p == null
+          ? AppButton.ghost(label: anFmt('an2_all_courses', {'n': facts.length}, 'All courses ({n})'), size: AppButtonSize.sm, onPressed: _openAll)
+          : ParentComponent(
+              featureKey: 'data_lab.my_profile',
+              child: AppButton.ghost(
+                  label: 'sc_an_full_profile'.tr,
+                  size: AppButtonSize.sm,
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StudentAnalyticsProfileScreen.forStudent()))),
+            ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (metrics.length > 1) ...[
+          AppTabs(
+            expand: true,
+            index: metrics.indexOf(metric),
+            onChanged: (i) => setState(() => _metric = metrics[i]),
+            items: [for (final m in metrics) AppTabItem(anMetricLabel(m))],
+          ),
+          AppSpace.gapMd,
+        ],
+        for (final (i, f) in rows.indexed) ...[
+          if (i > 0) Divider(height: AppSpace.lg, thickness: AppBorder.hairline, color: k.line),
+          AppFlipIn(index: i, group: 'sc.an.courses', child: ScCourseBar(
+            title: f.title,
+            value: f.value(metric),
+            needsPush: anCourseNeedsAttention(f),
+            onTap: () => _openCourse(f.id, tab),
+          )),
+        ],
+        if (p != null) ...[
+          AppSpace.gapSm,
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: AppButton.ghost(label: anFmt('an2_all_courses', {'n': facts.length}, 'All courses ({n})'), size: AppButtonSize.sm, onPressed: _openAll),
+          ),
+        ],
+      ]),
+    );
+
+    // ── the counts (on the page, never in the phone hero)
     final allExams = <(EnrolledCourse, DlExam)>[
       for (final course in prov.courses)
         for (final e in prov.blockOf(course.id)?.exams ?? const <DlExam>[])
@@ -275,95 +345,18 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
     final completed = facts.where((x) => (x.progress ?? 0) >= 100).length;
     final tiles = AppKpiGrid(children: [
       if (p != null) ...[
-        AppStatCard(
-          icon: Icons.verified_rounded,
-          label: anTr('an2_tile_passed', 'Exams passed'),
-          value: allExams.isEmpty ? '–' : '$passed/${allExams.length}',
-          // every exam passed is an achievement: the gold block
-          tone: allExams.isNotEmpty && passed == allExams.length ? AppBlockTone.gold : AppBlockTone.peach,
-        ),
-        AppStatCard(
-          tone: AppBlockTone.emerald,
-          icon: Icons.menu_book_rounded,
-          label: anTr('an_courses', 'Courses'),
-          value: '${prov.courses.length}',
-          onTap: _openAll,
-        ),
-        AppStatCard(
-          tone: AppBlockTone.sky,
-          icon: Icons.event_available_rounded,
-          label: anTr('an2_tile_attended', 'Sessions attended'),
-          value: totals.held == 0 ? '–' : '${totals.attended}/${totals.held}',
-        ),
-        AppStatCard(
-          tone: AppBlockTone.peach,
-          icon: Icons.bookmark_rounded,
-          label: anTr('an2_tile_saved', 'Saved to review'),
-          value: '${p.reviewFlags}',
-        ),
+        AppStatTile(icon: Icons.verified_outlined, label: anTr('an2_tile_passed', 'Exams passed'), value: allExams.isEmpty ? '–' : appDigits('$passed/${allExams.length}')),
+        AppStatTile(icon: Icons.menu_book_outlined, label: anTr('an_courses', 'Courses'), value: appDigits('${prov.courses.length}')),
+        AppStatTile(icon: Icons.event_available_outlined, label: 'sc_an_classes_attended'.tr, value: totals.held == 0 ? '–' : appDigits('${totals.attended}/${totals.held}')),
+        AppStatTile(icon: Icons.bookmark_border_rounded, label: anTr('an2_tile_saved', 'Saved to review'), value: appDigits('${p.reviewFlags}')),
       ] else ...[
-        AppStatCard(
-          icon: Icons.task_alt_rounded,
-          label: anTr('an2_tile_completed', 'Completed'),
-          value: '$completed',
-          tone: completed > 0 ? AppBlockTone.emerald : AppBlockTone.peach,
-        ),
-        AppStatCard(
-          tone: AppBlockTone.gold,
-          icon: Icons.menu_book_rounded,
-          label: anTr('an_courses', 'Courses'),
-          value: '${prov.courses.length}',
-          onTap: _openAll,
-        ),
-        AppStatCard(
-          tone: AppBlockTone.sky,
-          icon: Icons.video_library_rounded,
-          label: anTr('an2_tile_lectures', 'Lectures'),
-          value: '${prov.courses.fold<int>(0, (s, x) => s + x.sessionsCount)}',
-        ),
-        AppStatCard(
-          tone: AppBlockTone.peach,
-          icon: Icons.play_circle_rounded,
-          label: anTr('an2_tile_in_progress', 'In progress'),
-          value: '${facts.where((x) => (x.progress ?? 0) > 0 && (x.progress ?? 0) < 100).length}',
-        ),
+        AppStatTile(icon: Icons.task_alt_rounded, label: anTr('an2_tile_completed', 'Completed'), value: appDigits('$completed')),
+        AppStatTile(icon: Icons.menu_book_outlined, label: anTr('an_courses', 'Courses'), value: appDigits('${prov.courses.length}')),
+        AppStatTile(icon: Icons.video_library_outlined, label: 'sc_an_lessons'.tr, value: appDigits('${prov.courses.fold<int>(0, (s, x) => s + x.sessionsCount)}')),
+        AppStatTile(icon: Icons.play_circle_outline_rounded, label: anTr('an2_tile_in_progress', 'In progress'),
+            value: appDigits('${facts.where((x) => (x.progress ?? 0) > 0 && (x.progress ?? 0) < 100).length}')),
       ],
     ]);
-
-    // ── for you
-    final insights = studentInsights(facts);
-    final insightCard = insights.isEmpty
-        ? null
-        : AnInsightCard(
-            title: anTr('an2_for_you', 'For you'),
-            rows: [for (final i in insights) AnInsightRowData(tone: i.tone, text: anInsightText(i), onTap: _insightAction(i))],
-          );
-
-    // ── courses chart
-    final tab = switch (metric) {
-      AnMetric.progress => 0,
-      AnMetric.attendance => 1,
-      AnMetric.exams => 2,
-    };
-    final chart = AnCourseBars(
-      title: anTr('an2_your_courses', 'Your courses'),
-      metric: metric,
-      metrics: metrics,
-      onMetric: (m) => setState(() => _metric = m),
-      rows: [
-        for (final f in anRankBy(facts, metric))
-          AnBarRowData(
-            title: f.title,
-            value: f.value(metric),
-            classValue: f.classValue(metric),
-            detail: metric == AnMetric.attendance && f.held > 0 ? '${f.attended}/${f.held}' : null,
-            flag: anCourseNeedsAttention(f),
-            onTap: () => _openCourse(f.id, tab),
-          ),
-      ],
-      onShowAll: _openAll,
-      showAllLabel: anFmt('an2_all_courses', {'n': facts.length}, 'All courses ({n})'),
-    );
 
     // ── exam results: the ones below the pass mark first (they need you), then the best
     allExams.sort((a, b) {
@@ -378,23 +371,69 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
             subtitle: anFmt('an2_passed_of', {'n': passed, 'm': allExams.length}, '{n} of {m} passed'),
             rows: [
               for (final (course, e) in allExams)
-                AnExamRow(
-                  name: e.name,
-                  course: course.title,
-                  score: e.best,
-                  passed: e.passed,
-                  onTap: () => _openCourse(course.id, 2),
-                ),
+                AnExamRow(name: e.name, course: course.title, score: e.best, passed: e.passed, onTap: () => _openCourse(course.id, 2)),
             ],
           );
 
-    return AnSummaryLayout(
-      header: _header(prov),
-      hero: hero,
-      tiles: tiles,
-      insights: insightCard,
-      chart: chart,
-      lists: [?exams],
+    final main = <Widget>[?forYou, courses];
+    final side = <Widget>[tiles, ?exams];
+    final gutter = wide ? AppSpace.lg : AppSpace.md;
+    final content = wide
+        ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(flex: 3, child: Column(children: [for (final w in main) ...[w, AppSpace.gapMd]])),
+            SizedBox(width: gutter),
+            Expanded(flex: 2, child: Column(children: [for (final w in side) ...[w, AppSpace.gapMd]])),
+          ])
+        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final w in [...main, ...side]) ...[w, AppSpace.gapMd],
+          ]);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.xl),
+      child: AppHeroOverlap(hero: hero, body: Padding(padding: EdgeInsets.symmetric(horizontal: gutter), child: content)),
+    );
+  }
+}
+
+/// One course on "Your courses" (plain values): the subject's icon box, the name (a "needs a push" tag when it
+/// does), a bar in the subject's colour and the figure at the end.
+class ScCourseBar extends StatelessWidget {
+  const ScCourseBar({super.key, required this.title, required this.value, this.needsPush = false, this.onTap});
+
+  final String title;
+  final double? value;
+  final bool needsPush;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final sub = subjectColors(context, title);
+    final v = (value ?? 0).clamp(0.0, 100.0);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.tile),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+        child: Row(children: [
+          AppIconBox(icon: Icons.menu_book_rounded, tone: sub.tone, solid: true),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
+                Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context))),
+                if (needsPush) ...[
+                  const SizedBox(width: AppSpace.xs),
+                  Flexible(child: AppStatusBadge(label: 'sc_an_needs_push'.tr, tone: AppTone.warning)),
+                ],
+              ]),
+              const SizedBox(height: AppSpace.xs),
+              AppProgressBar(value: value == null ? null : v.toDouble(), color: sub.tone.color),
+            ]),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Text(value == null ? '–' : appDigits('${v.round()}%'),
+              style: AppType.label(context).copyWith(color: sub.tone.ink, fontWeight: FontWeight.w600)),
+        ]),
+      ),
     );
   }
 }
