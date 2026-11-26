@@ -18,10 +18,10 @@ Statuses: todo / doing / done / verified. On a resume, continue from the first l
 | B4 | Backend WP4 nicknames, WP10 notebook, WP11 meetings/bot (0150, 0151) | done (merged) |
 | B5 | Backend WP8 payments per country + WP9 teacher demand (0160-0162) | done (merged; head 0162; 6 suites = 688 checks green) |
 | B6 | Demand card subject keys + front contract snapshot refresh (rd/demand-key) | done |
-| 2 | Student | doing: S-A, S-B, S-C merged; S-D (rd/s-d) in progress. Owed: S-A bodies of categories/journey/recs/guest search/guest live/legal; back `price_label`/`outcomes` on /public/share; guide entry n_notebook (course.notebook) |
+| 2 | Student | doing: S-A, S-B, S-C, S-D merged. Owed: S-A bodies of categories/journey/recs/guest search/guest live/legal; back `price_label`/`outcomes` on /public/share; guide entry n_notebook (course.notebook) |
 | 3 | Booking and subject flow | doing (rd/bk) |
 | 4 | Parent (incl. child code login) | doing (rd/pa) |
-| 5 | Teacher | doing: T2 merged (incl. super admin ads/store); T2b (rd/t2b: schedule, account, complaints, chat) in progress; T1 todo |
+| 5 | Teacher | doing: T2 merged (incl. super admin ads/store); T2b (rd/t2b: schedule, account, complaints, chat) and T1 (rd/t1) in progress |
 | 6 | Admin and super admin | doing: A2 merged; A1 (rd/a1) in progress |
 | 7 | Landing (persona pages; rd/landing merged) | done (visual verify in phase 9) |
 | 8 | International pass | todo |
