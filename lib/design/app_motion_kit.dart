@@ -39,6 +39,8 @@
 // widget, never the page around it; nothing loops.
 library;
 
+export 'motion/motion.dart';
+
 import 'dart:collection';
 import 'dart:math' as math;
 
@@ -48,6 +50,9 @@ import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
+
+import 'motion/motion_spec.dart' show AppMotionSpec;
 
 /// The Super Admin's switch for every account (feature catalog). In the disable list = animations OFF for all.
 const String kAnimationsFeatureKey = 'app.animations';
@@ -390,7 +395,8 @@ class _AppCountUpState extends State<AppCountUp> with SingleTickerProviderStateM
     }
     if (widget.roll) _planRoll(parts, from, live: live);
     _from = from;
-    _c.duration = Duration(milliseconds: initial ? 900 : 600);
+    // M10 (KIT_SPEC §4.2): a roll runs 900 ms per column, 80 ms between columns, after a 200 ms start delay
+    _c.duration = widget.roll ? _rollTotal(_cols.length) : Duration(milliseconds: initial ? 900 : 600);
     _c.forward(from: 0);
   }
 
@@ -425,10 +431,24 @@ class _AppCountUpState extends State<AppCountUp> with SingleTickerProviderStateM
       }
       final b = to[i].toDouble();
       final delta = up ? (b - a) % 10 : -((a - b) % 10);
-      cols.add(_RollColumn(from: a, to: a + delta, delay: math.min(i, 4) * 0.06, appear: appear));
+      cols.add(_RollColumn(from: a, to: a + delta, delay: 0, appear: appear));
     }
-    _cols = cols;
+    final total = _rollTotal(cols.length).inMicroseconds;
+    final span = AppMotionSpec.odometer.inMicroseconds / total;
+    _cols = [
+      for (var i = 0; i < cols.length; i++)
+        _RollColumn(
+          from: cols[i].from,
+          to: cols[i].to,
+          delay: (AppMotionSpec.odometerDelay + AppMotionSpec.odometerColumn * math.min(i, 4)).inMicroseconds / total,
+          span: span,
+          appear: cols[i].appear,
+        ),
+    ];
   }
+
+  static Duration _rollTotal(int columns) =>
+      AppMotionSpec.odometerDelay + AppMotionSpec.odometer + AppMotionSpec.odometerColumn * math.min(math.max(columns - 1, 0), 4);
 
   @override
   void dispose() {
@@ -444,7 +464,7 @@ class _AppCountUpState extends State<AppCountUp> with SingleTickerProviderStateM
     return s.copyWith(fontFeatures: [...?s.fontFeatures, const FontFeature.tabularFigures()]);
   }
 
-  Text _text(String s) => Text(s,
+  Text _text(String s) => Text(appDigits(s),
       style: _style, maxLines: widget.maxLines, textAlign: widget.textAlign, textDirection: widget.textDirection, softWrap: false);
 
   @override
@@ -525,16 +545,19 @@ class _AppCountUpState extends State<AppCountUp> with SingleTickerProviderStateM
 /// starting [delay] (a fraction of the run) after the ones.
 @immutable
 class _RollColumn {
-  const _RollColumn({required this.from, required this.to, required this.delay, required this.appear});
+  const _RollColumn({required this.from, required this.to, required this.delay, required this.appear, this.span = 1});
 
   final double from, to, delay;
+
+  /// The share of the run one column takes (M10: 900 ms of the whole).
+  final double span;
 
   /// A column the old number did not have: it fades in while it rolls.
   final bool appear;
 
-  double _k(double t) => t <= delay ? 0 : ((t - delay) / (1 - delay)).clamp(0.0, 1.0);
+  double _k(double t) => t <= delay ? 0 : ((t - delay) / math.max(math.min(span, 1 - delay), 1e-6)).clamp(0.0, 1.0);
 
-  double at(double t) => from + (to - from) * Curves.easeOutCubic.transform(_k(t));
+  double at(double t) => from + (to - from) * AppMotionSpec.odometerCurve.transform(_k(t));
 
   double fade(double t) => appear ? Curves.easeOut.transform(_k(t)) : 1;
 }
@@ -545,7 +568,7 @@ class _DigitGlyphs {
     var w = 0.0, h = 0.0;
     for (var d = 0; d < 10; d++) {
       final tp = TextPainter(
-        text: TextSpan(text: '$d', style: style),
+        text: TextSpan(text: appDigits('$d'), style: style),
         textDirection: TextDirection.ltr,
         textScaler: scaler,
         maxLines: 1,
@@ -669,6 +692,18 @@ class _AppBumpState extends State<AppBump> with SingleTickerProviderStateMixin {
 //  Entrances
 // ─────────────────────────────────────────────────────────────────────────────
 
+final Expando<Set<String>> _playedOnRoute = Expando('appPlayOnce');
+final Object _noRoute = Object();
+
+/// True the first time [key] is asked for on this route (the route of [context]; none: one app-wide set), false on
+/// every later call: a one-shot entrance plays once per route and is simply there when rebuilt, refreshed or scrolled
+/// back into view. Shared by [AppReveal] and the redesign motion library (KIT_SPEC §4.2 "Played once").
+bool appPlayOnce(BuildContext context, String key) {
+  final owner = ModalRoute.of(context) ?? _noRoute;
+  final played = _playedOnRoute[owner] ??= <String>{};
+  return played.add(key);
+}
+
 /// A one-shot staggered entrance: fade in + rise [rise] px, [index] x 50 ms later than the first (capped). Only the
 /// first [cap] indexes move (a long list's later items just appear), and each `group:index` plays once per route:
 /// rebuilt, refreshed or scrolled back into view, it is simply there.
@@ -681,8 +716,6 @@ class AppReveal extends StatefulWidget {
   final int cap;
   final Widget child;
 
-  static final Expando<Set<String>> _played = Expando('AppReveal');
-  static final Object _noRoute = Object();
 
   @override
   State<AppReveal> createState() => _AppRevealState();
@@ -700,9 +733,7 @@ class _AppRevealState extends State<AppReveal> with SingleTickerProviderStateMix
     _decided = true;
     final w = widget;
     if (w.index >= w.cap || appMotionOff(context)) return;
-    final owner = ModalRoute.of(context) ?? AppReveal._noRoute;
-    final played = AppReveal._played[owner] ??= <String>{};
-    if (!played.add('${w.group}:${w.index}')) return;
+    if (!appPlayOnce(context, '${w.group}:${w.index}')) return;
     final delay = math.min(w.index, 7) * 50;
     final total = 380 + delay;
     final c = AnimationController(vsync: this, duration: Duration(milliseconds: total));
