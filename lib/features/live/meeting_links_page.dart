@@ -27,6 +27,8 @@ import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/admin/admin_page.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
+import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_live_join.dart' show openCourseLiveRoom;
 import 'package:flutter_education_app/features/calendar/calendar_api.dart' show RemoteCalendarApi;
 import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show openMeetingRoom, startQuickMeeting;
@@ -175,7 +177,9 @@ class _MeetingLinksPageState extends State<MeetingLinksPage> {
   @override
   Widget build(BuildContext context) {
     final d = _data;
-    return AdminPage(
+    // a student's links page is the schedule area (redesign S-C, Stu2Schedule?screen=links)
+    final student = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role == 'student';
+    final page = AdminPage(
       title: t('روابط الاجتماعات', 'Meeting links'),
       subtitle: t('كل روابط حصصك واجتماعاتك في مكان واحد: انضم، انسخ، شارك.',
           'Every session and meeting link in one place: join, copy, share.'),
@@ -193,7 +197,7 @@ class _MeetingLinksPageState extends State<MeetingLinksPage> {
       search: d == null || d.items.isEmpty
           ? null
           : AppSearchField(
-              hint: t('ابحث بالعنوان أو الكورس أو المضيف', 'Search by title, course or host'),
+              hint: t('ابحث بالعنوان أو الدورة أو المضيف', 'Search by title, course or host'),
               onChanged: (v) => setState(() => _query = v),
             ),
       body: d == null
@@ -202,6 +206,7 @@ class _MeetingLinksPageState extends State<MeetingLinksPage> {
               : AppEmpty(icon: Icons.cloud_off_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load))
           : AppRefresh(onRefresh: _load, child: _list(context, d)),
     );
+    return student ? AppAreaScope(area: AppArea.sched, child: page) : page;
   }
 
   Widget _list(BuildContext context, MeetingLinksData d) {

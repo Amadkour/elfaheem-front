@@ -3,7 +3,10 @@ import 'package:flutter_education_app/features/help/help_info_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppFill, AppOdometer, AppReveal, AppTilt;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppBurst, AppFill, AppOdometer, AppReveal, AppSlap, AppTilt, BurstMoment;
+import 'package:flutter_education_app/core/app_digits.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart' show AppFonts;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -27,9 +30,12 @@ String resultStateText(String state, {bool needsReview = false}) => switch (stat
 /// achievements and top marks).
 const double examTopMarkPercent = 90;
 
-/// Plain-values body for the harness.
+/// Plain-values body for the harness (redesign S-C, Stu2Exams?screen=result): the outcome in the hero ("Well done,
+/// Faisal, you passed" with the squiggle, "Almost", "With the teacher"), the score card riding on it (the ring draws
+/// in, M2, the "Passed" stamp slaps on, M4, and a pass fires the bounded burst, M11), then "Your answers" with one
+/// filter row (all · right · wrong · partial) and the regrade request on each marked answer.
 class ExamResultBody extends StatelessWidget {
-  const ExamResultBody({super.key, required this.result, required this.examTitle, this.appeals = const {}, this.onAppeal});
+  const ExamResultBody({super.key, required this.result, required this.examTitle, this.appeals = const {}, this.onAppeal, this.firstName, this.onDone});
   final Map<String, dynamic> result;
   final String examTitle;
 
@@ -39,119 +45,288 @@ class ExamResultBody extends StatelessWidget {
   /// null = appeals not offered (not allowed, not loaded, or the window closed)
   final void Function(int questionId)? onAppeal;
 
+  /// The student's first name for the hero ("Well done, Faisal").
+  final String? firstName;
+
+  /// "Back to the course" (null: no button).
+  final VoidCallback? onDone;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final visible = result['visible'] == true;
     final state = '${result['state'] ?? ''}';
     final needsReview = result['needs_review'] == true;
     final percentage = (result['percentage'] as num?)?.toDouble();
-    final passed = result['passed'];
+    final passed = result['passed'] is bool ? result['passed'] as bool : null;
     final questions = asMapList(result['questions']);
     final answers = [for (final a in asMapList(result['answers'])) ResultAnswer.fromJson(a)];
-    return ExamPageWidth(width: AppWidth.reading, builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, AppSpace.md, side, AppSpace.xl), children: [
+    final score = result['score'] == null ? null : fmtScore(result['score']);
+    final max = fmtScore(result['max_score'] ?? '');
+    final name = firstName == null ? '' : t(' يا $firstName', ', $firstName');
+    final word = t('مبروك', 'Well done');
+    final (title, sub) = !visible
+        ? (t('إجاباتك وصلت للمعلم', 'Your answers reached the teacher'), t('نعلمك أول ما تطلع النتيجة', "We'll tell you as soon as the result is out"))
+        : passed == true
+            ? (t('$word$name، نجحت', '$word$name, you passed'), score == null ? resultStateText(state, needsReview: needsReview) : t('$score من $max', '$score of $max'))
+            : passed == false
+                ? (t('قربت$name', 'Almost there$name'), score == null ? resultStateText(state, needsReview: needsReview) : t('$score من $max', '$score of $max'))
+                : (resultStateText(state, needsReview: needsReview), score == null ? null : t('$score من $max', '$score of $max'));
+    final hero = AppHero(
+      kicker: examTitle,
+      title: appDigits(title),
+      squiggle: visible && passed == true ? word : null,
+      subtitle: sub == null ? null : appDigits(sub),
+    );
+    final cards = <Widget>[
       if (!visible)
-        _PendingBlock(examTitle: examTitle, stateText: resultStateText(state, needsReview: needsReview), needsReview: needsReview)
-      else ...[
-        ExamScoreBlock(
-          examTitle: examTitle,
-          stateText: resultStateText(state, needsReview: needsReview),
+        _PendingBlock(examTitle: examTitle, stateText: resultStateText(state, needsReview: needsReview), needsReview: needsReview, onDone: onDone)
+      else
+        ExamScoreCard(
           percentage: percentage,
-          score: result['score'] == null ? null : '${result['score']}',
-          maxScore: '${result['max_score'] ?? ''}',
-          passed: passed is bool ? passed : null,
+          score: score,
+          maxScore: max,
+          passed: passed,
           needsReview: needsReview,
+          stateText: resultStateText(state, needsReview: needsReview),
           memoryKey: 'exam.result.${result['attempt_id'] ?? examTitle}',
+          onDone: onDone,
         ),
-        if (answers.isNotEmpty)
-          AppSection(
-            title: t('إجاباتك', 'Your answers'),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              for (final (i, a) in answers.indexed)
-                AppReveal(
-                  index: i,
-                  group: 'exam.result',
-                  child: ResultAnswerCard(answer: a, footer: a.score == null || a.isVoided ? null : _appealLine(context, a.questionId, true)),
+      if (visible && answers.isNotEmpty)
+        _AnswersCard(answers: answers, appealLine: (a) => a.score == null || a.isVoided ? null : _appealLine(context, a.questionId, true))
+      else if (visible && questions.isNotEmpty)
+        AppCard(
+          title: t('حسب السؤال', 'Per question'),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final (i, q) in questions.indexed) ...[
+              if (i > 0) Divider(height: AppSpace.lg, thickness: AppBorder.hairline, color: context.colors.kit.line),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                ExamVerdictMark(verdict: q['score'] == null ? ExamVerdict.pending : examVerdictOf(score: (q['score'] as num?)?.toDouble(), max: (q['max'] as num?)?.toDouble())),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  flex: 3,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpace.xxs),
+                      // D-1131: the question's place on the paper (an older server sends none: the row's order)
+                      child: Text(appDigits(t('السؤال ${q['position'] ?? i + 1}', 'Question ${q['position'] ?? i + 1}')), style: AppType.bodyStrong(context)),
+                    ),
+                    ?_appealLine(context, asInt(q['question_id']), q['score'] != null),
+                  ]),
                 ),
-            ]),
-          )
-        else if (questions.isNotEmpty)
-          AppSection(
-            title: t('حسب السؤال', 'Per question'),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              for (final (i, q) in questions.indexed)
-                AppReveal(
-                  index: i,
-                  group: 'exam.result',
-                  child: AppCard(
-                    margin: const EdgeInsets.only(bottom: AppSpace.sm),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      ExamVerdictMark(verdict: q['score'] == null ? ExamVerdict.pending : examVerdictOf(score: (q['score'] as num?)?.toDouble(), max: (q['max'] as num?)?.toDouble())),
-                      const SizedBox(width: AppSpace.sm),
-                      Expanded(
-                        flex: 3,
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: AppSpace.xxs),
-                            // D-1131: the question's place on the paper (an older server sends none: the row's order)
-                            child: Text(t('السؤال ${q['position'] ?? i + 1}', 'Question ${q['position'] ?? i + 1}'), style: AppType.bodyStrong(context)),
-                          ),
-                          ?_appealLine(context, asInt(q['question_id']), q['score'] != null),
-                        ]),
-                      ),
-                      const SizedBox(width: AppSpace.sm),
-                      // the mark sits at the row's end, in a smaller share that wraps rather than overflows
-                      Expanded(
-                        flex: 2,
-                        child: Padding(
-                        padding: const EdgeInsets.only(top: AppSpace.xxs),
-                        child: Text(
-                            q['score'] == null
-                                ? t('قيد المراجعة', 'Under review')
-                                : (q['max'] is num ? '${fmtScore(q['score'])} / ${fmtScore(q['max'])}' : fmtScore(q['score'])),
-                            textAlign: TextAlign.end, maxLines: 2, overflow: TextOverflow.ellipsis,
-                            style: AppType.label(context).copyWith(
-                                color: q['score'] == null ? c.textMedium : c.textDark,
-                                fontWeight: FontWeight.w600,
-                                fontFeatures: const [FontFeature.tabularFigures()])),
-                      )),
-                    ]),
+                const SizedBox(width: AppSpace.sm),
+                // the mark sits at the row's end, in a smaller share that wraps rather than overflows
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: AppSpace.xxs),
+                    child: Text(
+                        q['score'] == null
+                            ? t('قيد المراجعة', 'Under review')
+                            : appDigits(q['max'] is num ? t('${fmtScore(q['score'])} من ${fmtScore(q['max'])}', '${fmtScore(q['score'])} of ${fmtScore(q['max'])}') : fmtScore(q['score'])),
+                        textAlign: TextAlign.end,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.label(context).copyWith(
+                            color: q['score'] == null ? context.colors.textMedium : context.colors.textDark,
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: const [FontFeature.tabularFigures()])),
                   ),
                 ),
-            ]),
+              ]),
+            ],
+          ]),
+        ),
+    ];
+    return AppAreaScope(
+      area: AppArea.exam,
+      child: ExamPageWidth(
+        width: AppWidth.reading,
+        builder: (side) => ListView(padding: const EdgeInsets.only(bottom: AppSpace.xl), children: [
+          AppHeroOverlap(
+            hero: hero,
+            body: Padding(
+              padding: EdgeInsets.symmetric(horizontal: side),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                for (var i = 0; i < cards.length; i++) ...[if (i > 0) const SizedBox(height: AppSpace.md), cards[i]],
+              ]),
+            ),
           ),
-      ],
-    ]));
+        ]),
+      ),
+    );
   }
 }
 
-/// The result before it is published: a calm sky block that says why and when it will appear.
+/// The result before it is published: why and when it will appear, calm (a result is never an error).
 class _PendingBlock extends StatelessWidget {
-  const _PendingBlock({required this.examTitle, required this.stateText, required this.needsReview});
+  const _PendingBlock({required this.examTitle, required this.stateText, required this.needsReview, this.onDone});
   final String examTitle;
   final String stateText;
   final bool needsReview;
+  final VoidCallback? onDone;
 
   @override
   Widget build(BuildContext context) {
-    final b = AppBlockColors.of(context, AppBlockTone.sky);
-    return AppBlock(
-      tone: AppBlockTone.sky,
-      hero: true,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(Icons.hourglass_top_rounded, size: AppIconSize.xl, color: b.ink),
-        const SizedBox(height: AppSpace.md),
-        Text(examTitle, maxLines: 3, overflow: TextOverflow.ellipsis,
-            style: AppType.headline(context).copyWith(color: b.ink, fontFamilyFallback: AppFonts.fallback)),
-        const SizedBox(height: AppSpace.xxs),
-        Text(stateText, style: AppType.meta(context).copyWith(color: b.muted)),
-        const SizedBox(height: AppSpace.md),
-        Text(
-          needsReview
-              ? t('النتيجة ليست متاحة بعد: بعض الإجابات تنتظر مراجعة المعلم وستظهر عندما تُنشر.', 'The result is not available yet: some answers await the teacher\'s review; it appears when published.')
-              : t('النتيجة ليست متاحة بعد — ستظهر عندما ينشرها المعلم.', 'The result is not available yet — it appears when the teacher publishes it.'),
-          style: AppType.body(context).copyWith(color: b.ink),
+    return AppCard(
+      child: AppEmpty(
+        icon: Icons.hourglass_top_rounded,
+        title: stateText,
+        message: needsReview
+            ? t('بعض الإجابات تنتظر المعلم، والنتيجة تطلع لما تنتشر', 'Some answers wait for the teacher; the result shows once it is published')
+            : t('النتيجة تطلع لما ينشرها المعلم', 'The result shows once the teacher publishes it'),
+        actionLabel: onDone == null ? null : t('ارجع للدورة', 'Back to the course'),
+        onAction: onDone,
+      ),
+    );
+  }
+}
+
+/// The score card: the ring with the percentage and "your mark" inside, the outcome stamp on its edge, the marks and
+/// the next step. A pass fires the burst once.
+class ExamScoreCard extends StatefulWidget {
+  const ExamScoreCard({super.key, required this.percentage, required this.score, required this.maxScore, required this.passed,
+      this.needsReview = false, this.stateText, this.memoryKey, this.onDone});
+  final double? percentage;
+  final String? score;
+  final String maxScore;
+  final bool? passed;
+  final bool needsReview;
+  final String? stateText;
+  final String? memoryKey;
+  final VoidCallback? onDone;
+
+  /// The ring of the result: the area's large ring.
+  static const double ring = AppDashSize.ring + AppSpace.xxl;
+
+  @override
+  State<ExamScoreCard> createState() => _ExamScoreCardState();
+}
+
+class _ExamScoreCardState extends State<ExamScoreCard> {
+  final _anchor = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.passed == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) AppBurst.fire(context, BurstMoment.examPassed, anchor: _anchor);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final k = context.colors.kit;
+    final pct = widget.percentage;
+    final passed = widget.passed;
+    final tone = passed == true ? k.ok : (passed == false ? k.warn : AppAreaScope.of(context).tone);
+    final figure = pct == null ? '—' : '${pct.toStringAsFixed(pct == pct.roundToDouble() ? 0 : 1)}%';
+    final stamp = passed == null
+        ? null
+        : AppSlap(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+              decoration: BoxDecoration(
+                color: context.colors.cardBg,
+                borderRadius: BorderRadius.circular(AppRadius.glyph),
+                border: Border.all(color: tone.color, width: AppBorder.focus + AppBorder.hairline),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(passed ? Icons.check_rounded : Icons.replay_rounded, size: AppIconSize.sm, color: tone.ink),
+                const SizedBox(width: AppSpace.xxs),
+                Text(passed ? t('ناجح', 'Passed') : t('ما نجح', 'Not passed'),
+                    style: AppType.label(context).copyWith(color: tone.ink, fontWeight: FontWeight.w600)),
+              ]),
+            ),
+          );
+    return AppCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        SizedBox(
+          width: ExamScoreCard.ring + AppSpace.xxl,
+          height: ExamScoreCard.ring + AppSpace.md,
+          child: Stack(alignment: Alignment.bottomCenter, clipBehavior: Clip.none, children: [
+            AppProgressRing(
+              key: _anchor,
+              value: ((pct ?? 0) / 100).clamp(0.0, 1.0),
+              size: ExamScoreCard.ring,
+              stroke: AppSpace.sm,
+              tone: tone,
+              showPercent: false,
+              semanticLabel: figure,
+            ),
+            SizedBox(
+              width: ExamScoreCard.ring - AppSpace.xl,
+              height: ExamScoreCard.ring,
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: pct == null
+                        ? Text(figure, style: AppType.figureLarge(context))
+                        : AppOdometer(appDigits(figure), memoryKey: widget.memoryKey, style: AppType.figureLarge(context)),
+                  ),
+                ),
+                Text(t('درجتك', 'Your mark'), style: AppType.meta(context)),
+              ]),
+            ),
+            if (stamp != null) PositionedDirectional(top: 0, start: 0, child: stamp),
+          ]),
         ),
+        AppSpace.gapMd,
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.center, children: [
+          AppStatusBadge(
+              label: appDigits(widget.score == null ? t('الدرجة تنتظر المراجعة', 'The score awaits review') : t('${widget.score} من ${widget.maxScore}', '${widget.score} of ${widget.maxScore}')),
+              tone: passed == true ? AppTone.success : AppTone.neutral),
+          if (widget.needsReview) AppStatusBadge(label: t('فيه إجابات عند المعلم', 'Some answers are with the teacher'), tone: AppTone.warning),
+        ]),
+        if (widget.onDone != null) ...[
+          AppSpace.gapMd,
+          passed == true
+              ? AppButton.hot(label: t('كمّل الدورة', 'Continue the course'), icon: Icons.play_arrow_rounded, onPressed: widget.onDone)
+              : AppButton.primary(label: t('ارجع للدورة', 'Back to the course'), onPressed: widget.onDone),
+        ],
+      ]),
+    );
+  }
+}
+
+/// "Your answers": one filter row, then every answer with its regrade line.
+class _AnswersCard extends StatefulWidget {
+  const _AnswersCard({required this.answers, required this.appealLine});
+  final List<ResultAnswer> answers;
+  final Widget? Function(ResultAnswer a) appealLine;
+
+  @override
+  State<_AnswersCard> createState() => _AnswersCardState();
+}
+
+class _AnswersCardState extends State<_AnswersCard> {
+  ExamVerdict? _only;
+
+  ExamVerdict _verdict(ResultAnswer a) => examVerdictOf(score: a.score, max: a.max, voided: a.isVoided);
+
+  @override
+  Widget build(BuildContext context) {
+    final right = widget.answers.where((a) => _verdict(a) == ExamVerdict.correct).length;
+    final shown = _only == null ? widget.answers : widget.answers.where((a) => _verdict(a) == _only).toList();
+    final filters = <(ExamVerdict?, String)>[
+      (null, t('الكل', 'All')),
+      (ExamVerdict.correct, t('الصح', 'Right')),
+      (ExamVerdict.wrong, t('الغلط', 'Wrong')),
+      if (widget.answers.any((a) => _verdict(a) == ExamVerdict.partial)) (ExamVerdict.partial, t('جزئي', 'Partial')),
+    ];
+    return AppCard(
+      title: t('إجاباتك', 'Your answers'),
+      action: Text(appDigits(t('$right صح من ${widget.answers.length}', '$right right of ${widget.answers.length}')), style: AppType.meta(context)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          for (final (v, label) in filters) AppChip(label: label, selected: _only == v, onTap: () => setState(() => _only = v)),
+        ]),
+        AppSpace.gapSm,
+        for (final (i, a) in shown.indexed)
+          AppReveal(index: i, group: 'exam.result', child: ResultAnswerCard(answer: a, footer: widget.appealLine(a))),
       ]),
     );
   }
@@ -330,11 +505,17 @@ class _ExamResultScreenState extends State<ExamResultScreen> {
     if (sent == true) _load();
   }
 
+  String? _firstName(BuildContext context) {
+    final name = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.name.trim() ?? '';
+    return name.isEmpty ? null : name.split(RegExp(r'\s+')).first;
+  }
+
   @override
   Widget build(BuildContext context) => BasePage(
         key: const ValueKey('exam.result'),
         appBar: AppHeader(title: t('نتيجة الاختبار', 'Exam result'), actions: const [HelpInfoButton(pageId: 'exam.result')]),
-        child: ExamResultBody(result: widget.result, examTitle: widget.examTitle, appeals: _appeals, onAppeal: _canAppeal ? _appeal : null),
+        child: ExamResultBody(result: widget.result, examTitle: widget.examTitle, appeals: _appeals, onAppeal: _canAppeal ? _appeal : null,
+            firstName: _firstName(context), onDone: () => Navigator.maybePop(context)),
       );
 }
 

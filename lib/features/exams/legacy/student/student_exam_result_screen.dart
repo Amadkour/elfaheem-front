@@ -8,6 +8,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_area.dart';
 import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
@@ -108,8 +109,11 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
   Color get _secondary =>
       _passed ? context.colors.success : context.colors.danger;
 
+  // the exam area (redesign S-C): the kit hero, the forward button and the area accent
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AppAreaScope(area: AppArea.exam, child: Builder(builder: _buildPage));
+
+  Widget _buildPage(BuildContext context) {
     final canRetry = s.canRetry;
     final remaining = s.remainingSubmissions;
 

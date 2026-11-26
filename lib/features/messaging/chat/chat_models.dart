@@ -182,6 +182,8 @@ class ChatConversation {
     this.groupOpen = true,
     this.canManage = false,
     this.memberCount,
+    this.announceOnly = false,
+    this.privateReply = false,
     this.canBlock = true,
     this.attachmentsOn = true,
     this.reportOn = true,
@@ -207,6 +209,10 @@ class ChatConversation {
   ChatRequestInfo? request;
   bool groupOpen, canManage, canBlock, attachmentsOn, reportOn;
   int? memberCount;
+
+  /// The course group as a learner sees it (privacy D-1950, O-5): the teacher's announcements only; a reply goes to
+  /// the teacher alone ([privateReply]). Staff never get it.
+  bool announceOnly, privateReply;
 
   /// The newest message the server had counted when this row was loaded: an event at or below it is a replay.
   final int? loadedLastId;
@@ -246,6 +252,8 @@ class ChatConversation {
       canManage: j['can_manage'] == true,
       canBlock: j['can_block'] != false,
       memberCount: _intOf(j['member_count']),
+      announceOnly: j['announce_only'] == true,
+      privateReply: j['private_reply'] == true,
       attachmentsOn: j['attachments_on'] != false,
       reportOn: j['report_on'] != false,
     );
@@ -333,6 +341,9 @@ class ChatMessage {
   DateTime createdAt;
   final bool deleted;
   ChatSendState sendState;
+
+  /// Sent from the teacher's announcements: it went to the teacher alone (the server's `redirected`).
+  bool privateReply = false;
 
   /// It failed only because the server was not reached: a reconnect retries it by itself.
   bool autoRetry;

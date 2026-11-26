@@ -12,6 +12,8 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/features/messaging/chat/chat_models.dart';
 import 'package:flutter_education_app/features/messaging/chat/chat_page.dart' show chatErrorText;
@@ -175,8 +177,27 @@ class _SectionTitle extends StatelessWidget {
 
 /// The list part of the sheet, from plain values.
 class ChatPeopleView extends StatelessWidget {
-  const ChatPeopleView({super.key, required this.people, required this.query, required this.onPick});
-  final ChatPeople people;
+  const ChatPeopleView({super.key, required ChatPeople people, required this.query, required this.onPick, this.learner = false})
+      : _people = people;
+  final ChatPeople _people;
+
+  /// A student writes to his own teachers and support only (privacy, RULES 1.7): no suggestions, never a classmate;
+  /// an exact @username he typed still shows (he typed it, the app did not suggest it).
+  final bool learner;
+
+  ChatPeople get people {
+    if (!learner) return _people;
+    final q = query.trim().replaceFirst('@', '').toLowerCase();
+    bool ok(ChatPersonRow r) =>
+        (r.relation != 'classmate' && r.user.role != 'student') || (q.isNotEmpty && (r.user.username ?? '').toLowerCase() == q);
+    return ChatPeople(
+      recent: [for (final r in _people.recent) if (ok(r)) r],
+      results: [for (final r in _people.results) if (ok(r)) r],
+      requestsLeft: _people.requestsLeft,
+      requestsPerDay: _people.requestsPerDay,
+      requestsOn: _people.requestsOn,
+    );
+  }
   final String query;
   final ValueChanged<ChatPersonRow> onPick;
 
@@ -395,7 +416,8 @@ class _ChatNewMessageSheetState extends State<ChatNewMessageSheet> {
     if (p == null || (_loading && p.results.isEmpty && p.recent.isEmpty && p.suggested.isEmpty)) {
       return const AppListSkeleton(items: 5);
     }
-    return ChatPeopleView(people: p, query: _query, onPick: _pick);
+    final role = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role;
+    return ChatPeopleView(people: p, query: _query, onPick: _pick, learner: role == 'student');
   }
 
   @override

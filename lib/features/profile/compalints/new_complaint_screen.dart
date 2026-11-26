@@ -17,6 +17,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -144,11 +145,14 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
   Widget build(BuildContext context) {
     context.watch<LangProvider>(); // re-translate when the language changes
     final p = context.watch<ComplaintProvider>();
-    return BasePage(
+    // a student's new complaint (redesign S-C, Stu1Comm?screen=newcomplaint): the chat area and the kit's top bar
+    final student = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role == 'student';
+    final title = widget.formOnly ? 'chub_new'.tr : 'complaints_and_support'.tr;
+    final page = BasePage(
       key: const ValueKey('new_complaint'),
-      useWebCard: true,
+      useWebCard: !student,
       width: AppWidth.reading,
-      appBar: ScreenAppBar(title: widget.formOnly ? 'chub_new'.tr : 'complaints_and_support'.tr),
+      appBar: student ? AppHeader(title: title) : ScreenAppBar(title: title),
       child: SafeArea(
         child: Column(
           children: [
@@ -173,6 +177,7 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
         ),
       ),
     );
+    return student ? AppAreaScope(area: AppArea.chat, child: page) : page;
   }
 
   Widget _form(ComplaintProvider p) => _FormTab(

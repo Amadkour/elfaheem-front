@@ -4,6 +4,7 @@ library;
 import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_area.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
@@ -154,8 +155,11 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
     );
   }
 
+  // the exam area (redesign S-C): the kit hero, the forward button and the area accent
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AppAreaScope(area: AppArea.exam, child: Builder(builder: _buildPage));
+
+  Widget _buildPage(BuildContext context) {
     AppShellNav.markFullScreen(context); // a sitting: no tab bar even when opened inside a tab (D-081)
     final prov = context.watch<StudentExamProvider>();
     final s = prov.session;

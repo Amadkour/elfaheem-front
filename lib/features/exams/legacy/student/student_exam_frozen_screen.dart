@@ -3,6 +3,7 @@ import 'package:flutter_education_app/design/app_header.dart';
 import 'dart:async';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_area.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/student_exam_api.dart';
@@ -69,8 +70,11 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
   Color get _accent =>
       _hasScore ? (e.passed == true ? AppTheme.success : context.colors.danger) : context.colors.textMedium;
 
+  // the exam area (redesign S-C): the kit hero, the forward button and the area accent
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AppAreaScope(area: AppArea.exam, child: Builder(builder: _buildPage));
+
+  Widget _buildPage(BuildContext context) {
     return BasePage(
       key: const ValueKey('exam_frozen'),
       useWebCard: true,
