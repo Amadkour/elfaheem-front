@@ -200,7 +200,7 @@ class HomeJourneyInvite extends StatelessWidget {
                 Text(t('خطّط لمسارك التعليمي', 'Plan your learning path'), style: AppType.section(context)),
                 const SizedBox(height: AppSpace.xxs),
                 Text(
-                  t('اختر ما يهمّك وسنرسم لك طريقاً واضحاً: خطوتك التالية والكورسات التي تليها.',
+                  t('اختر ما يهمّك وسنرسم لك طريقاً واضحاً: خطوتك التالية والدورات التي تليها.',
                       'Pick what interests you and we’ll lay out a clear way: your next step and the courses after it.'),
                   style: AppType.body(context),
                 ),

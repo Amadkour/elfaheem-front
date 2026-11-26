@@ -43,11 +43,17 @@ import 'package:flutter_education_app/features/records/records_share.dart' show 
 
 /// The public card of a link (`GET /api/v1/public/share/{kind}/{id}`).
 class ShareLinkPreview {
-  const ShareLinkPreview({this.isPublic = false, this.title, this.subtitle, this.description, this.imageUrl, this.courseId, this.username});
+  const ShareLinkPreview({this.isPublic = false, this.title, this.subtitle, this.description, this.imageUrl, this.courseId, this.username, this.price, this.outcomes = const []});
 
   final bool isPublic;
   final String? title, subtitle, description, imageUrl, username;
   final int? courseId;
+
+  /// The course's price as the server words it (`price_label`, else `price` + `currency`); null = not sent.
+  final String? price;
+
+  /// What the student will learn (`outcomes`), at most a few short lines.
+  final List<String> outcomes;
 
   static String? _s(Object? v) {
     final s = '${v ?? ''}'.trim();
@@ -64,6 +70,8 @@ class ShareLinkPreview {
       imageUrl: _s(m['image_url']),
       courseId: m['course_id'] is num ? (m['course_id'] as num).toInt() : null,
       username: _s(m['username']),
+      price: _s(m['price_label']) ?? (m['price'] is num ? '${m['price']} ${_s(m['currency']) ?? ''}'.trim() : null),
+      outcomes: [for (final o in (m['outcomes'] is List ? m['outcomes'] as List : const [])) if (_s(o) != null) _s(o)!],
     );
   }
 
@@ -220,6 +228,8 @@ class _ShareLinkPageState extends State<ShareLinkPage> {
                 title: p?.title,
                 subtitle: p?.subtitle,
                 description: p?.description,
+                price: p?.price,
+                outcomes: p?.outcomes ?? const [],
                 imageUrl: p?.imageUrl,
                 isPublic: p?.isPublic ?? false,
                 note: _link.kind == AppLinkKind.meeting
@@ -250,6 +260,8 @@ class ShareLinkPreviewView extends StatelessWidget {
     this.imageUrl,
     this.isPublic = false,
     this.note,
+    this.price,
+    this.outcomes = const [],
     this.onRetry,
     this.onSignIn,
     this.onRegister,
@@ -259,7 +271,8 @@ class ShareLinkPreviewView extends StatelessWidget {
   final String kind;
   final IconData icon;
   final bool loading, isPublic;
-  final String? error, title, subtitle, description, imageUrl, note;
+  final String? error, title, subtitle, description, imageUrl, note, price;
+  final List<String> outcomes;
   final VoidCallback? onRetry, onSignIn, onRegister, onHome;
 
   @override
@@ -300,11 +313,32 @@ class ShareLinkPreviewView extends StatelessWidget {
               const SizedBox(height: AppSpace.sm),
               Text(description!, maxLines: 4, overflow: TextOverflow.ellipsis, style: AppType.body(context)),
             ],
+            // redesign (Stu1Public?screen=share): the price as it is charged, then what you will learn
+            if (price != null && error == null) ...[
+              const SizedBox(height: AppSpace.md),
+              Text(t('الاشتراك', 'Subscription'), style: AppType.label(context).copyWith(color: c.textMedium)),
+              const SizedBox(height: AppSpace.xxs),
+              Text(price!, key: const ValueKey('share_link.price'), style: AppType.display(context)),
+            ],
+            if (outcomes.isNotEmpty && error == null) ...[
+              const SizedBox(height: AppSpace.md),
+              Text(t('وش بتتعلّم', "What you'll learn"), style: AppType.section(context)),
+              const SizedBox(height: AppSpace.xs),
+              for (final o in outcomes.take(5))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    AppIconBox(icon: Icons.check_rounded, tone: c.kit.ok, size: AppIconSize.xl),
+                    const SizedBox(width: AppSpace.sm),
+                    Expanded(child: Text(o, style: AppType.body(context))),
+                  ]),
+                ),
+            ],
             const SizedBox(height: AppSpace.sm),
             Text(
               error ??
                   (isPublic
-                      ? t('سجّل الدخول أو أنشئ حساباً مجانياً لتكمل إليه مباشرة.', 'Sign in or create a free account to continue straight to it.')
+                      ? t('سجّل دخولك أو أنشئ حساب وتكمل له على طول.', 'Sign in or create an account to go straight to it.')
                       : t('هذا المحتوى خاص بأعضائه. سجّل الدخول بالحساب المدعو لفتحه.', 'This is for its members. Sign in with the invited account to open it.')),
               style: AppType.body(context),
             ),
@@ -314,10 +348,9 @@ class ShareLinkPreviewView extends StatelessWidget {
             ],
             const SizedBox(height: AppSpace.lg),
             if (onSignIn != null)
-              AppButton.primary(
+              AppButton.hot(
                 key: const ValueKey('share_link.sign_in'),
-                label: t('تسجيل الدخول للمتابعة', 'Sign in to continue'),
-                icon: DirIcons.login,
+                label: t('سجّل دخولك وكمّل', 'Sign in and continue'),
                 expand: true,
                 size: AppButtonSize.lg,
                 onPressed: onSignIn,

@@ -64,6 +64,7 @@ import 'package:flutter_education_app/features/courses/roadmap/recommendations.d
 import 'package:flutter_education_app/features/home/student/home_continue.dart';
 import 'package:flutter_education_app/features/home/student/home_event_rows.dart';
 import 'package:flutter_education_app/features/home/student/home_hero.dart';
+import 'package:flutter_education_app/features/courses/category/subject_tiles.dart' show SubjectsCard;
 import 'package:flutter_education_app/features/home/student/home_journey.dart';
 import 'package:flutter_education_app/features/games/champions/champions_models.dart' show HomeChampion, championsOff;
 import 'package:flutter_education_app/features/games/champions/champions_page.dart' show HallOfChampionsPage;
@@ -326,6 +327,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     const SizedBox(height: AppSpace.md),
                     search(padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset)),
+                    // a guest's subjects (Stu1Public?screen=guesthome): the same tiles as Explore, from the catalogue
+                    if (guest)
+                      Consumer<CategoriesProvider>(
+                        builder: (context, cats, _) => Padding(
+                          padding: const EdgeInsets.fromLTRB(kStudentHomeInset, AppSpace.md, kStudentHomeInset, 0),
+                          child: SubjectsCard(
+                            categories: cats.categories,
+                            max: 6,
+                            onOpen: (cat) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CategoriesScreen(selectedId: cat.id))),
+                            onAll: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CategoriesScreen())),
+                          ),
+                        ),
+                      ),
                     const _Feeds(),
                   ]),
                 ),
@@ -545,7 +559,13 @@ class StudentHomeBody extends StatelessWidget {
   Widget build(BuildContext context) {
     if (data.guest) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const HomeEntrance(index: 1, child: ParentComponent(key: ValueKey('student_home.upcoming_banner'), child: GuestPromoCard())),
+        const HomeEntrance(
+          index: 1,
+          child: ParentComponent(
+            key: ValueKey('student_home.upcoming_banner'),
+            child: Padding(padding: EdgeInsets.symmetric(horizontal: kStudentHomeInset), child: GuestPromoCard()),
+          ),
+        ),
         AppSpace.gapMd,
         ?feeds,
       ]);
