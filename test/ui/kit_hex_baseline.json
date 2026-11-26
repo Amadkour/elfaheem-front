@@ -1,0 +1,24 @@
+{
+  "_about": "Colour literals per lib/design file (tool/kit_rules.dart, KIT_SPEC 7.2); may only go down.",
+  "files": {
+    "lib/design/app_image_background.dart": 20,
+    "lib/design/app_image_cropper.dart": 3,
+    "lib/design/boot_splash.dart": 8,
+    "lib/design/export/export_watermark_png.dart": 1,
+    "lib/design/export_hub/export_designer.dart": 6,
+    "lib/design/export_hub/export_flow_parts.dart": 18,
+    "lib/design/export_hub/export_hub.dart": 3,
+    "lib/design/export_hub/export_sheet_studio.dart": 6,
+    "lib/design/export_hub/export_watermark_editor.dart": 1,
+    "lib/design/export_layout/layout_canvas.dart": 3,
+    "lib/design/export_layout/layout_element_view.dart": 6,
+    "lib/design/export_layout/layout_logic.dart": 7,
+    "lib/design/export_layout/layout_model.dart": 8,
+    "lib/design/export_layout/layout_props.dart": 5,
+    "lib/design/export_layout/layout_start.dart": 3,
+    "lib/design/export_layout/layout_steps.dart": 18,
+    "lib/design/studio/studio_canvas.dart": 3,
+    "lib/design/studio/studio_model.dart": 1,
+    "lib/design/studio/studio_props.dart": 13
+  }
+}

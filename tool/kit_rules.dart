@@ -157,9 +157,42 @@ Map<String, int> scanLib() {
   return out;
 }
 
+/// The third gate (KIT_SPEC §7.2): colour literals in lib/design/** — `Color(0x…)` and "#RRGGBB" strings — may only
+/// go down; the gallery's labels are exempt. Hex lives in lib/config/theme/kit_palette_defaults.dart and app_theme.dart.
+const hexBaselinePath = 'test/ui/kit_hex_baseline.json';
+
+final _colorCtor = RegExp(r'(?<![\w.])Color\(\s*0x');
+final _hexString = RegExp(r'''['"]#(?:[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})['"]''');
+
+/// [src] with comments blanked but strings kept (a "#RRGGBB" literal must be seen).
+String stripComments(String src) => src
+    .replaceAllMapped(RegExp(r'/\*.*?\*/', dotAll: true), (m) => m[0]!.replaceAll(RegExp(r'[^\n]'), ' '))
+    .replaceAllMapped(RegExp(r'//[^\n]*'), (m) => ' ' * m[0]!.length);
+
+int countColorLiterals(String src) {
+  final s = stripComments(src);
+  return _colorCtor.allMatches(s).length + _hexString.allMatches(s).length;
+}
+
+/// lib/design path -> colour literal count, files with 0 left out.
+Map<String, int> scanDesignHex() {
+  final out = <String, int>{};
+  for (final p in libFiles()) {
+    if (!p.startsWith('lib/design/') || p.startsWith('lib/design/gallery/')) continue;
+    final n = countColorLiterals(File(p).readAsStringSync());
+    if (n > 0) out[p] = n;
+  }
+  return out;
+}
+
 void main(List<String> args) {
   final counts = scanLib();
   if (args.contains('--write')) {
+    final hex = scanDesignHex();
+    File(hexBaselinePath).writeAsStringSync('${const JsonEncoder.withIndent('  ').convert({
+      '_about': 'Colour literals per lib/design file (tool/kit_rules.dart, KIT_SPEC 7.2); may only go down.',
+      'files': {for (final k in hex.keys.toList()..sort()) k: hex[k]},
+    })}\n');
     final sorted = {for (final k in counts.keys.toList()..sort()) k: counts[k]};
     final total = counts.values.fold<int>(0, (a, b) => a + b);
     final json = const JsonEncoder.withIndent('  ').convert({

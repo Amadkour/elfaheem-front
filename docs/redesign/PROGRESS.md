@@ -10,7 +10,7 @@ Statuses: todo / doing / done / verified. On a resume, continue from the first l
 | 0.4 | Sync decision: built in NextBrain, synced downstream, palette per product (D-1810 here, and in the downstream repository) | done |
 | 0.6 | Phase 0 docs ported to NextBrain (brand-neutral), BRANDS.md (NextBrain palette from the logo) | done |
 | 0.5 | Reference screenshots (D:/platform/redesign-ref/ref/, 1140 PNGs, 0 failures; rerun: tool/redesign/ref_shots.mjs) | done |
-| 1 | Kit: tokens, theme seed, motion library, shells | todo |
+| 1 | Kit: tokens, theme seed, motion library, shells | done on rd/kit + rd/kit-back (steps 12-13 on rd/kit-shell); not merged |
 | 2 | Student | todo |
 | 3 | Booking and subject flow | todo |
 | 4 | Parent (incl. child code login) | todo |

@@ -22,7 +22,10 @@ import 'package:flutter_education_app/core/app_locale.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/core/providers.dart';
+import 'package:flutter_education_app/design/app_area.dart';
 import 'package:flutter_education_app/design/app_shell.dart' show DashboardItem, ShellGroupSheet;
+import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace;
+import 'package:flutter_education_app/design/gallery/kit_gallery_sections.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_home_body.dart';
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
@@ -266,6 +269,22 @@ void main() {
                 ),
               ));
     });
+  });
+
+  // D-1811: the redesign kit's controls (the gallery's Buttons, Chips and tabs, Live and badges sections) under a
+  // student area: 48 px targets, labels, contrast
+  testWidgets('kit gallery: buttons, chips, live (D-1811)', (tester) async {
+    final sections = kitGallerySections();
+    await expectA11y(
+        tester,
+        'kit gallery',
+        () => AppAreaScope(
+              area: AppArea.home,
+              child: Builder(
+                  builder: (c) => ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
+                        for (final i in const [2, 5, 8]) sections[i].build(c),
+                      ])),
+            ));
   });
 
   // D-1340: the phone bar's group sheet (the student's Learn slot): 48 px rows, labelled, readable
