@@ -24968,5 +24968,12 @@
   "sd_transfer_title": {"en": "Pay by bank transfer", "ar": "حوّل المبلغ بنكيًا"},
   "sd_transfer_sub": {"en": "Then upload a photo of the receipt", "ar": "بعدها ارفع صورة الإيصال"},
   "sd_sub_sub": {"en": "Pick your plan and keep learning", "ar": "اختر خطتك وكمّل تعلّمك"},
-  "sd_enroll_kicker": {"en": "You are joining", "ar": "تشترك الحين في"}
+  "sd_enroll_kicker": {"en": "You are joining", "ar": "تشترك الحين في"},
+  "sd_store_offline": {"en": "Read it offline", "ar": "اقرأه بدون نت"},
+  "sd_store_updates": {"en": "Its updates reach you", "ar": "تحديثاته توصلك"},
+  "sd_store_yours": {"en": "Opens from your account only", "ar": "يفتح من حسابك بس"},
+  "sd_store_about": {"en": "About it", "ar": "عنه بالتفصيل"},
+  "sd_store_buy": {"en": "Buy now", "ar": "اشترِ الحين"},
+  "sd_store_get": {"en": "Get it now", "ar": "خذه الحين"},
+  "sd_store_cart_remove": {"en": "Remove from cart", "ar": "شيله من السلة"}
 }

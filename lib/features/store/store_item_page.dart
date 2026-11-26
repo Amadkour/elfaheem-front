@@ -10,6 +10,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -210,102 +211,89 @@ class StoreItemView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, box) {
-      final wide = box.maxWidth >= 720;
-      final cover = StoreCover(id: item.id, title: item.title, url: item.coverUrl);
-      final details = _details(context);
-      if (wide) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpace.lg),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SizedBox(width: box.maxWidth * 0.36, child: AspectRatio(aspectRatio: 3 / 4, child: cover)),
-            const SizedBox(width: AppSpace.lg),
-            Expanded(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              details,
-              const SizedBox(height: AppSpace.md),
-              _actions(context, expand: false),
-              _more(context),
-            ])),
-          ]),
-        );
-      }
-      // phones: Buy / Add to cart stay pinned above the shell's bottom bar, never scrolled out of reach (D-1339)
-      return Column(children: [
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpace.md),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: box.maxWidth * 0.6),
-                  child: AspectRatio(aspectRatio: 3 / 4, child: cover),
-                ),
-              ),
-              const SizedBox(height: AppSpace.md),
-              details,
-              _more(context),
-            ]),
-          ),
-        ),
-        Material(
-          key: const ValueKey('store.item.bar'),
-          color: context.colors.cardBg,
-          child: DecoratedBox(
-            decoration: BoxDecoration(border: Border(top: BorderSide(color: context.colors.divider))),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.sm),
-              child: _actions(context, expand: true),
-            ),
-          ),
-        ),
-      ]);
-    });
-  }
-
-  Widget _details(BuildContext context) {
-    final c = context.colors;
+    final kit = context.colors.kit;
+    final sun = kit.accent(AppAccent.sun);
     final meta = [
-      storeKindLabel(item.kind),
       if (item.pages != null && item.pages! > 0) storePagesText(item.pages!),
       if (item.fileSize > 0) storeSizeText(item.fileSize),
-    ].join(' · ');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(children: [
-          Icon(storeKindIcon(item.kind), size: AppIconSize.sm, color: c.textMedium),
-          const SizedBox(width: AppSpace.xxs),
-          Expanded(child: Text(meta, style: AppType.meta(context))),
-        ]),
-        const SizedBox(height: AppSpace.xxs),
-        Semantics(header: true, child: Text(item.title, style: AppType.headline(context))),
-        const SizedBox(height: AppSpace.md),
-        AppCard(child: StorePriceBlock(price: item.price, pointsPrice: item.pointsPrice)),
-      ],
+    ].join('، ');
+    // Stu2Store `screen=item`: the book on the store hero, the price card riding up over it, ONE forward button,
+    // the cart, three rows of what you get, then about and the preview
+    final hero = AppHero(
+      kicker: storeKindLabel(item.kind),
+      title: item.title,
+      subtitle: meta.isEmpty ? null : appDigits(meta),
+      leading: StoreBookCover(item: item, showTitle: false),
+      icon: storeKindIcon(item.kind),
     );
+    final price = item.price;
+    final priceCard = AppCard(
+      key: const ValueKey('store.price'),
+      variant: AppCardVariant.tint,
+      tone: sun,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        Text(price.isFree ? '' : t('الإجمالي شامل الضريبة', 'Total including VAT'), style: AppType.meta(context)),
+        Wrap(crossAxisAlignment: WrapCrossAlignment.end, spacing: AppSpace.xs, children: [
+          Text(appDigits(price.isFree ? 'sd_no_fee'.tr : storeMoney(price.gross, price.currency)),
+              style: AppType.figureLarge(context).copyWith(color: context.colors.textDark)),
+          if (item.pointsPrice != null && !price.isFree)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpace.xxs),
+              child: Text(appDigits('sd_or_points'.tr.replaceAll('{n}', '${item.pointsPrice}')), style: AppType.meta(context)),
+            ),
+        ]),
+        if (!price.isFree && price.vatPercent > 0)
+          Text(appDigits('${t('ضريبة القيمة المضافة', 'VAT')} (${price.vatPercentText})'), style: AppType.meta(context)),
+      ]),
+    );
+    final card = AppCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        priceCard,
+        const SizedBox(height: AppSpace.md),
+        _actions(context),
+        if (item.previewUrl != null && !item.previewIsImage)
+          AppButton.ghost(
+            key: const ValueKey('store.item.preview'),
+            label: t('افتح المعاينة', 'Open the preview'),
+            icon: Icons.visibility_outlined,
+            expand: true,
+            onPressed: onPreview,
+          ),
+      ]),
+    );
+    return SdHeroList(hero: hero, width: AppWidth.reading, children: [
+      card,
+      const SizedBox(height: AppSpace.md),
+      AppCard(
+        child: AppRules(items: [
+          (icon: Icons.download_rounded, text: 'sd_store_offline'.tr),
+          (icon: Icons.sync_rounded, text: 'sd_store_updates'.tr),
+          (icon: Icons.lock_outline_rounded, text: 'sd_store_yours'.tr),
+        ]),
+      ),
+      if (item.description.trim().isNotEmpty) ...[
+        const SizedBox(height: AppSpace.md),
+        AppCard(
+          title: 'sd_store_about'.tr,
+          child: Text(item.description, style: AppType.body(context)),
+        ),
+      ],
+      if (item.previewUrl != null && item.previewIsImage) ...[
+        const SizedBox(height: AppSpace.md),
+        AppCard(
+          title: t('معاينة', 'Preview'),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.tile),
+            child: AppNetworkImage(url: item.previewUrl!, fit: BoxFit.contain, enableFullscreen: true),
+          ),
+        ),
+      ],
+    ]);
   }
 
-  /// Owned / buying off / Buy + Add to cart. [expand]: the phone's pinned bar (two equal buttons).
-  Widget _actions(BuildContext context, {required bool expand}) {
+  /// Owned / buying off ("الشراء متوقف") / Buy now (the forward button) + the cart.
+  Widget _actions(BuildContext context) {
     final c = context.colors;
-    final buy = AppButton.primary(
-      key: const ValueKey('store.item.buy'),
-      label: item.price.isFree ? t('احصل عليه مجاناً', 'Get it free') : t('اشترِ الآن', 'Buy now'),
-      icon: Icons.shopping_bag_rounded,
-      expand: expand,
-      onPressed: onBuy,
-    );
-    final cart = AppButton.secondary(
-      key: const ValueKey('store.item.cart'),
-      // the phone's bar has half a row each: the short words (the icon says "cart")
-      label: inCart
-          ? (expand ? t('إزالة', 'Remove') : t('إزالة من السلة', 'Remove from cart'))
-          : (expand ? t('للسلة', 'To cart') : t('أضف إلى السلة', 'Add to cart')),
-      icon: inCart ? Icons.remove_shopping_cart_rounded : Icons.add_shopping_cart_rounded,
-      expand: expand,
-      onPressed: onToggleCart,
-    );
     if (item.owned) {
       return AppBanner(
         icon: Icons.check_circle_rounded,
@@ -316,43 +304,23 @@ class StoreItemView extends StatelessWidget {
     if (buyOff) {
       return AppBanner(icon: Icons.block_rounded, text: t('الشراء متوقف حالياً', 'Buying is switched off right now'), color: c.warning);
     }
-    if (expand) {
-      return Row(children: [Expanded(child: buy), const SizedBox(width: AppSpace.sm), Expanded(child: cart)]);
-    }
-    return Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.sm, children: [buy, cart]);
-  }
-
-  /// The description and the preview, under the price.
-  Widget _more(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (item.description.trim().isNotEmpty) ...[
-          const SizedBox(height: AppSpace.lg),
-          AppSectionTitle(t('عن هذا العنصر', 'About this item')),
-          Text(item.description, style: AppType.body(context)),
-        ],
-        if (item.previewUrl != null) ...[
-          const SizedBox(height: AppSpace.lg),
-          AppSectionTitle(t('معاينة', 'Preview')),
-          if (item.previewIsImage)
-            ClipRRect(
-              borderRadius: AppRadius.cardAll,
-              child: AppNetworkImage(url: item.previewUrl!, fit: BoxFit.contain, enableFullscreen: true),
-            )
-          else
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: AppButton.ghost(
-                key: const ValueKey('store.item.preview'),
-                label: t('افتح المعاينة', 'Open the preview'),
-                icon: Icons.visibility_rounded,
-                onPressed: onPreview,
-              ),
-            ),
-        ],
-      ],
-    );
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppButton.hot(
+        key: const ValueKey('store.item.buy'),
+        label: item.price.isFree ? 'sd_store_get'.tr : 'sd_store_buy'.tr,
+        icon: Icons.bolt_rounded,
+        expand: true,
+        size: AppButtonSize.lg,
+        onPressed: onBuy,
+      ),
+      const SizedBox(height: AppSpace.xs),
+      AppButton.secondary(
+        key: const ValueKey('store.item.cart'),
+        label: inCart ? 'sd_store_cart_remove'.tr : t('أضف إلى السلة', 'Add to cart'),
+        icon: inCart ? Icons.remove_rounded : Icons.add_shopping_cart_rounded,
+        expand: true,
+        onPressed: onToggleCart,
+      ),
+    ]);
   }
 }
