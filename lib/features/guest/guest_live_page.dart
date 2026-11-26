@@ -21,6 +21,8 @@
 //                            Back from the room, a signed-out guest also sees the soft "create an account / sign
 //                            in" card (GuestLinkCta, D-844) — never a wall. While the page is open a stray 401 never
 //                            redirects to the login page (GuestLinkVisit, D-840).
+import 'package:flutter_education_app/features/guest/sa_hero_page.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -401,7 +403,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
   @override
   Widget build(BuildContext context) => BasePage(
         enableFooterWidget: false,
-        child: GuestLiveContent(
+        child: SaHeroPage(area: AppArea.sched, kicker: 'sa_live_kicker'.tr, title: 'sa_live_title'.tr, squiggle: 'sa_live_squiggle'.tr, child: GuestLiveContent(
           signedIn: _signedIn,
           accountName: _accountName,
           onJoinWithAccount: _joinWithAccount,
@@ -429,7 +431,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
                   onSignIn: () => openGuestSignUp(context, '/login'),
                 )
               : null,
-        ),
+        )),
       );
 }
 

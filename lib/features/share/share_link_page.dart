@@ -15,6 +15,9 @@
 // The preview body is the plain-values [ShareLinkPreviewView] (test/ui/share_link_preview_layout_test.dart).
 library;
 
+import 'package:flutter_education_app/features/guest/sa_hero_page.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
@@ -207,7 +210,7 @@ class _ShareLinkPageState extends State<ShareLinkPage> {
     return Scaffold(
       backgroundColor: context.colors.background,
       body: SafeArea(
-        child: signedIn && _error == null
+        child: SaHeroPage(area: AppArea.learn, kicker: 'sa_share_kicker'.tr, title: 'sa_share_title'.tr, child: signedIn && _error == null
             ? const AppListSkeleton(items: 3)
             : ShareLinkPreviewView(
                 kind: kind,
@@ -226,7 +229,7 @@ class _ShareLinkPageState extends State<ShareLinkPage> {
                 onSignIn: signedIn ? null : () => _signIn('/login'),
                 onRegister: signedIn ? null : () => _signIn('/register'),
                 onHome: signedIn ? () => Navigator.of(context).pushReplacementNamed(context.read<MyAuthProvider>().homeRoute) : null,
-              ),
+              )),
       ),
     );
   }

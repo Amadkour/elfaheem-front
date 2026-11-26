@@ -447,7 +447,7 @@ class _AuthFormCard extends StatelessWidget {
     final align = centred ? CrossAxisAlignment.center : CrossAxisAlignment.start;
     final textAlign = centred ? TextAlign.center : TextAlign.start;
     return Container(
-      padding: EdgeInsets.all(wide ? AppSpace.xl : AppSpace.lg),
+      padding: EdgeInsets.all(wide ? AppSpace.xl : AppSpace.md),
       decoration: BoxDecoration(
         color: c.cardBg,
         borderRadius: BorderRadius.circular(AppRadius.cardFor(w)),

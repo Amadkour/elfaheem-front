@@ -24965,5 +24965,22 @@
   "sa_ob_kicker3": {"en": "Let's start", "ar": "يلا نبدأ"},
   "sa_ob_chip_live": {"en": "Live now", "ar": "مباشر الحين"},
   "sa_ob_chip_recorded": {"en": "Recorded lessons", "ar": "دروس مسجّلة"},
-  "sa_ob_chip_book": {"en": "Your subjects", "ar": "موادك"}
+  "sa_ob_chip_book": {"en": "Your subjects", "ar": "موادك"},
+  "sa_cat_kicker": {"en": "Browse subjects", "ar": "تصفّح المواد"},
+  "sa_cat_title": {"en": "Courses by subject", "ar": "دورات المادة"},
+  "sa_journey_kicker": {"en": "My learning path", "ar": "مسار تعلّمي"},
+  "sa_journey_title": {"en": "Step by step to your goal", "ar": "خطوة خطوة لهدفك"},
+  "sa_journey_squiggle": {"en": "goal", "ar": "لهدفك"},
+  "sa_recs_kicker": {"en": "Picked for you", "ar": "مقترح لك"},
+  "sa_recs_title": {"en": "Courses that fit your interests", "ar": "دورات تناسب اهتماماتك"},
+  "sa_recs_squiggle": {"en": "interests", "ar": "اهتماماتك"},
+  "sa_gs_kicker": {"en": "Welcome", "ar": "هلا والله"},
+  "sa_gs_title": {"en": "What do you want to learn?", "ar": "وش تبي تتعلّم؟"},
+  "sa_gs_squiggle": {"en": "learn", "ar": "تتعلّم"},
+  "sa_share_kicker": {"en": "Someone shared this with you", "ar": "وصلك رابط"},
+  "sa_share_title": {"en": "Have a look before you join", "ar": "شوف قبل ما تنضم"},
+  "sa_live_kicker": {"en": "You're invited", "ar": "أنت مدعو"},
+  "sa_live_title": {"en": "Join the meeting now", "ar": "ادخل الاجتماع الحين"},
+  "sa_live_squiggle": {"en": "now", "ar": "الحين"},
+  "sa_legal_kicker": {"en": "Plain and clear", "ar": "بوضوح"}
 }

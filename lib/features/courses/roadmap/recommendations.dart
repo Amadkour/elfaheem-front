@@ -15,6 +15,9 @@
 // Presentational parts take plain values (test/ui/roadmap_layout_test.dart).
 library;
 
+import 'package:flutter_education_app/features/guest/sa_hero_page.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -388,7 +391,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
     return BasePage(
       key: const ValueKey(kRoadmapRecsKey),
       appBar: ScreenAppBar(title: t('مقترح لك', 'Recommended for you')),
-      child: AppRefresh(
+      child: SaHeroPage(area: AppArea.learn, kicker: 'sa_recs_kicker'.tr, title: 'sa_recs_title'.tr, squiggle: 'sa_recs_squiggle'.tr, child: AppRefresh(
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -411,7 +414,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                 ),
           ],
         ),
-      ),
+      )),
     );
   }
 }

@@ -18,6 +18,9 @@
 // button; "The whole path" is an editorial section under it.
 library;
 
+import 'package:flutter_education_app/features/guest/sa_hero_page.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -100,7 +103,7 @@ class _JourneyPageState extends State<JourneyPage> {
     return BasePage(
       key: const ValueKey(kRoadmapJourneyKey),
       appBar: ScreenAppBar(title: t('مساري التعليمي', 'My learning path')),
-      child: AppRefresh(
+      child: SaHeroPage(area: AppArea.learn, kicker: 'sa_journey_kicker'.tr, title: 'sa_journey_title'.tr, squiggle: 'sa_journey_squiggle'.tr, child: AppRefresh(
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xl),
@@ -132,7 +135,7 @@ class _JourneyPageState extends State<JourneyPage> {
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 }
