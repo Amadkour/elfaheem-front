@@ -126,7 +126,7 @@ class _JourneyPageState extends State<JourneyPage> {
                             ? AppEmpty(
                                 icon: Icons.route_rounded,
                                 title: t('لا مسار بعد', 'No path yet'),
-                                message: t('أكمل كورساً أو اختر اهتماماتك ليظهر طريقك هنا.', 'Complete a course or pick your interests and your way shows here.'),
+                                message: t('أكمل دورة أو اختر اهتماماتك ليظهر طريقك هنا.', 'Complete a course or pick your interests and your way shows here.'),
                                 actionLabel: recsOn ? t('اختر اهتماماتك', 'Pick your interests') : null,
                                 onAction: recsOn ? _interests : null,
                               )
@@ -192,7 +192,7 @@ class JourneyContent extends StatelessWidget {
                 if (j.source == 'interest') ...[
                   AppSpace.gapXs,
                   Text(
-                    t('اقتراح من اهتماماتك والكورسات التي أكملتها.', 'Suggested from your interests and the courses you completed.'),
+                    t('اقتراح من اهتماماتك والدورات التي أكملتها.', 'Suggested from your interests and the courses you completed.'),
                     style: AppType.body(context).copyWith(color: b.muted),
                   ),
                 ],
@@ -228,7 +228,7 @@ class JourneyContent extends StatelessWidget {
               if (onMoreForYou != null)
                 AppButton.ghost(
                   key: const ValueKey('journey.more'),
-                  label: t('كورسات مقترحة لك', 'More courses for you'),
+                  label: t('دورات مقترحة لك', 'More courses for you'),
                   icon: Icons.auto_awesome_rounded,
                   size: AppButtonSize.sm,
                   onPressed: onMoreForYou,

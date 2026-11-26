@@ -13,6 +13,8 @@ import 'package:flutter_education_app/features/courses/category/subject_tiles.da
 import 'package:flutter_education_app/features/courses/course_list_card.dart';
 import 'package:flutter_education_app/features/home/student/home_hero.dart';
 import 'package:flutter_education_app/features/onboarding/onboarding_screen.dart';
+import 'package:flutter_education_app/features/auth/world_phone_field.dart';
+import 'package:flutter_education_app/features/share/share_link_page.dart' show ShareLinkPreviewView;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -149,6 +151,40 @@ void main() {
               chip: const CourseCoverChip(label: _longAr),
               footer: const CourseProgressFooter(progress: 38),
             ),
+        ]),
+      )),
+    );
+  });
+
+  test('world phone: fixed lengths, else E.164', () {
+    const sa = WorldCountry(code: 'SA', nameAr: 'السعودية', nameEn: 'Saudi Arabia', dial: '+966', minLen: 9, maxLen: 9);
+    const gb = WorldCountry(code: 'GB', nameAr: 'بريطانيا', nameEn: 'United Kingdom', dial: '+44');
+    expect(sa.validLength('501234567'), isTrue);
+    expect(sa.validLength('50123456'), isFalse);
+    expect(gb.validLength('7400123456'), isTrue);
+    expect(gb.validLength('12345'), isFalse);
+  });
+
+  testWidgets('world phone field and the share preview with price and outcomes', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () => _scoped(SingleChildScrollView(
+        child: Column(children: [
+          Form(child: WorldPhoneField(controller: TextEditingController(text: '+966501234567'), label: _longAr)),
+          SizedBox(
+            height: 900,
+            child: ShareLinkPreviewView(
+              kind: _longAr,
+              icon: Icons.school_rounded,
+              title: _longAr,
+              subtitle: _longEn,
+              isPublic: true,
+              price: '199 SAR / month',
+              outcomes: const [_longAr, _longEn, 'x'],
+              onSignIn: () {},
+              onRegister: () {},
+            ),
+          ),
         ]),
       )),
     );
