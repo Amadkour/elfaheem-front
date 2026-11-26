@@ -22,7 +22,6 @@ import 'package:flutter_education_app/features/profile/profile_screen.dart';
 import 'package:flutter_education_app/features/profile/public_profile/public_profile_page.dart' show MyProfileScreen;
 import 'package:flutter_education_app/features/profile/update_account_widget.dart';
 import 'package:flutter_education_app/features/profile/teacher/switch_device_requests/teacher_device_requests_provider.dart';
-import 'package:flutter_education_app/features/profile/teacher/t2b_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 

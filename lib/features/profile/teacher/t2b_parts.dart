@@ -98,7 +98,7 @@ class _HeroPill extends StatelessWidget {
                       const SizedBox(width: AppSpace.xs),
                       Container(
                         constraints: const BoxConstraints(minWidth: AppSpace.lg),
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs + 2),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
                         height: AppSpace.lg,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(color: c.danger, borderRadius: radius),

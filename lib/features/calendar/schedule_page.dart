@@ -77,6 +77,9 @@ import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoin
 /// The width from which the page shows its sidebar (mini month, filters, up next, invitations).
 const calWideBreakpoint = 1000.0;
 
+/// The sidebar's width on a wide page.
+const calSidebarWidth = 300.0;
+
 class SchedulePage extends StatefulWidget {
   const SchedulePage({
     super.key,
@@ -732,7 +735,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             : Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Expanded(child: main),
                 VerticalDivider(width: 1, color: context.colors.divider),
-                SizedBox(width: 300, child: _sidebar(context, view, all, shown)),
+                SizedBox(width: calSidebarWidth, child: _sidebar(context, view, all, shown)),
               ]);
         return BasePage(
           child: SafeArea(

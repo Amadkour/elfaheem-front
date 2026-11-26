@@ -287,7 +287,7 @@ class ComplaintsHubView extends StatelessWidget {
         else
           for (var i = 0; i < shown.length; i++)
             Padding(
-              padding: EdgeInsets.only(bottom: i == shown.length - 1 ? 0 : AppSpace.sm),
+              padding: i == shown.length - 1 ? EdgeInsets.zero : const EdgeInsets.only(bottom: AppSpace.sm),
               child: HubRowCard(
                 row: shown[i],
                 now: now,

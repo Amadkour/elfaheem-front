@@ -198,7 +198,7 @@ class _HeroChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs + 2),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
       decoration: BoxDecoration(
         color: c.heroGlass,
         borderRadius: BorderRadius.circular(AppRadius.pill),

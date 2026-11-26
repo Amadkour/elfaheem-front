@@ -691,6 +691,9 @@ class MeetingSheet extends StatefulWidget {
 }
 
 class _MeetingSheetState extends State<MeetingSheet> {
+  /// From this width the sheet's Join and Change time stand side by side.
+  static const double _footRowFrom = 420;
+
   Map<String, dynamic>? _m;
   String? _error;
   bool _busy = false, _changed = false;
@@ -1003,22 +1006,28 @@ class _MeetingSheetState extends State<MeetingSheet> {
         // the sheet's actions at its foot (Tea2Schedule meet): Join now, Change time, then Cancel meeting
         if (m['can_join'] == true || (owner && m['status'] == 'scheduled')) const SizedBox(height: AppSpace.md),
         if (m['can_join'] == true || (owner && m['status'] == 'scheduled'))
-          Row(children: [
-            if (m['can_join'] == true)
-              Expanded(
-                child: AppButton.primary(
-                    label: t('انضم الآن', 'Join now'), icon: Icons.videocam_outlined, expand: true, onPressed: _busy ? null : _join),
-              ),
-            if (m['can_join'] == true && owner && m['status'] == 'scheduled') const SizedBox(width: AppSpace.sm),
-            if (owner && m['status'] == 'scheduled')
-              Expanded(
-                child: AppButton.secondary(
+          LayoutBuilder(builder: (context, box) {
+            final join = m['can_join'] == true
+                ? AppButton.primary(
+                    label: t('انضم الآن', 'Join now'), icon: Icons.videocam_outlined, expand: true, onPressed: _busy ? null : _join)
+                : null;
+            final move = owner && m['status'] == 'scheduled'
+                ? AppButton.secondary(
                     label: t('تغيير الموعد', 'Change time'),
                     icon: Icons.edit_calendar_outlined,
                     expand: true,
-                    onPressed: _busy ? null : () => _move()),
-              ),
-          ]),
+                    onPressed: _busy ? null : () => _move())
+                : null;
+            // side by side while both labels fit, one under the other on a narrow sheet
+            if (box.maxWidth < _footRowFrom || join == null || move == null) {
+              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                ?join,
+                if (join != null && move != null) const SizedBox(height: AppSpace.sm),
+                ?move,
+              ]);
+            }
+            return Row(children: [Expanded(child: join), const SizedBox(width: AppSpace.sm), Expanded(child: move)]);
+          }),
         if (owner && m['status'] == 'scheduled') ...[
           const SizedBox(height: AppSpace.sm),
           AppButton.danger(
@@ -1072,7 +1081,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
           ]),
         ),
         const SizedBox(width: AppSpace.xs),
-        AppStatusBadge(label: calStatusLabel(st), tone: tone, dense: true),
+        Flexible(child: AppStatusBadge(label: calStatusLabel(st), tone: tone, dense: true)),
         if (owner && st == 'proposed' && ps != null)
           TextButton(
             onPressed: _busy
@@ -1101,7 +1110,7 @@ class _Info extends StatelessWidget {
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         ExcludeSemantics(child: Icon(icon, size: AppIconSize.sm, color: c.textLight)),
         const SizedBox(width: AppSpace.xs),
-        Text(label, style: AppType.meta(context)),
+        Flexible(child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
         const SizedBox(width: AppSpace.md),
         Expanded(
           child: Text(value,

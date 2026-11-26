@@ -6,7 +6,6 @@
 @Tags(['visual'])
 library;
 
-import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/messaging/chat/chat_page.dart';
