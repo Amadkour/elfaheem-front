@@ -41,6 +41,7 @@ import 'package:flutter_education_app/features/certificates/issue/cert_expiry_ca
 import 'package:flutter_education_app/features/certificates/issue/cert_issue_parts.dart';
 import 'package:flutter_education_app/features/certificates/issue/cert_issue_photo_logic.dart';
 import 'package:flutter_education_app/features/certificates/issue/cert_issue_photos.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 Future<void> openCertIssueFlow(BuildContext context, {required int designId, String? designName, int? orgId}) =>
     Navigator.of(context).push(MaterialPageRoute<void>(
@@ -756,7 +757,8 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Scaffold(
+    return T2Scope(
+      child: Scaffold(
       backgroundColor: c.background,
       appBar: AppHeader(
         title: 'ci_title'.tr,
@@ -782,21 +784,36 @@ class _CertIssueFlowPageState extends State<CertIssueFlowPage> {
         featureKey: kCertIssueFeature,
         child: SafeArea(
           child: Column(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xs),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
-                  child: IssueStepper(labels: _stepLabels, current: _stepOrder.indexOf(_step).clamp(0, _stepOrder.length - 1), onTap: _step == 3 ? null : _goTo),
-                ),
-              ),
+            // the redesign's band (Tea2Certs issue): the page's name on the teacher's hero and the steps on it
+            AppHeroSurface(
+              child: LayoutBuilder(builder: (context, box) {
+                final side = AppSpace.gutter(box.maxWidth);
+                return Padding(
+                  padding: EdgeInsets.fromLTRB(side, AppSpace.sm, side, AppSpace.sm),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: AppWidth.reading.inside(box.maxWidth)),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        Text('t2_ci_hero'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.onHero)),
+                        const SizedBox(height: AppSpace.xs),
+                        T2Steps(
+                          key: const ValueKey('ci.steps'),
+                          labels: _stepLabels,
+                          index: _stepOrder.indexOf(_step).clamp(0, _stepOrder.length - 1),
+                          onTap: _step == 3 ? null : _goTo,
+                        ),
+                      ]),
+                    ),
+                  ),
+                );
+              }),
             ),
-            Divider(height: 1, color: c.divider),
             Expanded(child: _body(context)),
             // the Photos step's id is above 3: it needs the Next bar too; the button follows the photos as they arrive
             if (_step != 3) AnimatedBuilder(animation: _photos, builder: (context, _) => _bottomBar(context)),
           ]),
         ),
+      ),
       ),
     );
   }
