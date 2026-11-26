@@ -1,0 +1,399 @@
+{
+  "v": 1,
+  "brand": {
+    "ink": "#0F3F2C",
+    "deep": "#08261A",
+    "primary": "#186848",
+    "partner": "#2FA26C",
+    "warm": "#C08838",
+    "hot": "#996C2D",
+    "primary_tint": "#DFEAE5",
+    "primary_ink": "#186848",
+    "primary_tint_dark": "#1D2D28",
+    "primary_ink_dark": "#699D88",
+    "partner_tint": "#E2F2EA",
+    "partner_ink": "#237951",
+    "partner_tint_dark": "#21372E",
+    "partner_ink_dark": "#4AAE7F",
+    "warm_tint": "#F6EEE3",
+    "warm_ink": "#8C6329",
+    "warm_tint_dark": "#3B3325",
+    "warm_ink_dark": "#C7954E",
+    "hot_tint": "#F1EAE2",
+    "hot_ink": "#8A6128",
+    "hot_tint_dark": "#342E23",
+    "hot_ink_dark": "#B49264",
+    "page": "#F5F8F7",
+    "text": "#102B20",
+    "muted": "#51675E",
+    "line": "#DFEAE5",
+    "well": "#F9FBFA",
+    "track": "#E8F0ED",
+    "field_edge": "#CCDED7",
+    "top_bar": "#0F3F2C",
+    "warm_on_dark": "#D0A66A",
+    "hot_a": "#CEA264",
+    "hot_b": "#C08838",
+    "hot_fg": "#08261A"
+  },
+  "accents": {
+    "sun": {
+      "c": "#FFC53D",
+      "tint": "#FFF4CC",
+      "ink": "#7A5200",
+      "tint_dark": "#463E26",
+      "ink_dark": "#FFC53D"
+    },
+    "mint": {
+      "c": "#19C2B1",
+      "tint": "#DFF6F4",
+      "ink": "#107A70",
+      "tint_dark": "#1D3D3B",
+      "ink_dark": "#19C2B1"
+    },
+    "grape": {
+      "c": "#7A4DF0",
+      "tint": "#ECE5FF",
+      "ink": "#4A28B8",
+      "tint_dark": "#2F2846",
+      "ink_dark": "#A181F4"
+    },
+    "pink": {
+      "c": "#FF5FA2",
+      "tint": "#FFE3EF",
+      "ink": "#A81E5E",
+      "tint_dark": "#462B38",
+      "ink_dark": "#FF65A6"
+    },
+    "lime": {
+      "c": "#9BD728",
+      "tint": "#EEF9D2",
+      "ink": "#4C6B05",
+      "tint_dark": "#344122",
+      "ink_dark": "#9BD728"
+    },
+    "sky": {
+      "c": "#3DA5FF",
+      "tint": "#E0F0FF",
+      "ink": "#0F5CA8",
+      "tint_dark": "#243849",
+      "ink_dark": "#3DA5FF"
+    }
+  },
+  "status": {
+    "live": "#F2545B",
+    "live_fill": "#CB474C",
+    "live_tint": "#FFE3E0",
+    "live_ink": "#B23A2E",
+    "live_tint_dark": "#44292B",
+    "live_ink_dark": "#F46F75",
+    "ok": "#19C2B1",
+    "ok_tint": "#DFF6F4",
+    "ok_ink": "#107A70",
+    "ok_tint_dark": "#1D3D3B",
+    "ok_ink_dark": "#19C2B1",
+    "warn": "#FFC53D",
+    "warn_tint": "#FFF4CC",
+    "warn_ink": "#7A5200",
+    "warn_tint_dark": "#463E26",
+    "warn_ink_dark": "#FFC53D",
+    "lock": "#C9D6E6",
+    "lock_ink": "#5F6C7E",
+    "lock_dark": "#3A4046",
+    "lock_ink_dark": "#A9B4C2",
+    "error": "#C2410C",
+    "error_ink": "#B73D0B",
+    "error_tint": "#F6E4DD",
+    "error_tint_dark": "#3C261D",
+    "error_ink_dark": "#D57C57"
+  },
+  "areas": {
+    "home": {
+      "a": "#186848",
+      "b": "#2FA26C",
+      "hero_a": "#2FA26C",
+      "hero_mid": "#1B6142",
+      "tint": "#DFEAE5",
+      "ink": "#186848",
+      "tint_dark": "#1D2D28",
+      "ink_dark": "#699D88",
+      "btn_a": "#186848",
+      "btn_b": "#268458",
+      "btn_fg": "#FFFFFF"
+    },
+    "learn": {
+      "a": "#C08838",
+      "b": "#996C2D",
+      "hero_a": "#C08838",
+      "hero_mid": "#735827",
+      "tint": "#F6EEE3",
+      "ink": "#8C6329",
+      "tint_dark": "#3B3325",
+      "ink_dark": "#C7954E",
+      "btn_a": "#CEA264",
+      "btn_b": "#C08838",
+      "btn_fg": "#08261A"
+    },
+    "exam": {
+      "a": "#7A4DF0",
+      "b": "#186848",
+      "hero_a": "#7A4DF0",
+      "hero_mid": "#5143A4",
+      "tint": "#ECE5FF",
+      "ink": "#4A28B8",
+      "tint_dark": "#2F2846",
+      "ink_dark": "#A181F4",
+      "btn_a": "#7A4DF0",
+      "btn_b": "#186848",
+      "btn_fg": "#FFFFFF"
+    },
+    "games": {
+      "a": "#7A4DF0",
+      "b": "#FF5FA2",
+      "hero_a": "#7A4DF0",
+      "hero_mid": "#5143A4",
+      "tint": "#ECE5FF",
+      "ink": "#4A28B8",
+      "tint_dark": "#2F2846",
+      "ink_dark": "#A181F4",
+      "btn_a": "#7A4DF0",
+      "btn_b": "#C3497C",
+      "btn_fg": "#FFFFFF"
+    },
+    "store": {
+      "a": "#FFC53D",
+      "b": "#C08838",
+      "hero_a": "#FFC53D",
+      "hero_mid": "#6D5B1F",
+      "tint": "#FFF4CC",
+      "ink": "#7A5200",
+      "tint_dark": "#463E26",
+      "ink_dark": "#FFC53D",
+      "btn_a": "#FFC53D",
+      "btn_b": "#C08838",
+      "btn_fg": "#08261A"
+    },
+    "quran": {
+      "a": "#19C2B1",
+      "b": "#0F6E6D",
+      "hero_a": "#19C2B1",
+      "hero_mid": "#0E6154",
+      "tint": "#DFF6F4",
+      "ink": "#107A70",
+      "tint_dark": "#1D3D3B",
+      "ink_dark": "#19C2B1",
+      "btn_a": "#118377",
+      "btn_b": "#0F6E6D",
+      "btn_fg": "#FFFFFF"
+    },
+    "nahw": {
+      "a": "#9BD728",
+      "b": "#19C2B1",
+      "hero_a": "#9BD728",
+      "hero_mid": "#3A5E1B",
+      "tint": "#EEF9D2",
+      "ink": "#4C6B05",
+      "tint_dark": "#344122",
+      "ink_dark": "#9BD728",
+      "btn_a": "#9BD728",
+      "btn_b": "#19C2B1",
+      "btn_fg": "#08261A"
+    },
+    "sched": {
+      "a": "#3DA5FF",
+      "b": "#19C2B1",
+      "hero_a": "#3DA5FF",
+      "hero_mid": "#1F5A7C",
+      "tint": "#E0F0FF",
+      "ink": "#0F5CA8",
+      "tint_dark": "#243849",
+      "ink_dark": "#3DA5FF",
+      "btn_a": "#2D79BB",
+      "btn_b": "#118377",
+      "btn_fg": "#FFFFFF"
+    },
+    "chat": {
+      "a": "#FF5FA2",
+      "b": "#C08838",
+      "hero_a": "#FF5FA2",
+      "hero_mid": "#773E56",
+      "tint": "#FFE3EF",
+      "ink": "#A81E5E",
+      "tint_dark": "#462B38",
+      "ink_dark": "#FF65A6",
+      "btn_a": "#C3497C",
+      "btn_b": "#996C2D",
+      "btn_fg": "#FFFFFF"
+    },
+    "money": {
+      "a": "#FFC53D",
+      "b": "#19C2B1",
+      "hero_a": "#FFC53D",
+      "hero_mid": "#6D5B1F",
+      "tint": "#FFF4CC",
+      "ink": "#7A5200",
+      "tint_dark": "#463E26",
+      "ink_dark": "#FFC53D",
+      "btn_a": "#FFC53D",
+      "btn_b": "#19C2B1",
+      "btn_fg": "#08261A"
+    },
+    "me": {
+      "a": "#186848",
+      "b": "#7A4DF0",
+      "hero_a": "#2FA26C",
+      "hero_mid": "#1B6142",
+      "tint": "#DFEAE5",
+      "ink": "#186848",
+      "tint_dark": "#1D2D28",
+      "ink_dark": "#699D88",
+      "btn_a": "#186848",
+      "btn_b": "#7A4DF0",
+      "btn_fg": "#FFFFFF"
+    }
+  },
+  "roles": {
+    "teacher": {
+      "a": "#5F3DC4",
+      "b": "#8B6CF0",
+      "hero_a": "#5F3DC4",
+      "hero_mid": "#473E96",
+      "tint": "#E9E4F7",
+      "ink": "#5F3DC4",
+      "tint_dark": "#2A253E",
+      "ink_dark": "#9983D9",
+      "btn_a": "#5F3DC4",
+      "btn_b": "#7C61D7",
+      "btn_fg": "#FFFFFF"
+    },
+    "parent": {
+      "a": "#0B8FB8",
+      "b": "#2FB5A8",
+      "hero_a": "#0B8FB8",
+      "hero_mid": "#0A5E6E",
+      "tint": "#DDEFF5",
+      "ink": "#097293",
+      "tint_dark": "#1B343C",
+      "ink_dark": "#3CA5C6",
+      "btn_a": "#0A7EA2",
+      "btn_b": "#228279",
+      "btn_fg": "#FFFFFF"
+    },
+    "admin": {
+      "a": "#186848",
+      "b": "#C08838",
+      "hero_a": "#2FA26C",
+      "hero_mid": "#1B6142",
+      "tint": "#DFEAE5",
+      "ink": "#186848",
+      "tint_dark": "#1D2D28",
+      "ink_dark": "#699D88",
+      "btn_a": "#186848",
+      "btn_b": "#996C2D",
+      "btn_fg": "#FFFFFF"
+    },
+    "super": {
+      "a": "#996C2D",
+      "b": "#C08838",
+      "hero_a": "#996C2D",
+      "hero_mid": "#735827",
+      "tint": "#F1EAE2",
+      "ink": "#8A6128",
+      "tint_dark": "#342E23",
+      "ink_dark": "#B49264",
+      "btn_a": "#996C2D",
+      "btn_b": "#996C2D",
+      "btn_fg": "#FFFFFF"
+    }
+  },
+  "subjects": {
+    "math": {
+      "c": "#FF7A59",
+      "tint": "#FFEAE4",
+      "ink": "#A8381C",
+      "tint_dark": "#46302B",
+      "ink_dark": "#FF7A59",
+      "fg": "#08261A"
+    },
+    "physics": {
+      "c": "#7A4DF0",
+      "tint": "#EAE3FD",
+      "ink": "#4A28B8",
+      "tint_dark": "#2F2846",
+      "ink_dark": "#A181F4",
+      "fg": "#FFFFFF"
+    },
+    "chem": {
+      "c": "#19C29B",
+      "tint": "#DAF5EF",
+      "ink": "#0C6B55",
+      "tint_dark": "#1D3D37",
+      "ink_dark": "#19C29B",
+      "fg": "#08261A"
+    },
+    "bio": {
+      "c": "#2FB5A8",
+      "tint": "#DEF3F1",
+      "ink": "#126B63",
+      "tint_dark": "#213B39",
+      "ink_dark": "#2FB5A8",
+      "fg": "#08261A"
+    },
+    "english": {
+      "c": "#07B8EE",
+      "tint": "#D7F4FC",
+      "ink": "#06678A",
+      "tint_dark": "#1A3B46",
+      "ink_dark": "#07B8EE",
+      "fg": "#08261A"
+    },
+    "arabic": {
+      "c": "#0F6E6D",
+      "tint": "#D9E8E8",
+      "ink": "#0F6E6D",
+      "tint_dark": "#1B2E2F",
+      "ink_dark": "#5E9E9D",
+      "fg": "#FFFFFF"
+    },
+    "qudurat": {
+      "c": "#FFB020",
+      "tint": "#FFF2DB",
+      "ink": "#7A5200",
+      "tint_dark": "#463A21",
+      "ink_dark": "#FFB020",
+      "fg": "#08261A"
+    },
+    "code": {
+      "c": "#1979C1",
+      "tint": "#DAEAF5",
+      "ink": "#135F9A",
+      "tint_dark": "#1D303E",
+      "ink_dark": "#579DD2",
+      "fg": "#FFFFFF"
+    },
+    "quran": {
+      "c": "#1D9A63",
+      "tint": "#DBEFE6",
+      "ink": "#11633F",
+      "tint_dark": "#1E362D",
+      "ink_dark": "#46AC7F",
+      "fg": "#FFFFFF"
+    },
+    "islamic": {
+      "c": "#B7791F",
+      "tint": "#F3EADB",
+      "ink": "#7A4F10",
+      "tint_dark": "#3A3021",
+      "ink_dark": "#C49147",
+      "fg": "#FFFFFF"
+    },
+    "other": {
+      "c": "#64748B",
+      "tint": "#E9ECEF",
+      "ink": "#5B6A7F",
+      "tint_dark": "#2B2F34",
+      "ink_dark": "#8C98A9",
+      "fg": "#FFFFFF"
+    }
+  }
+}
