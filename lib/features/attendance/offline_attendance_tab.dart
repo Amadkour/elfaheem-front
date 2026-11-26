@@ -12,8 +12,8 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'package:flutter_education_app/features/attendance/attendance_store.dart';
 import 'package:flutter_education_app/features/attendance/attendance_strings.dart';
-import 'package:flutter_education_app/features/attendance/attendance_widgets.dart';
 import 'package:flutter_education_app/features/attendance/attendance_ui.dart';
+import 'package:flutter_education_app/features/attendance/student_ui/student_checkin_view.dart' show showStudentAttendCheckIn;
 
 class OfflineAttendanceTab extends StatefulWidget {
   const OfflineAttendanceTab({super.key});
@@ -62,7 +62,7 @@ class _OfflineAttendanceTabState extends State<OfflineAttendanceTab> {
               group: 'att_offline',
               child: AppCard(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
-                onTap: () => showStudentCheckInSheet(context, courseId: c.courseId, title: name),
+                onTap: () => showStudentAttendCheckIn(context, courseId: c.courseId, title: name),
                 child: Row(children: [
                   AttIconWell(icon: CupertinoIcons.book_fill, color: primary),
                   AppSpace.gapSm,

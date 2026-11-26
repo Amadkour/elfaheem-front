@@ -123,6 +123,9 @@ import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/features/live/room/widgets/recorder_web_stub.dart'
 if (dart.library.html) 'package:flutter_education_app/features/live/room/widgets/recorder_web_impl.dart' as web_rec;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/app_digits.dart' show appDigits;
+import 'package:flutter_education_app/features/live/room/student/student_live_api.dart';
+import 'package:flutter_education_app/features/live/room/student/student_room_view.dart' show StudentRoomView, showStudentAskSheet;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design System
@@ -3207,7 +3210,7 @@ class _RoomPageState extends State<RoomPage>
     _startSessionClock();
     LiveRoomScope.maybeOf(context)?.bindLeave(_leaveFromMiniBox);
     final minimized = _minimized;
-    final page = _buildRoomPage();
+    final page = _studentPrivate ? _buildStudentRoom() : _buildRoomPage();
     if (minimized == null) return page;
     // In the box: nothing of the page is painted, so its decorative loops (the share view's glow, banner pulses)
     // stop until it is full-screen again (D27).
@@ -3215,6 +3218,93 @@ class _RoomPageState extends State<RoomPage>
       valueListenable: minimized,
       builder: (_, min, child) => TickerMode(enabled: !min, child: child!),
       child: page,
+    );
+  }
+
+  // ── Redesign S-B: the student's private room (RULES 1.7, backend D-1950) ─────────────────────────────────────
+  //
+  // A student whose token is private (metadata {"privacy": "private"}) sees only the stage, "أنت والمعلم" and four
+  // controls (student/student_room_view.dart); the hand and the question go through the server
+  // (student/student_live_api.dart), never the data channel, which is closed for him. Everyone else: _buildRoomPage.
+  bool get _studentPrivate =>
+      !widget.isTeacher && !widget.isGuest && !_host && liveTokenIsPrivate(widget.room.localParticipant?.metadata);
+
+  bool _studentFull = false;
+  bool _studentHandUp = false;
+  bool _studentHandBusy = false;
+  late final StudentLiveApi _studentApi = StudentLiveApi(widget.ref);
+
+  Future<void> _studentToggleHand() async {
+    setState(() => _studentHandBusy = true);
+    try {
+      final up = await _studentApi.hand(!_studentHandUp);
+      if (!mounted) return;
+      setState(() => _studentHandUp = up);
+      if (up) showAppNotice('sb_live_hand_sent'.tr, icon: Icons.back_hand_outlined);
+    } catch (e) {
+      if (mounted) showAppNotice(ApiException.from(e).message, error: true);
+    } finally {
+      if (mounted) setState(() => _studentHandBusy = false);
+    }
+  }
+
+  Future<void> _studentAsk() async {
+    final text = await showStudentAskSheet(context);
+    if (text == null || text.isEmpty || !mounted) return;
+    try {
+      await _studentApi.ask(text);
+      if (mounted) showAppNotice('sb_live_ask_sent'.tr, icon: Icons.check_rounded);
+    } catch (e) {
+      if (mounted) showAppNotice(ApiException.from(e).message, error: true);
+    }
+  }
+
+  Future<void> _studentToggleMic() async {
+    final lp = widget.room.localParticipant;
+    if (lp == null) return;
+    await lp.setMicrophoneEnabled(!lp.isMicrophoneEnabled());
+    if (mounted) setState(() {});
+  }
+
+  Widget _buildStudentRoom() {
+    final scope = LiveRoomScope.maybeOf(context);
+    return PopScope(
+      canPop: !_studentFull,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _studentFull) setState(() => _studentFull = false);
+      },
+      child: Scaffold(
+        key: const ValueKey('live_room.student'),
+        backgroundColor: _bg,
+        body: ValueListenableBuilder<int>(
+          valueListenable: _clockTick,
+          builder: (_, _, _) {
+            final own = Duration(seconds: _sessionElapsedSeconds);
+            final live = _sessionClockTimer == null
+                ? null
+                : (meetingLiveFor(widget.liveStartedAt, DateTime.now().toUtc(), own: own) ?? own);
+            final name = (widget.sessionName ?? '').trim();
+            return StudentRoomView(
+              lessonTitle: name.isNotEmpty ? name : liveTr('lr_live_session', widget.ref.kind),
+              teacherName: widget.hostName,
+              liveFor: live == null ? null : appDigits(liveClock(live)),
+              stage: _buildMainVideo(),
+              stageOverlays: [_buildPresenterCam()],
+              micOn: widget.room.localParticipant?.isMicrophoneEnabled() ?? false,
+              micAllowed: _allowed.mic,
+              handUp: _studentHandUp,
+              handBusy: _studentHandBusy,
+              fullScreen: _studentFull,
+              onToggleFullScreen: () => setState(() => _studentFull = !_studentFull),
+              onToggleMic: _studentToggleMic,
+              onToggleHand: _studentToggleHand,
+              onAsk: _studentAsk,
+              onLeave: () => unawaited(_endSessionWithRecording()),
+              onMinimize: scope == null || _endingSession ? null : scope.minimize,
+            );
+          },
+        ),
+      ),
     );
   }
 

@@ -18,6 +18,8 @@ import 'package:flutter_education_app/features/live/companion/companion_parts.da
 import 'package:flutter_education_app/features/live/companion/companion_platform.dart' as companion_platform;
 import 'package:flutter_education_app/features/live/companion/companion_sheet.dart' show pickCompanionSources;
 import 'package:flutter_education_app/features/live/room/prejoin_layout.dart';
+import 'package:flutter_education_app/features/live/room/prejoin_student.dart';
+import 'package:flutter_education_app/features/live/room/student/student_live_parts.dart' show liveStartedMinutes;
 import 'package:flutter_education_app/features/live/room/prejoin_mic_meter_stub.dart'
     if (dart.library.js_interop) 'package:flutter_education_app/features/live/room/prejoin_mic_meter_web.dart' as mic_meter;
 import 'package:flutter_education_app/features/live/room/join_args.dart';
@@ -629,6 +631,40 @@ class _PreJoinPageState extends State<PreJoinPage> {
     LivePalette.sync(context);   // live classroom colours follow the app theme
     AppShellNav.markFullScreen(context); // no tab bar on the pre-join page, even inside a tab (D-081)
     final args = widget.args;
+    // A student joining his course class (redesign S-B): the student page (the teacher and himself only, no
+    // count). The teacher, a meeting and a guest keep PreJoinLayout.
+    if (!args.isTeacher && !args.guest && !args.hostRole && !args.ref.isMeeting) {
+      return Scaffold(
+        key: const ValueKey('prejoin'),
+        backgroundColor: context.colors.kit.deep,
+        body: StudentPreJoinLayout(
+          lessonTitle: _title,
+          teacherName: args.hostName,
+          userName: args.userName,
+          startedMinutes: liveStartedMinutes(args.startsAt),
+          preview: _videoTrack != null && _enableVideo
+              ? LiveVideoView(_videoTrack!, fit: VideoViewFit.cover, mirror: VideoViewMirrorMode.mirror)
+              : null,
+          micOn: _enableAudio,
+          camOn: _enableVideo,
+          micLevel: _enableAudio && _audioTrack != null ? _micLevel : null,
+          onToggleMic: _audioInputs.isEmpty && !_enableAudio ? null : _toggleAudio,
+          onToggleCam: _videoInputs.isEmpty && !_enableVideo ? null : _toggleCamera,
+          mics: _asDevices(_audioInputs, 'lr_microphone'.tr),
+          cams: _asDevices(_videoInputs, 'lr_camera'.tr),
+          selectedMic: _selectedAudioDevice?['device_id'] as String?,
+          selectedCam: _selectedVideoDevice?['device_id'] as String?,
+          onMicChanged: _selectAudio,
+          onCamChanged: _selectVideo,
+          busy: _busy,
+          onJoin: _busy ? null : () => _join(context),
+          onBack: _back,
+          issue: _issue,
+          onRetry: _retry,
+          phoneSlot: _companionHere ? PreJoinPhoneRow(selected: _phoneSources, onTap: _pickPhone) : null,
+        ),
+      );
+    }
     return Scaffold(
       key: const ValueKey('prejoin'),
       backgroundColor: context.colors.background,
