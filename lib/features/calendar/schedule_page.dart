@@ -53,6 +53,7 @@ import 'package:flutter_education_app/features/home/student/home_live.dart' show
 import 'package:flutter_education_app/features/home/teacher/queue_work_items.dart' show openTeacherCourseSessions;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_education_app/core/share/external_link.dart';
@@ -68,9 +69,16 @@ import 'package:flutter_education_app/features/calendar/schedule_logic.dart';
 import 'package:flutter_education_app/features/calendar/schedule_parts.dart';
 import 'package:flutter_education_app/features/calendar/schedule_store.dart';
 import 'package:flutter_education_app/features/calendar/recurrence/series_actions.dart';
+import 'package:flutter_education_app/features/payments/points/points_api.dart' show kQuickMeetingFeatureKey;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
+import 'package:flutter_education_app/features/profile/teacher/t2b_parts.dart';
+import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
 
 /// The width from which the page shows its sidebar (mini month, filters, up next, invitations).
 const calWideBreakpoint = 1000.0;
+
+/// The sidebar's width on a wide page.
+const calSidebarWidth = 300.0;
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({
@@ -639,10 +647,59 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
   Widget build(BuildContext context) {
     // a student's schedule is the schedule area (redesign S-C, Stu2Schedule): its accent on the selected states,
     // buttons and empty plates; every other role keeps its own
-    final student = (widget.role ?? Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role) == 'student';
+    final role = widget.role ?? Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role;
+    final student = role == 'student';
     _student = student;
+    // a teacher's own schedule wears the teacher hero (redesign T2b, Tea2Schedule); org / department calendars keep theirs
+    _t2b = role == 'teacher' && !_dept && widget.orgId == null;
     final page = _page(context);
+    if (_t2b) return T2Scope(child: page);
     return student ? AppAreaScope(area: AppArea.sched, child: page) : page;
+  }
+
+  /// The signed-in person is a teacher on their own schedule: the teacher hero carries the title, the week's figures,
+  /// New meeting, Meet now, the export and the two tabs (redesign T2b).
+  bool _t2b = false;
+
+  /// The teacher's hero (Tea2Schedule): the week on screen (the list: today and the six days after it).
+  Widget _teacherHero(BuildContext context, CalView view, List<CalEvent> all, {required bool wide}) {
+    final today = calDay(_nowWall);
+    final days = view == CalView.agenda
+        ? [for (var i = 0; i < 7; i++) DateTime(today.year, today.month, today.day + i)]
+        : _daysOf(CalView.week);
+    DateTime noon(DateTime d) => AppTime.fromZone(DateTime(d.year, d.month, d.day, 12));
+    final start = AppTime.fromZone(days.first).toUtc();
+    final end = AppTime.fromZone(DateTime(days.last.year, days.last.month, days.last.day + 1)).toUtc();
+    final week = calSlice(all, start, end).where((e) => !e.cancelled).toList();
+    int count(CalCat k) => week.where((e) => calCatOf(e) == k).length;
+    final now = _nowUtc, keys = _liveKeys;
+    final coming = calComing(all, now, liveKeys: keys)..sort((a, b) => a.start.compareTo(b.start));
+    final live = coming.where((e) => calIsLive(e, now, liveKeys: keys)).firstOrNull;
+    final next = coming.where((e) => e != live && !e.cancelled && !e.declined).firstOrNull;
+    final line = live != null
+        ? 't2_sch_line_live'.tr.replaceAll('{title}', live.title)
+        : next != null
+            ? 't2_sch_line_next'.tr.replaceAll('{title}', next.title).replaceAll('{time}', AppTime.dateTime(next.start))
+            : 't2_sch_line_free'.tr;
+    final sameMonth = days.first.month == days.last.month;
+    return T2bScheduleHero(
+      from: AppTime.date(noon(days.first), pattern: sameMonth ? 'd' : 'd MMMM'),
+      to: AppTime.date(noon(days.last), pattern: 'd MMMM'),
+      kicker: AppTime.date(now, pattern: 'EEEE d MMMM'),
+      line: line,
+      live: count(CalCat.live),
+      meetings: count(CalCat.meetings),
+      exams: count(CalCat.exams),
+      invites: _chunk?.pending ?? 0,
+      calendar: view != CalView.agenda,
+      onTab: (cal) => _setTab(cal ? 1 : 0, wide: wide),
+      onNew: () => _add(),
+      onMeetNow: () async {
+        final m = await startQuickMeeting(context, orgId: widget.orgId, api: widget.api);
+        if (m != null && mounted) unawaited(_refresh());
+      },
+      onExport: _export,
+    );
   }
 
   /// The signed-in person is a student: the schedule area's hero, words and forward button (redesign S-C).
@@ -671,6 +728,25 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       final all = _all;
       final shown = _filters.apply(all);
       final main = _main(context, view, all, shown, wide: wide, width: box.maxWidth);
+      if (_t2b) {
+        // the hero scrolls away above the page; the sidebar stands on the end side (Tea2Schedule web)
+        final body = !wide
+            ? main
+            : Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Expanded(child: main),
+                VerticalDivider(width: 1, color: context.colors.divider),
+                SizedBox(width: calSidebarWidth, child: _sidebar(context, view, all, shown)),
+              ]);
+        return BasePage(
+          child: SafeArea(
+            bottom: false,
+            child: NestedScrollView(
+              headerSliverBuilder: (context, _) => [SliverToBoxAdapter(child: _teacherHero(context, view, all, wide: wide))],
+              body: body,
+            ),
+          ),
+        );
+      }
       if (!wide) {
         return BasePage(
           floatingActionButton: _dept ? null : _fab(context),
@@ -768,7 +844,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.lg - 6, AppSpace.md, AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (!widget.asTab) ...[
+          if (!widget.asTab && !_t2b) ...[
             Row(children: [
               if (Navigator.of(context).canPop()) ...[
                 const AppBackButton(),
@@ -779,18 +855,21 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             ]),
             const SizedBox(height: AppSpace.xxs / 2),
           ],
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs / 2, bottom: AppSpace.md),
-            child: Text(AppTime.date(now, pattern: 'EEEE d MMMM'), style: AppType.meta(context)),
-          ),
-          AppButton.primary(
-            key: const ValueKey('cal.new_meeting'),
-            label: t('اجتماع جديد', 'New meeting'),
-            icon: Icons.add_rounded,
-            expand: true,
-            onPressed: () => _add(),
-          ),
-          if (!_dept) ...[
+          // a teacher's hero carries the date, New meeting and Meet now (T2b)
+          if (!_t2b) ...[
+            Padding(
+              padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs / 2, bottom: AppSpace.md),
+              child: Text(AppTime.date(now, pattern: 'EEEE d MMMM'), style: AppType.meta(context)),
+            ),
+            AppButton.primary(
+              key: const ValueKey('cal.new_meeting'),
+              label: t('اجتماع جديد', 'New meeting'),
+              icon: Icons.add_rounded,
+              expand: true,
+              onPressed: () => _add(),
+            ),
+          ],
+          if (!_dept && !_t2b) ...[
             const SizedBox(height: AppSpace.xs),
             Align(
               alignment: AlignmentDirectional.centerStart,
@@ -857,7 +936,9 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
         if (canPop) const AppBackButton(),
         Expanded(
           // the list's hero carries the date; on the grid the month is the title, and opens the mini month
-          child: !grid
+          child: !grid && _t2b
+              ? const SizedBox.shrink()
+              : !grid
               ? Semantics(header: true, child: Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)))
               : Align(
                   alignment: AlignmentDirectional.centerStart,
@@ -913,7 +994,9 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
           Expanded(
             child: Align(
               alignment: AlignmentDirectional.centerStart,
-              child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 440), child: _tabs(context, view, wide: wide, expand: true)),
+              child: _t2b
+                  ? const SizedBox.shrink()
+                  : ConstrainedBox(constraints: const BoxConstraints(maxWidth: 440), child: _tabs(context, view, wide: wide, expand: true)),
             ),
           ),
           if (_loading && _chunk != null)
@@ -953,10 +1036,11 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       if (_student && view == CalView.agenda) _studentHero(context, shown),
       if (wide || tablet) _toolbar(context, view, wide: wide) else ...[
         _header(context, view),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
-          child: _tabs(context, view, wide: false, expand: true),
-        ),
+        if (!_t2b)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+            child: _tabs(context, view, wide: false, expand: true),
+          ),
         AnimatedSize(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
@@ -1155,6 +1239,8 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
         todayDone: todayLeft == 0 && todayAll > 0,
         padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, wide ? AppSpace.xl : _fabRoomOf(context)),
         header: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          // a teacher's hero carries today (T2b)
+          if (!_t2b) ...[
           AppReveal(index: 0, group: 'cal.agenda', rise: 8, child: CalTodayHero(
             nowUtc: now,
             left: todayLeft,
@@ -1166,6 +1252,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
             onJoinNext: next == null ? null : () => _join(next),
           )),
           const SizedBox(height: AppSpace.md),
+          ],
           ?chips,
           CalListBar(
             title: t('القادمة', 'Coming up'),
@@ -1485,6 +1572,84 @@ class ScScheduleHero extends StatelessWidget {
             child: AppButton.hot(label: 'sc_sch_join'.tr, icon: Icons.play_arrow_rounded, onPressed: onJoin),
           ),
       ],
+    );
+  }
+}
+
+/// A teacher's schedule hero (Tea2Schedule cal / list, plain values): the week as the title, what is on now as the
+/// line (wide), the week's four figures, "New meeting" (the page's one filled button), "Meet now" and the .ics
+/// export on wide screens, and the Calendar / Scheduled meetings switch on the lower edge.
+class T2bScheduleHero extends StatelessWidget {
+  const T2bScheduleHero({
+    super.key,
+    required this.from,
+    required this.to,
+    required this.live,
+    required this.meetings,
+    required this.exams,
+    required this.invites,
+    required this.calendar,
+    required this.onTab,
+    this.kicker,
+    this.line,
+    this.onNew,
+    this.onMeetNow,
+    this.onExport,
+  });
+
+  /// The first and last day of the week shown ("22", "28 November").
+  final String from, to;
+  final int live, meetings, exams, invites;
+
+  /// The Calendar tab is open (else Scheduled meetings).
+  final bool calendar;
+  final ValueChanged<bool> onTab;
+  final String? kicker, line;
+  final VoidCallback? onNew, onMeetNow, onExport;
+
+  @override
+  Widget build(BuildContext context) {
+    final wide = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
+    final newButton = onNew == null
+        ? null
+        : AppButton.primary(key: const ValueKey('cal.new_meeting'), label: 't2_sch_new_meeting'.tr, icon: Icons.add_rounded, onPressed: onNew);
+    final more = <Widget>[
+      if (wide && onMeetNow != null)
+        ParentComponent(
+          featureKey: kQuickMeetingFeatureKey,
+          child: T2bHeroButton(label: 't2_sch_meet_now'.tr, icon: Icons.sensors_rounded, onTap: onMeetNow),
+        ),
+      if (wide && onExport != null) T2bHeroButton(label: 't2_sch_export'.tr, icon: Icons.download_rounded, onTap: onExport),
+    ];
+    final buttons = newButton == null && more.isEmpty
+        ? null
+        : Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: [?newButton, ...more]);
+    // the reference's order: the button under the title, then the figures, then the tabs (wide: the buttons at the end)
+    return AppHero(
+      overlap: false,
+      wipe: false,
+      kicker: wide ? kicker : null,
+      title: 't2_sch_title'.tr.replaceAll('{from}', from).replaceAll('{to}', to),
+      subtitle: wide ? line : null,
+      trailing: wide && buttons != null ? Align(alignment: AlignmentDirectional.bottomEnd, child: buttons) : null,
+      actions: [if (!wide && buttons != null) Align(alignment: AlignmentDirectional.centerStart, child: buttons)],
+      bottom: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        T2bHeroFigures(stats: [
+          AppHeroStat(value: '$live', label: 't2_sch_stat_live'.tr),
+          AppHeroStat(value: '$meetings', label: 't2_sch_stat_meetings'.tr),
+          AppHeroStat(value: '$exams', label: 't2_sch_stat_exams'.tr),
+          AppHeroStat(value: '$invites', label: 't2_sch_stat_invites'.tr),
+        ]),
+        const SizedBox(height: AppSpace.md),
+        T2bHeroPills(
+          index: calendar ? 0 : 1,
+          onChanged: (i) => onTab(i == 0),
+          items: [
+            T2bPill('t2_sch_tab_cal'.tr, icon: Icons.calendar_month_outlined, key: 'cal.tab.calendar'),
+            T2bPill('t2_sch_tab_list'.tr, icon: Icons.groups_outlined, count: invites, key: 'cal.tab.list'),
+          ],
+        ),
+      ]),
     );
   }
 }
