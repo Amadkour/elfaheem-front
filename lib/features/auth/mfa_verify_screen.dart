@@ -3,6 +3,7 @@
 // [MfaVerifyScreen] drives it through MyAuthProvider.verifyMfa. [openMfaStep] opens whatever a login answer asked
 // for: this screen, or the enrollment page when the role must use MFA and the account has none yet.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -222,7 +223,12 @@ class _MfaVerifyScreenState extends State<MfaVerifyScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<MyAuthProvider>();
     return AuthScaffold(
-      title: t('التحقق بخطوتين', 'Two-step verification'),
+      kicker: 'sa_mfa_kicker'.tr,
+      heroTitle: 'sa_mfa_hero'.tr,
+      squiggle: 'sa_mfa_squiggle'.tr,
+      glyph: Icons.verified_user_rounded,
+      glyphTone: context.colors.kit.accent(AppAccent.grape),
+      title: 'sa_mfa_title'.tr,
       subtitle: t('خطوة أمان أخيرة قبل فتح حسابك.', 'One last security step before your account opens.'),
       builder: (context, isWide) => MfaCodeForm(
         embedded: true,

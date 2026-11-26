@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../design/app_charts.dart' show appInk;
+import '../../design/app_area.dart' show AppAreaScope;
 import '../../design/app_kit.dart' show appConfirm;
+import '../../design/app_motion_kit.dart' show AppFeedback, AppFeedbackController;
 import '../../design/app_tokens.dart';
 import '../../design/app_notice.dart';
 import '../../utils/helpers.dart';
@@ -16,6 +18,8 @@ import 'auth_widgets.dart';
 import 'biometric.dart';
 import 'biometric_widgets.dart';
 import 'forget_screen.dart';
+import 'kid_code/kid_code_api.dart' show kKidCodeFeature;
+import 'kid_code/kid_code_screen.dart';
 import 'google_auth_flow.dart';
 import 'mfa.dart';
 import 'mfa_verify_screen.dart';
@@ -38,6 +42,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _bio = BiometricAuth.instance;
+
+  /// M15: the fields shake on a wrong sign-in.
+  final _shake = AppFeedbackController();
 
   @override
   void initState() {
@@ -96,6 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _shake.dispose();
     super.dispose();
   }
 
@@ -134,6 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } else {
+      _shake.shake();
       Helpers.showMessage(
         authProvider.errorMessage ?? 'incorrect_email_or_password'.tr,
         isError: true,
@@ -149,8 +158,13 @@ class _LoginScreenState extends State<LoginScreen> {
         final rec = _bio.available ? _bio.record : null;
         final first = rec?.firstName ?? '';
         return AuthScaffold(
-          title: first.isNotEmpty ? 'bio_welcome_name'.tr.replaceAll('{name}', first) : 'auth_welcome_back'.tr,
-          subtitle: rec != null ? 'bio_login_sub'.tr : 'auth_login_sub'.tr,
+          kicker: 'sa_login_kicker'.tr,
+          heroTitle: 'sa_login_hero'.tr,
+          squiggle: 'sa_login_squiggle'.tr,
+          heroSubtitle: 'sa_login_hero_sub'.tr,
+          title: first.isNotEmpty ? 'bio_welcome_name'.tr.replaceAll('{name}', first) : 'sa_login_title'.tr,
+          // the 5-second rule: no line under the welcome unless a remembered account needs one
+          subtitle: rec != null ? 'bio_login_sub'.tr : null,
           builder: (context, isWide) => _buildForm(rec),
         );
       },
@@ -184,51 +198,65 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             // ── Email / phone / either (+ @username) — controlled by the admin ─
             // (a remembered account already shows who signs in: its identifier is used, "Not you?" brings the field back)
-            if (_rememberedIdentifier(rec) == null) ...[
-              Builder(
-                builder: (context) {
-                  final spec = context.watch<MyAuthProvider>().identifierSpec;
-                  return IconTextField(
-                    controller: _emailController,
-                    label: spec.labelKey.tr,
-                    icon: spec.icon.data,
-                    keyboard: spec.keyboard,
-                    autocorrect: false,
-                    autofillHints: const [AutofillHints.username, AutofillHints.email],
-                    textInputAction: TextInputAction.next,
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpace.md),
-            ],
+            AppFeedback(
+              controller: _shake,
+              borderRadius: AppRadius.controlAll,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_rememberedIdentifier(rec) == null) ...[
+                    Builder(
+                      builder: (context) {
+                        final spec = context.watch<MyAuthProvider>().identifierSpec;
+                        return IconTextField(
+                          controller: _emailController,
+                          label: spec.labelKey.tr,
+                          icon: spec.icon.data,
+                          keyboard: spec.keyboard,
+                          autocorrect: false,
+                          autofillHints: const [AutofillHints.username, AutofillHints.email],
+                          textInputAction: TextInputAction.next,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: AppSpace.md),
+                  ],
 
-            // ── Password ───────────────────────────────────────────────────
-            IconPasswordField(
-              controller: _passwordController,
-              label: 'password'.tr,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _login(),
-            ),
-
-            // ── Forgot password (end aligned) ──────────────────────────────
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: TextButton(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ForgetScreen())),
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(AppTouch.min, AppTouch.min),
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
-                  foregroundColor: link,
-                ),
-                child: Text('auth_forgot'.tr, style: AppType.label(context).copyWith(color: link, fontWeight: FontWeight.w600)),
+                  // ── Password, "forgot it?" at the end of its label row ─────
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      IconPasswordField(
+                        controller: _passwordController,
+                        label: 'password'.tr,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _login(),
+                      ),
+                      PositionedDirectional(
+                        end: 0,
+                        top: -AppSpace.sm,
+                        child: TextButton(
+                          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ForgetScreen())),
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(AppTouch.min, AppTouch.min),
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+                            foregroundColor: link,
+                          ),
+                          child: Text('sa_login_forgot'.tr, style: AppType.label(context).copyWith(color: link, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: AppSpace.xs),
+            const SizedBox(height: AppSpace.lg),
 
             // ── Sign in ────────────────────────────────────────────────────
             AuthButton(
               loading: context.watch<MyAuthProvider>().isLoadingLogin,
-              label: 'auth_sign_in'.tr,
+              label: 'sa_login_enter'.tr,
               onPressed: _login,
             ),
             const SizedBox(height: AppSpace.lg),
@@ -237,14 +265,35 @@ class _LoginScreenState extends State<LoginScreen> {
             const GoogleAuthSection(joining: true, smallIcon: true),
             const SizedBox(height: AppSpace.md),
 
-            LinkRow(
-              message: 'auth_no_account'.tr,
-              linkText: 'auth_create_account'.tr,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
+            // ── The child's first sign-in with the parent's code (WP7) ──────
+            ParentComponent(
+              featureKey: kKidCodeFeature,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.sm),
+                child: KidCodeEntryTile(
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const KidCodeScreen())),
+                ),
+              ),
             ),
-            const SizedBox(height: AppSpace.xs),
 
-            // ── Institutions apply · explore as a guest ────────────────────
+            // ── New here? Create an account • continue as a guest ─────────
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text('sa_login_new'.tr, style: AppType.body(context).copyWith(color: c.textMedium)),
+                _LoginLink(
+                  label: 'sa_login_create'.tr,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
+                ),
+                if (guestEnabled) ...[
+                  ExcludeSemantics(child: Text('•', style: AppType.meta(context).copyWith(color: c.textLight))),
+                  _LoginLink(label: 'sa_login_guest'.tr, onTap: () => startGuest(Navigator.of(context))),
+                ],
+              ],
+            ),
+
+            // ── Verify a certificate · institutions apply (kept, quiet) ─────
             Wrap(
               alignment: WrapAlignment.center,
               spacing: AppSpace.xs,
@@ -268,17 +317,33 @@ class _LoginScreenState extends State<LoginScreen> {
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgApplicationScreen())),
                   ),
                 ),
-                if (guestEnabled)
-                  AuthTextAction(
-                    icon: Icons.explore_outlined,
-                    label: 'continue_as_guest'.tr,
-                    onTap: () => startGuest(Navigator.of(context)),
-                  ),
               ],
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A link of the login card's last row: the area's ink, 48 dp.
+class _LoginLink extends StatelessWidget {
+  const _LoginLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = appInk(context, AppAreaScope.of(context).ink);
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        minimumSize: const Size(AppTouch.min, AppTouch.min),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+        foregroundColor: ink,
+      ),
+      child: Text(label, style: AppType.bodyStrong(context).copyWith(color: ink)),
     );
   }
 }

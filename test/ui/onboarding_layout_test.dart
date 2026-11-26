@@ -6,6 +6,7 @@ import 'package:flutter_education_app/features/onboarding/onboarding_store.dart'
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
+import 'package:flutter_education_app/features/auth/auth_widgets.dart' show AuthButton;
 
 import 'layout_harness.dart';
 
@@ -30,7 +31,7 @@ void main() {
   testWidgets('OnboardingScreen last page', (tester) async {
     await expectNoLayoutErrors(tester, () => OnboardingScreen(onLanguage: (_) {}, onFinish: () {}), scaffold: false, act: (t) async {
       for (var i = 0; i < 2; i++) {
-        await t.tap(find.byType(PrimaryButton), warnIfMissed: false);
+        await t.tap(find.byType(AuthButton), warnIfMissed: false);
         await t.pump(const Duration(milliseconds: 400));
       }
     });

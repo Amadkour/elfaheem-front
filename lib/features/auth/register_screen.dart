@@ -310,8 +310,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Consumer<MyAuthProvider>(
       builder: (context, provider, _) {
         return AuthScaffold(
-          title: 'auth_register_title'.tr,
-          subtitle: 'auth_register_sub'.tr,
+          kicker: 'sa_register_kicker'.tr,
+          heroTitle: 'sa_register_hero'.tr,
+          squiggle: 'sa_register_squiggle'.tr,
+          title: 'sa_register_title'.tr,
+          subtitle: 'sa_register_sub'.tr,
           pageKey: const ValueKey('register'),
           // the longest form of the module: a wider card on desktop (phones are limited by the screen anyway)
           maxWidth: 640,
