@@ -200,55 +200,46 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
     // is why the details section previously appeared stuck closed.
     final liveProvider = context.watch<TeacherCourseScreenProvider>();
     final loading = liveProvider.submitLoading;
-    final detailsOpen = liveProvider.openMoreDetailsForAddSession;
 
+    final c = context.colors;
+    // every field is open (Tea1Course "new session"): name · description · type · when · length · record, a footer
+    // with Cancel and the one filled button pinned under the scroll
     return PopScope(
       canPop: !loading,
       child: Directionality(
         textDirection: Helpers.pageDirection,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _Header(isEdit: _isEdit, loading: loading),
-              const SizedBox(height: AppSpace.lg),
-              AppField(
-                controller: _nameCtrl,
-                label: 'session_name_label'.tr,
-                icon: Icons.badge_rounded,
-                required: true,
-                errorText: _nameError,
-                onChanged: (_) {
-                  if (_nameError != null) setState(() => _nameError = null);
-                },
-              ),
-              const SizedBox(height: AppSpace.md),
-              // the rarer fields fold away; the open state lives on the provider (an error opens it from _submit)
-              AppExpandCard(
-                expanded: detailsOpen,
-                onExpandedChanged: (_) => context.read<TeacherCourseScreenProvider>().onToggleOpenDetails(),
-                header: Row(children: [
-                  Icon(Icons.tune_rounded, size: AppIconSize.md, color: context.colors.textMedium),
-                  const SizedBox(width: AppSpace.sm),
-                  Expanded(
-                    child: Text(
-                      'session_details'.tr,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppType.bodyStrong(context),
-                    ),
-                  ),
-                ]),
+        child: LayoutBuilder(builder: (context, box) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.md),
+              child: _Header(isEdit: _isEdit, loading: loading),
+            ),
+            Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+            // the sheet's own height bounds the scroll; with none (a bare page) the fields just lay out
+            _MaybeFlexible(
+              bounded: box.hasBoundedHeight,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.md),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     AppField(
+                      controller: _nameCtrl,
+                      label: 't1_cp_sf_name'.tr,
+                      required: true,
+                      errorText: _nameError,
+                      onChanged: (_) {
+                        if (_nameError != null) setState(() => _nameError = null);
+                      },
+                    ),
+                    const SizedBox(height: AppSpace.md),
+                    AppField(
                       controller: _descCtrl,
-                      label: 'session_description_label'.tr,
-                      icon: Icons.notes_rounded,
-                      maxLines: 2,
+                      label: '${'t1_cp_sf_desc'.tr} · ${'t1_cp_optional'.tr}',
+                      maxLines: 3,
                     ),
                     const SizedBox(height: AppSpace.md),
                     SessionTrackTabs(
@@ -269,30 +260,18 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                     ),
                     if (_type == 'live') ...[
                       const SizedBox(height: AppSpace.md),
+                      AppFieldLabel('t1_cp_sf_when'.tr),
                       _LiveDateTimePicker(
                         scheduled: _scheduled,
                         errorText: _dateError,
                         onTap: _pickDateTime,
-                      ),
-                      const SizedBox(height: AppSpace.xs),
-                      AppSwitchTile(
-                        title: 'record_session_title'.tr,
-                        subtitle: 'record_session_subtitle'.tr,
-                        icon: Icons.fiber_manual_record_rounded,
-                        value: _recordEnabled,
-                        dense: true,
-                        padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
-                        onChanged: (v) {
-                          HapticFeedback.selectionClick();
-                          setState(() => _recordEnabled = v);
-                        },
                       ),
                     ],
                     const SizedBox(height: AppSpace.md),
                     NumberPair(
                       first: AppNumberField(
                         controller: _durCtrl,
-                        label: 'duration_minutes_label'.tr,
+                        label: 't1_cp_sf_duration'.tr,
                         min: 1,
                         step: 5,
                       ),
@@ -302,24 +281,75 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                         min: 0,
                       ),
                     ),
+                    if (_type == 'live') ...[
+                      const SizedBox(height: AppSpace.md),
+                      AppCard(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
+                        child: AppSwitchTile(
+                          title: 't1_cp_sf_rec_title'.tr,
+                          subtitle: 't1_cp_sf_rec_sub'.tr,
+                          value: _recordEnabled,
+                          dense: true,
+                          padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+                          onChanged: (v) {
+                            HapticFeedback.selectionClick();
+                            setState(() => _recordEnabled = v);
+                          },
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpace.lg),
-              AppButton.primary(
-                label: _isEdit ? 'save_changes'.tr : 'add_session'.tr,
-                icon: _isEdit ? Icons.check_rounded : Icons.add_rounded,
-                size: AppButtonSize.lg,
-                expand: true,
-                busy: loading,
-                onPressed: _submit,
-              ),
-            ],
-          ),
-        ),
+            ),
+            Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.md),
+              child: LayoutBuilder(builder: (context, fb) {
+                final cancel = AppButton.secondary(
+                  label: 't1_cp_cancel'.tr,
+                  size: AppButtonSize.lg,
+                  expand: fb.maxWidth < _kFooterStackW,
+                  onPressed: loading ? null : () => Navigator.of(context).pop(),
+                );
+                final save = AppButton.primary(
+                  label: _isEdit ? 'save_changes'.tr : 't1_cp_sf_add'.tr,
+                  icon: _isEdit ? Icons.check_rounded : Icons.add_rounded,
+                  size: AppButtonSize.lg,
+                  expand: true,
+                  busy: loading,
+                  onPressed: _submit,
+                );
+                // a narrow sheet (or a large text size) stacks them: the one filled button first
+                if (fb.maxWidth < _kFooterStackW) {
+                  return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    save,
+                    const SizedBox(height: AppSpace.xs),
+                    cancel,
+                  ]);
+                }
+                return Row(children: [cancel, const SizedBox(width: AppSpace.sm), Expanded(child: save)]);
+              }),
+            ),
+          ],
+        )),
       ),
     );
   }
+}
+
+/// Below this width the footer's two buttons stack.
+const double _kFooterStackW = 330;
+
+/// [Flexible] when the parent column has a bounded height, the child as it is otherwise.
+class _MaybeFlexible extends StatelessWidget {
+  const _MaybeFlexible({required this.bounded, required this.child});
+
+  final bool bounded;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => bounded ? Flexible(child: child) : child;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -345,7 +375,7 @@ class _Header extends StatelessWidget {
               Semantics(
                 header: true,
                 child: Text(
-                  isEdit ? 'edit_session_title'.tr : 'new_session_title'.tr,
+                  isEdit ? 't1_cp_sf_edit'.tr : 't1_cp_sf_title'.tr,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppType.pageTitle(context),
@@ -353,7 +383,7 @@ class _Header extends StatelessWidget {
               ),
               const SizedBox(height: AppSpace.xxs),
               Text(
-                isEdit ? 'edit_session_subtitle'.tr : 'new_session_subtitle'.tr,
+                isEdit ? 'edit_session_subtitle'.tr : 't1_cp_sf_sub'.tr,
                 style: AppType.meta(context),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -417,8 +447,6 @@ class _LiveDateTimePicker extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
                 child: Row(children: [
-                  Icon(Icons.event_rounded, size: AppIconSize.md, color: hasError ? c.danger : c.textLight),
-                  const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Text(
                       picked
@@ -435,7 +463,7 @@ class _LiveDateTimePicker extends StatelessWidget {
                   ),
                   const SizedBox(width: AppSpace.xs),
                   Icon(
-                    picked ? Icons.check_circle_rounded : Icons.chevron_right_rounded,
+                    picked ? Icons.check_circle_rounded : Icons.event_rounded,
                     color: picked ? c.success : c.textLight,
                     size: AppIconSize.md,
                   ),
@@ -474,13 +502,13 @@ class _TypeSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppFieldLabel('session_type_label'.tr),
+        AppFieldLabel('t1_cp_sf_type'.tr),
         AppTabs(
           expand: true,
           index: selected == 'live' ? 0 : 1,
           items: [
             AppTabItem('live_type'.tr, icon: Icons.live_tv_rounded),
-            AppTabItem('pre_recorded_type'.tr, icon: Icons.play_circle_outline_rounded),
+            AppTabItem('t1_cp_sf_prerec'.tr, icon: Icons.play_circle_outline_rounded),
           ],
           onChanged: (i) {
             onChanged(_values[i]);

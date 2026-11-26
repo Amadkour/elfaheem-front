@@ -650,6 +650,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
       rail: widget.rail,
       group: widget.group,
       wide: wide,
+      numbered: widget.isTeacher,
       onTap: _isLocked ? _showLockedMessage : (expandable ? _toggleExpanded : null),
       trailing: trailing,
       below: _isLocked ? null : _below(prov),

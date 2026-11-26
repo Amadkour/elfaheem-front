@@ -454,6 +454,9 @@ class CourseSetupBar extends StatelessWidget {
   }
 }
 
+/// The row width from which a step's action sits beside its label.
+const double _kSetupInlineAction = 300;
+
 class _SetupRow extends StatelessWidget {
   const _SetupRow({required this.step, required this.ok, this.onTap});
 
@@ -506,11 +509,23 @@ class _SetupRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpace.sm),
-                Expanded(child: label),
-                if (!done && onTap != null) ...[
-                  const SizedBox(width: AppSpace.sm),
-                  AppButton.primary(label: CourseSetupBar.stepAction(step.key), size: AppButtonSize.sm, onPressed: onTap),
-                ],
+                // the action sits under the label while the row is narrow (a long action word, a large text size)
+                Expanded(
+                  child: LayoutBuilder(builder: (context, box) {
+                    final action = done || onTap == null
+                        ? null
+                        : AppButton.primary(label: CourseSetupBar.stepAction(step.key), size: AppButtonSize.sm, onPressed: onTap);
+                    if (action == null) return label;
+                    if (box.maxWidth < _kSetupInlineAction) {
+                      return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        label,
+                        const SizedBox(height: AppSpace.xs),
+                        action,
+                      ]);
+                    }
+                    return Row(children: [Expanded(child: label), const SizedBox(width: AppSpace.sm), action]);
+                  }),
+                ),
               ],
             ),
           ),

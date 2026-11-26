@@ -7,8 +7,14 @@
 @Tags(['visual'])
 library;
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
+import 'package:flutter_education_app/features/sessions/material/components/add_material_sheet.dart';
+import 'package:flutter_education_app/features/sessions/material/material_guest_links_api.dart';
+import 'package:flutter_education_app/features/sessions/material/material_guest_links_sheet.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/session_form_sheet.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,4 +41,80 @@ void main() {
   testWidgets('t1 course overview', (t) => render(t, 'overview', () => page()));
   testWidgets('t1 course draft', (t) => render(t, 'draft', () => page(draft: true), draft: true));
   testWidgets('t1 course sessions', (t) => render(t, 'sessions', () => page(tab: 'sessions')));
+  sheetTests();
+}
+
+class _GuestLinksFake implements MaterialGuestLinksApi {
+  static final _links = MaterialGuestLinks(links: [
+    MaterialGuestLink(
+      id: 1,
+      token: 'a',
+      link: 'https://nextbrain.site/v/7K2xQ9mP',
+      expiresAt: DateTime.utc(2026, 12, 2),
+      views: 12,
+      openedAt: DateTime.utc(2026, 11, 26),
+    ),
+  ]);
+
+  @override
+  Future<MaterialGuestLinks> list(int sessionId, int materialId) async => _links;
+
+  @override
+  Future<MaterialGuestLinks> create(int sessionId, int materialId, {int? expiresDays}) async => _links;
+
+  @override
+  Future<MaterialGuestLinks> revoke(int sessionId, int materialId, int linkId) async => _links;
+}
+
+/// A sheet's content on a dimmed page, as the bottom sheet shows it (the Navigator's overlay is outside the shot).
+Widget _sheet(Widget child) => Builder(builder: (context) {
+      final c = context.colors;
+      return ColoredBox(
+        color: c.textDark.withValues(alpha: 0.45),
+        child: Align(
+          alignment: AlignmentDirectional.bottomCenter,
+          child: Material(
+            color: c.cardBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
+            clipBehavior: Clip.antiAlias,
+            child: child,
+          ),
+        ),
+      );
+    });
+
+/// The sheets of the course page.
+void sheetTests() {
+  late StorageService storage;
+  setUp(() async => storage = await kitGoldenSetUp());
+
+  Future<void> render(WidgetTester tester, String name, Widget Function() build) async {
+    await t2SetUp(t1Api());
+    await kitRender(tester, 't1/course_$name', () => _sheet(build()), storage: storage, modes: const [false], scaffold: false, grow: false);
+  }
+
+  Widget withProvider(Widget Function(TeacherCourseScreenProvider p) b) {
+    final p = TeacherCourseScreenProvider(initialCourse: t1Course());
+    return ChangeNotifierProvider.value(value: p, child: b(p));
+  }
+
+  testWidgets('t1 course sform', (t) => render(t, 'sform', () => withProvider((p) => SessionFormSheet(provider: p, existing: null))));
+  testWidgets('t1 course material', (t) => render(t, 'material', () => withProvider((p) => const AddMaterialSheet(sessionId: 100, isWide: false))));
+  testWidgets(
+    't1 course captions',
+    (t) => render(
+      t,
+      'captions',
+      () => Padding(
+        padding: const EdgeInsets.all(AppSpace.lg),
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            MaterialCaptionsPanel(state: MaterialCaptionsState.ready, onUpload: () {}, onGenerate: () {}, onRemove: () {}),
+            const SizedBox(height: AppSpace.md),
+            MaterialGuestLinksBody(links: _GuestLinksFake._links.links, onExpiry: (_) {}, onCreate: () {}, onCopy: (_) {}, onRevoke: (_) {}),
+          ]),
+        ),
+      ),
+    ),
+  );
 }

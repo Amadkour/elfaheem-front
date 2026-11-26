@@ -252,6 +252,8 @@ class CourseTeacherHero extends StatelessWidget {
       Align(alignment: AlignmentDirectional.centerStart, child: _crumb(context)),
       const SizedBox(height: AppSpace.sm),
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(width: w * 0.26, child: CourseTeacherCover(icon: data.coverIcon, imageUrl: data.imageUrl)),
+        const SizedBox(width: AppSpace.md),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _badges(),
@@ -261,8 +263,6 @@ class CourseTeacherHero extends StatelessWidget {
             _teacher(context),
           ]),
         ),
-        const SizedBox(width: AppSpace.md),
-        SizedBox(width: w * 0.3, child: CourseTeacherCover(icon: data.coverIcon, imageUrl: data.imageUrl)),
       ]),
       if (data.pills.isNotEmpty) ...[const SizedBox(height: AppSpace.md), _pills()],
       const SizedBox(height: AppSpace.md),
@@ -279,15 +279,7 @@ class CourseTeacherHero extends StatelessWidget {
       Align(alignment: AlignmentDirectional.centerStart, child: _crumb(context)),
       const SizedBox(height: AppSpace.sm),
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(
-          width: w * 0.22,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            _primary(),
-            const SizedBox(height: AppSpace.xs),
-            _secondaryRow(withMenu: true),
-            if (data.notice != null && data.notice!.isNotEmpty) ...[const SizedBox(height: AppSpace.sm), _notice(context)],
-          ]),
-        ),
+        SizedBox(width: w * 0.14, child: CourseTeacherCover(icon: data.coverIcon, imageUrl: data.imageUrl)),
         const SizedBox(width: AppSpace.lg),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -303,7 +295,15 @@ class CourseTeacherHero extends StatelessWidget {
           ]),
         ),
         const SizedBox(width: AppSpace.lg),
-        SizedBox(width: w * 0.14, child: CourseTeacherCover(icon: data.coverIcon, imageUrl: data.imageUrl)),
+        SizedBox(
+          width: w * 0.22,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _primary(),
+            const SizedBox(height: AppSpace.xs),
+            _secondaryRow(withMenu: true),
+            if (data.notice != null && data.notice!.isNotEmpty) ...[const SizedBox(height: AppSpace.sm), _notice(context)],
+          ]),
+        ),
       ]),
       if (data.pills.isNotEmpty) ...[const SizedBox(height: AppSpace.md), _pills()],
     ]);

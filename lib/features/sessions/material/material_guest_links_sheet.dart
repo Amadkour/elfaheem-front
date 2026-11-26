@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_share_sheet.dart' show showAppShareSheet;
@@ -27,9 +28,13 @@ Future<void> showMaterialGuestLinksSheet(BuildContext context,
             sessionId: sessionId, materialId: materialId, title: title, api: api ?? RemoteMaterialGuestLinksApi()));
 
 class _MaterialGuestLinksSheet extends StatefulWidget {
-  const _MaterialGuestLinksSheet({required this.sessionId, required this.materialId, required this.title, required this.api});
+  const _MaterialGuestLinksSheet({required this.sessionId, required this.materialId, required this.title, required this.api, this.captions, this.subtitle});
   final int sessionId, materialId;
   final String title;
+  final String? subtitle;
+
+  /// Captions on top of the sharing (the video's CC button); null: the sharing alone.
+  final Widget? captions;
   final MaterialGuestLinksApi api;
 
   @override
@@ -102,29 +107,139 @@ class _MaterialGuestLinksSheetState extends State<_MaterialGuestLinksSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => AppSheetContent(
-        tone: AppTone.brand,
-        icon: Icons.public_rounded,
-        title: t('مشاركة مع ضيوف', 'Share with guests'),
-        subtitle: widget.title,
-        children: [
-          if (_loading)
-            const AppListSkeleton(items: 2)
-          else
-            MaterialGuestLinksBody(
-              links: _links,
-              error: _error,
-              expiresDays: _expiry,
-              busy: _busy,
-              onExpiry: (d) => setState(() => _expiry = d),
-              onCreate: _create,
-              onCopy: _copy,
-              onShare: kIsWeb ? null : _share,
-              onRevoke: _revoke,
-            ),
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final share = !AppConfig.disableList.contains('materials.guest_link');
+    final body = _loading
+        ? const AppListSkeleton(items: 2)
+        : MaterialGuestLinksBody(
+            links: _links,
+            error: _error,
+            expiresDays: _expiry,
+            busy: _busy,
+            onExpiry: (d) => setState(() => _expiry = d),
+            onCreate: _create,
+            onCopy: _copy,
+            onShare: kIsWeb ? null : _share,
+            onRevoke: _revoke,
+          );
+    return AppSheetContent(
+      tone: AppTone.brand,
+      icon: widget.captions == null ? Icons.public_rounded : Icons.smart_display_rounded,
+      title: widget.captions == null ? t('مشاركة مع ضيوف', 'Share with guests') : widget.title,
+      subtitle: widget.captions == null ? widget.title : widget.subtitle,
+      children: [
+        ?widget.captions,
+        if (widget.captions != null && share) ...[
+          const SizedBox(height: AppSpace.md),
+          Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+          const SizedBox(height: AppSpace.md),
+          Row(children: [
+            Icon(Icons.link_rounded, size: AppIconSize.md, color: c.textDark),
+            const SizedBox(width: AppSpace.xs),
+            Expanded(child: Text(t('مشاركة مع ضيوف', 'Share with guests'), style: AppType.section(context))),
+          ]),
+          const SizedBox(height: AppSpace.sm),
         ],
-      );
+        if (widget.captions == null || share) body,
+      ],
+    );
+  }
 }
+
+/// Where a video's captions stand.
+enum MaterialCaptionsState { none, pending, failed, ready }
+
+/// The captions part of the video's sheet (Tea1Course "captions and sharing"): a state chip, the actions (upload a
+/// .vtt, generate automatically, delete) and one note about the automatic job. Plain values.
+class MaterialCaptionsPanel extends StatelessWidget {
+  const MaterialCaptionsPanel({super.key, required this.state, this.onUpload, this.onGenerate, this.onRemove});
+
+  final MaterialCaptionsState state;
+  final VoidCallback? onUpload, onGenerate, onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final (label, tone) = switch (state) {
+      MaterialCaptionsState.ready => (t('جاهزة', 'Ready'), AppTone.success),
+      MaterialCaptionsState.pending => (t('قيد الإنشاء', 'Being made'), AppTone.info),
+      MaterialCaptionsState.failed => (t('فشلت', 'Failed'), AppTone.danger),
+      MaterialCaptionsState.none => (t('لا توجد', 'None yet'), AppTone.neutral),
+    };
+    Widget action(String key, String text, IconData icon, VoidCallback? on, {bool danger = false}) => AppButton(
+          key: ValueKey(key),
+          label: text,
+          icon: icon,
+          variant: danger ? AppButtonVariant.danger : AppButtonVariant.secondary,
+          dangerOutline: danger,
+          onPressed: on,
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      Row(children: [
+        Icon(Icons.closed_caption_rounded, size: AppIconSize.md, color: c.textDark),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text(t('الترجمة النصية', 'Captions'), style: AppType.section(context))),
+        AppStatusBadge(label: label, tone: tone),
+      ]),
+      const SizedBox(height: AppSpace.sm),
+      Text(
+        state == MaterialCaptionsState.failed ? 'captions_status_failed'.tr : 'captions_none'.tr,
+        style: AppType.body(context).copyWith(color: c.textMedium),
+      ),
+      const SizedBox(height: AppSpace.sm),
+      Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+        action('captions.upload', t('رفع ملف .vtt', 'Upload .vtt file'), Icons.upload_rounded, onUpload),
+        if (state != MaterialCaptionsState.pending)
+          action('captions.generate', state == MaterialCaptionsState.failed ? 'captions_retry'.tr : t('إنشاء تلقائي', 'Generate automatically'),
+              Icons.auto_awesome_rounded, onGenerate),
+        if (state == MaterialCaptionsState.ready && onRemove != null)
+          action('captions.remove', t('حذف', 'Delete'), Icons.delete_outline_rounded, onRemove, danger: true),
+      ]),
+      const SizedBox(height: AppSpace.sm),
+      AppBanner(
+        icon: Icons.info_outline_rounded,
+        text: t('الإنشاء التلقائي يدخل قائمة انتظار ويوصلك إشعار لما يجهز. لو تعطّل تقدر تعيده من هنا.',
+            'Automatic captions join a queue and you get a notice when they are ready. If it stalls you can run it again from here.'),
+        color: c.primary,
+      ),
+    ]);
+  }
+}
+
+/// A video's sheet: its captions on top, then "Share with guests" (unless the kill switch `materials.guest_link` is
+/// off). Each captions action closes the sheet and runs its callback.
+Future<void> showMaterialCaptionsSheet(BuildContext context,
+        {required int sessionId,
+        required int materialId,
+        required String title,
+        String? subtitle,
+        required MaterialCaptionsState state,
+        VoidCallback? onUpload,
+        VoidCallback? onGenerate,
+        VoidCallback? onRemove,
+        MaterialGuestLinksApi? api}) =>
+    showAppSheet<void>(context, (sheet) {
+      VoidCallback? run(VoidCallback? f) => f == null
+          ? null
+          : () {
+              Navigator.of(sheet).pop();
+              f();
+            };
+      return _MaterialGuestLinksSheet(
+        sessionId: sessionId,
+        materialId: materialId,
+        title: title,
+        subtitle: subtitle,
+        api: api ?? RemoteMaterialGuestLinksApi(),
+        captions: MaterialCaptionsPanel(
+          state: state,
+          onUpload: run(onUpload),
+          onGenerate: run(onGenerate),
+          onRemove: run(onRemove),
+        ),
+      );
+    });
 
 /// The sheet's body from plain values: what a guest link is, how long a new one works, Create link, the live links
 /// (views, expiry) with Copy · Share · Revoke.

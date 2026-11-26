@@ -457,20 +457,34 @@ class GuestLinkBody extends StatelessWidget {
         child: Builder(builder: (context) {
           final b = AppBlock.colorsOf(context);
           return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpace.xxs / 2),
-                child: Icon(Icons.link_rounded, size: AppIconSize.md, color: b.muted),
-              ),
-              const SizedBox(width: AppSpace.sm),
+            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
               Expanded(
                 child: SelectableText(
                   l.url,
                   key: const ValueKey('guest_link.url'),
                   textDirection: TextDirection.ltr,
                   maxLines: 3,
-                  style: AppType.row(context).copyWith(color: b.ink),
+                  style: AppType.row(context).copyWith(color: b.ink, fontWeight: FontWeight.w700),
                 ),
+              ),
+              const SizedBox(width: AppSpace.xs),
+              AppIconButton(
+                key: const ValueKey('guest_link.copy'),
+                icon: Icons.copy_rounded,
+                tooltip: 'guest_link_copy'.tr,
+                onPressed: busy ? null : onCopy,
+              ),
+              AppIconButton(
+                key: const ValueKey('guest_link.share'),
+                icon: Icons.ios_share_rounded,
+                tooltip: 'guest_link_share'.tr,
+                onPressed: busy ? null : onShare,
+              ),
+              AppIconButton(
+                key: const ValueKey('guest_link.qr'),
+                icon: Icons.qr_code_2_rounded,
+                tooltip: 'guest_link_qr'.tr,
+                onPressed: busy ? null : onToggleQr,
               ),
             ]),
             if (l.hasPin) ...[
@@ -508,39 +522,8 @@ class GuestLinkBody extends StatelessWidget {
       ]),
       const SizedBox(height: AppSpace.md),
 
-      // the two things a teacher does with a link: copy it, share it
-      Row(children: [
-        Expanded(
-          child: AppButton.primary(
-            key: const ValueKey('guest_link.copy'),
-            label: 'guest_link_copy'.tr,
-            icon: Icons.copy_rounded,
-            expand: true,
-            onPressed: busy ? null : onCopy,
-          ),
-        ),
-        const SizedBox(width: AppSpace.xs),
-        Expanded(
-          child: AppButton.secondary(
-            key: const ValueKey('guest_link.share'),
-            label: 'guest_link_share'.tr,
-            icon: Icons.ios_share_rounded,
-            expand: true,
-            onPressed: busy ? null : onShare,
-          ),
-        ),
-      ]),
-      const SizedBox(height: AppSpace.sm),
-
       // the rest, quieter
       Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-        AppPill(
-          key: const ValueKey('guest_link.qr'),
-          icon: Icons.qr_code_2_rounded,
-          label: 'guest_link_qr'.tr,
-          onTap: busy ? null : onToggleQr,
-          color: open(showQr),
-        ),
         AppPill(
           key: const ValueKey('guest_link.settings'),
           icon: Icons.tune_rounded,
@@ -554,20 +537,6 @@ class GuestLinkBody extends StatelessWidget {
           label: 'guest_link_joins'.tr,
           onTap: busy ? null : onToggleJoins,
           color: open(joinsOpen),
-        ),
-        AppPill(
-          key: const ValueKey('guest_link.rotate'),
-          icon: Icons.autorenew_rounded,
-          label: 'guest_link_new'.tr,
-          onTap: busy ? null : onRotate,
-          color: c.textMedium,
-        ),
-        AppPill(
-          key: const ValueKey('guest_link.revoke'),
-          icon: Icons.link_off_rounded,
-          label: 'guest_link_revoke'.tr,
-          onTap: busy ? null : onRevoke,
-          color: c.danger,
         ),
       ]),
 
@@ -611,6 +580,31 @@ class GuestLinkBody extends StatelessWidget {
           onRefresh: onRefreshJoins,
         ),
       ],
+
+      // Cancel the link (danger outline) and make a new one, side by side
+      const SizedBox(height: AppSpace.lg),
+      Row(children: [
+        Expanded(
+          child: AppButton.danger(
+            key: const ValueKey('guest_link.revoke'),
+            label: 'guest_link_revoke'.tr,
+            icon: Icons.close_rounded,
+            dangerOutline: true,
+            expand: true,
+            onPressed: busy ? null : onRevoke,
+          ),
+        ),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(
+          child: AppButton.secondary(
+            key: const ValueKey('guest_link.rotate'),
+            label: 'guest_link_new'.tr,
+            icon: Icons.autorenew_rounded,
+            expand: true,
+            onPressed: busy ? null : onRotate,
+          ),
+        ),
+      ]),
     ]);
   }
 }
