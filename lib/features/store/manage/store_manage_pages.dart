@@ -24,6 +24,8 @@ import '../../admin/admin_common.dart' show t;
 import '../../admin/admin_page.dart';
 import '../../help/help_info_button.dart';
 import '../../profile/teacher/t2_frame.dart';
+import '../../admin/sup/sup_kit.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import '../../../utils/widget/base_page.dart';
 import 'store_manage_api.dart';
 import 'store_manage_views.dart';
@@ -618,25 +620,26 @@ class _StoreAdminHubPageState extends State<StoreAdminHubPage> {
   @override
   Widget build(BuildContext context) {
     if (!widget.superAdmin) return const StoreManagePage();
-    return AdminPage(
-      width: AppWidth.wide,
+    // the redesign (SupFinance store): what waits for review leads the super admin's hero, the three parts are its pill
+    final waiting = _pending ?? 0;
+    return SupPage(
       title: t('المتجر الرقمي', 'Digital store'),
-      subtitle: t('العناصر ومراجعتها وطلبات الشراء.', 'Items, their review and the purchase orders.'),
-      icon: Icons.storefront_rounded,
+      kicker: 't2_sstore_kicker'.tr,
+      headline: waiting > 0 ? 't2_sstore_waiting'.tr.replaceAll('{n}', '$waiting') : 't2_sstore_head'.tr,
+      line: t('العناصر ومراجعتها وطلبات الشراء.', 'Items, their review and the purchase orders.'),
       helpPageId: 'admin.store',
-      bottom: Padding(
-        padding: const EdgeInsets.only(top: AppSpace.xs),
-        child: AppTabs(
-          index: _tab,
-          onChanged: (i) => setState(() => _tab = i),
-          items: [
-            AppTabItem(t('العناصر', 'Items'), icon: Icons.menu_book_rounded),
-            AppTabItem(t('المراجعة', 'Review'), icon: Icons.rule_rounded, count: _pending),
-            AppTabItem(t('الطلبات', 'Orders'), icon: Icons.receipt_long_rounded),
-          ],
-        ),
-      ),
-      body: IndexedStack(index: _tab, children: [
+      actions: [
+        if (waiting > 0 && _tab != 1)
+          SupHeroButton(label: 't2_sstore_review'.tr, icon: Icons.rule_rounded, onTap: () => setState(() => _tab = 1)),
+      ],
+      tabs: [
+        AppTabItem(t('العناصر', 'Items'), icon: Icons.menu_book_rounded),
+        AppTabItem(t('المراجعة', 'Review'), icon: Icons.rule_rounded, count: _pending),
+        AppTabItem(t('الطلبات', 'Orders'), icon: Icons.receipt_long_rounded),
+      ],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      body: SupTabStack(index: _tab, children: [
         const StoreItemsPane(),
         StoreReviewPane(onCount: (n) => setState(() => _pending = n == 0 ? null : n)),
         const StoreOrdersPane(),

@@ -25098,5 +25098,17 @@
   "sc_sch_browse": {"en": "Browse courses", "ar": "تصفّح الدورات"},
   "sc_sch_error_title": {"en": "We couldn't get your schedule", "ar": "ما قدرنا نجيب جدولك"},
   "sc_sch_error_sub": {"en": "Try again in a moment", "ar": "جرّب بعد شوي"},
-  "sc_ai_title": {"en": "Smart assistant", "ar": "المساعد الذكي"}
+  "sc_ai_title": {"en": "Smart assistant", "ar": "المساعد الذكي"},
+  "t2_sads_kicker": {"en": "Ads", "ar": "الإعلانات"},
+  "t2_sads_head": {"en": "The ads students see", "ar": "الإعلانات اللي يشوفها الطلاب"},
+  "t2_sads_waiting": {"en": "{n} ads waiting for your approval", "ar": "{n} إعلانات تنتظر موافقتك"},
+  "t2_sads_line": {"en": "The home slider and the teachers' ads, in one place", "ar": "شريط الرئيسية وإعلانات المعلمين في مكان واحد"},
+  "t2_sads_live": {"en": "Live", "ar": "نشطة"},
+  "t2_sads_wait": {"en": "Waiting", "ar": "تنتظر"},
+  "t2_sads_views": {"en": "Views", "ar": "مشاهدة"},
+  "t2_sads_clicks": {"en": "Clicks", "ar": "نقرة"},
+  "t2_sstore_kicker": {"en": "Digital store", "ar": "المتجر الرقمي"},
+  "t2_sstore_head": {"en": "The books and summaries students buy", "ar": "الكتب والملخصات اللي يشتريها الطلاب"},
+  "t2_sstore_waiting": {"en": "{n} teacher items waiting for your review", "ar": "{n} عناصر معلمين تنتظر مراجعتك"},
+  "t2_sstore_review": {"en": "Review them", "ar": "راجعها"}
 }

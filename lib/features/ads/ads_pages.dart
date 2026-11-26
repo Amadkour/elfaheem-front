@@ -19,12 +19,13 @@ import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_labels.dart' show disposeAfterRoute;
-import '../admin/admin_page.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import '../org/org_providers.dart';
 import '../org/org_ui.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
+import 'package:flutter_education_app/features/admin/sup/sup_kit.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Home slider
@@ -606,7 +607,7 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
     // Paid by default, as Approve always recorded before; the admin picks Not paid when it was not.
     bool paid = a['paid'] != false;
     final ok = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
-          return AppSheetContent(title: t('الموافقة على الإعلان', 'Approve the ad'), children: [
+          return AppSheetContent(title: t('الموافقة على الإعلان', 'Approve the ad'), icon: Icons.verified_outlined, tone: AppTone.success, children: [
             Text('${a['title']}', style: AppType.section(ctx)),
             AppSpace.gapXs,
             Text(
@@ -664,16 +665,42 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
   Widget build(BuildContext context) {
     final p = context.watch<OrgPaged>();
     final first = p.rows.isEmpty;
-    return AdminPage(
+    // the redesign (SupAds): the waiting ads lead the hero, the status is the hero's segmented pill
+    const statuses = <String?>[null, 'pending', 'approved', 'rejected'];
+    final status = (p.filters['status'] as String?)?.isEmpty ?? true ? null : '${p.filters['status']}';
+    final waiting = p.rows.where((a) => a['status'] == 'pending').length;
+    final live = p.rows.where((a) => a['status'] == 'approved' && a['is_active'] != false).length;
+    num sum(String k) => p.rows.fold<num>(0, (n, a) => n + (a[k] is num ? a[k] as num : 0));
+    return SupPage(
       helpPageId: 'admin.ads',
-      width: AppWidth.wide,
       title: t('الإعلانات', 'Ads'),
-      icon: Icons.ads_click_rounded,
+      kicker: 't2_sads_kicker'.tr,
+      headline: waiting > 0 ? 't2_sads_waiting'.tr.replaceAll('{n}', '$waiting') : 't2_sads_head'.tr,
+      line: 't2_sads_line'.tr,
       onRefresh: p.isLoading ? null : () => _refresh(p),
       updatedAt: _loadedAt,
-      primaryAction: AppButton.primary(label: t('إعلان جديد', 'New ad'), icon: Icons.add_rounded, onPressed: () => _edit(p)),
+      actions: [
+        AppButton.primary(label: t('إعلان جديد', 'New ad'), icon: Icons.add_rounded, onPressed: () => _edit(p)),
+        SupHeroButton(label: t('إعدادات إعلانات المعلمين', 'Teacher ads settings'), icon: Icons.tune_rounded, onTap: () => _settings(context)),
+      ],
+      stats: first
+          ? const []
+          : [
+              AppHeroStat(value: '$live', label: 't2_sads_live'.tr),
+              AppHeroStat(value: '$waiting', label: 't2_sads_wait'.tr),
+              AppHeroStat(value: '${sum('impressions')}', label: 't2_sads_views'.tr),
+              AppHeroStat(value: '${sum('clicks')}', label: 't2_sads_clicks'.tr),
+            ],
+      tabs: [
+        AppTabItem(t('الكل', 'All')),
+        AppTabItem(t('بانتظار المراجعة', 'Waiting')),
+        AppTabItem(t('نشطة', 'Live')),
+        AppTabItem(t('مرفوضة', 'Rejected')),
+      ],
+      tab: statuses.indexOf(status).clamp(0, statuses.length - 1),
+      onTab: (i) => p.setFilter('status', statuses[i]),
       body: Padding(
-        padding: AdminPage.bodyPadding(context),
+        padding: SupPage.bodyPadding(context),
         child: AppDataTable<Map<String, dynamic>>(
           state: p.isLoading && first
               ? AppTableState.loading
@@ -683,20 +710,6 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
           errorText: p.error,
           onRetry: p.refresh,
           rows: p.rows,
-          toolbarTrailing: AppButton.tonal(
-              label: t('إعدادات إعلانات المعلمين', 'Teacher ads settings'), icon: Icons.tune_rounded, size: AppButtonSize.sm, onPressed: () => _settings(context)),
-          filters: [
-            AppTableFilter(
-              label: t('الحالة', 'Status'),
-              value: (p.filters['status'] as String?)?.isEmpty ?? true ? null : '${p.filters['status']}',
-              options: [
-                ('pending', t('بانتظار المراجعة', 'Waiting')),
-                ('approved', t('نشطة', 'Live')),
-                ('rejected', t('مرفوضة', 'Rejected')),
-              ],
-              onChanged: (v) => p.setFilter('status', v),
-            ),
-          ],
           empty: AppEmpty(icon: Icons.ads_click_rounded, title: t('لا إعلانات بعد', 'No ads yet')),
           hasMore: p.hasMore,
           loadingMore: p.loadingMore,
@@ -796,7 +809,7 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
           Widget err(String? e) => e == null
               ? const SizedBox.shrink()
               : Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: Text(e, style: AppType.meta(ctx).copyWith(color: ctx.colors.danger)));
-          return AppSheetContent(title: t('إعلانات المعلمين', 'Teacher ads'), children: [
+          return AppSheetContent(title: t('إعلانات المعلمين', 'Teacher ads'), icon: Icons.tune_rounded, tone: AppTone.info, children: [
             AppSwitchTile(
                 title: t('السماح للمعلمين بالإعلان', 'Allow teachers to advertise'),
                 subtitle: t('لطلاب كورساتهم فقط', 'To their own students only'),
