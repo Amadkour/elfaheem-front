@@ -15,6 +15,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
@@ -359,7 +360,7 @@ class _DataExportPageState extends State<DataExportPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
+    return SdArea(area: AppArea.me, child: BasePage(
       key: const ValueKey('profile.data_export'),
       useWebCard: true,
       width: AppWidth.reading,
@@ -376,6 +377,6 @@ class _DataExportPageState extends State<DataExportPage> {
         onDownload: _download,
         onRetry: _load,
       ),
-    );
+    ));
   }
 }

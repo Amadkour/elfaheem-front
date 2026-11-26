@@ -16,6 +16,7 @@ library;
 
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -49,14 +50,14 @@ class DisplaySettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = DisplaySettings.instance;
-    return BasePage(
+    return SdArea(area: AppArea.me, child: BasePage(
       key: const ValueKey('profile.display'),
       appBar: ScreenAppBar(title: t('العرض والقراءة', 'Display & reading')), // the app's back chip + title (L4)
       child: ListenableBuilder(
         listenable: s,
         builder: (context, _) => DisplaySettingsView(prefs: s.prefs, onChanged: s.update),
       ),
-    );
+    ));
   }
 }
 

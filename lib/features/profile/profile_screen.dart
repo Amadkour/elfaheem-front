@@ -77,6 +77,10 @@ import 'package:flutter_education_app/features/certificates/issue/cert_verify_pa
 import 'package:flutter_education_app/design/app_header.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/design/app_tokens.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppAccent, AppArea;
+import 'package:flutter_education_app/design/app_icons.dart' show DirIcons;
+import 'package:flutter_education_app/features/profile/sd_area.dart';
+import 'package:flutter_education_app/features/profile/student_profile_view.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -164,6 +168,18 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
     // the old Exit group's switches keep working on the two buttons
     final off = AppConfig.disableList;
     final exitsOn = !off.contains('profile.exit_group');
+
+    // ── The student's page (redesign phase 2, Stu2Profile): its own layout, every row and kill switch kept ──
+    if (student) {
+      return _studentPage(
+        context,
+        p,
+        auth,
+        editAccount: editAccount,
+        logout: exitsOn && !off.contains('profile.logout') ? logout : null,
+        deleteAccount: exitsOn && !off.contains('profile.delete_account') ? deleteAccount : null,
+      );
+    }
 
     // ── The identity header (D-713): the avatar, name, chips, the teacher's figures, the actions and the exits ──
     final shareName = myShareableUsername(context);
@@ -593,6 +609,230 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
   }
 
   static const double _twoColumnsFrom = 900;
+
+  /// The student's "حسابي" (Stu2Profile `screen=profile`): the identity hero, four shortcut cards, two cards of rows,
+  /// "إعدادات متقدمة" and the exits. Every row of the old page is kept with its kill switch (PARITY x_profile_page).
+  Widget _studentPage(
+    BuildContext context,
+    ProfileProvider p,
+    MyAuthProvider auth, {
+    required Future<void> Function() editAccount,
+    Future<void> Function()? logout,
+    Future<void> Function()? deleteAccount,
+  }) {
+    final shortcuts = [
+      SdShortcut(
+        id: 'grades',
+        featureKey: 'profile.my_certificates',
+        accent: AppAccent.sun,
+        icon: Icons.workspace_premium_outlined,
+        title: 'md_p7_grades_certificates'.tr,
+        meta: 'sd_profile_grades_meta'.tr,
+        onTap: () => _push(const StudentGradesPage()),
+      ),
+      SdShortcut(
+        id: 'wallet',
+        featureKey: kPointsFeatureKey,
+        accent: AppAccent.mint,
+        icon: Icons.account_balance_wallet_outlined,
+        title: 'sd_wallet_title'.tr,
+        meta: 'sd_wallet_sub'.tr,
+        onTap: () => _push(const PointsWalletPage()),
+      ),
+      SdShortcut(
+        id: 'payments',
+        featureKey: 'profile.my_payments',
+        accent: AppAccent.sky,
+        icon: Icons.receipt_long_outlined,
+        title: 'sd_profile_payments'.tr,
+        meta: 'sd_profile_payments_meta'.tr,
+        onTap: () => _push(const StudentMoneyPage()),
+      ),
+      SdShortcut(
+        id: 'favourites',
+        featureKey: 'profile.my_favorite',
+        accent: AppAccent.pink,
+        icon: Icons.favorite_border_rounded,
+        title: 'sd_profile_favourites'.tr,
+        meta: 'sd_profile_favourites_meta'.tr,
+        onTap: () => _push(const FavouriteCoursesScreen()),
+      ),
+    ];
+    final menuA = <Widget>[
+      if (PersonalAccess.enabled)
+        const SdAccentRow(accent: AppAccent.sky, child: ParentComponent(featureKey: 'profile.my_profile', child: MyProfileTile())),
+      if (!kIsWeb)
+        SdAccentRow(
+          accent: AppAccent.mint,
+          child: AppSettingsTile(
+            featureKey: 'profile.downloads',
+            icon: Icons.download_rounded,
+            label: offlineT('downloads'),
+            onTap: () => _push(const DownloadsScreen()),
+          ),
+        ),
+      SdAccentRow(accent: AppAccent.sun, child: MyRewardsTile(onOpen: () => _push(const MyRewardsPage()))),
+      SdAccentRow(
+        accent: AppAccent.grape,
+        child: AppSettingsTile(
+          featureKey: 'profile.parent_link',
+          icon: Icons.link_rounded,
+          label: 'sd_profile_parent_link'.tr,
+          onTap: () => _push(const StudentLinkCodeScreen()),
+        ),
+      ),
+    ];
+    final menuB = <Widget>[
+      SdAccentRow(
+        accent: AppAccent.pink,
+        child: ParentComponent(
+          featureKey: 'profile.settings',
+          child: AppSettingsTile(
+            featureKey: 'profile.notifications',
+            icon: Icons.notifications_none_rounded,
+            label: 'notifications'.tr,
+            subtitle: 'sd_profile_notifications_sub'.tr,
+            trailing: AppSwitch(value: p.notificationsEnabled, onChanged: p.toggleNotifications, semanticLabel: 'notifications'.tr),
+          ),
+        ),
+      ),
+      const SdAccentRow(accent: AppAccent.sky, child: ParentComponent(featureKey: 'profile.settings', child: DisplaySettingsTile())),
+      SdAccentRow(
+        accent: AppAccent.mint,
+        child: AppSettingsTile(
+          featureKey: 'profile.change_password',
+          icon: Icons.verified_user_outlined,
+          label: 'change_password'.tr,
+          onTap: () => _push(const ChangePasswordScreen()),
+        ),
+      ),
+      const SdAccentRow(accent: AppAccent.mint, child: MfaSettingsEntry(rowsOnly: true)),
+      SdAccentRow(
+        accent: AppAccent.pink,
+        child: ParentComponent(
+          featureKey: 'profile.help_group',
+          child: AppSettingsTile(
+            featureKey: 'profile.help_center',
+            badge: context.select<ComplaintProvider?, int>((p) => p?.count ?? 0),
+            onTap: () async {
+              final shared = Provider.of<ComplaintProvider?>(context, listen: false);
+              await _push(const ComplaintsHubPage());
+              shared?.refreshCount();
+            },
+            icon: Icons.support_agent_rounded,
+            label: 'complaints_and_support'.tr,
+            keywords: 'help center support complaints مساعدة دعم شكاوى',
+          ),
+        ),
+      ),
+    ];
+    final advanced = <Widget>[
+      StudyProfileTile(onOpen: () => _push(const StudyProfilePage())),
+      const ChatEntryTile(),
+      const CalendarEntryTile(),
+      RecordsSettingsTile(onOpen: () => _push(const RecordsPage())),
+      const CloudDrivesSettingsEntry(rowOnly: true),
+      if (examHubTeachesInAnyOrg(AppModeController.instance.liveEntries))
+        AppSettingsTile(
+          featureKey: kExamHubFeatureKey,
+          icon: Icons.fact_check_rounded,
+          label: t('الاختبارات', 'Exams'),
+          subtitle: t('أنشئ وصحّح وانشر النتائج من مكان واحد', 'Create, correct and publish results in one place'),
+          onTap: () => _push(deferredExamHub()),
+        ),
+      ParentComponent(
+        featureKey: 'profile.settings',
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const AppLanguageTile(),
+          AppSettingsTile(
+            featureKey: 'profile.dark_mode',
+            icon: Icons.dark_mode_outlined,
+            label: 'dark_mode'.tr,
+            trailing: AppSwitch(value: p.darkMode, onChanged: (b) async => p.changeMode(b), semanticLabel: 'dark_mode'.tr),
+          ),
+          const AppAssistantOpenTile(),
+          const AppAssistantBubbleTile(),
+          if (GetAppTile.available) const GetAppTile(),
+        ]),
+      ),
+      const PersonalAccountTile(),
+      const SwitchAccountTile(),
+      ParentComponent(
+        featureKey: 'profile.help_group',
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppSettingsTile(
+            featureKey: 'profile.app_assistant',
+            icon: Icons.question_answer_outlined,
+            label: 'app_assistant'.tr,
+            onTap: () => _push(const RagChatScreen(app: true)),
+          ),
+          AppSettingsTile(
+            featureKey: 'profile.data_export',
+            icon: Icons.inventory_2_outlined,
+            label: dataExportEntryLabel(),
+            onTap: () => _push(const DataExportPage()),
+          ),
+          const CertVerifyEntryTile(),
+          AppSettingsTile(
+            featureKey: 'profile.terms',
+            icon: Icons.gavel_rounded,
+            label: 'terms_of_service'.tr,
+            onTap: () => _push(const TermsScreen()),
+          ),
+          AppSettingsTile(
+            featureKey: 'profile.privacy',
+            icon: Icons.privacy_tip_outlined,
+            label: 'privacy_policy'.tr,
+            onTap: () => _push(const TermsScreen(privacy: true)),
+          ),
+          AppSettingsTile(
+            featureKey: 'profile.about',
+            icon: Icons.info_outline_rounded,
+            label: 'about'.tr,
+            onTap: () => _push(ChangeNotifierProvider(create: (_) => AboutTermsProvider(), child: AboutScreen())),
+          ),
+        ]),
+      ),
+    ];
+    final exits = <Widget>[
+      if (logout != null)
+        AppSettingsTile(
+          key: const ValueKey('profile.logout'),
+          featureKey: 'profile.logout',
+          icon: DirIcons.logout,
+          label: 'sd_profile_logout'.tr,
+          danger: true,
+          onTap: logout,
+        ),
+      if (deleteAccount != null)
+        AppSettingsTile(
+          key: const ValueKey('profile.delete_account'),
+          featureKey: 'profile.delete_account',
+          icon: Icons.delete_outline_rounded,
+          label: 'sd_profile_delete'.tr,
+          danger: true,
+          onTap: deleteAccount,
+        ),
+    ];
+    return SdArea(
+      area: AppArea.me,
+      child: BasePage(
+        key: const ValueKey('profile'),
+        enableFooterWidget: false,
+        appBar: context.showSidebar ? AppHeader(title: 'sd_profile_title'.tr, showBack: Navigator.of(context).canPop()) : null,
+        child: StudentProfileView(
+          hero: StudentProfileHero(name: p.name, username: p.username, onEdit: editAccount),
+          shortcuts: shortcuts,
+          menuA: menuA,
+          menuB: menuB,
+          advanced: advanced,
+          exits: exits,
+          extra: ProfileRecommendations(role: auth.currentUser?.role, padding: const EdgeInsets.only(top: AppSpace.lg)),
+          footer: const AppVersionLine(),
+        ),
+      ),
+    );
+  }
 }
 
 /// The section colours of the profile page (D-714). Profile E (D-1081): every section wears the primary tint.

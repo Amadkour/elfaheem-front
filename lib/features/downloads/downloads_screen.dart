@@ -4,8 +4,11 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppListSkeleton, AppRefresh, AppTabs, AppTabItem, AppBlockTone, AppKpiGrid, AppStatCard, AppEmpty, AppStatusBadge, AppTone, AppButton, AppWidth;
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale, AppReveal;
+    show AppListSkeleton, AppRefresh, AppTabs, AppTabItem, AppEmpty, AppStatusBadge, AppTone, AppButton, AppWidth, AppWidthBox,
+        AppCard, AppHero, AppTile, AppIconButton, AppAccent, AppArea;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppDeal;
+import 'package:flutter_education_app/core/app_digits.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -160,8 +163,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     return offlineT('dl_expires_in_days').replaceAll('{n}', '$days');
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -170,119 +171,120 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     final totalBytes = _items.fold<int>(0, (s, e) => s + e.sizeBytes);
     final wide = MediaQuery.sizeOf(context).width >= 600;
 
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: BasePage(
+    final tabs = AppTabs(
+      expand: true,
+      index: _tab,
+      onChanged: (v) => setState(() => _tab = v),
+      // phones: the three labels alone (with their icons they no longer fit 360 px)
+      items: [
+        AppTabItem(attT('att_tab_downloads'), icon: wide ? Icons.download_done_rounded : null, count: _items.isEmpty ? null : _items.length),
+        AppTabItem(attT('att_tab_attendance'), icon: wide ? Icons.how_to_reg_rounded : null),
+        AppTabItem(t('الاختبارات', 'Exams'), icon: wide ? Icons.offline_pin_rounded : null),
+      ],
+    );
+    // the connection line: offline, or back online on the start page
+    final Widget? status = tc.serverUnreachable
+        ? _StatusCard(
+            icon: Icons.wifi_off_rounded,
+            danger: true,
+            text: offlineT('dl_offline_info'),
+            actionLabel: offlineT('dl_retry_connection'),
+            loading: tc.isRetrying,
+            onAction: () => context.read<ThemeConfigProvider>().reload(),
+          )
+        : !canPop
+            ? _StatusCard(
+                icon: Icons.wifi_rounded,
+                text: offlineT('dl_back_online'),
+                actionLabel: offlineT('dl_go_home'),
+                actionIcon: Icons.home_rounded,
+                onAction: _goHome,
+              )
+            : null;
 
-        appBar: AppHeader(
-          title: offlineT('dl_title'),
-          // Opened as the start page (nothing to go back to) → home button (the header sits on the canvas: ink).
-          leading: canPop
-              ? null
-              : IconButton(
-                  tooltip: offlineT('dl_go_home'),
-                  constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-                  icon: Icon(Icons.home_rounded, color: c.textDark),
-                  onPressed: _goHome,
+    final Widget body;
+    if (_tab != 0) {
+      body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
+          child: AppWidthBox(width: AppWidth.reading, child: tabs),
+        ),
+        Expanded(child: _tab == 2 ? const OfflineExamsList() : const OfflineAttendanceTab()),
+      ]);
+    } else {
+      final empty = !_loading && _items.isEmpty;
+      final card = AppCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          tabs,
+          const SizedBox(height: AppSpace.md),
+          if (_loading)
+            const AppListSkeleton(items: 3, padding: EdgeInsets.zero)
+          else if (empty)
+            const _EmptyState()
+          else ...[
+            Row(children: [
+              Expanded(child: Text(offlineT('dl_storage_used'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600))),
+              Text(appDigits(_fmtSize(totalBytes)), textDirection: TextDirection.ltr, style: AppType.meta(context)),
+            ]),
+            const SizedBox(height: AppSpace.sm),
+            for (final (i, it) in _items.indexed)
+              AppDeal(
+                index: i,
+                group: 'downloads',
+                child: _DownloadTile(
+                  item: it,
+                  index: i,
+                  sizeLabel: _fmtSize(it.sizeBytes),
+                  expiryLabel: _fmtExpiry(it.expiresAt),
+                  expiringSoon: it.expiresAt.difference(DateTime.now()).inDays <= 3,
+                  accessEnded: it.courseId != null && _endedCourses.contains(it.courseId),
+                  onTap: () => _open(it),
+                  onDelete: () => _delete(it),
                 ),
-          actions: [
-            const HelpInfoButton(pageId: 'downloads'),
-            if (_items.isNotEmpty && _tab == 0)
-              IconButton(
-                tooltip: offlineT('dl_delete_all'),
-                constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-                icon: Icon(Icons.delete_sweep_rounded, color: c.textMedium),
-                onPressed: _deleteAll,
               ),
           ],
-        ),
-        child: Column(children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
-              child: AppTabs(
-                expand: true,
-                index: _tab,
-                onChanged: (v) => setState(() => _tab = v),
-                // phones: the three labels alone (with their icons they no longer fit 360 px)
-                items: [
-                  AppTabItem(attT('att_tab_downloads'), icon: wide ? Icons.download_done_rounded : null),
-                  AppTabItem(attT('att_tab_attendance'), icon: wide ? Icons.how_to_reg_rounded : null),
-                  AppTabItem(t('الاختبارات', 'Exams'), icon: wide ? Icons.offline_pin_rounded : null),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: _tab == 2
-                ? const OfflineExamsList()
-                : _tab == 1
-                ? const OfflineAttendanceTab()
-                : _loading
-            ? const AppListSkeleton()
-            : AppRefresh(
-                onRefresh: _load,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xl),
-                  children: [
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                          // Connection status card
-                          if (tc.serverUnreachable)
-                            _StatusCard(
-                              icon: Icons.wifi_off_rounded,
-                              danger: true,
-                              text: offlineT('dl_offline_info'),
-                              actionLabel: offlineT('dl_retry_connection'),
-                              loading: tc.isRetrying,
-                              onAction: () =>
-                                  context.read<ThemeConfigProvider>().reload(),
-                            )
-                          else if (!canPop)
-                            _StatusCard(
-                              icon: Icons.wifi_rounded,
-                              text: offlineT('dl_back_online'),
-                              actionLabel: offlineT('dl_go_home'),
-                              actionIcon: Icons.home_rounded,
-                              onAction: _goHome,
-                            ),
-
-                          if (_items.isEmpty)
-                            const _EmptyState()
-                          else ...[
-                            // ONE entrance: the summary block, then the first rows ripple in after it
-                            AppReveal(
-                              index: 0,
-                              group: 'downloads',
-                              child: _SummaryCard(count: _items.length, sizeLabel: _fmtSize(totalBytes)),
-                            ),
-                            const SizedBox(height: AppSpace.lg),
-                            for (final (i, it) in _items.indexed)
-                              AppReveal(
-                                index: i + 1,
-                                group: 'downloads',
-                                rise: 8,
-                                child: _DownloadTile(
-                                  item: it,
-                                  sizeLabel: _fmtSize(it.sizeBytes),
-                                  expiryLabel: _fmtExpiry(it.expiresAt),
-                                  accessEnded: it.courseId != null && _endedCourses.contains(it.courseId),
-                                  onTap: () => _open(it),
-                                  onDelete: () => _delete(it),
-                                ),
-                              ),
-                          ],
-                        ]),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ),
         ]),
+      );
+      body = AppRefresh(
+        onRefresh: _load,
+        child: SdHeroList(
+          hero: AppHero(
+            title: empty ? 'sd_dl_empty_title'.tr : offlineT('dl_title'),
+            subtitle: empty ? 'sd_dl_empty_sub'.tr : 'sd_dl_sub'.tr,
+            icon: Icons.download_rounded,
+          ),
+          children: [
+            ?status,
+            card,
+          ],
+        ),
+      );
+    }
+
+    return Directionality(
+      textDirection: Helpers.pageDirection,
+      child: SdArea(
+        area: AppArea.me,
+        child: BasePage(
+          appBar: AppHeader(
+            title: offlineT('dl_title'),
+            // Opened as the start page (nothing to go back to) → home button.
+            leading: canPop
+                ? null
+                : AppIconButton(tooltip: offlineT('dl_go_home'), icon: Icons.home_rounded, onHero: true, onPressed: _goHome),
+            actions: [
+              const HelpInfoButton(pageId: 'downloads'),
+              if (_items.isNotEmpty && _tab == 0)
+                AppIconButton(
+                  tooltip: offlineT('dl_delete_all'),
+                  icon: Icons.delete_sweep_outlined,
+                  onHero: true,
+                  onPressed: _deleteAll,
+                ),
+            ],
+          ),
+          child: ColoredBox(color: c.background, child: body),
+        ),
       ),
     );
   }
@@ -359,133 +361,58 @@ class _StatusCard extends StatelessWidget {
   }
 }
 
-/// What is saved on this device: two soft-wash counts (D-1081) — the videos (sky) and the storage they use (gold).
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.count, required this.sizeLabel});
-
-  final int count;
-  final String sizeLabel;
-
-  @override
-  Widget build(BuildContext context) => AppKpiGrid(maxColumns: 2, children: [
-        AppStatCard(
-          icon: Icons.download_done_rounded,
-          value: '$count',
-          label: offlineT('dl_videos_count'),
-          tone: AppBlockTone.sky,
-        ),
-        AppStatCard(
-          icon: Icons.sd_storage_rounded,
-          value: sizeLabel,
-          label: offlineT('dl_storage_used'),
-          tone: AppBlockTone.gold,
-        ),
-      ]);
-}
-
-/// One saved lecture: a paper row on a warm hairline — the play well, the title, its facts, a quiet delete.
+/// One saved lesson (Stu2Profile `screen=downloads`): a coloured play thumbnail, the title, its facts (subject,
+/// size, quality), the time left as a tag (sky, sun when ≤ 3 days, coral when the plan ended) and a round delete.
 class _DownloadTile extends StatelessWidget {
   const _DownloadTile({
     required this.item,
+    required this.index,
     required this.sizeLabel,
     required this.expiryLabel,
+    this.expiringSoon = false,
     this.accessEnded = false,
     required this.onTap,
     required this.onDelete,
   });
 
   final OfflineItem item;
+  final int index;
   final String sizeLabel;
   final String expiryLabel;
-  final bool accessEnded;
+  final bool expiringSoon, accessEnded;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final well = Color.alphaBlend(c.primaryTint, c.cardBg);
-    final meta = AppType.meta(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    final tone = c.kit.accent(AppAccent.values[index % AppAccent.values.length]);
+    final facts = [
+      if ((item.description ?? '').isNotEmpty) item.description!,
+      sizeLabel,
+      item.tier.label,
+    ].join('، ');
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpace.xs),
-      child: AppPressScale(
-        child: Material(
-          color: c.cardBg,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.cardAll,
-            side: BorderSide(color: c.divider, width: AppBorder.hairline),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.sm, AppSpace.sm, AppSpace.xxs, AppSpace.sm),
-              child: Row(children: [
-                // Play well
-                Container(
-                  width: AppTouch.min,
-                  height: AppTouch.min,
-                  decoration: BoxDecoration(borderRadius: AppRadius.controlAll, color: well),
-                  child: Icon(Icons.play_arrow_rounded, color: c.blockAccentInk(c.primary, well), size: AppIconSize.lg),
-                ),
-                const SizedBox(width: AppSpace.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(item.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
-                      if ((item.description ?? '').isNotEmpty) ...[
-                        const SizedBox(height: AppSpace.xxs / 2),
-                        Text(item.description!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppType.meta(context)),
-                      ],
-                      const SizedBox(height: AppSpace.xs),
-                      Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                        _Chip(item.tier.label),
-                        Text(sizeLabel, textDirection: TextDirection.ltr, style: meta),
-                        Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.schedule_rounded, size: AppIconSize.xs - 2, color: c.textLight),
-                          const SizedBox(width: AppSpace.xxs / 2),
-                          Flexible(child: Text(expiryLabel, style: meta, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                        ]),
-                        if (accessEnded) AppStatusBadge(label: 'dl_access_ended'.tr, tone: AppTone.danger, dense: true),
-                      ]),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'delete'.tr,
-                  constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-                  onPressed: onDelete,
-                  icon: Icon(Icons.delete_outline_rounded, color: c.textLight, size: AppIconSize.md),
-                ),
-              ]),
-            ),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: AppTile(
+        leading: ExcludeSemantics(
+          child: Container(
+            decoration: BoxDecoration(color: tone.color, borderRadius: BorderRadius.circular(AppRadius.glyph)),
+            child: Icon(Icons.play_arrow_rounded, color: c.onHero, size: AppIconSize.lg),
           ),
         ),
+        title: item.title,
+        subtitle: appDigits(facts),
+        onTap: onTap,
+        trailing: Column(crossAxisAlignment: CrossAxisAlignment.end, mainAxisSize: MainAxisSize.min, children: [
+          AppIconButton(tooltip: 'delete'.tr, icon: Icons.delete_outline_rounded, onPressed: onDelete),
+          const SizedBox(height: AppSpace.xxs),
+          if (accessEnded)
+            AppStatusBadge(label: 'dl_access_ended'.tr, tone: AppTone.danger, dense: true)
+          else
+            AppStatusBadge(label: appDigits(expiryLabel), tone: expiringSoon ? AppTone.warning : AppTone.info, dense: true),
+        ]),
       ),
-    );
-  }
-}
-
-/// The saved quality ("720p") as a quiet chip.
-class _Chip extends StatelessWidget {
-  const _Chip(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs - 2, vertical: 1),
-      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(AppRadius.chip - 4)),
-      child: Text(label, textDirection: TextDirection.ltr, style: AppType.overline(context)),
     );
   }
 }
@@ -494,13 +421,9 @@ class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: AppSpace.xxl),
-        child: AppEmpty(
-          icon: Icons.cloud_download_outlined,
-          title: offlineT('dl_empty_title'),
-          message: offlineT('dl_empty_body'),
-          tone: AppBlockTone.sky,
-        ),
+  Widget build(BuildContext context) => AppEmpty(
+        icon: Icons.download_rounded,
+        title: 'sd_dl_empty_how'.tr,
+        message: 'sd_dl_empty_later'.tr,
       );
 }

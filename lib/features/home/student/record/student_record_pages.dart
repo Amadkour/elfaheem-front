@@ -10,6 +10,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart';
@@ -160,7 +161,7 @@ class _TwoListsPageState extends State<_TwoListsPage> {
   @override
   Widget build(BuildContext context) {
     final me = context.select<MyAuthProvider, int?>((a) => a.currentUser?.id);
-    return BasePage(
+    return SdArea(area: AppArea.me, child: BasePage(
       key: ValueKey(widget.pageKey),
       useWebCard: true,
       width: AppWidth.wide,
@@ -177,7 +178,7 @@ class _TwoListsPageState extends State<_TwoListsPage> {
                 Expanded(child: KeyedSubtree(key: ValueKey('${widget.pageKey}.$_tab'), child: widget.builder(context, _tab, me))),
               ]),
       ),
-    );
+    ));
   }
 }
 
