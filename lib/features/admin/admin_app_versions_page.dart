@@ -30,6 +30,7 @@ import 'admin_page.dart';
 import 'admin_update_policy.dart';
 import 'admin_versions_page.dart';
 import 'app_releases/app_releases_page.dart' show AppReleasesPage, kAppReleasesFeatureKey;
+import 'sup/sup_kit.dart';
 
 class AdminAppVersionsPage extends StatefulWidget {
   const AdminAppVersionsPage({super.key, this.provider});
@@ -77,23 +78,13 @@ class _AdminAppVersionsPageState extends State<AdminAppVersionsPage> {
           value: _p,
           child: Builder(builder: (context) {
             final p = context.watch<AdminUpdatePolicyProvider>();
-            return AdminPage(
-              key: const ValueKey('admin_app_versions'),
-              width: AppWidth.wide,
-              title: t('إصدارات التطبيق', 'App versions'),
-              subtitle: t('ما يُطلب من مستخدمي كل منصة التحديث إليه، ورسالته، والإصدار المنشور خلفه',
-                  'What each platform’s users are asked to update to, its message, and the build behind it'),
-              icon: Icons.system_update_rounded,
-              onRefresh: p.load,
-              primaryAction: buildAvailable
-                  ? AppButton.primary(
-                      key: const ValueKey('admin_app_versions.build'),
-                      icon: Icons.rocket_launch_rounded,
-                      label: t('بناء إصدار', 'Build a version'),
-                      onPressed: _openBuild,
-                    )
-                  : null,
-              body: UpdatePolicyOverview(
+            return SupPage(
+        kicker: 'a2_rel_kicker'.tr, headline: 'a2_versions_head'.tr, line: 'a2_versions_line'.tr,
+        key: const ValueKey('admin_app_versions'),
+        width: AppWidth.wide,
+        title: t('إصدارات التطبيق', 'App versions'),
+        onRefresh: p.load,
+        body: UpdatePolicyOverview(
                 items: p.items,
                 loading: p.isLoading && p.items.isEmpty,
                 error: p.items.isEmpty ? p.error : null,
@@ -103,7 +94,15 @@ class _AdminAppVersionsPageState extends State<AdminAppVersionsPage> {
                 onUseSuggestion: (x) => _edit(x, start: x.startDraft()),
                 onOpenHistory: _openHistory,
               ),
-            );
+        actions: [?(buildAvailable
+                  ? AppButton.primary(
+                      key: const ValueKey('admin_app_versions.build'),
+                      icon: Icons.rocket_launch_rounded,
+                      label: t('بناء إصدار', 'Build a version'),
+                      onPressed: _openBuild,
+                    )
+                  : null)],
+      );
           }),
         );
       },
@@ -377,11 +376,10 @@ class UpdatePolicyEditorPage extends StatelessWidget {
   final Future<Map<String, String>?> Function(UpdatePolicyDraft) onSave;
 
   @override
-  Widget build(BuildContext context) => AdminPage(
+  Widget build(BuildContext context) => SupPage(
+        kicker: 'a2_prompt_kicker'.tr, headline: 'a2_prompt_head'.tr, line: 'a2_prompt_line'.tr,
         key: ValueKey('update_policy_editor.${policy.platform}'),
         title: t('التحديث على ${updatePlatformName(policy.platform)}', 'Updates on ${updatePlatformName(policy.platform)}'),
-        subtitle: t('أحدث إصدار، والحد الأدنى، والرسالة، والرابط', 'Latest version, minimum, message and link'),
-        icon: updatePlatformIcon(policy.platform),
         body: UpdatePolicyEditor(policy: policy, start: start, onSave: onSave, onSaved: () => Navigator.of(context).maybePop()),
       );
 }

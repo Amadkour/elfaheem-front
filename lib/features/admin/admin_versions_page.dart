@@ -17,6 +17,7 @@ import 'admin_page.dart';
 import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
 import 'app_releases/app_releases_page.dart' show AppReleasesPage;
+import 'sup/sup_kit.dart';
 
 final _semver = RegExp(r'^\d+(\.\d+){0,2}([+-][0-9A-Za-z.\-]+)?$');
 
@@ -48,17 +49,15 @@ class _View extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminVersionsProvider>();
-    return AdminPage(
-      key: const ValueKey('admin_versions'),
-      width: AppWidth.wide,
-      title: t('سجل رسائل التحديث', 'Update prompt history'),
-      subtitle: t('الإصدار الذي يطلب التطبيق من المستخدمين التحديث إليه، إجباريًا أو موصى به',
-          'The version the app asks users to update to, forced or recommended'),
-      icon: Icons.system_update_rounded,
-      onRefresh: p.load,
-      primaryAction: AdminVersionsAddButton(provider: p),
-      body: const AdminVersionsContent(),
-    );
+    return SupPage(
+        kicker: 'a2_rel_kicker'.tr, headline: 'a2_prompt_history_head'.tr,
+        key: const ValueKey('admin_versions'),
+        width: AppWidth.wide,
+        title: t('سجل رسائل التحديث', 'Update prompt history'),
+        onRefresh: p.load,
+        body: const AdminVersionsContent(),
+        actions: [AdminVersionsAddButton(provider: p)],
+      );
   }
 }
 
