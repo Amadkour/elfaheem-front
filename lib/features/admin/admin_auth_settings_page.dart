@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import '../auth/verify_way.dart';
 import 'admin_common.dart' show t;
 import 'admin_page.dart';
+import 'sup/sup_kit.dart';
 
 class AdminAuthSettingsPage extends StatefulWidget {
   const AdminAuthSettingsPage({super.key});
@@ -277,19 +278,18 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
     final selectedWays = _order.where((w) => _ways.contains(w.name)).toList();
     final failed = !_loading && _error != null;
 
-    return AdminPage(
-      width: AppWidth.reading,
-      title: 'auth_settings_title'.tr,
-      subtitle: 'auth_settings_sub'.tr,
-      icon: Icons.verified_user_rounded,
-      onRefresh: _loading || _saving ? null : _load,
-      updatedAt: _loadedAt,
-      dirty: _dirty,
-      // no Save at all while the settings could not be loaded
-      primaryAction: failed || _loading
-          ? null
-          : AppButton.primary(label: 'save'.tr, busy: _saving, onPressed: _dirty ? _save : null),
-      body: _loading
+    return SupPage(
+        kicker: 'a2_platform_kicker'.tr, headline: 'a2_auth_head'.tr, line: 'a2_auth_line'.tr,
+        width: AppWidth.reading,
+        title: 'auth_settings_title'.tr,
+        onRefresh: _loading || _saving ? null : _load,
+        updatedAt: _loadedAt,
+        dirty: _dirty,
+        // no Save at all while the settings could not be loaded
+        actions: [
+          if (!failed && !_loading) AppButton.primary(label: 'save'.tr, busy: _saving, onPressed: _dirty ? _save : null),
+        ],
+        body: _loading
           ? const AppListSkeleton()
           : failed
               ? Center(child: AppErrorState(message: appErrorMessage(_error), onRetry: _load))
@@ -362,6 +362,6 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
                     ]),
                   ],
                 ),
-    );
+      );
   }
 }

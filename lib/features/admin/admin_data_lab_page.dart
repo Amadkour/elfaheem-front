@@ -16,6 +16,7 @@ import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
 import 'admin_common.dart' show t;
 import 'admin_page.dart';
 import 'cfg_common.dart';
+import 'sup/sup_kit.dart';
 
 class AdminDataLabPage extends StatefulWidget {
   const AdminDataLabPage({super.key});
@@ -161,18 +162,17 @@ class _AdminDataLabPageState extends State<AdminDataLabPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AdminPage(
-      title: 'dl_admin_title'.tr,
-      subtitle: 'dl_admin_sub'.tr,
-      icon: Icons.science_rounded,
-      onRefresh: () => _load(keep: true),
-      updatedAt: _loadedAt,
-      body: _loading && !_loaded
+    return SupPage(
+        kicker: 'a2_recs_kicker'.tr, headline: 'dl_admin_title'.tr,
+        title: 'dl_admin_title'.tr,
+        onRefresh: () => _load(keep: true),
+        updatedAt: _loadedAt,
+        body: _loading && !_loaded
           ? const AppListSkeleton()
           : _error != null && !_loaded
               ? cfgErrorState(_error, onRetry: _load)
               : _content(context),
-    );
+      );
   }
 
   Widget _content(BuildContext context) {

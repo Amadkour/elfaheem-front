@@ -17,6 +17,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -25,8 +26,8 @@ import '../org/org_v3.dart';
 import 'package:flutter_education_app/features/rag/rag_library.dart' show RagLibraryApi, ragOutcomeSummary, ragResultText;
 import 'admin_common.dart' show asInt, asMap, asMapList, t;
 import 'admin_features_page.dart' show AdminFeaturesPage;
-import 'admin_page.dart';
 import 'cfg_common.dart';
+import 'sup/sup_kit.dart';
 
 const _guide = '/api/v1/admin/features/guide';
 const guidePlatformNames = {'android': 'Android', 'ios': 'iOS', 'web': 'Web'};
@@ -177,24 +178,22 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
 
   @override
   Widget build(BuildContext context) {
-    return AdminPage(
-      key: const ValueKey('rag.features_guide'),
-      width: AppWidth.wide,
-      title: t('دليل ميزات التطبيق', 'App features guide'),
-      subtitle: t('ما يعرفه مساعد التطبيق عن الميزات: لمن هي، وأين، وكيف تُستخدم.', 'What the app assistant knows about the features: who has them, where, and how to use them.'),
-      icon: Icons.menu_book_rounded,
-      onRefresh: _load,
-      primaryAction: _super ? AppButton.primary(label: t('ميزة جديدة', 'New feature'), icon: Icons.add_rounded, onPressed: () => _openEditor(null)) : null,
-      actions: [
-        if (_data != null)
-          AppIconButton(tooltip: t('ما يقرؤه المساعد', 'What the assistant reads'), icon: Icons.article_outlined, onPressed: _openPreview),
-      ],
-      body: _error != null
+    return SupPage(
+        kicker: 'a2_modules_kicker'.tr, headline: t('دليل ميزات التطبيق', 'App features guide'),
+        key: const ValueKey('rag.features_guide'),
+        width: AppWidth.wide,
+        title: t('دليل ميزات التطبيق', 'App features guide'),
+        onRefresh: _load,
+        body: _error != null
           ? cfgErrorState(_error, onRetry: _load)
           : _data == null
               ? const AppListSkeleton(items: 8)
               : _list(context),
-    );
+        actions: [?(_super ? AppButton.primary(label: t('ميزة جديدة', 'New feature'), icon: Icons.add_rounded, onPressed: () => _openEditor(null)) : null), ...[
+        if (_data != null)
+          AppIconButton(onHero: true, tooltip: t('ما يقرؤه المساعد', 'What the assistant reads'), icon: Icons.article_outlined, onPressed: _openPreview),
+      ]],
+      );
   }
 
   Widget _list(BuildContext context) {
