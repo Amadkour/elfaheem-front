@@ -11,6 +11,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -88,9 +90,13 @@ List<LevelNode> levelNodes(List<V4Level> levels) {
 }
 
 class GamesHomeV4 extends StatefulWidget {
-  const GamesHomeV4({super.key, this.api, this.champions, this.onChampions, this.onUnavailable});
+  const GamesHomeV4({super.key, this.api, this.champions, this.onChampions, this.onUnavailable, this.onProgress, this.viewSwitch});
 
   final GamesV4Api? api;
+
+  /// See [GamesHomeV4View.onProgress] / [GamesHomeV4View.viewSwitch].
+  final VoidCallback? onProgress;
+  final Widget? viewSwitch;
   final ChampionsStripData? champions;
   final VoidCallback? onChampions;
 
@@ -220,9 +226,16 @@ class _GamesHomeV4State extends State<GamesHomeV4> {
   Widget build(BuildContext context) {
     final h = _home;
     if (h == null) {
-      return _loading
-          ? const Padding(padding: EdgeInsets.all(AppSpace.md), child: AppListSkeleton(items: 4, padding: EdgeInsets.zero))
+      final state = _loading
+          ? const AppListSkeleton(items: 4, padding: EdgeInsets.zero)
           : AppErrorState(message: _error, onRetry: _load);
+      return Padding(
+        padding: const EdgeInsets.all(AppSpace.md),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (widget.viewSwitch != null) ...[widget.viewSwitch!, const SizedBox(height: AppSpace.md)],
+          Expanded(child: state),
+        ]),
+      );
     }
     final id = _subjectId;
     final cont = h.continueLevel;
@@ -242,6 +255,8 @@ class _GamesHomeV4State extends State<GamesHomeV4> {
         onWardrobe: () => showWardrobe(context, api: _api, ageBand: h.profile.ageBand).then((_) { if (mounted) _load(); }),
         champions: widget.champions,
         onChampions: widget.onChampions,
+        onProgress: widget.onProgress,
+        viewSwitch: widget.viewSwitch,
       ),
     );
   }
@@ -265,6 +280,8 @@ class GamesHomeV4View extends StatelessWidget {
     this.onChampions,
     this.showCoins,
     this.onChallenges,
+    this.onProgress,
+    this.viewSwitch,
   });
 
   final V4Home home;
@@ -287,6 +304,12 @@ class GamesHomeV4View extends StatelessWidget {
   /// Opens the challenges page (T76); the chip shows while `games.challenges` is on.
   final VoidCallback? onChallenges;
 
+  /// Opens "تقدّمي وشاراتي" (the progress and badges page); null hides its tile.
+  final VoidCallback? onProgress;
+
+  /// The Levels / Quick games pill of the tab, drawn at the top of the levels card.
+  final Widget? viewSwitch;
+
   @override
   Widget build(BuildContext context) {
     final p = home.profile;
@@ -295,20 +318,20 @@ class GamesHomeV4View extends StatelessWidget {
       theme: theme,
       child: LayoutBuilder(builder: (context, box) {
         final wide = box.maxWidth >= 900;
-        final gutter = AppSpace.gutter(box.maxWidth);
         final subjects = [for (final s in home.subjects) if (s.levels > 0) s];
         V4Subject? cur;
         for (final s in subjects) {
           if (s.id == subjectId) cur = s;
         }
-        final header = _Header(
-          coins: (showCoins ?? !AppConfig.disableList.contains('games.cosmetics')) ? p.coins : null,
-          // the chip counts only what its tap can open (the levels with items due), so it is never a dead tap
-          reviewDue: home.reviewLevels.values.fold(0, (a, b) => a + b),
-          onReview: onReview,
-          onSettings: onSettings,
-          onWardrobe: onWardrobe,
-          onChallenges: onChallenges,
+        final coins = (showCoins ?? !AppConfig.disableList.contains('games.cosmetics')) ? p.coins : null;
+        // the review counts only what its tap can open (the levels with items due), so it is never a dead tap
+        final reviewDue = home.reviewLevels.values.fold(0, (a, b) => a + b);
+        final hero = AppHero(
+          title: t('العب وتعلّم', 'Play and learn'),
+          squiggle: AppConfig.lang == 'ar' ? 'العب' : 'Play',
+          leading: const _Mascot(),
+          wipe: false,
+          bottom: _HeroChips(coins: coins, onSettings: onSettings),
         );
         final cont = home.continueLevel;
         final contCard = cont == null || cont.locked
@@ -333,153 +356,179 @@ class GamesHomeV4View extends StatelessWidget {
                   itemBuilder: (_, i) => _SubjectTile(subject: subjects[i], selected: subjects[i].id == subjectId, onTap: () => onSubject?.call(subjects[i].id)),
                 ),
               );
-        final Widget body;
+        final Widget levelsBody;
         if (subjects.isEmpty) {
-          body = AppEmpty(key: const ValueKey('games.v4.empty'), icon: Icons.extension_rounded, title: t('لا توجد مواد بعد', 'No subjects yet'));
+          levelsBody = AppEmpty(key: const ValueKey('games.v4.empty'), icon: Icons.extension_rounded, title: t('لا توجد مواد بعد', 'No subjects yet'));
         } else if (wide) {
-          body = Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SizedBox(width: _kRailW, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [rail, if (strip != null) ...[const SizedBox(height: AppSpace.sm), strip]])),
+          levelsBody = Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SizedBox(width: _kRailW, child: rail),
             const SizedBox(width: AppSpace.lg),
             Expanded(child: map),
           ]);
         } else {
-          body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            rail,
-            const SizedBox(height: AppSpace.md),
-            map,
-            if (strip != null) ...[const SizedBox(height: AppSpace.md), strip],
-          ]);
+          levelsBody = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [rail, const SizedBox(height: AppSpace.md), map]);
         }
-        return ListView(
-          padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, AppSpace.xl),
-          children: [
-            header,
-            if (contCard != null) ...[const SizedBox(height: AppSpace.md), contCard],
-            const SizedBox(height: AppSpace.md),
-            body,
-          ],
-        );
+        final shortcuts = [
+          if (onProgress != null)
+            (key: 'games.v4.progress', icon: Icons.bar_chart_rounded, accent: AppAccent.sky, label: t('تقدّمي وشاراتي', 'My progress and badges'), onTap: onProgress!),
+          if (coins != null && onWardrobe != null)
+            (key: 'games.v4.wardrobe', icon: Icons.checkroom_rounded, accent: AppAccent.pink, label: t('خزانتي', 'Wardrobe'), onTap: onWardrobe!),
+          if (onChallenges != null)
+            (key: 'games.v4.challenges', icon: Icons.bolt_rounded, accent: AppAccent.sun, label: t('التحدّيات', 'Challenges'), onTap: onChallenges!),
+        ];
+        return SdHeroList(hero: hero, width: AppWidth.wide, children: [
+          if (contCard != null) ...[contCard, const SizedBox(height: AppSpace.sm)],
+          if (reviewDue > 0) ...[_ReviewCard(due: reviewDue, onTap: onReview), const SizedBox(height: AppSpace.sm)],
+          if (strip != null) ...[strip, const SizedBox(height: AppSpace.sm)],
+          if (shortcuts.isNotEmpty)
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (final (i, s) in shortcuts.indexed) ...[
+                if (i > 0) const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: AppPop(
+                    delay: Duration(milliseconds: 80 * i),
+                    child: _ShortcutTile(key: ValueKey(s.key), icon: s.icon, accent: s.accent, label: s.label, onTap: s.onTap),
+                  ),
+                ),
+              ],
+            ]),
+          const SizedBox(height: AppSpace.md),
+          AppCard(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (viewSwitch != null) ...[viewSwitch!, const SizedBox(height: AppSpace.md)],
+              levelsBody,
+            ]),
+          ),
+        ]);
       }),
     );
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({this.coins, this.reviewDue = 0, this.onReview, this.onSettings, this.onWardrobe, this.onChallenges});
-  final int? coins;
-  final int reviewDue;
-  final VoidCallback? onReview, onSettings, onWardrobe, onChallenges;
+/// The games' mascot on the hero: a drawn glyph in a glass square (no picture of a living being on Quran screens;
+/// here it is a plain game pad).
+class _Mascot extends StatelessWidget {
+  const _Mascot();
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final age = AgeThemeScope.of(context);
-    final gold = age.palette.gold;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(children: [
-        Expanded(child: Text(t('العب وتعلّم', 'Play and learn'), style: AppType.headline(context))),
-        IconButton(
-          key: const ValueKey('games.v4.settings'),
-          tooltip: t('إعدادات الألعاب', 'Games settings'),
-          constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-          icon: Icon(Icons.tune_rounded, color: c.textDark),
-          onPressed: onSettings,
+    return ExcludeSemantics(
+      child: AppWobble(
+        child: Container(
+          decoration: BoxDecoration(
+            color: c.heroGlass,
+            borderRadius: BorderRadius.circular(AppRadius.tile),
+            border: Border.all(color: c.heroGlassBorder, width: AppBorder.hairline),
+          ),
+          child: Icon(Icons.sports_esports_rounded, color: c.onHero, size: AppIconSize.xl),
         ),
-      ]),
-      if (coins != null || reviewDue > 0 || onChallenges != null) ...[
-        const SizedBox(height: AppSpace.xs),
-        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-          if (coins != null)
-            Semantics(
-              label: t('$coins عملة', '$coins coins'),
-              excludeSemantics: true,
-              child: Container(
-                key: const ValueKey('games.v4.coins'),
-                constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-                decoration: BoxDecoration(
-                  color: Color.alphaBlend(gold.withValues(alpha: 0.22), c.cardBg),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  border: Border.all(color: gold, width: age.age == GameAge.kids ? AppBorder.strong : AppBorder.hairline),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.monetization_on_rounded, color: gold, size: AppIconSize.md),
-                  const SizedBox(width: AppSpace.xs),
-                  Text('$coins', style: AppType.figure(context)),
-                ]),
-              ),
-            ),
-          if (coins != null && onWardrobe != null)
-            Material(
-              color: Color.alphaBlend(age.palette.accent.withValues(alpha: 0.14), c.cardBg),
-              shape: StadiumBorder(side: BorderSide(color: age.palette.accent, width: AppBorder.strong)),
-              child: InkWell(
-                key: const ValueKey('games.v4.wardrobe'),
-                customBorder: const StadiumBorder(),
-                onTap: onWardrobe,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.checkroom_rounded, color: age.palette.accent, size: AppIconSize.md),
-                      const SizedBox(width: AppSpace.xs),
-                      Text(t('خزانتي', 'Wardrobe'), style: AppType.row(context)),
-                    ]),
-                  ),
-                ),
-              ),
-            ),
-          if (onChallenges != null)
-            Material(
-              color: Color.alphaBlend(age.palette.accent.withValues(alpha: 0.14), c.cardBg),
-              shape: StadiumBorder(side: BorderSide(color: age.palette.accent, width: AppBorder.strong)),
-              child: InkWell(
-                key: const ValueKey('games.v4.challenges'),
-                customBorder: const StadiumBorder(),
-                onTap: onChallenges,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.emoji_events_rounded, color: age.palette.accent, size: AppIconSize.md),
-                      const SizedBox(width: AppSpace.xs),
-                      Text(t('التحدّيات', 'Challenges'), style: AppType.row(context)),
-                    ]),
-                  ),
-                ),
-              ),
-            ),
-          if (reviewDue > 0)
-            Semantics(
-              button: true,
-              label: t('مراجعة، $reviewDue ينتظر', 'Review, $reviewDue due'),
-              excludeSemantics: true,
-              child: Material(
-                color: Color.alphaBlend(age.palette.accent.withValues(alpha: 0.14), c.cardBg),
-                shape: StadiumBorder(side: BorderSide(color: age.palette.accent, width: AppBorder.strong)),
-                child: InkWell(
-                  key: const ValueKey('games.v4.review'),
-                  customBorder: const StadiumBorder(),
-                  onTap: onReview,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.replay_circle_filled_rounded, color: age.palette.accent, size: AppIconSize.md),
-                        const SizedBox(width: AppSpace.xs),
-                        Text('${t('مراجعة', 'Review')} · $reviewDue', style: AppType.row(context)),
-                      ]),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ]),
-      ],
+      ),
+    );
+  }
+}
+
+/// The hero's chips: the coins (sun) and the settings button.
+class _HeroChips extends StatelessWidget {
+  const _HeroChips({this.coins, this.onSettings});
+
+  final int? coins;
+  final VoidCallback? onSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final kit = context.colors.kit;
+    final sun = kit.accent(AppAccent.sun);
+    return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+      if (coins != null)
+        Semantics(
+          label: t('$coins عملة', '$coins coins'),
+          excludeSemantics: true,
+          child: Container(
+            key: const ValueKey('games.v4.coins'),
+            constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+            decoration: BoxDecoration(color: sun.tint, borderRadius: BorderRadius.circular(AppRadius.pill)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.toll_rounded, color: sun.ink, size: AppIconSize.md),
+              const SizedBox(width: AppSpace.xs),
+              AppOdometer('$coins', memoryKey: 'games.coins', style: AppType.figure(context).copyWith(color: sun.ink)),
+            ]),
+          ),
+        ),
+      AppIconButton(
+        key: const ValueKey('games.v4.settings'),
+        icon: Icons.tune_rounded,
+        tooltip: t('إعدادات الألعاب', 'Games settings'),
+        onHero: true,
+        onPressed: onSettings,
+      ),
     ]);
+  }
+}
+
+/// "مراجعة: ٦ أسئلة تنتظرك": the questions you missed, back on time.
+class _ReviewCard extends StatelessWidget {
+  const _ReviewCard({required this.due, this.onTap});
+
+  final int due;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final sun = context.colors.kit.accent(AppAccent.sun);
+    return Semantics(
+      button: true,
+      label: t('مراجعة، $due ينتظر', 'Review, $due due'),
+      excludeSemantics: true,
+      child: AppCard(
+        key: const ValueKey('games.v4.review'),
+        variant: AppCardVariant.tint,
+        tone: sun,
+        onTap: onTap,
+        child: Row(children: [
+          AppIconBox(icon: Icons.sync_rounded, tone: sun, solid: true),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text('sd_games_review'.tr, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context)),
+              Text('sd_games_review_sub'.tr, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ]),
+          ),
+          const SizedBox(width: AppSpace.xs),
+          AppCountBadge(count: due, tone: AppTone.gold),
+        ]),
+      ),
+    );
+  }
+}
+
+/// One of the three shortcut tiles under the cards (progress, wardrobe, challenges).
+class _ShortcutTile extends StatelessWidget {
+  const _ShortcutTile({super.key, required this.icon, required this.accent, required this.label, required this.onTap});
+
+  final IconData icon;
+  final AppAccent accent;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = context.colors.kit.accent(accent);
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: AppCard(
+        onTap: onTap,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.md),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          AppIconBox(icon: icon, tone: tone, solid: true),
+          const SizedBox(height: AppSpace.xs),
+          Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: AppType.tileTitle(context)),
+        ]),
+      ),
+    );
   }
 }
 

@@ -33,6 +33,7 @@ import 'package:flutter_education_app/features/games/games_models.dart';
 import 'package:flutter_education_app/features/games/games_progress.dart';
 import 'package:flutter_education_app/features/games/learner/games_home_v4.dart';
 import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/features/learn_kit/learn_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -226,7 +227,15 @@ class _GamesTabState extends State<GamesTab> {
         onRetry: _load,
         onRefresh: _load,
       );
-    return BasePage(
+    // the Levels / Quick games pill (M13): on top of the levels card, or of the quick games list
+    final viewSwitch = AppTabs(
+      key: const ValueKey('games.view'),
+      expand: true,
+      items: [AppTabItem(t('المستويات', 'Levels')), AppTabItem('sd_games_quick'.tr)],
+      index: _classic ? 1 : 0,
+      onChanged: (i) => setState(() => _classic = i == 1),
+    );
+    return SdArea(area: AppArea.games, child: BasePage(
       width: AppWidth.wide,
       appBar: ScreenAppBar(
         title: t('الألعاب', 'Games'),
@@ -255,27 +264,20 @@ class _GamesTabState extends State<GamesTab> {
       child: SafeArea(
         child: !v4
             ? classic
-            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
-                  child: Row(children: [
-                    AppChoiceChip(key: const ValueKey('games.view.levels'), label: t('المستويات', 'Levels'), icon: Icons.route_rounded, selected: !_classic, onTap: () => setState(() => _classic = false)),
-                    const SizedBox(width: AppSpace.xs),
-                    AppChoiceChip(key: const ValueKey('games.view.classic'), label: t('ألعاب كلاسيكية', 'Classic games'), icon: Icons.extension_rounded, selected: _classic, onTap: () => setState(() => _classic = true)),
-                  ]),
-                ),
-                Expanded(
-                  child: _classic
-                      ? classic
-                      : GamesHomeV4(
-                          champions: GuestState.active || championsOff() ? null : _champions,
-                          onChampions: () => _openHall(_champions?.scope),
-                          onUnavailable: () => setState(() => _v4Refused = true),
-                        ),
-                ),
-              ]),
+            : _classic
+                ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0), child: viewSwitch),
+                    Expanded(child: classic),
+                  ])
+                : GamesHomeV4(
+                    champions: GuestState.active || championsOff() ? null : _champions,
+                    onChampions: () => _openHall(_champions?.scope),
+                    onUnavailable: () => setState(() => _v4Refused = true),
+                    onProgress: _openProgress,
+                    viewSwitch: viewSwitch,
+                  ),
       ),
-    );
+    ));
   }
 }
 

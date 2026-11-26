@@ -16,6 +16,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -198,7 +199,7 @@ class _HallOfChampionsPageState extends State<HallOfChampionsPage> {
   Widget build(BuildContext context) {
     final board = _tab == 2 ? null : _boards[_boardKey];
     final past = _tab == 2 ? _past[_pastKey] : null;
-    return BasePage(
+    return SdArea(area: AppArea.games, child: BasePage(
       key: const ValueKey(kGamesChampionsKey),
       width: AppWidth.content,
       appBar: ScreenAppBar(title: t('لوحة الأبطال', 'Hall of Champions'), helpPageId: 'games.champions'),
@@ -234,7 +235,7 @@ class _HallOfChampionsPageState extends State<HallOfChampionsPage> {
           now: DateTime.now().toUtc(),
         ),
       ),
-    );
+    ));
   }
 }
 
