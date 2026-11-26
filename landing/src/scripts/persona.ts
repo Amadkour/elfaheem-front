@@ -4,7 +4,8 @@
 import { makeApi } from './api';
 
 type Lv = { id: string | number; name_ar: string; name_en: string; courses?: number };
-type Subj = Lv & { levels?: Lv[] };
+// key: the subject's demand key (edu_subjects key, GET /options), null when the category has none
+type Subj = Lv & { key?: string | null; levels?: Lv[] };
 type Plural = { one: string; two: string; few: string; many: string; other: string };
 type Course = {
   id: number;
@@ -193,7 +194,9 @@ function init(root: HTMLElement) {
   const demand = async (subjectId: string): Promise<boolean> => {
     if (!demandUrl || !card || !dStats) return false;
     const id = ++dReq;
-    const p = new URLSearchParams({ subject: subjectId });
+    const key = subjects.find((s) => String(s.id) === subjectId)?.key;
+    if (!key) return false;
+    const p = new URLSearchParams({ subject: key });
     const d = await demandApi.getJson<Demand>(`${demandUrl}?${p.toString()}`);
     if (id !== dReq) return false;
     const rows: [number | null, string, string][] = d && d.available === true
@@ -234,7 +237,8 @@ function init(root: HTMLElement) {
     if (!subjects.length) return;
     paintMarquee();
     if (who === 'teacher') {
-      const top = subjects.slice(0, 8);
+      const top = subjects.filter((s) => s.key).slice(0, 8);
+      if (!top.length) return;
       // the picker is offered only when the endpoint answers for the first subject; else the card stays a join card
       demand(String(top[0].id)).then((ok) => {
         if (!ok || !form) return;
