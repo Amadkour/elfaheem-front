@@ -187,8 +187,10 @@ void main() {
     await t.tap(find.byKey(const ValueKey('course_student.nudge.100')));
     await settle();
     expect(find.byType(NudgeComposer), findsOneWidget);
+    await t.ensureVisible(find.byKey(const ValueKey('nudge.parents')));
     await t.tap(find.byKey(const ValueKey('nudge.parents')));
     await t.pump();
+    await t.ensureVisible(find.byKey(const ValueKey('nudge.send')));
     await t.tap(find.byKey(const ValueKey('nudge.send')));
     await settle();
     expect(bodies.single['student_ids'], [100]);
@@ -205,8 +207,10 @@ void main() {
     await t.tap(find.byKey(const ValueKey('course_students.selection.nudge')));
     await settle();
     expect(find.text('1 student nudged recently will be skipped.'), findsOneWidget);
+    await t.ensureVisible(find.byKey(const ValueKey('nudge.parents')));
     await t.tap(find.byKey(const ValueKey('nudge.parents')));
     await t.pump();
+    await t.ensureVisible(find.byKey(const ValueKey('nudge.send')));
     await t.tap(find.byKey(const ValueKey('nudge.send')));
     await settle();
     expect(bodies.last['student_ids'], [101]);

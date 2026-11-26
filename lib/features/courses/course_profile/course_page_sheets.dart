@@ -14,6 +14,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_page_api.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_page_models.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_screen.dart' show cpErrorMessage;
+import 'package:flutter_education_app/features/courses/course_profile/t1_class_parts.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -33,19 +34,19 @@ Future<bool> _run(Future<void> Function() fn, {String? done}) async {
 // ═════════════════════════════════════════════════════════════════════════════
 
 Future<void> showCourseRulesSheet(BuildContext context, {required int courseId, required VoidCallback onChanged}) =>
-    showAppSheet<void>(context, (_) => _RulesSheet(api: CoursePageApi(courseId), onChanged: onChanged));
+    showAppSheet<void>(context, (_) => CourseRulesSheet(api: CoursePageApi(courseId), onChanged: onChanged));
 
-class _RulesSheet extends StatefulWidget {
-  const _RulesSheet({required this.api, required this.onChanged});
+class CourseRulesSheet extends StatefulWidget {
+  const CourseRulesSheet({super.key, required this.api, required this.onChanged});
 
   final CoursePageApi api;
   final VoidCallback onChanged;
 
   @override
-  State<_RulesSheet> createState() => _RulesSheetState();
+  State<CourseRulesSheet> createState() => _CourseRulesSheetState();
 }
 
-class _RulesSheetState extends State<_RulesSheet> {
+class _CourseRulesSheetState extends State<CourseRulesSheet> {
   CourseRules? _r;
   String? _error;
   bool _busy = false;
@@ -179,8 +180,12 @@ class _RulesSheetState extends State<_RulesSheet> {
         Row(children: [
           Expanded(child: Text(_t('توزيع الدرجات', 'Grade breakdown'), style: AppType.label(context))),
           if (_grades.isNotEmpty)
-            Text('$total / 100', style: AppType.meta(context).copyWith(color: total == 100 ? c.primary : c.danger, fontWeight: FontWeight.w700)),
+            AppTag(total == 100 ? _t('المجموع ١٠٠ ✓', 'Total 100 ✓') : '$total / 100', total == 100 ? c.success : c.danger),
         ]),
+        if (_grades.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xs),
+          _GradeBar(weights: [for (final g in _grades) int.tryParse(g.$2.text.trim()) ?? 0]),
+        ],
         for (final (i, g) in _grades.indexed)
           Padding(
             padding: const EdgeInsets.only(top: AppSpace.xs),
@@ -205,7 +210,7 @@ class _RulesSheetState extends State<_RulesSheet> {
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: AppButton(
-            label: _t('إضافة بند', 'Add a part'),
+            label: _t('أضف جزء', 'Add a part'),
             icon: Icons.add_rounded,
             variant: AppButtonVariant.ghost,
             size: AppButtonSize.sm,
@@ -217,7 +222,7 @@ class _RulesSheetState extends State<_RulesSheet> {
         const SizedBox(height: AppSpace.sm),
         AppButton(label: _t('حفظ القواعد الجاهزة', 'Save the ready-made rules'), busy: _busy, expand: true, onPressed: _busy ? null : _savePresets),
         const SizedBox(height: AppSpace.lg),
-        Text(_t('قواعدك لهذا الكورس', 'Your rules for this course'), style: AppType.section(context)),
+        Text(_t('قواعدك لهذه الدورة', 'Your rules for this course'), style: AppType.section(context)),
         const SizedBox(height: AppSpace.xs),
         if (r.items.isEmpty)
           Text(_t('لم تضف قواعد بعد.', 'No rules added yet.'), style: AppType.meta(context).copyWith(color: c.textLight)),
@@ -266,7 +271,33 @@ class _RulesSheetState extends State<_RulesSheet> {
         ),
       ]);
     }
-    return AppSheetContent(title: _t('قواعد الكورس', 'Course rules'), icon: Icons.gavel_rounded, children: children);
+    return AppSheetContent(title: _t('قواعد الدورة', 'Course rules'), icon: Icons.gavel_rounded, children: children);
+  }
+}
+
+/// The grade breakdown as one bar: a segment per part, as wide as its weight, in the theme's accent colours.
+class _GradeBar extends StatelessWidget {
+  const _GradeBar({required this.weights});
+
+  final List<int> weights;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tones = [c.primary, c.purple, c.accent, c.accent3, c.accent2, c.success];
+    final total = weights.fold(0, (a, b) => a + b);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.pill),
+      child: SizedBox(
+        height: AppSpace.xs,
+        child: total <= 0
+            ? ColoredBox(color: c.inputBg)
+            : Row(children: [
+                for (final (i, w) in weights.indexed)
+                  if (w > 0) Expanded(flex: w, child: ColoredBox(color: tones[i % tones.length])),
+              ]),
+      ),
+    );
   }
 }
 
@@ -275,19 +306,19 @@ class _RulesSheetState extends State<_RulesSheet> {
 // ═════════════════════════════════════════════════════════════════════════════
 
 Future<void> showCourseSectionsSheet(BuildContext context, {required int courseId, required VoidCallback onChanged}) =>
-    showAppSheet<void>(context, (_) => _SectionsSheet(api: CoursePageApi(courseId), onChanged: onChanged));
+    showAppSheet<void>(context, (_) => CourseSectionsSheet(api: CoursePageApi(courseId), onChanged: onChanged));
 
-class _SectionsSheet extends StatefulWidget {
-  const _SectionsSheet({required this.api, required this.onChanged});
+class CourseSectionsSheet extends StatefulWidget {
+  const CourseSectionsSheet({super.key, required this.api, required this.onChanged});
 
   final CoursePageApi api;
   final VoidCallback onChanged;
 
   @override
-  State<_SectionsSheet> createState() => _SectionsSheetState();
+  State<CourseSectionsSheet> createState() => _CourseSectionsSheetState();
 }
 
-class _SectionsSheetState extends State<_SectionsSheet> {
+class _CourseSectionsSheetState extends State<CourseSectionsSheet> {
   CourseSections? _s;
   String? _error;
   bool _busy = false;
@@ -368,13 +399,22 @@ class _SectionsSheetState extends State<_SectionsSheet> {
           style: AppType.meta(context).copyWith(color: c.textLight),
         ));
       } else {
-        children.add(AppTabs(
-          index: s.studentPicks ? 1 : 0,
-          onChanged: _busy || !editable
-              ? (_) {}
-              : (i) => _act(() => widget.api.setMode(i == 1 ? 'student_picks_once' : 'teacher_assigns'), _t('حُفظ', 'Saved')),
-          items: [AppTabItem(_t('المحاضر يوزّع', 'I assign')), AppTabItem(_t('الطالب يختار مرة', 'Students pick once'))],
-        ));
+        final locked = _busy || !editable;
+        children.add(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          ClOptionCard(
+            title: _t('أنا أوزّع', 'I assign'),
+            subtitle: _t('تحدد كل طالب بنفسك', 'You place each student yourself'),
+            selected: !s.studentPicks,
+            onTap: locked || !s.studentPicks ? null : () => _act(() => widget.api.setMode('teacher_assigns'), _t('حُفظ', 'Saved')),
+          ),
+          const SizedBox(height: AppSpace.xs),
+          ClOptionCard(
+            title: _t('الطالب يختار مرة', 'Students pick once'),
+            subtitle: _t('وما يقدر يغيّر بعدها', 'And cannot change it afterwards'),
+            selected: s.studentPicks,
+            onTap: locked || s.studentPicks ? null : () => _act(() => widget.api.setMode('student_picks_once'), _t('حُفظ', 'Saved')),
+          ),
+        ]));
       }
       children.add(const SizedBox(height: AppSpace.lg));
       // the groups
