@@ -100,8 +100,8 @@ class AppDriftShapesState extends State<AppDriftShapes> with SingleTickerProvide
                     ),
                   ),
                   PositionedDirectional(
-                    top: compact ? null : -54.0 + so * .18,
-                    bottom: compact ? 18.0 - so * .18 : null,
+                    // compact: above the text like the reference phone (the spec's bottom 18 crossed the title)
+                    top: (compact ? -40.0 : -54.0) + so * .18,
                     start: compact ? null : w * .44,
                     end: compact ? w * .30 : null,
                     width: s2,

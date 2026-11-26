@@ -15,6 +15,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'app_area.dart';
 import 'app_motion_kit.dart';
+import 'app_progress.dart';
 import 'app_tokens.dart';
 
 /// A glyph box: [tone]'s tint with its ink, or (solid) the colour with the on-hero ink.
@@ -83,6 +84,9 @@ class AppTile extends StatefulWidget {
   /// Below this width a wide trailing wraps under the text.
   static const double narrow = 320;
 
+  /// The widest trailing that never wraps (KIT_SPEC §5.6).
+  static const double wideTrailing = 96;
+
   @override
   State<AppTile> createState() => _AppTileState();
 }
@@ -122,7 +126,7 @@ class _AppTileState extends State<AppTile> {
 
     final body = LayoutBuilder(builder: (context, box) {
       // a wide trailing (not a single icon) goes under the text on a very narrow row
-      final wrap = w.trailing != null && w.trailing is! Icon && box.maxWidth < AppTile.narrow;
+      final wrap = w.trailing != null && !_compact(w.trailing!) && box.maxWidth < AppTile.narrow;
       final row = Row(children: [
         if (lead != null) ...[lead, AppSpace.gapSm],
         Expanded(child: text),
@@ -249,3 +253,11 @@ class AppRules extends StatelessWidget {
     ]);
   }
 }
+
+/// A trailing no wider than [AppTile.wideTrailing] (an icon, a ring, an icon box, a sized box): it stays on the row.
+bool _compact(Widget t) => switch (t) {
+      Icon() || AppIconBox() => true,
+      AppProgressRing(:final size) => size <= AppTile.wideTrailing,
+      SizedBox(:final width) => width != null && width <= AppTile.wideTrailing,
+      _ => false,
+    };
