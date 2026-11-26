@@ -8,6 +8,7 @@ library;
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/core/screen_security.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
@@ -61,7 +62,7 @@ class _StoreReaderPageState extends State<StoreReaderPage> {
   @override
   Widget build(BuildContext context) {
     final b = _bytes;
-    return BasePage(
+    return SdArea(area: AppArea.store, child: BasePage(
       appBar: ScreenAppBar(title: widget.title, compact: true),
       child: SafeArea(
         child: _error != null
@@ -70,6 +71,6 @@ class _StoreReaderPageState extends State<StoreReaderPage> {
                 ? const AppListSkeleton(items: 4, withAvatar: false)
                 : PdfViewer.data(b, sourceName: 'store-${widget.itemId}'),
       ),
-    );
+    ));
   }
 }
