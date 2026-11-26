@@ -22,7 +22,8 @@ import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_fee_rates.dart';
 import 'admin_fees_page.dart';
-import 'admin_page.dart';
+import 'admin_subscriptions_page.dart';
+import 'sup/sup_kit.dart';
 import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
@@ -156,6 +157,7 @@ class _ViewState extends State<_View> {
     final fr = context.watch<AdminFeeRatesProvider>();
 
     Widget body;
+    final stats = <AppHeroStat>[];
     if (s.values.isEmpty && s.isLoading) {
       body = const AppLoadingState(shape: AppLoadingShape.cards);
     } else if (s.values.isEmpty) {
@@ -164,41 +166,37 @@ class _ViewState extends State<_View> {
       final gateway = _hasPending ? _pending : s.defaultProvider;
       final enabledCount = pm.items.where((m) => asBool(m['enabled'])).length;
       final platformPct = fr.platform.isNotEmpty ? fr.platform['percent'] : s.platformFee;
-
-      body = ListView(padding: AdminPage.bodyPadding(context), children: [
-        AppKpiGrid(maxColumns: 3, children: [
-          AppStatCard(
-              label: 'apm_enabled'.tr, value: '$enabledCount/${pm.items.length}', icon: Icons.check_circle_rounded),
-          AppStatCard(label: _t('البوابة', 'Gateway'), value: _gatewayName(gateway), icon: Icons.payments_rounded),
-          AppStatCard(
-              label: _t('رسوم المنصة', 'Platform fee'),
-              value: platformPct == null ? 'admin_server_default'.tr : '${_pct(platformPct)}%',
-              icon: Icons.percent_rounded),
-        ]),
-        AppSpace.gapMd,
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: AppTabs(
-            index: _tab,
-            onChanged: (i) => setState(() => _tab = i),
-            items: [
-              AppTabItem('admin_payment_methods'.tr, icon: Icons.credit_card_rounded),
-              AppTabItem('admin_fee_rates'.tr, icon: Icons.receipt_long_rounded),
-            ],
-          ),
-        ),
-        AppSpace.gapMd,
+      stats.addAll([
+        AppHeroStat(value: '$enabledCount/${pm.items.length}', label: 'apm_enabled'.tr),
+        AppHeroStat(value: _gatewayName(gateway), label: _t('البوابة', 'Gateway')),
+        AppHeroStat(
+            value: platformPct == null ? 'admin_server_default'.tr : '${_pct(platformPct)}%',
+            label: _t('رسوم المنصة', 'Platform fee')),
+      ]);
+      body = ListView(padding: SupPage.bodyPadding(context), children: [
         _tab == 0
             ? _MethodsTab(gateway: gateway, busy: _gwBusy, onPick: (v) => _pickGateway(s, v))
             : const _FeesTab(),
       ]);
     }
 
-    return AdminPage(
+    return SupPage(
       title: 'apm_title'.tr,
-      subtitle: 'admin_payments_hero_hint'.tr,
-      icon: Icons.account_balance_wallet_rounded,
+      kicker: 'a2_methods_kicker'.tr,
+      headline: 'a2_methods_head'.tr,
+      line: 'a2_methods_line'.tr,
       onRefresh: _reload,
+      actions: [
+        SupHeroButton(
+          label: 'a2_subscriptions'.tr,
+          icon: Icons.autorenew_rounded,
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminSubscriptionsPage())),
+        ),
+      ],
+      stats: stats,
+      tabs: [supTab('admin_payment_methods'.tr), supTab('admin_fee_rates'.tr)],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
       body: body,
     );
   }
