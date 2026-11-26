@@ -38,6 +38,7 @@ import 'app_kpi.dart' show appDeltaText;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
 import 'chrome_button.dart' show ChromeBar;
+import '../core/app_digits.dart';
 import '../core/app_time.dart';
 
 /// The strong colour of a block tone: the figure, the icon and the ring of a dashboard card.
@@ -719,16 +720,14 @@ class AppRingStat extends StatelessWidget {
           ]),
         ),
         const SizedBox(width: AppSpace.md),
-        SizedBox.square(
-          dimension: _ring,
-          child: AppDrawIn(
-            builder: (context, t) => CustomPaint(
-              painter: _RingPainter(progress: p * t, track: c.divider, arc: strong, stroke: AppSpace.xs - 2),
-              child: Center(
-                child: Text(pct, maxLines: 1, style: _tabular(AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600))),
-              ),
-            ),
-          ),
+        // the arc inks itself in (M2, KIT_SPEC §5.1)
+        AppInkRing(
+          value: p,
+          color: strong,
+          track: c.kit.track,
+          size: _ring,
+          stroke: AppSpace.xs - 2,
+          center: Text(appDigits(pct), maxLines: 1, style: _tabular(AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600))),
         ),
       ]),
     );

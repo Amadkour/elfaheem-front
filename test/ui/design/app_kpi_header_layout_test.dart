@@ -4,8 +4,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/design/app_badges.dart';
 import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_contrast.dart' show contrastRatio;
 import 'package:flutter_education_app/design/app_kpi.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppTilt;
 import 'package:flutter_education_app/design/app_page_header.dart';
@@ -99,11 +99,15 @@ void main() {
       expect(find.text(ltrIsolate('-8%')), findsNWidgets(2) ,reason: '-8.0 rounds to 8 under the one-decimal rule');
       final ctx = tester.element(find.text(ltrIsolate('+12%')));
       Color fgOf(Finder chip) => tester.widget<Text>(find.descendant(of: chip, matching: find.byType(Text))).style!.color!;
-      // the ink is the tone itself where it reads on its tint, else the tone darkened until it does (hue kept)
-      expect(fgOf(find.byKey(const ValueKey('kpi.delta.good')).first), appToneInk(ctx, AppTone.success));
+      // the ink reads at AA on the chip's own tint (the KPI chip keeps the theme's success / danger, KIT_SPEC P15;
+      // appToneInk now returns the kit's status inks, so it is no longer the reference here)
+      Color bgOf(Finder chip) => (tester.widget<Container>(chip).decoration! as BoxDecoration).color!;
+      final good = find.byKey(const ValueKey('kpi.delta.good')).first;
+      expect(contrastRatio(fgOf(good), bgOf(good)), greaterThanOrEqualTo(4.5));
       final bad = find.byKey(const ValueKey('kpi.delta.bad'));
       expect(bad, findsOneWidget);
-      expect(fgOf(bad), appToneInk(ctx, AppTone.danger));
+      expect(contrastRatio(fgOf(bad), bgOf(bad)), greaterThanOrEqualTo(4.5));
+      expect(ctx.mounted, isTrue);
     });
 
     testWidgets('the highlight card is a block in its tone; the others are paper', (tester) async {
