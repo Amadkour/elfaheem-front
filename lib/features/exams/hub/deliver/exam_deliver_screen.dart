@@ -45,6 +45,7 @@ import 'package:flutter_education_app/features/exams/hub/deliver/deliver_logic.d
 import 'package:flutter_education_app/features/exams/hub/deliver/deliver_summary_card.dart';
 import 'package:flutter_education_app/features/exams/hub/deliver/identifier_plan_step.dart' show openIdentifierPlanSheet;
 import 'package:flutter_education_app/features/exams/hub/deliver/paper_page_replay.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 void _notice(String m, {bool error = false}) => showAppNotice(m, error: error);
 
@@ -412,9 +413,11 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
-      appBar: AppHeader(title: t('تجهيز الاختبار وتسليمه', 'Print and deliver')),
-      child: _body(context),
+    return T2Scope(
+      child: BasePage(
+        appBar: AppHeader(title: t('تجهيز الاختبار وتسليمه', 'Print and deliver')),
+        child: _body(context),
+      ),
     );
   }
 
@@ -445,21 +448,23 @@ class _ExamDeliverScreenState extends State<ExamDeliverScreen> {
       bookletFrom: _sample?.bookletFrom,
     );
     final actions = _actions(context, s);
+    // the redesign (Tea2Exams deliver): the exam on the teacher's hero, the real pages and the ways to hand it out
+    final hero = AppHero(
+      kicker: t('تجهيز الاختبار وتسليمه', 'Print and deliver'),
+      title: widget.title,
+      subtitle: widget.course.isEmpty ? null : widget.course,
+    );
     return LayoutBuilder(builder: (context, box) {
       if (box.maxWidth >= 980) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, 0),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(flex: 5, child: SingleChildScrollView(child: preview)),
+        return T2HeroScroll(hero: hero, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(flex: 5, child: AppCard(child: preview)),
             const SizedBox(width: AppSpace.lg),
-            Expanded(flex: 4, child: ListView(padding: const EdgeInsets.only(bottom: AppSpace.lg), children: actions)),
+            Expanded(flex: 4, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: actions)),
           ]),
-        );
+        ]);
       }
-      return ListView(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
-        children: [preview, const SizedBox(height: AppSpace.md), ...actions],
-      );
+      return T2HeroScroll(hero: hero, children: [AppCard(child: preview), ...actions]);
     });
   }
 
