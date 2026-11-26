@@ -75,6 +75,8 @@ import 'package:flutter_education_app/core/personal_access.dart' show PersonalAc
 import 'package:flutter_education_app/features/profile/personal_account_tile.dart' show PersonalAccountTile;
 import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/design/app_header.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2b_account.dart';
+import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart' show TeacherStats;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/design/app_tokens.dart';
 
@@ -209,6 +211,14 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
             onTap: () => _push(const DownloadsScreen()),
           ),
       ],
+      // the teacher's certificate requests (redesign T2b: the Certificates card opens the designs)
+      if (teacher)
+        AppSettingsTile(
+          featureKey: 'profile.certificate_requests',
+          icon: Icons.verified_outlined,
+          label: 'certificate_requests'.tr,
+          onTap: () => _push(deferredCertificateRequests()),
+        ),
       // My rewards (Games v3): coupons, wins and the invite link, with the count of new coupons
       MyRewardsTile(onOpen: () => _push(const MyRewardsPage())),
       // Records: my meeting recordings + their edits (D-311, kill switch profile.records)
@@ -252,15 +262,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
           keywords: 'quran memorization tajweed teacher قرآن تحفيظ تجويد حلقة',
           onTap: () => _push(const QuranTeacherHubPage()),
         ),
-        // every subject's teacher profile + packages (Learning Hub v2, D-1620; kill switch teacher_onboarding)
-        AppSettingsTile(
-          featureKey: kTeacherOnboardingFeature,
-          icon: Icons.co_present_rounded,
-          label: t('ملفي كمعلم وباقاتي', 'My teacher profile and packages'),
-          subtitle: t('القرآن والتجويد والفقه والنحو: ملفك ومستنداتك وباقاتك', 'Quran, tajweed, fiqh and grammar: your profile, documents and packages'),
-          keywords: 'teacher profile packages ijazah tajweed fiqh nahw معلم باقات إجازة تجويد فقه نحو',
-          onTap: () => _push(const TeacherHubPage()),
-        ),
+        // every subject's teacher profile + packages (Learning Hub v2, D-1620; kill switch teacher_onboarding) is a
+        // shortcut card of the teacher's page now (redesign T2b)
         // https://nextbrain.site/@name — confirmed usernames only (D-074)
         if (PersonalAccess.enabled) const ShareMyProfileTile(),
       ],
@@ -538,6 +541,82 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
       featureKey: 'profile.account',
       child: Padding(padding: const EdgeInsets.only(top: AppSpace.md), child: AppShortcutRow(items: shortcuts)),
     );
+
+    // ── The teacher's page (redesign T2b, Tea2Account): the identity hero, four cards, the same sections ──
+    if (teacher) {
+      final stats = context.select<TeacherHomeProvider, TeacherStats>((h) => h.stats);
+      final me = stats.teacher;
+      final subject = me?.teacherProfile?.specialization;
+      final subjectName = subject == null ? '' : (AppConfig.lang == 'ar' ? subject.nameAr : subject.nameEn);
+      final verified = me?.isVerified ?? false;
+      return T2bAccountPage(
+        title: isWide ? 'account'.tr : null,
+        hero: T2bAccountHero(
+          name: p.name,
+          imageUrl: p.imageUrl,
+          verified: verified,
+          chips: [
+            (Icons.shield_outlined, verified ? 't2_acc_verified'.tr : appRoleLabel(p.role), false),
+            if (subjectName.isNotEmpty) (null, subjectName, false),
+            if (p.username.isNotEmpty && isWide) (null, '@${p.username}', true),
+          ],
+          stats: [
+            if (stats.teacher != null || stats.totalCourses > 0) ...[
+              AppHeroStat(value: '${stats.totalCourses}', label: 'profile_fig_courses'.tr),
+              AppHeroStat(value: '${stats.totalStudents}', label: 'profile_fig_students'.tr),
+              if (stats.overallRating > 0)
+                AppHeroStat(value: stats.overallRating.toStringAsFixed(1), label: 'profile_fig_rating'.tr),
+            ],
+          ],
+          onEdit: editAccount,
+          onShare: shareName == null || !PersonalAccess.enabled ? null : () => shareProfileLink(context, username: shareName, name: p.name),
+        ),
+        shortcuts: [
+          T2bShortcut(
+            id: 'exams',
+            featureKey: kExamHubFeatureKey,
+            accent: AppAccent.grape,
+            icon: Icons.fact_check_outlined,
+            title: t('الاختبارات', 'Exams'),
+            meta: 't2_acc_exams_meta'.tr,
+            onTap: () => _push(deferredExamHub()),
+          ),
+          T2bShortcut(
+            id: 'certificates',
+            featureKey: 'profile.certificate_designs',
+            accent: AppAccent.sun,
+            icon: Icons.workspace_premium_outlined,
+            title: 't2_acc_certs'.tr,
+            meta: 't2_acc_certs_meta'.tr,
+            onTap: () => _push(deferredCertificateDesigns()),
+          ),
+          T2bShortcut(
+            id: 'teacher_hub',
+            featureKey: kTeacherOnboardingFeature,
+            accent: AppAccent.sky,
+            icon: Icons.inventory_2_outlined,
+            title: t('ملفي كمعلم وباقاتي', 'My teacher profile and packages'),
+            meta: 't2_acc_hub_meta'.tr,
+            onTap: () => _push(const TeacherHubPage()),
+          ),
+          T2bShortcut(
+            id: 'payouts',
+            featureKey: 'profile.payout',
+            accent: AppAccent.mint,
+            icon: Icons.payments_outlined,
+            title: 'admin_earnings_payouts'.tr,
+            meta: 't2_acc_payouts_meta'.tr,
+            onTap: () => _push(const TeacherPayoutsScreen()),
+          ),
+        ].where((s) => s.featureKey == null || !(off.contains(s.featureKey) || off.contains('profile.account'))).toList(),
+        sections: sections,
+        exits: T2bAccountExits(
+          onLogout: exitsOn && !off.contains('profile.logout') ? logout : null,
+          onDelete: exitsOn && !off.contains('profile.delete_account') ? deleteAccount : null,
+        ),
+        footer: const AppVersionLine(),
+      );
+    }
 
     // Recommended for you (students of personal accounts, D-120; draws nothing — not even its padding — otherwise)
     final recs = ProfileRecommendations(

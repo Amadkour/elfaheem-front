@@ -117,7 +117,7 @@ class _HeroPill extends StatelessWidget {
   }
 }
 
-/// The hero's figures (up to four glass tiles): one row from 560 px, two rows of two below it (a phone keeps the
+/// The hero's figures (up to four glass tiles): one row from 560 px or for three, else two rows of two (a phone keeps the
 /// labels whole).
 class T2bHeroFigures extends StatelessWidget {
   const T2bHeroFigures({super.key, required this.stats});
@@ -131,7 +131,7 @@ class T2bHeroFigures extends StatelessWidget {
         Widget row(List<AppHeroStat> s) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               for (var i = 0; i < s.length; i++) ...[if (i > 0) const SizedBox(width: AppSpace.xs), Expanded(child: s[i])],
             ]);
-        if (box.maxWidth >= _oneRowFrom || stats.length < 3) return row(stats);
+        if (box.maxWidth >= _oneRowFrom || stats.length <= 3) return row(stats);
         final half = (stats.length / 2).ceil();
         return Column(mainAxisSize: MainAxisSize.min, children: [
           row(stats.sublist(0, half)),

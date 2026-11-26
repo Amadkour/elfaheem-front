@@ -25113,5 +25113,11 @@
   "t2_sch_line_next": {"en": "Next: {title}, {time}.", "ar": "التالي: {title}، {time}."},
   "t2_sch_line_free": {"en": "Nothing else on your schedule today.", "ar": "ما عندك شي ثاني اليوم."},
   "t2_sch_proposes": {"en": "proposes {when} instead", "ar": "يقترح {when} بدل الموعد"},
-  "t2_sch_use_proposal": {"en": "Use this time", "ar": "اعتماد الاقتراح"}
+  "t2_sch_use_proposal": {"en": "Use this time", "ar": "اعتماد الاقتراح"},
+  "t2_acc_verified": {"en": "Verified teacher", "ar": "معلم موثّق"},
+  "t2_acc_exams_meta": {"en": "All your exams in one place", "ar": "كل اختباراتك في مكان واحد"},
+  "t2_acc_certs": {"en": "Certificates", "ar": "الشهادات"},
+  "t2_acc_certs_meta": {"en": "Designs, issuing, the record and students' requests", "ar": "التصاميم والإصدار والسجل وطلبات الطلاب"},
+  "t2_acc_hub_meta": {"en": "Your profile, documents and packages", "ar": "ملفك ومستنداتك وباقاتك"},
+  "t2_acc_payouts_meta": {"en": "Your earnings and withdrawals", "ar": "أرباحك وطلبات السحب"}
 }
