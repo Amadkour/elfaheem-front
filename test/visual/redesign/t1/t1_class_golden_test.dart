@@ -10,6 +10,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:flutter_education_app/features/attendance/analysis/teacher/teacher_attendance_screen.dart';
+import 'package:flutter_education_app/features/attendance/attendance_live_screen.dart';
+import 'package:flutter_education_app/features/attendance/attendance_qr_card.dart';
+import 'package:flutter_education_app/features/attendance/attendance_take_panel.dart';
+import 'package:flutter_education_app/features/attendance/attendance_ui.dart' show AttView;
+import 'package:flutter_education_app/features/attendance/teacher_attendance_launcher.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_page_api.dart';
+import 'package:flutter_education_app/features/courses/course_profile/course_page_sheets.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_announcements.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_models.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_parts.dart';
@@ -56,16 +63,59 @@ void main() {
   testWidgets('t1 team', (t) => render(t, 'team', () => page(CpTeamTab(profile: CourseProfile(t1ProfilePayload()), onChanged: () async {})), scaffold: true));
   testWidgets('t1 archive', (t) => render(t, 'archive', () => page(CpArchiveTab(profile: CourseProfile(t1ProfilePayload()), onChanged: () async {})), scaffold: true));
   testWidgets('t1 students', (t) => render(t, 'students', () => ChangeNotifierProvider(create: (_) => EnrolledStudentsProvider(), child: EnrolledStudentsScreen(course: _course()))));
+  // A sheet's body at the width the sheet gives it (a phone: the screen; a laptop: a side sheet).
+  Widget sheet(Widget child) => LayoutBuilder(
+      builder: (context, box) => Align(
+          alignment: AlignmentDirectional.topStart,
+          child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: box.maxWidth < 600 ? box.maxWidth : 520),
+              child: SingleChildScrollView(child: child))));
+
   testWidgets(
       't1 nudge',
-      (t) => render(t, 'nudge', () => const SizedBox(), act: (tester) async {
-            final ctx = tester.element(find.byType(SizedBox).first);
-            openNudgeSheet(ctx, EnrolledStudentsProvider(), courseName: t1CourseAr, allLow: true);
-          }));
+      (t) => render(
+          t,
+          'nudge',
+          () => sheet(NudgeComposer(
+              students: 3,
+              withParent: 2,
+              skipped: 1,
+              previewName: 'فيصل',
+              singleName: null,
+              courseName: t1CourseAr,
+              onSend: (_, _) async => true)),
+          scaffold: true));
+  testWidgets('t1 path', (t) => render(t, 'path', () => sheet(RoadmapEditorSheet(courseId: t1CourseId, roadmap: Roadmap.fromJson(t1Roadmap()), api: const RoadmapApi())), scaffold: true));
+  testWidgets('t1 rules', (t) => render(t, 'rules', () => sheet(CourseRulesSheet(api: CoursePageApi(t1CourseId), onChanged: () {})), scaffold: true));
+  testWidgets('t1 sections', (t) => render(t, 'sections', () => sheet(CourseSectionsSheet(api: CoursePageApi(t1CourseId), onChanged: () {})), scaffold: true));
+  List<LauncherSession> lessons() => [
+        LauncherSession(id: 1, number: 1, name: 'المتتابعات الحسابية', date: DateTime.now().toUtc().subtract(const Duration(days: 1))),
+        LauncherSession(id: 2, number: 2, name: 'المتتابعات الهندسية', date: DateTime.now().toUtc().add(const Duration(minutes: 5))),
+        LauncherSession(id: 3, number: 3, name: 'حل تمارين المتتابعات', date: DateTime.now().toUtc().add(const Duration(days: 2))),
+        LauncherSession(id: 4, number: 4, name: 'الدوال الأسية', date: DateTime.now().toUtc().add(const Duration(days: 4))),
+      ];
+
+  testWidgets('t1 attendance', (t) => render(t, 'attendance', () => sheet(Padding(padding: const EdgeInsets.all(16), child: AttendanceTakePanel(sessions: lessons(), manualAvailable: true, onStart: (_, _) {}))), scaffold: true));
+
+  Widget projector(AttView v) => AttendanceProjectorView(
+      view: v,
+      state: AttProjectorState.open,
+      usesCode: true,
+      code: '482917',
+      rotationSeconds: 45,
+      secondsLeft: 18,
+      closingLeft: 0,
+      registrationLeft: const Duration(minutes: 7, seconds: 40),
+      present: 6,
+      lesson: 'المتتابعات الهندسية',
+      onMinimize: () {},
+      onClose: () {},
+      onDone: () {});
+  testWidgets('t1 attcode', (t) => render(t, 'attcode', () => projector(AttView.code)));
+  testWidgets('t1 attqr projector', (t) => render(t, 'attqr_projector', () => projector(AttView.qr)));
   testWidgets(
-      't1 path',
-      (t) => render(t, 'path', () => const SizedBox(), act: (tester) async {
-            final ctx = tester.element(find.byType(SizedBox).first);
-            showRoadmapEditor(ctx, courseId: t1CourseId, roadmap: Roadmap.fromJson(t1Roadmap()));
-          }));
+      't1 attqr',
+      (t) => render(t, 'attqr',
+          () => page(const AttQrCard(code: '482917', secondsLeft: 12, registrationLeft: Duration(minutes: 7, seconds: 40), lesson: 'المتتابعات الهندسية')),
+          scaffold: true));
 }

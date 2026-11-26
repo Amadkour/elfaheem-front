@@ -23,6 +23,7 @@ import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/features/attendance/attendance_live_screen.dart';
 import 'package:flutter_education_app/features/attendance/attendance_permissions.dart';
+import 'package:flutter_education_app/features/attendance/attendance_qr_card.dart';
 import 'package:flutter_education_app/features/attendance/attendance_radios.dart';
 import 'package:flutter_education_app/features/attendance/attendance_strings.dart';
 import 'package:flutter_education_app/features/attendance/attendance_ui.dart';
@@ -684,7 +685,8 @@ class AttendanceTeacherButton extends StatelessWidget {
   }
 }
 
-Future<void> showTeacherAttendanceSheet(BuildContext context, int sessionId, {String? title}) {
+Future<void> showTeacherAttendanceSheet(BuildContext context, int sessionId, {String? title, AttView view = AttView.code}) {
+  attViewMode.value = view == AttView.manual ? AttView.code : view;
   RelayHostProvider? host;
   try {
     host = context.read<RelayHostProvider>();
@@ -699,7 +701,7 @@ Future<void> showTeacherAttendanceSheet(BuildContext context, int sessionId, {St
     // global banner keeps the code visible while the teacher moves around the app.
     builder: (_) => ChangeNotifierProvider<TeacherAttendanceController>.value(
       value: ctl,
-      child: const TeacherAttendanceSheet(),
+      child: TeacherAttendanceSheet(view: view == AttView.manual ? AttView.code : view),
     ),
   );
 }
@@ -708,7 +710,10 @@ Future<void> showTeacherAttendanceSheet(BuildContext context, int sessionId, {St
 /// pump it over the controller it set up.
 @visibleForTesting
 class TeacherAttendanceSheet extends StatelessWidget {
-  const TeacherAttendanceSheet({super.key});
+  const TeacherAttendanceSheet({super.key, this.view = AttView.code});
+
+  /// How the open window is shown: the code in its ring, or a QR of the same code.
+  final AttView view;
 
   Widget _label(BuildContext context, String key, {String? hint, bool first = false}) => Padding(
         padding: EdgeInsets.only(top: first ? 0 : AppSpace.md, bottom: AppSpace.xs),
@@ -731,7 +736,7 @@ class TeacherAttendanceSheet extends StatelessWidget {
 
     return _SheetFrame(
       header: AttSheetHeader(
-        icon: CupertinoIcons.qrcode,
+        icon: view == AttView.qr ? CupertinoIcons.qrcode : Icons.desktop_windows_outlined,
         title: attT('att_t_title'),
         subtitle: p.lessonTitle,
       ),
@@ -803,7 +808,16 @@ class TeacherAttendanceSheet extends StatelessWidget {
               onPressed: p.loading ? null : () => p.open(),
             ),
           ] else ...[
-            _CodeDisplay(p: p),
+            if (view == AttView.qr && p.usesCode && p.code != null)
+              AttQrCard(
+                code: p.code!.code,
+                secondsLeft: p.secondsLeft,
+                registrationLeft: p.registrationLeft,
+                lesson: p.lessonTitle,
+                open: p.isOpen,
+              )
+            else
+              _CodeDisplay(p: p),
             if (p.isOpen)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpace.xs),

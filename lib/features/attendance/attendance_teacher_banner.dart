@@ -13,6 +13,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'package:flutter_education_app/features/attendance/attendance_strings.dart';
 import 'package:flutter_education_app/features/attendance/attendance_live_screen.dart';
+import 'package:flutter_education_app/features/attendance/attendance_ui.dart' show AttLiveDot;
 import 'package:flutter_education_app/features/attendance/teacher_attendance_controller.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 
@@ -65,8 +66,15 @@ class AttendanceTeacherBanner extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xxs, AppSpace.xxs, AppSpace.xxs),
               child: Row(children: [
-                Icon(closing ? Icons.lock_clock_rounded : Icons.sensors_rounded, color: ink, size: AppIconSize.md),
+                if (closing)
+                  Icon(Icons.lock_clock_rounded, color: ink, size: AppIconSize.md)
+                else
+                  AttLiveDot(color: ink),
                 AppSpace.gapXs,
+                if (!closing && MediaQuery.sizeOf(context).width >= 600) ...[
+                  Text(attT('t1_cl_open_live'), style: AppType.label(context).copyWith(color: ink, fontWeight: FontWeight.w600)),
+                  AppSpace.gapXs,
+                ],
                 if (!closing && t.usesCode && code.length == 6)
                   Directionality(
                     textDirection: TextDirection.ltr,

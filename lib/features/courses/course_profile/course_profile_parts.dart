@@ -1326,18 +1326,22 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
     return Container(
       padding: const EdgeInsets.all(AppSpace.sm),
       decoration: BoxDecoration(borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider, width: AppBorder.hairline)),
-      child: Row(children: [
-        AppAvatar(name: '${u['name'] ?? ''}', url: u['image_url']?.toString(), size: AppTouch.min),
-        AppSpace.gapSm,
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${u['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
-            if (reason.isNotEmpty) Text(reason, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-          ]),
-        ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          AppAvatar(name: '${u['name'] ?? ''}', url: u['image_url']?.toString(), size: AppTouch.min),
+          AppSpace.gapSm,
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${u['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+              if (reason.isNotEmpty) Text(reason, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ]),
+          ),
+        ]),
         AppSpace.gapXs,
-        AppButton.ghost(size: AppButtonSize.sm, label: t('رفض', 'Reject'), onPressed: () => _decide(id, false)),
-        AppButton.primary(size: AppButtonSize.sm, label: t('قبول', 'Accept'), onPressed: () => _decide(id, true)),
+        Wrap(alignment: WrapAlignment.end, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          AppButton.ghost(size: AppButtonSize.sm, label: t('رفض', 'Reject'), onPressed: () => _decide(id, false)),
+          AppButton.primary(size: AppButtonSize.sm, label: t('قبول', 'Accept'), onPressed: () => _decide(id, true)),
+        ]),
       ]),
     );
   }
