@@ -9,6 +9,8 @@ library;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
+import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
@@ -120,7 +122,7 @@ class _RoadmapBody extends StatelessWidget {
     } else {
       content = SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(wide ? 32 : 20, 12, wide ? 32 : 20, 24),
+        padding: EdgeInsets.fromLTRB(wide ? AppSpace.xl : AppSpace.md, AppSpace.sm, wide ? AppSpace.xl : AppSpace.md, AppSpace.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           ParentComponent(featureKey: 'roadmap_enroll.intro', child: _Intro(courseName: courseName, quote: quote)),
           if (blocked) ...[
@@ -151,7 +153,15 @@ class _RoadmapBody extends StatelessWidget {
     return Center(
       child: Column(children: [
         enrollAppBar('roadmap_enrollment_title'.tr),
-        Expanded(child: content),
+        // redesign S-D (Stu2Money `screen=path`): the path's name on the money hero, the courses under it
+        Expanded(
+          child: SdHeroColumn(
+            title: (courseName ?? '').isEmpty ? 'sd_path_title'.tr : courseName!,
+            subtitle: 'sd_path_sub'.tr,
+            icon: Icons.route_rounded,
+            child: content,
+          ),
+        ),
         if (quote != null)
           EnrollConfirmBar(
             label: _label(quote, p.currencySymbol),

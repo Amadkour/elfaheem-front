@@ -24962,5 +24962,11 @@
   "sd_h_library": {"en": "My library", "ar": "مكتبتي"},
   "sd_h_library_d": {"en": "Everything you bought; it opens from your account only.", "ar": "كل اللي اشتريته، يفتح من حسابك بس."},
   "sd_h_my_teachers": {"en": "My teachers", "ar": "معلميّ"},
-  "sd_h_my_teachers_d": {"en": "The teachers you study with now", "ar": "اللي تدرس معهم الحين"}
+  "sd_h_my_teachers_d": {"en": "The teachers you study with now", "ar": "اللي تدرس معهم الحين"},
+  "sd_path_title": {"en": "The path", "ar": "المسار"},
+  "sd_path_sub": {"en": "Every course of the path in one plan", "ar": "كل دورات المسار في اشتراك واحد"},
+  "sd_transfer_title": {"en": "Pay by bank transfer", "ar": "حوّل المبلغ بنكيًا"},
+  "sd_transfer_sub": {"en": "Then upload a photo of the receipt", "ar": "بعدها ارفع صورة الإيصال"},
+  "sd_sub_sub": {"en": "Pick your plan and keep learning", "ar": "اختر خطتك وكمّل تعلّمك"},
+  "sd_enroll_kicker": {"en": "You are joining", "ar": "تشترك الحين في"}
 }

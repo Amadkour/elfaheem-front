@@ -373,7 +373,13 @@ class _ViewState extends State<_View> {
           showBack: Navigator.of(context).canPop(),
           actions: [AppRefreshAction(onRefresh: p.load), const HelpInfoButton(pageId: 'account.subscription')],
         ),
-        body: p.loaded ? AppRefresh(onRefresh: p.load, scrollable: scrollable, child: body) : body,
+        // redesign S-D (Stu2Money `screen=subscribe`): the money hero over the plans and the request's state
+        body: SdHeroColumn(
+          title: 'sub_title'.tr,
+          subtitle: 'sd_sub_sub'.tr,
+          icon: Icons.workspace_premium_outlined,
+          child: p.loaded ? AppRefresh(onRefresh: p.load, scrollable: scrollable, child: body) : body,
+        ),
       ),
     );
   }
