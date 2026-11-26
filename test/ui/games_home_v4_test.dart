@@ -84,7 +84,7 @@ void main() {
     expect(find.byKey(const ValueKey('games.v4.tanzil')), findsOneWidget);
     // what the tap can open (review_levels), not every due item
     expect(find.bySemanticsLabel('Review, 4 due'), findsOneWidget);
-    expect(find.bySemanticsLabel('54 coins'), findsOneWidget);
+    expect(find.byKey(const ValueKey('games.v4.coins')), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 

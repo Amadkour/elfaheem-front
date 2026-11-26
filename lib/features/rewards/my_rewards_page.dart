@@ -457,7 +457,10 @@ class CouponCard extends StatelessWidget {
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         Icon(Icons.copy_rounded, size: AppIconSize.sm, color: c.textMedium),
                         const SizedBox(width: AppSpace.xs),
-                        Text(coupon.code, maxLines: 1, style: AppType.bodyStrong(context).copyWith(letterSpacing: 1.5)),
+                        Flexible(
+                          child: Text(coupon.code,
+                              maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(letterSpacing: 1.5)),
+                        ),
                       ]),
                     ),
                   ),
@@ -489,7 +492,7 @@ class CouponCard extends StatelessWidget {
     );
   }
 
-  static const double _stubW = AppTouch.primary * 2 - AppSpace.md;
+  static const double _stubW = AppTouch.primary + AppSpace.md;
 }
 
 /// The invite card: my link and Share, how many joined and wait, and each tier's progress.
