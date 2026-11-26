@@ -24910,5 +24910,8 @@
   "t2_flags_title": {"en": "Hard questions", "ar": "الأسئلة الصعبة"},
   "t2_flags_hero": {"en": "The questions your students stumble on", "ar": "الأسئلة اللي يتعثر فيها طلابك"},
   "t2_flags_show_students": {"en": "Show the students", "ar": "اعرض الطلاب"},
-  "t2_ci_hero": {"en": "Issue certificates", "ar": "إصدار شهادات"}
+  "t2_ci_hero": {"en": "Issue certificates", "ar": "إصدار شهادات"},
+  "t2_certh_batches": {"en": "Batches", "ar": "دفعات"},
+  "t2_dl_kicker": {"en": "Data Lab", "ar": "معمل البيانات"},
+  "t2_dl_ask_sub": {"en": "Each student fills in their own value", "ar": "كل طالب يعبّي قيمته بنفسه"}
 }

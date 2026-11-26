@@ -278,7 +278,7 @@ class _ColumnEditorState extends State<_ColumnEditor> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      SheetHeader(_isNew ? 'dl_new_column'.tr : 'dl_edit_column'.tr),
+      SheetHeader(_isNew ? 'dl_new_column'.tr : 'dl_edit_column'.tr, icon: Icons.functions_rounded),
       Flexible(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, AppSpace.xxs, AppSpace.lg, 24),
