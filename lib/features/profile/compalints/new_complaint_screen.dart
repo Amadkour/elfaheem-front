@@ -24,6 +24,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/text_field.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
 import 'package:flutter_education_app/features/profile/compalints/complaint_attachement_widgets.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaint_model.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
@@ -147,12 +148,14 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
     final p = context.watch<ComplaintProvider>();
     // a student's new complaint (redesign S-C, Stu1Comm?screen=newcomplaint): the chat area and the kit's top bar
     final student = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role == 'student';
+    // a teacher's wears the teacher accent and the kit's top bar (redesign T2b)
+    final teacher = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role == 'teacher';
     final title = widget.formOnly ? 'chub_new'.tr : 'complaints_and_support'.tr;
     final page = BasePage(
       key: const ValueKey('new_complaint'),
-      useWebCard: !student,
+      useWebCard: !student && !teacher,
       width: AppWidth.reading,
-      appBar: student ? AppHeader(title: title) : ScreenAppBar(title: title),
+      appBar: student || teacher ? AppHeader(title: title) : ScreenAppBar(title: title),
       child: SafeArea(
         child: Column(
           children: [
@@ -177,6 +180,7 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
         ),
       ),
     );
+    if (teacher) return T2Scope(child: page);
     return student ? AppAreaScope(area: AppArea.chat, child: page) : page;
   }
 

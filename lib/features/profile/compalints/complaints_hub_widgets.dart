@@ -32,6 +32,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppPressScale, AppReveal, AppTilt, AppTiltLayer;
 
 import 'package:flutter_education_app/features/profile/compalints/complaints_hub_model.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2HeroScroll;
+import 'package:flutter_education_app/features/profile/teacher/t2b_parts.dart';
 
 // ── labels and tones ────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -135,7 +137,12 @@ class ComplaintsHubView extends StatelessWidget {
     this.loading = false,
     this.failed = false,
     this.busy = const {},
+    this.teacher = false,
   });
+
+  /// The teacher's page (redesign T2b, Tea2Account complaints): the teacher hero with New complaint and the status
+  /// pills on it, the list riding up over its edge.
+  final bool teacher;
 
   final HubSegment segment;
   final bool showToResolve;
@@ -170,6 +177,7 @@ class ComplaintsHubView extends StatelessWidget {
     final shown = visibleRows(rows, seg, filter, query, now);
     final counts = filterCounts(rows, filters, now);
     final filtered = filter != defaultFilter(seg) || query.trim().isNotEmpty;
+    if (teacher) return _teacherPage(context, seg, rows, filters, shown, counts, filtered);
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= 720;
       final side = wide ? AppSpace.lg : AppSpace.md;
@@ -243,6 +251,54 @@ class ComplaintsHubView extends StatelessWidget {
         ),
       );
     });
+  }
+
+  Widget _teacherPage(BuildContext context, HubSegment seg, List<HubRow> rows, List<HubFilter> filters, List<HubRow> shown,
+      Map<HubFilter, int> counts, bool filtered) {
+    final wide = MediaQuery.sizeOf(context).width >= 720;
+    final newButton = AppButton.primary(
+        key: const ValueKey('chub.new'), label: 'chub_new'.tr, icon: Icons.add_rounded, onPressed: onNew);
+    final hero = AppHero(
+      title: 'chub_title'.tr,
+      subtitle: 't2_chub_sub'.tr,
+      wipe: false,
+      trailing: wide ? Align(alignment: AlignmentDirectional.topEnd, child: newButton) : null,
+      actions: [if (!wide) Align(alignment: AlignmentDirectional.centerStart, child: newButton)],
+      bottom: T2bHeroPills(
+        index: filters.indexOf(filter).clamp(0, filters.length - 1),
+        onChanged: (i) => onFilter(filters[i]),
+        items: [
+          for (final f in filters) T2bPill('${hubFilterLabel(f)} ${counts[f] ?? 0}', key: 'chub.filter.${f.name}'),
+        ],
+      ),
+    );
+    final list = AppCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (showToResolve) ...[_segments(context, seg), const SizedBox(height: AppSpace.sm)],
+        if (loading || rows.isNotEmpty) ...[HubSearchField(controller: searchController), const SizedBox(height: AppSpace.sm)],
+        if (failed && !loading) ...[
+          AppBanner(icon: Icons.cloud_off_rounded, text: 'chub_partial'.tr, color: context.colors.warning),
+          const SizedBox(height: AppSpace.sm),
+        ],
+        if (loading)
+          const AppListSkeleton(items: 4, padding: EdgeInsets.zero)
+        else if (shown.isEmpty)
+          _empty(context, seg, filtered)
+        else
+          for (var i = 0; i < shown.length; i++)
+            Padding(
+              padding: EdgeInsets.only(bottom: i == shown.length - 1 ? 0 : AppSpace.sm),
+              child: HubRowCard(
+                row: shown[i],
+                now: now,
+                busy: busy.contains(shown[i].key),
+                onTap: () => onOpen(shown[i]),
+                onAction: (a) => onAction(shown[i], a),
+              ),
+            ),
+      ]),
+    );
+    return AppRefresh(onRefresh: onRefresh, child: T2HeroScroll(hero: hero, width: AppWidth.content, children: [list]));
   }
 
   /// The first cards follow the hero in; the rest of the list is simply there.

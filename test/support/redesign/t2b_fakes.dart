@@ -10,7 +10,7 @@ import 't2_fakes.dart';
 
 /// The teacher signed in over FakeApi: T2's routes, [extra] on top, an empty answer for anything else.
 Future<void> t2bSetUp({Map<String, FakeHandler>? extra}) async {
-  await t2SetUp(FakeApi({...t2Routes(), 'GET /api/v1/live/meeting/*': (_) => <dynamic>[], 'POST /api/v1/auth/teacher-documents/overview': (_) => t2bDocs(), 'GET /api/v1/me/public-profile': (_) => t2bPublic(), ...?extra},
+  await t2SetUp(FakeApi({...t2Routes(), 'GET /api/v1/live/meeting/*': (_) => <dynamic>[], 'POST /api/v1/auth/teacher-documents/overview': (_) => t2bDocs(), 'GET /api/v1/me/public-profile': (_) => t2bPublic(), 'GET /api/v1/complaints': (_) => t2bComplaints(), ...?extra},
       latency: Duration.zero, fallback: (_) => <String, dynamic>{}));
 }
 
@@ -165,3 +165,29 @@ Map<String, dynamic> t2bPublic() => {
         'courses': const [],
       },
     };
+
+/// The teacher's complaints (Tea2Account complaints): one waiting for him, one open, two closed.
+Map<String, dynamic> t2bComplaints() {
+  Map<String, dynamic> c(int id, String ar, String en, String cat, String status, String at, {bool unread = false}) => {
+        'id': id,
+        'user_id': 7,
+        'user_name': 'ماجد الشهري',
+        'title': _t(ar, en),
+        'description': _t(ar, en),
+        'category': cat,
+        'status': status,
+        'priority': 'medium',
+        'created_at': at,
+        'updated_at': at,
+        'is_read_by_user': !unread,
+        'replies_count': unread ? 1 : 0,
+      };
+  return {
+    'items': [
+      c(4821, 'مبلغ اشتراك طالب ما انضاف لأرباحي', "A student's fee is missing from my earnings", 'payment', 'in_progress', '2026-11-23T10:00:00', unread: true),
+      c(4790, 'الصوت يقطع في القاعة على الآيباد', 'Sound drops in the room on iPad', 'technical', 'open', '2026-11-21T10:00:00'),
+      c(4652, 'طلب تعديل اسم دورة منشورة', 'Rename a published course', 'course_content', 'closed', '2026-11-12T10:00:00'),
+      c(4510, 'طالب ينشر محتوى الدورة', 'A student is sharing the course content', 'student', 'closed', '2026-11-02T10:00:00'),
+    ],
+  };
+}

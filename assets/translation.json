@@ -25123,5 +25123,6 @@
   "t2_edit_sub": {"en": "Your personal details and the verification documents our team reviews.", "ar": "بياناتك الشخصية ومستندات التحقق اللي تراجعها الإدارة."},
   "t2_pub_title": {"en": "My public profile", "ar": "ملفي العام"},
   "t2_pub_headline": {"en": "This is what visitors and students see", "ar": "هذا اللي يشوفه الزوار والطلاب"},
-  "t2_pub_sub": {"en": "Choose what shows, and share your link with your students and their parents.", "ar": "تحكم وش يظهر، وشارك رابطك مع طلابك وأولياء أمورهم."}
+  "t2_pub_sub": {"en": "Choose what shows, and share your link with your students and their parents.", "ar": "تحكم وش يظهر، وشارك رابطك مع طلابك وأولياء أمورهم."},
+  "t2_chub_sub": {"en": "Our team usually answers within 24 hours.", "ar": "فريقنا يرد عادة خلال ٢٤ ساعة."}
 }

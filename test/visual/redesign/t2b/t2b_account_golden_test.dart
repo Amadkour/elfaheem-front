@@ -15,6 +15,9 @@ import 'package:flutter_education_app/features/courses/teacher/component/teacher
 import 'package:flutter_education_app/features/home/student/models.dart' show TeacherProfileData, TeacherProfileDetail;
 import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
+import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
+import 'package:flutter_education_app/features/profile/compalints/complaints_hub_page.dart';
+import 'package:flutter_education_app/features/profile/compalints/new_complaint_screen.dart';
 import 'package:flutter_education_app/features/profile/profile_screen.dart';
 import 'package:flutter_education_app/features/profile/public_profile/public_profile_page.dart' show MyProfileScreen;
 import 'package:flutter_education_app/features/profile/update_account_widget.dart';
@@ -83,6 +86,8 @@ void main() {
 
   testWidgets('account', (t) => render(t, 't2b_account', () => const ProfileScreen()));
   testWidgets('public', (t) => render(t, 't2b_public', () => const MyProfileScreen()));
+  testWidgets('complaints', (t) => render(t, 't2b_complaints', () => const ComplaintsHubPage()));
+  testWidgets('new complaint', (t) => render(t, 't2b_new_complaint', () => ChangeNotifierProvider<ComplaintProvider>(create: (_) => ComplaintProvider(), child: const NewComplaintScreen(formOnly: true)), langs: const ['ar']));
   testWidgets('edit', (t) => render(t, 't2b_edit', () => const EditAccountScreen(isTeacher: true)));
   testWidgets('edit docs', (t) async {
     await t2bSetUp();
