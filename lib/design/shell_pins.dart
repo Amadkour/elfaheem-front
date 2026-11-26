@@ -588,8 +588,8 @@ class _ShellTabRow extends StatelessWidget {
             Row(children: [
               current == null
                   ? SizedBox(
-                      width: 28,
-                      height: 28,
+                      width: _iconWell,
+                      height: _iconWell,
                       child: Icon(entry.icon, size: AppIconSize.md, color: c.textMedium),
                     )
                   : ShellColorBox(icon: entry.icon, color: current),
@@ -780,7 +780,7 @@ class _StripChip extends StatelessWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: AppTouch.min, maxWidth: _maxW),
             child: Padding(
-              padding: const EdgeInsetsDirectional.only(start: AppSpace.xxs + 2, end: AppSpace.md),
+              padding: const EdgeInsetsDirectional.only(start: _rowStart, end: AppSpace.md),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 ShellColorBox(icon: Icons.push_pin_rounded, color: color, size: 32, iconSize: AppIconSize.sm),
                 const SizedBox(width: AppSpace.xs),
@@ -798,3 +798,9 @@ class _StripChip extends StatelessWidget {
 
 /// True for a pinned page's tab id.
 bool isShellPinTab(String tabId) => tabId.startsWith(kShellPinTabPrefix);
+
+/// The plain icon's well where a tab has no colour box (the colour box's size).
+const double _iconWell = 28;
+
+/// A pin row's start inset: the icon's optical edge lines up with the colour boxes above it.
+const double _rowStart = AppSpace.xxs + 2;

@@ -106,10 +106,10 @@ abstract final class AppRadius {
 
   /// The empty-state plate: 34 on three corners, 10 on the bottom end.
   static const BorderRadiusDirectional plate = BorderRadiusDirectional.only(
-    topStart: Radius.circular(34),
-    topEnd: Radius.circular(34),
-    bottomStart: Radius.circular(34),
-    bottomEnd: Radius.circular(10),
+    topStart: Radius.circular(_plateR),
+    topEnd: Radius.circular(_plateR),
+    bottomStart: Radius.circular(_plateR),
+    bottomEnd: Radius.circular(_plateTail),
   );
 
   /// A full stadium at any height a badge or pill reaches.
@@ -445,3 +445,6 @@ enum AppWidth {
     return math.min(cap, room);
   }
 }
+
+const double _plateR = 34;
+const double _plateTail = 10;

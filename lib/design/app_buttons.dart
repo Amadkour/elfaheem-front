@@ -287,7 +287,7 @@ class _AppButtonState extends State<AppButton> {
 
     Color ink = switch (v) {
       AppButtonVariant.primary => set.btnFg,
-      AppButtonVariant.danger => outlineDanger ? error.color : c.onHero,
+      AppButtonVariant.danger => outlineDanger ? error.ink : c.onHero,
       AppButtonVariant.secondary || AppButtonVariant.tonal || AppButtonVariant.ghost => set.ink,
       _ => kit.hotFg,
     };

@@ -75,8 +75,10 @@ void main() {
           if (y <= 0.6 * 860) expect(k.onCream, isFalse, reason: 'the green part keeps the on-hero ink at $y');
           expect(k.onCream, isFalse, reason: 'the all-green panel keeps the on-hero ink at $y (D-863)');
         }
-        // the open tab's ink stays the cream (accent1) itself
-        expect(l.sideActiveInk, t.accent.withValues(alpha: 1));
+        // the open tab's ink is the cream (accent1), lifted only as far as AA on the glass over the redesign's radial
+        // panel needs (KIT_SPEC §6.2: its light end is kit primary; was "the cream itself" under D-650)
+        expect(HSLColor.fromColor(l.sideActiveInk).lightness,
+            greaterThanOrEqualTo(HSLColor.fromColor(t.accent.withValues(alpha: 1)).lightness - 1e-9));
 
         // the primary button at rest, hovered and pressed: solid primary under the label (white at AA); the third
         // stop is the cream the label never touches

@@ -38,7 +38,7 @@ class AppLiveTag extends StatelessWidget {
     final ink = onDark ? c.onHero : live.ink;
     final pill = Container(
       constraints: const BoxConstraints(minHeight: AppSpace.lg),
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, AppSpace.xxs / 2, AppSpace.sm, AppSpace.xxs / 2),
+      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, _tagPadV, AppSpace.sm, _tagPadV),
       decoration: BoxDecoration(
         color: onDark ? c.heroGlass : c.cardBg,
         borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -202,3 +202,6 @@ class AppLiveBanner extends StatelessWidget {
     return Semantics(container: true, child: banner);
   }
 }
+
+/// The live tag's vertical padding: half the smallest step.
+const double _tagPadV = AppSpace.xxs / 2;
