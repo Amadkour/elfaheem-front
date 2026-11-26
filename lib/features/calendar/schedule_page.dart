@@ -637,6 +637,14 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
+    // a student's schedule is the schedule area (redesign S-C, Stu2Schedule): its accent on the selected states,
+    // buttons and empty plates; every other role keeps its own
+    final student = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role == 'student';
+    final page = _page(context);
+    return student ? AppAreaScope(area: AppArea.sched, child: page) : page;
+  }
+
+  Widget _page(BuildContext context) {
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= calWideBreakpoint;
       final view = _view ?? (wide ? CalView.week : CalView.agenda);
