@@ -61,8 +61,6 @@ import 'package:flutter_education_app/features/courses/student/details/subject_p
 import 'package:flutter_education_app/features/courses/course_space/subject_panel.dart';
 import 'package:flutter_education_app/features/courses/course_space/subject_space.dart';
 import 'package:flutter_education_app/features/notebook/notebook_panel.dart';
-import 'package:flutter_education_app/features/calendar/schedule_page.dart' show SchedulePage;
-import 'package:flutter_education_app/features/messaging/chat/chat_page.dart' show openChatWith;
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/config/theme/kit_palette.dart' show AppAccent;
 import 'package:flutter_education_app/features/courses/course_profile/course_page_models.dart' show CoursePage;

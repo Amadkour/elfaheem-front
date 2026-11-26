@@ -345,7 +345,7 @@ class _DashedPill extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final r = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(size.height / 2));
+    final r = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(AppRadius.pill).clamp(minimum: Radius.zero, maximum: Radius.circular(size.shortestSide * .5)));
     final path = Path()..addRRect(r);
     final paint = Paint()
       ..color = color
