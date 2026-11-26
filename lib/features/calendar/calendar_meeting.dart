@@ -519,7 +519,7 @@ class _MeetingFormState extends State<MeetingForm> {
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, 16 + MediaQuery.viewInsetsOf(context).bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        AppSheetHeader(_course ? 'cal_recur_course_meeting'.tr : t('اجتماع جديد', 'New meeting')),
+        AppSheetHeader(_course ? 'cal_recur_course_meeting'.tr : t('اجتماع جديد', 'New meeting'), icon: Icons.calendar_month_outlined),
         _mode == 'online'
             ? AppField(
                 key: const ValueKey('meeting_form.title_optional'),
@@ -885,7 +885,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md + AppSpace.xxs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        AppSheetHeader('${m['title']}'),
+        AppSheetHeader('${m['title']}', icon: Icons.groups_outlined, tone: AppTone.info),
         Wrap(spacing: 6, runSpacing: 6, children: [
           if (ended) AppTag(t('انتهى', 'Ended'), c.textMedium, icon: Icons.task_alt_rounded) else AppTag(calStatusLabel(my), calStatusColor(c, my), icon: calStatusIcon(my)),
           AppTag(online ? t('عبر الإنترنت', 'Online') : t('حضوري', 'In person'), c.primary,
@@ -938,10 +938,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
                     : null,
               ),
             ],
-        if (m['can_join'] == true) ...[
-          const SizedBox(height: 14),
-          AppPrimaryButton(label: t('انضم الآن', 'Join now'), icon: Icons.videocam_rounded, onPressed: _busy ? null : _join),
-        ],
+
         // [meeting-recording] the latest recording: status while it is made, the drive link when done
         if (online) ...[
           const SizedBox(height: AppSpace.sm),
@@ -980,25 +977,57 @@ class _MeetingSheetState extends State<MeetingSheet> {
             AppChoiceChip(label: t('اقترح موعداً', 'Propose a time'), icon: Icons.schedule_send_rounded, selected: my == 'proposed', onTap: _propose),
           ]),
         ],
+        // a proposal from an invitee, as one card the organizer answers (Tea2Schedule meet); each row keeps its own
+        if (owner && !ended)
+          if (attendees.where((a) => '${a['status']}' == 'proposed' && _parse(a['proposed_start']) != null).firstOrNull
+              case final p?) ...[
+            const SizedBox(height: AppSpace.md),
+            T2bProposalCard(
+              name: '${asMap(p['user'])['name'] ?? ''}',
+              when: _range(_parse(p['proposed_start'])!, _parse(p['proposed_end']) ?? _parse(p['proposed_start'])!),
+              onAccept: _busy
+                  ? null
+                  : () => _act(() => widget.api.acceptProposal(widget.meetingId, asInt(p['id'])),
+                      ok: t('نُقل الاجتماع للموعد المقترح', 'Moved to the proposed time')),
+            ),
+          ],
         if (attendees.isNotEmpty) ...[
           const SizedBox(height: AppSpace.md),
-          AppSectionTitle(t('المدعوون', 'Invitees'),
+          AppSectionTitle('${t('المدعوون', 'Invitees')} (${attendees.length})',
               subtitle: [
                 for (final k in ['accepted', 'pending', 'proposed', 'declined'])
                   if (asInt(counts[k]) > 0) '${asInt(counts[k])} ${calStatusLabel(k)}',
               ].join(' · ')),
           for (final a in attendees) _attendee(context, a, owner),
         ],
+        // the sheet's actions at its foot (Tea2Schedule meet): Join now, Change time, then Cancel meeting
+        if (m['can_join'] == true || (owner && m['status'] == 'scheduled')) const SizedBox(height: AppSpace.md),
+        if (m['can_join'] == true || (owner && m['status'] == 'scheduled'))
+          Row(children: [
+            if (m['can_join'] == true)
+              Expanded(
+                child: AppButton.primary(
+                    label: t('انضم الآن', 'Join now'), icon: Icons.videocam_outlined, expand: true, onPressed: _busy ? null : _join),
+              ),
+            if (m['can_join'] == true && owner && m['status'] == 'scheduled') const SizedBox(width: AppSpace.sm),
+            if (owner && m['status'] == 'scheduled')
+              Expanded(
+                child: AppButton.secondary(
+                    label: t('تغيير الموعد', 'Change time'),
+                    icon: Icons.edit_calendar_outlined,
+                    expand: true,
+                    onPressed: _busy ? null : () => _move()),
+              ),
+          ]),
         if (owner && m['status'] == 'scheduled') ...[
-          const SizedBox(height: AppSpace.md),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            AppPill(icon: Icons.edit_calendar_rounded, label: t('تغيير الموعد', 'Change time'), onTap: _busy ? null : () => _move()),
-            AppPill(
+          const SizedBox(height: AppSpace.sm),
+          AppButton.danger(
                 key: const ValueKey('meeting.cancel'),
-                icon: Icons.event_busy_rounded,
+                icon: Icons.event_busy_outlined,
                 label: t('إلغاء الاجتماع', 'Cancel meeting'),
-                color: c.danger,
-                onTap: _busy
+                dangerOutline: true,
+                expand: true,
+                onPressed: _busy
                     ? null
                     : () async {
                         final series = _seriesId, date = _occurrenceDate;
@@ -1013,7 +1042,6 @@ class _MeetingSheetState extends State<MeetingSheet> {
                           await _act(() => widget.api.cancel(widget.meetingId), ok: t('أُلغي الاجتماع', 'Meeting cancelled'), close: true);
                         }
                       }),
-          ]),
         ],
       ]),
     );
@@ -1024,29 +1052,27 @@ class _MeetingSheetState extends State<MeetingSheet> {
     final st = '${a['status']}';
     final u = asMap(a['user']);
     final ps = _parse(a['proposed_start']), pe = _parse(a['proposed_end']);
+    // one row per invitee (Tea2Schedule meet): the avatar, the name, and the answer as a pill at the end
+    final tone = switch (st) {
+      'accepted' => AppTone.success,
+      'proposed' => AppTone.warning,
+      'declined' => AppTone.danger,
+      _ => AppTone.neutral,
+    };
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpace.xs),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Stack(clipBehavior: Clip.none, children: [
-          AppAvatar(name: '${u['name'] ?? ''}', url: u['image_url']?.toString(), size: 36),
-          PositionedDirectional(
-            end: -2,
-            bottom: -2,
-            child: Container(
-              decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
-              child: Icon(calStatusIcon(st), size: 15, color: calStatusColor(c, st)),
-            ),
-          ),
-        ]),
-        const SizedBox(width: 10),
+      padding: const EdgeInsets.only(bottom: AppSpace.sm),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        AppAvatar(name: '${u['name'] ?? ''}', url: u['image_url']?.toString(), size: AppDashSize.avatarSm - AppSpace.sm),
+        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${u['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
-            Text(calStatusLabel(st), style: appText(12, c: calStatusColor(c, st))),
-            if (ps != null && pe != null) Text(_range(ps, pe), style: appText(12, c: c.textMedium)),
-            if ('${a['note'] ?? ''}'.isNotEmpty) Text('${a['note']}', style: appText(12, c: c.textLight)),
+            Text('${u['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context)),
+            if (ps != null && pe != null) Text(_range(ps, pe), style: AppType.meta(context)),
+            if ('${a['note'] ?? ''}'.isNotEmpty) Text('${a['note']}', style: AppType.meta(context).copyWith(color: c.textLight)),
           ]),
         ),
+        const SizedBox(width: AppSpace.xs),
+        AppStatusBadge(label: calStatusLabel(st), tone: tone, dense: true),
         if (owner && st == 'proposed' && ps != null)
           TextButton(
             onPressed: _busy
@@ -1068,20 +1094,18 @@ class _Info extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+    // a label at the start, the value at the end, a hairline under the row (Tea2Schedule meet)
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline))),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          padding: const EdgeInsets.all(7),
-          decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(AppRadius.chip)),
-          child: Icon(icon, size: 16, color: c.primary),
-        ),
-        const SizedBox(width: 10),
+        ExcludeSemantics(child: Icon(icon, size: AppIconSize.sm, color: c.textLight)),
+        const SizedBox(width: AppSpace.xs),
+        Text(label, style: AppType.meta(context)),
+        const SizedBox(width: AppSpace.md),
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, style: appText(11, c: c.textLight)),
-            Text(value, style: appText(14, w: FontWeight.w600, c: c.textDark)),
-          ]),
+          child: Text(value,
+              textAlign: TextAlign.end, style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w700)),
         ),
       ]),
     );
@@ -1350,6 +1374,46 @@ class _ComplaintMeetingFormState extends State<_ComplaintMeetingForm> {
         ],
         const SizedBox(height: AppSpace.md),
         AppPrimaryButton(label: t('تحديد الاجتماع', 'Set the meeting'), icon: Icons.event_available_rounded, busy: _saving, onPressed: _saving ? null : _save),
+      ]),
+    );
+  }
+}
+
+/// An invitee's proposed time as one card on the meeting sheet (Tea2Schedule meet): a clock, "name proposes when",
+/// and the organizer's "Use this time".
+class T2bProposalCard extends StatelessWidget {
+  const T2bProposalCard({super.key, required this.name, required this.when, this.onAccept});
+
+  final String name, when;
+  final VoidCallback? onAccept;
+
+  @override
+  Widget build(BuildContext context) {
+    final set = AppAreaScope.of(context);
+    return Container(
+      key: const ValueKey('meeting.proposal'),
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(
+        color: set.tint,
+        borderRadius: BorderRadius.circular(AppRadius.tile),
+        border: Border.all(color: set.ink.withValues(alpha: .25), width: AppBorder.hairline),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.schedule_rounded, size: AppIconSize.md, color: set.ink),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(
+            child: Text.rich(
+              TextSpan(children: [
+                TextSpan(text: name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                TextSpan(text: ' ${'t2_sch_proposes'.tr.replaceAll('{when}', when)}'),
+              ]),
+              style: AppType.body(context).copyWith(color: set.ink),
+            ),
+          ),
+        ]),
+        const SizedBox(height: AppSpace.sm),
+        AppButton.primary(label: 't2_sch_use_proposal'.tr, onPressed: onAccept),
       ]),
     );
   }

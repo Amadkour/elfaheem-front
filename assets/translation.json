@@ -25098,5 +25098,20 @@
   "sc_sch_browse": {"en": "Browse courses", "ar": "تصفّح الدورات"},
   "sc_sch_error_title": {"en": "We couldn't get your schedule", "ar": "ما قدرنا نجيب جدولك"},
   "sc_sch_error_sub": {"en": "Try again in a moment", "ar": "جرّب بعد شوي"},
-  "sc_ai_title": {"en": "Smart assistant", "ar": "المساعد الذكي"}
+  "sc_ai_title": {"en": "Smart assistant", "ar": "المساعد الذكي"},
+  "t2_sch_title": {"en": "Your schedule, {from} to {to}", "ar": "جدولك من {from} لين {to}"},
+  "t2_sch_new_meeting": {"en": "New meeting", "ar": "اجتماع جديد"},
+  "t2_sch_meet_now": {"en": "Meet now", "ar": "اجتمع الحين"},
+  "t2_sch_export": {"en": "Export .ics", "ar": "تصدير ics."},
+  "t2_sch_stat_live": {"en": "Live classes", "ar": "حصص مباشرة"},
+  "t2_sch_stat_meetings": {"en": "Meetings", "ar": "اجتماعات"},
+  "t2_sch_stat_exams": {"en": "Exams", "ar": "اختبارات"},
+  "t2_sch_stat_invites": {"en": "Waiting for your answer", "ar": "دعوة تنتظر ردّك"},
+  "t2_sch_tab_cal": {"en": "Calendar", "ar": "التقويم"},
+  "t2_sch_tab_list": {"en": "Scheduled meetings", "ar": "الاجتماعات المجدولة"},
+  "t2_sch_line_live": {"en": "{title} is on now.", "ar": "{title} شغّالة الحين."},
+  "t2_sch_line_next": {"en": "Next: {title}, {time}.", "ar": "التالي: {title}، {time}."},
+  "t2_sch_line_free": {"en": "Nothing else on your schedule today.", "ar": "ما عندك شي ثاني اليوم."},
+  "t2_sch_proposes": {"en": "proposes {when} instead", "ar": "يقترح {when} بدل الموعد"},
+  "t2_sch_use_proposal": {"en": "Use this time", "ar": "اعتماد الاقتراح"}
 }
