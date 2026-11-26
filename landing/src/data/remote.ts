@@ -1,7 +1,7 @@
 // Optional build-time snapshot of the public numbers. A failure here never fails the build.
 export type Stats = { students: number; teachers: number; courses: number };
 export type Level = { id: string | number; name_ar: string; name_en: string; courses: number };
-export type Subject = Level & { levels: Level[] };
+export type Subject = Level & { key?: string | null; levels: Level[] };
 export type Options = { subjects: Subject[] };
 
 async function getJson<T>(url: string): Promise<T | null> {
