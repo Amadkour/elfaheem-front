@@ -171,7 +171,9 @@ void main() {
             expect(low, greaterThanOrEqualTo(kWcagAaText), reason: 'white along "$label"');
             // a short label leaves about the last third or more to the cream
             if (label.length < 6) expect(stops[1], lessThan(0.66));
-          });
+            // KIT_SPEC §5.4: AppButton.primary is the area set's button gradient now (no AppBrandFill); the
+            // ink-on-stops contrast it checked is kit_palette_contrast_test's btn_fg on btn_a / btn_b
+          }, skip: true);
         }
       }
     }

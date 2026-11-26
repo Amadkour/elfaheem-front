@@ -1,22 +1,25 @@
 // lib/design/app_buttons.dart
 //
-// The buttons of the design system (system.md §4, Warm Editorial):
+// The buttons of the design system (KIT_SPEC §5.4, the redesign kit):
 //
-//   AppButton.primary(label: 'save'.tr, onPressed: save, busy: saving)   solid emerald: the ONE main action of a screen
-//   AppButton.secondary(...)  paper with an ink hairline     AppButton.tonal(...)   emerald tint, emerald ink
-//   AppButton.ghost(...)      text only, primary ink         AppButton.danger(...)  danger fill (dangerOutline: paper + danger hairline)
+//   AppButton.primary(label: 'save'.tr, onPressed: save, busy: saving)   the area set's button gradient: the ONE
+//                             main action of a screen (one filled button above the fold on a student phone screen)
+//   AppButton.hot(...)        the forward button (gold, dark ink): only for the action that moves the student on
+//   AppButton.secondary(...)  card fill, the kit line, area ink    AppButton.tonal(...)   area tint, area ink
+//   AppButton.ghost(...)      a link: text only, area ink          AppButton.danger(...)  danger fill (dangerOutline:
+//                             card + the kit error ink and a darkened error-tint edge)
 //   AppIconButton(icon: Icons.edit, tooltip: 'edit'.tr, onPressed: …, badge: 3)
 //   AppButtonRow(primary: …, secondary: [...])   the primary at the END in both directions, wraps at 320 px
 //
 // Geometry: sizes sm / md / lg are 40 / 48 / 56 high (sm keeps a 48 high hit area; lg is a phone's hero action),
-// radius 14 (AppRadius.control), 24 px horizontal padding (16 on sm), the label at 15 · 600 (13 on sm), icon 20.
-// A press scales to 0.97 (AppPressScale, parked under Reduce motion); keyboard focus draws a crisp 2 px ring OUTSIDE
-// the button, a canvas-coloured gap between. busy draws a spinner over the label, which stays laid out, so the
-// button never changes width; taps are ignored (no double submit). A disabled filled button is a flat neutral well
-// with muted ink (no washed-out brand colour); the unfilled variants fade to 45 %. The label is one line (ellipsis).
-// Colour (D-649): primary is the brand gradient primary → primary_dark on a soft primary-tinted shadow (a press
-// deepens it); accent is the gold highlight CTA (accent2 → lighter, dark ink), sparingly; danger is the solid red;
-// secondary, tonal and ghost stay flat.
+// a full pill (AppRadius.pill), 24 px horizontal padding (16 on sm), the label at 15 · 600 (13 on sm), icon 20.
+// A press squashes (AppJelly, M9) on primary / hot / tonal / secondary, scales on ghost / danger; under a mouse a
+// filled button rises 2 px. Keyboard focus draws a crisp 2 px ring in the kit partner OUTSIDE the button. busy draws
+// a spinner over the label, which stays laid out, so the button never changes width; taps are ignored. A disabled
+// filled button is a flat neutral well with muted ink; the unfilled variants fade to 45 %. The label is one line.
+// Colour: every variant reads the nearest AppAreaScope (a student area or a role accent; none = home): primary the
+// set's button gradient and `btnFg` on `AppShadow.button`; hot the kit's hot gradient and `hotFg`. `accent` is the
+// old name of `hot`.
 library;
 
 import 'package:flutter/material.dart';
@@ -25,11 +28,21 @@ import '../config/theme/theme_config_provider.dart';
 import 'app_badges.dart';
 import 'app_charts.dart' show appInk;
 import 'app_contrast.dart' show ensureContrast;
-import 'app_gradients.dart' show AppBrandLayer, AppBrandLabel, AppBrandSpan, AppGradientIcon;
+import 'app_area.dart';
+import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
 
-enum AppButtonVariant { primary, secondary, tonal, ghost, danger, accent }
+enum AppButtonVariant {
+  primary,
+  secondary,
+  tonal,
+  ghost,
+  danger,
+  @Deprecated('Use AppButtonVariant.hot')
+  accent,
+  hot,
+}
 
 enum AppButtonSize { sm, md, lg }
 
@@ -88,8 +101,32 @@ class AppButton extends StatefulWidget {
             expand: expand,
             tooltip: tooltip);
 
-  /// The accent / premium button (D-649): a gold gradient with a dark ink, for a HIGHLIGHT call to action only — Go
-  /// live on the hero, Upgrade, a featured offer. At most one per screen; the main action stays [AppButton.primary].
+  /// The forward button (KIT_SPEC §5.4, P4): the kit's gold hot gradient with the deep ink, only for the action that
+  /// moves the student forward. Same parameters as [AppButton.primary].
+  const AppButton.hot({
+    Key? key,
+    required String label,
+    required VoidCallback? onPressed,
+    IconData? icon,
+    IconData? trailingIcon,
+    AppButtonSize size = AppButtonSize.md,
+    bool busy = false,
+    bool expand = false,
+    String? tooltip,
+  }) : this(
+            key: key,
+            label: label,
+            onPressed: onPressed,
+            icon: icon,
+            trailingIcon: trailingIcon,
+            variant: AppButtonVariant.hot,
+            size: size,
+            busy: busy,
+            expand: expand,
+            tooltip: tooltip);
+
+  /// The old name of [AppButton.hot]; draws exactly like it.
+  @Deprecated('Use AppButton.hot')
   const AppButton.accent({
     Key? key,
     required String label,
@@ -106,6 +143,7 @@ class AppButton extends StatefulWidget {
             onPressed: onPressed,
             icon: icon,
             trailingIcon: trailingIcon,
+            // ignore: deprecated_member_use_from_same_package
             variant: AppButtonVariant.accent,
             size: size,
             busy: busy,
@@ -220,82 +258,75 @@ class AppButton extends StatefulWidget {
 }
 
 class _AppButtonState extends State<AppButton> {
-  /// Where the label sits, so the brand fill keeps its cream end past it (D-650 r2).
-  final _span = AppBrandSpan();
   bool _pressed = false;
   bool _hover = false;
   bool _focus = false;
 
   bool get _enabled => widget.onPressed != null && !widget.busy;
 
+  AppButtonVariant get _variant =>
+      // ignore: deprecated_member_use_from_same_package
+      widget.variant == AppButtonVariant.accent ? AppButtonVariant.hot : widget.variant;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final v = widget.variant;
+    final kit = c.kit;
+    final set = AppAreaScope.of(context);
+    final v = _variant;
     final outlineDanger = v == AppButtonVariant.danger && widget.dangerOutline;
-    final filled = (v == AppButtonVariant.primary || v == AppButtonVariant.danger || v == AppButtonVariant.accent) && !outlineDanger;
+    final filled = (v == AppButtonVariant.primary || v == AppButtonVariant.danger || v == AppButtonVariant.hot) &&
+        !outlineDanger;
     final h = _heightOf(widget.size);
     final sm = widget.size == AppButtonSize.sm;
     final disabled = widget.onPressed == null && !widget.busy;
     final lit = _enabled && (_pressed || _hover);
     final down = _enabled && _pressed;
+    final hover = _hover && _enabled;
+    final error = kit.error;
 
-    // the ink of an unfilled button: the primary (or the danger) made readable on the open mode's surface (appInk —
-    // a deep emerald is fine on paper, far too dark on a dark card); a tonal button sits on its own translucent
-    // tint over the card or the page or a tinted bar, so its ink is checked over every one of those
-    final tonalInk = ensureContrast(appInk(context, c.primary), [
-      for (final base in [c.cardBg, c.background]) ...[
-        Color.alphaBlend(c.primaryTint, base),
-        Color.alphaBlend(c.primaryTint, Color.alphaBlend(c.primaryTint, base)),
-        Color.alphaBlend(Color.lerp(c.primaryTint, c.primary, 0.12)!, base),
-      ],
-    ]);
-    final brand = AppBrandLayer.of(context);
     Color ink = switch (v) {
-      AppButtonVariant.primary => brand.buttonInk,
-      AppButtonVariant.accent => brand.goldInk,
-      AppButtonVariant.danger => outlineDanger ? appInk(context, c.danger) : c.onHero,
-      AppButtonVariant.secondary => c.textDark,
-      AppButtonVariant.tonal => tonalInk,
-      AppButtonVariant.ghost => appInk(context, c.primary),
+      AppButtonVariant.primary => set.btnFg,
+      AppButtonVariant.danger => outlineDanger ? error.color : c.onHero,
+      AppButtonVariant.secondary || AppButtonVariant.tonal || AppButtonVariant.ghost => set.ink,
+      _ => kit.hotFg,
     };
     if (disabled && filled) ink = c.textMedium;
 
     Color? fill;
     Gradient? gradient;
-    var brandFill = false;
     List<BoxShadow>? shadow;
     BoxBorder? border;
-    final inkHairline = Color.lerp(c.divider, c.textDark, 0.35)!;
-    final hover = _hover && _enabled;
     switch (v) {
       case AppButtonVariant.primary:
-        // D-650 r2: primary → cream past the label (AppBrandFill) on a soft primary-tinted shadow; hover and press deepen it
-        brandFill = true;
-        shadow = AppBrandLayer.buttonShadow(context, pressed: down);
-      case AppButtonVariant.accent:
-        gradient = AppBrandLayer.gold(context, hover: hover, pressed: down);
-        shadow = AppBrandLayer.goldShadow(context, pressed: down);
+        gradient = set.button;
+        shadow = down ? null : AppShadow.button(context, set.btnA);
       case AppButtonVariant.danger:
         if (outlineDanger) {
-          fill = lit ? c.dangerTint : c.cardBg;
-          border = Border.all(color: appInk(context, c.danger), width: AppBorder.strong);
+          fill = lit ? error.tint : c.cardBg;
+          border = Border.all(color: Color.lerp(error.tint, error.color, .25)!, width: AppBorder.strong);
         } else {
-          fill = down ? Color.lerp(c.dangerBase, c.textDark, 0.22) : _hover && _enabled ? Color.lerp(c.dangerBase, c.textDark, 0.1) : c.dangerBase;
+          fill = down
+              ? Color.lerp(c.dangerBase, c.textDark, 0.22)
+              : hover
+                  ? Color.lerp(c.dangerBase, c.textDark, 0.1)
+                  : c.dangerBase;
         }
       case AppButtonVariant.secondary:
-        fill = down ? Color.lerp(c.cardBg, c.textDark, 0.08) : lit ? Color.lerp(c.cardBg, c.textDark, 0.04) : c.cardBg;
-        border = Border.all(color: down ? c.textDark : inkHairline, width: AppBorder.hairline);
+        fill = down ? Color.lerp(c.cardBg, set.tint, 0.6) : lit ? Color.lerp(c.cardBg, set.tint, 0.3) : c.cardBg;
+        border = Border.all(color: lit ? Color.lerp(kit.line, set.ink, 0.3)! : kit.line, width: AppBorder.strong);
       case AppButtonVariant.tonal:
-        fill = down ? Color.lerp(c.primaryTint, c.primary, 0.14) : lit ? Color.lerp(c.primaryTint, c.primary, 0.06) : c.primaryTint;
+        fill = down ? Color.lerp(set.tint, set.a, 0.14) : lit ? Color.lerp(set.tint, set.a, 0.06) : set.tint;
       case AppButtonVariant.ghost:
-        fill = down ? Color.lerp(c.primaryTint, c.primary, 0.06) : lit ? c.primaryTint : null;
+        fill = down ? Color.lerp(set.tint, set.a, 0.06) : lit ? set.tint : null;
+      default: // hot (and its old name, accent)
+        gradient = kit.hotButton;
+        shadow = down ? null : AppShadow.button(context, kit.hotB);
     }
     if (disabled && filled) {
       // a flat neutral well: the brand colour is never washed out (an unreadable half-transparent fill)
       fill = c.inputBg;
       gradient = null;
-      brandFill = false;
       shadow = null;
       border = Border.all(color: c.divider, width: AppBorder.hairline);
     }
@@ -306,7 +337,7 @@ class _AppButtonState extends State<AppButton> {
       fontSize: sm ? 13 : 15,
       height: 1.2,
     );
-    final radius = AppRadius.controlAll;
+    final radius = BorderRadius.circular(AppRadius.pill);
     final motion = AppMotion.of(context);
 
     final spinner = SizedBox(
@@ -315,23 +346,19 @@ class _AppButtonState extends State<AppButton> {
       child: CircularProgressIndicator(strokeWidth: 2.2, color: ink),
     );
 
-    // the label row hugs its glyphs (AppBrandLabel measures it); a full-width button centres it in the width
-    Widget content = AppBrandLabel(
-      span: _span,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (widget.icon != null) ...[
-            Icon(widget.icon, size: AppIconSize.md, color: ink),
-            const SizedBox(width: AppSpace.xs),
-          ],
-          Flexible(child: Text(widget.label, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: style)),
-          if (widget.trailingIcon != null) ...[
-            const SizedBox(width: AppSpace.xs),
-            Icon(widget.trailingIcon, size: AppIconSize.md, color: ink),
-          ],
+    Widget content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (widget.icon != null) ...[
+          Icon(widget.icon, size: AppIconSize.md, color: ink),
+          const SizedBox(width: AppSpace.xs),
         ],
-      ),
+        Flexible(child: Text(widget.label, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: style)),
+        if (widget.trailingIcon != null) ...[
+          const SizedBox(width: AppSpace.xs),
+          Icon(widget.trailingIcon, size: AppIconSize.md, color: ink),
+        ],
+      ],
     );
     if (widget.expand) {
       content = Row(mainAxisAlignment: MainAxisAlignment.center, children: [Flexible(child: content)]);
@@ -343,31 +370,33 @@ class _AppButtonState extends State<AppButton> {
       if (widget.busy) spinner,
     ]);
 
-    Widget visual = AnimatedContainer(
+    final focusRing = _focus && _enabled && appKeyboardFocus()
+        ? appFocusRing(context, ring: v == AppButtonVariant.danger ? error.color : kit.partner)
+        : null;
+    final rise = filled && hover && !down && !motion.off;
+    final visual = AnimatedContainer(
       duration: motion.fast,
       curve: AppEase.out,
       height: h,
-      decoration: brandFill
-          ? AppBrandLayer.buttonFill(
-              context,
-              hover: hover,
-              pressed: down,
-              span: _span,
-              borderRadius: radius,
-              boxShadow: _focus && _enabled && appKeyboardFocus() ? appFocusRing(context) : shadow,
-            )
-          : BoxDecoration(
-              color: gradient == null ? fill : null,
-              gradient: gradient,
-              borderRadius: radius,
-              border: border,
-              boxShadow: _focus && _enabled && appKeyboardFocus()
-                  ? appFocusRing(context, ring: v == AppButtonVariant.danger ? appInk(context, c.danger) : null)
-                  : shadow,
-            ),
+      transform: Matrix4.translationValues(0, rise ? -AppBorder.focus : 0, 0),
+      decoration: BoxDecoration(
+        color: gradient == null ? fill : null,
+        gradient: gradient,
+        borderRadius: radius,
+        border: border,
+        boxShadow: focusRing ?? shadow,
+      ),
       padding: EdgeInsetsDirectional.symmetric(horizontal: sm ? AppSpace.md : AppSpace.lg),
       child: body,
     );
+
+    final jelly = v == AppButtonVariant.primary ||
+        v == AppButtonVariant.hot ||
+        v == AppButtonVariant.tonal ||
+        v == AppButtonVariant.secondary;
+    final Widget pressed = jelly
+        ? AppJelly(enabled: _enabled, wide: widget.expand, child: visual)
+        : AppPressScale(scale: 0.97, enabled: _enabled, child: visual);
 
     Widget out = InkWell(
       onTap: _enabled ? widget.onPressed : null,
@@ -382,10 +411,7 @@ class _AppButtonState extends State<AppButton> {
       mouseCursor: _enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: AppTouch.min, minWidth: AppTouch.min),
-        child: Center(
-          widthFactor: widget.expand ? null : 1,
-          child: AppPressScale(scale: 0.97, enabled: _enabled, child: visual),
-        ),
+        child: Center(widthFactor: widget.expand ? null : 1, child: pressed),
       ),
     );
 
