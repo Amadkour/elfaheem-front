@@ -41,6 +41,8 @@ import 'package:flutter_education_app/features/attendance/attendance_widgets.dar
 import 'package:flutter_education_app/features/attendance/teacher_attendance_controller.dart';
 import 'package:flutter_education_app/features/attendance/teacher_attendance_launcher.dart';
 import 'package:flutter_education_app/features/courses/course_space/course_space.dart';
+import 'package:flutter_education_app/features/courses/course_space/course_teacher_hero.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
 import 'package:flutter_education_app/features/courses/course_price_tag.dart' show coursePriceLabel;
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart' show RmCourse, kRoadmapTab;
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_tab.dart';
@@ -279,7 +281,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
         child: Selector<TeacherCourseScreenProvider, _PageData>(
           selector: (_, p) => _select(p),
           builder: (context, d, _) =>
-              !_loaded && d.loadingAll ? const CourseSpaceSkeleton() : _page(context, d),
+              T2Scope(child: !_loaded && d.loadingAll ? const CourseSpaceSkeleton() : _page(context, d)),
         ),
       ),
     );
@@ -317,10 +319,10 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
       teacherImageUrl: me?.imageUrl,
       badges: [
         course.isPublished
-            ? CourseSpaceBadge(label: _t('منشور', 'Published'), icon: Icons.public_rounded)
+            ? CourseSpaceBadge(label: _t('منشورة', 'Published'), color: c.success)
             : CourseSpaceBadge(label: _t('مسودة', 'Draft'), icon: Icons.edit_note_rounded, color: c.warning),
         if (live)
-          CourseSpaceBadge(label: _t('بث مباشر', 'Live'), icon: Icons.sensors_rounded)
+          CourseSpaceBadge(label: _t('بث مباشر', 'Live'), color: c.danger)
         else if (course.type == 'recorded')
           CourseSpaceBadge(label: _t('دروس مسجّلة', 'Recorded lessons'), icon: Icons.play_circle_outline_rounded),
       ],
@@ -394,8 +396,68 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
 
     final showRefresh = kIsWeb || MediaQuery.sizeOf(context).width >= Breakpoints.desktop;
 
+    final topActions = <CourseSpaceTopAction>[
+      if (helpAvailableForMenu(context, 'teacher.session'))
+        CourseSpaceTopAction(
+          icon: Icons.info_outline_rounded,
+          tooltip: _t('معلومات عن هذه الصفحة', 'About this page'),
+          onTap: () => unawaited(showHelpForPage(context, 'teacher.session')),
+        ),
+      // rarer: the ⋮ menu (refresh is pull-to-refresh on phones)
+      courseAskDocsAction(context, course.id, title),
+      if (_dataLab && !AppConfig.disableList.contains('data_lab.entry'))
+        CourseSpaceTopAction(
+          icon: Icons.science_rounded,
+          tooltip: 'dl_title'.tr,
+          overflow: true,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => deferredDataLab(courseId: course.id, courseTitle: title)),
+          ),
+        ),
+      // D-1110: the course's attendance switch (every session on, or off except the ones already taken)
+      if (canEdit && courseAttendanceFlagAvailable && course.type != 'recorded')
+        CourseSpaceTopAction(
+          icon: Icons.how_to_reg_rounded,
+          tooltip: _t('الحضور في الكورس', 'Course attendance'),
+          overflow: true,
+          onTap: () => showCourseAttendanceFlagSheet(context, courseId: course.id, onChanged: () => unawaited(_refresh())),
+        ),
+      if (showRefresh)
+        CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, overflow: true, onTap: _refresh),
+    ];
+    final cta = hero.cta!;
+    final teacherHero = CourseTeacherHero(
+      data: CourseTeacherHeroData(
+        title: title,
+        subtitle: description,
+        crumbRoot: _t('دوراتي', 'My courses'),
+        badges: [
+          ...hero.badges,
+          if (course.isPrivate) CourseSpaceBadge(label: 'course_hero_private'.tr, icon: Icons.lock_rounded, color: c.primary),
+        ],
+        teacherName: me?.name,
+        teacherLine: hero.category,
+        teacherImageUrl: me?.imageUrl,
+        pills: [
+          for (final st in hero.stats)
+            if (st.featureKey == null || !AppConfig.disableList.contains(st.featureKey))
+              CourseTeacherPill(icon: st.icon, value: st.value, label: st.label, onTap: st.onTap),
+        ],
+        imageUrl: course.imageUrl,
+        primary: cta.primary,
+        secondary: cta.secondary,
+        icons: cta.icons,
+        menu: topActions,
+        notice: cta.caption,
+        onBack: Navigator.of(context).canPop() ? () => Navigator.maybePop(context) : null,
+      ),
+    );
+
     return CourseSpace(
       hero: hero,
+      heroOverride: teacherHero,
+      pillTabs: true,
       heroBackground: hasReel
           ? CourseReelPlayer(
               key: ValueKey(reel),
@@ -405,36 +467,7 @@ class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
           : null,
       onBack: Navigator.of(context).canPop() ? () => Navigator.maybePop(context) : null,
       onRefresh: _refresh,
-      topActions: [
-        if (helpAvailableForMenu(context, 'teacher.session'))
-          CourseSpaceTopAction(
-            icon: Icons.info_outline_rounded,
-            tooltip: _t('معلومات عن هذه الصفحة', 'About this page'),
-            onTap: () => unawaited(showHelpForPage(context, 'teacher.session')),
-          ),
-        // rarer: the ⋮ menu (refresh is pull-to-refresh on phones)
-        courseAskDocsAction(context, course.id, title),
-        if (_dataLab && !AppConfig.disableList.contains('data_lab.entry'))
-          CourseSpaceTopAction(
-            icon: Icons.science_rounded,
-            tooltip: 'dl_title'.tr,
-            overflow: true,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => deferredDataLab(courseId: course.id, courseTitle: title)),
-            ),
-          ),
-        // D-1110: the course's attendance switch (every session on, or off except the ones already taken)
-        if (canEdit && courseAttendanceFlagAvailable && course.type != 'recorded')
-          CourseSpaceTopAction(
-            icon: Icons.how_to_reg_rounded,
-            tooltip: _t('الحضور في الكورس', 'Course attendance'),
-            overflow: true,
-            onTap: () => showCourseAttendanceFlagSheet(context, courseId: course.id, onChanged: () => unawaited(_refresh())),
-          ),
-        if (showRefresh)
-          CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, overflow: true, onTap: _refresh),
-      ],
+      topActions: topActions,
       spotlight: [
         CourseArchiveSpot(hub: hub, onOpenTab: _setTab),
         if (d.liveId != -1)
