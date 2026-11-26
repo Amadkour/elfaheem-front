@@ -148,25 +148,25 @@ class StudentHomeHero extends StatelessWidget {
           AppHeroStat(
               icon: Icons.auto_stories_rounded,
               value: '${cp.length}',
-              label: 'my_courses'.tr,
+              label: 'sa_stat_courses'.tr,
               onTap: onTab == null ? null : () => onTab!('my_courses')),
         if (_on('my_schedule'))
           AppHeroStat(
               icon: Icons.event_note_rounded,
               value: '${h.today.where((e) => !e.declined).length}',
-              label: 'home_s_today_items'.tr,
+              label: 'sa_stat_today'.tr,
               onTap: onTab == null ? null : () => onTab!('my_schedule')),
         if (_on('analysis'))
           AppHeroStat(
               icon: Icons.trending_up_rounded,
               value: '$avg%',
-              label: 'home_s_avg_progress'.tr,
+              label: 'sa_stat_progress'.tr,
               onTap: onTab == null ? null : () => onTab!('analysis')),
         if (_on('my_courses'))
           AppHeroStat(
               icon: Icons.emoji_events_rounded,
               value: '${cp.where((x) => x.progress >= 100).length}',
-              label: 'home_s_done_courses'.tr),
+              label: 'sa_stat_done'.tr),
       ]);
     }
     final next = guest ? null : nextEvent(h, nowUtc);

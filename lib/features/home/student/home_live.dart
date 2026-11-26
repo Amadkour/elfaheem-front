@@ -72,7 +72,7 @@ List<HomeLiveItem> homeLiveItemsOf(
     if (r.isMeeting || !AppConfig.disableList.contains(kLiveSessionsFeatureKey))
       HomeLiveItem(
         title: r.title,
-        kindLabel: (r.isMeeting ? 'home_live_meeting' : 'home_live_session').tr,
+        kindLabel: (r.isMeeting ? 'home_live_meeting' : 'sa_live_class').tr, // redesign vocabulary: حصة, never جلسة
         subtitle: r.subtitle,
         hostName: r.hostName,
         hostImageUrl: r.hostImageUrl,

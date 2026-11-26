@@ -25004,5 +25004,10 @@
   "sa_gate_r3_sub": {"en": "Everything in order for you", "ar": "كل شي مرتّب لك"},
   "sa_guest_promo": {"en": "Set up your account in a minute", "ar": "سوّ حسابك في دقيقة"},
   "sa_guest_promo_cta": {"en": "Create your account", "ar": "أنشئ حسابك"},
-  "sa_appr_browse": {"en": "Browse courses", "ar": "تصفّح الدورات"}
+  "sa_appr_browse": {"en": "Browse courses", "ar": "تصفّح الدورات"},
+  "sa_live_class": {"en": "Live class", "ar": "حصة مباشرة"},
+  "sa_stat_courses": {"en": "My courses", "ar": "دوراتي"},
+  "sa_stat_today": {"en": "Classes today", "ar": "حصص اليوم"},
+  "sa_stat_progress": {"en": "Your progress", "ar": "تقدّمك"},
+  "sa_stat_done": {"en": "Courses finished", "ar": "دورات خلّصتها"}
 }

@@ -104,7 +104,11 @@ String courseSubjectKeyOf(String title, {String? subject}) {
   final words = title.toLowerCase().split(RegExp(r'[\s:،,()\-–]+')).where((w) => w.isNotEmpty).toList();
   for (var n = 2; n >= 1; n--) {
     for (var i = 0; i + n <= words.length; i++) {
-      final k = subjectKeyFor(words.sublist(i, i + n).join(' '));
+      final w = words.sublist(i, i + n).join(' ');
+      var k = subjectKeyFor(w);
+      // "الإنجليزي" → "إنجليزي": the article is not in every alias
+      if (k == 'other' && w.startsWith('ال')) k = subjectKeyFor(w.substring(2));
+      if (k == 'other') k = const {'لغتي': 'arabic', 'تحصيلي': 'qudurat', 'التحصيلي': 'qudurat'}[w] ?? 'other';
       if (k != 'other') return k;
     }
   }

@@ -36,7 +36,6 @@ import 'package:flutter_education_app/features/profile/study_profile/study_profi
 import 'package:flutter_education_app/features/onboarding/join/join_draft.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_pages.dart' show StudyProfileStepPage;
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
-import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_buttons.dart' show AppButton, AppButtonSize;
