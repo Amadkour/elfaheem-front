@@ -12,14 +12,18 @@
 //                                              bar and the sidebar header, D-631)
 //
 // Every button is a real button for screen readers and the keyboard (Semantics + focus + Enter / Space), with a
-// tooltip, keeps a 48 × 48 target around a 40 × 40 plate, and presses with a little depth (zero under Reduce
+// tooltip, keeps a 48 × 48 target around its round plate, and presses with a little depth (zero under Reduce
 // motion).
+//
+// The redesign (KIT_SPEC §5.4, §6.2): every plate is a circle. On the shell's top bar ([ChromeGhost]) it is the
+// reference's `.k-ib`: 42 px, the card colour, the kit's line at 1.5, the text ink. On a hero band ([ChromeBar], the
+// phone top bar) it is 38 px of glass with the glass hairline and the on-hero ink. Its count is the kit's live red,
+// hanging off the plate's top-end edge.
 library;
 
 import 'package:flutter/material.dart';
 
 import '../config/theme/theme_config_provider.dart';
-import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon;
 import 'app_tokens.dart';
 
 /// Marks its subtree as the shell's top bar (the hero-coloured band): [ChromeIconButton]s inside it draw as glass.
@@ -92,10 +96,12 @@ class ChromeCard extends StatelessWidget {
 /// "9+" style count for the small badges.
 String chromeBadgeText(int n) => n > 99 ? '99+' : '$n';
 
-/// The chip itself: a 40 × 40 plate centred in a 48 × 48 target, a ghost on the canvas (transparent until hovered /
-/// pressed) or glass on a hero ([onHero], or inside a [ChromeBar]), with the press depth of the kit and a focus ring.
+/// The chip itself: a round plate centred in a 48 × 48 target — the `.k-ib` circle on the shell's top bar
+/// ([ChromeGhost]), glass on a hero ([onHero], or inside a [ChromeBar]), a ghost on the bare canvas — with the press
+/// depth of the kit and a focus ring. [overlay] (a count) hangs off the plate's top-end edge, outside its clip.
 class ChromePlate extends StatefulWidget {
-  const ChromePlate({super.key, required this.child, required this.onTap, this.onHero, this.onHighlightChanged});
+  const ChromePlate(
+      {super.key, required this.child, required this.onTap, this.onHero, this.onHighlightChanged, this.overlay});
 
   final Widget child;
   final VoidCallback? onTap;
@@ -104,20 +110,38 @@ class ChromePlate extends StatefulWidget {
   final bool? onHero;
   final ValueChanged<bool>? onHighlightChanged;
 
-  /// The plate inside the target.
+  /// Drawn over the plate's top-end corner (a count badge); null = none.
+  final Widget? overlay;
+
+  /// The ghost's plate inside the target.
   static const double size = AppTouch.min - AppSpace.xs;
+
+  /// The `.k-ib` plate on the shell's top bar.
+  static const double barSize = size + AppBorder.focus;
+
+  /// The glass plate on a hero band (the phone top bar).
+  static const double heroSize = size - AppBorder.focus;
+
+  /// How far an [overlay] hangs past the plate's top-end edge.
+  static const double overlayOut = 3;
+
+  /// The plate's diameter where it sits.
+  static double sizeOf(BuildContext context, {required bool onHero}) =>
+      onHero ? heroSize : (ChromeGhost.of(context) ? barSize : size);
 
   /// The plate's surface and ink where it sits (a ghost's plate and border are transparent).
   static ({Color plate, Color border, Color ink}) colorsOf(BuildContext context, {required bool onHero}) {
     final c = context.colors;
     if (onHero) return (plate: c.heroGlass, border: c.heroGlassBorder, ink: c.onHero);
-    // off a hero every button is a ghost (D-630); on the shell's paper bar ([ChromeGhost], D-631) its ink is the quieter one
-    return (plate: Colors.transparent, border: Colors.transparent, ink: ChromeGhost.of(context) ? c.textMedium : c.textDark);
+    // the shell's top bar ([ChromeGhost]): the `.k-ib` circle
+    if (ChromeGhost.of(context)) return (plate: c.cardBg, border: c.kit.line, ink: c.textDark);
+    // off a hero and off the bar every button is a ghost (D-630)
+    return (plate: Colors.transparent, border: Colors.transparent, ink: c.textDark);
   }
 
   /// The colour a count badge is ringed with so it parts from what is under it.
   static Color badgeRing(BuildContext context, {required bool onHero}) =>
-      onHero ? colorsOf(context, onHero: true).plate : context.colors.background;
+      onHero ? context.colors.kit.topBar : (ChromeGhost.of(context) ? context.colors.cardBg : context.colors.background);
 
   @override
   State<ChromePlate> createState() => _ChromePlateState();
@@ -137,8 +161,11 @@ class _ChromePlateState extends State<ChromePlate> {
     final c = context.colors;
     final onHero = widget.onHero ?? ChromeBar.of(context);
     final k = ChromePlate.colorsOf(context, onHero: onHero);
-    // hover / press: a soft wash of the ink (the ghost has no plate of its own to darken)
+    final d = ChromePlate.sizeOf(context, onHero: onHero);
+    final edge = !onHero && ChromeGhost.of(context) ? AppBorder.strong : AppBorder.hairline;
+    // hover / press: a soft wash of the ink
     final wash = k.ink.withValues(alpha: c.isDark || onHero ? 0.14 : 0.08);
+    final overlay = widget.overlay;
     return SizedBox(
       width: AppTouch.min,
       height: AppTouch.min,
@@ -147,35 +174,39 @@ class _ChromePlateState extends State<ChromePlate> {
           scale: _down ? 0.94 : 1,
           duration: AppMotion.of(context).fast,
           curve: AppMotion.curve,
-          child: Material(
-            color: k.plate,
-            shape: RoundedRectangleBorder(
-              borderRadius: AppRadius.chipAll,
-              side: _focused
-                  ? BorderSide(color: onHero ? k.ink : c.primary, width: AppBorder.focus)
-                  : BorderSide(color: k.border, width: AppBorder.hairline),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: widget.onTap,
-              onHighlightChanged: _press,
-              onFocusChange: (f) => setState(() => _focused = f),
-              hoverColor: wash,
-              highlightColor: wash,
-              splashColor: wash,
-              focusColor: wash,
-              mouseCursor: widget.onTap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
-              child: SizedBox.square(
-                dimension: ChromePlate.size,
-                // a button with nothing to do looks it on purpose: the ink at the disabled emphasis, never a faint
-                // look-alike of an enabled one (a busy button's spinner keeps its own ink)
-                child: IconTheme.merge(
-                  data: IconThemeData(color: widget.onTap == null ? k.ink.withValues(alpha: 0.38) : k.ink, size: AppIconSize.md),
-                  child: widget.child,
+          child: Stack(clipBehavior: Clip.none, children: [
+            Material(
+              color: k.plate,
+              shape: CircleBorder(
+                side: _focused
+                    ? BorderSide(color: onHero ? k.ink : c.primary, width: AppBorder.focus)
+                    : BorderSide(color: k.border, width: edge),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: widget.onTap,
+                onHighlightChanged: _press,
+                onFocusChange: (f) => setState(() => _focused = f),
+                customBorder: const CircleBorder(),
+                hoverColor: wash,
+                highlightColor: wash,
+                splashColor: wash,
+                focusColor: wash,
+                mouseCursor: widget.onTap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
+                child: SizedBox.square(
+                  dimension: d,
+                  // a button with nothing to do looks it on purpose: the ink at the disabled emphasis, never a faint
+                  // look-alike of an enabled one (a busy button's spinner keeps its own ink)
+                  child: IconTheme.merge(
+                    data: IconThemeData(color: widget.onTap == null ? k.ink.withValues(alpha: 0.38) : k.ink, size: AppIconSize.md),
+                    child: Center(child: widget.child),
+                  ),
                 ),
               ),
             ),
-          ),
+            if (overlay != null)
+              PositionedDirectional(top: -ChromePlate.overlayOut, end: -ChromePlate.overlayOut, child: overlay),
+          ]),
         ),
       ),
     );
@@ -202,8 +233,8 @@ class ChromeIconButton extends StatelessWidget {
   /// Shows a small spinner instead of the icon (and ignores taps).
   final bool busy;
 
-  /// How far the count pill sits in from the plate's corner.
-  static const double _badgeInset = 2;
+  /// The count's smallest size.
+  static const double _badgeMin = AppIconSize.sm + AppBorder.focus;
 
   @override
   Widget build(BuildContext context) {
@@ -220,40 +251,33 @@ class ChromeIconButton extends StatelessWidget {
         child: ChromePlate(
           onHero: onBar,
           onTap: busy ? null : onTap,
-          child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
-            busy
-                ? SizedBox.square(
-                    dimension: AppIconSize.sm,
-                    child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: k.ink),
-                  )
-                // D-650 r3: the glyph wears the brand family, matched to the plate it sits on
-                : AppGradientIcon(icon, on: onBar
-                    ? [for (final s in [AppBrandLayer.of(context).sidebar.first, c.blockForest]) Color.alphaBlend(k.plate, s)]
-                    : [c.cardBg, c.background]),
-            if (badge > 0)
-              PositionedDirectional(
-                top: _badgeInset,
-                end: _badgeInset,
-                child: Container(
-                  constraints: const BoxConstraints(minWidth: AppIconSize.sm, minHeight: AppIconSize.sm),
+          overlay: badge > 0
+              ? Container(
+                  constraints: const BoxConstraints(minWidth: _badgeMin, minHeight: _badgeMin),
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.xxs),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: c.dangerBase,
+                    color: c.kit.liveFill,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
-                    // a count on the shell's paper bar rings itself with the paper, elsewhere with what is under it
-                    border: Border.all(color: ChromeGhost.of(context) && !onBar ? c.cardBg : ChromePlate.badgeRing(context, onHero: onBar), width: AppBorder.strong),
+                    // ringed with what is under it, so it parts from the plate
+                    border: Border.all(color: ChromePlate.badgeRing(context, onHero: onBar), width: AppBorder.focus),
                   ),
                   child: ExcludeSemantics(
                     child: Text(
                       chromeBadgeText(badge),
                       maxLines: 1,
-                      style: AppType.overline(context).copyWith(color: c.onHero, height: 1.2, letterSpacing: 0),
+                      style: AppType.overline(context)
+                          .copyWith(color: c.onHero, height: 1.2, letterSpacing: 0, fontWeight: FontWeight.w600),
                     ),
                   ),
-                ),
-              ),
-          ]),
+                )
+              : null,
+          child: busy
+              ? SizedBox.square(
+                  dimension: AppIconSize.sm,
+                  child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: k.ink),
+                )
+              : Icon(icon),
         ),
       ),
     );

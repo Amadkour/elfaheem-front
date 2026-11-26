@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import 'app_area.dart' show AppAreaScope;
 import 'app_buttons.dart' show appFocusRing, appKeyboardFocus;
 import 'app_contrast.dart' show ensureContrast;
 import 'app_motion_kit.dart' show AppEase;
@@ -61,15 +62,16 @@ class _AppSwitchState extends State<AppSwitch> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final on = widget.activeColor ?? c.primary;
+    // on: the area (or role) set's colour of the page (KIT_SPEC §5.1, `.k-tog`), kept at 3:1 on the card
+    final on = widget.activeColor ?? ensureContrast(AppAreaScope.of(context).a, [c.cardBg, c.background], min: 3);
     final enabled = widget.onChanged != null;
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final motion = AppMotion.of(context);
     // "on" sits at the end of the reading direction (right in LTR, left in RTL) like platform switches.
     final end = rtl ? Alignment.centerLeft : Alignment.centerRight;
     final start = rtl ? Alignment.centerRight : Alignment.centerLeft;
-    final offTrack = widget.inactiveColor?.withValues(alpha: 0.55) ?? c.divider;
-    // the off track needs an edge of its own on a paper card (the warm hairline is close to the card tone)
+    final offTrack = widget.inactiveColor?.withValues(alpha: 0.55) ?? c.kit.fieldEdge;
+    // the off track needs an edge of its own on a paper card (the field edge is close to the card tone)
     final offEdge = widget.inactiveColor ?? c.controlEdge;
     final knob = c.onHero;
     final track = AnimatedContainer(
@@ -105,7 +107,7 @@ class _AppSwitchState extends State<AppSwitch> {
             switchInCurve: AppEase.out,
             switchOutCurve: AppEase.out,
             child: widget.value
-                ? Icon(Icons.check_rounded, key: const ValueKey(1), size: AppIconSize.xs, color: on)
+                ? Icon(Icons.check_rounded, key: const ValueKey(1), size: AppIconSize.xs, color: ensureContrast(on, [knob], min: 3))
                 : const SizedBox(key: ValueKey(0)),
           ),
         ),

@@ -13,21 +13,29 @@
 // The page needs no slivers: a Scaffold reports its body's scrolling to whatever sits inside it, so AppHeader shrinks
 // when the page scrolls down and grows when it scrolls up, on any scrollable. A page too short to scroll stays open.
 // Body-level headers (AppPageHeader, OrgPageHeader) share the same behaviour through [AppHeaderCollapse].
+//
+// Below 700 px (KIT_SPEC §6.2, the reference's `.k-mtop`): a flush bar in the kit's top-bar colour at 94 %, 58 high,
+// the title in the section face in the on-hero ink, the back button (or the app mark) as glass at the start, and at
+// most TWO actions at the end — a third and later fold into one "more" menu, which then counts as the second. The
+// actions sit on a [ChromeBar], so the chrome buttons draw as glass and plain icon / text buttons take the on-hero
+// ink. Tabs and a page's accent strip sit under the bar on the canvas. The API is unchanged.
 library;
 
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
+import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 import 'app_back_button.dart';
-import 'chrome_button.dart' show ChromeCard;
+import 'chrome_button.dart' show ChromeBar, ChromeCard, ChromeIconButton;
 import 'app_focus_mode.dart';
 import 'app_responsive.dart';
-import 'app_shell_nav.dart' show ShellChrome;
-import 'shell_pins.dart' show ShellPinButton;
+import 'app_shell_nav.dart' show ShellChrome, ShellScope;
+import 'shell_pins.dart' show ShellPinButton, shellPageBuilderOf;
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'sync_status_chip.dart' show SyncStatusChip;
 import '../features/guest/guest_state.dart' show GuestState;
 import 'app_tokens.dart';
@@ -220,6 +228,9 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
 
   static const double compactHeight = 56;
 
+  /// The most actions the phone bar shows; more fold into one "more" menu (KIT_SPEC §6.2).
+  static const int maxPhoneActions = 2;
+
   /// The open bar: the shell's top bar height, so a pushed page's bar matches the tab's (D-648).
   static const double openHeight = ChromeCard.barHeight;
   static const double openHeightWithSubtitle = 84;
@@ -234,6 +245,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     if (!compact && ShellChrome.ownsHeaderOf(context)) return _foldedIntoShell(context);
+    if (MediaQuery.sizeOf(context).width < Breakpoints.mobile) return _phoneBar(context);
     final top = MediaQuery.paddingOf(context).top;
     final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6);
     final sub = subtitle;
@@ -298,6 +310,169 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     if (compact) return paint(context, kAlwaysCompleteAnimation);
     return AppHeaderCollapse(builder: (context, collapse, _) => paint(context, collapse));
   }
+}
+
+/// The phone's flush top bar (KIT_SPEC §6.2): at most [AppHeader.maxPhoneActions] actions, the rest in "more".
+extension on AppHeader {
+  Widget _phoneBar(BuildContext context) {
+    final c = context.colors;
+    final top = MediaQuery.paddingOf(context).top;
+    final sub = subtitle;
+    final hasSub = sub != null && sub.isNotEmpty;
+    final tabs = bottom;
+    // the page's actions, then its pin (only where a pin is possible): two stand, a third and later fold into "more"
+    final all = [...actions, if (_pinShown(context, title)) ShellPinButton(title: title)];
+    const max = AppHeader.maxPhoneActions;
+    final inline = all.length <= max ? all : all.sublist(0, max - 1);
+    final folded = all.length <= max ? const <Widget>[] : all.sublist(max - 1);
+    final lead = leading ?? (showBack ? AppBackButton(onPressed: onBack, onHero: true) : const _PhoneMark());
+    final theme = Theme.of(context);
+    final onHeroButtons = theme.copyWith(
+      iconTheme: theme.iconTheme.copyWith(color: c.onHero),
+      iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(foregroundColor: c.onHero)),
+      textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: c.onHero)),
+    );
+    final bar = AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Material(
+        key: const ValueKey('app.header.phone'),
+        color: c.kit.topBar.withValues(alpha: .94),
+        child: Padding(
+          padding: EdgeInsets.only(top: top),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppDashSize.topBarPhone),
+            child: Padding(
+              padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.xxs),
+              child: ChromeBar(
+                child: Theme(
+                  data: onHeroButtons,
+                  child: IconTheme.merge(
+                    data: IconThemeData(color: c.onHero),
+                    child: DefaultTextStyle.merge(
+                      style: TextStyle(color: c.onHero),
+                      child: Row(children: [
+                        lead,
+                        const SizedBox(width: AppSpace.xxs),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Semantics(
+                                header: true,
+                                child: Text(title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppType.section(context)
+                                        .copyWith(color: c.onHero, fontFamilyFallback: AppFonts.fallback)),
+                              ),
+                              if (hasSub)
+                                Text(sub,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
+                            ],
+                          ),
+                        ),
+                        ...inline,
+                        if (folded.isNotEmpty) _MoreActions(actions: folded),
+                        // the offline / waiting-writes chip: draws nothing while online and quiet (QA_PHASE7 W-7)
+                        if (!GuestState.active) const SyncStatusChip(),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    return Semantics(
+      container: true,
+      explicitChildNodes: true,
+      child: Material(
+        color: c.background,
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          bar,
+          if (color != null) AppHeaderStrip(color: color),
+          if (tabs != null) _HeaderTabs(child: tabs),
+        ]),
+      ),
+    );
+  }
+}
+
+/// True where [ShellPinButton] draws: a page opened inside a role tab (not a tab's first page, not outside a shell).
+bool _pinShown(BuildContext context, String title) {
+  final tabs = ShellScope.maybeOf(context);
+  final route = ModalRoute.of(context);
+  if (tabs == null || tabs.pins == null || route == null || title.trim().isEmpty) return false;
+  final tab = tabs.holding(route);
+  return tab != null && !tab.pinned && !identical(tab.root, route) && shellPageBuilderOf(route) != null;
+}
+
+/// The app mark at the start of the phone bar when the page has no back button.
+class _PhoneMark extends StatelessWidget {
+  const _PhoneMark();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsetsDirectional.only(start: AppSpace.xs, end: AppSpace.xxs),
+        child: ExcludeSemantics(
+          // the green mark on a paper plate: it would sink into the dark bar
+          child: Container(
+            width: AppIconSize.xl,
+            height: AppIconSize.xl,
+            padding: const EdgeInsets.all(AppSpace.xxs),
+            decoration: BoxDecoration(color: context.colors.cardBg, borderRadius: AppRadius.chipAll),
+            child: Image.asset(
+              'assets/images/logo_mark.png',
+              fit: BoxFit.contain,
+              errorBuilder: (context, _, _) =>
+                  Icon(Icons.school_rounded, color: context.colors.onHero, size: AppIconSize.lg),
+            ),
+          ),
+        ),
+      );
+}
+
+/// The phone bar's "more": one glass button opening a small menu of the actions that did not fit. A tap on one of
+/// them runs it and closes the menu.
+class _MoreActions extends StatefulWidget {
+  const _MoreActions({required this.actions});
+
+  final List<Widget> actions;
+
+  @override
+  State<_MoreActions> createState() => _MoreActionsState();
+}
+
+class _MoreActionsState extends State<_MoreActions> {
+  final _menu = MenuController();
+
+  void _closeSoon() => WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _menu.isOpen) _menu.close();
+      });
+
+  @override
+  Widget build(BuildContext context) => MenuAnchor(
+        controller: _menu,
+        menuChildren: [
+          Padding(
+            padding: const EdgeInsets.all(AppSpace.xxs),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              for (final a in widget.actions) Listener(onPointerUp: (_) => _closeSoon(), child: a),
+            ]),
+          ),
+        ],
+        builder: (context, controller, _) => ChromeIconButton(
+          key: const ValueKey('app.header.more'),
+          icon: Icons.more_vert_rounded,
+          label: 'more'.tr,
+          onTap: () => controller.isOpen ? controller.close() : controller.open(),
+        ),
+      );
 }
 
 /// A tab's first page under the shell's bar: the title is already up there, so only tabs and actions remain.

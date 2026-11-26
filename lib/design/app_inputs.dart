@@ -107,11 +107,12 @@ InputDecoration appFieldDecoration(
     // 48 high with a 15 px line at rest (a dense well is 40)
     contentPadding: EdgeInsetsDirectional.symmetric(
         horizontal: AppSpace.md, vertical: dense ? AppSpace.xs + 1 : AppSpace.sm + 1),
-    border: border(c.fieldEdge),
-    enabledBorder: border(c.fieldEdge),
-    disabledBorder: border(c.divider.withValues(alpha: 0.6)),
+    // the redesign's field edge (KIT_SPEC §5.1, `.k-in`): the kit's field edge at 1.5
+    border: border(c.kit.fieldEdge, AppBorder.strong),
+    enabledBorder: border(c.kit.fieldEdge, AppBorder.strong),
+    disabledBorder: border(c.kit.line),
     focusedBorder: border(focus, AppBorder.focus),
-    errorBorder: border(c.danger),
+    errorBorder: border(c.danger, AppBorder.strong),
     focusedErrorBorder: border(c.danger, AppBorder.focus),
   );
 }

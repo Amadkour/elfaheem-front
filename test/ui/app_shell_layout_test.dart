@@ -13,7 +13,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
 import 'package:flutter_education_app/design/app_contrast.dart';
-import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -170,12 +169,11 @@ void main() {
     handle.dispose();
   });
 
-  // D-650 r3: the sidebar is the 60 / 40 panel (green held to 60 %, then the blend to the cream, top → bottom) and
-  // each item picks its ink from the colour under it (AppBrandInk). Every tab label, the wordmark, the group labels
-  // and the person box are checked at the place they are drawn, with the colour they are drawn in, over the panel's
-  // colour there (BrandLayer.sideAt) and the item's plate if it has one, plain, hovered and on the open tab's glass;
-  // both modes, Arabic and English, on the production palette, at a short and a tall window.
-  testWidgets('sidebar inks keep 4.5:1 where the items sit (the cream part included)', (tester) async {
+  // KIT_SPEC §6.2 (replaces the D-650 r3 60 / 40 panel check): the sidebar is the radial brand fill (primary → ink →
+  // deep). Every text on it — the name, the role chip, the group labels, the tab labels, the person box — keeps 4.5:1
+  // over each stop of the fill, plain, hovered and on the glass, with its own alpha blended in; both modes, Arabic and
+  // English, on the production palette.
+  testWidgets('sidebar inks keep 4.5:1 over every stop of the radial fill', (tester) async {
     final prod = jsonDecode(File('test/visual/fixtures/theme_production.json').readAsStringSync()) as Map<String, dynamic>;
     final prevLang = AppConfig.lang;
     addTearDown(() {
@@ -184,71 +182,50 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
     tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1440, 900);
     var low = 21.0;
-    for (final height in const [900.0, 560.0]) {
-    tester.view.physicalSize = Size(1440, height);
     for (final dark in const [false, true]) {
       for (final lang in const ['ar', 'en']) {
         AppConfig.lang = lang;
         final t = ThemeConfigProvider(api: ApiClient())..debugUseColors(prod);
         t.isDark = dark;
-        final rtl = lang == 'ar';
         await tester.pumpWidget(const SizedBox());
         await tester.pumpWidget(ThemeConfigScope(
           provider: t,
           child: MaterialApp(
             theme: ThemeData(brightness: dark ? Brightness.dark : Brightness.light),
             home: Directionality(
-              textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+              textDirection: lang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
               child: host(WideShell(currentIndex: 0, onTap: (_) {}, dashboardItems: items(), unreadCount: 4)),
             ),
           ),
         ));
         await tester.pump();
-        await tester.pump();
-        final l = BrandLayer.of(t);
-        final card = find.byWidgetPredicate((w) =>
-            w is DecoratedBox && w.decoration is BoxDecoration && (w.decoration as BoxDecoration).gradient is RadialGradient &&
-            ((w.decoration as BoxDecoration).gradient! as RadialGradient).colors.first == l.sideRadial.first);
-        expect(card, findsOneWidget);
-        final box = tester.getRect(card);
-        final texts = find.descendant(of: card, matching: find.byType(Text));
+        final side = find.byKey(const ValueKey('app.shell.side'));
+        expect(side, findsOneWidget);
+        final stops = shellSideSurfaces(tester.element(side));
+        // a tappable text (a tab, the person box) is also checked hovered, and the open tab's ink on the glass
+        final hovered = [for (final s in stops) ...[s, Color.alphaBlend(t.heroDivider, s)]];
+        final glass = [...hovered, for (final s in stops) Color.alphaBlend(t.heroGlass, s)];
         var checked = 0;
-        for (final e in texts.evaluate()) {
+        for (final e in find.descendant(of: side, matching: find.byType(Text)).evaluate()) {
           final w = e.widget as Text;
           final ink = w.style?.color;
-          if (ink == null || ink.a < 1) continue;
-          if (RegExp(r'^[0-9+]+$').hasMatch(w.data ?? '')) continue; // the red count pills
-          final r = tester.getRect(find.byWidget(w));
-          final region = find.ancestor(of: find.byWidget(w), matching: find.byType(AppBrandInk));
-          final k = region.evaluate().isEmpty
-              ? AppBrandLayer.inkFor(l, l.sideSpots)
-              : tester.state<AppBrandInkState>(region.first).ink;
-          for (final p in [r.topLeft, r.topRight, r.center, r.bottomLeft, r.bottomRight]) {
-            final local = Offset(rtl ? box.right - p.dx : p.dx - box.left, p.dy - box.top);
-            final bare = l.sideAt(box.size, local);
-            final under = k.plate == null ? bare : Color.alphaBlend(k.plate!, bare);
-            final surfaces = ink == k.activeInk && ink != k.item
-                ? [Color.alphaBlend(k.activeFill, under)]
-                : [
-                    under,
-                    Color.alphaBlend(k.hover, under),
-                    if (ink == k.ink || ink == k.muted) Color.alphaBlend(k.glass, under),
-                  ];
-            for (final s in surfaces) {
-              final ratio = contrastRatio(ink, s);
-              if (ratio < low) low = ratio;
-              expect(ratio, greaterThanOrEqualTo(4.5), reason: '"${w.data}" at $local (${dark ? 'dark' : 'light'} $lang $height)');
-            }
+          if (ink == null) continue;
+          if (RegExp(r'^[0-9+]+$').hasMatch(w.data ?? '')) continue; // the count pills (their own fill)
+          final onTap = find.ancestor(of: find.byWidget(w), matching: find.byType(InkWell)).evaluate().isNotEmpty;
+          for (final s in !onTap ? stops : (ink == t.onHero ? glass : hovered)) {
+            final ratio = contrastRatio(Color.alphaBlend(ink, s), s);
+            if (ratio < low) low = ratio;
+            expect(ratio, greaterThanOrEqualTo(4.5), reason: '"${w.data}" (${dark ? 'dark' : 'light'} $lang)');
           }
           checked++;
         }
-        expect(checked, greaterThanOrEqualTo(5), reason: 'the tab labels and the wordmark were checked');
+        expect(checked, greaterThanOrEqualTo(5), reason: 'the tab labels and the name were checked');
       }
     }
-    }
     // ignore: avoid_print
-    print('lowest sidebar contrast at the items: ${low.toStringAsFixed(2)}');
+    print('lowest sidebar contrast: ${low.toStringAsFixed(2)}');
   });
 
   testWidgets('editorial shell: 48 px tabs on the bar, the rail and the sidebar; a reward count renders', (tester) async {
