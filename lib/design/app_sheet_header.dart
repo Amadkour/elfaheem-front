@@ -77,7 +77,7 @@ class AppSheetHeader extends StatelessWidget {
             end: AlignmentDirectional.bottomEnd,
             colors: [tint, fade],
           ),
-          borderRadius: BorderRadius.circular(AppRadius.card),
+          borderRadius: BorderRadius.circular(AppRadius.tile),
           border: Border.all(color: edge, width: AppBorder.hairline),
         ),
         child: Padding(
@@ -89,7 +89,7 @@ class AppSheetHeader extends StatelessWidget {
                 child: Container(
                   width: iconWell,
                   height: iconWell,
-                  decoration: BoxDecoration(color: base, borderRadius: BorderRadius.circular(AppRadius.card)),
+                  decoration: BoxDecoration(color: base, borderRadius: BorderRadius.circular(AppRadius.glyph)),
                   child: Icon(icon, size: AppIconSize.md, color: appInkOnFill(context, base)),
                 ),
               ),

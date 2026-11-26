@@ -466,11 +466,13 @@ void main() {
       return route;
     }
 
-    testWidgets('280 ms in, 200 ms out; a drag catches it mid-way and a fling down dismisses it', (t) async {
+    // KIT_SPEC 5.8 (M14): the sheet rises in 500 ms with the peek overshoot (was 280 ms, D-621)
+    testWidgets('500 ms in, 200 ms out; a drag catches it mid-way and a fling down dismisses it', (t) async {
       final route = await open(t);
-      expect(route.transitionDuration, const Duration(milliseconds: 280));
+      expect(route.transitionDuration, const Duration(milliseconds: 500));
       expect(route.reverseTransitionDuration, const Duration(milliseconds: 200));
-      await t.pump(const Duration(milliseconds: 90));
+      // a third of the 500 ms rise: the body is on screen (at 90 ms it was still below the fold, so the press hit the scrim)
+      await t.pump(const Duration(milliseconds: 160));
       expect(route.animation!.value, inExclusiveRange(0, 1));
       // caught while still rising, let go short of the dismiss point: it settles open
       final g = await t.startGesture(t.getCenter(find.text('sheet body')));
