@@ -31,6 +31,11 @@ import 'package:flutter_education_app/design/app_kit.dart'
     show AppBlock, AppBlockTone, AppButton, AppButtonSize, AppCard, AppSettingsTile, AppSkeletonBox, AppStatusBadge, AppTabItem,
         AppTabs, AppTone, AppType, appInkOn, appTintOn;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_kit.dart' as kit show AppHero, AppWidth;
+import 'package:flutter_education_app/design/app_header.dart' show AppHeader;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope, T2HeroScroll;
+import 'package:flutter_education_app/features/profile/teacher/t2b_parts.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_number_field.dart';
@@ -280,6 +285,39 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<ProfileProvider>();
+    // a teacher's page (redesign T2b, Tea2Account edit): the hero with Personal info / Documents as its pills, the
+    // photo card and the form (or the documents) riding up over its edge
+    if (widget.isTeacher) {
+      return T2Scope(
+        child: BasePage(
+          enableFooterWidget: false,
+          appBar: AppHeader(title: 'update_account'.tr, actions: const [HelpInfoButton(pageId: 'account.edit')]),
+          child: SafeArea(
+            child: T2HeroScroll(
+              width: kit.AppWidth.form,
+              hero: kit.AppHero(
+                title: 'update_account'.tr,
+                subtitle: 't2_edit_sub'.tr,
+                wipe: false,
+                bottom: T2bHeroPills(
+                  index: _tab,
+                  onChanged: (i) => setState(() => _tab = i),
+                  items: [
+                    T2bPill('tab_personal_info'.tr, icon: Icons.person_outline_rounded, key: 'edit.tab.personal'),
+                    T2bPill('tab_documents'.tr, icon: Icons.description_outlined, key: 'edit.tab.documents'),
+                  ],
+                ),
+              ),
+              children: [
+                if (_tab == 0) _hero(p, context.colors, showBack: false, card: true),
+                ..._formArea(p, context.colors, switcher: false),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final c = context.colors;
     final isWide = context.showSidebar;
 
@@ -357,8 +395,8 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
     );
   }
 
-  List<Widget> _formArea(ProfileProvider p, ThemeConfigProvider c) => [
-          if (widget.isTeacher)
+  List<Widget> _formArea(ProfileProvider p, ThemeConfigProvider c, {bool switcher = true}) => [
+          if (widget.isTeacher && switcher)
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, 0),
               child: _PremiumTabSwitcher(

@@ -9,13 +9,16 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/auth/teacher_document_provider.dart';
 import 'package:flutter_education_app/features/courses/category/categories_provider.dart' show CategoryModel;
 import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 import 'package:flutter_education_app/features/home/student/models.dart' show TeacherProfileData, TeacherProfileDetail;
 import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/profile/profile_screen.dart';
+import 'package:flutter_education_app/features/profile/update_account_widget.dart';
 import 'package:flutter_education_app/features/profile/teacher/switch_device_requests/teacher_device_requests_provider.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2b_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -78,4 +81,25 @@ void main() {
   }
 
   testWidgets('account', (t) => render(t, 't2b_account', () => const ProfileScreen()));
+  testWidgets('edit', (t) => render(t, 't2b_edit', () => const EditAccountScreen(isTeacher: true)));
+  testWidgets('edit docs', (t) async {
+    await t2bSetUp();
+    final auth = MyAuthProvider(storage: storage)..loadCachedUser();
+    await kitRender(
+      t,
+      't2b_edit_docs',
+      () => MultiProvider(providers: [
+        ChangeNotifierProvider<MyAuthProvider>.value(value: auth),
+        ChangeNotifierProvider<ProfileProvider>(create: (_) => ProfileProvider(storage: storage)),
+        ChangeNotifierProvider<TeacherDocumentProvider>(create: (_) => TeacherDocumentProvider()),
+      ], child: const EditAccountScreen(isTeacher: true)),
+      storage: storage,
+      modes: const [false],
+      langs: const ['ar'],
+      scaffold: false,
+      act: (t) async {
+        await t.tap(find.byKey(const ValueKey('edit.tab.documents')));
+      },
+    );
+  });
 }

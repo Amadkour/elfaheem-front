@@ -25119,5 +25119,6 @@
   "t2_acc_certs": {"en": "Certificates", "ar": "الشهادات"},
   "t2_acc_certs_meta": {"en": "Designs, issuing, the record and students' requests", "ar": "التصاميم والإصدار والسجل وطلبات الطلاب"},
   "t2_acc_hub_meta": {"en": "Your profile, documents and packages", "ar": "ملفك ومستنداتك وباقاتك"},
-  "t2_acc_payouts_meta": {"en": "Your earnings and withdrawals", "ar": "أرباحك وطلبات السحب"}
+  "t2_acc_payouts_meta": {"en": "Your earnings and withdrawals", "ar": "أرباحك وطلبات السحب"},
+  "t2_edit_sub": {"en": "Your personal details and the verification documents our team reviews.", "ar": "بياناتك الشخصية ومستندات التحقق اللي تراجعها الإدارة."}
 }

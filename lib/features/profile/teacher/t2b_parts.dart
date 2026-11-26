@@ -63,13 +63,13 @@ class _HeroPill extends StatelessWidget {
     final radius = BorderRadius.circular(AppRadius.pill);
     final n = item.count ?? 0;
     return Semantics(
+      key: item.key == null ? null : ValueKey<String>(item.key!),
       button: true,
       selected: selected,
       label: n > 0 ? '${item.label}, $n' : item.label,
       excludeSemantics: true,
       child: AppJelly(
         child: AnimatedContainer(
-          key: item.key == null ? null : ValueKey(item.key),
           duration: AppMotion.of(context).base,
           curve: AppMotion.curve,
           decoration: BoxDecoration(

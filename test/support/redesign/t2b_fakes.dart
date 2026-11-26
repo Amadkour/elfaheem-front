@@ -10,7 +10,7 @@ import 't2_fakes.dart';
 
 /// The teacher signed in over FakeApi: T2's routes, [extra] on top, an empty answer for anything else.
 Future<void> t2bSetUp({Map<String, FakeHandler>? extra}) async {
-  await t2SetUp(FakeApi({...t2Routes(), 'GET /api/v1/live/meeting/*': (_) => <dynamic>[], ...?extra},
+  await t2SetUp(FakeApi({...t2Routes(), 'GET /api/v1/live/meeting/*': (_) => <dynamic>[], 'POST /api/v1/auth/teacher-documents/overview': (_) => t2bDocs(), ...?extra},
       latency: Duration.zero, fallback: (_) => <String, dynamic>{}));
 }
 
@@ -107,3 +107,35 @@ Map<String, dynamic> t2bMeeting() {
 }
 
 Future<dynamic> t2bWeekly(String path) async => {'all_courses': const []};
+
+/// The teacher's verification documents (Tea2Account docs): two approved, one in review, one returned.
+Map<String, dynamic> t2bDocs() {
+  Map<String, dynamic> req(int id, String ar, String en, String icon, String? status, {String? file, String? reason}) => {
+        'type_id': id,
+        'title': _t(ar, en),
+        'icon_name': icon,
+        'is_required': true,
+        if (status != null)
+          'document': {
+            'id': id,
+            'required_document_type_id': id,
+            'title': _t(ar, en),
+            'file_url': 'https://example.test/$id.pdf',
+            'file_name': file,
+            'file_type': 'pdf',
+            'status': status,
+            'rejection_reason': reason,
+            'uploaded_at': '2026-09-02T09:00:00',
+          },
+      };
+  return {
+    'requirements': [
+      req(1, 'الهوية الوطنية', 'National ID', 'badge', 'approved', file: 'national_id.pdf'),
+      req(2, 'شهادة البكالوريوس', "Bachelor's degree", 'school', 'approved', file: 'bachelor_maths.pdf'),
+      req(3, 'الرخصة المهنية للمعلمين', "Teacher's licence", 'workspace_premium', 'pending', file: 'licence.jpg'),
+      req(4, 'شهادة الخبرة', 'Experience letter', 'description', 'rejected',
+          file: 'experience.pdf', reason: _t('الختم غير واضح، ارفع نسخة أوضح.', 'The stamp is not clear; upload a clearer copy.')),
+    ],
+    'custom_documents': const [],
+  };
+}
