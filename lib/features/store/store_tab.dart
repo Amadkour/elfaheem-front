@@ -319,6 +319,7 @@ class StoreBrowseView extends StatelessWidget {
     final hero = AppHero(
       title: 'sd_store_title'.tr,
       icon: Icons.local_mall_outlined,
+      wipe: false, // the cards are dealt in (M5): the screen's one hero move
       bottom: Row(children: [
         Expanded(
           child: AppSearchField(

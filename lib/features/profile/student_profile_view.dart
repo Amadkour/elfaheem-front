@@ -68,6 +68,8 @@ class StudentProfileHero extends StatelessWidget {
           ),
       ],
       icon: Icons.person_outline_rounded,
+      // the shortcut cards are dealt in (M5): the screen's one hero move
+      wipe: false,
     );
   }
 }

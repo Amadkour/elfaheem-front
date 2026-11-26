@@ -206,6 +206,7 @@ class TeachersBrowseView extends StatelessWidget {
     final hero = AppHero(
       title: 'sd_teachers_hero'.tr,
       icon: Icons.person_search_outlined,
+      wipe: false, // the cards are dealt in (M5): the screen's one hero move
       // the filter button sits beside the search, never at the end of the scrolling chips (off-screen in RTL, D-1654)
       bottom: LayoutBuilder(builder: (context, box) {
         final search = AppSearchField(

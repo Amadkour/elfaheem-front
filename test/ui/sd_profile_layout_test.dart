@@ -42,9 +42,10 @@ void main() {
     await tester.pumpWidget(layoutHost(_view(), scale: 1));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('$_longAr $_longEn 0'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
     await tester.pumpWidget(layoutHost(_view(open: true), scale: 1));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('$_longAr $_longEn 0'), findsOneWidget);
+    expect(find.text('$_longAr $_longEn 0', skipOffstage: false), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 

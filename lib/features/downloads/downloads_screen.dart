@@ -252,6 +252,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             title: empty ? 'sd_dl_empty_title'.tr : offlineT('dl_title'),
             subtitle: empty ? 'sd_dl_empty_sub'.tr : 'sd_dl_sub'.tr,
             icon: Icons.download_rounded,
+            wipe: false, // the rows are dealt in (M5)
           ),
           children: [
             ?status,

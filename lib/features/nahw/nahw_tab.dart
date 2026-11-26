@@ -164,8 +164,9 @@ class NahwLevelsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final list = levels;
-    final head = Row(children: [
-      Expanded(child: Semantics(header: true, child: Text('sd_nahw_lessons'.tr, style: AppType.section(context)))),
+    // a narrow phone puts the pill under the heading
+    final head = Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, spacing: AppSpace.sm, runSpacing: AppSpace.xs, children: [
+      Semantics(header: true, child: Text('sd_nahw_lessons'.tr, style: AppType.section(context))),
       if (mine != null)
         AppTabs(
           key: const ValueKey('nahw.mine'),

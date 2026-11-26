@@ -581,10 +581,12 @@ class _TierRow extends StatelessWidget {
         Row(children: [
           Expanded(child: Text(tier.rewardText, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context))),
           const SizedBox(width: AppSpace.xs),
-          if (tier.issued)
-            AppStatusBadge(label: t('وصلتك', 'Received'), tone: AppTone.success, icon: Icons.check_rounded, dense: true)
-          else
-            Text(label, style: AppType.meta(context)),
+          // the tag or the count never pushes the reward off a narrow phone
+          Flexible(
+            child: tier.issued
+                ? AppStatusBadge(label: t('وصلتك', 'Received'), tone: AppTone.success, icon: Icons.check_rounded, dense: true)
+                : Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.end, style: AppType.meta(context)),
+          ),
         ]),
         const SizedBox(height: AppSpace.xxs),
         AppFill(
