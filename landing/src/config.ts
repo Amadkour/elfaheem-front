@@ -7,6 +7,9 @@ export type Lang = (typeof LANGS)[number];
 // optional absolute origin (https://nextbrain.site, no trailing slash) for a deploy on another host (Firebase Hosting).
 export const API = `${import.meta.env.PUBLIC_LANDING_API_BASE ?? ''}/api/api/v1/public/landing`;
 export const STORAGE_KEY = 'nb_lang';
+// The teacher page's demand card (redesign phase 7, docs/redesign/api/demand.md): a public, cached aggregate per subject.
+// The card is drawn only when this answers `available: true`; any error, 404 or `available: false` hides it.
+export const DEMAND_API = `${import.meta.env.PUBLIC_LANDING_API_BASE ?? ''}/api/api/v1/public/teacher-demand`;
 
 /** JSON for an inline <script>: "<" escaped so a value can never close the tag. */
 export const jsonForScript = (v: unknown): string => JSON.stringify(v).replace(/</g, String.fromCharCode(92) + 'u003c');

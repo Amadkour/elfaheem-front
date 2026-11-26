@@ -48,4 +48,40 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/download/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/en/download/"/>
   </url>
+  <url>
+    <loc>https://nextbrain.site/ar/students/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/students/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/students/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/ar/students/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/en/students/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/students/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/students/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/ar/students/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/ar/parents/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/parents/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/parents/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/ar/parents/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/en/parents/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/parents/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/parents/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/ar/parents/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/ar/teachers/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/teachers/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/teachers/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/ar/teachers/"/>
+  </url>
+  <url>
+    <loc>https://nextbrain.site/en/teachers/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://nextbrain.site/ar/teachers/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://nextbrain.site/en/teachers/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://nextbrain.site/ar/teachers/"/>
+  </url>
 </urlset>
