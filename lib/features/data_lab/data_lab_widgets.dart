@@ -16,12 +16,12 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart';
-import 'package:flutter_education_app/design/app_blocks.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_badges.dart' show appWashOn;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer;
+import 'package:flutter_education_app/design/app_hero.dart';
 import 'package:flutter_education_app/design/app_inputs.dart' show AppFieldLabel, appFieldDecoration, appFieldTextStyle;
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -97,81 +97,9 @@ class DlCard extends StatelessWidget {
   }
 }
 
-/// The page's hero: a sky block (an information surface, D-613) with the title in the editorial headline, a paper
-/// plate for the icon and up to three key figures. The one memorable thing of the page.
-class DlHero extends StatelessWidget {
-  const DlHero({super.key, required this.title, required this.subtitle, required this.icon, this.stats = const []});
-
-  final String title, subtitle;
-  final IconData icon;
-  final List<DlHeroStat> stats;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final ink = AppBlockColors.of(context, AppBlockTone.sky);
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.sm),
-      child: AppBlock(
-        tone: AppBlockTone.sky,
-        hero: true,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: AppType.headline(context).copyWith(color: ink.ink)),
-                const SizedBox(height: AppSpace.xxs),
-                Text(subtitle, style: AppType.body(context).copyWith(color: ink.muted)),
-              ]),
-            ),
-            const SizedBox(width: AppSpace.sm),
-            Container(
-              width: AppTouch.min,
-              height: AppTouch.min,
-              decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.control)),
-              child: Icon(icon, color: ink.accentInk(c.primary), size: AppIconSize.lg),
-            ),
-          ]),
-          if (stats.isNotEmpty) ...[
-            const SizedBox(height: AppSpace.md),
-            Row(children: [
-              for (var i = 0; i < stats.length; i++) ...[
-                if (i > 0) const SizedBox(width: AppSpace.xs),
-                Expanded(child: stats[i]),
-              ],
-            ]),
-          ],
-        ]),
-      ),
-    );
-  }
-}
-
-/// One key figure on the hero block: a paper plate, the number rolls in once (AppOdometer), the label under it.
-class DlHeroStat extends StatelessWidget {
-  const DlHeroStat({super.key, required this.icon, required this.value, required this.label});
-
-  final IconData icon;
-  final String value, label;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xs),
-      decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll),
-      child: Column(children: [
-        Icon(icon, color: appInk(context, c.primary), size: AppIconSize.sm),
-        const SizedBox(height: AppSpace.xxs),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: AppOdometer(value, memoryKey: 'herostat:$label', style: AppType.figure(context).copyWith(color: c.textDark)),
-        ),
-        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-      ]),
-    );
-  }
-}
+/// The page's hero is the kit's (KIT_SPEC §5.2): the old names stay for the Data Lab's callers.
+typedef DlHero = AppHero;
+typedef DlHeroStat = AppHeroStat;
 
 /// Tonal pill button (Import / Export / New column …): the tone's tint with its readable ink, radius `control`,
 /// like `AppButton.tonal`; presses in.

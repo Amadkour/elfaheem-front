@@ -99,12 +99,15 @@ void main() {
     ])));
     await tester.pump(const Duration(milliseconds: 100));
     final c = tester.element(find.byType(AppBlock).first).colors;
-    for (final m in find.byType(AppBlock).evaluate()) {
-      final mat = tester.widget<Material>(find.descendant(of: find.byWidget(m.widget), matching: find.byType(Material)).first);
-      expect(mat.color, c.blockSky);
-    }
-    expect(tester.widget<Text>(find.text('التالي')).style!.color, c.blockInk);
-    expect(tester.widget<Text>(find.text('الحصص')).style!.color, c.blockMuted(c.blockSky));
+    // the header keeps its explicit tone; the hero card is drawn on the redesign hero surface (KIT_SPEC 5.2) and its
+    // parts take the forest block's on-hero inks
+    final header = find.byType(AppBlock).first;
+    final mat = tester.widget<Material>(find.descendant(of: header, matching: find.byType(Material)).first);
+    expect(mat.color, c.blockSky);
+    expect(find.descendant(of: find.byType(HomeHeroCard), matching: find.byType(AppHeroSurface)), findsOneWidget);
+    final forest = AppBlockColors.of(tester.element(find.text('التالي')), AppBlockTone.forest);
+    expect(tester.widget<Text>(find.text('التالي')).style!.color, forest.ink);
+    expect(tester.widget<Text>(find.text('الحصص')).style!.color, forest.muted);
     expect(find.byType(AppTilt), findsNWidgets(2), reason: 'the tilt of D-583 stays on both hero blocks');
   });
 
