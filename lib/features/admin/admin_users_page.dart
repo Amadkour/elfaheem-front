@@ -20,6 +20,8 @@ import 'admin_filter_models.dart';
 import 'admin_filters.dart';
 import 'admin_list.dart';
 import 'admin_page.dart';
+import 'adm_kit.dart' show admRole;
+import 'sup/sup_kit.dart';
 import 'admin_table_export.dart' show adminUsersExport, exportPagedList;
 import 'admin_bulk.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -46,7 +48,7 @@ import 'package:flutter_education_app/design/app_badges.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_data_table.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppChoiceChip, AppDropdown, AppEmpty, AppListSkeleton, showAppNotice;
+import 'package:flutter_education_app/design/app_kit.dart' show AppChoiceChip, AppDropdown, AppEmpty, AppListSkeleton, AppWidth, showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_username.dart' show usernameFrom;
 import '../auth/username.dart' show UsernameError;
@@ -55,7 +57,10 @@ import 'admin_username_field.dart';
 import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
 class AdminUsersPage extends StatelessWidget {
-  const AdminUsersPage({super.key, required this.role, this.embedded = false});
+  const AdminUsersPage({super.key, required this.role, this.embedded = false, this.autoAdd = false});
+
+  /// Opens the new-account form as the page opens (the home's "Add a student" shortcut).
+  final bool autoAdd;
 
   /// 'student' | 'teacher'
   final String role;
@@ -67,16 +72,17 @@ class AdminUsersPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AdminUsersProvider(role)..refresh(),
-      child: _UsersView(role: role, embedded: embedded),
+      child: _UsersView(role: role, embedded: embedded, autoAdd: autoAdd),
     );
   }
 }
 
 class _UsersView extends StatefulWidget {
-  const _UsersView({required this.role, required this.embedded});
+  const _UsersView({required this.role, required this.embedded, this.autoAdd = false});
 
   final String role;
   final bool embedded;
+  final bool autoAdd;
 
   @override
   State<_UsersView> createState() => _UsersViewState();
@@ -132,6 +138,11 @@ class _UsersViewState extends State<_UsersView> {
   void initState() {
     super.initState();
     _panel.addListener(_panelChanged);
+    if (widget.autoAdd) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openForm(context, context.read<AdminUsersProvider>());
+      });
+    }
   }
 
   void _panelChanged() {
@@ -312,22 +323,32 @@ class _UsersViewState extends State<_UsersView> {
       loadingMore: p.loadingMore,
     );
 
-    final page = AdminPage(
+    // redesign A1 (AdmStudents / AdmTeachers list): the role's hero with the count, Export and Add, then the table
+    final page = SupPage(
+      role: admRole(context),
       helpPageId: 'admin.users',
       title: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
-      icon: isStudent ? Icons.school_rounded : Icons.person_pin_rounded,
-      subtitle: wide && p.loaded ? _totalText(p.total) : null,
+      kicker: isStudent ? 'admin_students'.tr : 'a1_teachers'.tr,
+      headline: p.loaded ? _totalText(p.total) : (isStudent ? 'admin_students'.tr : 'admin_teachers'.tr),
+      line: isStudent ? 'a1_students_line'.tr : 'a1_teachers_line'.tr,
       showBack: !widget.embedded,
-      maxWidth: double.infinity,
+      width: AppWidth.full,
       onRefresh: p.refresh,
-      primaryAction: AppButton.primary(
-        key: const ValueKey('users_add'),
-        label: isStudent ? 'admin_add_student'.tr : 'admin_add_teacher'.tr,
-        icon: Icons.person_add_alt_1_rounded,
-        onPressed: () => _openForm(context, p),
-      ),
+      actions: [
+        SupHeroButton(
+          label: t('تصدير', 'Export'),
+          icon: Icons.download_rounded,
+          onTap: p.rows.isEmpty ? null : () => exportPagedList(context, p, (rows) => adminUsersExport(widget.role, rows)),
+        ),
+        AppButton.hot(
+          key: const ValueKey('users_add'),
+          label: isStudent ? 'admin_add_student'.tr : 'admin_add_teacher'.tr,
+          icon: Icons.person_add_alt_1_rounded,
+          onPressed: () => _openForm(context, p),
+        ),
+      ],
       body: Padding(
-        padding: AdminPage.bodyPadding(context),
+        padding: SupPage.bodyPadding(context),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const PendingAccountsBanner(), // D-1121: new accounts waiting for approval (hidden at 0)
           AdminActiveFilterChips(host: p, specs: specs, sort: _userSort, quickKeys: const {'status'}),

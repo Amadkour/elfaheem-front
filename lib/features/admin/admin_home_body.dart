@@ -1,21 +1,18 @@
-// lib/features/admin/admin_home_body.dart — the super admin's home, presentational (plain values, no network),
-// Track B.2, laid out as the premium dashboard (D-631). The page (admin_overview_page.dart) feeds it ONE payload
-// (AdminHomeData) and the callbacks.
+// lib/features/admin/admin_home_body.dart — the admin's and the super admin's home, presentational (plain values,
+// no network). The page (admin_overview_page.dart) feeds it ONE payload (AdminHomeData) and the callbacks.
 //
-// Desktop (from Breakpoints.desktop):
-//   1. hero + pulse            AppGreetingHero (centered: time, initial in a ring, greeting, today's date + how much
-//                              waits, the global search as its one action) beside the "Activity & health" section
-//                              card (live events 24 h · failed jobs · live sessions · complaints, a live-sessions line)
-//   2. figures                 AppKpiGrid of four AppStatCards: revenue 30 d (or the income on an older server) ·
-//                              students · teachers · courses, each opening its tab or page
-//   3. work + side column      "Needs you" (alerts[] + pending transfers / payouts / subscriptions / org approvals /
-//                              my to-dos — a count the alerts already carry is drawn ONCE), sign-ups vs enrollments
-//                              with 7 / 14 / 30-day tabs (view state only), the two donuts side by side; beside them
-//                              subscribers, organizations (AppRingStat: active of all), the AI assistant card
-//                              (Track E.7, when `rag.assistant` is on) and "Recently opened"
-// Phone: the hero, the revenue across the width, a 2×2 grid of the people / courses / subscribers cards, then one
-// column: needs you, organizations, health, the chart, the donuts, the assistant, recently opened.
+// Redesign A1 (the reference's AdmHome overview and SupHome home):
+//   hero        the role's gradient band: the greeting as the gold kicker, ONE headline (how many decisions wait),
+//               today's date, the search pill (the command palette), "Activity and health" as a glass panel (beside
+//               the text on desktop, under the search on phones) and four glass figures with their change line.
+//               The super admin's hero carries "View as user" and "Income breakdown".
+//   banner      a platform warning the server sends without a count (SMS codes off …) with its Details link
+//   body        "What waits for your decision now" (alerts[] + pending transfers / payouts / subscriptions / org
+//               approvals / my to-dos, a count the alerts already carry drawn ONCE; one column with Review buttons,
+//               two columns for the super admin on desktop) · shortcuts · sign-ups vs enrollments (7 / 14 / 30 days,
+//               view state only) · the donuts · organizations · the AI assistant (Track E.7) · recently opened.
 // A block the server does not send (older server) is left out; nothing crashes. Colours: context.colors only.
+// Motion: M10 on the hero figures, M9 on the buttons, M13 in the chart tabs; nothing loops.
 // Layout test: test/ui/admin_home_layout_test.dart.
 library;
 
@@ -26,18 +23,18 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart' show countText, daysText;
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/design/app_responsive.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 
 import '../org/org_common.dart' show orgTypeLabels;
+import 'adm_kit.dart';
 import 'admin_common.dart' show t;
 import 'admin_global_search.dart';
 import 'admin_home_data.dart';
 import 'admin_recents.dart';
 import 'admin_services_hub.dart' show AdminService, AdminServiceGroup, adminServiceGroups;
+import 'sup/sup_kit.dart' show SupHeroButton;
 import '../auth/auth_provider.dart' show MyAuthProvider;
-import 'admin_models.dart' show moneyByCurrency;
 
 /// What the home can open. Every callback is optional (null in tests and previews).
 class AdminHomeActions {
@@ -55,12 +52,24 @@ class AdminHomeActions {
     this.openIncome,
     this.openJobs,
     this.openAlert,
+    this.openViewAs,
+    this.openAnalytics,
+    this.addStudent,
+    this.sendMessage,
+    this.exportData,
+    this.addCourse,
   });
 
   final VoidCallback? openStudents, openCourses, openTeachers;
   final VoidCallback? openTransfers, openPayouts, openSubscriptions, openOrganizations;
   final VoidCallback? openDataLab, openAssistant, openFeatures, openIncome, openJobs;
   final void Function(AdminAlert alert)? openAlert;
+
+  /// The super admin's hero buttons and the analytics link.
+  final VoidCallback? openViewAs, openAnalytics;
+
+  /// The shortcuts card.
+  final VoidCallback? addStudent, sendMessage, exportData, addCourse;
 }
 
 /// Translation key of an alert's title (`alerts[].key`); an unknown key reads as itself.
@@ -119,6 +128,7 @@ class AdminHomeBody extends StatelessWidget {
     this.todoTabKey = AttentionTabs.adminSupport,
     this.assistant,
     this.search,
+    this.updatedAt,
   });
 
   final AdminHomeData data;
@@ -135,237 +145,281 @@ class AdminHomeBody extends StatelessWidget {
   /// The RAG monitoring summary (null: an older server, a failed call, or the assistant switched off → no card).
   final AdminAssistantHealth? assistant;
 
-  /// The search field under the greeting; default: [AdminSearchLauncher] (opens the global search).
+  /// The search pill on the hero; default: [AdminSearchLauncher] in its glass look (opens the global search).
   final Widget? search;
+
+  /// When the overview was loaded: "Updated a minute ago" on the hero.
+  final DateTime? updatedAt;
 
   static final _maxWidth = AppWidth.wide.max;
 
+  /// A platform warning the server sends without a count: drawn as the banner under the hero, not as a queue row.
+  static bool isBannerAlert(AdminAlert a) => a.key == 'otp_provider_unconfigured';
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, box) {
-      final wide = box.maxWidth >= Breakpoints.desktop;
-      final g = AppSpace.gutter(box.maxWidth);
-      final showAi = assistant != null && !AppConfig.disableList.contains('rag.assistant');
-      final hero = AppReveal(
-        index: 0,
-        group: 'admin_home',
-        child: _Greeting(
+    final role = admRole(context);
+    final sup = role == AppRoleAccent.superAdmin;
+    return AppAreaScope.role(
+      role: role,
+      budget: false,
+      child: LayoutBuilder(builder: (context, box) {
+        final wide = box.maxWidth >= Breakpoints.desktop;
+        final g = AppSpace.gutter(box.maxWidth);
+        final showAi = assistant != null && !AppConfig.disableList.contains('rag.assistant');
+        final hero = _HomeHero(
           name: name,
           data: data,
           pendingPayouts: pendingPayouts,
-          centered: wide,
-          search: search ?? const AdminSearchLauncher(),
-        ),
-      );
-      final pulse = _Health.has(data) ? _Health(data: data, actions: actions) : null;
-      final needs = _NeedsYou(data: data, pendingPayouts: pendingPayouts, actions: actions, todoTabKey: todoTabKey);
-      final orgs = data.hasOrganizations ? _OrgsRing(data: data, actions: actions) : null;
-      final subscribers = AppStatCard(
-        label: 'admin_active_subscribers'.tr,
-        value: appCompactNumber(data.activeSubscriptions),
-        icon: Icons.card_membership_rounded,
-        tone: AppBlockTone.sage,
-        onTap: actions.openSubscriptions,
-      );
-      final ai = showAi
-          ? AdminAssistantCard(health: assistant!, onOpen: AppConfig.disableList.contains('rag.admin') ? null : actions.openAssistant)
-          : null;
-      final notices = <Widget>[
-        if (notice != null) ...[
-          AppBanner(icon: Icons.cloud_off_rounded, text: notice!, color: context.colors.warning),
-          AppSpace.gapMd,
-        ],
-      ];
-      Widget column(List<Widget?> l) {
-        final shown = l.whereType<Widget>().toList();
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (var i = 0; i < shown.length; i++) ...[if (i > 0) AppSpace.gapLg, shown[i]],
-        ]);
-      }
+          actions: actions,
+          superAdmin: sup,
+          updatedAt: updatedAt,
+          search: search ?? const AdminSearchLauncher(glass: true),
+        );
+        final banners = <Widget>[
+          if (notice != null) AppBanner(icon: Icons.cloud_off_rounded, text: notice!, color: context.colors.warning),
+          for (final a in data.alerts.where(isBannerAlert))
+            AppBanner(
+              icon: Icons.warning_amber_rounded,
+              text: sup ? 'a1_otp_off_sup'.tr : 'a1_otp_off'.tr,
+              color: context.colors.warning,
+              action: actions.openAlert == null
+                  ? null
+                  : TextButton(onPressed: () => actions.openAlert!(a), child: Text(sup ? 'a1_set_provider'.tr : 'a1_details'.tr)),
+            ),
+        ];
+        final needs = _NeedsYou(
+          data: data,
+          pendingPayouts: pendingPayouts,
+          actions: actions,
+          todoTabKey: todoTabKey,
+          columns: sup && wide ? 2 : 1,
+        );
+        final shortcuts = _Shortcuts.has(actions) ? _Shortcuts(actions: actions) : null;
+        final orgs = data.hasOrganizations ? _OrgsRing(data: data, actions: actions) : null;
+        final ai = showAi
+            ? AdminAssistantCard(health: assistant!, onOpen: AppConfig.disableList.contains('rag.admin') ? null : actions.openAssistant)
+            : null;
+        final chart = data.hasSeries ? _ActivityChart(data: data, onAnalytics: actions.openAnalytics) : null;
+        final donuts = data.hasSeries || data.hasOrganizations ? _Donuts(data: data, sideBySide: wide) : null;
 
-      final List<Widget> sections;
-      if (wide) {
-        // desktop: the greeting beside the platform's pulse, the four figures, then the work (needs you + charts)
-        // beside the side column (subscribers, organizations, the assistant, recently opened)
-        sections = [
-          if (pulse != null)
-            IntrinsicHeight(
-              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Expanded(flex: 5, child: hero),
+        Widget column(List<Widget?> l) {
+          final shown = l.whereType<Widget>().toList();
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (var i = 0; i < shown.length; i++) ...[if (i > 0) AppSpace.gapLg, shown[i]],
+          ]);
+        }
+
+        final Widget body = wide
+            ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(flex: 7, child: column([needs, chart, donuts])),
                 AppSpace.gapLg,
-                Expanded(flex: 6, child: pulse),
-              ]),
-            )
-          else
+                Expanded(flex: 4, child: column([shortcuts, const _Recents(), ai, orgs])),
+              ])
+            : column([needs, shortcuts, chart, orgs, donuts, ai, const _Recents()]);
+
+        return Material(
+          type: MaterialType.transparency,
+          child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
             hero,
-          AppSpace.gapLg,
-          ...notices,
-          _Kpis(data: data, actions: actions, wide: true),
-          AppSpace.gapLg,
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(
-              flex: 7,
-              child: column([
-                needs,
-                if (data.hasSeries) _ActivityChart(data: data),
-                if (data.hasSeries || data.hasOrganizations) _Donuts(data: data, sideBySide: true),
-              ]),
+            Padding(
+              padding: EdgeInsets.fromLTRB(g, AppSpace.md, g, AppSpace.xl),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: _maxWidth),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    for (final b in banners) ...[b, AppSpace.gapMd],
+                    body,
+                  ]),
+                ),
+              ),
             ),
-            AppSpace.gapLg,
-            Expanded(flex: 4, child: column([subscribers, orgs, ai, const _Recents()])),
-          ]),
-        ];
-      } else {
-        // phone / tablet: the hero, the figures as a 2-up grid of tappable cards, then one calm column
-        sections = [
-          hero,
-          AppSpace.gapLg,
-          ...notices,
-          _Kpis(data: data, actions: actions, wide: false, extra: subscribers),
-          AppSpace.gapLg,
-          column([
-            needs,
-            orgs,
-            pulse,
-            if (data.hasSeries) _ActivityChart(data: data),
-            if (data.hasSeries || data.hasOrganizations) _Donuts(data: data, sideBySide: false),
-            ai,
-            const _Recents(),
-          ]),
-        ];
-      }
-      return ListView(
-        padding: EdgeInsets.fromLTRB(g, AppSpace.md, g, AppSpace.xl),
-        children: [
-          Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: _maxWidth),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: sections),
-            ),
-          ),
-        ],
-      );
-    });
+          ],
+        ),
+        );
+      }),
+    );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Greeting
+// 1. Hero
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// The home's one hero (the forest greeting card, D-631): the time, the admin's initial in a ring, "Good morning,
-/// Ahmed" in the display face, today's date with how much waits, and the global search as its one action.
-class _Greeting extends StatelessWidget {
-  const _Greeting({required this.name, required this.data, required this.pendingPayouts, required this.centered, required this.search});
+/// The headline: how many decisions wait (the super admin's says the platform is running first).
+String adminHomeHeadline(int waiting, {required bool superAdmin}) {
+  if (waiting <= 0) return superAdmin ? 'a1_home_clear_sup'.tr : 'a1_home_clear'.tr;
+  return superAdmin
+      ? countText(waiting,
+          ar1: 'المنصة شغالة تمام، وشي واحد ينتظر قرارك',
+          ar2: 'المنصة شغالة تمام، وشيئين ينتظرون قرارك',
+          arFew: 'المنصة شغالة تمام، و{n} أشياء تنتظر قرارك',
+          arMany: 'المنصة شغالة تمام، و{n} شي ينتظر قرارك',
+          en1: 'The platform is running well, and one thing waits for you',
+          en: 'The platform is running well, and {n} things wait for you')
+      : countText(waiting,
+          ar1: 'عندك طلب واحد ينتظر قرارك',
+          ar2: 'عندك طلبين ينتظرون قرارك',
+          arFew: 'عندك {n} طلبات تنتظر قرارك',
+          arMany: 'عندك {n} طلب ينتظر قرارك',
+          en1: 'One request waits for your decision',
+          en: '{n} requests wait for your decision');
+}
+
+/// The home's one hero: greeting kicker, the headline, the date, the search pill, "Activity and health" and four
+/// glass figures; the super admin's two hero buttons.
+class _HomeHero extends StatelessWidget {
+  const _HomeHero({
+    required this.name,
+    required this.data,
+    required this.pendingPayouts,
+    required this.actions,
+    required this.superAdmin,
+    required this.search,
+    this.updatedAt,
+  });
+
   final String name;
   final AdminHomeData data;
   final int pendingPayouts;
-  final bool centered;
+  final AdminHomeActions actions;
+  final bool superAdmin;
   final Widget search;
+  final DateTime? updatedAt;
+
+  List<AppHeroStat> _stats() {
+    final spark = data.hasSeries;
+    final main = data.mainCurrency;
+    String? pct(double? d) => d == null || d == 0 ? null : '${d > 0 ? '+' : ''}${d.round()}%';
+    final revenue = spark && main != null
+        ? AppHeroStat(
+            value: _money(data.revenue30ByCurrency[main] ?? 0, main),
+            label: 'admin_home_revenue_30d'.tr,
+            delta: pct(data.revenueDelta),
+            onTap: actions.openIncome,
+          )
+        : null;
+    final students = AppHeroStat(
+      value: appCompactNumber(superAdmin ? data.users : data.students),
+      label: superAdmin ? 'a1_all_users'.tr : 'admin_students'.tr,
+      delta: spark && data.signups30 > 0 ? '+${appCompactNumber(data.signups30)}' : null,
+      onTap: actions.openStudents,
+    );
+    final teachers = AppHeroStat(
+      value: appCompactNumber(data.teachers),
+      label: 'a1_teachers'.tr,
+      onTap: actions.openTeachers,
+    );
+    final courses = AppHeroStat(
+      value: appCompactNumber(data.courses),
+      label: 'a1_courses'.tr,
+      onTap: actions.openCourses,
+    );
+    final subscribers = AppHeroStat(
+      value: appCompactNumber(data.activeSubscriptions),
+      label: 'admin_active_subscribers'.tr,
+      onTap: actions.openSubscriptions,
+    );
+    return superAdmin
+        ? [?revenue, students, teachers, courses, if (revenue == null) subscribers]
+        : [students, teachers, courses, subscribers];
+  }
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
       valueListenable: AppTime.version,
       builder: (context, _, _) {
-        final who = name.trim();
+        final wide = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
         final waiting = data.queueTotal(pendingPayouts);
-        final date = AppTime.date(DateTime.now().toUtc(), pattern: 'EEEE d MMMM y');
-        final queue = waiting > 0
-            ? countText(waiting,
-                ar1: 'أمر واحد بانتظارك',
-                ar2: 'أمران بانتظارك',
-                arFew: '{n} أمور بانتظارك',
-                arMany: '{n} أمراً بانتظارك',
-                en1: '1 item waits for you',
-                en: '{n} items wait for you')
-            : 'admin_home_all_clear'.tr;
-        return AppGreetingHero(
-          greeting: HomeHeader.greetingLine(who),
-          summary: '$date · $queue',
-          initials: who.isEmpty ? null : who.characters.first.toUpperCase(),
-          centered: centered,
-          footer: search,
+        final date = AppTime.date(DateTime.now().toUtc(), pattern: 'EEEE d MMMM');
+        final at = updatedAt;
+        final line = [date, if (at != null) appUpdatedText(at, DateTime.now())].join('، ');
+        final health = _HealthPanel.has(data) ? _HealthPanel(data: data, actions: actions) : null;
+        final buttons = <Widget>[
+          if (superAdmin && actions.openViewAs != null)
+            SupHeroButton(label: 'view_as_user'.tr, icon: Icons.visibility_outlined, onTap: actions.openViewAs),
+          if (superAdmin && actions.openIncome != null)
+            SupHeroButton(label: 'a1_income_breakdown'.tr, icon: Icons.bar_chart_rounded, onTap: actions.openIncome),
+        ];
+        final stats = _stats();
+        final statRow = LayoutBuilder(builder: (context, box) {
+          // one row on wide heroes; two per row on a phone
+          final per = box.maxWidth >= Breakpoints.mobile ? stats.length : 2;
+          final rows = <Widget>[];
+          for (var i = 0; i < stats.length; i += per) {
+            rows.add(Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (var j = i; j < i + per; j++) ...[
+                if (j > i) AppSpace.gapXs,
+                Expanded(child: j < stats.length ? stats[j] : const SizedBox.shrink()),
+              ],
+            ]));
+          }
+          return Column(mainAxisSize: MainAxisSize.min, children: [
+            for (var i = 0; i < rows.length; i++) ...[if (i > 0) AppSpace.gapXs, rows[i]],
+          ]);
+        });
+        return AppHero(
+          kicker: HomeHeader.greetingLine(name.trim()),
+          title: adminHomeHeadline(waiting, superAdmin: superAdmin),
+          subtitle: line,
+          wipe: false,
+          overlap: false,
+          // the search pill sits under the headline, beside "Activity and health" on wide screens
+          actions: [
+            wide ? ConstrainedBox(constraints: BoxConstraints(maxWidth: AppWidth.form.max), child: search) : search,
+          ],
+          trailing: wide && health != null ? health : null,
+          bottom: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+            if (buttons.isNotEmpty) ...[
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: buttons),
+              AppSpace.gapMd,
+            ],
+            if (!wide && health != null) ...[health, AppSpace.gapMd],
+            statRow,
+          ]),
         );
       },
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. KPIs
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// The platform in four figures, from the numbers the overview already carries: the revenue of the last 30 days
-/// (or the income after discounts on an older server), students, teachers, courses — each opening its tab or page.
-/// Colour by meaning: money and courses in the primary, people in peach, teachers in sky.
-class _Kpis extends StatelessWidget {
-  const _Kpis({required this.data, required this.actions, required this.wide, this.extra});
+/// The platform's pulse on the hero: live events 24 h · failed jobs 24 h · live classes 30 days · complaints 30 days.
+class _HealthPanel extends StatelessWidget {
+  const _HealthPanel({required this.data, required this.actions});
   final AdminHomeData data;
   final AdminHomeActions actions;
 
-  /// Desktop: one row of four. Phone: the money card across the width (an amount never fits half a phone), then
-  /// the people and courses — and [extra], the subscribers — as a 2×2 grid of tappable cards.
-  final bool wide;
-  final Widget? extra;
+  /// Whether the overview carries anything to show here (an older server sends none of it).
+  static bool has(AdminHomeData d) => d.hasRealtime || d.hasAlerts || d.hasSeries;
 
   @override
   Widget build(BuildContext context) {
-    final spark = data.hasSeries;
-    final main = data.mainCurrency;
-    final cards = <Widget>[
-      if (spark && main != null)
-        AppStatCard(
-          label: 'admin_home_revenue_30d'.tr,
-          value: _money(data.revenue30ByCurrency[main] ?? 0, main),
-          icon: Icons.payments_rounded,
-          tone: AppBlockTone.emerald,
-          delta: data.revenueDelta == null ? null : data.revenueDelta! / 100,
-          footer: 'admin_home_vs_prev_half'.tr,
-          onTap: actions.openIncome,
-        )
-      else if (data.incomeByCurrency.isNotEmpty)
-        AppStatCard(
-          label: 'admin_course_income_after_discounts'.tr,
-          value: moneyByCurrency(data.incomeByCurrency),
-          icon: Icons.payments_rounded,
-          tone: AppBlockTone.emerald,
-          onTap: actions.openIncome,
-        ),
-      AppStatCard(
-        label: 'admin_students'.tr,
-        value: appCompactNumber(data.students),
-        icon: Icons.school_rounded,
-        tone: AppBlockTone.peach,
-        delta: spark && data.signupsDelta != null ? data.signupsDelta! / 100 : null,
-        footer: spark && data.signups30 > 0 ? t('${data.signups30} تسجيلاً جديداً في 30 يوماً', '${data.signups30} new sign-ups in 30 days') : null,
-        onTap: actions.openStudents,
-      ),
-      AppStatCard(
-        label: 'teachers'.tr,
-        value: appCompactNumber(data.teachers),
-        icon: Icons.co_present_rounded,
-        tone: AppBlockTone.sage,
-        onTap: actions.openTeachers,
-      ),
-      AppStatCard(
-        label: 'courses'.tr,
-        value: appCompactNumber(data.courses),
-        icon: Icons.auto_stories_rounded,
-        tone: AppBlockTone.emerald,
-        footer: data.courses > 0 ? t('${data.publishedCourses} منشورة', '${data.publishedCourses} published') : null,
-        onTap: actions.openCourses,
-      ),
-    ];
-    final money = cards.length == 4 ? cards.first : null;
-    if (wide || money == null) {
-      return AppKpiGrid(maxColumns: cards.length + (wide ? 0 : (extra == null ? 0 : 1)), children: [...cards, if (!wide && extra != null) extra!]);
-    }
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      money,
-      AppSpace.gapSm,
-      AppKpiGrid(maxColumns: 2, children: [...cards.skip(1), if (extra != null) extra!]),
-    ]);
+    final failed = data.jobsFailed24h;
+    return AdmHeroPanel(
+      title: 'a1_activity_health'.tr,
+      dot: true,
+      child: AdmFigureGrid(children: [
+        if (data.hasRealtime)
+          AdmGlassFigure(
+            value: data.eventsLast24h == null ? '—' : appCompactNumber(data.eventsLast24h!),
+            label: 'a1_events_24h'.tr,
+          ),
+        if (data.hasAlerts)
+          AdmGlassFigure(
+            value: '$failed',
+            label: 'a1_jobs_failed_24h'.tr,
+            warn: failed > 0,
+            onTap: failed > 0 ? actions.openJobs : null,
+          ),
+        if (data.hasSeries) ...[
+          AdmGlassFigure(value: appCompactNumber(data.liveSessions30), label: 'a1_live_classes_30d'.tr),
+          AdmGlassFigure(value: appCompactNumber(data.complaints30), label: 'a1_complaints_30d'.tr),
+        ],
+      ]),
+    );
   }
 }
 
@@ -390,20 +444,54 @@ class _OrgsRing extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Needs your attention
+// 2. Shortcuts
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _Shortcuts extends StatelessWidget {
+  const _Shortcuts({required this.actions});
+  final AdminHomeActions actions;
+
+  static bool has(AdminHomeActions a) =>
+      a.addStudent != null || a.sendMessage != null || a.exportData != null || a.addCourse != null;
+
+  @override
+  Widget build(BuildContext context) {
+    final tiles = [
+      if (actions.addStudent != null)
+        AppShortcutTile(icon: Icons.person_add_alt_rounded, label: 'a1_add_student'.tr, onTap: actions.addStudent, tone: AppBlockTone.sky),
+      if (actions.sendMessage != null)
+        AppShortcutTile(icon: Icons.send_rounded, label: 'send_message'.tr, onTap: actions.sendMessage, tone: AppBlockTone.sage),
+      if (actions.exportData != null)
+        AppShortcutTile(icon: Icons.download_rounded, label: 'a1_export_data'.tr, onTap: actions.exportData, tone: AppBlockTone.peach),
+      if (actions.addCourse != null)
+        AppShortcutTile(icon: Icons.menu_book_rounded, label: 'a1_add_course'.tr, onTap: actions.addCourse, tone: AppBlockTone.emerald),
+    ];
+    return AppSectionCard(title: 'a1_shortcuts'.tr, child: AppShortcutGrid(maxColumns: 2, children: tiles));
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. What waits for your decision
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _NeedsYou extends StatelessWidget {
-  const _NeedsYou({required this.data, required this.pendingPayouts, required this.actions, required this.todoTabKey});
+  const _NeedsYou({
+    required this.data,
+    required this.pendingPayouts,
+    required this.actions,
+    required this.todoTabKey,
+    this.columns = 1,
+  });
   final AdminHomeData data;
   final int pendingPayouts;
   final AdminHomeActions actions;
   final String todoTabKey;
+  final int columns;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    Color tone(AdminAlert a) => a.isDanger ? c.danger : (a.isWarning ? c.warning : c.primary);
+    final kit = context.colors.kit;
+    KitTone tone(AdminAlert a) => a.isDanger ? kit.live : (a.isWarning ? kit.warn : AppAreaScope.of(context).tone);
     // a kind this app does not know yet (no translation): a plain "New alert", never the raw server key
     String alertTitle(String key) {
       final k = adminAlertTitleKey(key);
@@ -411,46 +499,55 @@ class _NeedsYou extends StatelessWidget {
       return text == k ? t('تنبيه جديد', 'New alert') : text;
     }
 
-    final rows = <_AttentionRow>[
+    // the quiet Review button only where the row has room for it (a one-column list on a wide screen)
+    final review = columns == 1 && MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
+    final rows = <Widget>[
       for (final a in data.alerts)
-        _AttentionRow(
-          icon: adminAlertIcon(a.key),
-          title: a.title ?? alertTitle(a.key),
-          subtitle: adminAlertHint(a),
-          count: a.key == 'otp_provider_unconfigured' || a.isRag ? null : a.count,
-          color: tone(a),
-          onTap: actions.openAlert == null ? null : () => actions.openAlert!(a),
-        ),
+        if (!AdminHomeBody.isBannerAlert(a) && (a.count > 0 || a.isRag))
+          AdmQueueRow(
+            icon: adminAlertIcon(a.key),
+            title: a.title ?? alertTitle(a.key),
+            subtitle: adminAlertHint(a),
+            count: a.isRag ? null : a.count,
+            tone: tone(a),
+            tag: a.isDanger ? 'a1_urgent'.tr : null,
+            review: review,
+            onTap: actions.openAlert == null ? null : () => actions.openAlert!(a),
+          ),
       if (!data.transfersInAlerts && data.pendingTransfers > 0)
-        _AttentionRow(
-          icon: Icons.pending_actions_rounded,
+        AdmQueueRow(
+          icon: Icons.receipt_long_rounded,
           title: 'admin_pending_transfers'.tr,
           count: data.pendingTransfers,
-          color: c.warning, // waiting work is amber (D-630)
+          tone: kit.accent(AppAccent.sky),
+          review: review,
           onTap: actions.openTransfers,
         ),
       if (pendingPayouts > 0)
-        _AttentionRow(
+        AdmQueueRow(
           icon: Icons.account_balance_wallet_rounded,
           title: 'admin_pending_payouts'.tr,
           count: pendingPayouts,
-          color: c.warning,
+          tone: kit.warmTone,
+          review: review,
           onTap: actions.openPayouts,
         ),
       if (data.pendingSubscriptions > 0)
-        _AttentionRow(
+        AdmQueueRow(
           icon: Icons.hourglass_top_rounded,
           title: 'admin_pending_subscriptions'.tr,
           count: data.pendingSubscriptions,
-          color: c.accent2, // gold, a theme tone (D-632), not the borrowed purple
+          tone: kit.accent(AppAccent.grape),
+          review: review,
           onTap: actions.openSubscriptions,
         ),
       if (data.hasOrganizations && !data.orgApprovalsInAlerts && data.orgPendingApproval > 0)
-        _AttentionRow(
+        AdmQueueRow(
           icon: Icons.domain_verification_rounded,
           title: 'admin_home_org_approvals'.tr,
           count: data.orgPendingApproval,
-          color: c.warning,
+          tone: kit.ok,
+          review: review,
           onTap: actions.openOrganizations,
         ),
     ];
@@ -463,89 +560,42 @@ class _NeedsYou extends StatelessWidget {
         final all = [
           ...rows,
           if (todo > 0)
-            _AttentionRow(
+            AdmQueueRow(
               icon: Icons.task_alt_rounded,
               title: 'home_todo'.tr,
               subtitle: 'home_todo_hint'.tr,
               count: todo,
-              color: c.warning, // waiting work is amber (D-630)
+              tone: kit.warn,
+              review: review,
               onTap: () => showAttentionItems(context, todoTabKey),
             ),
         ];
         final total = data.queueTotal(pendingPayouts) + todo;
-        // D-1081: "Needs you" is the admin home's one highlighted card
-        return AppHighlightEdge(child: AppSectionCard(
-          title: 'home_needs_you'.tr,
-          subtitle: t('ما ينتظر قرارك الآن', 'What waits for your decision'),
-          actions: [if (total > 0) AppCountBadge(count: total)],
-          child: all.isEmpty
-              ? AppBanner(icon: Icons.check_circle_rounded, text: 'admin_home_all_clear'.tr, color: c.success)
-              : Column(children: [
-                  for (var i = 0; i < all.length; i++) ...[
-                    if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
-                    all[i],
-                  ],
-                ]),
-        ));
-      },
-    );
-  }
-}
-
-/// One line of "Needs your attention": a tinted icon, the title and hint, the count, a chevron. Tapping opens the
-/// page that resolves it.
-class _AttentionRow extends StatelessWidget {
-  const _AttentionRow({required this.icon, required this.title, required this.color, this.subtitle, this.count, this.onTap});
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final int? count;
-  final Color color;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final n = count ?? 0;
-    return Semantics(
-      button: onTap != null,
-      label: '$title${n > 0 ? ': $n' : ''}${subtitle == null ? '' : '. $subtitle'}',
-      excludeSemantics: true,
-      onTap: onTap,
-      child: InkWell(
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AppTouch.primary),
-          child: Padding(
-            // the section card's padding is the row's inset: the icon lines up with the card's title
-            padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
-            child: Row(children: [
-              Container(
-                width: AppTouch.min - AppSpace.sm,
-                height: AppTouch.min - AppSpace.sm,
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppRadius.chip)),
-                child: Icon(icon, size: AppIconSize.md, color: appInk(context, color)),
-              ),
-              AppSpace.gapSm,
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
-                  if (subtitle != null && subtitle!.isNotEmpty)
-                    Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-                ]),
-              ),
-              if (n > 0) ...[
+        final Widget list;
+        if (all.isEmpty) {
+          list = AppBanner(icon: Icons.check_circle_rounded, text: 'admin_home_all_clear'.tr, color: context.colors.success);
+        } else if (columns == 1) {
+          list = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (var i = 0; i < all.length; i++) ...[if (i > 0) AppSpace.gapSm, all[i]],
+          ]);
+        } else {
+          list = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (var i = 0; i < all.length; i += 2) ...[
+              if (i > 0) AppSpace.gapSm,
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: all[i]),
                 AppSpace.gapSm,
-                AppCountBadge(count: n, tone: color == c.danger ? AppTone.danger : (color == c.warning ? AppTone.warning : AppTone.neutral)),
-              ],
-              if (onTap != null) ...[
-                AppSpace.gapXs,
-                Icon(Icons.arrow_forward_ios_rounded, size: AppIconSize.xs, color: c.textLight),
-              ],
-            ]),
-          ),
-        ),
-      ),
+                Expanded(child: i + 1 < all.length ? all[i + 1] : const SizedBox.shrink()),
+              ]),
+            ],
+          ]);
+        }
+        return AppSectionCard(
+          title: 'a1_needs_now'.tr,
+          actions: [if (total > 0) AppCountBadge(count: total, tone: AppTone.warning)],
+          child: list,
+        );
+      },
     );
   }
 }
@@ -557,8 +607,11 @@ class _AttentionRow extends StatelessWidget {
 /// Sign-ups vs enrollments per day, in a section card with period tabs (7 / 14 / 30 days of the series the overview
 /// already carries; 14 by default). The tab is view state only: no request.
 class _ActivityChart extends StatefulWidget {
-  const _ActivityChart({required this.data});
+  const _ActivityChart({required this.data, this.onAnalytics});
   final AdminHomeData data;
+
+  /// The super admin's "Analytics" link (null: none).
+  final VoidCallback? onAnalytics;
 
   @override
   State<_ActivityChart> createState() => _ActivityChartState();
@@ -576,6 +629,9 @@ class _ActivityChartState extends State<_ActivityChart> {
     return AppSectionCard(
       title: t('التسجيلات مقابل الالتحاقات', 'Sign-ups vs enrollments'),
       subtitle: daysText(recent.length),
+      actions: [
+        if (widget.onAnalytics != null) TextButton(onPressed: widget.onAnalytics, child: Text('a1_analytics'.tr)),
+      ],
       tabs: data.hasActivity
           ? AppTabs(
               hug: true,
@@ -654,73 +710,8 @@ class _Donuts extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. Activity & health
+// 5. The assistant
 // ─────────────────────────────────────────────────────────────────────────────
-
-/// The platform's pulse: live events 24 h · failed jobs 24 h · live sessions · complaints, two per row in a section
-/// card with today's date (the reference's calendar card beside the hero). No LayoutBuilder: on desktop it sits in
-/// an equal-height row with the hero.
-class _Health extends StatelessWidget {
-  const _Health({required this.data, required this.actions});
-  final AdminHomeData data;
-  final AdminHomeActions actions;
-
-  /// Whether the overview carries anything to show here (an older server sends none of it).
-  static bool has(AdminHomeData d) => d.hasRealtime || d.hasAlerts || d.hasSeries;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final failed = data.jobsFailed24h;
-    final tiles = <Widget>[
-      if (data.hasRealtime)
-        AppStatCard(
-          icon: Icons.bolt_rounded,
-          label: 'admin_home_events_24h'.tr,
-          value: '${data.eventsLast24h == null ? '—' : appCompactNumber(data.eventsLast24h!)}', tone: appStatToneFor(context, c.primary), warn: appStatWarn(context, c.primary),),
-      if (data.hasAlerts)
-        AppStatCard(
-          icon: failed > 0 ? Icons.error_rounded : Icons.check_circle_rounded,
-          label: 'admin_home_jobs_failed'.tr,
-          value: '${failed}',
-          onTap: failed > 0 ? actions.openJobs : null, tone: appStatToneFor(context, failed > 0 ? c.danger : c.success), warn: appStatWarn(context, failed > 0 ? c.danger : c.success),),
-      if (data.hasSeries) ...[
-        AppStatCard(
-          icon: Icons.sensors_rounded,
-          label: 'admin_home_live_sessions_30d'.tr,
-          value: '${data.liveSessions30}', tone: appStatToneFor(context, c.primary), warn: appStatWarn(context, c.primary),),
-        AppStatCard(
-          icon: Icons.support_agent_rounded,
-          label: 'admin_home_complaints_30d'.tr,
-          value: '${data.complaints30}', tone: appStatToneFor(context, data.complaints30 > 0 ? c.warning : c.success), warn: appStatWarn(context, data.complaints30 > 0 ? c.warning : c.success),),
-      ],
-    ];
-    return AppSectionCard(
-      title: 'admin_home_health'.tr,
-      subtitle: AppTime.date(DateTime.now().toUtc(), pattern: 'EEEE d MMMM'),
-      // always two per row: three broke "24 h" and "30 days" onto a line of their own, one per row wasted the screen
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        for (var i = 0; i < tiles.length; i += 2) ...[
-          if (i > 0) AppSpace.gapSm,
-          IntrinsicHeight(
-            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Expanded(child: tiles[i]),
-              AppSpace.gapSm,
-              Expanded(child: i + 1 < tiles.length ? tiles[i + 1] : const SizedBox.shrink()),
-            ]),
-          ),
-        ],
-        // the live sessions of the last 30 days, day by day: the pulse's one line
-        if (data.hasSeries && data.liveSessions30 > 0) ...[
-          AppSpace.gapMd,
-          Text('admin_home_live_sessions_30d'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textLight)),
-          AppSpace.gapXs,
-          AppSparkline([for (final p in data.series) p.liveSessions.toDouble()], height: AppSpace.xl, label: 'admin_home_live_sessions_30d'.tr),
-        ],
-      ]),
-    );
-  }
-}
 
 /// The "AI assistant" health card (Track E.7): questions of the window with their daily sparkline, the no-answer
 /// rate and the median answer time; [onOpen] opens the console (null hides the link).

@@ -54,14 +54,17 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
 class AdminCoursesPage extends StatelessWidget {
-  const AdminCoursesPage({super.key, this.embedded = false});
+  const AdminCoursesPage({super.key, this.embedded = false, this.autoAdd = false});
 
   final bool embedded;
+
+  /// Opens the new-course form as the page opens (the home's "Add a course" shortcut).
+  final bool autoAdd;
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
     create: (_) => AdminCoursesProvider()..refresh(),
-    child: _CoursesView(embedded: embedded),
+    child: _CoursesView(embedded: embedded, autoAdd: autoAdd),
   );
 }
 
@@ -152,9 +155,10 @@ String _factsOf(AdminCourse c) => [
     ].join(' · ');
 
 class _CoursesView extends StatefulWidget {
-  const _CoursesView({required this.embedded});
+  const _CoursesView({required this.embedded, this.autoAdd = false});
 
   final bool embedded;
+  final bool autoAdd;
 
   @override
   State<_CoursesView> createState() => _CoursesViewState();
@@ -204,6 +208,11 @@ class _CoursesViewState extends State<_CoursesView> {
   void initState() {
     super.initState();
     _panel.addListener(_panelChanged);
+    if (widget.autoAdd) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openCourseForm(context, context.read<AdminCoursesProvider>());
+      });
+    }
   }
 
   void _panelChanged() {

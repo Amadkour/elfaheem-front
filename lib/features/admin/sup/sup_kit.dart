@@ -57,7 +57,12 @@ class SupPage extends StatelessWidget {
     this.showBack = true,
     this.heroBottom,
     this.updatedAt,
+    this.role = AppRoleAccent.superAdmin,
   });
+
+  /// The role accent of the hero and cards: the super admin's gold by default; the admin pages (group A1) pass the
+  /// signed-in person's accent, so a plain admin sees the admin accent on the pages both roles share.
+  final AppRoleAccent role;
 
   /// The page's name: the top bar of a pushed page.
   final String title;
@@ -207,7 +212,7 @@ class SupPage extends StatelessWidget {
     }
     return AppUnsavedGuard(
       dirty: dirty,
-      child: AppAreaScope.role(role: AppRoleAccent.superAdmin, child: page),
+      child: AppAreaScope.role(role: role, child: page),
     );
   }
 }
@@ -287,6 +292,7 @@ class SupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final role = AppAreaScope.roleOf(context) ?? AppRoleAccent.superAdmin;
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
@@ -294,8 +300,8 @@ class SupCard extends StatelessWidget {
             Container(
               width: AppTouch.min,
               height: AppTouch.min,
-              decoration: BoxDecoration(color: c.kit.role(AppRoleAccent.superAdmin).tint, borderRadius: AppRadius.cardAll),
-              child: Icon(icon, size: AppIconSize.lg, color: c.kit.role(AppRoleAccent.superAdmin).ink),
+              decoration: BoxDecoration(color: c.kit.role(role).tint, borderRadius: AppRadius.cardAll),
+              child: Icon(icon, size: AppIconSize.lg, color: c.kit.role(role).ink),
             ),
             const SizedBox(width: AppSpace.sm),
           ],

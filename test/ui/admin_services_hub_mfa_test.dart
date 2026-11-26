@@ -53,6 +53,8 @@ void main() {
     // Providers above the navigator, as in the app (the pushed page reads MyAuthProvider).
     await tester.pumpWidget(withProviders(layoutHost(const AdminServicesHub(groupId: 'support'), scale: 1)));
     await tester.pump();
+    await tester.ensureVisible(find.text(mfaEntryLabel()));
+    await tester.pump();
     await tester.tap(find.text(mfaEntryLabel()));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));

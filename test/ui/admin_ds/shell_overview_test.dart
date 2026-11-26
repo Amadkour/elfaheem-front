@@ -1,11 +1,11 @@
-// The redesigned Overview (AdminHomeBody): greeting hero + search, ONE greeting hero, the figures as stat cards, students and teachers counted
+// The redesigned Overview (AdminHomeBody, redesign A1): ONE hero (greeting kicker, headline, search pill, glass figures), students and teachers counted
 // apart, "Needs your attention" as one list, "Nothing waits" only when nothing does, and a layout check.
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppGreetingHero, AppStatCard;
+import 'package:flutter_education_app/design/app_kit.dart' show AppHero, AppHeroStat;
 import 'package:flutter_education_app/features/admin/admin_global_search.dart';
 import 'package:flutter_education_app/features/admin/admin_home_body.dart';
 import 'package:flutter_education_app/features/admin/admin_home_data.dart';
@@ -31,10 +31,10 @@ void main() {
     await _pump(tester, AdminHomeBody(data: data, name: 'Ahmed', pendingPayouts: 3));
     expect(find.textContaining('Ahmed'), findsWidgets);
     expect(find.byType(AdminSearchLauncher), findsOneWidget);
-    final cards = tester.widgetList<AppStatCard>(find.byType(AppStatCard)).toList();
-    // revenue · students · teachers · courses + subscribers, then the four health counts (soft-wash cards since D-1081)
-    expect(cards.length, 9);
-    expect(find.byType(AppGreetingHero), findsOneWidget);
+    final figures = tester.widgetList<AppHeroStat>(find.byType(AppHeroStat)).toList();
+    // four glass figures on the hero (students · teachers · courses · subscribers for an admin)
+    expect(figures.length, 4);
+    expect(find.byType(AppHero), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
   });
@@ -48,7 +48,7 @@ void main() {
             data: data,
             name: 'A',
             actions: AdminHomeActions(openStudents: () => opened = 'students', openTeachers: () => opened = 'teachers')));
-    final cards = tester.widgetList<AppStatCard>(find.byType(AppStatCard)).toList();
+    final cards = tester.widgetList<AppHeroStat>(find.byType(AppHeroStat)).toList();
     final students = cards.firstWhere((c) => c.value == '128.4K' || c.value.contains('128'));
     final teachers = cards.firstWhere((c) => c.value.contains('8.4K') || c.value == '8,400');
     students.onTap!();
