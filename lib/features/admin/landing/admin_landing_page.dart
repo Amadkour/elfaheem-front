@@ -7,12 +7,12 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 
 import '../admin_common.dart' show t;
 import 'landing_admin_api.dart';
 import 'landing_admin_widgets.dart';
+import '../sup/sup_kit.dart';
 
 String landingTitle() => t('الصفحة الرئيسية للموقع', 'Landing page');
 
@@ -125,11 +125,14 @@ class _AdminLandingPageState extends State<AdminLandingPage> {
   @override
   Widget build(BuildContext context) {
     final s = _saved;
-    return BasePage(
-      useWebCard: true,
+    return SupPage(
+      title: landingTitle(),
+      kicker: 'a2_site_kicker'.tr,
+      headline: 'a2_landing_head'.tr,
+      line: 'a2_landing_line'.tr,
       width: AppWidth.reading,
-      appBar: ScreenAppBar(title: landingTitle()),
-      child: s == null
+      onRefresh: _load,
+      body: s == null
           ? (_error != null
               ? Padding(
                   padding: const EdgeInsets.all(AppSpace.md),
@@ -140,10 +143,8 @@ class _AdminLandingPageState extends State<AdminLandingPage> {
                   ]),
                 )
               : const AppListSkeleton(items: 4))
-          : AppRefresh(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl),
+          : (ListView(
+                padding: SupPage.bodyPadding(context),
                 children: [
                   LandingAdminBody(
                     rate: _rate,
@@ -162,8 +163,7 @@ class _AdminLandingPageState extends State<AdminLandingPage> {
                     onSaveList: _saveList,
                   ),
                 ],
-              ),
-            ),
+              )),
     );
   }
 }
