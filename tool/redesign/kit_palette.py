@@ -3,6 +3,7 @@
     py -3.12 tool/redesign/kit_palette.py            # the markdown tables of KIT_SPEC.md section 1
     py -3.12 tool/redesign/kit_palette.py --json     # the `kit` map (theme field names) -> tool/redesign/kit_palette.json
     py -3.12 tool/redesign/kit_palette.py --check    # exit 1 when a pair is under its contrast floor
+    py -3.12 tool/redesign/kit_palette.py --ref <json>   # adds a comparison column from a palette kept outside this repo
 
 Everything is computed: change a seed or a rule here, run it again, and copy the JSON into
 lib/config/theme/kit_palette_defaults.dart and (back) features/platform/theme_kit_defaults.py. The functional colours
@@ -244,19 +245,13 @@ def build():
             "subjects": subjects}
 
 
-# ── reference design values (kit.css), for the comparison column only ──────
-REF = {"ink": "#00205E", "deep": "#001440", "primary": "#1979C1", "primary_tint": "#E2EFFA", "primary_ink": "#135F9A",
-       "partner": "#07B8EE", "partner_tint": "#DDF6FE", "partner_ink": "#06678A", "warm": "#FF9F5A",
-       "warm_tint": "#FFE8D6", "warm_ink": "#A3480A", "hot": "#F2545B", "hot_tint": "#FFE3E0", "hot_ink": "#B23A2E",
-       "page": "#F3F8FD", "text": "#0E2350", "muted": "#4A5878", "line": "#E2EAF4", "well": "#F8FBFE",
-       "track": "#EAF0F6", "field_edge": "#D5E3F2", "top_bar": "#001A4E", "hot_a": "#FF9F5A", "hot_b": "#F2545B",
-       "hot_fg": "#FFFFFF", "warm_on_dark": "#FF9F5A"}
-REF_AREAS = {"home": ("#1979C1", "#07B8EE", "#1979C1", "#093F81"), "learn": ("#FF9F5A", "#F2545B", "#FF8A4C", "#7A2E5E"),
-             "exam": ("#7A4DF0", "#1979C1", "#7A4DF0", "#2B3091"), "games": ("#7A4DF0", "#FF5FA2", "#8E4DF0", "#3A1F8F"),
-             "store": ("#FFC53D", "#FF9F5A", "#FF9F5A", "#8C2F5A"), "quran": ("#19C29B", "#0F6E6D", "#19C29B", "#0A5C6E"),
-             "nahw": ("#9BD728", "#19C29B", "#8BCB1E", "#1F6B55"), "sched": ("#3DA5FF", "#07B8EE", "#3DA5FF", "#154F96"),
-             "chat": ("#FF5FA2", "#FF9F5A", "#FF5FA2", "#6A2E7E"), "money": ("#FFC53D", "#19C29B", "#FFB020", "#A0442A"),
-             "me": ("#1979C1", "#7A4DF0", "#4F6BE8", "#2E2A8C")}
+def load_ref():
+    """An optional comparison palette: `--ref <json>` ({"brand": {role: hex}, "areas": {area: {a, b, hero_a,
+    hero_mid}}}), kept OUTSIDE this repository (D-1810: no other product's colour value lives here)."""
+    if "--ref" not in sys.argv:
+        return None
+    with open(sys.argv[sys.argv.index("--ref") + 1], encoding="utf-8") as f:
+        return json.load(f)
 
 
 def checks(k):
@@ -299,15 +294,17 @@ def checks(k):
 
 def md(k):
     br = k["brand"]
+    ref = load_ref()
     out = []
     out.append("#### Brand roles\n")
-    out.append("| Role (theme key `kit.brand.*`) | NextBrain | Reference design (kit.css) |\n|---|---|---|")
+    out.append("| Role (theme key `kit.brand.*`) | Value |" + (" Comparison |" if ref else "") + "\n|---|---|"
+               + ("---|" if ref else ""))
     for key in ("ink", "deep", "primary", "primary_tint", "primary_ink", "partner", "partner_tint", "partner_ink", "warm",
                 "warm_tint", "warm_ink", "hot", "hot_tint", "hot_ink", "hot_a", "hot_b", "hot_fg", "page", "text", "muted",
                 "line", "well", "track", "field_edge", "top_bar", "warm_on_dark"):
-        out.append(f"| `{key}` | `{br[key]}` | `{REF[key]}` |")
+        out.append(f"| `{key}` | `{br[key]}` |" + (f" `{ref['brand'].get(key, '')}` |" if ref else ""))
     out.append("\n#### Brand roles, dark mode\n")
-    out.append("| Key | NextBrain |\n|---|---|")
+    out.append("| Key | Value |\n|---|---|")
     for n in ("primary", "partner", "warm", "hot"):
         out.append(f"| `{n}_tint_dark` / `{n}_ink_dark` | `{br[n + '_tint_dark']}` / `{br[n + '_ink_dark']}` |")
     out.append("\n#### Accents (`kit.accents.<name>`)\n")
@@ -326,10 +323,11 @@ def md(k):
         for n, a in k[grp].items():
             out.append(f"| {n} | " + " | ".join(f"`{a[c]}`" for c in ("a", "b", "hero_a", "hero_mid", "tint", "ink", "btn_a",
                                                                       "btn_b", "btn_fg", "tint_dark", "ink_dark")) + " |")
-    out.append("\n#### Reference design areas (kit.css), for comparison\n")
-    out.append("| | `a` | `b` | `hero_a` | `hero_mid` |\n|---|---|---|---|---|")
-    for n, a in REF_AREAS.items():
-        out.append(f"| {n} | " + " | ".join(f"`{c}`" for c in a) + " |")
+    if ref:
+        out.append("\n#### Comparison areas\n")
+        out.append("| | `a` | `b` | `hero_a` | `hero_mid` |\n|---|---|---|---|---|")
+        for n, a in ref["areas"].items():
+            out.append(f"| {n} | " + " | ".join(f"`{a[c]}`" for c in ("a", "b", "hero_a", "hero_mid")) + " |")
     out.append("\n#### Subjects (`kit.subjects.<key>`)\n")
     out.append("| Subject | `c` | `tint` | `ink` | `fg` | `tint_dark` | `ink_dark` |\n|---|---|---|---|---|---|---|")
     for n, t in k["subjects"].items():
