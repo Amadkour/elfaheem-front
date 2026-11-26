@@ -11,13 +11,10 @@ import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/exams/legacy/student/exam_tr.dart';
-import 'package:flutter_education_app/features/exams/legacy/student/exam_ui.dart';
 import 'package:flutter_education_app/features/analytics/student/student_analytics_profile_screen.dart';
 
-import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppHeader, AppListSkeleton, AppWidth;
-import 'package:flutter_education_app/features/analytics/teacher/teacher_stat_band.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 // ── models ────────────────────────────────────────────────────────────────────
 
@@ -159,114 +156,72 @@ class _View extends StatelessWidget {
   final String courseTitle;
   const _View({required this.courseTitle});
 
-  Widget _hero(BuildContext context, TeacherReadFlagsProvider p) {
-    final failed = p.items.fold<int>(0, (s, i) => s + i.studentsFailed);
-    final wrong = p.items.fold<int>(0, (s, i) => s + i.totalWrong);
-    return TeacherStatBand(
-      color: context.colors.danger,
-      stats: [
-        HeroStat(
-          icon: Icons.flag_rounded,
-          color: context.colors.accent,
-          value: '${p.items.length}',
-          label: 'tflag_btn'.tr,
-        ),
-        HeroStat(
-          icon: Icons.groups_rounded,
-          color: context.colors.heroTint(context.colors.primaryLight, 0.5),
-          value: '$failed',
-          label: 'tflag_students'.tr,
-        ),
-        HeroStat(
-          icon: Icons.close_rounded,
-          color: context.colors.danger,
-          value: '$wrong',
-          label: 'flag_total_wrong'.tr,
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final p = context.watch<TeacherReadFlagsProvider>();
+    final failed = p.items.fold<int>(0, (s, i) => s + i.studentsFailed);
+    final wrong = p.items.fold<int>(0, (s, i) => s + i.totalWrong);
 
-    final Widget body;
+    final List<Widget> body;
     if (p.loading) {
-      body = Column(children: [
-        _hero(context, p),
-        const Expanded(child: AppListSkeleton()),
-      ]);
+      body = [const AppListSkeleton()];
     } else if (p.error != null) {
-      body = Column(children: [
-        _hero(context, p),
-        Expanded(
-          child: ExamError(
-              message: p.error!, retryLabel: 'retry'.tr, onRetry: p.load),
-        ),
-      ]);
+      body = [AppCard(child: AppErrorState(message: p.error!, onRetry: p.load))];
     } else {
-      body = AppRefresh(
-        onRefresh: p.load,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics()),
-          children: [
-            _hero(context, p),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              child: Column(children: [
-                ExamBanner(
-                  icon: Icons.flag_rounded,
-                  color: c.primary,
-                  text: tx('tflag_thresholds', {
-                    'students': p.minStudents,
-                    'tries': p.minTries,
-                  }),
-                ),
-                const SizedBox(height: 16),
-                if (p.items.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 48),
-                    child: ExamEmpty(
-                        icon: Icons.task_alt_rounded, text: 'tflag_empty'.tr),
-                  ),
-                for (final it in p.items) ...[
-                  _FlagCard(item: it),
-                  const SizedBox(height: 12),
-                ],
-              ]),
-            ),
-          ],
-        ),
-      );
+      body = [
+        _ThresholdNote(text: tx('tflag_thresholds', {'students': p.minStudents, 'tries': p.minTries})),
+        if (p.items.isEmpty) AppCard(child: AppEmpty(icon: Icons.task_alt_rounded, title: 'tflag_empty'.tr)),
+        for (final it in p.items) _FlagCard(item: it),
+      ];
     }
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: BasePage(
-        useWebCard: true,
-        width: AppWidth.wide,
-        appBar: AppHeader(
-          title: courseTitle,
-          subtitle: 'tflag_btn_sub'.tr,
-          color: context.colors.danger,
-          actions: [
-            IconButton(
-              tooltip: 'refresh'.tr,
-              onPressed: p.load,
-              icon: Icon(Icons.refresh_rounded, color: context.colors.primary),
-            ),
-          ],
+      child: T2HeroPage(
+        title: 't2_flags_title'.tr,
+        width: AppWidth.reading,
+        onRefresh: p.load,
+        actions: [AppRefreshAction(onRefresh: p.load)],
+        hero: AppHero(
+          kicker: courseTitle,
+          title: 't2_flags_hero'.tr,
+          stats: p.loading || p.error != null
+              ? const []
+              : [
+                  AppHeroStat(value: '${p.items.length}', label: 'tflag_btn'.tr),
+                  AppHeroStat(value: '$failed', label: 'tflag_students'.tr),
+                  AppHeroStat(value: '$wrong', label: 'flag_total_wrong'.tr),
+                ],
         ),
-        child: body,
+        children: body,
       ),
     );
   }
 }
 
+/// When a question counts as hard (the server's thresholds), in one line.
+class _ThresholdNote extends StatelessWidget {
+  const _ThresholdNote({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppAreaScope.of(context);
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(color: t.tint, borderRadius: BorderRadius.circular(AppRadius.tile)),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.flag_outlined, size: AppIconSize.md, color: t.ink),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text(text, style: AppType.label(context).copyWith(color: t.ink))),
+      ]),
+    );
+  }
+}
+
+/// One hard question: the exam, the score (how many got it wrong), the question, the figures, the right answer and
+/// the students who stumbled (each opens their analytics profile).
 class _FlagCard extends StatelessWidget {
   final TeacherFlagItem item;
   const _FlagCard({required this.item});
@@ -274,118 +229,96 @@ class _FlagCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return ExamCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: c.primary.withValues(alpha: .10),
-              borderRadius: BorderRadius.circular(10),
+    final kit = c.kit;
+    return AppCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            flex: 3,
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: AppStatusBadge(label: item.examName, tone: AppTone.brand, icon: Icons.quiz_outlined),
             ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.quiz_rounded, size: 12, color: c.primary),
-              const SizedBox(width: 5),
-              Text(item.examName,
-                  style: examT(11, w: FontWeight.w700, c: c.primary)),
-            ]),
           ),
-          const Spacer(),
-          ExamBadge(tx('flag_score', {'n': item.score.toStringAsFixed(1)}), c.warning),
+          const SizedBox(width: AppSpace.sm),
+          Flexible(
+            flex: 2,
+            child: Text(tx('flag_score', {'n': item.score.toStringAsFixed(1)}),
+                textAlign: TextAlign.end, style: AppType.figure(context).copyWith(color: kit.error.ink)),
+          ),
         ]),
-        const SizedBox(height: 12),
-        Text(item.title,
-            textDirection: Helpers.textDirOf(item.title),
-            style: examT(15, w: FontWeight.w700, c: c.textDark, h: 1.7)),
-        const SizedBox(height: 12),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          ExamChip(Icons.groups_rounded,
-              tx('tflag_students_failed', {'n': item.studentsFailed}), c.danger),
-          ExamChip(Icons.repeat_rounded,
-              tx('tflag_max_tries', {'n': item.maxWrongTries}), c.purple),
-          ExamChip(Icons.functions_rounded,
-              tx('tflag_avg_tries', {'n': item.avgWrongTries.toStringAsFixed(1)}),
-              context.colors.success),
+        const SizedBox(height: AppSpace.sm),
+        Text(item.title, textDirection: Helpers.textDirOf(item.title), style: AppType.tileTitle(context)),
+        const SizedBox(height: AppSpace.sm),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          AppStatusBadge(label: tx('tflag_students_failed', {'n': item.studentsFailed}), tone: AppTone.danger, icon: Icons.groups_outlined),
+          AppStatusBadge(label: tx('tflag_max_tries', {'n': item.maxWrongTries}), tone: AppTone.warning, icon: Icons.repeat_rounded),
+          AppStatusBadge(
+              label: tx('tflag_avg_tries', {'n': item.avgWrongTries.toStringAsFixed(1)}), tone: AppTone.neutral, icon: Icons.functions_rounded),
         ]),
         if (item.correctAnswer != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.sm),
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: c.success.withValues(alpha: .08),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: c.success.withValues(alpha: .25)),
-            ),
+            padding: const EdgeInsets.all(AppSpace.sm),
+            decoration: BoxDecoration(color: kit.ok.tint, borderRadius: BorderRadius.circular(AppRadius.tile)),
             child: Row(children: [
-              Icon(Icons.check_circle_rounded, size: 18, color: c.success),
-              const SizedBox(width: 8),
+              Icon(Icons.check_circle_outline_rounded, size: AppIconSize.md, color: kit.ok.ink),
+              const SizedBox(width: AppSpace.xs),
               Expanded(
-                child: Text(
-                    '${'flag_correct_answer'.tr}: ${item.correctAnswer}',
+                child: Text('${'flag_correct_answer'.tr}: ${item.correctAnswer}',
                     textDirection: Helpers.textDirOf(item.correctAnswer!),
-                    style: examT(13, w: FontWeight.w700, c: c.success, h: 1.5)),
+                    style: AppType.label(context).copyWith(color: kit.ok.ink, fontWeight: FontWeight.w600)),
               ),
             ]),
           ),
         ],
-        if (item.students.isNotEmpty)
-          Material(
-            type: MaterialType.transparency,
-            child: Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-              child: ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                childrenPadding: EdgeInsets.zero,
-                iconColor: c.primary,
-                collapsedIconColor: c.textMedium,
-                title: Row(children: [
-                  Icon(Icons.groups_rounded, size: 18, color: c.primary),
-                  const SizedBox(width: 8),
-                  Text('tflag_students'.tr,
-                      style: examT(13, w: FontWeight.w800, c: c.textDark)),
+        if (item.students.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xs),
+          AppExpandCard(
+            header: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                child: Row(children: [
+                  Icon(Icons.groups_outlined, size: AppIconSize.md, color: AppAreaScope.of(context).ink),
+                  const SizedBox(width: AppSpace.xs),
+                  Expanded(child: Text('t2_flags_show_students'.tr, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600))),
                 ]),
-                children: [
-                  for (final s in item.students)
-                    InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      // tap → the student's analytics profile
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => StudentAnalyticsProfileScreen.forTeacher(
-                            studentId: s.studentId,
-                            studentName: s.name,
-                            courseId: context.read<TeacherReadFlagsProvider>().courseId,
-                          ),
-                        ),
-                      ),
-                      child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5),
-                      child: Row(children: [
-                        CircleAvatar(
-                          radius: 15,
-                          backgroundColor: c.danger.withValues(alpha: .10),
-                          child: Text(s.name.isEmpty ? '?' : s.name[0],
-                              style: examT(12, w: FontWeight.w800, c: c.danger)),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(s.name,
-                              style: examT(13, c: c.textDark)),
-                        ),
-                        ExamBadge(
-                            tx('flag_wrong_times', {'n': s.wrongCount}), c.danger),
-                        const SizedBox(width: 4),
-                        Icon(Icons.chevron_right_rounded, size: 18, color: c.textLight),
-                      ]),
-                    ),
-                    ),
-                ],
               ),
             ),
+            child: Column(children: [
+              for (final s in item.students)
+                InkWell(
+                  borderRadius: AppRadius.controlAll,
+                  // tap → the student's analytics profile
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => StudentAnalyticsProfileScreen.forTeacher(
+                        studentId: s.studentId,
+                        studentName: s.name,
+                        courseId: context.read<TeacherReadFlagsProvider>().courseId,
+                      ),
+                    ),
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: AppTouch.min),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs),
+                      child: Row(children: [
+                        AppAvatar(name: s.name.isEmpty ? '?' : s.name, size: AppDashSize.ringSm - AppSpace.xs),
+                        const SizedBox(width: AppSpace.sm),
+                        Expanded(child: Text(s.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context))),
+                        Flexible(child: AppStatusBadge(label: tx('flag_wrong_times', {'n': s.wrongCount}), tone: AppTone.danger, dense: true)),
+                        const SizedBox(width: AppSpace.xxs),
+                        Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
+                      ]),
+                    ),
+                  ),
+                ),
+            ]),
           ),
+        ],
       ]),
     );
   }

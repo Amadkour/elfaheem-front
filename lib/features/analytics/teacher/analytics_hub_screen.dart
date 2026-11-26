@@ -17,7 +17,6 @@ library;
 
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
@@ -37,6 +36,7 @@ import 'package:flutter_education_app/features/attendance/analysis/teacher/teach
 import 'package:flutter_education_app/features/analytics/teacher/flags/teacher_read_flags_screen.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppPressScale, AppReveal;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 String _courseTitle(TeacherCourse c) => (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? c.titleAr ?? c.titleEn ?? '';
 
@@ -202,141 +202,116 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
       if (mounted && !prov.isLoading) _store.load([for (final c in all) c.id]);
     });
 
-    final Widget body;
-    if (((prov.isLoading || !prov.loadedOnce) && all.isEmpty) || (all.isNotEmpty && !_store.settled && _store.byCourse.isEmpty)) {
-      body = const AnSummarySkeleton();
+    final loading = ((prov.isLoading || !prov.loadedOnce) && all.isEmpty) ||
+        (all.isNotEmpty && !_store.settled && _store.byCourse.isEmpty);
+    final facts = [for (final x in all) _facts(x, _store.byCourse[x.id])];
+
+    final List<Widget> body;
+    if (loading) {
+      body = [const AppLoadingState(shape: AppLoadingShape.cards, items: 3)];
     } else if (all.isEmpty) {
-      body = Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xl),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          _header(all),
-          AppSpace.gapLg,
-          AppEmpty(icon: Icons.school_outlined, title: 'no_courses_yet'.tr, message: 'add_course_first_hint'.tr, tone: AppBlockTone.sky),
-        ]),
-      );
+      body = [
+        AppCard(
+          child: AppEmpty(icon: Icons.school_outlined, title: 'no_courses_yet'.tr, message: 'add_course_first_hint'.tr),
+        ),
+      ];
     } else {
-      body = _summary(all);
+      body = _summary(all, facts);
     }
 
-    return BasePage(
-      key: const ValueKey('analytics_hub'),
-      useWebCard: true,
-      width: AppWidth.wide,
-      enableFooterWidget: false,
-      child: ColoredBox(
-        color: context.colors.background,
-        child: AppRefresh(
-          onRefresh: () => _store.load([for (final c in all) c.id], force: true),
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            slivers: [SliverToBoxAdapter(child: body)],
-          ),
-        ),
+    return T2HeroPage(
+      pageKey: const ValueKey('analytics_hub'),
+      onRefresh: () => _store.load([for (final c in all) c.id], force: true),
+      hero: _hero(all, facts, loading: loading),
+      children: body,
+    );
+  }
+
+  /// The band: "your classes at a glance", the week's headline, the four counts and (wide) the class rings.
+  Widget _hero(List<TeacherCourse> all, List<AnCourseFacts> facts, {required bool loading}) {
+    final ready = !loading && all.isNotEmpty;
+    final totals = anTotals(facts);
+    final risk = facts.fold<int>(0, (s, f) => s + f.atRisk);
+    final passRate = anMean(facts.map((f) => f.passRate));
+    final examsOff = AppConfig.disableList.contains('exam.all_exams');
+    return ParentComponent(
+      featureKey: 'analytics_hub.header',
+      child: AppHero(
+        kicker: 't2_an_kicker'.tr,
+        title: ready ? anHeadlineText(teacherHeadline(facts)) : anTr('an2_title', 'Analytics'),
+        subtitle: ready ? null : anTr('an2_sub_teacher', 'How your classes are doing'),
+        stats: ready
+            ? [
+                AppHeroStat(value: '${all.length}', label: 't2_an_stat_courses'.tr, onTap: _openAll),
+                AppHeroStat(
+                    value: appCompactNumber(all.fold<int>(0, (s, x) => s + x.studentsCount)),
+                    label: 't2_an_stat_students'.tr),
+                AppHeroStat(value: '$risk', label: 't2_an_stat_follow'.tr),
+                AppHeroStat(value: anPct(passRate), label: 't2_an_stat_pass'.tr, onTap: examsOff ? null : _openAllExams),
+              ]
+            : const [],
+        actions: [
+          if (ready)
+            ParentComponent(
+              featureKey: 'exam.all_exams',
+              child: AppButton.secondary(
+                key: const ValueKey('analytics_hub.all_exams'),
+                label: anTr('an_all_exams', 'All exams'),
+                icon: Icons.fact_check_outlined,
+                onPressed: _openAllExams,
+              ),
+            ),
+        ],
+        trailing: ready && totals.overall != null ? _RingsCard(totals: totals) : null,
       ),
     );
   }
 
-  Widget _header(List<TeacherCourse> all) => AnalyticsMasthead(
-        title: anTr('an2_title', 'Analytics'),
-        subtitle: anTr('an2_sub_teacher', 'How your classes are doing'),
-        actions: [
-          ParentComponent(
-            featureKey: 'exam.all_exams',
-            child: AnalyticsHeaderAction(
-              key: const ValueKey('analytics_hub.all_exams'),
-              icon: Icons.fact_check_rounded,
-              tooltip: anTr('an_all_exams', 'All exams'),
-              onTap: _openAllExams,
-            ),
-          ),
-          AnalyticsHeaderAction(
-            icon: Icons.refresh_rounded,
-            tooltip: anTr('an_refresh', 'Refresh'),
-            onTap: () => _store.load([for (final c in all) c.id], force: true),
-          ),
-        ],
-      );
-
-  Widget _summary(List<TeacherCourse> all) {
-    final facts = [for (final x in all) _facts(x, _store.byCourse[x.id])];
-    final totals = anTotals(facts);
+  List<Widget> _summary(List<TeacherCourse> all, List<AnCourseFacts> facts) {
     final metrics = anAvailableMetrics(facts);
     final metric = metrics.contains(_metric) ? _metric : (metrics.isEmpty ? AnMetric.progress : metrics.first);
-    final risk = facts.fold<int>(0, (s, f) => s + f.atRisk);
-    final passRate = anMean(facts.map((f) => f.passRate));
 
-    // the page's one memorable element: the class rings on the instructor's sky block
-    final hero = ParentComponent(
-      featureKey: 'analytics_hub.header',
-      child: AnalyticsHeroBlock(
-        headline: anHeadlineText(teacherHeadline(facts)),
-        rings: [for (final m in AnMetric.values) AnRingSpec(metric: m, value: totals.value(m))],
-        overall: totals.overall,
-        overallLabel: anTr('an2_class_overall', 'Average'),
-        tone: AppBlockTone.sky,
-        memoryKey: 'analytics_hub.overall',
+    // "This week, for you": the nudges as tiles, each with its one link
+    final insights = teacherInsights(facts, max: 5);
+    final forYou = AppCard(
+      title: 't2_an_for_you'.tr,
+      action: Flexible(
+        child: AppButton.ghost(
+          label: 't2_an_refresh'.tr,
+          icon: Icons.history_rounded,
+          size: AppButtonSize.sm,
+          onPressed: () => _store.load([for (final c in all) c.id], force: true),
+        ),
       ),
+      child: insights.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+              child: Text(anHeadlineText(teacherHeadline(facts)), style: AppType.body(context)),
+            )
+          : T2TileGrid(maxColumns: 5, minTile: 180, children: [for (final i in insights) _insightTile(i)]),
     );
 
-    // the four counts as soft-wash cards (D-1081); who needs you leads (peach, emerald when nobody does)
-    final tiles = AppKpiGrid(children: [
-      AppStatCard(
-        icon: Icons.volunteer_activism_rounded,
-        label: anTr('an2_tile_need_attention', 'Need attention'),
-        value: '$risk',
-        tone: risk > 0 ? AppBlockTone.peach : AppBlockTone.emerald,
-      ),
-      AppStatCard(
-        tone: AppBlockTone.gold,
-        icon: Icons.menu_book_rounded,
-        label: anTr('an_courses', 'Courses'),
-        value: '${all.length}',
-        onTap: _openAll,
-      ),
-      AppStatCard(
-        tone: AppBlockTone.sky,
-        icon: Icons.people_rounded,
-        label: anTr('an2_tile_students', 'Students'),
-        value: appCompactNumber(all.fold<int>(0, (s, x) => s + x.studentsCount)),
-      ),
-      AppStatCard(
-        tone: AppBlockTone.peach,
-        icon: Icons.verified_rounded,
-        label: anTr('an2_tile_pass_rate', 'Exam pass rate'),
-        value: anPct(passRate),
-        onTap: AppConfig.disableList.contains('exam.all_exams') ? null : _openAllExams,
-      ),
-    ]);
-
-    final insights = teacherInsights(facts);
-    final insightCard = insights.isEmpty
+    final classes = metrics.isEmpty
         ? null
-        : AnInsightCard(
-            title: anTr('an2_for_you', 'For you'),
-            rows: [for (final i in insights) AnInsightRowData(tone: i.tone, text: anInsightText(i), onTap: _insightAction(i))],
+        : _ClassesCard(
+            metric: metric,
+            metrics: metrics,
+            onMetric: (m) => setState(() => _metric = m),
+            rows: [
+              for (final f in anRankBy(facts, metric))
+                (
+                  title: f.title,
+                  value: f.value(metric),
+                  flag: f.atRisk > 0,
+                  onTap: () {
+                    final course = _course(f.id);
+                    if (course != null) _openTools(course);
+                  },
+                ),
+            ],
+            onShowAll: _openAll,
+            showAllLabel: anFmt('an2_all_courses', {'n': all.length}, 'All courses ({n})'),
           );
-
-    final chart = AnCourseBars(
-      title: anTr('an2_your_classes', 'Your classes'),
-      metric: metric,
-      metrics: metrics,
-      onMetric: (m) => setState(() => _metric = m),
-      rows: [
-        for (final f in anRankBy(facts, metric))
-          AnBarRowData(
-            title: f.title,
-            value: f.value(metric),
-            detail: anStudentsWord(f.students),
-            flag: f.atRisk > 0,
-            onTap: () {
-              final course = _course(f.id);
-              if (course != null) _openTools(course);
-            },
-          ),
-      ],
-      onShowAll: _openAll,
-      showAllLabel: anFmt('an2_all_courses', {'n': all.length}, 'All courses ({n})'),
-    );
 
     // students who need attention, across every course — worst first
     final titles = {for (final x in all) x.id: _courseTitle(x)};
@@ -347,12 +322,10 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
         .compareTo(anAverage([dlNum(b.$2['attendance']), dlNum(b.$2['exam_avg'])]) ?? 100));
     final attention = people.isEmpty
         ? null
-        : AnCompactList(
-            title: anTr('ta_attention', 'Needs your attention'),
-            subtitle: anTr('an2_attention_sub', 'Under 60 % attendance or 50 % in exams'),
+        : _AttentionCard(
             rows: [
               for (final (courseId, s) in people.take(20))
-                AnPersonRow(
+                _PersonRow(
                   name: '${s['name']}',
                   course: titles[courseId] ?? '',
                   attendance: dlNum(s['attendance']),
@@ -366,13 +339,344 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
             ],
           );
 
-    return AnSummaryLayout(
-      header: _header(all),
-      hero: hero,
-      tiles: tiles,
-      insights: insightCard,
-      chart: metrics.isEmpty ? null : chart,
-      lists: [?attention],
+    return [
+      forYou,
+      T2Columns(start: [?classes], end: [?attention]),
+    ];
+  }
+
+  /// One nudge as the reference's tile: what, one line of figures, and where to act.
+  Widget _insightTile(AnInsight i) {
+    final kit = context.colors.kit;
+    final pct = anIsolate(anPct(i.value));
+    final (IconData icon, KitTone tone, String title, String? sub, String? link) = switch (i.kind) {
+      AnInsightKind.studentsAtRisk => (
+          Icons.warning_amber_rounded,
+          kit.warmTone,
+          anFmt('t2_an_risk_title', {'students': anStudentsWord(i.n)}),
+          '${i.course}: ${'t2_an_risk_sub'.tr}',
+          't2_an_risk_link'.tr,
+        ),
+      AnInsightKind.classLowAttendance => (
+          Icons.people_alt_outlined,
+          kit.primaryTone,
+          anFmt('t2_an_att_title', {'course': i.course}),
+          anFmt('t2_an_att_sub', {'pct': pct}),
+          't2_an_att_link'.tr,
+        ),
+      AnInsightKind.lowPassRate => (
+          Icons.fact_check_outlined,
+          kit.live,
+          anFmt('t2_an_pass_title', {'course': i.course}),
+          anFmt('t2_an_pass_sub', {'pct': pct}),
+          't2_an_pass_link'.tr,
+        ),
+      AnInsightKind.noSharedMarks => (
+          Icons.visibility_outlined,
+          kit.warn,
+          't2_an_marks_title'.tr,
+          i.course,
+          't2_an_marks_link'.tr,
+        ),
+      AnInsightKind.strongestClass => (
+          Icons.star_outline_rounded,
+          kit.ok,
+          anFmt('t2_an_best_title', {'course': i.course}),
+          anFmt('t2_an_best_sub', {'pct': pct}),
+          't2_an_best_link'.tr,
+        ),
+      _ => (Icons.check_circle_outline_rounded, kit.ok, anInsightText(i), null, null),
+    };
+    return T2InsightTile(icon: icon, tone: tone, title: title, subtitle: sub, link: link, onTap: _insightAction(i));
+  }
+}
+
+/// The class rings on the hero's end side (wide only): progress · attendance · exams, with their figures.
+class _RingsCard extends StatelessWidget {
+  const _RingsCard({required this.totals});
+
+  final AnTotals totals;
+
+  static const double _ring = 96;
+  static const double _step = 22;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final kit = c.kit;
+    final tones = [kit.accent(AppAccent.grape), kit.accent(AppAccent.sky), kit.accent(AppAccent.sun)];
+    final metrics = AnMetric.values;
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(
+        color: c.heroGlass,
+        borderRadius: BorderRadius.circular(AppRadius.tile),
+        border: Border.all(color: c.heroGlassBorder, width: AppBorder.hairline),
+      ),
+      child: Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            for (var i = 0; i < metrics.length; i++)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+                child: Row(children: [
+                  Container(
+                    width: AppSpace.xs,
+                    height: AppSpace.xs,
+                    decoration: BoxDecoration(color: tones[i].color, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: AppSpace.xs),
+                  Text(anPct(totals.value(metrics[i])),
+                      textDirection: TextDirection.ltr,
+                      style: AppType.label(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600)),
+                  const SizedBox(width: AppSpace.xs),
+                  Flexible(
+                    child: Text(anMetricLabel(metrics[i]),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
+                  ),
+                ]),
+              ),
+          ]),
+        ),
+        const SizedBox(width: AppSpace.sm),
+        SizedBox.square(
+          dimension: _ring,
+          child: Stack(alignment: Alignment.center, children: [
+            for (var i = 0; i < metrics.length; i++)
+              AppProgressRing(
+                value: (totals.value(metrics[i]) ?? 0) / 100,
+                size: _ring - i * _step,
+                stroke: AppSpace.xs,
+                tone: tones[i],
+                showPercent: false,
+              ),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+typedef _ClassRow = ({String title, double? value, bool flag, VoidCallback onTap});
+
+/// "Your classes": one bar per course for Progress | Attendance | Exams (the segmented pill).
+class _ClassesCard extends StatelessWidget {
+  const _ClassesCard({
+    required this.metric,
+    required this.metrics,
+    required this.onMetric,
+    required this.rows,
+    required this.onShowAll,
+    required this.showAllLabel,
+  });
+
+  final AnMetric metric;
+  final List<AnMetric> metrics;
+  final ValueChanged<AnMetric> onMetric;
+  final List<_ClassRow> rows;
+  final VoidCallback onShowAll;
+  final String showAllLabel;
+
+  static const int _max = 5;
+
+  /// The figure column.
+  static const double _figure = 48;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tabs = metrics.length > 1
+        ? AppTabs(
+            hug: true,
+            items: [for (final m in metrics) AppTabItem(anMetricLabel(m))],
+            index: metrics.indexOf(metric),
+            onChanged: (i) => onMetric(metrics[i]),
+          )
+        : null;
+    final shown = rows.take(_max).toList();
+    return AppCard(
+      title: 't2_an_classes'.tr,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (tabs != null) ...[tabs, const SizedBox(height: AppSpace.sm)],
+        for (final r in shown)
+          Semantics(
+            button: true,
+            label: '${r.title}: ${anPct(r.value)}',
+            child: ExcludeSemantics(
+              child: InkWell(
+                borderRadius: AppRadius.controlAll,
+                onTap: r.onTap,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: AppTouch.min),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
+                    child: LayoutBuilder(builder: (context, box) {
+                      final label = Row(children: [
+                        if (r.flag) ...[
+                          Container(
+                            width: AppSpace.xs,
+                            height: AppSpace.xs,
+                            decoration: BoxDecoration(color: c.kit.warn.color, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: AppSpace.xs),
+                        ],
+                        Expanded(child: Text(r.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context))),
+                      ]);
+                      final figure = SizedBox(
+                        width: _figure,
+                        child: Text(anPct(r.value),
+                            textAlign: TextAlign.end,
+                            textDirection: TextDirection.ltr,
+                            style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
+                      );
+                      // a wide card: name · bar · figure on one line; a phone: the name above the bar
+                      if (box.maxWidth >= 520) {
+                        return Row(children: [
+                          Expanded(flex: 2, child: label),
+                          const SizedBox(width: AppSpace.md),
+                          Expanded(flex: 3, child: AppProgressBar(value: r.value, height: AppSpace.xs + AppSpace.xxs)),
+                          const SizedBox(width: AppSpace.sm),
+                          figure,
+                        ]);
+                      }
+                      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        Row(children: [Expanded(child: label), figure]),
+                        const SizedBox(height: AppSpace.xs),
+                        AppProgressBar(value: r.value, height: AppSpace.xs),
+                      ]);
+                    }),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        if (rows.length > _max || rows.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xs),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: AppButton.ghost(label: showAllLabel, size: AppButtonSize.sm, onPressed: onShowAll),
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+/// "Need your attention": the count, one line of what that means, then the students (3 + show all).
+class _AttentionCard extends StatefulWidget {
+  const _AttentionCard({required this.rows});
+
+  final List<Widget> rows;
+
+  @override
+  State<_AttentionCard> createState() => _AttentionCardState();
+}
+
+class _AttentionCardState extends State<_AttentionCard> {
+  bool _open = false;
+
+  static const int _visible = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final rows = _open ? widget.rows : widget.rows.take(_visible).toList();
+    return AppCard(
+      title: 't2_an_attention'.tr,
+      action: AppCountBadge(count: widget.rows.length, tone: AppTone.warning),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(anTr('an2_attention_sub', 'Under 60 % attendance or 50 % in exams'), style: AppType.meta(context)),
+        const SizedBox(height: AppSpace.xs),
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.kit.line),
+          rows[i],
+        ],
+        if (widget.rows.length > _visible)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: AppButton.ghost(
+              size: AppButtonSize.sm,
+              label: _open ? anTr('an2_show_less', 'Show less') : anFmt('an2_show_all', {'n': widget.rows.length}, 'Show all ({n})'),
+              onPressed: () => setState(() => _open = !_open),
+            ),
+          ),
+      ]),
+    );
+  }
+}
+
+/// One student: the initial, name and course, then the low figures as tags.
+class _PersonRow extends StatelessWidget {
+  const _PersonRow({required this.name, required this.course, this.attendance, this.exams, this.onTap});
+
+  final String name, course;
+  final double? attendance, exams;
+  final VoidCallback? onTap;
+
+  /// From this width the figures stand beside the name.
+  static const double _sideBySide = 300;
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
+    final tone = AppBlockColors.of(context, AppBlockTone.forKey(name));
+    final tags = <Widget>[
+      if (attendance != null && attendance! < kAnLowAttendance)
+        AppStatusBadge(label: anFmt('t2_an_tag_att', {'pct': anIsolate(anPct(attendance))}), tone: AppTone.danger),
+      if (exams != null && exams! < kAnLowExams)
+        AppStatusBadge(label: anFmt('t2_an_tag_exams', {'pct': anIsolate(anPct(exams))}), tone: AppTone.warning),
+    ];
+    return Semantics(
+      button: onTap != null,
+      label: '$name, $course. ${anMetricLabel(AnMetric.attendance)} ${anPct(attendance)}, '
+          '${anMetricLabel(AnMetric.exams)} ${anPct(exams)}',
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.controlAll,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.primary),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+              child: Row(children: [
+                Container(
+                  width: AppDashSize.ringSm,
+                  height: AppDashSize.ringSm,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: tone.surface, shape: BoxShape.circle),
+                  child: Text(initial, style: AppType.bodyStrong(context).copyWith(color: tone.ink)),
+                ),
+                AppSpace.gapSm,
+                Expanded(
+                  child: LayoutBuilder(builder: (context, box) {
+                    final text = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
+                      Text(course, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                    ]);
+                    final wrap = Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: tags);
+                    // a narrow card puts the figures under the name; a wide one beside it
+                    if (tags.isEmpty) return text;
+                    if (box.maxWidth < _sideBySide) {
+                      return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        text,
+                        const SizedBox(height: AppSpace.xxs),
+                        wrap,
+                      ]);
+                    }
+                    return Row(children: [
+                      Expanded(child: text),
+                      AppSpace.gapXs,
+                      Flexible(child: Align(alignment: AlignmentDirectional.centerEnd, child: wrap)),
+                    ]);
+                  }),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
