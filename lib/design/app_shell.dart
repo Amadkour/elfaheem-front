@@ -1086,6 +1086,7 @@ class _SideHead extends StatelessWidget {
       const _AppMark(),
       const SizedBox(width: AppSpace.xs),
       Expanded(
+        flex: 3,
         child: Text(
           AppIdentity.instance.name.isNotEmpty ? AppIdentity.instance.name : 'NextBrain',
           maxLines: 1,
@@ -1095,7 +1096,10 @@ class _SideHead extends StatelessWidget {
       ),
       if (r != null && r.isNotEmpty) ...[
         const SizedBox(width: AppSpace.xs),
-        Container(
+        // a long role name (an organization's) gives way with an ellipsis, never pushing the head over
+        Flexible(
+          flex: 2,
+          child: Container(
           key: const ValueKey('app.shell.role'),
           height: _ShellMetrics.roleChip,
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
@@ -1104,7 +1108,9 @@ class _SideHead extends StatelessWidget {
           child: Text(
             appRoleLabel(r),
             maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AppType.overline(context).copyWith(color: c.onHero, letterSpacing: 0, height: 1.1),
+          ),
           ),
         ),
       ],
