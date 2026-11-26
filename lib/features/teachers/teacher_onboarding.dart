@@ -29,7 +29,7 @@ import 'package:flutter_education_app/features/teachers/package_wizard.dart';
 import 'package:flutter_education_app/features/teachers/teachers_api.dart';
 import 'package:flutter_education_app/features/teachers/teachers_models.dart';
 import 'package:flutter_education_app/features/teachers/teachers_parts.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -109,72 +109,79 @@ class _TeacherHubPageState extends State<TeacherHubPage> {
   @override
   Widget build(BuildContext context) {
     final p = _profile;
-    Widget body;
+    final pk = _packages ?? const <TeacherPackage>[];
+    final List<Widget> body;
     if (teacherOnboardingOff()) {
-      body = Padding(
-        padding: const EdgeInsets.all(AppSpace.md),
-        child: AppEmpty(
-          icon: Icons.lock_outline_rounded,
-          title: t('التسجيل كمعلم متوقف الآن', 'Teacher sign-up is switched off right now'),
-          message: t('أوقفته إدارة المنصة مؤقتاً. عد لاحقاً.', 'The platform switched it off for now. Come back later.'),
-          actionLabel: t('رجوع', 'Back'),
-          onAction: () => Navigator.of(context).maybePop(),
+      body = [
+        AppCard(
+          child: AppEmpty(
+            icon: Icons.lock_outline_rounded,
+            title: t('التسجيل كمعلم متوقف الآن', 'Teacher sign-up is switched off right now'),
+            message: t('أوقفته إدارة المنصة مؤقتاً. عد لاحقاً.', 'The platform switched it off for now. Come back later.'),
+            actionLabel: t('رجوع', 'Back'),
+            onAction: () => Navigator.of(context).maybePop(),
+          ),
         ),
-      );
+      ];
     } else if (p == null) {
-      body = _loading ? const AppListSkeleton(items: 4) : AppErrorState(message: _error, onRetry: _load);
+      body = [_loading ? const AppListSkeleton(items: 4) : AppCard(child: AppErrorState(message: _error, onRetry: _load))];
     } else {
-      body = AppRefresh(
-        onRefresh: _load,
-        child: ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
-          TeacherStatusCard(
-            profile: p,
-            onStart: () => _openWizard(),
-            onFix: () => _openWizard(at: TeacherStep.profile),
+      body = [
+        TeacherStatusCard(
+          profile: p,
+          onStart: () => _openWizard(),
+          onFix: () => _openWizard(at: TeacherStep.profile),
+        ),
+        if (!packagesOff())
+          AppCard(
+            title: t('باقاتي', 'My packages'),
+            child: p.approved
+                ? MyPackagesSection(
+                    api: _api,
+                    packages: pk,
+                    subjects: p.subjects,
+                    recurrenceSlot: widget.recurrenceSlot,
+                    onChanged: _load,
+                  )
+                : AppBanner(
+                    key: ValueKey('teacher.hub.packages_locked.${p.status}'),
+                    icon: p.status == 'pending' ? Icons.hourglass_top_rounded : Icons.info_outline_rounded,
+                    text: teacherPackagesLockedText(p.status),
+                  ),
           ),
-          if (!packagesOff())
-            AppSection(
-              title: t('باقاتي', 'My packages'),
-              subtitle: t('مجموعات جلسات بسعر ومقاعد وجدول.', 'Sets of sessions with a price, seats and a schedule.'),
-              child: p.approved
-                  ? MyPackagesSection(
-                      api: _api,
-                      packages: _packages ?? const [],
-                      subjects: p.subjects,
-                      recurrenceSlot: widget.recurrenceSlot,
-                      onChanged: _load,
-                    )
-                  : AppBanner(
-                      key: ValueKey('teacher.hub.packages_locked.${p.status}'),
-                      icon: p.status == 'pending' ? Icons.hourglass_top_rounded : Icons.info_outline_rounded,
-                      text: teacherPackagesLockedText(p.status),
-                    ),
-            ),
-          // one way in (D-1665): the Quran record sheet and programs open from here, not from a second Profile entry
-          ParentComponent(
-            featureKey: kQuranTabKey,
-            child: Padding(
-              padding: const EdgeInsets.only(top: AppSpace.md),
-              child: AppActionCard(
-                key: const ValueKey('teacher.hub.quran'),
-                icon: Icons.menu_book_rounded,
-                title: t('القرآن: سجل التسميع والبرامج', 'Quran: record sheet and programs'),
-                subtitle: t('سجّل تسميع طلابك وتابع برامج القرآن', "Log your students' recitation and follow your Quran programs"),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                  settings: const RouteSettings(name: '/teacher/quran'),
-                  builder: (_) => const QuranTeacherHubPage(),
-                )),
-              ),
-            ),
+        // one way in (D-1665): the Quran record sheet and programs open from here, not from a second Profile entry
+        ParentComponent(
+          featureKey: kQuranTabKey,
+          child: AppActionCard(
+            key: const ValueKey('teacher.hub.quran'),
+            icon: Icons.menu_book_rounded,
+            title: t('القرآن: سجل التسميع والبرامج', 'Quran: record sheet and programs'),
+            subtitle: t('سجّل تسميع طلابك وتابع برامج القرآن', "Log your students' recitation and follow your Quran programs"),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              settings: const RouteSettings(name: '/teacher/quran'),
+              builder: (_) => const QuranTeacherHubPage(),
+            )),
           ),
-          const SizedBox(height: AppSpace.lg),
-        ]),
-      );
+        ),
+      ];
     }
-    return BasePage(
+    final seats = pk.fold<int>(0, (n, x) => n + x.seatsTaken);
+    final waiting = pk.fold<int>(0, (n, x) => n + x.waitlistCount);
+    return T2HeroPage(
+      title: t('ملفي كمعلم وباقاتي', 'My teacher profile and packages'),
       width: AppWidth.reading,
-      appBar: ScreenAppBar(title: t('ملفي كمعلم', 'My teacher profile')),
-      child: SafeArea(child: body),
+      onRefresh: _load,
+      hero: AppHero(
+        title: t('ملفك يظهر في صفحة «المعلمين» للطلاب', 'Your profile shows on the Teachers page for students'),
+        stats: p != null && p.approved && !packagesOff()
+            ? [
+                AppHeroStat(value: '${pk.length}', label: t('باقات', 'Packages')),
+                AppHeroStat(value: '$seats', label: t('طالب حجز', 'Students booked')),
+                AppHeroStat(value: '$waiting', label: t('في قائمة الانتظار', 'On the waiting list')),
+              ]
+            : const [],
+      ),
+      children: body,
     );
   }
 }
@@ -243,23 +250,43 @@ class TeacherStatusCard extends StatelessWidget {
           onStart,
         ),
     };
+    final kit = c.kit;
+    final tone = switch (p.status) {
+      'approved' => kit.ok,
+      'pending' => kit.warn,
+      'rejected' => kit.live,
+      _ => kit.primaryTone,
+    };
+    final glyph = switch (p.status) {
+      'approved' => Icons.verified_user_outlined,
+      'pending' => Icons.hourglass_top_rounded,
+      'rejected' => Icons.feedback_outlined,
+      _ => Icons.badge_outlined,
+    };
     return AppCard(
       key: ValueKey('teacher.status.${p.status}'),
-      highlight: true,
+      variant: AppCardVariant.tint,
+      tone: tone,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-        Row(children: [
-          AppAvatar(name: teacherInitialName(p.name), url: p.avatarUrl, size: AppTouch.min),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          AppIconBox(icon: glyph, tone: tone),
           const SizedBox(width: AppSpace.sm),
           Expanded(
-            child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.textDark)),
+              const SizedBox(height: AppSpace.xxs),
+              Text(line, style: AppType.body(context).copyWith(color: c.textMedium)),
+            ]),
           ),
           if (p.exists) ...[
             const SizedBox(width: AppSpace.xs),
-            Flexible(child: AppStatusBadge(label: teacherStatusLabel(p.status), tone: teacherStatusTone(p.status), dense: true)),
+            AppAvatar(name: teacherInitialName(p.name), url: p.avatarUrl, size: AppTouch.min),
           ],
         ]),
-        const SizedBox(height: AppSpace.sm),
-        Text(line, style: AppType.body(context).copyWith(color: c.textMedium)),
+        if (p.exists) ...[
+          const SizedBox(height: AppSpace.sm),
+          _StatusPath(status: p.status, tone: tone),
+        ],
         if (p.rejected && (p.rejectionReason ?? '').trim().isNotEmpty) ...[
           const SizedBox(height: AppSpace.sm),
           AppBanner(
@@ -286,6 +313,42 @@ class TeacherStatusCard extends StatelessWidget {
           ),
         ],
       ]),
+    );
+  }
+}
+
+/// Draft → review → approved as three pills, the profile's own one filled (a rejected profile is back at review).
+class _StatusPath extends StatelessWidget {
+  const _StatusPath({required this.status, required this.tone});
+
+  final String status;
+  final KitTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final at = switch (status) {
+      'approved' => 2,
+      'pending' || 'rejected' => 1,
+      _ => 0,
+    };
+    final labels = [t('مسودة', 'Draft'), t('مراجعة', 'Review'), t('معتمد', 'Approved')];
+    return Semantics(
+      label: labels[at],
+      child: ExcludeSemantics(
+        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          for (var i = 0; i < labels.length; i++)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xxs + AppSpace.xxs / 2),
+              decoration: BoxDecoration(
+                color: i == at ? c.cardBg : tone.tint,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                border: Border.all(color: i == at ? tone.color : Color.lerp(tone.tint, tone.color, .25)!, width: AppBorder.strong),
+              ),
+              child: Text(labels[i], style: AppType.label(context).copyWith(color: tone.ink, fontWeight: i == at ? FontWeight.w600 : FontWeight.w500)),
+            ),
+        ]),
+      ),
     );
   }
 }
@@ -528,9 +591,9 @@ class _TeacherOnboardingWizardState extends State<TeacherOnboardingWizard> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) Navigator.of(context).pop(_changed);
       },
-      child: BasePage(
-        width: AppWidth.form,
-        appBar: ScreenAppBar(title: _saved.exists ? t('ملفي كمعلم', 'My teacher profile') : t('ملف معلم جديد', 'New teacher profile')),
+      child: T2Scope(
+        child: BasePage(
+        appBar: AppHeader(title: _saved.exists ? t('ملفي كمعلم', 'My teacher profile') : t('ملف معلم جديد', 'New teacher profile')),
         child: SafeArea(
           child: TeacherWizardBody(
             step: _step,
@@ -554,6 +617,7 @@ class _TeacherOnboardingWizardState extends State<TeacherOnboardingWizard> {
                 ),
             },
           ),
+        ),
         ),
       ),
     );
@@ -752,49 +816,51 @@ class TeacherWizardBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
-      AppTabs(
-        key: const ValueKey('teacher.wizard.steps'),
-        items: [for (final s in TeacherStep.values) AppTabItem(teacherStepTitle(s))],
-        index: step.index,
-        onChanged: onStep,
+    final title = switch (step) {
+      TeacherStep.profile => t('عرّف الطلاب بنفسك', 'Introduce yourself to students'),
+      TeacherStep.subjects => t('وش تدرّس؟', 'What do you teach?'),
+      TeacherStep.documents => t('أرفق ما يثبت مؤهلاتك', 'Attach proof of your qualifications'),
+      TeacherStep.review => t('راجع ملفك وأرسله', 'Check your profile and send it'),
+    };
+    return T2HeroScroll(
+      width: AppWidth.form,
+      hero: AppHero(
+        title: title,
+        subtitle: t('أربع خطوات، وبعدها تراجعه الإدارة.', 'Four steps, then the platform reviews it.'),
       ),
-      const SizedBox(height: AppSpace.xs),
-      Text(t('الخطوة ${step.index + 1} من ${TeacherStep.values.length}', 'Step ${step.index + 1} of ${TeacherStep.values.length}'),
-          style: AppType.meta(context).copyWith(color: c.textMedium)),
-      if (locked) ...[
-        const SizedBox(height: AppSpace.sm),
-        AppBanner(
-          icon: Icons.hourglass_top_rounded,
-          color: c.warning,
-          text: t('ملفك قيد المراجعة: تراه هنا ولا يتغير حتى تنتهي.', 'Your profile is under review: you can see it here, and it cannot change until the review ends.'),
+      children: [
+        T2Steps(
+          key: const ValueKey('teacher.wizard.steps'),
+          labels: [for (final s in TeacherStep.values) teacherStepTitle(s)],
+          index: step.index,
+          onTap: onStep,
         ),
-      ],
-      const SizedBox(height: AppSpace.md),
-      AppCard(child: child),
-      if (error != null) ...[
-        const SizedBox(height: AppSpace.sm),
-        AppBanner(key: const ValueKey('teacher.wizard.error'), icon: Icons.error_outline_rounded, color: c.danger, text: error!),
-      ],
-      const SizedBox(height: AppSpace.md),
-      AppButtonRow(
-        primary: AppButton.primary(
-          key: const ValueKey('teacher.wizard.next'),
-          label: nextLabel,
-          icon: step == TeacherStep.review ? Icons.send_rounded : Icons.arrow_forward_rounded,
-          busy: busy,
-          onPressed: busy || locked ? null : onNext,
-        ),
-        secondary: [
-          AppButton.ghost(
-            key: const ValueKey('teacher.wizard.back'),
-            label: step.index == 0 ? t('إغلاق', 'Close') : t('السابق', 'Back'),
-            onPressed: busy ? null : onBack,
+        if (locked)
+          AppBanner(
+            icon: Icons.hourglass_top_rounded,
+            color: c.warning,
+            text: t('ملفك قيد المراجعة: تراه هنا ولا يتغير حتى تنتهي.', 'Your profile is under review: you can see it here, and it cannot change until the review ends.'),
           ),
-        ],
-      ),
-      const SizedBox(height: AppSpace.lg),
-    ]);
+        AppCard(child: child),
+        if (error != null) AppBanner(key: const ValueKey('teacher.wizard.error'), icon: Icons.error_outline_rounded, color: c.danger, text: error!),
+        AppButtonRow(
+          primary: AppButton.primary(
+            key: const ValueKey('teacher.wizard.next'),
+            label: nextLabel,
+            icon: step == TeacherStep.review ? Icons.send_rounded : Icons.arrow_forward_rounded,
+            busy: busy,
+            onPressed: busy || locked ? null : onNext,
+          ),
+          secondary: [
+            AppButton.ghost(
+              key: const ValueKey('teacher.wizard.back'),
+              label: step.index == 0 ? t('إغلاق', 'Close') : t('السابق', 'Back'),
+              onPressed: busy ? null : onBack,
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
 
