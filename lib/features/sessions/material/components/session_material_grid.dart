@@ -39,6 +39,8 @@ import 'package:flutter_education_app/features/sessions/material/components/mate
 import 'package:flutter_education_app/features/sessions/material/components/material_tile_parts.dart';
 import 'package:flutter_education_app/features/sessions/material/components/material_title.dart';
 import 'package:flutter_education_app/features/sessions/material/components/session_exam_tile.dart';
+import 'package:flutter_education_app/features/sessions/material/components/lesson_material_view.dart';
+import 'package:flutter_education_app/features/sessions/video/vod_player_parts.dart' show VodResume;
 import 'package:flutter_education_app/features/sessions/material/components/session_shared_widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
@@ -70,7 +72,11 @@ class SessionMaterialGrid extends StatelessWidget {
     required this.isLoading,
     this.examGate,
     this.onOpenExam,
+    this.studentLayout = true,
   });
+
+  /// Students: the redesigned lesson content ([LessonMaterialView]); false keeps the plain list.
+  final bool studentLayout;
 
   bool get _hasExam => examGate != null && !examGate!.isEmpty;
 
@@ -126,6 +132,8 @@ class SessionMaterialGrid extends StatelessWidget {
     if (isLoading) {
       return const AppListSkeleton(items: 4, padding: EdgeInsets.symmetric(vertical: 8));
     }
+    // the student's lesson content (Stu1Learn material): the video card, the files grid and the quiz card
+    if (!isTeacher && studentLayout) return _studentView(context);
     if (!_hasExam) return _buildMaterialsList(context);
 
     // The session exam is ALWAYS the last entry. It lives OUTSIDE the
@@ -144,6 +152,114 @@ class SessionMaterialGrid extends StatelessWidget {
           onOpen: onOpenExam,
         ),
       ],
+    );
+  }
+
+  // ── Student view (Stu1Learn material) ──────────────────────────────────────
+
+  static LessonFileKind _kindOf(SessionMaterialModel m) => switch (m.type) {
+        SessionMaterialType.image => LessonFileKind.image,
+        SessionMaterialType.video => LessonFileKind.video,
+        SessionMaterialType.pdf => LessonFileKind.pdf,
+        SessionMaterialType.document => LessonFileKind.doc,
+        SessionMaterialType.link => LessonFileKind.link,
+        SessionMaterialType.recorded => LessonFileKind.recorded,
+        SessionMaterialType.recording => LessonFileKind.recording,
+      };
+
+  /// The session's exam gate as the quiz card's state.
+  static LessonQuizData? quizOf(SessionExamGate? gate, {required bool enrolled, VoidCallback? onOpen}) {
+    if (gate == null || gate.isEmpty) return null;
+    final e = gate.firstPending ?? gate.exams.first;
+    final state = e.passed
+        ? LessonQuizState.passed
+        : e.awaitingResults
+            ? LessonQuizState.waiting
+            : e.attemptsExhausted
+                ? LessonQuizState.none
+                : e.isClosed
+                    ? LessonQuizState.closed
+                    : e.attempted
+                        ? LessonQuizState.retry
+                        : LessonQuizState.start;
+    final canOpen = enrolled && (e.passed || (e.canStart && !e.awaitingResults));
+    return LessonQuizData(
+      state: state,
+      questions: e.questionCount,
+      minutes: e.duration,
+      score: e.bestPercentage,
+      left: e.unlimitedAttempts || e.passed ? null : e.remainingSubmissions,
+      onOpen: canOpen ? onOpen : null,
+    );
+  }
+
+  Widget _studentView(BuildContext context) {
+    bool enrolled;
+    try {
+      enrolled = context.read<CourseDetailProvider>().course.isEnrolled;
+    } catch (_) {
+      enrolled = true;
+    }
+    final video = materials
+        .where((m) => m.type == SessionMaterialType.video || m.type == SessionMaterialType.recorded)
+        .firstOrNull;
+    final rest = [for (final m in materials) if (!identical(m, video)) m];
+    LessonFileData file(SessionMaterialModel m) {
+      final recording = m.type == SessionMaterialType.recording;
+      final isVideo = m.type == SessionMaterialType.video || m.type == SessionMaterialType.recorded;
+      final style = m.type == SessionMaterialType.document ? MaterialFileStyle.forExtension(m.fileExtension) : null;
+      final label = style?.label ?? (_typeLabelKeys[m.type] ?? 'material_type_link').tr;
+      final rating = recording ? RatingShow.none : ratingShow(total: m.rateSummary?.total ?? 0, canRate: m.completed);
+      return LessonFileData(
+        kind: _kindOf(m),
+        title: recording ? 'recording_in_progress'.tr : materialTitle(m.name, recorded: m.type == SessionMaterialType.recorded),
+        meta: [
+          label,
+          if (!recording && m.durationLabel.isNotEmpty) m.durationLabel else if (!recording && m.sizeLabel.isNotEmpty) m.sizeLabel,
+        ].join(AppConfig.lang == 'ar' ? '، ' : ', '),
+        done: m.completed,
+        trailing: isVideo && !m.completed ? _OfflineBadge(sessionId: m.sessionId, materialId: m.id) : null,
+        onTap: recording ? null : () => _onTapMaterial(context, m, m.completed),
+        footer: switch (rating) {
+          RatingShow.stars => RatingWidget(type: RateType.material, sourceId: m.id.toString(), canEdit: true, rateSummary: m.rateSummary),
+          RatingShow.invite => RateLater(type: RateType.material, sourceId: m.id.toString(), rateSummary: m.rateSummary),
+          RatingShow.none => null,
+        },
+      );
+    }
+
+    Widget view(Duration? stopped) {
+      final total = video?.durationSeconds;
+      return LessonMaterialView(
+        video: video == null
+            ? null
+            : LessonVideoData(
+                minutes: total == null ? null : (total / 60).round(),
+                stoppedAt: stopped,
+                progress: stopped == null || total == null || total <= 0
+                    ? null
+                    : (stopped.inSeconds / total).clamp(0.0, 1.0).toDouble(),
+                onPlay: () => _onTapMaterial(context, video, video.completed),
+              ),
+        files: [for (final m in rest) file(m)],
+        quiz: quizOf(examGate, enrolled: enrolled, onOpen: onOpenExam),
+        empty: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+          child: Row(
+            children: [
+              Icon(Icons.folder_open_rounded, size: AppIconSize.md, color: context.colors.textLight),
+              const SizedBox(width: AppSpace.xs),
+              Flexible(child: Text('no_attachments_yet'.tr, style: AppType.meta(context))),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (video == null) return view(null);
+    return FutureBuilder<Duration?>(
+      future: VodResume.load(video.sessionId == 0 ? session.id : video.sessionId, video.id),
+      builder: (context, snap) => view(snap.data),
     );
   }
 

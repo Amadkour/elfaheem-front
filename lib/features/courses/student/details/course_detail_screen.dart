@@ -57,6 +57,15 @@ import 'package:flutter_education_app/features/courses/course_profile/course_pro
 import 'package:flutter_education_app/features/courses/course_profile/course_page_sheets.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_parts.dart' show CpTrackTab;
 import 'package:flutter_education_app/features/courses/student/details/growth_tr.dart';
+import 'package:flutter_education_app/features/courses/student/details/subject_page_glue.dart';
+import 'package:flutter_education_app/features/courses/course_space/subject_panel.dart';
+import 'package:flutter_education_app/features/courses/course_space/subject_space.dart';
+import 'package:flutter_education_app/features/notebook/notebook_panel.dart';
+import 'package:flutter_education_app/features/calendar/schedule_page.dart' show SchedulePage;
+import 'package:flutter_education_app/features/messaging/chat/chat_page.dart' show openChatWith;
+import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
+import 'package:flutter_education_app/config/theme/kit_palette.dart' show AppAccent;
+import 'package:flutter_education_app/features/courses/course_profile/course_page_models.dart' show CoursePage;
 import 'package:flutter_education_app/features/quran/quran_api.dart' show QuranApi, quranOff;
 
 void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
@@ -609,18 +618,7 @@ class _CoursePageState extends State<_CoursePage> {
       ),
     ];
 
-    return StudyTracker(
-      courseId: courseId,
-      enabled: c.isEnrolled,
-      child: SafeArea(
-      top: false,
-      child: CourseSpace(
-        hero: hero,
-        heroBackground: showReel
-            ? CourseReelPlayer(key: ValueKey(reel), url: reel, posterUrl: c.imageUrl.isNotEmpty ? c.imageUrl : null)
-            : null,
-        onBack: Navigator.canPop(context) ? () => Navigator.maybePop(context) : null,
-        topActions: [
+    final menu = <CourseSpaceTopAction>[
           CourseSpaceTopAction(
             icon: Icons.ios_share_rounded,
             tooltip: 'course_hero_share'.tr,
@@ -653,7 +651,33 @@ class _CoursePageState extends State<_CoursePage> {
           ),
           if (mouse)
             CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, overflow: true, onTap: _refresh),
-        ],
+        ];
+
+    // S-B: an enrolled student's course page is the subject page (SubjectProfile); a teacher, a visitor and an
+    // archived course keep CourseSpace
+    if (c.isEnrolled && courseId != null && !archived && !GuestState.active) {
+      return StudyTracker(
+        courseId: courseId,
+        enabled: true,
+        child: SafeArea(
+          top: false,
+          child: _subjectPage(context, p, c, courseId: courseId, title: title, page: page, spotlight: spotlight, tabs: tabs, menu: menu),
+        ),
+      );
+    }
+
+    return StudyTracker(
+      courseId: courseId,
+      enabled: c.isEnrolled,
+      child: SafeArea(
+      top: false,
+      child: CourseSpace(
+        hero: hero,
+        heroBackground: showReel
+            ? CourseReelPlayer(key: ValueKey(reel), url: reel, posterUrl: c.imageUrl.isNotEmpty ? c.imageUrl : null)
+            : null,
+        onBack: Navigator.canPop(context) ? () => Navigator.maybePop(context) : null,
+        topActions: menu,
         onRefresh: _refresh,
         spotlight: spotlight,
         tabs: tabs,
@@ -672,6 +696,216 @@ class _CoursePageState extends State<_CoursePage> {
             : CourseBuyBar(course: c, status: status, refusal: _quranRefusal, onEnroll: () => _openEnrollment(context, c)),
       ),
       ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // S-B: the subject page of an enrolled student
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// The provider's focus tick last acted on (an Overview row, "Continue" …), and whether a deep link's opening tab
+  /// was opened.
+  int? _seenFocusTick;
+  bool _subjectOpened = false;
+
+  /// The old tabs the subject page itself stands for.
+  static const _subjectOwnTabs = {'live', 'lessons', 'sessions', 'overview'};
+
+  final Map<String, CourseSpaceTab> _subjectTabs = {};
+
+  void _openSubjectTab(String id) {
+    final t = _subjectTabs[id];
+    if (t != null) pushSubjectTabPage(context, t);
+  }
+
+  Future<void> _openSubjectExam(CourseDetailProvider p, int id) =>
+      openSubjectExam(context, p, id, onExamsPage: () => _openSubjectTab('exam'));
+
+  void _openSubjectLesson(CourseDetailProvider p, SessionModel s, int number) {
+    if (s.isLive && !s.hasRecording && s.totalMaterial == 0) {
+      // a class still to come: nothing to open yet
+      showAppNotice('sb_subj_opens_before'.tr);
+      return;
+    }
+    final i = p.sessions.indexWhere((x) => x.id == s.id);
+    final after = i >= 0 && i + 1 < p.sessions.length ? p.sessions[i + 1] : null;
+    openSubjectLessonPanel(
+      context,
+      p,
+      s,
+      number: number,
+      onOpenExam: (id) => _openSubjectExam(p, id),
+      onNext: after == null || !p.isSessionUnlockedById(after.id) || after.isLiveActive
+          ? null
+          : () => _openSubjectLesson(p, after, number + 1),
+    );
+  }
+
+  List<SubjectStep> _subjectSteps(CourseDetailProvider p, String teacher) => subjectStepsOf(
+        p,
+        teacher: teacher,
+        onOpenLesson: (s, n) => _openSubjectLesson(p, s, n),
+        onJoinLive: (s) => _joinLive(context, p, s),
+        onOpenExam: (id) => _openSubjectExam(p, id),
+      );
+
+  static String? _subjectGrade(CourseModel c) {
+    final targets = c.setup.targets;
+    if (targets.isEmpty) return null;
+    return targets.first.wholeStage ? targets.first.stageName : targets.first.gradeName;
+  }
+
+  static int _subjectTotal(CourseDetailProvider p) => p.course.sessionsCount > 0 ? p.course.sessionsCount : p.sessions.length;
+
+  void _openSubjectLessons(CourseDetailProvider p, String title, String teacher) {
+    final grade = _subjectGrade(p.course);
+    pushSubjectLessonsPage(
+      context,
+      teacher: teacher,
+      kicker: grade == null ? title : '$title، $grade',
+      steps: (_) => _subjectSteps(p, teacher),
+      done: () => p.sessions.where(subjectSessionDone).length,
+      total: () => _subjectTotal(p),
+    );
+  }
+
+  Widget _subjectPage(
+    BuildContext context,
+    CourseDetailProvider p,
+    CourseModel c, {
+    required int courseId,
+    required String title,
+    required CoursePage? page,
+    required List<Widget> spotlight,
+    required List<CourseSpaceTab> tabs,
+    required List<CourseSpaceTopAction> menu,
+  }) {
+    final teacher = c.teacher;
+    final teacherName = teacher?.name ?? '';
+    _subjectTabs
+      ..clear()
+      ..addEntries(tabs.map((t) => MapEntry(t.id, t)));
+
+    // a row asked the page to open a session (the Overview's rows, a link): its lesson panel
+    if (_seenFocusTick != p.focusTick) {
+      final first = _seenFocusTick == null;
+      _seenFocusTick = p.focusTick;
+      final id = p.focusSessionId;
+      final i = id == null ? -1 : p.sessions.indexWhere((s) => s.id == id);
+      if (!first && i >= 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _openSubjectLesson(p, p.sessions[i], i + 1);
+        });
+      }
+    }
+    // a deep link's opening tab (initialTab): its page, once
+    final want = widget.initialTab;
+    if (!_subjectOpened && want != null && p.sessions.isNotEmpty) {
+      _subjectOpened = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (want == 'lessons' || want == 'sessions') {
+          _openSubjectLessons(p, title, teacherName);
+        } else if (!_subjectOwnTabs.contains(want)) {
+          _openSubjectTab(want);
+        }
+      });
+    }
+
+    final live = p.liveSessions;
+    final rate = c.rateSummary;
+    final liveMinutes =
+        p.sessions.where((s) => s.isLive && s.durationMinutes > 0).map((s) => s.durationMinutes).firstOrNull;
+    final total = _subjectTotal(p);
+    final done = p.sessions.where(subjectSessionDone).length;
+
+    // the next class: the profile's next lecture / own section, else the next scheduled live session
+    final now = DateTime.now().toUtc();
+    final pn = page?.next != null && !page!.next!.liveNow ? page.next : null;
+    final upcoming = p.sessions
+        .where((s) => s.isLive && !s.isLiveActive && s.scheduledAt != null && s.scheduledAt!.toUtc().isAfter(now))
+        .firstOrNull;
+    final nextAt = pn != null ? pn.at?.toUtc() : upcoming?.scheduledAt?.toUtc();
+    final nextMinutes = pn != null ? pn.minutes : upcoming?.durationMinutes;
+    final nextId = pn?.id ?? upcoming?.id;
+    final nextOpen = nextAt != null && nextAt.subtract(const Duration(minutes: 10)).isBefore(now);
+    final nextSession = nextId == null ? null : p.sessions.where((s) => s.id == nextId).firstOrNull;
+    final hours = c.totalHours.toStringAsFixed(c.totalHours % 1 == 0 ? 0 : 1);
+
+    return SubjectSpace(
+      title: title,
+      subject: c.setup.subject?.nameEn ?? c.setup.subject?.nameAr ?? c.category?.nameEn ?? c.category?.nameAr,
+      grade: _subjectGrade(c),
+      teacher: teacherName,
+      teacherImageUrl: teacher?.imageUrl,
+      teacherYears: teacher?.teacherProfile?.experienceYears,
+      teacherBio: teacher?.teacherProfile?.about,
+      onTeacher: teacher == null ? null : () => openPersonProfile(context, teacher),
+      mode: c.setup.isEmpty ? null : (c.setup.inPerson ? 'sb_subj_mode_inperson'.tr : 'sb_subj_mode_remote'.tr),
+      lessonsCount: total,
+      rating: rate != null && rate.total > 0 ? rate.average.toStringAsFixed(1) : null,
+      facts: [
+        if (total > 0)
+          SubjectFact(icon: Icons.menu_book_outlined, value: sbDigits(total), label: 'sb_subj_fact_lessons'.tr, accent: AppAccent.pink),
+        if (liveMinutes != null)
+          SubjectFact(icon: Icons.schedule_rounded, value: sbDigits(liveMinutes), label: 'sb_subj_fact_minutes'.tr, accent: AppAccent.grape),
+        if (c.totalHours > 0)
+          SubjectFact(icon: Icons.hourglass_bottom_rounded, value: sbDigits(hours), label: 'sb_subj_fact_hours'.tr, accent: AppAccent.mint),
+        if (rate != null && rate.total > 0)
+          SubjectFact(icon: Icons.star_rounded, value: sbDigits(rate.average.toStringAsFixed(1)), label: 'sb_subj_fact_rating'.tr),
+      ],
+      scheduleNote: nextAt == null ? null : subjectWhen(nextAt),
+      live: live.isEmpty
+          ? null
+          : SubjectLive(
+              title: live.first.name,
+              startedAgo: subjectStartedAgo(live.first.scheduledAt),
+              onJoin: () => _joinLive(context, p, live.first),
+            ),
+      next: live.isNotEmpty || nextAt == null
+          ? null
+          : SubjectNext(
+              when: subjectWhen(nextAt, minutes: nextMinutes),
+              title: pn?.name ?? upcoming?.name,
+              until: nextAt,
+              onJoin: nextOpen && nextSession != null ? () => _joinLive(context, p, nextSession) : null,
+            ),
+      steps: _subjectSteps(p, teacherName),
+      done: done,
+      total: total,
+      onAllLessons: () => _openSubjectLessons(p, title, teacherName),
+      onChat: teacher == null ? null : () => openChatWith(context, peerId: teacher.id, courseId: courseId),
+      onBot: AppConfig.disableList.contains('rag.assistant') ? null : courseAskDocsAction(context, courseId, title).onTap,
+      onNotes: () => showSubjectPanel<void>(
+        context,
+        title: 'sb_nb_title'.tr.replaceAll('{subject}', title),
+        child: (_) => NotebookPanel(courseId: courseId, subjectId: c.setup.subject?.id, subjectTitle: title),
+      ),
+      onSchedule: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SchedulePage())),
+      onExams: _subjectTabs.containsKey('exam') ? () => _openSubjectTab('exam') : null,
+      onAttendance: _subjectTabs.containsKey(kCpTabProgress) ? () => _openSubjectTab(kCpTabProgress) : null,
+      // the spotlight's next-class card is the page's own next card
+      extras: [for (final w in spotlight) if (w is! CourseNextCard) w],
+      more: [
+        for (final t in tabs)
+          if (!_subjectOwnTabs.contains(t.id) && t.id != 'exam')
+            CourseSpaceAction(
+              icon: t.icon,
+              label: t.label,
+              featureKey: t.featureKey,
+              badge: t.id == kCpTabAnnouncements && (t.count ?? 0) > 0 ? '${t.count}' : null,
+              onTap: () => pushSubjectTabPage(context, t),
+            ),
+        if (tabs.any((t) => t.id == kCpTabOverview))
+          CourseSpaceAction(
+            icon: Icons.dashboard_outlined,
+            label: 'sb_subj_overview'.tr,
+            onTap: () => _openSubjectTab(kCpTabOverview),
+          ),
+      ],
+      menu: menu,
+      onBack: Navigator.canPop(context) ? () => Navigator.maybePop(context) : null,
+      onRefresh: _refresh,
     );
   }
 }
