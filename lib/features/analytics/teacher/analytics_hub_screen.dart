@@ -275,13 +275,11 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
     final insights = teacherInsights(facts, max: 5);
     final forYou = AppCard(
       title: 't2_an_for_you'.tr,
-      action: Flexible(
-        child: AppButton.ghost(
-          label: 't2_an_refresh'.tr,
-          icon: Icons.history_rounded,
-          size: AppButtonSize.sm,
-          onPressed: () => _store.load([for (final c in all) c.id], force: true),
-        ),
+      action: AppButton.ghost(
+        label: 't2_an_refresh'.tr,
+        icon: Icons.history_rounded,
+        size: AppButtonSize.sm,
+        onPressed: () => _store.load([for (final c in all) c.id], force: true),
       ),
       child: insights.isEmpty
           ? Padding(
