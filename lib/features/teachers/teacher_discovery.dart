@@ -597,41 +597,23 @@ class TeacherProfileView extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final p = teacher;
-    final hero = AppBlock(
-      tone: AppBlockTone.sky,
-      hero: true,
-      child: Builder(builder: (context) {
-        final b = AppBlock.colorsOf(context);
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-          Row(children: [
-            // a paper ring: the avatar's own sky circle would vanish on the sky hero
-            DecoratedBox(
-              decoration: BoxDecoration(shape: BoxShape.circle, color: c.cardBg),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpace.xxs),
-                child: AppAvatar(name: teacherInitialName(p.name), url: p.avatarUrl, size: AppTouch.primary + AppSpace.md),
-              ),
+    // Stu2Teachers `screen=profile`: the teacher on the learn hero (the initial on the subject colour, "معلم موثّق"),
+    // the packages card riding up over it, then about, qualifications and reviews
+    final sub = c.kit.subject(teacherKitSubject(p.subjects.isEmpty ? '' : p.subjects.first));
+    final initial = teacherInitialName(p.name).trim();
+    final hero = AppHero(
+      kicker: p.status == 'approved' ? teacherG(p.gender, 'معلم موثّق', 'معلمة موثّقة', 'sd_teacher_verified'.tr) : null,
+      title: p.name,
+      subtitle: [teacherGenderLabel(p.gender), if (p.subjects.isNotEmpty) teachersJoin(p.subjects.map(teacherSubjectLabel))].join('، '),
+      leading: p.avatarUrl != null && p.avatarUrl!.isNotEmpty
+          ? AppAvatar(name: initial, url: p.avatarUrl, size: AppHero.leadingSize(false))
+          : Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: sub.tone.color, borderRadius: BorderRadius.circular(AppRadius.tile)),
+              child: Text(initial.isEmpty ? '؟' : initial.characters.first, style: AppType.headline(context).copyWith(color: sub.fg)),
             ),
-            const SizedBox(width: AppSpace.md),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                UserText(block: false, p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
-                const SizedBox(height: AppSpace.xxs),
-                Text(
-                  [teacherGenderLabel(p.gender), if (p.yearsExperience > 0) yearsText(p.yearsExperience)].join(' · '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppType.meta(context).copyWith(color: b.muted),
-                ),
-                const SizedBox(height: AppSpace.xxs),
-                TeacherRatingLine(rating: p.rating, count: p.reviewsCount, color: b.muted),
-              ]),
-            ),
-          ]),
-          const SizedBox(height: AppSpace.sm),
-          TeacherSubjectBadges(subjects: p.subjects),
-        ]);
-      }),
+      icon: Icons.person_outline_rounded,
+      bottom: Align(alignment: AlignmentDirectional.centerStart, child: TeacherRatingLine(rating: p.rating, count: p.reviewsCount, color: c.onHeroMuted)),
     );
     final about = AppSection(
       title: teacherG(p.gender, 'عن المعلم', 'عن المعلمة', 'About'),
@@ -699,16 +681,17 @@ class TeacherProfileView extends StatelessWidget {
     return LayoutBuilder(builder: (context, box) {
       final wide = box.maxWidth >= Breakpoints.desktop;
       final Widget content = wide
-          ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              hero,
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(flex: 3, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [about, ?quals, ?reviews])),
-                const SizedBox(width: AppSpace.lg),
-                Expanded(flex: 2, child: packages),
-              ]),
+          ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(flex: 3, child: AppCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [about, ?quals, ?reviews]))),
+              const SizedBox(width: AppSpace.lg),
+              Expanded(flex: 2, child: AppCard(child: packages)),
             ])
-          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [hero, packages, about, ?quals, ?reviews]);
-      final list = ListView(padding: const EdgeInsets.all(AppSpace.md), children: [content, const SizedBox(height: AppSpace.lg)]);
+          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              AppCard(child: packages),
+              const SizedBox(height: AppSpace.md),
+              AppCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [about, ?quals, ?reviews])),
+            ]);
+      final list = SdHeroList(hero: hero, width: AppWidth.wide, children: [content]);
       return onRefresh == null ? list : AppRefresh(onRefresh: onRefresh!, child: list);
     });
   }
@@ -985,31 +968,21 @@ class _PackageViewState extends State<PackageView> {
     final p = widget.package;
     final state = packageJoinState(p);
     final left = packageHoldLeft(p.myEnrollment?.expiresAt);
-    final hero = AppBlock(
-      tone: state == PackageJoinState.offered ? AppBlockTone.gold : AppBlockTone.peach,
-      hero: true,
-      child: Builder(builder: (context) {
-        final b = AppBlock.colorsOf(context);
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-          UserText(block: false, p.title, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
-          const SizedBox(height: AppSpace.xxs),
-          Text(
-            [
-              teacherSubjectLabel(p.subject),
-              packageLevelLabel(p.level),
-              if ((p.teacher?.name ?? '').isNotEmpty) p.teacher!.name,
-            ].join(' · '),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppType.meta(context).copyWith(color: b.muted),
-          ),
-          const SizedBox(height: AppSpace.sm),
-          PackagePriceText(price: p.price, finalPrice: p.finalPrice, currency: p.currency, discountPercent: p.discountPercent),
-        ]);
-      }),
+    // Stu2Teachers `screen=pack`: the package on the learn hero, the facts card (price first) riding up over it,
+    // the state as a banner, ONE action
+    final hero = AppHero(
+      title: p.title,
+      subtitle: [
+        teacherSubjectLabel(p.subject),
+        packageLevelLabel(p.level),
+        if ((p.teacher?.name ?? '').isNotEmpty) p.teacher!.name,
+      ].join('، '),
+      icon: Icons.inventory_2_outlined,
     );
     final facts = AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        PackagePriceText(price: p.price, finalPrice: p.finalPrice, currency: p.currency, discountPercent: p.discountPercent),
+        const SizedBox(height: AppSpace.sm),
         AppInfoRow(Icons.event_repeat_rounded, '${sessionsText(p.sessionsCount)} × ${minutesText(p.sessionMinutes)}'),
         // the days and times before joining (D-1648), and the first REAL session day (D-1649)
         KeyedSubtree(
@@ -1057,8 +1030,8 @@ class _PackageViewState extends State<PackageView> {
           icon: Icons.check_circle_rounded,
           color: c.success,
           text: p.seriesId != null
-              ? t('أنت مشترك. تجد الجلسات في جدولك.', 'You are in. The sessions are in your schedule.')
-              : t('أنت مشترك. يتفق معك المعلم على مواعيد الجلسات.', 'You are in. The teacher agrees the session times with you.'),
+              ? t('أنت مشترك. تجد الحصص في جدولك.', 'You are in. The classes are in your schedule.')
+              : t('أنت مشترك. يتفق معك المعلم على مواعيد الحصص.', 'You are in. The teacher agrees the class times with you.'),
         ),
       PackageJoinState.closed || PackageJoinState.notOpen => AppBanner(
           icon: Icons.block_rounded,
@@ -1069,11 +1042,9 @@ class _PackageViewState extends State<PackageView> {
     };
     final canAct = packageJoinActionable(state) && !widget.joinOff && state != PackageJoinState.waitlisted;
     final mine = packageJoinMine(state);
-    final list = ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
-      hero,
-      if (stateBanner != null) ...[const SizedBox(height: AppSpace.md), stateBanner],
-      const SizedBox(height: AppSpace.md),
+    final list = SdHeroList(hero: hero, children: [
       facts,
+      if (stateBanner != null) ...[const SizedBox(height: AppSpace.md), stateBanner],
       if (p.goal.trim().isNotEmpty)
         AppSection(title: t('الهدف', 'Goal'), child: UserText(p.goal.trim(), style: AppType.body(context).copyWith(color: c.textDark))),
       if (p.description.trim().isNotEmpty)
