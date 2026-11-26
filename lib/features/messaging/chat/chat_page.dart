@@ -568,7 +568,16 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
     super.dispose();
   }
 
+  int? _privateShown;
+
   void _onUpdate() {
+    final to = _t.privateChatId;
+    if (to != null && to != _privateShown) {
+      _privateShown = to;
+      showAppNotice('sc_chat_reply_private'.tr, actionLabel: 'sc_chat_open_private'.tr, onAction: () {
+        Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(builder: (_) => ChatThreadPage(conversationId: to)));
+      });
+    }
     final newest = _t.messages.firstOrNull?.clientId;
     if (newest != _newestKey) {
       // scrolled up and something new arrived at the bottom: what was the bottom stays where it is
@@ -762,6 +771,7 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
           valueListenable: AppConnectivity.instance.online,
           builder: (_, online, _) => online ? const SizedBox.shrink() : const ChatOfflineStrip(),
         ),
+        if (conv?.announceOnly == true) const ScAnnouncementsBanner(),
         Expanded(child: _body(c)),
         _composer(conv),
       ]),
@@ -851,6 +861,7 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
             if (showDate) ChatDateChip(label: chatDayLabel(m.createdAt)),
             if (_t.firstUnreadKey == m.clientId) const ChatUnreadDivider(),
             row,
+            if (mine && runEnd && (m.privateReply || conv?.announceOnly == true)) const ScPrivateReplyNote(),
           ]),
         );
       }
@@ -937,6 +948,7 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
         replyTo: _replyTo,
         replyIsMine: _replyTo?.senderId == _hub.myId,
         onCancelReply: () => setState(() => _replyTo = null),
+        hint: conv.announceOnly ? 'sc_chat_reply_hint'.tr : null,
       ),
     );
   }
@@ -1020,6 +1032,8 @@ class _ChatHeader extends StatelessWidget {
     String sub = '';
     if (typingName != null) {
       sub = conv?.isGroup == true ? '$typingName ${'chat_is_typing'.tr}' : 'chat_typing'.tr;
+    } else if (conv != null && conv.announceOnly) {
+      sub = 'sc_chat_from_teacher'.tr;
     } else if (conv != null) {
       final parts = <String>[
         if (!conv.isGroup && conv.online) 'chat_online'.tr,
@@ -1051,7 +1065,8 @@ class _ChatHeader extends StatelessWidget {
                   const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                      Text(conv?.title ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w600, c: c.textDark)),
+                      Text(conv?.announceOnly == true ? 'sc_chat_ann_title'.tr.replaceAll('{course}', conv!.title) : (conv?.title ?? ''),
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w600, c: c.textDark)),
                       if (sub.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 1),
@@ -1106,3 +1121,42 @@ Future<void> openChatWith(BuildContext context, {required int peerId, int? cours
 }
 
 ChatApi chatApi() => ChatHub.instance.api;
+
+/// The line on top of the teacher's announcements (a learner's view of a course group, privacy D-1950): what lands
+/// here and where a reply goes.
+class ScAnnouncementsBanner extends StatelessWidget {
+  const ScAnnouncementsBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = context.colors.kit.warn;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.sm, 0),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+      decoration: BoxDecoration(color: tone.tint, borderRadius: BorderRadius.circular(AppRadius.tile)),
+      child: Row(children: [
+        Icon(Icons.lock_outline_rounded, size: AppIconSize.md, color: tone.ink),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(child: Text('sc_chat_ann_banner'.tr, style: AppType.label(context).copyWith(color: tone.ink, fontWeight: FontWeight.w600))),
+      ]),
+    );
+  }
+}
+
+/// Under a learner's own message in the announcements: it reached the teacher alone.
+class ScPrivateReplyNote extends StatelessWidget {
+  const ScPrivateReplyNote({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(top: AppSpace.xxs, bottom: AppSpace.xs),
+      child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+        Icon(Icons.lock_outline_rounded, size: AppIconSize.xs, color: c.textMedium),
+        const SizedBox(width: AppSpace.xxs),
+        Flexible(child: Text('sc_chat_reached_teacher_only'.tr, style: AppType.meta(context))),
+      ]),
+    );
+  }
+}

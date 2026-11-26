@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -171,11 +170,15 @@ class _ComplaintsHubPageState extends State<ComplaintsHubPage> {
     context.watch<LangProvider>(); // re-translate when the language changes
     final show = _showToResolve;
     final seg = show ? _segment : HubSegment.mine;
-    return BasePage(
+    // a student's help center wears the chat area and the kit's top bar (redesign S-C, Stu1Comm?screen=complaints)
+    final student = context.read<MyAuthProvider>().currentUser?.role == 'student';
+    final page = BasePage(
       key: const ValueKey('complaints'),
-      useWebCard: true,
+      useWebCard: !student,
       width: AppWidth.content,
-      appBar: ScreenAppBar(title: 'chub_title'.tr, actions: [AppRefreshAction(onRefresh: _ctl.refresh)]),
+      appBar: student
+          ? AppHeader(title: 'chub_title'.tr, actions: [AppRefreshAction(onRefresh: _ctl.refresh)])
+          : ScreenAppBar(title: 'chub_title'.tr, actions: [AppRefreshAction(onRefresh: _ctl.refresh)]),
       child: SafeArea(
         child: Column(children: [
           Expanded(
@@ -206,5 +209,6 @@ class _ComplaintsHubPageState extends State<ComplaintsHubPage> {
         ]),
       ),
     );
+    return student ? AppAreaScope(area: AppArea.chat, child: page) : page;
   }
 }

@@ -24,6 +24,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -442,8 +444,10 @@ class _InboxPageState extends State<InboxPage> {
         final hasInbox = tabs.any((t) => t != InboxTab.notifications);
         final inbox = hasInbox ? _ensureInbox() : null;
         final unread = _unread(context);
-        return BasePage(
-          useWebCard: true,
+        // a student's inbox (redesign S-C, Stu1Comm?screen=inbox): the chat area, the count in a hero that holds the tabs
+        final student = _role() == 'student' && !_orgScoped;
+        final page = BasePage(
+          useWebCard: !student,
           width: AppWidth.wide,
           appBar: ScreenAppBar(helpPageId: 'inbox', 
             title: widget.title ?? 'inbox_title'.tr,
@@ -452,7 +456,31 @@ class _InboxPageState extends State<InboxPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (tabs.length > 1)
+              if (student)
+                ListenableBuilder(
+                  listenable: inbox ?? Listenable.merge(const []),
+                  builder: (context, _) => ScInboxHero(
+                    waiting: inbox?.countOf(InboxSegment.todo) ?? 0,
+                    late: inbox?.overdue ?? 0,
+                    tabs: tabs.length > 1
+                        ? AppTabs(
+                            expand: true,
+                            index: tabs.indexOf(tab),
+                            onChanged: (i) => setState(() => _tab = tabs[i]),
+                            items: [
+                              for (final t in tabs)
+                                AppTabItem(inboxTabLabel(t),
+                                    count: switch (t) {
+                                      InboxTab.todo => inbox?.countOf(InboxSegment.todo),
+                                      InboxTab.notifications => unread,
+                                      _ => null,
+                                    }),
+                            ],
+                          )
+                        : null,
+                  ),
+                )
+              else if (tabs.length > 1)
                 ListenableBuilder(
                   listenable: inbox ?? Listenable.merge(const []),
                   builder: (context, _) => InboxTabBar(
@@ -483,7 +511,33 @@ class _InboxPageState extends State<InboxPage> {
             ],
           ),
         );
+        return student ? AppAreaScope(area: AppArea.chat, child: page) : page;
       },
     );
+  }
+}
+
+/// A student's inbox head (plain values): "4 things wait for you, one is late", the tabs on the hero.
+class ScInboxHero extends StatelessWidget {
+  const ScInboxHero({super.key, required this.waiting, required this.late, this.tabs});
+  final int waiting;
+  final int late;
+  final Widget? tabs;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = waiting == 0
+        ? 'sc_inbox_all_done'.tr
+        : countText(waiting,
+                ar1: 'شي واحد ينتظرك',
+                ar2: 'شيئين ينتظرونك',
+                arFew: '{n} أشياء تنتظرك',
+                arMany: '{n} شي ينتظرك',
+                en1: '1 thing waits for you',
+                en: '{n} things wait for you') +
+            (late == 0
+                ? ''
+                : '، ${countText(late, ar1: 'وحدة متأخرة', ar2: 'ثنتين متأخرة', arFew: '{n} متأخرة', en1: 'one is late', en: '{n} are late')}');
+    return AppHero(overlap: false, wipe: false, title: appDigits(title), bottom: tabs);
   }
 }
