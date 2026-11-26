@@ -18,11 +18,12 @@ library;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/chrome_button.dart' show ChromeIconButton;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
@@ -78,7 +79,6 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
   final _changes = ValueNotifier<int>(0);
   AllExamsData? _data;
   Object? _error;
-  DateTime? _updated;
   HubStage? _stage;
   HubAttentionKind? _focus;
   AllExamsFilter _filter = const AllExamsFilter();
@@ -116,7 +116,6 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
       _changed(() {
         _data = hubScoped(d, widget.orgId);
         _error = null;
-        _updated = DateTime.now();
         _stage ??= widget.initialTab == 1 ? HubStage.finished : hubInitialStage(_data!, now: widget.now);
         // a card whose exams are all dealt with has nothing left to show
         if (_focus != null && !_data!.exams.any((e) => hubInFocus(e, _focus!))) _focus = null;
@@ -292,79 +291,90 @@ class _ExamHubScreenState extends State<ExamHubScreen> {
     return org.isEmpty ? count : '$org · $count';
   }
 
-  List<Widget> _headerActions() {
-    final grade = hubGradeKinds().isEmpty
-        ? null
-        : AppButton.ghost(key: const ValueKey('exam.hub.quick.grade'), label: t('تصحيح أوراق', 'Grade paper sheets'), icon: Icons.document_scanner_outlined, onPressed: _gradePapers);
+  /// The hero's figures: exams, running now, waiting to be graded, drafts.
+  List<AppHeroStat> _stats() {
+    final d = _data;
+    if (d == null || d.exams.isEmpty) return const [];
+    final live = d.exams.where((e) => e.status != 'archived').toList();
+    final counts = hubStageCounts(d, now: widget.now);
+    final toGrade = d.exams.where((e) => hubInFocus(e, HubAttentionKind.toCorrect)).length;
     return [
-      if (!AppConfig.disableList.contains(kHubRevisionKey))
-        AppButton.ghost(
-            key: const ValueKey('exam.hub.start_revision'),
-            label: t('مراجعة الدرجات', 'Review grades'),
-            icon: Icons.compare_arrows_rounded,
-            tooltip: t('مراجعة درجات دون اختيار اختبار', 'Review grades without choosing an exam'),
-            onPressed: () => _flow(() => openExamRevision(context, orgId: widget.orgId))),
-      ?grade,
+      AppHeroStat(value: '${live.length}', label: t('اختبار', 'Exams')),
+      AppHeroStat(value: '${counts[HubStage.running] ?? 0}', label: t('جارية الحين', 'Running now')),
+      AppHeroStat(value: '$toGrade', label: t('تنتظر التصحيح', 'To grade')),
+      AppHeroStat(value: '${counts[HubStage.drafts] ?? 0}', label: t('مسودات', 'Drafts')),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final nav = Navigator.of(context);
-    final header = AppPageHeader(
-      title: t('الاختبارات', 'Exams'),
+    final empty = _data != null && _data!.exams.isEmpty;
+    final grade = hubGradeKinds().isEmpty
+        ? null
+        : AppButton.secondary(
+            key: const ValueKey('exam.hub.quick.grade'),
+            label: t('تصحيح أوراق', 'Grade paper sheets'),
+            icon: Icons.document_scanner_outlined,
+            onPressed: _gradePapers);
+    final hero = AppHero(
+      kicker: t('الاختبارات', 'Exams'),
+      title: t('كل اختبار تديره في مكان واحد', 'Every exam you run, in one place'),
       subtitle: _subtitle,
-      icon: Icons.fact_check_rounded,
-      onBack: nav.canPop() ? () => nav.maybePop() : null,
-      onRefresh: _load,
-      updatedAt: _updated,
-      // D-1134: with no exam at all the empty state carries New exam; two identical primaries on one screen was one too many
-      primaryAction: _data != null && _data!.exams.isEmpty
-          ? null
-          : AppButton.primary(key: const ValueKey('exam.hub.new'), label: t('اختبار جديد', 'New exam'), icon: Icons.add_rounded, onPressed: _newExam),
-      actions: _headerActions(),
+      stats: _stats(),
+      actions: [
+        // D-1134: with no exam at all the empty state carries New exam; two identical primaries on one screen was one too many
+        if (!empty) AppButton.hot(key: const ValueKey('exam.hub.new'), label: t('اختبار جديد', 'New exam'), icon: Icons.add_rounded, onPressed: _newExam),
+        ?grade,
+      ],
     );
-    return BasePage(
-      key: const ValueKey(kExamHubFeatureKey),
-      enableFooterWidget: false,
-      child: ColoredBox(
-        color: c.background,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          header,
-          Expanded(
-            child: ExamHubBody(
-              data: _data,
-              error: _error == null ? null : ApiException.from(_error!).message,
-              stage: _stage ?? HubStage.running,
-              focus: _focus,
-              filter: _filter,
-              busy: _busy,
-              selectedId: _selected,
-              searchController: _search,
-              now: widget.now,
-              onSelect: (e) => setState(() => _selected = e.id),
-              onOpen: _openPage,
-              onStage: (s) => setState(() {
-                _stage = s;
-                _selected = null;
-              }),
-              onFilter: (f) => setState(() {
-                _filter = f;
-                if (f.query.isEmpty && _search.text.isNotEmpty) _search.clear();
-              }),
-              onClearFocus: () => setState(() {
-                _focus = null;
-                _selected = null;
-              }),
-              onAttention: _attention,
-              onAction: (e, a) => _act(e, a),
-              onRetry: _load,
-              onRefresh: _load,
-              onNew: _newExam,
-            ),
-          ),
-        ]),
+    return T2Scope(
+      child: BasePage(
+        key: const ValueKey(kExamHubFeatureKey),
+        enableFooterWidget: false,
+        appBar: AppHeader(
+          title: t('الاختبارات', 'Exams'),
+          actions: [
+            if (!AppConfig.disableList.contains(kHubRevisionKey))
+              ChromeIconButton(
+                key: const ValueKey('exam.hub.start_revision'),
+                icon: Icons.compare_arrows_rounded,
+                label: t('مراجعة الدرجات', 'Review grades'),
+                onTap: () => _flow(() => openExamRevision(context, orgId: widget.orgId)),
+              ),
+            AppRefreshAction(onRefresh: _load),
+          ],
+        ),
+        child: ExamHubBody(
+          hero: hero,
+          data: _data,
+          error: _error == null ? null : ApiException.from(_error!).message,
+          stage: _stage ?? HubStage.running,
+          focus: _focus,
+          filter: _filter,
+          busy: _busy,
+          selectedId: _selected,
+          searchController: _search,
+          now: widget.now,
+          onSelect: (e) => setState(() => _selected = e.id),
+          onOpen: _openPage,
+          onStage: (s) => setState(() {
+            _stage = s;
+            _selected = null;
+          }),
+          onFilter: (f) => setState(() {
+            _filter = f;
+            if (f.query.isEmpty && _search.text.isNotEmpty) _search.clear();
+          }),
+          onClearFocus: () => setState(() {
+            _focus = null;
+            _selected = null;
+          }),
+          onAttention: _attention,
+          onAction: (e, a) => _act(e, a),
+          onRetry: _load,
+          onRefresh: _load,
+          onNew: _newExam,
+        ),
       ),
     );
   }
@@ -395,31 +405,27 @@ class HubExamPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return ListenableBuilder(
       listenable: changes,
       builder: (context, _) {
         final e = exam();
-        final nav = Navigator.of(context);
-        return BasePage(
-          key: ValueKey('exam.hub.page.$examId'),
-          enableFooterWidget: false,
-          child: ColoredBox(
-            color: c.background,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              AppPageHeader(title: e?.displayTitle ?? t('الاختبار', 'Exam'), onBack: nav.canPop() ? () => nav.maybePop() : null),
-              Expanded(
-                child: LayoutBuilder(builder: (context, box) {
-                  final side = AppSpace.gutter(box.maxWidth);
-                  return ListView(padding: EdgeInsets.fromLTRB(side, AppSpace.md, side, AppSpace.xl), children: [
-                    if (e == null)
-                      AppEmpty(icon: Icons.fact_check_outlined, title: t('هذا الاختبار لم يعد في القائمة', 'This exam is no longer in the list'))
-                    else
-                      HubExamDetail(exam: e, course: course(), org: org(), busy: busy(), now: now, showTitle: false, onAction: (a) => onAction(e, a, (act) => whenBackOn(context, act))),
-                  ]);
-                }),
-              ),
-            ]),
+        return T2Scope(
+          child: BasePage(
+            key: ValueKey('exam.hub.page.$examId'),
+            enableFooterWidget: false,
+            appBar: AppHeader(title: e?.displayTitle ?? t('الاختبار', 'Exam')),
+            child: LayoutBuilder(builder: (context, box) {
+              final side = AppSpace.gutter(box.maxWidth);
+              return ListView(padding: EdgeInsets.fromLTRB(side, AppSpace.md, side, AppSpace.xl), children: [
+                if (e == null)
+                  AppEmpty(icon: Icons.fact_check_outlined, title: t('هذا الاختبار لم يعد في القائمة', 'This exam is no longer in the list'))
+                else
+                  AppCard(
+                    child: HubExamDetail(
+                        exam: e, course: course(), org: org(), busy: busy(), now: now, showTitle: false, onAction: (a) => onAction(e, a, (act) => whenBackOn(context, act))),
+                  ),
+              ]);
+            }),
           ),
         );
       },
