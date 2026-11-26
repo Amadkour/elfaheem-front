@@ -67,6 +67,17 @@ import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice
 import 'package:flutter_education_app/config/theme/kit_palette.dart' show AppAccent;
 import 'package:flutter_education_app/features/courses/course_profile/course_page_models.dart' show CoursePage;
 import 'package:flutter_education_app/features/quran/quran_api.dart' show QuranApi, quranOff;
+import 'package:flutter_education_app/core/course_access.dart' show EnrollBarMode, enrollBarMode;
+import 'package:flutter_education_app/features/booking/booking_api.dart';
+import 'package:flutter_education_app/features/booking/booking_flow_controller.dart' show BkFlowController;
+import 'package:flutter_education_app/features/booking/booking_flow_page.dart' show openBookFlow;
+import 'package:flutter_education_app/features/booking/booking_mine_card.dart';
+import 'package:flutter_education_app/features/booking/booking_models.dart';
+import 'package:flutter_education_app/features/booking/booking_parts.dart' show bkFill;
+import 'package:flutter_education_app/features/payments/points/points_card_checkout.dart' show openPointsPaymentPage;
+import 'package:flutter_education_app/features/courses/student/details/subject_guest_space.dart';
+import 'package:flutter_education_app/features/courses/student/details/subject_panels.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppButton, AppSheetContent, showAppSheet;
 
 void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
   Navigator.of(context).push(
@@ -88,6 +99,15 @@ Future<void> _openEnrollment(BuildContext context, CourseModel course) async {
   if (context.mounted) {
     await context.read<CourseDetailProvider>().refresh();
   }
+}
+
+/// The subject and grade a course can be booked for (BookFlow): its subject and its one grade; null otherwise.
+(int, int)? bkTargetOf(CourseModel c) {
+  final subject = c.setup.subject?.id;
+  final targets = c.setup.targets;
+  final grade = targets.length == 1 && !targets.first.wholeStage ? targets.first.gradeId : null;
+  if (subject == null || grade == null) return null;
+  return (subject, grade);
 }
 
 void _openSupport(BuildContext context, CourseModel course) {
@@ -158,7 +178,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       // a guest's "book this course" resumed after the sign-in (D-1324): its checkout, unless already enrolled
       final c = _provider.course;
       if (widget.openCheckout && mounted && _provider.block == null && !c.isEnrolled && c.id == widget.course.id) {
-        await _openEnrollment(context, c);
+        final bk = bkTargetOf(c);
+        if (bk != null && !bookingOff() && await BkFlowController.hasDraft(bk.$1, bk.$2)) {
+          if (!mounted) return;
+          await openBookFlow(context,
+              subjectId: bk.$1, gradeId: bk.$2, subjectTitle: (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn), courseId: c.id, resume: true);
+          if (mounted) await _provider.refresh();
+        } else {
+          if (!mounted) return;
+          await _openEnrollment(context, c);
+        }
       }
     });
   }
@@ -396,6 +425,7 @@ class _CoursePageState extends State<_CoursePage> {
     final courseId = int.tryParse(c.id);
     _loadDataLabConfig(c);
     _checkQuranBooking(c);
+    _loadBooking(c);
 
     final live = p.liveSessions;
     final showLiveTab = c.type == 'live' || live.isNotEmpty;
@@ -549,7 +579,7 @@ class _CoursePageState extends State<_CoursePage> {
         ),
       CourseSpaceTab(
         id: 'lessons',
-        label: gt('الجلسات', 'Sessions'),
+        label: 'bk_tab_lessons'.tr,
         icon: Icons.play_lesson_rounded,
         count: c.sessionsCount > 0 ? c.sessionsCount : p.sessions.length,
         featureKey: 'course_tabs.lessons',
@@ -604,7 +634,7 @@ class _CoursePageState extends State<_CoursePage> {
         ),
       CourseSpaceTab(
         id: 'about',
-        label: gt('عن الكورس', 'About'),
+        label: 'bk_tab_about'.tr,
         icon: Icons.info_outline_rounded,
         featureKey: 'course_tabs.about',
         builder: (_) => Column(
@@ -666,6 +696,14 @@ class _CoursePageState extends State<_CoursePage> {
       );
     }
 
+    // BK: a visitor and a student who is not enrolled get the subject page before subscribing (SubjMGuest)
+    if (!c.isEnrolled && !archived) {
+      return SafeArea(
+        top: false,
+        child: _guestPage(context, p, c, title: title, spotlight: spotlight, tabs: tabs, menu: menu, status: status, reel: showReel ? reel : null),
+      );
+    }
+
     return StudyTracker(
       courseId: courseId,
       enabled: c.isEnrolled,
@@ -696,6 +734,232 @@ class _CoursePageState extends State<_CoursePage> {
             : CourseBuyBar(course: c, status: status, refusal: _quranRefusal, onEnroll: () => _openEnrollment(context, c)),
       ),
       ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BK: booking this subject, and the page before subscribing
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// The booking options of this course's subject and grade (null: not bookable here, or not loaded yet).
+  BkOptions? _bkOptions;
+  String? _bkFor;
+  List<BkBooking> _bkMine = const [];
+  bool _bkPaying = false;
+
+  void _loadBooking(CourseModel c) {
+    if (_bkFor == c.id) return;
+    _bkFor = c.id;
+    final t = bkTargetOf(c);
+    if (t == null || bookingOff()) return;
+    BookingApi().options(subjectId: t.$1, gradeId: t.$2).then((o) {
+      if (mounted && _bkFor == c.id) setState(() => _bkOptions = o);
+    }).catchError((_) {});
+    if (!GuestState.active) _loadMine(t.$1);
+  }
+
+  void _loadMine(int subjectId) {
+    BookingApi().mine(subjectId: subjectId).then((m) {
+      if (mounted) setState(() => _bkMine = m);
+    }).catchError((_) {});
+  }
+
+  /// The lowest monthly price the subject can be booked at (null: no kind is open).
+  double? get _bkFrom {
+    final o = _bkOptions;
+    if (o == null) return null;
+    final prices = [
+      for (final k in o.openKinds)
+        for (final m in o.openModes)
+          if (k.prices[m.key] != null) k.prices[m.key]!,
+    ];
+    if (prices.isEmpty) return null;
+    prices.sort();
+    return prices.first;
+  }
+
+  Future<void> _openBooking(CourseModel c, String title) async {
+    final t = bkTargetOf(c);
+    if (t == null) return;
+    final booked = await openBookFlow(
+      context,
+      subjectId: t.$1,
+      gradeId: t.$2,
+      subjectTitle: _bkOptions?.subject.label ?? title,
+      gradeTitle: _bkOptions?.grade.label,
+      subjectKey: c.setup.subject?.nameEn ?? c.setup.subject?.nameAr,
+      courseId: c.id,
+    );
+    if (!mounted || !booked) return;
+    showAppNotice(bkFill('bk_welcome', {'subject': _bkOptions?.subject.label ?? title}));
+    _loadMine(t.$1);
+    await _refresh();
+  }
+
+  Future<void> _payBooking(BkBooking b) async {
+    if (offlineBlocked()) return;
+    setState(() => _bkPaying = true);
+    try {
+      final r = await BookingApi().pay(b.id);
+      if (!mounted) return;
+      if (r.canOpen) await openPointsPaymentPage(context, r.checkoutUrl!);
+      if (!mounted) return;
+      final t = bkTargetOf(context.read<CourseDetailProvider>().course);
+      if (t != null) _loadMine(t.$1);
+    } catch (e) {
+      showAppNotice(bkErrorText(e), error: true);
+    } finally {
+      if (mounted) setState(() => _bkPaying = false);
+    }
+  }
+
+  /// "حجزك" on the subject page: shown while the booking still asks for something.
+  Widget? _bookingCard(CourseModel c) {
+    final b = bkShownBooking(_bkMine);
+    if (b == null || b.active) return null;
+    return BkMineCard(booking: b, busy: _bkPaying, onPay: () => _payBooking(b));
+  }
+
+  /// The next class of an active booking when the course has none scheduled yet (BookM6).
+  SubjectNext? _bookingNext() {
+    final b = _bkMine.where((x) => x.active && x.nextClassAt != null).firstOrNull;
+    if (b == null) return null;
+    return SubjectNext(
+      when: subjectWhen(b.nextClassAt!, minutes: b.classMinutes),
+      until: b.nextClassAt,
+      note: 'bk_opens_before'.tr,
+    );
+  }
+
+  void _openPreview(String reel, String? poster, String title) => showAppSheet<void>(
+        context,
+        (_) => AppSheetContent(
+          title: title,
+          children: [
+            AspectRatio(aspectRatio: 16 / 9, child: CourseReelPlayer(key: ValueKey(reel), url: reel, posterUrl: poster)),
+          ],
+        ),
+      );
+
+  Widget _guestPage(
+    BuildContext context,
+    CourseDetailProvider p,
+    CourseModel c, {
+    required String title,
+    required List<Widget> spotlight,
+    required List<CourseSpaceTab> tabs,
+    required List<CourseSpaceTopAction> menu,
+    required Widget status,
+    String? reel,
+  }) {
+    final teacher = c.teacher;
+    final teacherName = teacher?.name ?? '';
+    final rate = c.rateSummary;
+    final total = _subjectTotal(p);
+    final hours = c.totalHours.toStringAsFixed(c.totalHours % 1 == 0 ? 0 : 1);
+    final liveMinutes =
+        p.sessions.where((s) => s.isLive && s.durationMinutes > 0).map((s) => s.durationMinutes).firstOrNull;
+    final mine = bkShownBooking(_bkMine);
+    final from = _bkFrom;
+    final bookable = from != null && !bookingOff();
+    final mode = enrollBarMode(enrolled: c.isEnrolled, access: c.access);
+    final canEnroll = (mode == EnrollBarMode.subscribe || mode == EnrollBarMode.renew) && _quranRefusal == null;
+    final free = (c.finalPrice ?? 0) == 0;
+
+    // the path's first steps: the first one open to look at, the rest after subscribing
+    final steps = <SubjectStep>[];
+    for (final (i, s) in p.sessions.take(kSubjectPathSteps).indexed) {
+      final minutes = s.durationMinutes;
+      steps.add(SubjectStep(
+        id: 'g${s.id}',
+        number: i + 1,
+        title: s.name,
+        meta: s.isLive
+            ? (minutes > 0 ? '${'sb_subj_meta_live'.tr}، ${sbMinutes(minutes)}' : 'sb_subj_meta_live'.tr)
+            : (minutes > 0 ? '${'sb_subj_meta_lesson'.tr}، ${sbMinutes(minutes)}' : 'sb_subj_meta_lesson'.tr),
+        kind: s.isLive ? SubjectStepKind.live : SubjectStepKind.lesson,
+        state: i == 0 ? SubjectStepState.todo : SubjectStepState.locked,
+        onTap: i == 0 && reel != null ? () => _openPreview(reel, c.imageUrl.isNotEmpty ? c.imageUrl : null, title) : null,
+      ));
+    }
+
+    final notes = <Widget>[
+      status,
+      if (_quranRefusal != null) CourseBookingRefusal(text: _quranRefusal!),
+      if (mode == EnrollBarMode.pending || mode == EnrollBarMode.support) CourseAccessNote(mode: mode, access: c.access),
+      // the course's own subscription stays one tap away when the subject is booked by month
+      if (bookable && canEnroll && !free)
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: AppButton.ghost(label: 'bk_join_course_instead'.tr, onPressed: () => _openEnrollment(context, c)),
+        ),
+    ];
+
+    String? primary;
+    VoidCallback? onPrimary;
+    if (mine == null && bookable) {
+      primary = 'bk_book_cta'.tr;
+      onPrimary = () => _openBooking(c, title);
+    } else if (mine == null && canEnroll) {
+      primary = mode == EnrollBarMode.renew ? 'course_renew_btn'.tr : 'bk_join_course'.tr;
+      onPrimary = () => _openEnrollment(context, c);
+    }
+
+    return SubjectGuestSpace(
+      title: title,
+      subject: c.setup.subject?.nameEn ?? c.setup.subject?.nameAr ?? c.category?.nameEn ?? c.category?.nameAr,
+      grade: _subjectGrade(c),
+      kindLabel: c.type == 'live' ? 'bk_kind_live_recorded'.tr : 'bk_kind_recorded'.tr,
+      teacher: teacherName,
+      teacherImageUrl: teacher?.imageUrl,
+      teacherYears: teacher?.teacherProfile?.experienceYears,
+      teacherBio: teacher?.teacherProfile?.about,
+      onTeacher: teacher == null ? null : () => openPersonProfile(context, teacher),
+      lessonsCount: total,
+      rating: rate != null && rate.total > 0 ? rate.average.toStringAsFixed(1) : null,
+      facts: [
+        if (total > 0)
+          SubjectFact(icon: Icons.menu_book_outlined, value: sbDigits(total), label: 'sb_subj_fact_lessons'.tr, accent: AppAccent.pink),
+        if (liveMinutes != null)
+          SubjectFact(icon: Icons.schedule_rounded, value: sbDigits(liveMinutes), label: 'sb_subj_fact_minutes'.tr, accent: AppAccent.grape),
+        if (c.totalHours > 0)
+          SubjectFact(icon: Icons.hourglass_bottom_rounded, value: sbDigits(hours), label: 'sb_subj_fact_hours'.tr, accent: AppAccent.mint),
+        if (rate != null && rate.total > 0)
+          SubjectFact(icon: Icons.star_rounded, value: sbDigits(rate.average.toStringAsFixed(1)), label: 'sb_subj_fact_rating'.tr),
+      ],
+      bookNote: AppConfig.disableList.contains('course.notebook') ? null : 'bk_book_note'.tr,
+      steps: steps,
+      price: bookable ? bkMoney(from, _bkOptions?.currency) : null,
+      priceNote: bookable ? 'bk_per_month'.tr : null,
+      priceBlock: bookable || free || !canEnroll ? null : CoursePriceBlock(course: c),
+      primaryLabel: primary,
+      onPrimary: onPrimary,
+      notes: notes,
+      onPreview: reel == null ? null : () => _openPreview(reel, c.imageUrl.isNotEmpty ? c.imageUrl : null, title),
+      includes: [
+        'bk_inc_path'.tr,
+        if (c.type == 'live') 'bk_inc_recorded'.tr,
+        if (!AppConfig.disableList.contains('course.notebook')) 'bk_inc_notebook'.tr,
+        if (!subjectBotOff()) 'bk_inc_bot'.tr,
+      ],
+      extras: [
+        if (mine != null) BkMineCard(booking: mine, busy: _bkPaying, onPay: () => _payBooking(mine)),
+        for (final w in spotlight)
+          if (w is! CourseNextCard) w,
+      ],
+      more: [
+        for (final t in tabs)
+          if (t.id != 'live')
+            CourseSpaceAction(
+              icon: t.icon,
+              label: t.label,
+              featureKey: t.featureKey,
+              onTap: () => pushSubjectTabPage(context, t),
+            ),
+      ],
+      menu: menu,
+      onBack: Navigator.canPop(context) ? () => Navigator.maybePop(context) : null,
+      onRefresh: _refresh,
     );
   }
 
@@ -863,7 +1127,7 @@ class _CoursePageState extends State<_CoursePage> {
               onJoin: () => _joinLive(context, p, live.first),
             ),
       next: live.isNotEmpty || nextAt == null
-          ? null
+          ? _bookingNext()
           : SubjectNext(
               when: subjectWhen(nextAt, minutes: nextMinutes),
               title: pn?.name ?? upcoming?.name,
@@ -874,18 +1138,28 @@ class _CoursePageState extends State<_CoursePage> {
       done: done,
       total: total,
       onAllLessons: () => _openSubjectLessons(p, title, teacherName),
-      onChat: teacher == null ? null : () => openChatWith(context, peerId: teacher.id, courseId: courseId),
-      onBot: AppConfig.disableList.contains('rag.assistant') ? null : courseAskDocsAction(context, courseId, title).onTap,
+      onChat: teacher == null || subjectChatOff()
+          ? null
+          : () => openSubjectChatPanel(context, teacherId: teacher.id, teacherName: teacherName, courseId: courseId),
+      onBot: subjectBotOff() ? null : () => openSubjectBotPanel(context, courseId: courseId, subjectTitle: title),
       onNotes: () => showSubjectPanel<void>(
         context,
         title: 'sb_nb_title'.tr.replaceAll('{subject}', title),
         child: (_) => NotebookPanel(courseId: courseId, subjectId: c.setup.subject?.id, subjectTitle: title),
       ),
-      onSchedule: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SchedulePage())),
+      onSchedule: () => openSubjectSchedulePanel(
+            context,
+            courseId: courseId,
+            subjectTitle: title,
+            subjectKey: c.setup.subject?.nameEn ?? c.setup.subject?.nameAr,
+          ),
       onExams: _subjectTabs.containsKey('exam') ? () => _openSubjectTab('exam') : null,
       onAttendance: _subjectTabs.containsKey(kCpTabProgress) ? () => _openSubjectTab(kCpTabProgress) : null,
       // the spotlight's next-class card is the page's own next card
-      extras: [for (final w in spotlight) if (w is! CourseNextCard) w],
+      extras: [
+        ?_bookingCard(c),
+        for (final w in spotlight) if (w is! CourseNextCard) w,
+      ],
       more: [
         for (final t in tabs)
           if (!_subjectOwnTabs.contains(t.id) && t.id != 'exam')
