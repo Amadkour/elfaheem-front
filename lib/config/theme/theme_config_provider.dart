@@ -63,6 +63,13 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver imp
     _live = this;
   }
 
+  /// A copy of [source]'s palette in [dark] mode for a preview (the kit gallery's dark switch): never the app's
+  /// provider, no lifecycle observer, no fetch.
+  ThemeConfigProvider.preview(ThemeConfigProvider source, {required bool dark}) : _api = source._api {
+    _model = source._model;
+    isDark = dark;
+  }
+
   /// The app's provider (the last one made), for [accountChanged] from code that has no context.
   static ThemeConfigProvider? _live;
 

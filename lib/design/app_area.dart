@@ -15,7 +15,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'motion/motion_budget.dart';
 
 export 'package:flutter_education_app/config/theme/kit_palette.dart'
-    show AppAccent, AppArea, AppRoleAccent, KitColors, KitSet, KitTone;
+    show AppAccent, AppArea, AppRoleAccent, AppRoleAccentKey, KitColors, KitSet, KitTone;
 
 /// Set once per page (or once per shell tab).
 class AppAreaScope extends StatelessWidget {

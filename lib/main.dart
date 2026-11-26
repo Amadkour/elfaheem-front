@@ -1049,6 +1049,8 @@ class _NextBrainAppState extends State<NextBrainApp> with WidgetsBindingObserver
         return _fade(const _Guard(child: SubscriptionScreen()), settings);
       case '/profile': // the role's account tab (N10); the edit-account form is '/edit-account'
         return _fade(const _Guard(child: _RedirectHome(tab: 'profile')), settings);
+      case '/kit_gallery': // the redesign kit's gallery (KIT_SPEC 7.1)
+        return _fade(_Guard(child: deferredKitGallery()), settings);
       case '/edit-account':
         return _fade(const _Guard(child: EditAccountScreen()), settings);
       case '/change-password':
