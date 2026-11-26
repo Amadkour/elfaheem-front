@@ -157,6 +157,8 @@ class _AccountApprovalPageState extends State<AccountApprovalPage> with WidgetsB
                   onCheck: _load,
                   onContact: _contact,
                   onSignOut: _signOut,
+                  // the public catalogue route (guest explore) while the account waits
+                  onBrowse: () => Navigator.of(context).pushNamed('/explore'),
                 ),
         ),
       ),
@@ -176,6 +178,9 @@ class AccountApprovalView extends StatelessWidget {
   final bool checking;
   final VoidCallback onCheck, onContact, onSignOut;
 
+  /// Browse the courses while waiting; null = no link.
+  final VoidCallback? onBrowse;
+
   const AccountApprovalView({
     super.key,
     required this.rejected,
@@ -185,6 +190,7 @@ class AccountApprovalView extends StatelessWidget {
     required this.onCheck,
     required this.onContact,
     required this.onSignOut,
+    this.onBrowse,
   });
 
   @override
@@ -233,6 +239,10 @@ class AccountApprovalView extends StatelessWidget {
         ),
         AppSpace.gapXs,
         Wrap(alignment: WrapAlignment.center, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          if (onBrowse != null) ...[
+            link('account_approval.browse', 'sa_appr_browse'.tr, onBrowse, ink),
+            ExcludeSemantics(child: Text('•', style: AppType.meta(context).copyWith(color: c.textLight))),
+          ],
           link('account_approval.contact', 'sa_appr_contact'.tr, onContact, ink),
           ExcludeSemantics(child: Text('•', style: AppType.meta(context).copyWith(color: c.textLight))),
           link('account_approval.sign_out', 'sa_appr_sign_out'.tr, onSignOut, c.kit.error.ink),

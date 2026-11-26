@@ -11,6 +11,8 @@
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter_education_app/features/auth/auth_shell.dart' show AuthLayout;
+import 'package:flutter_education_app/design/app_area.dart' show AppAccent;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
@@ -177,6 +179,46 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     final p      = context.watch<ProfileProvider>();
     final isWide = context.showSidebar;
 
+    // the reset flow (signed out, S-A row 21 Stu1Auth?step=new&screen=forgot): the auth hero and the form card
+    if (!widget.fromProfile) {
+      return BasePage(
+        child: AuthLayout(
+          kicker: 'sa_forgot_kicker'.tr,
+          heroTitle: 'sa_forgot_hero'.tr,
+          squiggle: 'sa_forgot_squiggle'.tr,
+          glyph: Icons.lock_outline_rounded,
+          glyphTone: c.kit.accent(AppAccent.mint),
+          title: 'sa_newpw_title'.tr,
+          subtitle: 'sa_newpw_sub'.tr,
+          body: (context, wide) => _PasswordCard(
+            p: p,
+            c: c,
+            oldCtrl: _oldCtrl,
+            newCtrl: _newCtrl,
+            confCtrl: _confCtrl,
+            obscureOld: _obscureOld,
+            obscureNew: _obscureNew,
+            obscureConf: _obscureConf,
+            onToggleOld: () { if (mounted) setState(() => _obscureOld = !_obscureOld); },
+            onToggleNew: () { if (mounted) setState(() => _obscureNew = !_obscureNew); },
+            onToggleConf: () { if (mounted) setState(() => _obscureConf = !_obscureConf); },
+            strength: _strength,
+            strengthColor: _strengthColor(c),
+            strengthLabel: _strengthLabel(),
+            reqMinLength: _reqMinLength,
+            reqUppercase: _reqUppercase,
+            reqDigit: _reqDigit,
+            reqDifferent: _reqDifferent,
+            reqMatch: _reqMatch,
+            canSubmit: _canSubmit && !_busy,
+            busy: _busy,
+            onSubmit: _submit,
+            onSubmitForget: _resetPassword,
+            fromProfile: widget.fromProfile,
+          ),
+        ),
+      );
+    }
     return BasePage(
       appBar: ScreenAppBar(helpPageId: 'account.change_password', title: 'change_password'.tr),
       // the sign-in sidebar belongs to the password-reset flow (signed out); from the Account page the form

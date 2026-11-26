@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'world_phone_field.dart';
 import 'package:flutter_education_app/design/app_side_sheet.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -59,6 +60,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
+
+  /// The country picked on the phone field (sent as `phone_country`; never the residence).
+  String? _phoneCountry;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmedPasswordController = TextEditingController();
@@ -257,6 +261,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final success = await authProvider.register(
       gmail: _emailController.text.trim(),
       phone: _phoneController.text.trim(),
+      phoneCountry: _phoneCountry,
       dob: _dobController.text.trim(),
       password: _passwordController.text,
       name: _fullNameController.text.trim(),
@@ -384,8 +389,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    PhoneInputField(
+                    WorldPhoneField(
                       controller: _phoneController,
+                      onCountry: (k) => _phoneCountry = k.code,
                       label: needsPhone
                           ? 'phone_with_country_code'.tr
                           : 'phone'.tr,
