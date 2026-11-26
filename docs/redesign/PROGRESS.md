@@ -17,7 +17,7 @@ Statuses: todo / doing / done / verified. On a resume, continue from the first l
 | B3 | Backend WP1-3 privacy (live room, payloads, course chat; D-1950) | done (merged) |
 | B4 | Backend WP4 nicknames, WP10 notebook, WP11 meetings/bot (0150, 0151) | done (merged) |
 | B5 | Backend WP8 payments per country + WP9 teacher demand (0160-0162) | done (merged; head 0162; 6 suites = 688 checks green) |
-| B6 | Demand card subject keys + front contract snapshot refresh (rd/demand-key) | doing |
+| B6 | Demand card subject keys + front contract snapshot refresh (rd/demand-key) | done |
 | 2 | Student | todo |
 | 3 | Booking and subject flow | todo |
 | 4 | Parent (incl. child code login) | todo |
