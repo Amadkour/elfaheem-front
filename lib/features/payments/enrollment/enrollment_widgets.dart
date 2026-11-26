@@ -2,6 +2,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/design/app_badges.dart' show appInkOn, appTintOn;
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_depth.dart' show AppExpandCard;
@@ -567,7 +569,8 @@ class EnrollScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
+    // the money area of the redesign (S-D): the kit's buttons, states and success marks take its accent
+    return SdArea(area: AppArea.money, child: SafeArea(
       child: BasePage(
         useWebCard: true,
         width: AppWidth.reading,
@@ -589,7 +592,7 @@ class EnrollScaffold extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

@@ -18,6 +18,8 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -202,7 +204,7 @@ class _MyRewardsPageState extends State<MyRewardsPage> {
   @override
   Widget build(BuildContext context) {
     final d = _data;
-    return BasePage(
+    return SdArea(area: AppArea.money, child: BasePage(
       width: AppWidth.content,
       appBar: ScreenAppBar(title: t('مكافآتي', 'My rewards'), helpPageId: 'rewards.mine'),
       child: SafeArea(
@@ -228,7 +230,7 @@ class _MyRewardsPageState extends State<MyRewardsPage> {
                 onRefresh: () => _load(quiet: true),
               ),
       ),
-    );
+    ));
   }
 }
 
@@ -274,8 +276,6 @@ class MyRewardsView extends StatelessWidget {
     final current = sections[kCouponSections[tab.clamp(0, 2)]]!;
     final children = <Widget>[
       if (couponsShown) ...[
-        Text(t('قسائم الخصم', 'Discount coupons'), style: AppType.section(context)),
-        const SizedBox(height: AppSpace.xs),
         AppTabs(
           items: [
             AppTabItem('${t('فعّالة', 'Active')} (${sections['active']!.length})'),
@@ -345,10 +345,21 @@ class MyRewardsView extends StatelessWidget {
       if (referral != null) const SizedBox(height: AppSpace.lg),
       HowRewardsWork(coupons: couponsShown, referral: referral != null),
     ];
-    final list = ListView(
+    // redesign S-D: the hero, then the coupons in ONE card riding up over it, the wins, the invite card
+    final cut = couponsShown ? children.indexWhere((w) => w is SizedBox && w.height == AppSpace.lg) : -1;
+    final list = KeyedSubtree(
       key: const ValueKey('rewards.mine'),
-      padding: const EdgeInsets.all(AppSpace.md),
-      children: [...children, const SizedBox(height: AppSpace.lg)],
+      child: SdHeroList(
+        hero: AppHero(title: t('مكافآتي', 'My rewards'), subtitle: 'sd_rewards_sub'.tr, icon: Icons.card_giftcard_rounded),
+        width: AppWidth.content,
+        children: [
+          if (cut > 0) ...[
+            AppCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children.sublist(0, cut))),
+            ...children.sublist(cut),
+          ] else
+            ...children,
+        ],
+      ),
     );
     return onRefresh == null ? list : AppRefresh(onRefresh: onRefresh!, child: list);
   }
@@ -368,7 +379,9 @@ class _RewardStatus extends StatelessWidget {
       };
 }
 
-/// One coupon: the value, the code (always left-to-right, Copy), where it works, why I got it and its date.
+/// One coupon as a ticket (Stu2Money `screen=rewards`): the value on a coloured stub at the start (grape for a
+/// percentage, mint for an amount, grey once used or expired), then where it works, why I got it and its date, the
+/// code (always left-to-right, Copy) and "استخدمها".
 class CouponCard extends StatelessWidget {
   const CouponCard({super.key, required this.coupon, required this.now, this.focused = false, this.onUse});
 
@@ -380,6 +393,7 @@ class CouponCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final kit = c.kit;
     final s = coupon.sectionAt(now);
     final active = s == 'active';
     final date = switch (s) {
@@ -389,79 +403,93 @@ class CouponCard extends StatelessWidget {
           : (coupon.expiresAt == null ? t('منتهية', 'Expired') : t('انتهت في ${AppTime.date(coupon.expiresAt!)}', 'Expired on ${AppTime.date(coupon.expiresAt!)}')),
       _ => coupon.expiresAt == null ? '' : t('صالحة حتى ${AppTime.date(coupon.expiresAt!)}', 'Valid until ${AppTime.date(coupon.expiresAt!)}'),
     };
-    final gold = AppBlockColors.of(context, AppBlockTone.gold);
-    return Container(
-      key: ValueKey('rewards.coupon.${coupon.id}'),
+    final tone = kit.accent(coupon.valueText.contains('%') || coupon.valueText.contains('٪') ? AppAccent.grape : AppAccent.mint);
+    final stubColor = active ? tone.color : kit.lock;
+    final stub = Container(
+      width: _stubW,
+      padding: const EdgeInsets.all(AppSpace.sm),
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: AppRadius.cardAll,
-        border: Border.all(color: focused ? c.primary : c.divider, width: focused ? AppBorder.focus : AppBorder.hairline),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [stubColor, Color.lerp(stubColor, kit.deep, .18)!],
+        ),
       ),
+      child: Text(appDigits(coupon.valueText),
+          textAlign: TextAlign.center,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          style: AppType.section(context).copyWith(color: active ? c.onHero : kit.lockInk)),
+    );
+    final body = Padding(
       padding: const EdgeInsets.all(AppSpace.md),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-            width: AppTouch.min,
-            height: AppTouch.min,
-            decoration: BoxDecoration(color: active ? gold.surface : c.background, shape: BoxShape.circle),
-            child: Icon(Icons.local_offer_rounded, color: active ? gold.ink : c.textLight),
-          ),
-          const SizedBox(width: AppSpace.sm),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(coupon.valueText, style: AppType.section(context).copyWith(color: active ? null : c.textMedium)),
-              const SizedBox(height: AppSpace.xxs),
-              Text('${coupon.sourceText} · ${coupon.appliesText}', style: AppType.meta(context)),
-              if (coupon.minOrder > 0)
-                Text(t('على مشتريات من ${rewardsMoney(coupon.minOrder, coupon.currency)} فأكثر', 'On purchases of ${rewardsMoney(coupon.minOrder, coupon.currency)} or more'),
-                    style: AppType.meta(context)),
-              if (date.isNotEmpty) Text(date, style: AppType.meta(context)),
-            ]),
-          ),
-        ]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Text(coupon.appliesText, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context)),
+        const SizedBox(height: AppSpace.xxs),
+        Text([coupon.sourceText, if (date.isNotEmpty) date].join('، '), style: AppType.meta(context)),
+        if (coupon.minOrder > 0)
+          Text(t('على مشتريات من ${rewardsMoney(coupon.minOrder, coupon.currency)} فأكثر', 'On purchases of ${rewardsMoney(coupon.minOrder, coupon.currency)} or more'),
+              style: AppType.meta(context)),
         const SizedBox(height: AppSpace.sm),
-        Row(children: [
-          Expanded(
-            child: Semantics(
-              label: t('رمز القسيمة ${coupon.code}', 'Coupon code ${coupon.code}'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
-                decoration: BoxDecoration(
-                  color: c.background,
-                  borderRadius: AppRadius.controlAll,
-                  border: Border.all(color: c.divider, width: AppBorder.hairline),
-                ),
-                child: Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: SelectableText(coupon.code, maxLines: 1, style: AppType.bodyStrong(context).copyWith(letterSpacing: 1.5)),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Semantics(
+            label: t('رمز القسيمة ${coupon.code}', 'Coupon code ${coupon.code}'),
+            child: Material(
+              color: kit.well,
+              shape: RoundedRectangleBorder(
+                borderRadius: AppRadius.controlAll,
+                side: BorderSide(color: kit.fieldEdge, width: AppBorder.strong),
+              ),
+              child: InkWell(
+                key: ValueKey('rewards.coupon.${coupon.id}.copy'),
+                borderRadius: AppRadius.controlAll,
+                onTap: () async {
+                  await Clipboard.setData(ClipboardData(text: coupon.code));
+                  showAppNotice(t('نُسخ الرمز', 'Code copied'));
+                },
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: AppTouch.min),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+                    child: Directionality(
+                      textDirection: TextDirection.ltr,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.copy_rounded, size: AppIconSize.sm, color: c.textMedium),
+                        const SizedBox(width: AppSpace.xs),
+                        Text(coupon.code, maxLines: 1, style: AppType.bodyStrong(context).copyWith(letterSpacing: 1.5)),
+                      ]),
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: AppSpace.xs),
-          IconButton(
-            key: ValueKey('rewards.coupon.${coupon.id}.copy'),
-            tooltip: t('نسخ الرمز', 'Copy the code'),
-            icon: const Icon(Icons.copy_rounded),
-            onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: coupon.code));
-              showAppNotice(t('نُسخ الرمز', 'Code copied'));
-            },
-          ),
+          if (active && onUse != null)
+            AppButton.primary(
+              key: ValueKey('rewards.coupon.${coupon.id}.use'),
+              label: 'sd_rewards_use'.tr,
+              size: AppButtonSize.sm,
+              onPressed: onUse,
+            ),
         ]),
-        if (active && onUse != null) ...[
-          const SizedBox(height: AppSpace.sm),
-          AppButton.primary(
-            key: ValueKey('rewards.coupon.${coupon.id}.use'),
-            label: t('استخدمها الآن', 'Use now'),
-            icon: Icons.shopping_bag_rounded,
-            expand: true,
-            onPressed: onUse,
-          ),
-        ],
       ]),
     );
+    return Container(
+      key: ValueKey('rewards.coupon.${coupon.id}'),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.tile),
+        border: Border.all(color: focused ? tone.color : kit.line, width: focused ? AppBorder.focus : AppBorder.strong),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [stub, Expanded(child: body)]),
+      ),
+    );
   }
+
+  static const double _stubW = AppTouch.primary * 2 - AppSpace.md;
 }
 
 /// The invite card: my link and Share, how many joined and wait, and each tier's progress.
