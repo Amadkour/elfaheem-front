@@ -39,6 +39,7 @@ import '../../design/app_language_switch.dart' show AppLanguageTile;
 import 'package:flutter_education_app/features/profile/change_password_widget.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaints_hub_page.dart';
 import 'package:flutter_education_app/features/profile/update_account_widget.dart';
+import 'pa_kit.dart';
 import 'parent_alerts_page.dart';
 import 'parent_children_page.dart';
 import 'parent_link_providers.dart';
@@ -78,6 +79,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   final _link = ParentLinkProvider();
   final _alerts = ParentAlertsProvider();
   final _overview = ParentOverviewProvider();
+  final _kids = PaKids();
   final _epochs = {for (final k in _allKeys) k: ValueNotifier<int>(0)};
   late final Map<String, DashboardItem> _byKey;
   ParentOverviewData? _seededFrom;
@@ -125,12 +127,26 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     _go(key);
   }
 
-  /// The overview arrived: the Children / Link tabs start from its config / requests / children.
+  /// The overview arrived: the Children / Link tabs start from its config / requests / children, and the top bar's
+  /// child switcher from its children (no request of its own).
   void _onOverview() {
     final d = _overview.data;
     if (d == null || identical(d, _seededFrom)) return;
     _seededFrom = d;
     _link.seed(config: d.linkConfig, requests: d.requests, children: [for (final c in d.children) c.child]);
+    _kids.setKids([
+      for (final c in d.children)
+        PaKid(id: c.id, name: c.name, status: c.pulse?.status.wire, grade: '${c.child['grade_name'] ?? ''}'),
+    ]);
+  }
+
+  /// An older server without the overview: the switcher follows the Children tab's list.
+  void _onLink() {
+    if (!_overview.unsupported) return;
+    _kids.setKids([
+      for (final c in _link.children)
+        if (c['id'] is num) PaKid(id: (c['id'] as num).toInt(), name: '${c['name'] ?? ''}', grade: '${c['grade_name'] ?? ''}'),
+    ]);
   }
 
   Widget _lazy(String key, Widget child) => _LazyTab(indexOf: () => _index(key), child: child);
@@ -140,6 +156,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     super.initState();
     AppNavigator.requestedTab.addListener(_onTabRequested);
     _overview.addListener(_onOverview);
+    _link.addListener(_onLink);
     _byKey = {
       'today': DashboardItem(
         Icons.wb_sunny_outlined,
@@ -148,24 +165,20 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         () => _refresh('today'),
         _lazy(
           'today',
-          BasePage(
-            // No context switcher here (D-287): parents cannot join an organization (403 role_cannot_join), so the pill
-            // would only open a join flow that refuses them. A parent reaches an organization through the child's card.
-            child: Column(children: [
-              Expanded(
-                child: ParentOverviewPage(
-                  onOpenAlerts: (childId) => _go('alerts', childId: childId),
-                  onOpenLink: () => _go('link'),
-                  onOpenChildren: () => _go('children'),
-                ),
-              ),
-              // C2: my children's organizations — a slim strip under the overview, nothing at all when no child is in
-              // one (kill switch parent.org_view, one call: GET /org/parent/children). Scrolls on its own when it grows.
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 240),
-                child: SingleChildScrollView(child: deferredParentOrgChildrenCard()),
-              ),
-            ]),
+          // No context switcher here (D-287): parents cannot join an organization (403 role_cannot_join), so the pill
+          // would only open a join flow that refuses them. A parent reaches an organization through the child's card.
+          _ParentTab(
+            titleKey: 'pa_tab_today',
+            helpPageId: 'home.parent',
+            band: true,
+            child: ParentOverviewPage(
+              onOpenAlerts: (childId) => _go('alerts', childId: childId),
+              onOpenLink: () => _go('link'),
+              onOpenChildren: () => _go('children'),
+              // C2: my children's organizations under the day, nothing at all when no child is in one (kill switch
+              // parent.org_view, one call: GET /org/parent/children)
+              footer: deferredParentOrgChildrenCard(),
+            ),
           ),
         ),
         attentionKeys: const [AttentionTabs.home], // badges: GET /me/attention, drawn at the leaf
@@ -227,7 +240,9 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   void dispose() {
     AppNavigator.requestedTab.removeListener(_onTabRequested);
     _overview.removeListener(_onOverview);
+    _link.removeListener(_onLink);
     _tabs.dispose();
+    _kids.dispose();
     _link.dispose();
     _alerts.dispose();
     _overview.dispose();
@@ -248,6 +263,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         ChangeNotifierProvider<ParentLinkProvider>.value(value: _link),
         ChangeNotifierProvider<ParentAlertsProvider>.value(value: _alerts),
         ChangeNotifierProvider<ParentOverviewProvider>.value(value: _overview),
+        ChangeNotifierProvider<PaKids>.value(value: _kids),
       ],
       builder: (context, _) {
         final tabs = context.watch<ParentTabProvider>();
@@ -299,11 +315,15 @@ class _LazyTabState extends State<_LazyTab> {
 }
 
 class _ParentTab extends StatelessWidget {
-  const _ParentTab({required this.titleKey, required this.child, this.epoch, this.width});
+  const _ParentTab({required this.titleKey, required this.child, this.epoch, this.width, this.band = false, this.helpPageId});
 
   final String titleKey;
   final Widget child;
   final ValueNotifier<int>? epoch;
+
+  /// The child switcher under the top bar (the pages about the children).
+  final bool band;
+  final String? helpPageId;
 
   /// The width role of a page of cards or a form; null = the page manages its own width.
   final AppWidth? width;
@@ -316,16 +336,24 @@ class _ParentTab extends StatelessWidget {
             valueListenable: epoch!,
             builder: (_, e, _) => KeyedSubtree(key: ValueKey(e), child: child),
           );
+    final framed = width == null ? body : AppWidthBox(width: width!, gutters: false, child: body);
     return BasePage(
-      // the shell's bar carries the calendar and messages on a tablet / desktop: here only on phones (once per screen)
+      // the shell's bar carries the calendar and messages on a tablet / desktop: here only on phones (once per screen);
+      // the phone bar shows two (the bell and the messages), the rest fold into its "more" menu
       appBar: ScreenAppBar(
         title: titleKey.tr,
         showBack: false,
+        helpPageId: helpPageId,
         actions: ShellChrome.ownsHeaderOf(context)
             ? const [QuickMeetingIcon()]
-            : const [QuickMeetingIcon(), CalendarEntryIcon(), ChatEntryIcon()],
+            : [
+                NotificationIcon(unreadCount: context.select<NotificationsProvider, int>((p) => p.unreadCount)),
+                const ChatEntryIcon(),
+                const CalendarEntryIcon(),
+                const QuickMeetingIcon(),
+              ],
       ),
-      child: width == null ? body : AppWidthBox(width: width!, gutters: false, child: body),
+      child: band ? Column(children: [const PaSwitcherBand(), Expanded(child: framed)]) : framed,
     );
   }
 }

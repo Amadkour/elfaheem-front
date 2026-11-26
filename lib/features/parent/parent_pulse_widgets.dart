@@ -1,29 +1,33 @@
-// lib/features/parent/parent_pulse_widgets.dart — the parent home's "How is my child doing?" parts (D-305), all
-// over plain values (ParentPulse, parent_pulse.dart) so the layout harness pumps them without a provider:
+// lib/features/parent/parent_pulse_widgets.dart — the parent home's "How is my child doing?" parts (D-305), redrawn
+// for the redesign (Pa2Today, phase 4), all over plain values (ParentPulse, parent_pulse.dart) so the layout harness
+// pumps them without a provider:
 //
-//   ParentChildSwitcher   one chip per child (avatar · name · status dot); only drawn with two children or more
-//   ParentPulseHero       who · status · "Full report", then four AppStatCards (attendance · average mark · missed
-//                         work · courses + next exam); the 6-week lines are AppKpiSparks beside it (parent_overview_page)
-//   ParentInsightsCard    "Needs your attention": <= 4 findings in plain words, each with its one action
+//   ParentChildSwitcher   the child chips (PaKidSwitcher) where no dashboard band carries them
+//   ParentPulseHero       the hero of one child: the greeting, "<name> is doing well this week", one sentence, the
+//                         full report (the one forward action) and "Message the teacher", three glass figures
+//                         (attendance · average mark · missed work)
+//   ParentInsightsCard    "Needs your attention": <= 4 findings in plain words, each a tile with its one action
 //   ParentWeekCard        the child's next 7 days, grouped by day (today first)
+//   ParentEventLine       one dated event (times · rail · title · live tag)
+//   ParentSixWeeksCard    the 6-week attendance and average-mark bars (wide screens)
+//   ParentPathCard        the learning path as a ring: done of total and the next course
 //   ParentSubjectsCard    per course: the child's average against the class average (a marker on the bar), the
 //                         tone (strength / needs focus), progress, missed sessions; "Message the teacher"
-//   ParentRoadmapCard     the learning path: done / total and the next course
+//   ParentRoadmapCard     the learning path without a total (the field and the next course)
 //   parentInsightText     a finding → its sentence (translation keys pp_ins_*, countText for every count + noun)
 //
-// Calm-home rules (D-102) in the Warm Editorial theme (D-610 – D-629) and the premium dashboard (D-631): the one
-// hero is the forest greeting, every other section one paper card with an editorial title and hairline dividers; tones as opaque
-// tints (appTintOn / appInkOn), type from AppType, space from AppSpace, colours from context.colors only, times
-// through AppTime.
+// Role rules (KIT_SPEC 4.3): the parent gets M9 / M10 / M13 / M14 only, so nothing here loops or enters on its own;
+// colours from context.colors and the kit tones, type from AppType, space from AppSpace, times through AppTime.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale;
 
 import '../../config/app_config.dart';
+import 'pa_kit.dart';
 import 'parent_overview.dart';
 import 'parent_pulse.dart';
 
@@ -36,17 +40,22 @@ String _fmt(String key, Map<String, Object?> params) {
 }
 
 String _sessions(int n) =>
-    countText(n, ar1: 'جلسة واحدة', ar2: 'جلستان', arFew: '{n} جلسات', arMany: '{n} جلسة', en1: '1 session', en: '{n} sessions');
+    countText(n, ar1: 'حصة واحدة', ar2: 'حصتين', arFew: '{n} حصص', arMany: '{n} حصة', en1: '1 class', en: '{n} classes');
 
 String _homework(int n) =>
-    countText(n, ar1: 'واجب واحد', ar2: 'واجبان', arFew: '{n} واجبات', arMany: '{n} واجبًا', en1: '1 homework', en: '{n} homework');
+    countText(n, ar1: 'واجب واحد', ar2: 'واجبين', arFew: '{n} واجبات', arMany: '{n} واجبًا', en1: '1 homework', en: '{n} homework');
 
 String _exams(int n) =>
-    countText(n, ar1: 'اختبار واحد', ar2: 'اختباران', arFew: '{n} اختبارات', arMany: '{n} اختبارًا', en1: '1 exam', en: '{n} exams');
+    countText(n, ar1: 'اختبار واحد', ar2: 'اختبارين', arFew: '{n} اختبارات', arMany: '{n} اختبارًا', en1: '1 exam', en: '{n} exams');
+
+String _dates(int n) =>
+    countText(n, ar1: 'موعد واحد', ar2: 'موعدين', arFew: '{n} مواعيد', arMany: '{n} موعدًا', en1: '1 date', en: '{n} dates');
 
 int _n(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
 
 String _course(Map<String, dynamic> p) => pulseName('${p['course_ar'] ?? ''}', '${p['course_en'] ?? ''}');
+
+String _pct(num v) => appDigits('${v.round()}%');
 
 /// One finding as a sentence about [childName].
 String parentInsightText(PulseInsight i, String childName) {
@@ -86,12 +95,12 @@ String parentInsightText(PulseInsight i, String childName) {
 }
 
 Color pulseStatusColor(BuildContext context, PulseStatus s) {
-  final c = context.colors;
+  final kit = context.colors.kit;
   return switch (s) {
-    PulseStatus.onTrack => c.success,
-    PulseStatus.watch => c.warning,
-    PulseStatus.needsYou => c.danger,
-    PulseStatus.quiet => c.textMedium,
+    PulseStatus.onTrack => kit.ok.color,
+    PulseStatus.watch => kit.warn.color,
+    PulseStatus.needsYou => kit.live.color,
+    PulseStatus.quiet => context.colors.textMedium,
   };
 }
 
@@ -104,28 +113,6 @@ IconData pulseStatusIcon(PulseStatus s) => switch (s) {
 
 String pulseStatusLabel(PulseStatus s) => 'pp_status_${s.wire}'.tr;
 
-Color _levelColor(BuildContext context, String level) {
-  final c = context.colors;
-  return switch (level) {
-    'warn' => c.danger,
-    'good' => c.success,
-    _ => c.primary,
-  };
-}
-
-IconData _insightIcon(String code) => switch (code) {
-      'missed_week' || 'full_attendance' => Icons.event_busy_rounded,
-      'homework_missing' || 'homework_soon' => Icons.assignment_late_rounded,
-      'failed_exams' || 'exam_soon' => Icons.quiz_rounded,
-      'inactive' => Icons.bedtime_rounded,
-      'grades_down' => Icons.trending_down_rounded,
-      'grades_up' || 'above_class' => Icons.trending_up_rounded,
-      'focus_subject' || 'weak_backlog' => Icons.center_focus_strong_rounded,
-      'open_alerts' => Icons.notifications_active_rounded,
-      'strength' => Icons.star_rounded,
-      _ => Icons.lightbulb_rounded,
-    };
-
 AppTone pulseStatusTone(PulseStatus s) => switch (s) {
       PulseStatus.onTrack => AppTone.success,
       PulseStatus.watch => AppTone.warning,
@@ -133,300 +120,171 @@ AppTone pulseStatusTone(PulseStatus s) => switch (s) {
       PulseStatus.quiet => AppTone.neutral,
     };
 
-/// The home kit's side gutter (HomeHeader, HomeStatStrip and HomeSectionTitle inset their content 20 px): the parent
-/// home's own rows line up with it.
-const double parentHomeGutter = AppSpace.md + AppSpace.xxs;
+/// The tone of a finding's icon box: a warning in the live red, good news in the ok green, a date coming in the
+/// warning gold, alerts in the primary, anything else in the parent's own tone.
+KitTone parentInsightTone(BuildContext context, PulseInsight i) {
+  final kit = context.colors.kit;
+  if (i.level == 'warn') return kit.live;
+  if (i.level == 'good') return kit.ok;
+  return switch (i.code) {
+    'exam_soon' || 'homework_soon' => kit.warn,
+    'open_alerts' => kit.primaryTone,
+    _ => AppAreaScope.of(context).tone,
+  };
+}
+
+IconData _insightIcon(PulseInsight i) => switch (i.code) {
+      'missed_week' || 'full_attendance' => Icons.event_busy_rounded,
+      'homework_missing' => Icons.warning_amber_rounded,
+      'homework_soon' || 'exam_soon' => Icons.calendar_today_rounded,
+      'failed_exams' => Icons.quiz_rounded,
+      'inactive' => Icons.bedtime_rounded,
+      'grades_down' => Icons.trending_down_rounded,
+      'grades_up' || 'above_class' => Icons.keyboard_arrow_up_rounded,
+      'focus_subject' || 'weak_backlog' => Icons.center_focus_strong_rounded,
+      'open_alerts' => Icons.notifications_none_rounded,
+      'strength' => Icons.star_rounded,
+      _ => Icons.lightbulb_rounded,
+    };
+
+/// The page gutter the old home kit used; kept for callers that still pad by it.
+const double parentHomeGutter = AppSpace.md;
 
 // ── shared bits ────────────────────────────────────────────────────────────
 
-/// An icon in a soft round well of its tone: the one colour of an insight / figure row.
-class _ToneWell extends StatelessWidget {
-  const _ToneWell({required this.icon, required this.tone});
-  final IconData icon;
-  final Color tone;
-
-  static const double size = AppTouch.min - AppSpace.sm;
-
-  @override
-  Widget build(BuildContext context) {
-    final tint = appTintOn(context, tone);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(color: tint, shape: BoxShape.circle),
-      child: Icon(icon, size: AppIconSize.sm, color: appInkOn(context, tone, tint)),
-    );
-  }
-}
-
-/// A section card: an editorial title row (a quiet glyph · the title · an optional trailing) over the body, on paper.
+/// A section card: the kit card with its title row (the title, an optional trailing at the end) over the body.
 class ParentPulseSection extends StatelessWidget {
   const ParentPulseSection({super.key, required this.title, required this.icon, required this.child, this.trailing, this.padBody = true});
 
   final String title;
+
+  /// Kept for callers; the redesign's card head has no glyph.
   final IconData icon;
   final Widget child;
   final Widget? trailing;
+
+  /// Kept for callers: the kit card pads its body itself.
   final bool padBody;
 
-  static const double _chip = AppTouch.min - AppSpace.sm;
-
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return AppCard(
-      padding: EdgeInsets.zero,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // the premium section head (D-631): the editorial title at the start, its glyph in a soft emerald chip at
-        // the end — the same head as AppSectionCard
-        Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.xxs),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: AppTouch.min - AppSpace.xs),
-            child: Row(children: [
-              Expanded(
-                child: Semantics(
-                  header: true,
-                  child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
-                ),
-              ),
-              ?trailing,
-              const SizedBox(width: AppSpace.xs),
-              ExcludeSemantics(
-                child: Container(
-                  width: _chip,
-                  height: _chip,
-                  decoration: BoxDecoration(color: appTintOn(context, c.primary), borderRadius: BorderRadius.circular(AppRadius.control)),
-                  alignment: Alignment.center,
-                  child: Icon(icon, size: AppIconSize.sm, color: appInkOn(context, c.primary, appTintOn(context, c.primary))),
-                ),
-              ),
-            ]),
-          ),
-        ),
-        if (padBody)
-          Padding(padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md), child: child)
-        else
-          child,
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => AppCard(title: title, action: trailing, child: child);
 }
 
 // ── child switcher ─────────────────────────────────────────────────────────
 
+/// The child chips where no dashboard band carries them (a preview of the Today body alone).
 class ParentChildSwitcher extends StatelessWidget {
-  const ParentChildSwitcher({super.key, required this.children, required this.selectedId, required this.onSelect, this.inset = parentHomeGutter});
+  const ParentChildSwitcher({super.key, required this.children, required this.selectedId, required this.onSelect, this.inset = 0});
 
   final List<ParentChildOverview> children;
   final int? selectedId;
-  final ValueChanged<int> onSelect;
-
-  /// The row's side inset: the home's gutter on the page, 0 inside the greeting hero's footer.
+  final ValueChanged<int?> onSelect;
   final double inset;
 
   @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: 'pp_switch_hint'.tr,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: inset),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          for (final ch in children) ...[
-            _ChildChip(child: ch, selected: ch.id == selectedId, onTap: () => onSelect(ch.id)),
-            const SizedBox(width: AppSpace.xs),
-          ],
-        ]),
-      ),
-    );
-  }
-}
-
-class _ChildChip extends StatelessWidget {
-  const _ChildChip({required this.child, required this.selected, required this.onTap});
-  final ParentChildOverview child;
-  final bool selected;
-  final VoidCallback onTap;
-
-  static const double _avatar = AppTouch.min - AppSpace.sm - AppSpace.xxs;
-  static const double _dot = AppSpace.sm;
-  static const double _maxWidth = 220;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final status = child.pulse?.status;
-    final dot = status == null ? (child.openAlerts > 0 ? c.danger : null) : pulseStatusColor(context, status);
-    final surface = selected ? appTintOn(context, c.primary) : c.cardBg;
-    final r = BorderRadius.circular(AppRadius.pill);
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: [child.name, if (status != null) pulseStatusLabel(status)].join(' · '),
-      child: AppPressScale(
-        child: Material(
-          color: surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: r,
-            side: BorderSide(color: selected ? c.primary : c.divider, width: selected ? AppBorder.strong : AppBorder.hairline),
-          ),
-          child: InkWell(
-            borderRadius: r,
-            onTap: onTap,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: AppTouch.min, maxWidth: _maxWidth),
-              child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xxs + AppBorder.focus, AppSpace.xxs, AppSpace.md, AppSpace.xxs),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Stack(clipBehavior: Clip.none, children: [
-                    AppAvatar(name: child.name, url: child.imageUrl.isEmpty ? null : child.imageUrl, size: _avatar),
-                    if (dot != null)
-                      PositionedDirectional(
-                        end: -AppBorder.hairline,
-                        bottom: -AppBorder.hairline,
-                        child: Container(
-                          width: _dot,
-                          height: _dot,
-                          decoration: BoxDecoration(
-                            color: dot,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: surface, width: AppBorder.focus),
-                          ),
-                        ),
-                      ),
-                  ]),
-                  const SizedBox(width: AppSpace.xs),
-                  Flexible(
-                    child: Text(
-                      child.name.split(' ').first,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppType.row(context).copyWith(
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                        color: selected ? appInkOn(context, c.primary, surface) : c.textDark,
-                      ),
-                    ),
-                  ),
-                ]),
-              ),
-            ),
+  Widget build(BuildContext context) => Semantics(
+        label: 'pp_switch_hint'.tr,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: inset),
+          child: PaKidSwitcher(
+            kids: [for (final c in children) PaKid(id: c.id, name: c.name, status: c.pulse?.status.wire)],
+            selected: selectedId,
+            onHero: false,
+            onSelect: onSelect,
           ),
         ),
-      ),
-    );
-  }
+      );
 }
 
-// ── the child's figures: how is my child doing ─────────────────────────────
+// ── the child's hero ───────────────────────────────────────────────────────
 
-/// The selected child's 6-week attendance line (rates), or empty when there are fewer than two points.
+/// The selected child's 6-week attendance (rates), or empty when there are fewer than two points.
 List<double> parentAttendanceSpark(ParentPulse p) {
   final t = [for (final v in p.attendanceTrend) if (v != null) v.toDouble()];
   return t.length >= 2 ? t : const [];
 }
 
-/// The selected child's 6-week average-mark line, or empty when there are fewer than two points.
+/// The selected child's 6-week average marks, or empty when there are fewer than two points.
 List<double> parentGradesSpark(ParentPulse p) {
   final t = [for (final v in p.grades?.trend ?? const <double?>[]) ?v];
   return t.length >= 2 ? t : const [];
 }
 
-/// The child's figures (D-305 in the premium dashboard, D-631): a heading row — the child's avatar, "How is `name`
-/// doing?" in the editorial face, the status — that opens the full report, then four stat cards (attendance in
-/// the schedule tone, the average mark in emerald, missed work in peach, courses + the next exam on paper). The
-/// home's one hero is the greeting above it; the plain sentence lives there.
+/// The hero of one child (Pa2Today `screen=today`): the avatar, the greeting, "<name> is doing well this week", the
+/// first finding as one sentence, the full report (hot) and "Message the teacher", then three glass figures.
 class ParentPulseHero extends StatelessWidget {
-  const ParentPulseHero({super.key, required this.child, required this.pulse, required this.onOpenReport});
+  const ParentPulseHero({
+    super.key,
+    required this.child,
+    required this.pulse,
+    required this.onOpenReport,
+    this.greeting,
+    this.onMessage,
+  });
 
   final ParentChildOverview child;
   final ParentPulse pulse;
   final VoidCallback onOpenReport;
 
-  static const double _avatar = AppTouch.min;
+  /// "Good evening, Ahmed" (null = none).
+  final String? greeting;
 
-  List<Widget> _stats() {
-    final w = pulse.week, g = pulse.grades;
-    final att = w.rate;
-    final missedWork = w.missed + w.homeworkMissing;
-    final delta = g?.delta;
-    final gSub = <String>[
-      if (g?.classAvg != null) _fmt('pp_m_grades_class', {'n': g!.classAvg!.round()}),
-      if (delta != null && delta.round() != 0) '${delta > 0 ? '+' : '-'}${delta.abs().round()} ${'pp_m_vs_prev'.tr}',
-    ];
-    final exam = child.nextExam;
-    return [
-      AppStatCard(
-        icon: Icons.how_to_reg_rounded,
-        label: 'pp_m_attendance'.tr,
-        value: att == null ? '—' : '$att%',
-        tone: AppBlockTone.sage,
-        footer: w.scheduled == 0 ? 'pp_m_attendance_none'.tr : _fmt('pp_m_attendance_sub', {'a': w.attended, 's': w.scheduled}),
-      ),
-      AppStatCard(
-        icon: Icons.grading_rounded,
-        label: 'pp_m_grades'.tr,
-        value: g?.avg == null ? '—' : '${g!.avg!.round()}%',
-        tone: AppBlockTone.emerald,
-        footer: g?.avg == null ? 'pp_m_grades_none'.tr : (gSub.isEmpty ? _exams(g!.count) : gSub.join(' · ')),
-      ),
-      AppStatCard(
-        icon: Icons.assignment_late_rounded,
-        label: 'pp_m_work'.tr,
-        value: '$missedWork',
-        tone: AppBlockTone.peach,
-        footer: missedWork == 0
-            ? 'pp_m_work_none'.tr
-            : [if (w.missed > 0) _sessions(w.missed), if (w.homeworkMissing > 0) _homework(w.homeworkMissing)].join(' · '),
-      ),
-      AppStatCard(
-        icon: Icons.menu_book_rounded,
-        label: 'courses'.tr,
-        value: '${child.courses}',
-        tone: AppBlockTone.paper,
-        footer: exam == null ? 'pl_ov_no_exam'.tr : '${'pl_ov_next_exam'.tr} · ${exam.name}',
-      ),
-    ];
+  /// "Message the teacher"; null = not offered (no teacher, or the switch is off).
+  final VoidCallback? onMessage;
+
+  String _line() {
+    final first = child.name.split(' ').first;
+    if (pulse.insights.isNotEmpty) return parentInsightText(pulse.insights.first, child.name);
+    return 'pa_head_line_${pulse.status.wire}'.tr.replaceAll('{name}', first);
   }
 
   @override
   Widget build(BuildContext context) {
+    final w = pulse.week, g = pulse.grades;
     final first = child.name.split(' ').first;
-    final head = Row(children: [
-      AppAvatar(name: child.name, url: child.imageUrl.isEmpty ? null : child.imageUrl, size: _avatar),
-      const SizedBox(width: AppSpace.sm),
-      Expanded(
-        child: Wrap(
-          spacing: AppSpace.xs,
-          runSpacing: AppSpace.xxs,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Semantics(
-              header: true,
-              child: Text(_fmt('pp_how_title', {'name': first}), maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: AppType.section(context)),
-            ),
-            AppStatusBadge(label: pulseStatusLabel(pulse.status), tone: pulseStatusTone(pulse.status), icon: pulseStatusIcon(pulse.status)),
-          ],
+    final missedWork = w.missed + w.homeworkMissing;
+    final delta = g?.delta;
+    final wide = paWide(context);
+    final grade = '${child.child['grade_name'] ?? ''}';
+    return AppHero(
+      kicker: greeting,
+      title: 'pa_head_${pulse.status.wire}'.tr.replaceAll('{name}', first),
+      subtitle: _line(),
+      leading: PaKidAvatar(id: child.id, name: child.name, size: AppHero.leadingSize(wide)),
+      actions: [
+        AppButton.hot(
+          key: const ValueKey('pa.today.report'),
+          label: 'pa_full_report'.tr,
+          icon: Icons.bar_chart_rounded,
+          expand: !wide,
+          onPressed: onOpenReport,
         ),
-      ),
-      const SizedBox(width: AppSpace.xs),
-      Icon(Icons.chevron_right_rounded, color: context.colors.textLight),
-    ]);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      // the heading row opens the full report (the hero's call to action says it in words)
-      Semantics(
-        button: true,
-        hint: 'pp_full_report'.tr,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.control),
-          onTap: onOpenReport,
-          child: ConstrainedBox(constraints: const BoxConstraints(minHeight: AppTouch.min), child: head),
+        if (onMessage != null)
+          AppButton.secondary(
+            key: const ValueKey('pa.today.message'),
+            label: 'pa_message_teacher'.tr,
+            icon: Icons.chat_bubble_outline_rounded,
+            expand: !wide,
+            onPressed: onMessage,
+          ),
+      ],
+      stats: [
+        AppHeroStat(label: 'pa_attendance'.tr, value: w.rate == null ? '—' : _pct(w.rate!)),
+        AppHeroStat(
+          label: 'pa_grade_avg'.tr,
+          value: g?.avg == null ? '—' : _pct(g!.avg!),
+          delta: delta == null || delta.round() == 0 ? null : appDigits('${delta > 0 ? '+' : '−'}${delta.abs().round()}'),
         ),
+        AppHeroStat(label: 'pa_missed'.tr, value: appDigits('$missedWork')),
+      ],
+      bottom: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          AppStatusBadge(label: pulseStatusLabel(pulse.status), tone: pulseStatusTone(pulse.status), icon: pulseStatusIcon(pulse.status)),
+          if (grade.isNotEmpty) Text(grade, style: AppType.meta(context).copyWith(color: context.colors.onHeroMuted)),
+        ]),
       ),
-      const SizedBox(height: AppSpace.sm),
-      AppKpiGrid(children: _stats()),
-    ]);
+    );
   }
 }
 
@@ -443,86 +301,48 @@ class ParentInsightsCard extends StatelessWidget {
   final bool canMessage;
 
   String? _actionLabel(PulseAction? a) => switch (a?.kind) {
-        PulseActionKind.messageTeacher => canMessage ? 'pp_act_message'.tr : null,
-        PulseActionKind.openReport => 'pp_act_report'.tr,
-        PulseActionKind.openAlerts => 'pp_act_alerts'.tr,
+        PulseActionKind.messageTeacher => canMessage ? 'pa_message_teacher'.tr : null,
+        PulseActionKind.openReport => 'pa_open_report'.tr,
+        PulseActionKind.openAlerts => 'pa_show_alerts'.tr,
         null => null,
-      };
-
-  IconData _actionIcon(PulseActionKind k) => switch (k) {
-        PulseActionKind.messageTeacher => Icons.chat_bubble_outline_rounded,
-        PulseActionKind.openReport => Icons.insights_rounded,
-        PulseActionKind.openAlerts => Icons.notifications_none_rounded,
       };
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return ParentPulseSection(
-      title: 'pp_needs_title'.tr,
-      icon: Icons.tips_and_updates_outlined,
-      padBody: false,
+    return AppCard(
+      title: 'pa_needs_title'.tr,
+      action: insights.isEmpty ? null : AppCountBadge(count: insights.length, tone: AppTone.gold),
       child: insights.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
-              child: Row(children: [
-                _ToneWell(icon: Icons.check_rounded, tone: c.success),
-                const SizedBox(width: AppSpace.sm),
-                Expanded(child: Text('pp_all_clear'.tr, style: AppType.body(context))),
-              ]),
-            )
-          : Column(children: [
-              for (var i = 0; i < insights.length; i++) ...[
-                if (i > 0)
-                  Divider(
-                    height: AppBorder.hairline,
-                    thickness: AppBorder.hairline,
-                    indent: AppSpace.md + _ToneWell.size + AppSpace.sm,
-                    color: c.divider,
-                  ),
-                _InsightRow(
-                  insight: insights[i],
-                  text: parentInsightText(insights[i], childName),
-                  actionLabel: _actionLabel(insights[i].action),
-                  actionIcon: insights[i].action == null ? null : _actionIcon(insights[i].action!.kind),
-                  onAction: () => onAction(insights[i]),
+          ? AppTile(icon: Icons.check_rounded, tone: context.colors.kit.ok, title: 'pa_all_clear'.tr)
+          : PaStack(gap: AppSpace.sm, children: [
+              for (final i in insights)
+                _InsightTile(
+                  insight: i,
+                  text: parentInsightText(i, childName),
+                  actionLabel: _actionLabel(i.action),
+                  onAction: () => onAction(i),
                 ),
-              ],
-              const SizedBox(height: AppSpace.xs),
             ]),
     );
   }
 }
 
-class _InsightRow extends StatelessWidget {
-  const _InsightRow({required this.insight, required this.text, this.actionLabel, this.actionIcon, required this.onAction});
+class _InsightTile extends StatelessWidget {
+  const _InsightTile({required this.insight, required this.text, this.actionLabel, required this.onAction});
+
   final PulseInsight insight;
   final String text;
   final String? actionLabel;
-  final IconData? actionIcon;
   final VoidCallback onAction;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        _ToneWell(icon: _insightIcon(insight.code), tone: _levelColor(context, insight.level)),
-        const SizedBox(width: AppSpace.sm),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpace.xxs + AppBorder.focus),
-              child: Text(text, style: AppType.row(context).copyWith(height: 1.5)),
-            ),
-            if (actionLabel != null)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpace.xs),
-                child: AppButton.tonal(label: actionLabel!, icon: actionIcon, size: AppButtonSize.sm, onPressed: onAction),
-              ),
-          ]),
-        ),
-      ]),
+    final label = actionLabel;
+    return AppTile(
+      icon: _insightIcon(insight),
+      tone: parentInsightTone(context, insight),
+      title: text,
+      trailing: label == null ? null : AppButton.secondary(label: label, size: AppButtonSize.sm, onPressed: onAction),
     );
   }
 }
@@ -543,7 +363,7 @@ class ParentWeekCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final set = AppAreaScope.of(context);
     final today = AppTime.toZone(DateTime.now().toUtc());
     final groups = <String, List<ParentEventRow>>{};
     for (final e in events) {
@@ -551,69 +371,210 @@ class ParentWeekCard extends StatelessWidget {
       if (s == null) continue;
       groups.putIfAbsent(_dayLabel(AppTime.toZone(s), today), () => []).add(e);
     }
-    return ParentPulseSection(
+    return AppCard(
       title: 'pp_this_week'.tr,
-      icon: Icons.date_range_rounded,
-      trailing: groups.isEmpty ? null : AppCountBadge(count: events.length, tone: AppTone.neutral),
+      action: groups.isEmpty ? null : AppStatusBadge(label: _dates(events.length), tone: AppTone.info),
       child: groups.isEmpty
           ? Text('pp_week_empty'.tr, style: AppType.body(context))
           : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               for (final (i, g) in groups.entries.indexed) ...[
                 Padding(
                   padding: EdgeInsets.only(top: i == 0 ? 0 : AppSpace.sm, bottom: AppSpace.xxs),
-                  child: Text(g.key, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textMedium)),
+                  child: Text(g.key, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: set.ink)),
                 ),
-                for (final e in g.value) _WeekRow(event: e),
+                for (final e in g.value) ParentEventLine(event: e),
               ],
             ]),
     );
   }
 }
 
-class _WeekRow extends StatelessWidget {
-  const _WeekRow({required this.event});
+/// One dated event: the start and end times · a rail in the event's tone · the title and its line · a live tag
+/// while it runs.
+class ParentEventLine extends StatelessWidget {
+  const ParentEventLine({super.key, required this.event, this.now});
+
   final ParentEventRow event;
 
+  /// The instant that decides "live" and "past" (default: now).
+  final DateTime? now;
+
   static const double _timeWidth = AppSpace.xxxl;
+
+  /// Below this width the live tag goes under the title.
+  static const double _tagAtEndFrom = 360;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final kit = c.kit;
+    final set = AppAreaScope.of(context);
+    final s = event.startsAt, e = event.endsAt;
+    final at = now ?? DateTime.now().toUtc();
+    final live = s != null && e != null && !at.isBefore(s) && at.isBefore(e);
+    final past = e != null && !at.isBefore(e);
     final exam = event.source == 'exam' || event.kind == 'exam';
-    final tone = exam ? c.warning : c.primary;
-    final sub = [if (event.subtitle.isNotEmpty) event.subtitle, if (event.location.isNotEmpty) event.location].join(' · ');
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs + AppBorder.hairline),
+    final rail = exam ? kit.warn.color : (past ? c.divider : set.a);
+    final sub = [
+      if (event.mode == 'online') 'pa_remote'.tr,
+      if (event.mode == 'offline') 'pa_in_person'.tr,
+      if (event.subtitle.isNotEmpty) event.subtitle,
+      if (event.location.isNotEmpty) event.location,
+    ].join(paT('، ', ', '));
+    const tabular = [FontFeature.tabularFigures()];
+    return LayoutBuilder(builder: (context, box) {
+      // the live tag stands at the end where there is room, under the title on a narrow card
+      final tagAtEnd = box.maxWidth >= _tagAtEndFrom;
+      return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
       child: IntrinsicHeight(
         child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           SizedBox(
             width: _timeWidth,
-            child: Padding(
-              padding: const EdgeInsets.only(top: AppBorder.focus),
-              child: Text(event.startsAt == null ? '—' : AppTime.time(event.startsAt!), maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: appInk(context, tone),
-                      fontFeatures: const [FontFeature.tabularFigures()])),
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(s == null ? '—' : AppTime.time(s), maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w700, color: c.textDark, fontFeatures: tabular)),
+              if (e != null)
+                Text(AppTime.time(e), maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: AppType.meta(context).copyWith(fontFeatures: tabular)),
+            ]),
           ),
-          // the day's rail: the tone of what it is (a class in the primary, an exam in the warning tone)
           Container(
-            width: AppBorder.focus + AppBorder.hairline,
-            margin: const EdgeInsetsDirectional.only(end: AppSpace.sm, top: AppSpace.xxs / 2, bottom: AppSpace.xxs / 2),
-            decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(AppRadius.pill)),
+            width: AppBorder.focus * 2,
+            margin: const EdgeInsetsDirectional.only(end: AppSpace.sm),
+            decoration: BoxDecoration(color: rail, borderRadius: BorderRadius.circular(AppRadius.pill)),
           ),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(event.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(height: 1.35)),
-              if (sub.isNotEmpty) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+              Text(event.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: AppType.row(context).copyWith(color: past ? c.textMedium : c.textDark, fontWeight: FontWeight.w600)),
+              if (sub.isNotEmpty) Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
               if (exam)
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpace.xxs),
                   child: AppStatusBadge(label: 'pp_exam_tag'.tr, tone: AppTone.warning, icon: Icons.quiz_rounded, dense: true),
                 ),
+              if (live && !tagAtEnd)
+                const Padding(padding: EdgeInsets.only(top: AppSpace.xxs), child: AppLiveTag(slap: false)),
             ]),
           ),
+          if (live && tagAtEnd) ...[
+            const SizedBox(width: AppSpace.xs),
+            const Center(child: AppLiveTag(slap: false)),
+          ],
         ]),
       ),
+    );
+    });
+  }
+}
+
+// ── the last six weeks (wide) ──────────────────────────────────────────────
+
+class ParentSixWeeksCard extends StatelessWidget {
+  const ParentSixWeeksCard({super.key, required this.pulse});
+
+  final ParentPulse pulse;
+
+  @override
+  Widget build(BuildContext context) {
+    final att = parentAttendanceSpark(pulse), grades = parentGradesSpark(pulse);
+    final kit = context.colors.kit;
+    final tiles = <Widget>[
+      if (att.isNotEmpty)
+        _Bars(label: 'pa_attendance'.tr, value: pulse.week.rate == null ? '—' : _pct(pulse.week.rate!), values: att, tone: kit.ok),
+      if (grades.isNotEmpty)
+        _Bars(
+          label: 'pa_grade_avg'.tr,
+          value: pulse.grades?.avg == null ? '—' : _pct(pulse.grades!.avg!),
+          values: grades,
+          tone: kit.live,
+        ),
+    ];
+    if (tiles.isEmpty) return const SizedBox.shrink();
+    return AppCard(
+      title: 'pa_six_weeks'.tr,
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        for (var i = 0; i < tiles.length; i++) ...[if (i > 0) const SizedBox(width: AppSpace.sm), Expanded(child: tiles[i])],
+      ]),
+    );
+  }
+}
+
+class _Bars extends StatelessWidget {
+  const _Bars({required this.label, required this.value, required this.values, required this.tone});
+
+  final String label, value;
+  final List<double> values;
+  final KitTone tone;
+
+  static const double _height = AppSpace.xxxl;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      label: '$label $value',
+      child: Container(
+        padding: const EdgeInsets.all(AppSpace.sm),
+        decoration: BoxDecoration(
+          color: c.kit.well,
+          borderRadius: BorderRadius.circular(AppRadius.tile),
+          border: Border.all(color: c.kit.line, width: AppBorder.strong),
+        ),
+        child: ExcludeSemantics(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            Text(value, style: AppType.statFigure(context, wide: false)),
+            const SizedBox(height: AppSpace.xs),
+            SizedBox(
+              height: _height,
+              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                for (var i = 0; i < values.length; i++) ...[
+                  if (i > 0) const SizedBox(width: AppSpace.xxs),
+                  Expanded(
+                    child: FractionallySizedBox(
+                      heightFactor: (values[i] / 100).clamp(.06, 1.0),
+                      alignment: Alignment.bottomCenter,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(color: tone.color, borderRadius: BorderRadius.circular(AppRadius.chip)),
+                      ),
+                    ),
+                  ),
+                ],
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ── the learning path as a ring ────────────────────────────────────────────
+
+class ParentPathCard extends StatelessWidget {
+  const ParentPathCard({super.key, required this.roadmap});
+
+  final PulseRoadmap roadmap;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = roadmap;
+    final of = _fmt('pa_n_of_m', {'n': appDigits('${r.done}'), 'm': appDigits('${r.total}')});
+    return AppCard(
+      title: 'pa_learning_path'.tr,
+      child: Row(children: [
+        AppProgressRing(value: r.ratio, size: AppDashSize.ring, label: of, semanticLabel: of),
+        const SizedBox(width: AppSpace.md),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(_fmt('pa_path_done', {'n': of}), style: AppType.tileTitle(context)),
+            if (r.next.isNotEmpty)
+              Text(_fmt('pa_path_next', {'name': r.next}), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+          ]),
+        ),
+      ]),
     );
   }
 }
@@ -632,26 +593,17 @@ class ParentSubjectsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final anyClass = subjects.any((s) => s.classAvg != null);
-    return ParentPulseSection(
+    return AppCard(
       title: 'pp_subjects'.tr,
-      icon: Icons.menu_book_rounded,
-      padBody: false,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (var i = 0; i < subjects.length; i++) ...[
-          if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, indent: AppSpace.md, endIndent: AppSpace.md, color: c.divider),
+          if (i > 0) Divider(height: AppSpace.md, thickness: AppBorder.hairline, color: c.kit.line),
           _SubjectRow(subject: subjects[i], onMessage: onMessage == null || subjects[i].teacher == null ? null : () => onMessage!(subjects[i])),
         ],
-        if (anyClass)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.md),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(Icons.shield_outlined, size: AppIconSize.xs, color: c.textLight),
-              const SizedBox(width: AppSpace.xs),
-              Expanded(child: Text('pp_subj_privacy'.tr, style: AppType.meta(context).copyWith(color: c.textLight, height: 1.4))),
-            ]),
-          )
-        else
-          const SizedBox(height: AppSpace.xs),
+        if (anyClass) ...[
+          const SizedBox(height: AppSpace.sm),
+          PaNote(icon: Icons.shield_outlined, text: 'pp_subj_privacy'.tr),
+        ],
       ]),
     );
   }
@@ -674,52 +626,41 @@ class _SubjectRow extends StatelessWidget {
       if (s.missed > 0) _fmt('pp_subj_missed', {'n': s.missed}),
     ].join(' · ');
     final score = s.avg == null ? c.textLight : appScoreColor(context, s.avg);
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.sm, AppSpace.xxs, AppSpace.sm),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              Text(s.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
-              if (s.isStrength || s.isFocus)
-                AppStatusBadge(label: 'pp_subj_${s.tone}'.tr, tone: s.isFocus ? AppTone.warning : AppTone.success, dense: true),
-            ]),
-            const SizedBox(height: AppSpace.xs),
-            Row(children: [
-              Expanded(
-                child: AppProgressBar(
-                  value: s.avg ?? 0,
-                  marker: s.classAvg,
-                  color: s.avg == null ? c.divider : score,
-                ),
-              ),
-              const SizedBox(width: AppSpace.xs),
-              SizedBox(
-                width: _figureWidth,
-                child: Text(s.avg == null ? '—' : '${s.avg!.round()}%', textAlign: TextAlign.end,
-                    style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: s.avg == null ? c.textLight : appInk(context, score),
-                        fontFeatures: const [FontFeature.tabularFigures()])),
-              ),
-            ]),
-            const SizedBox(height: AppSpace.xxs),
-            Text(s.avg == null ? '${'pp_subj_no_marks'.tr} · $meta' : meta, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: AppType.meta(context).copyWith(height: 1.4)),
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            Text(s.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600)),
+            if (s.isStrength || s.isFocus)
+              AppStatusBadge(label: 'pp_subj_${s.tone}'.tr, tone: s.isFocus ? AppTone.warning : AppTone.success, dense: true),
           ]),
+          const SizedBox(height: AppSpace.xs),
+          Row(children: [
+            Expanded(child: AppProgressBar(value: s.avg ?? 0, marker: s.classAvg, color: s.avg == null ? c.divider : score)),
+            const SizedBox(width: AppSpace.xs),
+            SizedBox(
+              width: _figureWidth,
+              child: Text(s.avg == null ? '—' : _pct(s.avg!), textAlign: TextAlign.end,
+                  style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark,
+                      fontFeatures: const [FontFeature.tabularFigures()])),
+            ),
+          ]),
+          const SizedBox(height: AppSpace.xxs),
+          Text(s.avg == null ? '${'pp_subj_no_marks'.tr} · $meta' : meta, maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: AppType.meta(context)),
+        ]),
+      ),
+      if (onMessage != null)
+        AppIconButton(
+          icon: Icons.chat_bubble_outline_rounded,
+          tooltip: '${'pa_message_teacher'.tr} · ${s.teacher!.name}',
+          onPressed: onMessage,
         ),
-        if (onMessage != null)
-          AppIconButton(
-            icon: Icons.chat_bubble_outline_rounded,
-            tooltip: '${'pp_act_message'.tr} · ${s.teacher!.name}',
-            onPressed: onMessage,
-          )
-        else
-          const SizedBox(width: AppSpace.xs),
-      ]),
-    );
+    ]);
   }
 }
 
-// ── roadmap ────────────────────────────────────────────────────────────────
+// ── roadmap without a total ────────────────────────────────────────────────
 
 class ParentRoadmapCard extends StatelessWidget {
   const ParentRoadmapCard({super.key, required this.roadmap, required this.childName});
@@ -728,33 +669,23 @@ class ParentRoadmapCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final r = roadmap;
-    return ParentPulseSection(
-      title: 'pp_roadmap'.tr,
-      icon: Icons.route_rounded,
+    final set = AppAreaScope.of(context);
+    return AppCard(
+      title: 'pa_learning_path'.tr,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (r.field.isNotEmpty)
           Text(_fmt('pp_road_hint', {'name': childName.split(' ').first, 'field': r.field}), maxLines: 2, overflow: TextOverflow.ellipsis,
-              style: AppType.body(context).copyWith(height: 1.45)),
-        if (r.total > 0) ...[
-          const SizedBox(height: AppSpace.sm),
-          Text(_fmt('pp_road_progress', {'done': r.done, 'total': r.total}), maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
-          const SizedBox(height: AppSpace.xs),
-          AppProgressBar(value: r.ratio * 100, color: c.primary),
-        ],
+              style: AppType.body(context)),
         if (r.next.isNotEmpty) ...[
           const SizedBox(height: AppSpace.sm),
           Row(children: [
-            Icon(Icons.flag_rounded, size: AppIconSize.sm, color: c.primary),
+            Icon(Icons.flag_rounded, size: AppIconSize.sm, color: set.ink),
             const SizedBox(width: AppSpace.xs),
-            Expanded(
-              child: Text(_fmt('pp_road_next', {'name': r.next}), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
-            ),
+            Expanded(child: Text(_fmt('pa_path_next', {'name': r.next}), maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context))),
             if (r.nextProgress != null && r.nextProgress! > 0) ...[
               const SizedBox(width: AppSpace.xs),
-              Text('${r.nextProgress!.round()}%', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
+              Text(_pct(r.nextProgress!), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600)),
             ],
           ]),
         ],
