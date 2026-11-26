@@ -8,7 +8,6 @@ import 'package:flutter_education_app/features/records/records_api.dart';
 import 'package:flutter_education_app/features/records/records_page.dart';
 import 'package:flutter_education_app/features/records/records_student_parts.dart';
 import 'package:flutter_education_app/features/sessions/material/components/lesson_material_view.dart';
-import 'package:flutter_education_app/features/sessions/video/vod_lesson_page.dart';
 import 'package:flutter_education_app/features/sessions/video/vod_player_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 

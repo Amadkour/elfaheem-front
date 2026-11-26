@@ -180,7 +180,7 @@ class RecordsStudentRow extends StatelessWidget {
               end: AppSpace.xs,
               bottom: AppSpace.xs,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
                 decoration: BoxDecoration(color: c.kit.deep, borderRadius: BorderRadius.circular(AppRadius.pill)),
                 child: Text(
                   mmss(item.durationSeconds),

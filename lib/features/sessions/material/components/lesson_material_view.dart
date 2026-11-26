@@ -485,7 +485,7 @@ class _Tag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
         decoration: BoxDecoration(color: tone.tint, borderRadius: BorderRadius.circular(AppRadius.pill)),
         child: Text(label, style: AppType.overline(context).copyWith(color: tone.ink)),
       );

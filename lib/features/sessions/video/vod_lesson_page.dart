@@ -237,7 +237,7 @@ class VodLessonList extends StatelessWidget {
     final thumb = Container(
       width: AppTouch.primary * 2 + AppSpace.xxs * 3,
       height: AppTouch.primary + AppSpace.sm,
-      padding: const EdgeInsets.all(AppSpace.xxs + AppSpace.xxs / 2),
+      padding: const EdgeInsets.all(AppSpace.xs),
       alignment: AlignmentDirectional.bottomEnd,
       decoration: BoxDecoration(
         color: locked ? c.heroGlass : tone.color,
@@ -246,7 +246,7 @@ class VodLessonList extends StatelessWidget {
       child: e.badge == null
           ? null
           : Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs / 2),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
               decoration: BoxDecoration(color: kit.deep.withValues(alpha: 0.72), borderRadius: BorderRadius.circular(AppRadius.pill)),
               child: Text(e.badge!,
                   textDirection: TextDirection.ltr,
@@ -331,7 +331,7 @@ class VodLessonLayout extends StatelessWidget {
                 ]),
               ),
               AppSpace.gapLg,
-              SizedBox(width: AppDashSize.courseTile + AppSpace.xxxl * 2 + AppSpace.lg, child: list),
+              SizedBox(width: AppDashSize.courseTile + AppSpace.xxxl + AppSpace.xxxl + AppSpace.lg, child: list),
             ]),
           )
         : ListView(
