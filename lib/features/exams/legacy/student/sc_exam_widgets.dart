@@ -169,7 +169,7 @@ class ScExamCard extends StatelessWidget {
               PositionedDirectional(
                 top: 0,
                 bottom: 0,
-                end: 0,
+                start: 0,
                 width: AppSpace.xxs + AppBorder.hairline,
                 child: ColoredBox(color: sub.tone.color),
               ),
