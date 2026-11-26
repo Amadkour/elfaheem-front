@@ -12,13 +12,13 @@ on white and on the tint). Mapping onto the design's roles (DESIGN_SYSTEM.md §1
 
 | Design role (reference value) | NextBrain | Notes |
 |---|---|---|
-| `--k-navy` text / dark hero base (`#00205E`) | deep green, derived from `#186848` (about `#0F3F2C`) | text on light, hero base |
-| `--k-deep` hero end stop (`#001440`) | darkest green (about `#08261A`) | player / exam chrome |
-| `--k-blue` primary action (`#1979C1`) | logo green `#186848` (tint and ink derived) | links, primary |
-| `--k-cyan` gradient partner (`#07B8EE`) | a lighter, fresher green (about `#2FA36B`) | gradients, focus ring |
-| `--k-apricot` warm highlight (`#FF9F5A`) | logo gold `#C08838` | next step, warm highlight |
-| `--k-coral` hot end stop (`#F2545B`) | deeper gold / amber (about `#A8691F`) | `.hot` = gold → deep gold |
-| page `#F3F8FD` | a green-tinted off-white (about `#F4F8F5`) | 60 % neutral |
+| `--k-navy` text / dark hero base (`ref`) | deep green, derived from `#186848` (about `#0F3F2C`) | text on light, hero base |
+| `--k-deep` hero end stop (`ref`) | darkest green (about `#08261A`) | player / exam chrome |
+| `--k-blue` primary action (`ref`) | logo green `#186848` (tint and ink derived) | links, primary |
+| `--k-cyan` gradient partner (`ref`) | a lighter, fresher green (about `#2FA36B`) | gradients, focus ring |
+| `--k-apricot` warm highlight (`ref`) | logo gold `#C08838` | next step, warm highlight |
+| `--k-coral` hot end stop (`ref`) | deeper gold / amber (about `#A8691F`) | `.hot` = gold → deep gold |
+| page `ref` | a green-tinted off-white (about `#F4F8F5`) | 60 % neutral |
 
 The values marked "about" are starting points; the kit agent fixes the exact hex with a contrast check and writes
 them in `lib/design/` defaults AND the backend theme seed. Grades of green and gold only for brand roles.
