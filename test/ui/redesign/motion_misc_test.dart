@@ -8,15 +8,19 @@ import 'redesign_harness.dart';
 
 const _box = SizedBox(width: 120, height: 48, child: ColoredBox(color: Color(0x11000000)));
 
-Iterable<Element> _all(WidgetTester t) => find.byWidgetPredicate((_) => true).evaluate();
+Iterable<Element> _all(WidgetTester t) => find
+    .descendant(of: find.byType(Center), matching: find.byWidgetPredicate((_) => true))
+    .evaluate();
 
 void main() {
   testWidgets('AppJelly: squashed on pointer down, back after up; identity under Reduce motion', (tester) async {
     await tester.pumpWidget(kitHost(const AppJelly(child: _box)));
     final g = await tester.startGesture(tester.getCenter(find.byWidget(_box)));
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
     expect(atRest(_all(tester)), isFalse);
     await g.up();
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(atRest(_all(tester)), isTrue);
 
@@ -73,6 +77,7 @@ void main() {
     final c = AppFeedbackController();
     await tester.pumpWidget(kitHost(AppFeedback(controller: c, child: _box)));
     c.shake();
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 90));
     expect(atRest(_all(tester)), isFalse);
     await tester.pump(const Duration(milliseconds: 400));

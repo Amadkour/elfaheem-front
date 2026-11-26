@@ -165,14 +165,17 @@ class AppPop extends StatelessWidget {
         kind: MotionKind.pop,
         onceKey: '$group:$index',
         duration: AppMotionSpec.pop,
-        curve: AppMotionSpec.popCurve,
+        // the keyframes carry the overshoot; the spec's overshooting cubic on top of them reached the end state at
+        // a third of the run, so the time runs linear and each keyframe segment eases out
+        curve: Curves.linear,
         delay: delay,
         playfulOnly: false,
         trigger: trigger,
         useTrigger: trigger != null,
         pose: (context, t, child) {
-          final s = motionKeyframes(t, const [0, .6, 1], const [.6, 1.08, 1]);
-          final r = motionKeyframes(t, const [0, .6, 1], const [-6, 2, 0]);
+          final e = t < .6 ? .6 * Curves.easeOut.transform(t / .6) : .6 + .4 * Curves.easeInOut.transform((t - .6) / .4);
+          final s = motionKeyframes(e, const [0, .6, 1], const [.6, 1.08, 1]);
+          final r = motionKeyframes(e, const [0, .6, 1], const [-6, 2, 0]);
           return Opacity(
             opacity: (t / .6).clamp(0.0, 1.0),
             child: Transform(

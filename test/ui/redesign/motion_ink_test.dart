@@ -59,6 +59,7 @@ void main() {
         builder: (_, x, _) => AppInkRing(value: x, color: const Color(0xFF000000), track: const Color(0x22000000)))));
     await tester.pump(const Duration(seconds: 2));
     v.value = .8;
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 150));
     double val() => tester.widgetList<CustomPaint>(find.byType(CustomPaint))
         .map((c) => c.painter)
