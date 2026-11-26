@@ -11,6 +11,8 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -171,7 +173,7 @@ class _CertVerifyPageState extends State<CertVerifyPage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final canScan = widget.scanAvailable ?? certScanAvailable;
-    return Scaffold(
+    return SdArea(area: AppArea.me, child: Scaffold(
       backgroundColor: c.background,
       appBar: AppHeader(title: 'ci_verify_bar'.tr, showBack: Navigator.of(context).canPop()),
       body: SafeArea(
@@ -193,6 +195,6 @@ class _CertVerifyPageState extends State<CertVerifyPage> {
           ),
         ),
       ),
-    );
+    ));
   }
 }

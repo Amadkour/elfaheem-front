@@ -39,6 +39,7 @@ library;
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/core/offline/sync/outbox.dart';
 import 'package:flutter_education_app/core/offline/sync/sync_engine.dart';
@@ -649,7 +650,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
     final waiting = sub != null && !GuestState.active && !sub.done && !sub.queued;
     final kept = sub != null && sub.queued && !sub.done;
     final board = !GuestState.active && !gamesLeaderboardOff();
-    return BasePage(
+    return SdArea(area: AppArea.games, child: BasePage(
       appBar: ScreenAppBar(
         title: _game.title,
         compact: true,
@@ -711,7 +712,7 @@ class _GamePlayPageState extends State<GamePlayPage> {
           leaderboard: board && sub != null ? GameLeaderboardSection(gameId: _game.id, api: _api, refresh: _saved) : null,
         ),
       ),
-    );
+    ));
   }
 }
 

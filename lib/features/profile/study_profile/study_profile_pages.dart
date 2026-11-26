@@ -14,6 +14,7 @@ library;
 
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -309,18 +310,18 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
         ),
       ]);
     }
-    return BasePage(
+    return SdArea(area: AppArea.me, child: BasePage(
       key: const ValueKey(kStudyProfileFeatureKey),
       useWebCard: true, // the form width role on a wide screen (D-805), not a 1400 px wide form
       width: AppWidth.form,
       appBar: ScreenAppBar(title: t('بيانات الدراسة', 'Study details')),
-      child: SafeArea(
+      child: SdHeroColumn(title: 'sd_h_study'.tr, subtitle: 'sd_h_study_d'.tr, icon: Icons.school_outlined, child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpace.md),
           child: AppUnsavedGuard(dirty: dirty, child: body),
         ),
-      ),
-    );
+      )),
+    ));
   }
 }
 

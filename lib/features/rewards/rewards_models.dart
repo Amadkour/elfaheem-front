@@ -130,10 +130,10 @@ class Coupon {
 
   /// Where it works, in a few words.
   String get appliesText => switch (appliesTo) {
-        'course' => t('على الكورسات', 'On courses'),
+        'course' => t('على الدورات', 'On courses'),
         'package' => t('على الباقات', 'On packages'),
         'store' => t('في المتجر', 'In the store'),
-        _ => t('على الكورسات والباقات والمتجر', 'On courses, packages and the store'),
+        _ => t('على الدورات والباقات والمتجر', 'On courses, packages and the store'),
       };
 
   /// Why I got it.

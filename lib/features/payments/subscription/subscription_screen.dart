@@ -13,6 +13,8 @@ library;
 
 import 'package:flutter_education_app/features/help/help_info_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'dart:math' as math;
 
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -33,7 +35,8 @@ class SubscriptionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
     create: (_) => SubscriptionProvider()..load(),
-    child: const _View(),
+    // the money area of the redesign (S-D)
+    child: const SdArea(area: AppArea.money, child: _View()),
   );
 }
 
@@ -370,7 +373,13 @@ class _ViewState extends State<_View> {
           showBack: Navigator.of(context).canPop(),
           actions: [AppRefreshAction(onRefresh: p.load), const HelpInfoButton(pageId: 'account.subscription')],
         ),
-        body: p.loaded ? AppRefresh(onRefresh: p.load, scrollable: scrollable, child: body) : body,
+        // redesign S-D (Stu2Money `screen=subscribe`): the money hero over the plans and the request's state
+        body: SdHeroColumn(
+          title: 'sub_title'.tr,
+          subtitle: 'sd_sub_sub'.tr,
+          icon: Icons.workspace_premium_outlined,
+          child: p.loaded ? AppRefresh(onRefresh: p.load, scrollable: scrollable, child: body) : body,
+        ),
       ),
     );
   }

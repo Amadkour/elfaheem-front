@@ -12,6 +12,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
@@ -338,7 +339,7 @@ class _ChallengePageState extends State<ChallengePage> {
   @override
   Widget build(BuildContext context) {
     final c = _c;
-    return BasePage(
+    return SdArea(area: AppArea.games, child: BasePage(
       width: AppWidth.reading,
       appBar: ScreenAppBar(title: t('التحدّي', 'Challenge'), helpPageId: 'games.challenges'),
       child: SafeArea(
@@ -351,7 +352,7 @@ class _ChallengePageState extends State<ChallengePage> {
                 child: ChallengeView(challenge: c, ageBand: _band, busy: _busy, onPlay: _play, onShare: () => shareChallenge(context, c)),
               ),
       ),
-    );
+    ));
   }
 }
 
@@ -607,10 +608,10 @@ class _GamesChallengesPageState extends State<GamesChallengesPage> {
           const AppListSkeleton(items: 4, padding: EdgeInsets.zero),
       ]);
     }
-    return BasePage(
+    return SdArea(area: AppArea.games, child: BasePage(
       width: AppWidth.reading,
       appBar: ScreenAppBar(title: t('التحدّيات', 'Challenges'), helpPageId: 'games.challenges'),
-      child: SafeArea(
+      child: SdHeroColumn(title: 'sd_h_challenges'.tr, subtitle: 'sd_h_challenges_d'.tr, icon: Icons.bolt_rounded, child: SafeArea(
         child: LayoutBuilder(builder: (context, box) {
           final gutter = AppSpace.gutter(box.maxWidth);
           return ListView(
@@ -637,8 +638,8 @@ class _GamesChallengesPageState extends State<GamesChallengesPage> {
             ],
           );
         }),
-      ),
-    );
+      )),
+    ));
   }
 }
 

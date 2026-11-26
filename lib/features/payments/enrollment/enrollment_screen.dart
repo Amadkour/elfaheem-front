@@ -14,6 +14,8 @@ import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, 
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/courses/course_list_card.dart' show CourseCoverArt, coursePrimaryInk;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
+import 'package:flutter_education_app/design/app_hero.dart' show AppHero;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/payments/enrollment/saved_cards/saved_payment_models.dart';
 import 'package:provider/provider.dart';
@@ -159,11 +161,14 @@ class _MethodStep extends StatelessWidget {
                 : 'complete_payment_title'.tr,
           ),
           Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.xs, AppSpace.xs, AppSpace.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            // redesign S-D (Stu2Money `screen=enroll`): "تشترك الحين في" + the course on the money hero, the review
+            // card riding up over it
+            child: SdHeroList(
+              hero: AppHero(
+                kicker: 'sd_enroll_kicker'.tr,
+                title: (AppConfig.lang == 'ar' ? enroll.course.titleAr : enroll.course.titleEn) ?? '',
+                icon: Icons.menu_book_outlined,
+              ),
                 children: [
                   _CourseSummaryCard(
                     course: enroll.course,
@@ -199,7 +204,6 @@ class _MethodStep extends StatelessWidget {
                     ),
                   ],
                 ],
-              ),
             ),
           ),
           EnrollConfirmBar(

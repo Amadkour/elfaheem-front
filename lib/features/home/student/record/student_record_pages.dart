@@ -10,6 +10,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart';
@@ -160,12 +161,12 @@ class _TwoListsPageState extends State<_TwoListsPage> {
   @override
   Widget build(BuildContext context) {
     final me = context.select<MyAuthProvider, int?>((a) => a.currentUser?.id);
-    return BasePage(
+    return SdArea(area: AppArea.me, child: BasePage(
       key: ValueKey(widget.pageKey),
       useWebCard: true,
       width: AppWidth.wide,
       appBar: ScreenAppBar(title: widget.title),
-      child: SafeArea(
+      child: SdHeroColumn(title: widget.title, subtitle: widget.pageKey.contains('money') ? 'sd_h_payments_d'.tr : 'sd_h_grades_d'.tr, icon: Icons.workspace_premium_outlined, child: SafeArea(
         bottom: false,
         child: me == null
             ? const SizedBox.shrink()
@@ -176,8 +177,8 @@ class _TwoListsPageState extends State<_TwoListsPage> {
                 ),
                 Expanded(child: KeyedSubtree(key: ValueKey('${widget.pageKey}.$_tab'), child: widget.builder(context, _tab, me))),
               ]),
-      ),
-    );
+      )),
+    ));
   }
 }
 

@@ -6,6 +6,9 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/courses/course_list_card.dart' show CourseCoverArt;
 import 'package:flutter_education_app/features/store/store_models.dart';
@@ -70,7 +73,7 @@ class StorePriceBlock extends StatelessWidget {
     final p = price;
     if (compact) {
       return Text(
-        p.isFree ? t('مجاني', 'Free') : storeMoney(p.gross, p.currency),
+        p.isFree ? 'sd_no_fee'.tr : storeMoney(p.gross, p.currency),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: AppType.bodyStrong(context).copyWith(color: c.primary),
@@ -88,7 +91,7 @@ class StorePriceBlock extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(p.isFree ? t('مجاني', 'Free') : storeMoney(p.gross, p.currency),
+        Text(p.isFree ? 'sd_no_fee'.tr : storeMoney(p.gross, p.currency),
             style: AppType.figureLarge(context).copyWith(color: c.textDark)),
         if (!p.isFree) ...[
           Text(t('الإجمالي شامل الضريبة', 'Total including VAT'), style: AppType.meta(context)),
@@ -119,61 +122,156 @@ class StorePriceBlock extends StatelessWidget {
   }
 }
 
-/// A browse card: cover, kind, title, price, "owned" / "in cart".
+/// The accent of an item's drawn cover: the same item keeps its colour on every screen.
+AppAccent storeAccentOf(StoreItem item) => AppAccent.values[item.id.abs() % AppAccent.values.length];
+
+/// A drawn book (an item without a picture): the accent's colour fading to its deep end, a darker spine on the
+/// closing edge, the kind as a glass tag at the top and the title at the bottom. With [url] the picture is drawn
+/// instead, in the same frame.
+class StoreBookCover extends StatelessWidget {
+  const StoreBookCover({super.key, required this.item, this.showTitle = true});
+
+  final StoreItem item;
+  final bool showTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tone = c.kit.accent(storeAccentOf(item));
+    final end = Color.lerp(tone.color, c.kit.deep, .28)!;
+    final radius = BorderRadiusDirectional.only(
+      topStart: const Radius.circular(AppRadius.tile),
+      bottomStart: const Radius.circular(AppRadius.tile),
+      topEnd: const Radius.circular(AppRadius.chip),
+      bottomEnd: const Radius.circular(AppRadius.chip),
+    );
+    final tag = Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.xxs),
+      decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(AppRadius.pill)),
+      child: Text(storeKindLabel(item.kind), maxLines: 1, style: AppType.overline(context).copyWith(color: c.onHero)),
+    );
+    return ExcludeSemantics(
+      child: ClipRRect(
+        borderRadius: radius,
+        child: item.coverUrl.isNotEmpty
+            ? Stack(fit: StackFit.expand, children: [
+                AppNetworkImage(url: item.coverUrl),
+                PositionedDirectional(top: AppSpace.xs, start: AppSpace.xs, child: tag),
+              ])
+            : DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [tone.color, end]),
+                ),
+                child: Stack(fit: StackFit.expand, children: [
+                  // the spine on the closing edge
+                  PositionedDirectional(
+                    top: 0,
+                    bottom: 0,
+                    end: 0,
+                    width: AppSpace.sm,
+                    child: ColoredBox(color: c.kit.deep.withValues(alpha: .18)),
+                  ),
+                  PositionedDirectional(top: AppSpace.xs, start: AppSpace.xs, child: tag),
+                  if (showTitle)
+                    PositionedDirectional(
+                      start: AppSpace.sm,
+                      end: AppSpace.md,
+                      bottom: AppSpace.sm,
+                      child: Text(item.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppType.tileTitle(context).copyWith(color: c.onHero)),
+                    ),
+                ]),
+              ),
+      ),
+    );
+  }
+}
+
+/// "45 ريال أو 450 نقطة" (no "free" as a selling point: a free item says "بدون رسوم").
+String storeCardPrice(StoreItem item) {
+  final p = item.price;
+  final money = p.isFree ? 'sd_no_fee'.tr : storeMoney(p.gross, p.currency);
+  return item.pointsPrice == null || p.isFree ? money : '$money ${'sd_or_points'.tr.replaceAll('{n}', '${item.pointsPrice}')}';
+}
+
+/// A browse card (Stu2Store): the drawn book, the title, the pages, the price, and "في مكتبتك" / "في السلة" / a
+/// round add button.
 class StoreItemCard extends StatelessWidget {
-  const StoreItemCard({super.key, required this.item, this.inCart = false, this.onTap});
+  const StoreItemCard({super.key, required this.item, this.inCart = false, this.onTap, this.onAdd});
 
   final StoreItem item;
   final bool inCart;
   final VoidCallback? onTap;
 
+  /// Puts the item in the cart; null hides the button.
+  final VoidCallback? onAdd;
+
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final set = AppAreaScope.of(context);
+    final price = storeCardPrice(item);
+    final Widget? foot = item.owned
+        ? AppStatusBadge(label: t('في مكتبتك', 'Owned'), tone: AppTone.success, dense: true)
+        : inCart
+            ? AppStatusBadge(label: t('في السلة', 'In cart'), tone: AppTone.warning, dense: true)
+            : onAdd == null || item.price.isFree
+                ? null
+                : AppPop(
+                    child: Semantics(
+                      button: true,
+                      label: 'sd_store_add'.tr,
+                      child: AppJelly(
+                        child: Material(
+                          key: ValueKey('store.add.${item.id}'),
+                          color: set.a,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: onAdd,
+                            child: SizedBox.square(
+                              dimension: AppTouch.min,
+                              child: Icon(Icons.add_rounded, color: set.btnFg, size: AppIconSize.md),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
     return Semantics(
       button: true,
-      label: '${item.title}, ${item.price.isFree ? t('مجاني', 'Free') : storeMoney(item.price.gross, item.price.currency)}',
-      child: ExcludeSemantics(
-        child: AppCard(
-          key: ValueKey('store.card.${item.id}'),
-          padding: const EdgeInsets.all(AppSpace.sm),
-          onTap: onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AspectRatio(
-                aspectRatio: 4 / 3,
-                child: StoreCover(id: item.id, title: item.title, url: item.coverUrl),
+      label: '${item.title}, $price',
+      child: AppCard(
+        key: ValueKey('store.card.${item.id}'),
+        variant: AppCardVariant.flat,
+        padding: const EdgeInsets.all(AppSpace.sm),
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ExcludeSemantics(child: AspectRatio(aspectRatio: 3 / 4, child: StoreBookCover(item: item))),
+            const SizedBox(height: AppSpace.sm),
+            ExcludeSemantics(
+              child: Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context)),
+            ),
+            if (item.pages != null && item.pages! > 0)
+              ExcludeSemantics(
+                child: Text(appDigits(storePagesText(item.pages!)), maxLines: 1, style: AppType.meta(context)),
               ),
+            const SizedBox(height: AppSpace.xs),
+            ExcludeSemantics(
+              child: Text(appDigits(price),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.bodyStrong(context).copyWith(color: context.colors.textDark)),
+            ),
+            if (foot != null) ...[
               const SizedBox(height: AppSpace.xs),
-              Row(children: [
-                Icon(storeKindIcon(item.kind), size: AppIconSize.sm, color: c.textMedium),
-                const SizedBox(width: AppSpace.xxs),
-                Expanded(
-                  child: Text(
-                    [storeKindLabel(item.kind), if (item.pages != null && item.pages! > 0) storePagesText(item.pages!)].join(' · '),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppType.meta(context),
-                  ),
-                ),
-              ]),
-              const SizedBox(height: AppSpace.xxs),
-              Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
-              const SizedBox(height: AppSpace.xs),
-              StorePriceBlock(price: item.price, pointsPrice: item.pointsPrice, compact: true),
-              if (item.owned || inCart) ...[
-                const SizedBox(height: AppSpace.xxs),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: item.owned
-                      ? AppStatusBadge(label: t('في مكتبتك', 'Owned'), tone: AppTone.success, dense: true)
-                      : AppStatusBadge(label: t('في السلة', 'In cart'), tone: AppTone.brand, dense: true),
-                ),
-              ],
+              Align(alignment: AlignmentDirectional.centerStart, child: foot),
             ],
-          ),
+          ],
         ),
       ),
     );

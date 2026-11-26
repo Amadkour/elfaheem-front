@@ -8,6 +8,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
@@ -77,7 +78,7 @@ class _QuranTeacherPageState extends State<QuranTeacherPage> {
   @override
   Widget build(BuildContext context) {
     final tr = _teacher;
-    return BasePage(
+    return SdArea(area: AppArea.quran, child: BasePage(
       width: AppWidth.content,
       appBar: ScreenAppBar(title: t('معلم القرآن', 'Quran teacher')),
       child: SafeArea(
@@ -95,7 +96,7 @@ class _QuranTeacherPageState extends State<QuranTeacherPage> {
                 onRefresh: _load,
               ),
       ),
-    );
+    ));
   }
 }
 
@@ -115,29 +116,15 @@ class QuranTeacherView extends StatelessWidget {
     final c = context.colors;
     final tr = teacher;
     final blocked = genderOk == false;
+    // Stu2Quran `screen=teacher`: the teacher on the calm Quran hero, the rest in one card riding up over it
+    final hero = AppHero(
+      kicker: tr.verified ? t('موثّق من المنصة', 'Verified by the platform') : null,
+      title: tr.name,
+      subtitle: quranGenderLabel(tr.gender),
+      leading: AppAvatar(name: teacherInitialName(tr.name), url: tr.avatarUrl, size: AppHero.leadingSize(false)),
+      icon: Icons.menu_book_outlined,
+    );
     final children = <Widget>[
-      AppBlock(
-        tone: AppBlockTone.emerald,
-        hero: true,
-        child: Builder(builder: (context) {
-          final b = AppBlock.colorsOf(context);
-          return Row(children: [
-            AppAvatar(name: teacherInitialName(tr.name), url: tr.avatarUrl, size: AppTouch.primary),
-            const SizedBox(width: AppSpace.md),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(tr.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: b.ink)),
-                const SizedBox(height: AppSpace.xxs),
-                Text(quranGenderLabel(tr.gender), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted)),
-                if (tr.verified) ...[
-                  const SizedBox(height: AppSpace.xs),
-                  AppStatusBadge(label: t('موثّق من المنصة', 'Verified by the platform'), tone: AppTone.success, icon: Icons.verified_rounded, dense: true),
-                ],
-              ]),
-            ),
-          ]);
-        }),
-      ),
       if (blocked) ...[
         const SizedBox(height: AppSpace.md),
         AppBanner(
@@ -202,7 +189,7 @@ class QuranTeacherView extends StatelessWidget {
     final list = Semantics(
       container: true,
       explicitChildNodes: true,
-      child: ListView(padding: const EdgeInsets.all(AppSpace.md), children: children),
+      child: SdHeroList(hero: hero, width: AppWidth.content, children: [AppCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children))]),
     );
     return onRefresh == null ? list : AppRefresh(onRefresh: onRefresh!, child: list);
   }

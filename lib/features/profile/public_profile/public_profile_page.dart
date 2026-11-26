@@ -21,6 +21,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
@@ -104,7 +105,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
     if (fb != null && r != null && r.status != PublicProfileStatus.found) return fb;
     final p = r?.profile;
     final guest = !_signedIn;
-    return BasePage(
+    return SdArea(area: AppArea.me, child: BasePage(
       key: const ValueKey(kPublicLinkFeatureKey),
       enableFooterWidget: false,
       appBar: ScreenAppBar(
@@ -136,7 +137,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
               )
             : null,
       ),
-    );
+    ));
   }
 }
 
@@ -212,7 +213,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         : (p == null
             ? const PublicProfileResult(PublicProfileStatus.notFound)
             : PublicProfileResult(PublicProfileStatus.found, profile: p));
-    return BasePage(
+    return SdArea(area: AppArea.me, child: BasePage(
       key: const ValueKey(kMyProfileFeatureKey),
       enableFooterWidget: false,
       appBar: ScreenAppBar(
@@ -247,7 +248,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                 onDocuments: _documents(),
               ),
       ),
-    );
+    ));
   }
 }
 

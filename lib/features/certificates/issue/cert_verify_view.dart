@@ -6,6 +6,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPop;
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -142,59 +144,54 @@ class CertVerifyView extends StatelessWidget {
       VerifyState.found => _found(context, result!),
     };
     final showAnother = onAnother != null && (state == VerifyState.found || state == VerifyState.notFound || state == VerifyState.foreign);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpace.md),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: AppWidth.reading.max),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            content,
-            if (showAnother) ...[
-              const SizedBox(height: AppSpace.md),
-              AppButton.secondary(
-                key: const ValueKey('cv.another'),
-                onPressed: onAnother,
-                icon: Icons.refresh_rounded,
-                label: 'cv_another'.tr,
-                expand: true,
-              ),
-            ],
-          ]),
-        ),
-      ),
+    // redesign S-D (Stu2Profile `screen=verify`): the hero "تحقّق من شهادة", the verdict card riding up over it
+    return SdHeroList(
+      hero: AppHero(title: 'sd_cv_title'.tr, subtitle: 'sd_cv_sub'.tr, icon: Icons.verified_outlined),
+      children: [
+        state == VerifyState.entry || state == VerifyState.loading || state == VerifyState.error ? AppCard(child: content) : content,
+        if (showAnother) ...[
+          const SizedBox(height: AppSpace.md),
+          AppButton.secondary(
+            key: const ValueKey('cv.another'),
+            onPressed: onAnother,
+            icon: Icons.refresh_rounded,
+            label: 'cv_another'.tr,
+            expand: true,
+          ),
+        ],
+      ],
     );
   }
 
+  /// The verdict: a card tinted in the verdict's tone (ok, warning, error), the mark in a solid circle (the tick draws
+  /// itself, M2), the title in the tone's ink and one line.
   Widget _hero(BuildContext context, Color col, IconData icon, String title, String sub) {
     final c = context.colors;
+    final kit = c.kit;
+    final tone = col == c.success ? kit.ok : (col == c.danger ? kit.error : kit.warn);
     return Semantics(
       container: true,
       liveRegion: true,
-      child: AppMeshSurface(
-        color: col,
-        seed: 11,
-        radius: AppRadius.cardAll,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.xl),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Center(
+      child: AppCard(
+        variant: AppCardVariant.tint,
+        tone: tone,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.lg),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Center(
+            child: AppPop(
               child: Container(
-                width: 84,
-                height: 84,
-                decoration: BoxDecoration(
-                  color: c.heroGlass,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: c.heroGlassBorder),
-                ),
+                width: AppTouch.primary + AppSpace.lg,
+                height: AppTouch.primary + AppSpace.lg,
+                decoration: BoxDecoration(color: tone.color, shape: BoxShape.circle),
                 child: Icon(icon, color: c.onHero, size: AppIconSize.hero),
               ),
             ),
-            const SizedBox(height: AppSpace.md),
-            Text(title, textAlign: TextAlign.center, style: AppType.pageTitle(context).copyWith(color: c.onHero)),
-            const SizedBox(height: AppSpace.xs),
-            Text(sub, textAlign: TextAlign.center, style: AppType.body(context).copyWith(color: c.onHero, height: 1.5)),
-          ]),
-        ),
+          ),
+          const SizedBox(height: AppSpace.md),
+          Text(title, textAlign: TextAlign.center, style: AppType.pageTitle(context).copyWith(color: tone.ink)),
+          const SizedBox(height: AppSpace.xs),
+          Text(sub, textAlign: TextAlign.center, style: AppType.body(context).copyWith(color: c.textMedium, height: 1.5)),
+        ]),
       ),
     );
   }
@@ -255,11 +252,11 @@ class CertVerifyView extends StatelessWidget {
         if (langs.length > 1 && onLang != null)
           Align(
             alignment: AlignmentDirectional.centerStart,
-            child: SegmentedButton<String>(
-              showSelectedIcon: false,
-              segments: [for (final l in langs) ButtonSegment(value: l, label: Text(certLangLabel(l)))],
-              selected: {shown},
-              onSelectionChanged: (s) => onLang!(s.first),
+            child: AppTabs(
+              hug: true,
+              items: [for (final l in langs) AppTabItem(certLangLabel(l))],
+              index: langs.indexOf(shown),
+              onChanged: (i) => onLang!(langs[i]),
             ),
           ),
         const SizedBox(height: AppSpace.sm),
@@ -377,8 +374,8 @@ class _Tile extends StatelessWidget {
   Widget build(BuildContext context) => AppCard(
         child: Row(children: [
           Container(
-            width: 44,
-            height: 44,
+            width: AppDashSize.ringSm,
+            height: AppDashSize.ringSm,
             decoration: BoxDecoration(color: color.withValues(alpha: 0.14), shape: BoxShape.circle),
             child: Icon(icon, color: color, size: AppIconSize.md),
           ),

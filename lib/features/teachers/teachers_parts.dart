@@ -15,7 +15,7 @@ import 'package:flutter_education_app/features/teachers/teachers_models.dart';
 // ── counts ───────────────────────────────────────────────────────────────────
 
 String sessionsText(int n) =>
-    countText(n, ar1: 'جلسة واحدة', ar2: 'جلستان', arFew: '{n} جلسات', arMany: '{n} جلسة', en1: '1 session', en: '{n} sessions');
+    countText(n, ar1: 'حصة واحدة', ar2: 'حصتان', arFew: '{n} حصص', arMany: '{n} حصة', en1: '1 class', en: '{n} classes');
 
 String minutesText(int n) =>
     countText(n, ar1: 'دقيقة واحدة', ar2: 'دقيقتان', arFew: '{n} دقائق', arMany: '{n} دقيقة', en1: '1 minute', en: '{n} minutes');

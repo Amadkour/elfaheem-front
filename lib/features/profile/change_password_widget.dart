@@ -14,6 +14,7 @@ library;
 import 'package:flutter_education_app/features/auth/auth_shell.dart' show AuthLayout;
 import 'package:flutter_education_app/design/app_area.dart' show AppAccent;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
@@ -219,12 +220,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         ),
       );
     }
-    return BasePage(
+    return SdArea(area: AppArea.me, child: BasePage(
       appBar: ScreenAppBar(helpPageId: 'account.change_password', title: 'change_password'.tr),
       // the sign-in sidebar belongs to the password-reset flow (signed out); from the Account page the form
       // stands alone in its centred column
-      child: SafeArea(child: isWide && !widget.fromProfile ? _webLayout(p, c) : _mobileLayout(p, c)),
-    );
+      child: SdHeroColumn(title: 'sd_h_security'.tr, subtitle: 'sd_h_security_d'.tr, icon: Icons.verified_user_outlined, child: SafeArea(child: isWide && !widget.fromProfile ? _webLayout(p, c) : _mobileLayout(p, c))),
+    ));
   }
 
   // ══════════════════════════════════════════════════════════════════════════

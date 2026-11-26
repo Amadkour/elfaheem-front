@@ -5,6 +5,8 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -283,7 +285,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
     final c = context.colors;
     final isWide = context.showSidebar;
 
-    return BasePage(
+    return SdArea(area: AppArea.me, child: BasePage(
       useWebCard: true,
       width: AppWidth.content,
       appBar: isWide ? ScreenAppBar(helpPageId: 'account.edit', title: 'update_account'.tr) : null,
@@ -309,7 +311,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
           ]);
         }),
       ),
-    );
+    ));
   }
 
   /// The hero column's width beside the form on a wide page.

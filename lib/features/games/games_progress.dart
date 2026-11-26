@@ -9,6 +9,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -92,13 +94,13 @@ class _GamesProgressPageState extends State<GamesProgressPage> {
   }
 
   @override
-  Widget build(BuildContext context) => BasePage(
+  Widget build(BuildContext context) => SdArea(area: AppArea.games, child: BasePage(
         width: AppWidth.content,
         appBar: ScreenAppBar(title: t('تقدّمي في الألعاب', 'My games progress')),
-        child: SafeArea(
+        child: SdHeroColumn(title: 'sd_h_games_progress'.tr, subtitle: 'sd_h_games_progress_d'.tr, icon: Icons.bar_chart_rounded, child: SafeArea(
           child: GamesProgressView(report: _report, loading: _loading, error: _error, onRetry: _load, onRefresh: _load),
-        ),
-      );
+        )),
+      ));
 }
 
 /// A parent's view of one linked child's games: the light summary only (CONTRACT §8). A 403 (the kill switch or the
@@ -158,7 +160,7 @@ class _ParentChildGamesPageState extends State<ParentChildGamesPage> {
   }
 
   @override
-  Widget build(BuildContext context) => BasePage(
+  Widget build(BuildContext context) => SdArea(area: AppArea.games, child: BasePage(
         width: AppWidth.content,
         // the short tab name as the title, the child under it: "ألعاب <a long name>" wrapped and was clipped at 360
         appBar: ScreenAppBar(
@@ -172,7 +174,7 @@ class _ParentChildGamesPageState extends State<ParentChildGamesPage> {
                   ? const SizedBox.shrink()
                   : ParentGamesSummaryView(summary: _summary, loading: _loading, error: _error, onRetry: _load, onRefresh: _load),
         ),
-      );
+      ));
 }
 
 /// The parent's light summary with plain values: time played and games finished, for the last 7 or 30 days.
