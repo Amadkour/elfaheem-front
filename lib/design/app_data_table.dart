@@ -824,7 +824,8 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
       key: const ValueKey('app_table_header'),
       color: c.cardBg2,
       child: DecoratedBox(
-        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline))),
+        // the head closes on the kit's line at 1.5 (`.k-table th`), its labels in the muted ink
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.kit.line, width: AppBorder.strong))),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
           child: Row(children: [
@@ -860,7 +861,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
         softWrap: false,
         overflow: TextOverflow.ellipsis,
         textAlign: _textAlign(col),
-        style: AppType.label(context));
+        style: AppType.label(context).copyWith(color: c.textMedium));
     if (!col.sortable || widget.onSort == null) {
       return ConstrainedBox(
         constraints: BoxConstraints(minHeight: _rowMin),
@@ -912,7 +913,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     // phone cards stand apart by a gap; wide rows share one paper and are parted by hairlines
     Widget gap() => phone
         ? AppSpace.gapXs
-        : Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider);
+        : Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.kit.line);
     if (fit) {
       return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         for (var i = 0; i < rows.length; i++) ...[
@@ -1217,7 +1218,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
           if (!phone) _headerRow(context),
           for (var i = 0; i < 6; i++) ...[
             if (i > 0)
-              if (phone) AppSpace.gapXs else Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
+              if (phone) AppSpace.gapXs else Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.kit.line),
             if (phone) _paper(context, row(i)) else row(i),
           ],
         ]),
