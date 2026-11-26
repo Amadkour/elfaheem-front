@@ -53,8 +53,9 @@ abstract final class AppBurst {
       builder: (_) => _Burst(
         origin: origin!,
         kit: kit,
-        onDone: () {
-          entry.remove();
+        // called once: when the flight ends, or when the overlay goes first (the page left mid-flight)
+        onDone: (bool removed) {
+          if (!removed) entry.remove();
           _live--;
         },
       ),
@@ -69,7 +70,8 @@ class _Burst extends StatefulWidget {
 
   final Offset origin;
   final KitColors kit;
-  final VoidCallback onDone;
+  /// [removed]: the entry is already gone (disposed before the end).
+  final void Function(bool removed) onDone;
 
   @override
   State<_Burst> createState() => _BurstState();
@@ -80,8 +82,15 @@ class _BurstState extends State<_Burst> with SingleTickerProviderStateMixin {
     vsync: this,
     duration: AppMotionSpec.burstDelay + AppMotionSpec.burst,
   )..addStatusListener((s) {
-      if (s == AnimationStatus.completed) widget.onDone();
+      if (s == AnimationStatus.completed) _finish(removed: false);
     });
+  bool _done = false;
+
+  void _finish({required bool removed}) {
+    if (_done) return;
+    _done = true;
+    widget.onDone(removed);
+  }
   late final Animation<double> _t = CurvedAnimation(
     parent: _c,
     curve: Interval(
@@ -99,6 +108,7 @@ class _BurstState extends State<_Burst> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
+    _finish(removed: true);
     _c.dispose();
     super.dispose();
   }
