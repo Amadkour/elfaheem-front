@@ -7,9 +7,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
+import 'package:flutter_education_app/core/edu/edu_catalog.dart';
+import 'package:flutter_education_app/core/edu/edu_countries.dart';
 import 'package:flutter_education_app/features/courses/roadmap/recommendations.dart';
 import 'package:flutter_education_app/features/profile/about/about_and_terms_screen.dart';
 import 'package:flutter_education_app/features/profile/about/about_terms_provider.dart';
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_form.dart';
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -47,6 +51,38 @@ Map<String, dynamic> _recs() => {
           },
       ],
     };
+
+final _saStages = [
+  const EduStage(id: 1, key: 'intermediate', nameAr: 'المتوسط', nameEn: 'Intermediate'),
+  EduStage(id: 2, key: 'secondary', nameAr: 'الثانوي', nameEn: 'Secondary', grades: [
+    for (var i = 1; i <= 3; i++)
+      EduGrade(id: 20 + i, key: 's$i', nameAr: 'الصف $i الثانوي', nameEn: 'Secondary grade $i', number: i, tracks: [
+        for (final (k, ar, en) in const [
+          ('general', 'المسار العام', 'General track'),
+          ('cs', 'علوم الحاسب والهندسة', 'Computer science and engineering'),
+          ('health', 'الصحة والحياة', 'Health and life'),
+          ('business', 'إدارة الأعمال', 'Business administration'),
+          ('sharia', 'الشرعي', 'Sharia'),
+        ])
+          EduTrack(key: k, nameAr: ar, nameEn: en),
+      ]),
+  ]),
+];
+
+Widget studyForm(StudyProfile value, ValueChanged<StudyProfile> onChanged) => SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: StudyProfileForm(
+        value: value,
+        compact: true,
+        edu: StudyEduData(
+          countries: const [EduCountry(code: 'SA', nameAr: 'السعودية', nameEn: 'Saudi Arabia')],
+          country: 'SA',
+          stages: _saStages,
+          loadAreas: (_) async => const [],
+        ),
+        onChanged: onChanged,
+      ),
+    );
 
 void main() {
   late FakeApi fake;
@@ -94,5 +130,26 @@ void main() {
 
   testWidgets('recommendations page: long names, reasons and prices', (t) async {
     await expectNoLayoutErrors(t, () => const RecommendationsPage(), scaffold: false, frames: 6);
+  });
+
+  testWidgets('study step: the grade folded with Change, the track chips (S-A2)', (t) async {
+    var value = const StudyProfile(countryCode: 'SA', stageId: 2, gradeId: 22, track: 'cs');
+    await expectNoLayoutErrors(
+      t,
+      () {
+        value = const StudyProfile(countryCode: 'SA', stageId: 2, gradeId: 22, track: 'cs'); // every size and language starts over
+        return StatefulBuilder(builder: (context, set) => studyForm(value, (v) => set(() => value = v)));
+      },
+      act: (t) async {
+        expect(find.byKey(const ValueKey('study.grade_summary')), findsOneWidget);
+        expect(find.byKey(const ValueKey('study.edu_track.cs')), findsOneWidget);
+        await t.tap(find.byKey(const ValueKey('study.edu_track.health')));
+        await t.pump();
+        expect(value.track, 'health');
+        await t.tap(find.byKey(const ValueKey('study.grade_change')));
+        await t.pump();
+        expect(find.byKey(const ValueKey('study.edu_grade.21')), findsOneWidget);
+      },
+    );
   });
 }

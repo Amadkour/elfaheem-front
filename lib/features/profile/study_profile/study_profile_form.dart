@@ -15,6 +15,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
@@ -112,7 +113,6 @@ class _StudyProfileFormState extends State<StudyProfileForm> {
   bool _req(String f) => widget.required.contains(f);
 
   EduArea? _area1, _area2;
-  String? _pendingTrack;
 
   int? _resolvedFor;
 
@@ -322,18 +322,16 @@ class _StudyProfileFormState extends State<StudyProfileForm> {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (widget.edu != null) ...[
-          RegisterLevelsStep(
-            countries: widget.edu!.countries,
-            country: widget.edu!.country,
-            stages: widget.edu!.stages,
+          // redesign S-A2: the kit's chips, a picked grade folded into "صفّك: … · غيّر", the track open under it
+          _StudyLevelsPicker(
+            edu: widget.edu!,
             stageId: v.stageId,
             gradeId: v.gradeId,
             trackKey: v.track,
-            onTrack: (tr) => _pendingTrack = tr,
             errorText: missing.contains('stage')
                 ? t('اختر مرحلتك الدراسية', 'Pick your stage')
                 : (missing.contains('grade') ? t('اختر صفك', 'Pick your grade') : null),
-            onChanged: (c, st, g) => _eduChanged(c, st, g, _pendingTrack),
+            onChanged: _eduChanged,
           ),
           AppSpace.gapMd,
           _gender(v),
@@ -496,5 +494,137 @@ class _DobWell extends StatelessWidget {
         ),
       ]),
     );
+  }
+}
+
+/// The catalog's stage → grade → track for the study step (redesign Stu1Auth?screen=study, S-A2), on the kit's
+/// chips: a stage and grade already picked (the join flow) fold into one "صفّك: الثاني ثانوي · غيّر" row, and the
+/// track ("مسارك") stays open under it. [onChanged] gets the country, stage, grade and track; another stage clears
+/// the grade and the track, another grade clears the track.
+class _StudyLevelsPicker extends StatefulWidget {
+  const _StudyLevelsPicker({
+    required this.edu,
+    required this.stageId,
+    required this.gradeId,
+    required this.trackKey,
+    required this.onChanged,
+    this.errorText,
+  });
+
+  final StudyEduData edu;
+  final int? stageId, gradeId;
+  final String? trackKey;
+  final void Function(String? country, int? stageId, int? gradeId, String? track) onChanged;
+  final String? errorText;
+
+  @override
+  State<_StudyLevelsPicker> createState() => _StudyLevelsPickerState();
+}
+
+class _StudyLevelsPickerState extends State<_StudyLevelsPicker> {
+  /// The stage and grade chips are open (nothing picked yet, or "غيّر").
+  late bool _open = widget.gradeId == null;
+
+  @override
+  Widget build(BuildContext context) {
+    final edu = widget.edu;
+    final c = context.colors;
+    EduStage? stage;
+    for (final s in edu.stages) {
+      if (s.id == widget.stageId) stage = s;
+    }
+    EduGrade? grade;
+    for (final g in stage?.grades ?? const <EduGrade>[]) {
+      if (g.id == widget.gradeId) grade = g;
+    }
+    final country = edu.country;
+    final folded = !_open && stage != null && grade != null;
+    Widget group(String label, List<Widget> chips) => Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.md),
+          child: Semantics(
+            container: true,
+            label: label,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              AppFieldLabel(label),
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: chips),
+            ]),
+          ),
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      if (edu.countries.length > 1) ...[
+        EduCountryPicker(
+          countries: {for (final x in edu.countries) x.code: x.name},
+          value: country,
+          onChanged: (x) => widget.onChanged(x, null, null, null),
+        ),
+        AppSpace.gapMd,
+      ],
+      if (edu.stages.isEmpty)
+        Text(t('المراحل الدراسية غير متاحة الآن', 'Study levels are not available right now'), style: AppType.meta(context))
+      else if (folded)
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.md),
+          child: Container(
+            key: const ValueKey('study.grade_summary'),
+            padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xxs, AppSpace.xxs, AppSpace.xxs),
+            decoration: BoxDecoration(color: c.kit.primaryTone.tint, borderRadius: BorderRadius.circular(AppRadius.tile)),
+            child: Row(children: [
+              Icon(Icons.school_outlined, size: AppIconSize.md, color: c.kit.primaryTone.ink),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(
+                child: Text('sa_study_grade_is'.tr.replaceAll('{grade}', grade.name),
+                    style: AppType.label(context).copyWith(color: c.kit.primaryTone.ink, fontWeight: FontWeight.w600)),
+              ),
+              Flexible(
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: AppButton.ghost(
+                    key: const ValueKey('study.grade_change'),
+                    label: 'sa_study_change'.tr,
+                    size: AppButtonSize.sm,
+                    onPressed: () => setState(() => _open = true),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        )
+      else ...[
+        group(t('المرحلة', 'Stage'), [
+          for (final s in edu.stages)
+            AppChip(
+              key: ValueKey('study.edu_stage.${s.id}'),
+              label: s.name,
+              selected: s.id == widget.stageId,
+              onTap: () => widget.onChanged(country, s.id, null, null),
+            ),
+        ]),
+        if (stage != null && stage.hasGrades && stage.grades.isNotEmpty)
+          group(t('الصف', 'Grade'), [
+            for (final g in stage.grades)
+              AppChip(
+                key: ValueKey('study.edu_grade.${g.id}'),
+                label: g.name,
+                selected: g.id == widget.gradeId,
+                onTap: () => widget.onChanged(country, stage!.id, g.id, null),
+              ),
+          ]),
+      ],
+      if (grade != null && grade.tracks.isNotEmpty)
+        group('sa_study_track'.tr, [
+          for (final tr in grade.tracks)
+            AppChip(
+              key: ValueKey('study.edu_track.${tr.key}'),
+              label: tr.name,
+              selected: tr.key == widget.trackKey,
+              onTap: () => widget.onChanged(country, stage!.id, grade!.id, tr.key == widget.trackKey ? null : tr.key),
+            ),
+        ]),
+      if (widget.errorText != null) _ErrorLine(widget.errorText!),
+      if (stage != null && stage.contactOnly) ...[
+        AppSpace.gapSm,
+        const ContactOnlyNote(),
+      ],
+    ]);
   }
 }
