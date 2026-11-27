@@ -363,6 +363,9 @@ class CourseFilterBar extends StatelessWidget {
     if (r != null && r != value) onChanged(r);
   }
 
+  /// The filter sheet on its own (a page that draws its own "تصفية" button, the redesign's category page).
+  Future<void> openSheet(BuildContext context) => _openSheet(context);
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, box) => box.maxWidth >= rowFrom && edu != null ? _row(context) : _compact(context),
