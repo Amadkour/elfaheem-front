@@ -765,9 +765,10 @@ class _BarRow extends StatelessWidget {
   static const double _labelMin = 34, _labelMax = 110;
 
   @override
-  Widget build(BuildContext context) => Row(children: [
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) => Row(children: [
     ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: _labelMin, maxWidth: _labelMax),
+        // a narrow card (a phone's half-width tile at large text) gives the label at most 40 % of the row
+        constraints: BoxConstraints(minWidth: _labelMin, maxWidth: (box.maxWidth * .4).clamp(_labelMin, _labelMax)),
         child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
     AppSpace.gapXs,
     Expanded(
@@ -786,7 +787,7 @@ class _BarRow extends StatelessWidget {
     ),
     AppSpace.gapXs,
     Text('$value', style: AppType.row(context).copyWith(fontWeight: FontWeight.w600, fontFeatures: _tabular)),
-  ]);
+  ]));
 }
 
 class _AttendanceTile extends StatelessWidget {
