@@ -709,8 +709,9 @@ class _PaymentMethodPicker extends StatelessWidget {
               selected: newCardSelected,
               icon: Icons.add_card_rounded,
               iconColor: context.colors.primary,
-              title: 'new_card_title'.tr,
-              subtitle: 'new_card_subtitle'.tr,
+              // "مدى" only where the payer's country has it (RULES §3)
+              title: (g.madaOffered ? 'new_card_title' : 'intl_new_card_title').tr,
+              subtitle: (g.madaOffered ? 'new_card_subtitle' : 'intl_new_card_subtitle').tr,
               customBadge: const _SecureBadge(),
               onTap: enroll.selectNewCard,
             ),

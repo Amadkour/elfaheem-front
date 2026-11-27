@@ -347,8 +347,8 @@ class StoreCheckoutView extends StatelessWidget {
               Text(l.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
               const SizedBox(height: AppSpace.xxs),
               Text(
-                l.vatExempt
-                    ? '${storeMoney(l.gross, q.currency)} · ${t('معفى من الضريبة', 'VAT exempt')}'
+                l.vatExempt || (q.vatAmount <= 0 && q.vatPercent <= 0)
+                    ? (l.vatExempt ? '${storeMoney(l.gross, q.currency)} · ${t('معفى من الضريبة', 'VAT exempt')}' : storeMoney(l.gross, q.currency))
                     : '${t('الصافي', 'Net')} ${storeMoney(l.net, q.currency)} · ${t('الضريبة', 'VAT')} ${storeMoney(l.vat, q.currency)} · ${storeMoney(l.gross, q.currency)}',
                 style: AppType.meta(context),
               ),
@@ -358,6 +358,8 @@ class StoreCheckoutView extends StatelessWidget {
         row(t('المجموع قبل الضريبة', 'Subtotal (net)'), storeMoney(q.subtotal, q.currency)),
         if (q.couponDiscount > 0)
           row(t('خصم القسيمة', 'Coupon discount'), '−${storeMoney(q.couponDiscount, q.currency)}', key: const ValueKey('store.checkout.coupon_discount')),
+        // the VAT line only where the server charged one (payments.md §2: no VAT for a payer it does not apply to)
+        if (q.vatAmount > 0 || q.vatPercent > 0)
         row('${t('ضريبة القيمة المضافة', 'VAT')} (${StorePrice(net: 0, vat: 0, gross: 0, currency: '', vatPercent: q.vatPercent).vatPercentText})',
             storeMoney(q.vatAmount, q.currency)),
         const Divider(height: AppSpace.md),

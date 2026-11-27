@@ -26109,5 +26109,7 @@
   "a1_cats_line": {"en": "Categories order courses in search and the store. A category that holds courses cannot be deleted.", "ar": "الأقسام ترتب الدورات في البحث والمتجر. ما تقدر تحذف قسم فيه دورات."},
   "a1_links_line": {"en": "Check the documents and details before you link a parent to a student. A rejection reaches them with its reason.", "ar": "تأكد من المستندات والبيانات قبل ما تربط ولي الأمر بالطالب. الرفض يوصل له مع السبب."},
   "a1_links_title": {"en": "Link requests", "ar": "طلبات الربط"},
-  "a1_course_students": {"en": "A course's students", "ar": "طلاب دورة"}
+  "a1_course_students": {"en": "A course's students", "ar": "طلاب دورة"},
+  "intl_new_card_title": {"en": "New card", "ar": "بطاقة جديدة"},
+  "intl_new_card_subtitle": {"en": "Visa · Mastercard · PCI-DSS", "ar": "فيزا · ماستركارد · PCI-DSS"}
 }

@@ -155,7 +155,12 @@ class _WorldPhoneFieldState extends State<WorldPhoneField> {
   /// An existing full number (coming back to the screen): its country and the rest.
   void _restore() {
     final existing = widget.controller.text.trim();
-    if (!existing.startsWith('+') || _local.text.isNotEmpty) return;
+    if (existing.isEmpty || _local.text.isNotEmpty) return;
+    // an older number saved without its code stays readable as typed (the controller keeps it until edited)
+    if (!existing.startsWith('+')) {
+      _local.text = existing;
+      return;
+    }
     final byLen = [..._w.countries]..sort((a, b) => b.dial.length.compareTo(a.dial.length));
     for (final k in byLen) {
       if (existing.startsWith(k.dial)) {

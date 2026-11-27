@@ -26,6 +26,7 @@ import 'package:flutter_education_app/features/auth/teacher_document_model.dart'
 import 'package:flutter_education_app/features/auth/teacher_document_provider.dart';
 import 'package:flutter_education_app/features/auth/username.dart';
 import 'package:flutter_education_app/features/auth/username_field.dart';
+import 'package:flutter_education_app/features/auth/world_phone_field.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
@@ -722,14 +723,8 @@ class _FormCard extends StatelessWidget {
           ),
           ?usernameField,
           const SizedBox(height: AppSpace.md),
-          _Labeled(
-            label: 'phone_label'.tr,
-            child: MyTextField(
-              controller: phoneCtrl,
-              label: 'phone_label'.tr,
-              keyboard: TextInputType.phone,
-            ),
-          ),
+          // any country (RULES §3): the country-code picker builds the E.164 number
+          WorldPhoneField(controller: phoneCtrl, label: 'phone_label'.tr),
           const SizedBox(height: AppSpace.md),
           _Labeled(label: 'dob_label'.tr, child: MyTextField(controller: dobCtrl, label: 'dob_label'.tr)),
 

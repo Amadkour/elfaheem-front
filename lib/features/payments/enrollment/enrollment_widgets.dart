@@ -162,6 +162,7 @@ class _FeeBreakdownCardState extends State<FeeBreakdownCard> {
                       value: q.fmt(q.platformFee),
                       icon: Icons.store_rounded,
                     ),
+                    if (q.showVat)
                     _FeeRow(
                       label: 'VAT'.tr,
                       value: q.fmt(q.vatOnPlatform),
