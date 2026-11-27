@@ -99,7 +99,7 @@ class CourseAboutView extends StatelessWidget {
             ),
           if (description.trim().isNotEmpty)
             CourseInfoSection(
-              title: gt('عن الكورس', 'About the course'),
+              title: gt('عن الدورة', 'About the course'),
               icon: Icons.info_outline_rounded,
               children: [_ExpandableText(text: description.trim())],
             ),

@@ -108,7 +108,7 @@ class _ShareLinkDialogState extends State<_ShareLinkDialog> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    widget.heading ?? gt('مشاركة الكورس', 'Share this course'),
+                    widget.heading ?? gt('مشاركة الدورة', 'Share this course'),
                     style: c.h3.copyWith(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                 ),

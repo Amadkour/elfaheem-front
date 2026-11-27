@@ -448,7 +448,7 @@ class _CoursePageState extends State<_CoursePage> {
       imageUrl: c.imageUrl,
       category: c.category == null ? null : (ar ? c.category!.nameAr : c.category!.nameEn),
       isPrivate: c.isPrivate,
-      privateLabel: 'course_hero_private'.tr,
+      privateLabel: 'sv_course_hero_private'.tr,
       badges: [
         if (c.type == 'live')
           CourseSpaceBadge(label: gt('بث مباشر', 'Live'), icon: Icons.sensors_rounded, color: col.danger)
