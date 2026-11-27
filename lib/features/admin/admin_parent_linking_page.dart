@@ -109,8 +109,7 @@ class _AdminParentLinkingPageState extends State<AdminParentLinkingPage> {
               : onSettings
                   ? t('تسري على الطلبات الجديدة فقط.', 'They apply to new requests only.')
                   : t('راجع المستندات، ووافق أو ارفض.', 'Review the documents, then approve or reject.'),
-          // always a function: the frame re-creates its body when the refresh comes and goes (the settings form
-          // would lose its state); a refresh that cannot run yet does nothing
+          // a refresh that cannot run yet does nothing
           onRefresh: () async {
             if (onSettings) {
               if (!_handle.saving && _handle.ready) await _handle.reload?.call();

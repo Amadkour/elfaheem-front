@@ -7,6 +7,9 @@
 //   AppRefresh(scrollable: false, child: Column(...))
 //       the child has no scroll view of its own: it is laid out inside one that fills the viewport
 //       (`fill: true` gives it exactly the viewport height — for a child with an Expanded inside).
+//   AppRefresh(enabled: reload != null, onRefresh: ..., child: ...)
+//       `enabled: false` keeps the same widget tree but ignores the pull, so a page whose refresh comes and goes
+//       keeps its scroll position and form state (no subtree is rebuilt from scratch when it switches).
 //   AppRefreshAction(onRefresh: provider.load)
 //       the small refresh IconButton for an app bar (ink on whatever it sits on, a 48 px target): mouse users
 //       cannot pull, so it shows on web and desktop (`always: true` shows it everywhere — for a section embedded in
@@ -30,6 +33,7 @@ class AppRefresh extends StatelessWidget {
     this.scrollable = true,
     this.fill = false,
     this.edgeOffset = 0,
+    this.enabled = true,
   });
 
   final Future<void> Function() onRefresh;
@@ -42,6 +46,9 @@ class AppRefresh extends StatelessWidget {
   final bool fill;
 
   final double edgeOffset;
+
+  /// false: the pull does nothing, and the tree stays exactly the same shape as when it is on.
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -60,10 +67,13 @@ class AppRefresh extends StatelessWidget {
       strokeWidth: AppBorder.focus,
       edgeOffset: edgeOffset,
       onRefresh: onRefresh,
+      notificationPredicate: enabled ? defaultScrollNotificationPredicate : _never,
       child: ScrollConfiguration(behavior: base.copyWith(physics: physics), child: body),
     );
   }
 }
+
+bool _never(ScrollNotification _) => false;
 
 /// The app-bar refresh button for platforms without a touch pull (web, desktop); [always] shows it everywhere.
 class AppRefreshAction extends StatefulWidget {

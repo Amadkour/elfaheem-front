@@ -573,7 +573,7 @@ class _CoursesViewState extends State<_CoursesView> {
       role: admRole(context),
       helpPageId: 'admin.courses',
       title: 'a1_courses'.tr,
-      // no kicker: it would repeat the page's name (and the gold script on the admin hero's light corner is under 3:1)
+      // no kicker: it would repeat the page's name
       headline: p.loaded ? _totalText(p.total) : 'a1_courses'.tr,
       line: 'a1_courses_line'.tr,
       showBack: !widget.embedded,

@@ -438,7 +438,7 @@ class AdmPage extends StatelessWidget {
   });
 
   /// The page refreshes (pull and the bar's button). [onRefresh] may be null for a moment (while loading): the
-  /// frame still gets a stable function, because it re-creates its body when the refresh comes and goes.
+  /// frame keeps the same tree either way (AppRefresh `enabled`), so the body's form state survives.
   final bool refreshable;
 
   final String title;
@@ -469,14 +469,11 @@ class AdmPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final refresh = onRefresh;
     final role = admRole(context);
     return SupPage(
       role: role,
       title: title,
-      // the gold script kicker reads under 3:1 on the admin hero's light corner (kit request in the A1 report): the
-      // admin accent draws none until the kit darkens that corner
-      kicker: null,
+      kicker: kicker,
       headline: headline ?? title,
       line: subtitle,
       actions: [...actions, ?primaryAction],
@@ -485,7 +482,7 @@ class AdmPage extends StatelessWidget {
       tab: tab,
       onTab: onTab,
       heroBottom: heroBottom,
-      onRefresh: refreshable ? () async => refresh?.call() : null,
+      onRefresh: refreshable ? onRefresh : null,
       updatedAt: updatedAt,
       dirty: dirty,
       floatingActionButton: floatingActionButton,
