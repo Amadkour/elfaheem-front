@@ -19,6 +19,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
 
 bool isWideLayout(BuildContext context) =>
     MediaQuery.of(context).size.width > 600;
@@ -237,7 +238,7 @@ class _FeeRow extends StatelessWidget {
           ),
           const SizedBox(width: AppSpace.xs),
           Text(
-            value,
+            appDigits(value), // platform_settings.digits
             style: AppType.row(context).copyWith(
               fontWeight: FontWeight.w600,
               fontFeatures: const [FontFeature.tabularFigures()],

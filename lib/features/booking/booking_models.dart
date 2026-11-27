@@ -48,6 +48,9 @@ class BkName {
   String get label => (AppConfig.lang == 'ar' ? (ar ?? en) : (en ?? ar)) ?? '';
 }
 
+/// The list separator of the app language: "، " in Arabic, ", " in English (no Arabic comma in an English line).
+String get bkComma => AppConfig.lang == 'ar' ? '، ' : ', ';
+
 /// "199 ريال" / "SAR 199". The currency comes from the server; nothing here assumes one.
 String bkMoney(num amount, String? currency) {
   final n = amount == amount.truncate() ? '${amount.toInt()}' : amount.toStringAsFixed(2);

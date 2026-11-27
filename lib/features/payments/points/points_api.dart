@@ -22,6 +22,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/payments/payer_methods.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/core/app_digits.dart';
 
 /// Kill-switch keys (ParentComponent / AppConfig.disableList).
 const String kPointsFeatureKey = 'profile.points';
@@ -80,7 +81,7 @@ double pointsMoney(int points, double pricePerPoint) => (points * pricePerPoint 
 /// "30 SAR" / "12.50 SAR".
 String moneyText(double amount, String currency) {
   final s = amount == amount.roundToDouble() ? amount.toStringAsFixed(0) : amount.toStringAsFixed(2);
-  return currency.isEmpty ? s : '$s $currency';
+  return appDigits(currency.isEmpty ? s : '$s $currency'); // platform_settings.digits
 }
 
 /// The points typed in the "Buy points" field: null when empty or not a whole number.

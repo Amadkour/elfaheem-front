@@ -30,6 +30,7 @@ import 'package:flutter_education_app/features/payments/enrollment/enrollment_pr
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_widgets.dart';
 import 'package:flutter_education_app/features/rewards/coupon_field.dart';
 import 'package:flutter_education_app/features/rewards/rewards_models.dart' show CouponTarget;
+import 'package:flutter_education_app/core/app_digits.dart';
 
 
 class EnrollmentScreen extends StatelessWidget {
@@ -220,7 +221,7 @@ class _MethodStep extends StatelessWidget {
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 String _fmtMoney(double v, String symbol) =>
-    '${v.toStringAsFixed(v.truncateToDouble() == v ? 0 : 2)} $symbol';
+    appDigits('${v.toStringAsFixed(v.truncateToDouble() == v ? 0 : 2)} $symbol'); // platform_settings.digits
 
 /// A section of the checkout: an editorial heading beside a quiet glyph, with the editorial rhythm (32 above it,
 /// 12 under it — the space above comes from [AppSpace.sectionHead]).

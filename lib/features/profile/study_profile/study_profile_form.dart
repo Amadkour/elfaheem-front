@@ -23,6 +23,7 @@ import 'package:flutter_education_app/core/edu/edu_countries.dart';
 import 'package:flutter_education_app/design/edu_pickers.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/auth/register_levels_step.dart';
+import 'package:flutter_education_app/features/auth/world_phone_field.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
 
 /// The catalog behind the form (Learning Hub): the countries, the chosen country's stages and its area loader. With
@@ -306,7 +307,8 @@ class _StudyProfileFormState extends State<StudyProfileForm> {
         ),
         AppSpace.gapSm,
       ],
-      PhoneInputField(controller: _parent, label: studyFieldLabel('parent_phone') + (_req('parent_phone') ? ' *' : '')),
+      // any country (RULES §3): the world picker, E.164
+      WorldPhoneField(controller: _parent, label: studyFieldLabel('parent_phone') + (_req('parent_phone') ? ' *' : '')),
       if (missing.contains('parent_phone')) _ErrorLine(_requiredText),
       Padding(
         padding: const EdgeInsets.only(top: AppSpace.xxs),
