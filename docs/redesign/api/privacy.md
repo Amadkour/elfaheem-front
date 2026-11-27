@@ -86,3 +86,23 @@ Course chat
 ## Phase 9 addendum: the public live page
 
 `GET /api/v1/public/live/{token}` now returns `guests_joined: null` for everyone (the page never learns how many guests are in; the host reads the count from the guest-link payload) and a new `full: bool`, true when the guest limit (`max_guests`) is reached. Show "room is full" from `full`; `max_guests` stays for the limit itself.
+
+## Owner decisions 2026-11-27 (branch `rd/ow-live`): absolute privacy in rooms, QR check-in, Add materials
+
+No server change and no migration: the server half above already hides learners. The app closes the last client-side gaps.
+
+- **Names in a learner's room:** in the private room (`liveRoomIsPrivate`) every other non-host is "a student"
+  (`ow_a_student`) in every notice and label (`_nameOf` in room.dart), and a tile with an empty LiveKit name never
+  falls back to the raw `student_<id>` identity (`participant.dart`). The hosts keep the real names from `…/people`.
+- **Guest name field:** the helper now says only the teacher sees the name (`ow_gl_name_hint`).
+- **Course chat:** a quoted classmate's message (`reply_to.hidden: true`) draws as "A student / A student's message"
+  (`ChatReplyRef.hidden`), never an empty or stale sender.
+- **Attendance by QR:** the teacher's QR is the window's 6-digit code, so the student's scanner (phones,
+  `mobile_scanner` through `openQrScanner`, `parseAttendanceQr`) fills the code and calls the SAME
+  `POST /api/v1/attendance/submit`; no new route.
+- **With a classmate's help:** the check-in sheet offers the nearby relay as a second way in
+  (`StudentCheckInProvider.submit(code, viaClassmate: true)` forces the offline relay path); the classmate is never
+  named to the student.
+- **Add materials to the class:** `lib/features/home/teacher/add_class_materials_page.dart` over the existing session
+  material routes (`/sessions/{id}/materials`, `…/presign`, `…/from-upload`, `…/link`, `DELETE …/materials/{mid}`);
+  a note is a `.txt` upload.

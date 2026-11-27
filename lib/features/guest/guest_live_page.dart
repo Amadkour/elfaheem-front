@@ -792,7 +792,7 @@ class _SessionCardState extends State<_SessionCard> {
             controller: widget.nameController,
             label: 'guest_live_name'.tr,
             hint: 'sa_gl_name_hint'.tr,
-            helper: 'guest_live_name_hint'.tr,
+            helper: 'ow_gl_name_hint'.tr, // only the teacher sees a guest's name (privacy, owner 2026-11-27)
             keyboard: TextInputType.name,
           ),
         ),

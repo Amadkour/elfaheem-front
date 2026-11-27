@@ -56,6 +56,8 @@ class AddMaterialButton extends StatelessWidget {
 Future<void> showAddMaterialSheet(
     BuildContext context, {
       required int sessionId,
+      int initialMode = 0,
+      int initialFileType = 0,
     }) async {
   final provider = context.read<TeacherCourseScreenProvider>();
   final isWide = MediaQuery.sizeOf(context).width >= _kWideBreakpoint;
@@ -72,7 +74,7 @@ Future<void> showAddMaterialSheet(
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
-              child: AddMaterialSheet(sessionId: sessionId, isWide: true),
+              child: AddMaterialSheet(sessionId: sessionId, isWide: true, initialMode: initialMode, initialFileType: initialFileType),
             ),
           ),
         ),
@@ -86,7 +88,7 @@ Future<void> showAddMaterialSheet(
       isScrollControlled: true,
       builder: (_) => ChangeNotifierProvider.value(
         value: provider,
-        child: AddMaterialSheet(sessionId: sessionId, isWide: false),
+        child: AddMaterialSheet(sessionId: sessionId, isWide: false, initialMode: initialMode, initialFileType: initialFileType),
       ),
     );
   }
@@ -100,10 +102,16 @@ class AddMaterialSheet extends StatefulWidget {
   final int sessionId;
   final bool isWide;
 
+  /// 0 = file, 1 = link; [initialFileType] indexes image · video · pdf · other (the Add materials page opens a
+  /// recording as video, a link on the link tab).
+  final int initialMode, initialFileType;
+
   const AddMaterialSheet({
     super.key,
     required this.sessionId,
     this.isWide = false,
+    this.initialMode = 0,
+    this.initialFileType = 0,
   });
 
   @override
@@ -111,8 +119,8 @@ class AddMaterialSheet extends StatefulWidget {
 }
 
 class _AddMaterialSheetState extends State<AddMaterialSheet> {
-  int _mode = 0; // 0 = file, 1 = link
-  int _fileTypeIdx = 0;
+  late int _mode = widget.initialMode; // 0 = file, 1 = link
+  late int _fileTypeIdx = widget.initialFileType;
   PlatformFile? _pickedFile;
   int _pickedSize = 0; // PlatformFile.size was removed in file_picker v12
   bool _saving = false;

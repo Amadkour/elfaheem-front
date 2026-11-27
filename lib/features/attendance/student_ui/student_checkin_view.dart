@@ -5,6 +5,10 @@
 // then the ring "نسجّل حضورك..." with "خلك في الصفحة ثواني بس" and إلغاء, then the drawn tick (M2) with the burst
 // (M11 attendanceDone). The stages behind it (network, relay, witnesses …) are never named to the student (O-6,
 // DESIGN_SYSTEM §1.1 rule 4).
+//
+// Owner 2026-11-27: two more ways in, under the code — "scan the QR" (phones: the same camera scanner as the
+// organization join, mobile_scanner; the QR carries the window's 6-digit code, so it goes the same check-in route) and
+// "with a classmate's help" (the nearby relay, forced; the classmate is never named).
 library;
 
 import 'package:flutter/material.dart';
@@ -15,7 +19,9 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
+import 'package:flutter_education_app/features/attendance/attendance_permissions.dart' show relayLinkSupported;
 import 'package:flutter_education_app/features/attendance/attendance_strings.dart' show attT;
+import 'package:flutter_education_app/features/org/org_join_scan.dart' show joinScannerAvailable, openQrScanner;
 import 'package:flutter_education_app/features/attendance/relay_host_provider.dart';
 import 'package:flutter_education_app/features/attendance/student_checkin_provider.dart';
 
@@ -37,6 +43,16 @@ const Map<String, String> kStudentCheckInNeutralErrors = {
 String studentCheckInErrorText(String? messageKey) {
   final key = messageKey ?? 'att_err_generic';
   return attT(kStudentCheckInNeutralErrors[key] ?? key);
+}
+
+/// The 6-digit attendance code inside a scanned QR (the teacher's projector / phone QR is the bare code; a link with
+/// `?code=` is read too), or null to keep scanning.
+String? parseAttendanceQr(String? raw) {
+  final s = (raw ?? '').trim();
+  if (RegExp(r'^\d{6}$').hasMatch(s)) return s;
+  final uri = s.contains('://') ? Uri.tryParse(s) : null;
+  final q = uri?.queryParameters['code'] ?? uri?.queryParameters['att_code'];
+  return q != null && RegExp(r'^\d{6}$').hasMatch(q.trim()) ? q.trim() : null;
 }
 
 /// The sheet (kit sheet: a bottom sheet on phones, a dialog on wide windows). Resolves when it closes.
@@ -88,9 +104,27 @@ class _CheckInHostState extends State<_CheckInHost> {
     super.dispose();
   }
 
-  void _submit() {
+  void _submit({bool viaClassmate = false}) {
     setState(() => _started = true);
-    context.read<StudentCheckInProvider>().submit(_code.text);
+    context.read<StudentCheckInProvider>().submit(_code.text, viaClassmate: viaClassmate);
+  }
+
+  Future<void> _scan() async {
+    final code = await openQrScanner(
+      context,
+      parse: parseAttendanceQr,
+      title: 'ow_att_scan_title'.tr,
+      prompt: 'ow_att_scan_prompt'.tr,
+      rejected: 'ow_att_scan_rejected'.tr,
+    );
+    if (code == null || !mounted) return;
+    _code.text = code;
+    _submit();
+  }
+
+  void _viaClassmate() {
+    context.read<StudentCheckInProvider>().reset();
+    _submit(viaClassmate: true);
   }
 
   @override
@@ -114,6 +148,8 @@ class _CheckInHostState extends State<_CheckInHost> {
       error: phase == StudentCheckInPhase.failed ? studentCheckInErrorText(o?.messageKey) : null,
       code: _code,
       onSubmit: _submit,
+      onScan: joinScannerAvailable ? _scan : null,
+      onViaClassmate: relayLinkSupported ? _viaClassmate : null,
       onRetry: () {
         p.reset();
         setState(() => _started = false);
@@ -133,6 +169,8 @@ class StudentCheckInView extends StatelessWidget {
     this.code,
     this.onSubmit,
     this.onRetry,
+    this.onScan,
+    this.onViaClassmate,
     this.error,
     this.pending = false,
     this.doneAt,
@@ -143,6 +181,12 @@ class StudentCheckInView extends StatelessWidget {
   final VoidCallback? onSubmit;
   final VoidCallback? onRetry;
   final VoidCallback onClose;
+
+  /// Scan the teacher's QR (null on the web: no camera scanner there).
+  final VoidCallback? onScan;
+
+  /// Check in with a classmate's help: the nearby relay (null where the relay can't run).
+  final VoidCallback? onViaClassmate;
   final String? error;
 
   /// Saved on the phone, sent when the internet is back: still "done" for the student.
@@ -184,6 +228,17 @@ class StudentCheckInView extends StatelessWidget {
             ),
             const SizedBox(height: AppSpace.md),
             AppButton.hot(label: 'sb_att_check_in'.tr, icon: Icons.check_rounded, expand: true, onPressed: onSubmit),
+            if (onScan != null) ...[
+              const SizedBox(height: AppSpace.sm),
+              AppButton.secondary(
+                key: const ValueKey('att.scan_qr'),
+                label: 'ow_att_scan_qr'.tr,
+                icon: Icons.qr_code_scanner_rounded,
+                expand: true,
+                onPressed: onScan,
+              ),
+            ],
+            if (onViaClassmate != null) _ClassmateOption(onTap: onViaClassmate!),
           ],
         );
       case StudentCheckInPhase.running:
@@ -233,8 +288,36 @@ class StudentCheckInView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppErrorState(title: 'sb_att_failed'.tr, message: error, onRetry: onRetry, compact: true),
+            if (onViaClassmate != null) _ClassmateOption(onTap: onViaClassmate!),
           ],
         );
     }
   }
+}
+
+/// The second way in: a classmate's phone carries the check-in (no internet needed). Never names who.
+class _ClassmateOption extends StatelessWidget {
+  const _ClassmateOption({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: AppSpace.sm),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppButton.tonal(
+            key: const ValueKey('att.via_classmate'),
+            label: 'ow_att_via_classmate'.tr,
+            icon: Icons.people_alt_outlined,
+            expand: true,
+            onPressed: onTap,
+          ),
+          const SizedBox(height: AppSpace.xs),
+          Text(
+            'ow_att_via_classmate_hint'.tr,
+            textAlign: TextAlign.center,
+            style: AppType.meta(context),
+          ),
+        ]),
+      );
 }
