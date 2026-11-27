@@ -238,7 +238,7 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
               } else if (target != null) {
                 showTeacherAttendanceSheet(context, target!.id, title: target!.name);
               } else {
-                showSessionPickerSheet(context, sessions);
+                showSessionPickerSheet(context, sessions, courseId: widget.courseId, courseTitle: widget.title);
               }
             },
             child: Builder(builder: (context) {
