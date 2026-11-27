@@ -3,6 +3,7 @@
 //   GET    /api/v1/teacher/payout/status        allowed? methods · min amount · accounts · earnings summary
 //   GET    /api/v1/teacher/payout/methods       the fields each method asks for in the teacher's country (WP8)
 //   POST   /api/v1/teacher/payout/accounts      PUT/DELETE /accounts/{id} · POST /accounts/{id}/default
+//   POST   /api/v1/payments/iban/check          {iban} → {valid, code, iban}: checked before an account is saved
 //   GET    /api/v1/teacher/withdrawals          history
 //   POST   /api/v1/teacher/withdrawals          {amount, payout_account_id, note}
 //   DELETE /api/v1/teacher/withdrawals/{id}     cancel while pending
@@ -96,6 +97,19 @@ class TeacherPayoutProvider extends AdminBase {
         ok: t('تم حفظ الحساب', 'Account saved'));
     if (r != null) await load();
     return r != null;
+  }
+
+  /// The server's IBAN check (any IBAN country, mod-97): `(iban: the cleaned IBAN, code: null)` when valid,
+  /// `(iban: null, code: iban_format | iban_country | iban_length | iban_checksum)` when not, null when the check
+  /// could not run (offline, an older server): the save goes on and the server checks again.
+  Future<({String? iban, String? code})?> checkIban(String iban) async {
+    try {
+      final r = await api.post('/api/v1/payments/iban/check', body: {'iban': iban});
+      if (r is! Map) return null;
+      return r['valid'] == true ? (iban: asStr(r['iban'], iban), code: null) : (iban: null, code: asStr(r['code'], 'iban_format'));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<bool> deleteAccount(int id) async {

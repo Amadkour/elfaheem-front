@@ -734,6 +734,18 @@ class _AccountFormState extends State<_AccountForm> {
       if (_method == 'paymob' && _paymobKind == 'wallet') 'issuer': _issuer,
     };
     setState(() => _busy = true);
+    final iban = details['iban'];
+    if (iban is String && (_method == 'bank_account' || _method == 'moyasar')) {
+      final check = await p.checkIban(iban);
+      if (!mounted) return;
+      if (check != null && check.code != null) {
+        setState(() => _busy = false);
+        final key = 'a2_${check.code}';
+        toast(key.tr == key ? 'a2_iban_format'.tr : key.tr, error: true);
+        return;
+      }
+      if (check?.iban != null) details['iban'] = check!.iban;
+    }
     final ok = await p.saveAccount(
       id: widget.existing?.id,
       method: _method,
