@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/courses/teacher/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart'
@@ -24,7 +25,7 @@ import 'package:flutter_education_app/features/sessions/teacher/sessions_provide
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_infinite_scroll.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppActionCard, AppBorder, AppButton, AppIconSize, AppRadius, AppSheetContent, AppSpace, AppTouch, AppType, AppWidth, appConfirm, showAppSheet;
+import 'package:flutter_education_app/design/app_kit.dart' show AppActionCard, AppBorder, AppButton, AppHeroOverlap, AppHeroStat, AppIconSize, AppRadius, AppSheetContent, AppSpace, AppTouch, AppType, AppWidth, showAppSheet;
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/plural.dart' show countText;
 import 'package:flutter_education_app/design/context_switcher.dart' show contextSwitchVisible, openOrgDashboard, showContextSwitcherSheet;
@@ -42,6 +43,8 @@ import 'package:flutter_education_app/design/master_detail/entity_viewer_actions
 import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/features/home/teacher/classroom/teacher_classroom.dart';
+import 'package:flutter_education_app/features/courses/teacher/courses_parts.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
 
 /// The teacher's "My courses" tab: the strip Courses · My students · Submissions · Reviews (D-290), then the courses:
 /// the side (CourseScopeBanner — the app mode), ONE calm toolbar (search · All / Published / Drafts) and the shared
@@ -72,11 +75,26 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
     if (course != null) openTeacherCoursePage(context, course);
   }
 
-  List<EntityPanelAction> _actions(BuildContext context, EntityRef ref, EntitySummary? s) => entityViewerActions(
-        context, ref, s,
-        controller: _panel,
-        openCourse: s?.kind == EntityKind.course ? () => _openCoursePage(context, ref) : null,
-      );
+  void _editCourse(BuildContext context, EntityRef ref) {
+    final course = context.read<TeacherCoursesProvider>().allCourses.where((c) => c.id == ref.id).firstOrNull;
+    if (course != null) Navigator.of(context).push(MaterialPageRoute(builder: (_) => deferredCourseForm(course: course)));
+  }
+
+  List<EntityPanelAction> _actions(BuildContext context, EntityRef ref, EntitySummary? s) => [
+        ...entityViewerActions(
+          context, ref, s,
+          controller: _panel,
+          openCourse: s?.kind == EntityKind.course ? () => _openCoursePage(context, ref) : null,
+        ),
+        // the reference's second button: Edit beside Open course
+        if (s != null && s.kind == EntityKind.course && s.can.manage && !courseFeatureOff('teacher_courses.edit'))
+          EntityPanelAction(
+            key: const ValueKey('md.edit_course'),
+            icon: Icons.edit_outlined,
+            label: 'edit'.tr,
+            onPressed: () => _editCourse(context, ref),
+          ),
+      ];
 
   @override
   void initState() {
@@ -107,110 +125,128 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
     final me = context.select<MyAuthProvider, int?>((a) => a.currentUser?.id);
     final onCourses = _space == TeacherSpace.courses || me == null;
 
+    final tabs = me != null && !courseFeatureOff('teacher_courses.classroom');
     // a desktop window: the wide calm card (the grid gets more columns instead of a narrow strip)
-    return BasePage(
-      key: const ValueKey('teacher_courses'),
-      useWebCard: true,
-      width: AppWidth.wide,
-      appBar: ScreenAppBar(title: 'my_courses'.tr, showBack: !kIsWeb),
-      // the panel's sheet sits where the button floats: no button while it is open
-      floatingActionButton: ListenableBuilder(
-        listenable: _panel,
-        builder: (context, _) => context.showSidebar || p.scope.isOrg || !onCourses || _panel.isOpen || !PersonalAccess.enabled
-            ? const SizedBox.shrink()
-            : ParentComponent(
-                featureKey: 'teacher_courses.add',
-                child: _FloatingAddBtn(),
-              ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          if (me != null && !courseFeatureOff('teacher_courses.classroom'))
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: AppWidth.wide.max),
-                child: TeacherSpaceTabs(selected: _space, onSelect: _setSpace),
-              ),
-            ),
-          Expanded(
-            child: onCourses
-                ? MasterDetailScaffold(
-                    controller: _panel,
-                    rootLabel: 'my_courses'.tr,
-                    deepLinks: true,
-                    actions: (ref, s) => _actions(context, ref, s),
-                    list: TeacherCoursesBody(controller: _searchCtrl, panel: _panel),
-                  )
-                : TeacherSpaceList(space: _space, teacherId: me),
-          ),
-        ]),
+    return T2Scope(
+      child: BasePage(
+        key: const ValueKey('teacher_courses'),
+        useWebCard: true,
+        width: AppWidth.wide,
+        appBar: ScreenAppBar(title: 't1_cs_tab_courses'.tr, showBack: !kIsWeb),
+        // the panel's sheet sits where the button floats: no button while it is open
+        floatingActionButton: ListenableBuilder(
+          listenable: _panel,
+          builder: (context, _) => context.showSidebar || p.scope.isOrg || !onCourses || _panel.isOpen || !PersonalAccess.enabled
+              ? const SizedBox.shrink()
+              : ParentComponent(
+                  featureKey: 'teacher_courses.add',
+                  child: _FloatingAddBtn(),
+                ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: onCourses
+              ? MasterDetailScaffold(
+                  controller: _panel,
+                  rootLabel: 't1_cs_tab_courses'.tr,
+                  deepLinks: true,
+                  actions: (ref, s) => _actions(context, ref, s),
+                  list: TeacherCoursesBody(controller: _searchCtrl, panel: _panel, onSpace: tabs ? _setSpace : null),
+                )
+              : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  TeacherSpaceHero(space: _space, onSelect: _setSpace, overlap: false),
+                  Expanded(child: TeacherSpaceList(space: _space, teacherId: me)),
+                ]),
+        ),
       ),
     );
   }
 }
 
-/// The page under the app bar (also what the visual renders pump with a seeded provider).
+/// The page under the app bar (also what the visual renders pump with a seeded provider): the hero with the space strip
+/// ([onSpace] given), the search and filter card riding up over it, then the course cards, in ONE scroll.
 class TeacherCoursesBody extends StatelessWidget {
-  const TeacherCoursesBody({super.key, required this.controller, this.panel});
+  const TeacherCoursesBody({super.key, required this.controller, this.panel, this.onSpace});
 
   final TextEditingController controller;
 
   /// The screen's panel: the list hands it its rows (Previous / Next, the row drawn as open).
   final EntityPanelController? panel;
 
+  /// The space strip in the hero (Courses · My students · …); null draws no hero (the bare list).
+  final ValueChanged<TeacherSpace>? onSpace;
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<TeacherCoursesProvider>();
-    // wide screens have no floating button: "New course" sits at the end of the toolbar (never in an organization,
-    // where a course created here would be a personal one)
-    final addInToolbar = context.showSidebar && !p.scope.isOrg && !courseFeatureOff('teacher_courses.add');
+    return _CourseList(p: p, search: controller, panel: panel, header: _header(context, p));
+  }
+
+  Widget _header(BuildContext context, TeacherCoursesProvider p) {
+    // wide screens have no floating button: "New course" sits in the hero (never in an organization, where a course
+    // created here would be a personal one)
+    final addInHero = context.showSidebar && !p.scope.isOrg && !courseFeatureOff('teacher_courses.add') && PersonalAccess.enabled;
     final hasSearch = !courseFeatureOff('teacher_courses.search');
     final hasFilter = !courseFeatureOff('teacher_courses.filters');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Banner + toolbar + progress share one centred, width-capped block so they line up with the list.
-        _Centered(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _ScopeHeader(p: p),
-              if (hasSearch || hasFilter || addInToolbar)
-                CourseListToolbar(
-                  search: hasSearch
-                      ? CourseSearchField(
-                          controller: controller,
-                          hint: 'search_course_by_name_description',
-                          onChanged: p.setQuery,
-                        )
-                      : null,
-                  filter: hasFilter
-                      ? CourseSegments<TeacherCourseStatus>(
-                          selected: p.activeFilter,
-                          onSelect: p.setFilter,
-                          segments: [
-                            CourseSegment(TeacherCourseStatus.all, 'filter_all'.tr),
-                            CourseSegment(TeacherCourseStatus.published, 'filter_published'.tr),
-                            CourseSegment(TeacherCourseStatus.draft, 'filter_drafts'.tr),
-                          ],
-                        )
-                      : null,
-                  action: addInToolbar && PersonalAccess.enabled ? const _NewCourseButton() : null,
-                ),
+    final loaded = p.allCourses;
+    final published = loaded.where((c) => c.isPublished).length;
+    final total = p.totalCount > loaded.length ? p.totalCount : loaded.length;
+    final rated = [for (final c in loaded) if ((c.rateSummary?.average ?? 0) > 0) c.rateSummary!.average];
+    final stats = loaded.isEmpty
+        ? const <AppHeroStat>[]
+        : [
+            AppHeroStat(value: '$total', label: 't1_cs_stat_courses'.tr),
+            AppHeroStat(value: '$published', label: 't1_cs_stat_published'.tr),
+            AppHeroStat(value: '${loaded.fold<int>(0, (a, c) => a + c.studentsCount)}', label: 't1_cs_stat_students'.tr),
+            if (rated.isNotEmpty)
+              AppHeroStat(
+                value: (rated.reduce((a, b) => a + b) / rated.length).toStringAsFixed(1),
+                label: 't1_cs_stat_rating'.tr,
+              ),
+          ];
+    return ListenableBuilder(
+      listenable: AppModeController.instance,
+      builder: (context, _) {
+        final scope = _ScopeHeader.visible(p) ? _ScopeHeader(p: p) : null;
+        final card = TeacherCoursesToolbarCard(
+          scope: scope,
+          search: hasSearch
+              ? CourseSearchField(controller: controller, hint: 't1_cs_search_courses', onChanged: p.setQuery)
+              : null,
+          filter: hasFilter
+              ? CourseSegments<TeacherCourseStatus>(
+                  selected: p.activeFilter,
+                  onSelect: p.setFilter,
+                  segments: [
+                    CourseSegment(TeacherCourseStatus.all, 'filter_all'.tr, count: loaded.isEmpty ? null : total),
+                    CourseSegment(TeacherCourseStatus.published, 'filter_published'.tr, count: loaded.isEmpty ? null : published),
+                    CourseSegment(TeacherCourseStatus.draft, 'filter_drafts'.tr, count: loaded.isEmpty ? null : loaded.length - published),
+                  ],
+                )
+              : null,
+        );
+        final body = _Centered(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+              if (!card.isEmpty) card,
               // Pinned above the list: "Showing 24 of 134" + progress bar.
               if (p.totalCount > 12)
-                ParentComponent(
-                  featureKey: 'teacher_courses.pagination',
-                  child: _CoursesProgress(p: p),
-                ),
-            ],
+                ParentComponent(featureKey: 'teacher_courses.pagination', child: _CoursesProgress(p: p)),
+            ]),
           ),
-        ),
-        Expanded(child: _CourseList(p: p, search: controller, panel: panel)),
-      ],
+        );
+        if (onSpace == null) return Padding(padding: const EdgeInsets.only(top: AppSpace.sm), child: body);
+        return AppHeroOverlap(
+          hero: TeacherSpaceHero(
+            space: TeacherSpace.courses,
+            onSelect: onSpace!,
+            stats: stats,
+            action: addInHero ? const _NewCourseButton() : null,
+          ),
+          body: body,
+        );
+      },
     );
   }
 }
@@ -238,28 +274,28 @@ class _ScopeHeader extends StatelessWidget {
 
   final TeacherCoursesProvider p;
 
+  static bool visible(TeacherCoursesProvider p) {
+    final ctl = AppModeController.instance;
+    return !(p.scope.isAll || (!ctl.available && p.elsewhereCount == 0));
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: AppModeController.instance,
     builder: (context, _) {
       final ctl = AppModeController.instance;
       final scope = p.scope;
-      if (scope.isAll || (!ctl.available && p.elsewhereCount == 0)) {
-        return const SizedBox.shrink();
-      }
+      if (!visible(p)) return const SizedBox.shrink();
       // "+N in your organizations" leads to those courses: the organization's Courses page, where its teacher opens
       // each course (Exams, attendance, tools) — not the dashboard's home, where they could not be found
       final holding = scope.isPersonal ? orgsHoldingCourses(p.scopes) : const <CourseScopeCount>[];
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxs),
-        child: CourseScopeBanner(
-          scope: scope,
-          org: scope.isOrg ? courseOrgFor(scope.orgId!, p.scopes, ctl.current) : null,
-          count: p.scopes.isEmpty ? null : countFor(p.scopes, scope),
-          elsewhere: p.elsewhereCount,
-          onSwitch: contextSwitchVisible(ctl) ? () => showContextSwitcherSheet(context) : null,
-          onShowElsewhere: holding.isEmpty ? null : () => openOrgCoursesOf(context, holding),
-        ),
+      return CourseScopeBanner(
+        scope: scope,
+        org: scope.isOrg ? courseOrgFor(scope.orgId!, p.scopes, ctl.current) : null,
+        count: p.scopes.isEmpty ? null : countFor(p.scopes, scope),
+        elsewhere: p.elsewhereCount,
+        onSwitch: contextSwitchVisible(ctl) ? () => showContextSwitcherSheet(context) : null,
+        onShowElsewhere: holding.isEmpty ? null : () => openOrgCoursesOf(context, holding),
       );
     },
   );
@@ -319,7 +355,7 @@ class _CoursesProgress extends StatelessWidget {
       loadingMore: p.loadingMore || p.isLoading,
       done: done,
       icon: Icons.menu_book_rounded,
-      margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
+      margin: const EdgeInsets.only(top: AppSpace.xs),
     );
   }
 }
@@ -347,7 +383,7 @@ class _NewCourseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AppButton.primary(
-    label: 'course_list_new'.tr,
+    label: 't1_cs_new_course'.tr,
     icon: Icons.add_rounded,
     onPressed: () => _openNewCourse(context),
   );
@@ -363,9 +399,12 @@ class _NewCourseButton extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _CourseList extends StatefulWidget {
-  const _CourseList({required this.p, required this.search, this.panel});
+  const _CourseList({required this.p, required this.search, required this.header, this.panel});
 
   final TeacherCoursesProvider p;
+
+  /// The hero and the search card: the first thing of the scroll in every state.
+  final Widget header;
   final TextEditingController search;
   final EntityPanelController? panel;
 
@@ -382,40 +421,10 @@ class _CourseListState extends State<_CourseList> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
+  /// The scroll: [header], then [states] (the cards, or the skeleton / error / empty plate in their place).
+  Widget _scrollOf(List<Widget> states) {
     final p = widget.p;
-
-    // A filter runs on the loaded courses: it must see every page (it keeps loading, the skeleton meanwhile).
     final needEverything = p.activeFilter != TeacherCourseStatus.all;
-    if (p.isLoading && p.filteredCourses.isEmpty) {
-      return const CourseListSkeleton();
-    }
-
-    final error = p.hasError
-        ? CourseListError(message: p.errorMessage ?? 'failed_to_load'.tr, onRetry: p.refresh)
-        : null;
-    // A failed first page used to fall through to "no courses yet": say it failed and offer a retry.
-    if (error != null && p.allCourses.isEmpty) {
-      return _Centered(child: Column(children: [error, const Spacer()]));
-    }
-
-    final courses = p.filteredCourses;
-    widget.panel?.siblings = [for (final c in courses) courseRefOf(c)];
-    if (courses.isEmpty) {
-      // Still looking through further pages for this filter.
-      if (p.hasMore && !p.loadMoreFailed) {
-        if (needEverything && !p.loadingMore) WidgetsBinding.instance.addPostFrameCallback((_) => p.loadMore());
-        return const CourseListSkeleton();
-      }
-      return _empty(context, p);
-    }
-
-    final footer = PagedListFooter(
-      loadingMore: p.loadingMore,
-      hasMore: p.hasMore,
-    );
-
     return AppInfiniteScroll(
       controller: _scroll,
       hasMore: p.hasMore,
@@ -424,41 +433,81 @@ class _CourseListState extends State<_CourseList> {
       onLoadMore: p.loadMore,
       onRetry: () => p.loadMore(retry: true),
       threshold: needEverything ? double.infinity : 600,
+      // Pull-to-refresh means "get me the latest": reload the first page.
       child: AppRefresh(
-        // Pull-to-refresh means "get me the latest": reload the first page.
         onRefresh: p.refresh,
-        child: _Centered(
-          child: LayoutBuilder(
-            builder: (context, box) => CustomScrollView(
-              controller: _scroll,
-              physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
-              ),
-              slivers: [
-                if (error != null) SliverToBoxAdapter(child: error),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, 0),
-                  sliver: CourseCardSliver(
-                    width: math.max(0.0, box.maxWidth - 2 * AppSpace.md),
-                    count: courses.length,
-                    itemBuilder: (_, i, shape) => _TeacherCourseCard(
-                      key: ValueKey(courses[i].id),
-                      course: courses[i],
-                      shape: shape,
-                    ),
-                  ),
-                ),
-                // room for the floating "Add course" button
-                SliverPadding(
-                  padding: const EdgeInsets.only(bottom: AppSpace.xxl * 2),
-                  sliver: SliverToBoxAdapter(child: footer),
-                ),
-              ],
-            ),
-          ),
+        child: CustomScrollView(
+          controller: _scroll,
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          slivers: [SliverToBoxAdapter(child: widget.header), ...states],
         ),
       ),
     );
+  }
+
+  Widget _plate(Widget child, {double height = 360}) =>
+      SliverToBoxAdapter(child: _Centered(child: SizedBox(height: height, child: child)));
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.p;
+
+    // A filter runs on the loaded courses: it must see every page (it keeps loading, the skeleton meanwhile).
+    final needEverything = p.activeFilter != TeacherCourseStatus.all;
+    if (p.isLoading && p.filteredCourses.isEmpty) {
+      return _scrollOf([_plate(const CourseListSkeleton(), height: 520)]);
+    }
+
+    final error = p.hasError
+        ? CourseListError(message: p.errorMessage ?? 'failed_to_load'.tr, onRetry: p.refresh)
+        : null;
+    // A failed first page used to fall through to "no courses yet": say it failed and offer a retry.
+    if (error != null && p.allCourses.isEmpty) {
+      return _scrollOf([SliverToBoxAdapter(child: _Centered(child: error))]);
+    }
+
+    final courses = p.filteredCourses;
+    widget.panel?.siblings = [for (final c in courses) courseRefOf(c)];
+    if (courses.isEmpty) {
+      // Still looking through further pages for this filter.
+      if (p.hasMore && !p.loadMoreFailed) {
+        if (needEverything && !p.loadingMore) WidgetsBinding.instance.addPostFrameCallback((_) => p.loadMore());
+        return _scrollOf([_plate(const CourseListSkeleton(), height: 520)]);
+      }
+      return _scrollOf([_plate(_empty(context, p))]);
+    }
+
+    final footer = PagedListFooter(
+      loadingMore: p.loadingMore,
+      hasMore: p.hasMore,
+    );
+
+    return _scrollOf([
+      if (error != null) SliverToBoxAdapter(child: _Centered(child: error)),
+      // the cards are real slivers (lazy), centred under the width cap
+      SliverLayoutBuilder(
+        builder: (context, sc) {
+          final side = math.max(0.0, (sc.crossAxisExtent - AppWidth.wide.max) / 2) + AppSpace.md;
+          return SliverPadding(
+            padding: EdgeInsets.fromLTRB(side, AppSpace.md, side, 0),
+            sliver: CourseCardSliver(
+              width: math.max(0.0, sc.crossAxisExtent - 2 * side),
+              count: courses.length,
+              itemBuilder: (_, i, shape) => _TeacherCourseCard(
+                key: ValueKey(courses[i].id),
+                course: courses[i],
+                shape: shape,
+              ),
+            ),
+          );
+        },
+      ),
+      // room for the floating "Add course" button
+      SliverPadding(
+        padding: const EdgeInsets.only(bottom: AppSpace.xxl * 2),
+        sliver: SliverToBoxAdapter(child: footer),
+      ),
+    ]);
   }
 
   Widget _empty(BuildContext context, TeacherCoursesProvider p) {
@@ -494,7 +543,7 @@ class _CourseListState extends State<_CourseList> {
 //  Course card — the shared CourseListCard with the teacher's status, figures and ⋮ menu
 // ═══════════════════════════════════════════════════════════════════════════════
 
-enum _CourseAction { edit, publish, schedule, delete }
+enum _CourseAction { edit, publish, schedule, copyLink, delete }
 
 class _TeacherCourseCard extends StatelessWidget {
   const _TeacherCourseCard({super.key, required this.course, required this.shape});
@@ -504,13 +553,8 @@ class _TeacherCourseCard extends StatelessWidget {
 
   Future<void> _confirmDelete(BuildContext context) async {
     final c = course;
-    final title = (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? '';
-    final ok = await appConfirm(
-      context,
-      message: '${'delete_course_confirm'.tr} "$title"${AppConfig.lang == 'ar' ? '؟' : '?'}\n${'course_trash_note'.tr}',
-      danger: true,
-      confirmLabel: 'course_move_to_trash'.tr,
-    );
+    final title = (AppConfig.lang == 'ar' ? c.titleAr ?? c.titleEn : c.titleEn ?? c.titleAr) ?? '';
+    final ok = await showTeacherDeleteCourseSheet(context, title: title, students: c.studentsCount);
     if (!ok || !context.mounted) return;
     final deleted = await context.read<TeacherCoursesProvider>().deleteCourse(c.id);
     if (deleted) showAppNotice('course_deleted'.tr);
@@ -529,6 +573,9 @@ class _TeacherCourseCard extends StatelessWidget {
         _togglePublish(context);
       case _CourseAction.schedule:
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => TeacherSchedulesScreen(course: course)));
+      case _CourseAction.copyLink:
+        Clipboard.setData(ClipboardData(text: 'https://nextbrain.site/c/${course.id}'));
+        showAppNotice('t1_cs_link_copied'.tr);
       case _CourseAction.delete:
         _confirmDelete(context);
     }
@@ -545,7 +592,8 @@ class _TeacherCourseCard extends StatelessWidget {
           course.isPublished ? 'unpublish_course'.tr : 'publish_course'.tr,
         ),
       if (!courseFeatureOff('teacher_courses.card_details'))
-        (_CourseAction.schedule, Icons.calendar_month_outlined, 'weekly_schedule'.tr),
+        (_CourseAction.schedule, Icons.calendar_month_outlined, 't1_cs_weekly_slots'.tr),
+      (_CourseAction.copyLink, Icons.link_rounded, 't1_cs_copy_link'.tr),
       if (!courseFeatureOff('teacher_courses.delete')) (_CourseAction.delete, Icons.delete_outline_rounded, 'delete'.tr),
     ];
     if (actions.isEmpty) return null;
@@ -556,7 +604,14 @@ class _TeacherCourseCard extends StatelessWidget {
         tooltip: 'course_list_more'.tr,
         padding: EdgeInsets.zero,
         iconSize: AppIconSize.md,
-        icon: Icon(Icons.more_vert_rounded, color: c.textMedium),
+        // the reference's round ⋮ on a soft disc
+        icon: DecoratedBox(
+          decoration: BoxDecoration(color: c.kit.track, shape: BoxShape.circle),
+          child: SizedBox.square(
+            dimension: AppTouch.min - AppSpace.xs,
+            child: Icon(Icons.more_vert_rounded, size: AppIconSize.md, color: c.textMedium),
+          ),
+        ),
         color: c.cardBg,
         shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
         onSelected: (a) => _act(context, a),
@@ -593,8 +648,8 @@ class _TeacherCourseCard extends StatelessWidget {
       meta: [
         c.type == 'live' ? 'course_list_live'.tr : 'course_list_recorded'.tr,
         ?where,
-        coursePriceLabel(c.currency, c.effectivePrice),
       ],
+      priceLine: coursePriceLabel(c.currency, c.effectivePrice),
       isPrivate: c.isPrivate,
       footer: ParentComponent(
         featureKey: 'teacher_courses.card_stats',

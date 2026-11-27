@@ -1,0 +1,19 @@
+{
+  "t1_cs_sub_courses": { "en": "Tap a course to see its numbers, or open it to run its classes.", "ar": "اضغط أي دورة تشوف أرقامها، أو افتحها تدير حصصها." },
+  "t1_cs_sub_students": { "en": "All your students across every course, and who needs follow-up first.", "ar": "كل طلابك في كل دوراتك، واللي يحتاجون متابعة أول." },
+  "t1_cs_sub_submissions": { "en": "The assignments and exams your students handed in. Grade right from here.", "ar": "الواجبات والاختبارات اللي سلّمها طلابك، صحّح من هنا مباشرة." },
+  "t1_cs_sub_reviews": { "en": "What your students say about your courses.", "ar": "وش يقول طلابك عن دوراتك." },
+  "t1_cs_tab_courses": { "en": "My courses", "ar": "دوراتي" },
+  "t1_cs_stat_courses": { "en": "Courses", "ar": "دورات" },
+  "t1_cs_stat_published": { "en": "Published", "ar": "منشورة" },
+  "t1_cs_stat_students": { "en": "Students", "ar": "طالب" },
+  "t1_cs_stat_rating": { "en": "Rating", "ar": "التقييم" },
+  "t1_cs_copy_link": { "en": "Copy course link", "ar": "نسخ رابط الدورة" },
+  "t1_cs_link_copied": { "en": "Link copied", "ar": "تم نسخ الرابط" },
+  "t1_cs_del_title": { "en": "Delete “{name}”?", "ar": "تحذف «{name}»؟" },
+  "t1_cs_del_note": { "en": "It moves to the trash: students lose access right away, and only the super admin can restore it.", "ar": "بتنتقل لسلة المحذوفات: يفقد الطلاب الوصول لها فورًا، والمشرف العام وحده يقدر يسترجعها." },
+  "t1_cs_del_none": { "en": "No students are enrolled.", "ar": "ما فيها طلاب مسجّلين." },
+  "t1_cs_new_course": { "en": "New course", "ar": "دورة جديدة" },
+  "t1_cs_search_courses": { "en": "Search by course name or description", "ar": "ابحث باسم الدورة أو وصفها" },
+  "t1_cs_weekly_slots": { "en": "Weekly slots", "ar": "المواعيد الأسبوعية" }
+}
