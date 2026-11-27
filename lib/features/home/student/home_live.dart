@@ -15,7 +15,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
-import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/calendar/calendar_api.dart' show RemoteCalendarApi;
 import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show openMeetingRoom;
