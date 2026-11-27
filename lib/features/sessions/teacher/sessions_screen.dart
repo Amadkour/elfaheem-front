@@ -637,8 +637,11 @@ class _AttendanceSpot extends StatelessWidget {
         final waiting = TeacherAttendanceController.instance.webLocationRequested;
         if (!waiting && (pageMode || p.$1 == 'recorded' || p.$2 == 0)) return const SizedBox.shrink();
         final sessions = ctx.read<TeacherCourseScreenProvider>().sessions;
+        final course = ctx.read<TeacherCourseScreenProvider>().course;
         return TeacherAttendanceCourseEntry(
           padding: EdgeInsets.zero,
+          courseId: course.id,
+          courseTitle: AppConfig.lang == 'ar' ? (course.titleAr ?? course.titleEn) : (course.titleEn ?? course.titleAr),
           sessions: [
             for (var i = 0; i < sessions.length; i++)
               LauncherSession(id: sessions[i].id, number: i + 1, name: sessions[i].name, date: sessions[i].scheduledAt),

@@ -204,7 +204,7 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
 /// counter and reopens the sheet; otherwise it opens [target] directly (the lesson happening now),
 /// or the lesson picker (newest first) when there is none.
 class TeacherAttendanceCourseEntry extends StatelessWidget {
-  const TeacherAttendanceCourseEntry({super.key, required this.sessions, this.target,
+  const TeacherAttendanceCourseEntry({super.key, required this.sessions, this.target, this.courseId, this.courseTitle,
       this.padding = const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xs)});
 
   /// Course order 1…n (the picker shows them inverted).
@@ -212,6 +212,10 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
 
   /// The lesson one tap opens (server-picked: live now / nearest today). Null → the picker.
   final LauncherSession? target;
+
+  /// The course, so the picker also offers the manual register.
+  final int? courseId;
+  final String? courseTitle;
   final EdgeInsetsGeometry padding;
 
   @override
@@ -238,7 +242,7 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
               } else if (target != null) {
                 showTeacherAttendanceSheet(context, target!.id, title: target!.name);
               } else {
-                showSessionPickerSheet(context, sessions, courseId: widget.courseId, courseTitle: widget.title);
+                showSessionPickerSheet(context, sessions, courseId: courseId, courseTitle: courseTitle);
               }
             },
             child: Builder(builder: (context) {
