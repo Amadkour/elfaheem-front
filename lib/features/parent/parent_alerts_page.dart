@@ -9,6 +9,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_digits.dart';
+import 'package:flutter_education_app/core/course_access.dart' show parseUtc;
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
@@ -57,9 +58,9 @@ IconData _typeIcon(String t) {
 
 /// "3 days ago", "in 5 hours" …
 String _ago(dynamic iso) {
-  final d = DateTime.tryParse('$iso')?.toLocal();
+  final d = parseUtc(iso?.toString());
   if (d == null) return '';
-  final diff = DateTime.now().difference(d);
+  final diff = DateTime.now().toUtc().difference(d);
   if (diff.isNegative) {
     final h = (-diff.inMinutes / 60).ceil();
     return h < 24 ? plFmt('pl_in_hours', {'n': h}) : plFmt('pl_in_days', {'n': (h / 24).ceil()});
