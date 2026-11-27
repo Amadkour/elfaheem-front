@@ -5,9 +5,9 @@
 //            default when the child row does not say), one picked
 //   offer    for the picked subject: GET /booking/options?subject_id=&grade_id= — remote / in person, group and فردي
 //            prices ("from") in the server's currency; nothing is shown that the server did not send
-//   next     the booking itself is confirmed by a signed-in STUDENT (POST /booking/confirm answers 403 students_only),
-//            so the parent account cannot finish it yet: the page says so and the button stays off. Booking on behalf
-//            of a child is a backend gap listed in the group report.
+//   next     the booking flow (openBookFlow) for the picked child: every booking call carries `student_id`, the
+//            server checks the link (403 child_not_linked) and the booking is the child's; the parent pays by card
+//            or bank transfer (owner 2026-11-27).
 // Kill switch `booking` (the caller hides the entry).
 library;
 
@@ -21,6 +21,7 @@ import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter_education_app/core/edu/edu_catalog.dart';
 import 'package:flutter_education_app/core/edu/edu_countries.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/booking/booking_flow_page.dart' show openBookFlow;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -78,13 +79,29 @@ class _ParentBookPageState extends State<ParentBookPage> {
     if (mounted) setState(() => _catalog = cat);
   }
 
+  Future<void> _book({required int childId, required String childName, required int gradeId, required String grade}) async {
+    final s = _catalog?.subjects.where((x) => x.id == _subject).firstOrNull;
+    if (s == null) return;
+    await openBookFlow(
+      context,
+      subjectId: s.id,
+      gradeId: gradeId,
+      subjectTitle: s.name,
+      gradeTitle: grade.isEmpty ? null : grade,
+      subjectKey: s.key,
+      studentId: childId,
+      childName: childName,
+    );
+  }
+
   Future<void> _loadOptions(int subjectId, int? gradeId) async {
     setState(() {
       _options = null;
       _optionsLoading = true;
     });
     try {
-      final r = await _api.get('/api/v1/booking/options', queryParams: {'subject_id': subjectId, 'grade_id': ?gradeId});
+      final r = await _api.get('/api/v1/booking/options',
+          queryParams: {'subject_id': subjectId, 'grade_id': ?gradeId, 'student_id': ?_child});
       if (mounted && _subject == subjectId) setState(() => _options = r is Map ? Map<String, dynamic>.from(r) : null);
     } catch (_) {
       // no offer for this subject: the card says so
@@ -190,9 +207,15 @@ class _ParentBookPageState extends State<ParentBookPage> {
               who,
               ?which,
               ?offer,
-              PaNote(icon: Icons.info_outline_rounded, text: 'pa_book_student_only'.tr),
-              AppButton.hot(key: const ValueKey('pa.book.next'), label: 'pa_book_next'.tr, expand: true, onPressed: null),
-              Text('pa_book_soon'.tr, textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
+              AppButton.hot(
+                key: const ValueKey('pa.book.next'),
+                label: 'pa_book_next'.tr,
+                expand: true,
+                onPressed: row == null || gradeId == null || _subject == null || _options == null
+                    ? null
+                    : () => _book(childId: _child!, childName: '${row['name'] ?? ''}', gradeId: gradeId, grade: grade),
+              ),
+              Text('ow_pa_book_note'.tr, textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
             ]),
           ),
         ),

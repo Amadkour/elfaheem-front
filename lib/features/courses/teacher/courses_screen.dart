@@ -2,6 +2,7 @@ library;
 
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter_education_app/core/personal_access.dart' show PersonalAccess;
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -45,6 +46,7 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyA
 import 'package:flutter_education_app/features/home/teacher/classroom/teacher_classroom.dart';
 import 'package:flutter_education_app/features/courses/teacher/courses_parts.dart';
 import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
+import 'package:flutter_education_app/utils/live_events.dart';
 
 /// The teacher's "My courses" tab: the strip Courses · My students · Submissions · Reviews (D-290), then the courses:
 /// the side (CourseScopeBanner — the app mode), ONE calm toolbar (search · All / Published / Drafts) and the shared
@@ -109,10 +111,17 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (courses.allCourses.isEmpty) courses.refresh();
     });
+    // a publish review decided (docs/redesign/api/governance.md §1): the course's state changed on the server
+    _reviewSub = LiveEvents.instance.listen({'course_review'}, (_) {
+      if (mounted) courses.refresh();
+    });
   }
+
+  StreamSubscription<LiveEvent>? _reviewSub;
 
   @override
   void dispose() {
+    _reviewSub?.cancel();
     _panel.dispose();
     WebHistory.instance.setPageQuery(this, 'view', null);
     _searchCtrl.dispose();
@@ -562,7 +571,13 @@ class _TeacherCourseCard extends StatelessWidget {
 
   Future<void> _togglePublish(BuildContext context) async {
     final p = context.read<TeacherCoursesProvider>();
-    await (course.isPublished ? p.unpublishCourse(course.id) : p.publishCourse(course.id));
+    // a course waiting for review is withdrawn by the same unpublish (it goes back to a draft)
+    if (course.isPublished || course.underReview) {
+      await p.unpublishCourse(course.id);
+      return;
+    }
+    final ok = await p.publishCourse(course.id);
+    if (ok && p.isUnderReview(course.id)) showAppNotice('ow_course_sent_review'.tr);
   }
 
   void _act(BuildContext context, _CourseAction a) {
@@ -588,8 +603,12 @@ class _TeacherCourseCard extends StatelessWidget {
       if (!courseFeatureOff('teacher_courses.publish'))
         (
           _CourseAction.publish,
-          course.isPublished ? Icons.visibility_off_outlined : Icons.public_rounded,
-          course.isPublished ? 'unpublish_course'.tr : 'publish_course'.tr,
+          course.isPublished || course.underReview ? Icons.visibility_off_outlined : Icons.public_rounded,
+          course.isPublished
+              ? 'unpublish_course'.tr
+              : course.underReview
+                  ? 'ow_course_withdraw'.tr
+                  : 'publish_course'.tr,
         ),
       if (!courseFeatureOff('teacher_courses.card_details'))
         (_CourseAction.schedule, Icons.calendar_month_outlined, 't1_cs_weekly_slots'.tr),
@@ -643,11 +662,16 @@ class _TeacherCourseCard extends StatelessWidget {
       title: (ar ? c.titleAr ?? c.titleEn : c.titleEn ?? c.titleAr) ?? '',
       imageUrl: c.imageUrl,
       heroTag: 'courses-screen-${c.id}',
-      chip: CourseCoverChip.status(context, published: c.isPublished),
+      chip: c.underReview
+          ? CourseCoverChip(label: 'ow_course_under_review'.tr, icon: Icons.hourglass_top_rounded)
+          : c.reviewRejected
+              ? CourseCoverChip(label: 'ow_course_rejected'.tr, dot: context.colors.danger)
+              : CourseCoverChip.status(context, published: c.isPublished),
       corner: _menu(context),
       meta: [
         c.type == 'live' ? 'course_list_live'.tr : 'course_list_recorded'.tr,
         ?where,
+        if (c.reviewRejected && (c.reviewReason ?? '').trim().isNotEmpty) '${'ow_pq_reason_label'.tr}: ${c.reviewReason!.trim()}',
       ],
       priceLine: coursePriceLabel(c.currency, c.effectivePrice),
       isPrivate: c.isPrivate,

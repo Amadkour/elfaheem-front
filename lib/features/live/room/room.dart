@@ -5608,8 +5608,10 @@ class _RoomPageState extends State<RoomPage>
 
   String _nameOf(String identity) {
     final p = _remoteBy(identity);
-    if (p == null) return identity == _myIdentity ? _myReactionName : identity;
-    return p.name.isNotEmpty ? p.name : p.identity;
+    // Privacy (owner 2026-11-27): a learner / guest never learns a classmate's name or id; the hosts keep theirs.
+    if (p == null) return identity == _myIdentity ? _myReactionName : (_studentPrivate ? 'ow_a_student'.tr : identity);
+    if (_studentPrivate && !_isServerHost(p)) return 'ow_a_student'.tr;
+    return p.name.isNotEmpty ? p.name : (_studentPrivate ? 'ow_a_student'.tr : p.identity);
   }
 
   bool get _hostPresent => _people.any(_isServerHost);

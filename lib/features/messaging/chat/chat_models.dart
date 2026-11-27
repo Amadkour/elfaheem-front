@@ -85,12 +85,15 @@ class ChatLastMessage {
 
 /// The message a reply quotes (D-540): what the small block on top of the bubble needs.
 class ChatReplyRef {
-  const ChatReplyRef({required this.id, this.kind = 'text', this.body = '', this.senderId, this.senderName, this.deleted = false});
+  const ChatReplyRef({required this.id, this.kind = 'text', this.body = '', this.senderId, this.senderName, this.deleted = false, this.hidden = false});
   final int id;
   final String kind, body;
   final int? senderId;
   final String? senderName;
   final bool deleted;
+
+  /// A classmate's message quoted in the teacher's announcements (privacy D-1950): no body, no sender for a learner.
+  final bool hidden;
 
   static ChatReplyRef? fromJson(Object? j) {
     if (j is! Map) return null;
@@ -103,10 +106,11 @@ class ChatReplyRef {
       senderId: _intOf(j['sender_id']),
       senderName: j['sender_name'] as String?,
       deleted: j['deleted'] == true,
+      hidden: j['hidden'] == true,
     );
   }
 
-  Map<String, dynamic> toJson() => {'id': id, 'kind': kind, 'body': body, 'sender_id': senderId, 'sender_name': senderName, 'deleted': deleted};
+  Map<String, dynamic> toJson() => {'id': id, 'kind': kind, 'body': body, 'sender_id': senderId, 'sender_name': senderName, 'deleted': deleted, if (hidden) 'hidden': true};
 
   /// Quoting a message on screen. Null for one the server does not know yet.
   static ChatReplyRef? of(ChatMessage m) {

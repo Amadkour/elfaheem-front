@@ -18,6 +18,7 @@ import 'package:flutter_education_app/features/payments/enrollment_request/teach
 import 'package:flutter_education_app/features/exams/exam_insights_screen.dart' show ExamAppealsScreen;
 import 'package:flutter_education_app/features/exams/exam_review_screen.dart' show ExamReviewScreen;
 import 'package:flutter_education_app/features/exams/paper/review/omr_review_page.dart' show OmrReviewPage;
+import 'package:flutter_education_app/features/home/teacher/add_class_materials_page.dart' show openAddClassMaterials;
 import 'package:flutter_education_app/features/home/teacher/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/sessions/teacher/sessions_provider.dart' show TeacherCourseScreenProvider;
 import 'package:flutter_education_app/features/home/teacher/todo/teacher_todo_models.dart';
@@ -29,6 +30,12 @@ Future<bool> openTodoAction(BuildContext context, TodoItem item) async {
   final nav = Navigator.of(context);
   final examId = n('exam_id') ?? item.examId;
   final examTitle = '${a['exam_title'] ?? item.courseName ?? ''}';
+  // Owner 2026-11-27: a class without materials opens "Add materials to the class" on that course / class.
+  if (item.kind == 'materials_missing') {
+    await openAddClassMaterials(context,
+        courses: context.read<TeacherHomeProvider>().homeCourses, courseId: n('course_id') ?? item.courseId, sessionId: n('session_id'));
+    return true;
+  }
   switch (item.actionType) {
     case 'course':
       final id = n('course_id') ?? item.courseId;

@@ -21,6 +21,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppJelly, AppWipeSwitcher;
 import 'package:flutter_education_app/design/edu_pickers.dart';
 import 'package:flutter_education_app/features/auth/register_levels_step.dart' show ContactOnlyNote, TeachingLevelsStep;
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_form.dart' show StudyInterestsPicker;
 
 import 'join_draft.dart';
 
@@ -158,7 +159,11 @@ class JoinFlowView extends StatelessWidget {
     this.onSecondary,
     this.onLinkChild,
     this.parentExtra,
+    this.interestChoices = const [],
   });
+
+  /// A student's interests chips on the delivery step (owner 2026-11-27); empty = none shown.
+  final List<(int, String)> interestChoices;
 
   final JoinStep step;
   final JoinDraft draft;
@@ -403,6 +408,13 @@ class JoinFlowView extends StatelessWidget {
               draft.delivery = d;
               if (d == 'online') draft.area1 = draft.area2 = null;
             }),
+          ),
+        if (draft.role == 'student' && interestChoices.isNotEmpty)
+          StudyInterestsPicker(
+            key: const ValueKey('join.interests'),
+            choices: interestChoices,
+            picked: draft.interestIds,
+            onChanged: (ids) => onEdit(() => draft.interestIds = ids),
           ),
       ]);
 

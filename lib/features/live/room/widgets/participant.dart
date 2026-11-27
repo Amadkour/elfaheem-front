@@ -341,7 +341,8 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
     final p = widget.participant;
     final guest = isGuestIdentity(p.identity);
     // A guest's identity is an opaque `guest:<random>`: show only the name they typed.
-    final name = p.name.isNotEmpty ? p.name : (guest ? 'lr_guest'.tr : p.identity);
+    // Never a student's raw `student_<id>` identity on a tile (privacy, owner 2026-11-27).
+    final name = p.name.isNotEmpty ? p.name : (guest ? 'lr_guest'.tr : (isHostIdentity(p.identity) ? p.identity : 'ow_a_student'.tr));
     // D-520: the phone is part of this person: its camera on the tile, its mic and voice counted as theirs.
     final phone = widget.companion;
     TrackPublication? phoneCam;

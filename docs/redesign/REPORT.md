@@ -42,19 +42,23 @@ Backend packages WP1–WP13 are merged (migrations up to `0162`, then `0135`; on
 8. Gold kicker contrast: home, me and admin heroes start on the logo green `#186848`; the gold on dark is `#E6D1B1`
    (BRANDS.md).
 
-## 4. Owner questions (open)
+## 4. Owner answers (2026-11-27) and what was built
 
-1. Should a booking also enrol the student in the course? Today "افتح المادة" returns to the course page.
-2. Bank transfer is hidden in booking: show it?
-3. Should a parent book and pay for a child? (The parent booking page shows subjects and prices; the button is off.)
-4. Should the interests a student picks at sign-up be saved (`interest_ids` on the study profile)?
-5. Guest live name hint: the design says only the host sees it; today other participants see it. Which is true?
-6. Should students scan the attendance QR?
-7. Which page opens "أضف مواد للحصة" from the teacher home?
-8. A course publish-approval queue, an admin audit log, a roles editor: wanted? (No backend yet.)
-9. Teachers can add remote booking times only (no teacher route lists centres): add in-person times?
-10. Earlier open items: Israel in the country list, an Egyptian-dialect copy for NextBrain, Arabic-Indic digits for
-    NextBrain, the exam identifier (O-4), privacy inside organisations, student 2FA, daily lessons inside Quran.
+| Question | Answer | Built |
+|---|---|---|
+| Booking enrols in the course? | not answered | kept: no |
+| Bank transfer in booking | yes | proof upload, 48 h seat hold, admin Transfers tab, proof re-send |
+| Parent books and pays for a child | yes | `student_id` on booking routes (403 `child_not_linked`), parent booking button |
+| Save sign-up interests | yes | `interest_ids` on study profile and register |
+| Who sees guest / participant names | only the teacher | learners see "a student"; student-hosted meeting invitees see only the host |
+| Students scan the attendance QR | yes, or a classmate's help | phone QR scan + "with a classmate's help" (relay, classmate never named) |
+| "أضف مواد للحصة" | design it | new page from the teacher home: file, recording, link, note |
+| Publish queue, audit log, roles editor | build them | migrations 0180-0182; review off by default (`platform.publish_review`) |
+| In-person teacher times | yes | `teacher/centres`, slots with a centre |
+
+Still open: Israel in the country list, an Egyptian-dialect copy for NextBrain, Arabic-Indic digits for NextBrain,
+the exam identifier (O-4), privacy inside organisations, student 2FA, daily lessons inside Quran. Custom roles gate
+only the publish queue and the audit log so far; the other admin routes still accept every admin.
 
 ## 5. Differences from the reference we could not close
 

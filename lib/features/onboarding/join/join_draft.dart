@@ -1,7 +1,7 @@
 // lib/features/onboarding/join/join_draft.dart — the join flow's answers (Learning Hub F5, D-1323, PLAN §3.3), kept in
 // SharedPreferences under `join_draft` so a reload, the login and the registration find them again:
 //   role · country · stage + grade (+ track) or a teacher's teaching levels · online / in-person · area (+ address)
-//   · name + phone · a parent's child code.
+//   · name + phone · a parent's child code · a student's interests (category ids, owner 2026-11-27).
 // [filters] is what the explorer sends to GET /courses (CONTRACT §4); [studyProfile] prefills the registration's
 // study step. Kept on this device only and never sent before the account is created; a draft older than 7 days (or
 // without `at`) is dropped unread, logout clears it, and a parent's name / phone / child code go once the child is
@@ -46,7 +46,9 @@ class JoinDraft {
     this.phone = '',
     this.childCode = '',
     this.at,
-  }) : teachingLevels = teachingLevels ?? [];
+    List<int>? interestIds,
+  })  : teachingLevels = teachingLevels ?? [],
+        interestIds = interestIds ?? [];
 
   static const prefsKey = 'join_draft';
 
@@ -68,6 +70,9 @@ class JoinDraft {
   String? delivery;
   EduArea? area1, area2;
   String address, name, phone, childCode;
+
+  /// The fields a student picked (sent with the registration's study profile).
+  List<int> interestIds;
 
   bool get isTeacher => role == 'teacher';
   bool get isParent => role == 'parent';
@@ -106,7 +111,8 @@ class JoinDraft {
   /// The registration's study step, prefilled (a student only).
   /// `governorate` carries the level-1 area's key so the study step can name a city (it looks the city up under it).
   StudyProfile get studyProfile => StudyProfile(
-      countryCode: country, stageId: stageId, gradeId: gradeId, areaId: area?.id, governorate: area1?.key, track: trackKey);
+      countryCode: country, stageId: stageId, gradeId: gradeId, areaId: area?.id, governorate: area1?.key, track: trackKey,
+      interestIds: interestIds.isEmpty ? null : List.of(interestIds));
 
   Map<String, dynamic> toJson() => {
         'role': role,
@@ -122,6 +128,7 @@ class JoinDraft {
         'name': name,
         'phone': phone,
         'child_code': childCode,
+        'interest_ids': interestIds,
         'at': at?.toUtc().toIso8601String(),
       };
 
@@ -147,6 +154,7 @@ class JoinDraft {
       phone: _str(j['phone']),
       childCode: _str(j['child_code']),
       at: DateTime.tryParse(_str(j['at']))?.toUtc(),
+      interestIds: j['interest_ids'] is List ? [for (final x in j['interest_ids'] as List) ?_int(x)] : null,
     );
   }
 
