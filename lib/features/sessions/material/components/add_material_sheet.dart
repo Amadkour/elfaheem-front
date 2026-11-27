@@ -901,6 +901,9 @@ class _SubmitButton extends StatelessWidget {
   final bool enabled;
   final VoidCallback onPressed;
 
+  /// Below this width Cancel and Add stack (the two large buttons need about 300 px side by side at 1.3× text).
+  static const double _stackBelow = 340;
+
   const _SubmitButton({
     required this.saving,
     required this.enabled,
@@ -913,24 +916,27 @@ class _SubmitButton extends StatelessWidget {
     return AnimatedOpacity(
       opacity: enabled || saving ? 1 : 0.5,
       duration: AppMotion.of(context).fast,
-      child: Row(children: [
-        AppButton.secondary(
-          label: 't1_cp_cancel'.tr,
+      child: LayoutBuilder(builder: (context, box) {
+        Widget cancel({bool expand = false}) => AppButton.secondary(
+              label: 't1_cp_cancel'.tr,
+              size: AppButtonSize.lg,
+              expand: expand,
+              onPressed: saving ? null : () => Navigator.pop(context),
+            );
+        final add = AppButton.primary(
+          label: 't1_cp_mat_add'.tr,
+          icon: Icons.upload_rounded,
           size: AppButtonSize.lg,
-          onPressed: saving ? null : () => Navigator.pop(context),
-        ),
-        const SizedBox(width: AppSpace.sm),
-        Expanded(
-          child: AppButton.primary(
-            label: 't1_cp_mat_add'.tr,
-            icon: Icons.upload_rounded,
-            size: AppButtonSize.lg,
-            expand: true,
-            busy: saving,
-            onPressed: saving ? null : onPressed,
-          ),
-        ),
-      ]),
+          expand: true,
+          busy: saving,
+          onPressed: saving ? null : onPressed,
+        );
+        // a narrow phone (or large text) stacks them: the primary on top, Cancel under it
+        if (box.maxWidth < _stackBelow) {
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [add, AppSpace.gapXs, cancel(expand: true)]);
+        }
+        return Row(children: [cancel(), const SizedBox(width: AppSpace.sm), Expanded(child: add)]);
+      }),
     );
   }
 }

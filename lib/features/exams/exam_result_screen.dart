@@ -279,6 +279,9 @@ class _ExamScoreCardState extends State<ExamScoreCard> {
           AppStatusBadge(
               label: appDigits(widget.score == null ? t('الدرجة تنتظر المراجعة', 'The score awaits review') : t('${widget.score} من ${widget.maxScore}', '${widget.score} of ${widget.maxScore}')),
               tone: passed == true ? AppTone.success : AppTone.neutral),
+          // the attempt's state ("Graded", "Submitted automatically …"): the hero carries it only when there is no
+          // pass mark, so the card names it when the hero speaks of the outcome
+          if (widget.stateText != null && passed != null) AppStatusBadge(label: widget.stateText!, tone: AppTone.neutral),
           if (widget.needsReview) AppStatusBadge(label: t('فيه إجابات عند المعلم', 'Some answers are with the teacher'), tone: AppTone.warning),
         ]),
         if (widget.onDone != null) ...[

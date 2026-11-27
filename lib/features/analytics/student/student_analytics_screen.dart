@@ -321,6 +321,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
           AppFlipIn(index: i, group: 'sc.an.courses', child: ScCourseBar(
             title: f.title,
             value: f.value(metric),
+            detail: metric == AnMetric.attendance && f.held > 0 ? '${f.attended}/${f.held}' : null,
             needsPush: anCourseNeedsAttention(f),
             onTap: () => _openCourse(f.id, tab),
           )),
@@ -397,10 +398,13 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
 /// One course on "Your courses" (plain values): the subject's icon box, the name (a "needs a push" tag when it
 /// does), a bar in the subject's colour and the figure at the end.
 class ScCourseBar extends StatelessWidget {
-  const ScCourseBar({super.key, required this.title, required this.value, this.needsPush = false, this.onTap});
+  const ScCourseBar({super.key, required this.title, required this.value, this.detail, this.needsPush = false, this.onTap});
 
   final String title;
   final double? value;
+
+  /// A count under the figure (attendance: "attended/held").
+  final String? detail;
   final bool needsPush;
   final VoidCallback? onTap;
 
@@ -430,8 +434,11 @@ class ScCourseBar extends StatelessWidget {
             ]),
           ),
           const SizedBox(width: AppSpace.sm),
-          Text(value == null ? '–' : appDigits('${v.round()}%'),
-              style: AppType.label(context).copyWith(color: sub.tone.ink, fontWeight: FontWeight.w600)),
+          Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text(value == null ? '–' : appDigits('${v.round()}%'),
+                style: AppType.label(context).copyWith(color: sub.tone.ink, fontWeight: FontWeight.w600)),
+            if (detail != null) Text(appDigits(detail!), maxLines: 1, style: AppType.meta(context)),
+          ]),
         ]),
       ),
     );

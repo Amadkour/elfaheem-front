@@ -50,6 +50,7 @@ import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_widgets.dart' as dl;
 
 import 'app_kit.dart' show AppChoiceChip, AppDropdown, AppEmpty, AppSheetContent, AppSkeletonBox, showAppSheet;
+import 'app_hscroll.dart';
 import 'app_pagination.dart';
 import 'app_responsive.dart';
 import 'app_search_field.dart';
@@ -626,7 +627,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
             ),
           for (final f in filters) ...[
             const SizedBox(height: AppSpace.xs),
-            _filter(context, f),
+            _filter(context, f, phone),
           ],
         ]),
       ),
@@ -690,7 +691,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     );
   }
 
-  Widget _filter(BuildContext context, AppTableFilter f) {
+  Widget _filter(BuildContext context, AppTableFilter f, bool phone) {
     if (f.options.length > 5) {
       return Align(
         alignment: AlignmentDirectional.centerStart,
@@ -708,12 +709,24 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
         ),
       );
     }
-    return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+    final chips = <Widget>[
       Text(f.label, style: AppType.label(context)),
       AppChoiceChip(label: 'ds_all'.tr, selected: f.value == null, onTap: () => f.onChanged(null)),
       for (final o in f.options)
         AppChoiceChip(label: o.$2, selected: f.value == o.$1, onTap: () => f.onChanged(f.value == o.$1 ? null : o.$1)),
-    ]);
+    ];
+    // a phone keeps the chips on ONE line that scrolls sideways: wrapped, five statuses at large text took the
+    // table's whole height
+    if (phone) {
+      return AppHScroll(
+        thumbVisibility: false,
+        padding: EdgeInsets.zero,
+        child: Row(children: [
+          for (final (i, w) in chips.indexed) ...[if (i > 0) AppSpace.gapXs, w],
+        ]),
+      );
+    }
+    return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: chips);
   }
 
   // ── bulk bar ──────────────────────────────────────────────────────────────
