@@ -23,6 +23,9 @@ import '../cfg_common.dart';
 import '../sup/sup_kit.dart';
 import 'console_parts.dart';
 
+/// The console's kill switch (backend `features/platform/feature_catalog.py`).
+const kAdminBookingKey = 'admin.booking';
+
 String _named(dynamic m) {
   final j = cMap(m);
   return eduName(cStr(j['name_ar']), cStr(j['name_en']));
@@ -510,6 +513,7 @@ class _AdminBookingPageState extends State<AdminBookingPage> {
       if (_loaded && _tab == 2) SupHeroButton(label: 'a2_bk_group_new'.tr, icon: Icons.add_rounded, onTap: _newGroup),
     ];
     return SupPage(
+      pageKey: const ValueKey(kAdminBookingKey),
       title: 'a2_bk_title'.tr,
       kicker: 'a2_bk_kicker'.tr,
       headline: waiting > 0 ? trp('a2_bk_head_waiting', {'n': '$waiting'}) : 'a2_bk_head'.tr,

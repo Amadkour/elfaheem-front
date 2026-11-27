@@ -70,7 +70,7 @@ import 'package:flutter_education_app/features/profile/teacher/switch_device_req
 import 'admin_recents.dart';
 import 'adm_kit.dart';
 import 'sup/sup_kit.dart';
-import 'consoles/admin_booking_page.dart' show AdminBookingPage;
+import 'consoles/admin_booking_page.dart' show AdminBookingPage, kAdminBookingKey;
 import 'consoles/admin_demand_page.dart' show AdminTeacherDemandPage, kAdminTeacherDemandKey;
 import 'consoles/admin_markets_page.dart' show AdminPaymentMarketsPage, kAdminPaymentMarketsKey;
 import 'package:flutter_education_app/core/plural.dart' show countText;
@@ -443,6 +443,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // the booking package's staff side: prices, in-person centres, groups, time requests (every platform admin)
         AdminService(
           labelKey: 'a2_svc_booking',
+          featureKey: kAdminBookingKey,
           descKey: 'a2_svc_booking_d',
           icon: Icons.event_seat_rounded,
           colors: AdminPalette.orange,
