@@ -38,7 +38,7 @@ Rules that apply to every row and are not repeated: "دورة" never "كورس",
 | Records (`records`) | everyone | lib/features/records/. push modules: records, records_shared | Stu1Learn?screen=records | restyle |  |
 | Sharing recordings (`records_share`) | everyone | lib/features/records/records_share.dart | not drawn | keep + restyle |  |
 | Confirm it's you before sensitive changes (`confirm_identity`) | everyone | lib/features/auth/reauth_sheet.dart | not drawn | keep + restyle |  |
-| My profile and its public link (alfheemacademy.com/@yourname) (`profile_link`) | teacher, student, everyone | lib/features/profile/public_profile/. routes: `/@username` | Stu2Profile?screen=public; Tea2Account?screen=public | restyle | Student public page: initials only, no classmates. Server payload not audited yet (BACKEND_STATUS leak 11). |
+| My profile and its public link (nextbrain.site/@yourname) (`profile_link`) | teacher, student, everyone | lib/features/profile/public_profile/. routes: `/@username` | Stu2Profile?screen=public; Tea2Account?screen=public | restyle | Student public page: initials only, no classmates. Server payload not audited yet (BACKEND_STATUS leak 11). |
 | Fold the sections of your home (`home_fold_sections`) | student, teacher, org member | lib/design/home_kit.dart | not drawn | keep + restyle | The 5-second home is shorter: keep folding only where sections remain. |
 | Get the app (`get_the_app`) | everyone | lib/features/get_app/ | not drawn | keep + restyle |  |
 | Download the app from the website (`app_download_banner`) | everyone | landing/, lib/features/get_app/ | not drawn | keep + restyle |  |

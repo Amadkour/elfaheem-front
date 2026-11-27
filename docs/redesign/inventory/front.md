@@ -669,7 +669,7 @@ The role is derived from the path ("shared" = no role subfolder, reached from se
  | org | org/org_academic_pages.dart |  |  |
 | OrgJoinPage - ═════════════════════════════════════════════════════════════════════════════
  | org | org/org_access_joining_join.dart |  |  |
-| OrgJoinLinkPage - The page behind `https://alfheemacademy.com/j/<CODE>`: the Join page with the code filled in (not sent: the pe | org | org/org_access_joining_join.dart |  |  |
+| OrgJoinLinkPage - The page behind `https://nextbrain.site/j/<CODE>`: the Join page with the code filled in (not sent: the pe | org | org/org_access_joining_join.dart |  |  |
 | OrgAccessJoiningPage - (API: org_join_router.py — /orgs/{o}/join/…, /join-requests/…, /public/join/code, /public/me/join-status).
  | org | org/org_access_joining.dart |  |  |
 | OrgAccessPage - OrgAccessPage        Roles (system + custom) · People & access   — module `roles`
@@ -1193,7 +1193,7 @@ The role is derived from the path ("shared" = no role subfolder, reached from se
 | OwnSheetPage - "Use your own sheet" (D-302): any bubble sheet a teacher already has (round or square bubbles, no the app
  | shared | exams/paper/templates/own_sheet.dart |  | exam.auto_correct |
 | ParentVisibilitySheet - Loads the current value, shows the choices, saves the pick.  | shared | exams/parent_grade_visibility.dart |  | grades.parent_visibility |
-| ExportLinkOpenPage - What a share link opens (`https://alfheemacademy.com/e/<token>` → route `/e/<token>`, D-134): the file is down | shared | exports/export_link_open_page.dart |  |  |
+| ExportLinkOpenPage - What a share link opens (`https://nextbrain.site/e/<token>` → route `/e/<token>`, D-134): the file is down | shared | exports/export_link_open_page.dart |  |  |
 | ExportLinkOpenView - The open page's body with plain values. [code] picks the failure text (link_expired · link_revoked · link_forb | shared | exports/export_link_open_page.dart |  |  |
 | ExportLinksPage - Expiring share links (feature key `export.share_links`, `/api/v1/exports/links`, D-134): a link to a prepared  | shared | exports/export_links_page.dart |  |  |
 | ExportLogPage - The export log for admins (feature key `admin.export_log`, `GET /api/v1/exports/log`): who exported which page | shared | exports/export_log_page.dart |  |  |
