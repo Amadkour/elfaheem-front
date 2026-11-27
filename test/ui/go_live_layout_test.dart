@@ -209,6 +209,7 @@ void main() {
     ]);
     final r = await openSheet(tester, GoLiveSheet(courses: _courses, initialCourseId: 1, api: api, now: _now), () async {
       expect(find.text('Lecture 7'), findsOneWidget);
+      await tester.ensureVisible(find.text('Record this session'));
       await tester.tap(find.text('Record this session'));
       await tester.pump();
       await tester.tap(find.text('Go live now'));

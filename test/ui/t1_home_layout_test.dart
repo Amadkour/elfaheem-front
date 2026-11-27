@@ -43,4 +43,5 @@ void main() {
   testWidgets('inbox', (t) => expectNoLayoutErrors(t, () => providers(const InboxPage()), scaffold: false, frames: 8));
   testWidgets('transfers', (t) => expectNoLayoutErrors(t, () => providers(const TeacherTransfersScreen()), scaffold: false, frames: 8));
   testWidgets('meeting links', (t) => expectNoLayoutErrors(t, () => const MeetingLinksPage(api: T1FakeLinksApi()), scaffold: false, frames: 8));
+  testWidgets('reject sheet body', (t) => expectNoLayoutErrors(t, () => const TransferRejectBody(title: 'Reason', hint: 'Why?', quickReasons: ['The receipt is unclear', 'The amount does not match', 'The transfer details are wrong'], studentName: 'Rakan Al-Harbi')));
 }

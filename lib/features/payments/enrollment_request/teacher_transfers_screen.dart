@@ -19,7 +19,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppHero, AppHeroStat, AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2HeroPage;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
@@ -134,12 +134,14 @@ class _TransferCard extends StatelessWidget {
   Future<bool> _reject(BuildContext context) async {
     final p = context.read<TeacherTransfersProvider>();
 
-    final reason = await showReasonDialog(
+    final reason = await showAppSheet<String>(
       context,
-      title: 'rejection_reason_title'.tr,
-      hint: 'rejection_reason_hint'.tr,
-      requireReason: true,
-      quickReasons: _quickReasons,
+      (_) => TransferRejectBody(
+        studentName: transfer.studentName,
+        title: 'rejection_reason_title'.tr,
+        hint: 'rejection_reason_hint'.tr,
+        quickReasons: _quickReasons,
+      ),
     );
     if (reason == null || reason.isEmpty) {
       return false; // cancelled → spring back
@@ -461,6 +463,84 @@ class _ProofImage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+/// The reject sheet (Tea1Home?screen=reject): who is being turned down, the quick reasons as chips, the reason field
+/// (a reason is always asked for: Reject stays off while it is empty). Pops the reason, or null on Cancel. Plain
+/// values, so the layout harness and the renders draw it as it is.
+class TransferRejectBody extends StatefulWidget {
+  const TransferRejectBody({super.key, required this.title, required this.hint, required this.quickReasons, this.studentName});
+
+  final String title, hint;
+  final List<String> quickReasons;
+  final String? studentName;
+
+  @override
+  State<TransferRejectBody> createState() => _TransferRejectBodyState();
+}
+
+class _TransferRejectBodyState extends State<TransferRejectBody> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final valid = _ctrl.text.trim().isNotEmpty;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.lg),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          Container(
+            width: AppTouch.min,
+            height: AppTouch.min,
+            decoration: BoxDecoration(color: appTintOn(context, c.danger), borderRadius: AppRadius.controlAll),
+            child: Icon(Icons.close_rounded, color: appInkOn(context, c.danger, appTintOn(context, c.danger)), size: AppIconSize.lg),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Semantics(header: true, child: Text(widget.title, style: AppType.headline(context))),
+              if ((widget.studentName ?? '').isNotEmpty)
+                Text(widget.studentName!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: AppSpace.md),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          for (final r in widget.quickReasons)
+            AppChoiceChip(label: r, selected: _ctrl.text == r, onTap: () => setState(() => _ctrl.text = r)),
+        ]),
+        const SizedBox(height: AppSpace.md),
+        TextField(
+          controller: _ctrl,
+          minLines: 3,
+          maxLines: 5,
+          onChanged: (_) => setState(() {}),
+          style: appFieldTextStyle(context),
+          decoration: appFieldDecoration(context, hint: widget.hint),
+        ),
+        const SizedBox(height: AppSpace.md),
+        Row(children: [
+          Expanded(child: AppButton.secondary(label: 'cancel'.tr, onPressed: () => Navigator.pop(context))),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: AppButton.danger(
+              key: const ValueKey('transfer_requests.reject_confirm'),
+              label: 'reject'.tr,
+              onPressed: valid ? () => Navigator.pop(context, _ctrl.text.trim()) : null,
+            ),
+          ),
+        ]),
+      ]),
     );
   }
 }

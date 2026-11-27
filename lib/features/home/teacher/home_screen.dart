@@ -863,7 +863,7 @@ class TeacherHomeBody extends StatelessWidget {
         title: 'home_today_sessions'.tr,
         icon: Icons.today_rounded,
         count: items.length,
-        bare: false, // T1: the card rides over the hero on wide screens, so it always has its own surface
+        bare: items.isNotEmpty && !wide, // wide: the card rides over the hero, so it keeps its own surface
         actionLabel: teacherTabOn(2) ? 'home_schedule_link'.tr : null,
         onAction: () => onTab(2),
         child: items.isEmpty

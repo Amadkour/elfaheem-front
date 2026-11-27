@@ -335,7 +335,6 @@ class _MoreMenu extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: AppTouch.min),
         child: Container(
-          alignment: AlignmentDirectional.center,
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.pill),
