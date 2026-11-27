@@ -52,3 +52,41 @@ void main() {
     expect(challengeEnds({}), isNull);
   });
 }
+
+/// Counts the class-board calls; answers no challenges.
+class _CountingApi extends GamesV4Api {
+  int boardCalls = 0;
+  @override
+  Future<List<V4Challenge>> myChallenges() async => [challengeOf()];
+  @override
+  Future<V4ClassBoard> classBoard(int courseId) async {
+    boardCalls++;
+    return boardOf();
+  }
+}
+
+void classBoardPrivacyTests() {
+  test('only staff roles see the class board', () {
+    for (final r in ['teacher', 'admin', 'super-admin', 'developer', 'org-admin', 'org-staff']) {
+      expect(gamesClassBoardFor(r), isTrue, reason: r);
+    }
+    for (final r in ['student', 'parent', '', null]) {
+      expect(gamesClassBoardFor(r), isFalse, reason: '$r');
+    }
+  });
+
+  testWidgets('a learner gets no class-board tab and no class-board call', (tester) async {
+    final api = _CountingApi();
+    await tester.pumpWidget(layoutHost(GamesChallengesPage(api: api, showClassBoard: false), scale: 1));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const ValueKey('games.challenges.tabs')), findsNothing);
+    expect(find.byType(MyChallengesView), findsOneWidget);
+    expect(api.boardCalls, 0);
+  });
+
+  testWidgets('staff keep the class-board tab', (tester) async {
+    await tester.pumpWidget(layoutHost(GamesChallengesPage(api: _CountingApi(), showClassBoard: true), scale: 1));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const ValueKey('games.challenges.tabs')), findsOneWidget);
+  });
+}
