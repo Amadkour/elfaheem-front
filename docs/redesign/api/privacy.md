@@ -106,3 +106,6 @@ No server change and no migration: the server half above already hides learners.
 - **Add materials to the class:** `lib/features/home/teacher/add_class_materials_page.dart` over the existing session
   material routes (`/sessions/{id}/materials`, `…/presign`, `…/from-upload`, `…/link`, `DELETE …/materials/{mid}`);
   a note is a `.txt` upload.
+- **O-2 absolute (2026-11-27):** in a meeting a STUDENT owns, every invitee now gets the private token too
+  (`private: true` → the private room): each sees only the host and himself. The series detail and the mention
+  suggestions follow (back `calendar_service.meeting_private`, `calendar_series.series_detail`).
