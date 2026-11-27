@@ -593,7 +593,7 @@ class SessionMaterialGrid extends StatelessWidget {
           session.id,
         )) {
       Helpers.showMessage(
-        'هذه الجلسة مقفلة — أكمل الجلسة الحالية أو اشترك في الكورس لفتحها',
+        'هذه الحصة مقفلة — أكمل الحصة الحالية أو اشترك في الدورة لفتحها',
         isError: true,
       );
       return;
