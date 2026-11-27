@@ -332,6 +332,10 @@ class RoomPage extends StatefulWidget {
   /// a 401 would otherwise send the guest to the login screen.
   final bool isGuest;
 
+  /// A guest's own LiveKit token (the join answer's): his hand and question go to the PUBLIC routes with it
+  /// (D-1950), never an authenticated call. Null for everyone else.
+  final String? guestToken;
+
   /// False → listen-only: no microphone / camera controls at all.
   final bool canPublish;
 
@@ -392,6 +396,7 @@ class RoomPage extends StatefulWidget {
         this.sessionName,
         this.recordingEnabled = false,
         this.isGuest = false,
+        this.guestToken,
         this.canPublish = true,
         this.roomRef,
         this.isHost,
@@ -3257,14 +3262,19 @@ class _RoomPageState extends State<RoomPage>
   //
   // A student whose token is private (metadata {"privacy": "private"}) sees only the stage, "أنت والمعلم" and four
   // controls (student/student_room_view.dart); the hand and the question go through the server
-  // (student/student_live_api.dart), never the data channel, which is closed for him. Everyone else: _buildRoomPage.
-  bool get _studentPrivate =>
-      !widget.isTeacher && !widget.isGuest && !_host && liveTokenIsPrivate(widget.room.localParticipant?.metadata);
+  // (student/student_live_api.dart), never the data channel, which is closed for him. Every guest of a public link
+  // gets this room too (no head count, no participant list); his hand / question go to the PUBLIC routes with his own
+  // LiveKit token (GuestStudentLiveApi, auth: false), so a guest room never calls an authenticated API.
+  // Everyone else: _buildRoomPage.
+  bool get _studentPrivate => liveRoomIsPrivate(
+      isTeacher: widget.isTeacher, isGuest: widget.isGuest, host: _host, metadata: widget.room.localParticipant?.metadata);
 
   bool _studentFull = false;
   bool _studentHandUp = false;
   bool _studentHandBusy = false;
-  late final StudentLiveApi _studentApi = StudentLiveApi(widget.ref);
+  late final StudentLiveApi _studentApi = widget.isGuest
+      ? GuestStudentLiveApi(widget.ref, token: () => widget.guestToken)
+      : StudentLiveApi(widget.ref);
 
   Future<void> _studentToggleHand() async {
     setState(() => _studentHandBusy = true);
@@ -5381,6 +5391,9 @@ class _RoomPageState extends State<RoomPage>
       if (m is! Map) return;
       final sig = parseLiveServerSignal(m);
       if (sig == null) return;
+      // the person who raised a hand / asked may have just joined hidden: refresh the roster soon (debounced; the
+      // 45 s poll stays the fallback)
+      _rosterSoon();
       final now = DateTime.now().millisecondsSinceEpoch;
       if (sig.isHand) {
         if (sig.raised == true) {

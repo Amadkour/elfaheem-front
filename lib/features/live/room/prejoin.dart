@@ -444,6 +444,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
         recordingEnabled: data.recordingEnabled,
         sessionName: args.sessionName,
         isGuest: args.guest,
+        guestToken: args.guest ? data.token : null, // the public hand / ask routes (D-1950)
         canPublish: args.canPublish,
         roomRef: args.ref,
         isHost: args.isHost,
