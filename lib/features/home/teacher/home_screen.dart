@@ -34,6 +34,7 @@ import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter_education_app/core/personal_access.dart' show PersonalAccess, enablePersonalFix, enablePersonalLabel;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_education_app/core/app_identity.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart' show MeHomeService, MeLiveRoom, MeOnboardingItem;
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
@@ -57,7 +58,15 @@ import 'package:flutter_education_app/features/messaging/inbox/inbox_page.dart' 
 import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart'
     show InboxEntry, InboxEntryCard, InboxItem, InboxScreen, inboxEntryCounts, inboxEntryShown;
 import 'package:flutter_education_app/features/home/teacher/dashboard/Teacher_dashboard_provider.dart';
-import 'package:flutter_education_app/features/home/student/home_live.dart' show HomeLiveNow;
+import 'package:flutter_education_app/features/home/student/home_live.dart' show joinHomeLiveRoom;
+import 'package:flutter_education_app/features/home/teacher/t1_home_parts.dart';
+import 'package:flutter_education_app/features/teachers/teacher_onboarding.dart' show TeacherHubPage;
+import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_screen.dart' show TeacherTransfersScreen;
+import 'package:flutter_education_app/features/live/meeting_links_page.dart' show openMeetingLinks, kMeetingLinksFeatureKey;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Columns, T2Scope;
+import 'package:flutter_education_app/design/chrome_button.dart' show ChromeBar;
+import 'package:flutter_education_app/core/plural.dart' show countText;
+import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
 import 'package:flutter_education_app/features/home/student/home_screen.dart' show orgModeDaySummary;
 import 'package:flutter_education_app/features/home/teacher/go_live.dart' show kQuickLiveFeatureKey;
 import 'package:flutter_education_app/features/home/teacher/go_live_sheet.dart' show GoLiveEntry;
@@ -244,25 +253,36 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
     final quickLive = !AppConfig.disableList.contains(kQuickLiveFeatureKey); // D-091
     final isOrg = AppModeController.instance.isOrg;
 
-    // D-1100: the greeting row (no forest banner): the greeting, the day line, the workspace pill and Go live
+    // T1 (Tea1Home): the hero's head — the headline and the line follow the day (a room running · a calm day · a first
+    // visit), the red call to action is Go live
+    final line = isOrg
+        ? null
+        : teacherHeroLine(
+            name: user?.name ?? 'sir'.tr,
+            schedule: provider.schedule,
+            courses: _sideCourses(provider),
+            pending: provider.pending,
+            liveMeetings: provider.liveNow.length,
+            payoutWaiting: (provider.extra?.pendingPayout ?? 0) > 0,
+            todoCount: _todo(provider)?.totalCount,
+            inboxWaiting: (provider.extra?.inboxPreview ?? const []).any((x) => '${x['segment'] ?? 'todo'}' == 'todo'),
+            loaded: provider.loaded,
+            orgTodo: _orgTodo(),
+          );
     final greeting = ParentComponent(
           featureKey: 'teacher_home_topbar',
           child: HomeEntrance(
             index: 0,
             child: TeacherGreeting(
               name: user?.name ?? 'sir'.tr,
+              title: line?.title,
               // the day in one line, from exactly what the page below draws (M6): in Organization mode that
               // organization's today, strip and "What needs you" rows; else my sessions and pills
               subtitle: !provider.loaded
                   ? null
-                  : (isOrg
-                          ? orgModeDaySummary(MeHomeService.instance.home, AppModeController.instance, MeHomeService.instance.liveNow.length)
-                          : null) ??
-                      teacherDaySummary(provider.schedule, provider.pending, provider.liveNow.length,
-                          payoutWaiting: (provider.extra?.pendingPayout ?? 0) > 0,
-                          orgTodo: _orgTodo(),
-                          todoCount: _todo(provider)?.totalCount,
-                          inboxWaiting: !isOrg && (provider.extra?.inboxPreview ?? const []).any((x) => '${x['segment'] ?? 'todo'}' == 'todo')),
+                  : isOrg
+                      ? orgModeDaySummary(MeHomeService.instance.home, AppModeController.instance, MeHomeService.instance.liveNow.length)
+                      : line?.subtitle,
               leading: user == null ? null : UserChipButton(user: user, showLabel: false),
               actions: [
                 // "Meet now" moved into the Go live sheet; the icon comes back when Go live is switched off
@@ -280,9 +300,10 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                   NotificationIcon(unreadCount: unread),
               ],
               switcher: const ContextSwitcher(),
-              // Go live is the hero's one call to action (the paper pill; the live red while a room of mine runs)
+              // Go live is the hero's one call to action (the live red; "Back to the live" while a room of mine runs)
               goLive: quickLive
                   ? GoLiveEntry(
+                      block: true,
                       courses: _sideCourses(provider),
                       schedule: provider.schedule,
                       loading: loading,
@@ -295,12 +316,13 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
         );
 
     // a desktop window: one wide calm card over the page's pattern (the wide role, D-360), the dashboard inside it
-    return BasePage(
+    return T2Scope(
+      child: BasePage(
       key: const ValueKey('teacher_home'),
-      useWebCard: true,
-      width: AppWidth.wide,
+      useWebCard: false,
+      width: AppWidth.full,
       enableFooterWidget: false,
-      child: SafeArea(
+      child: SafeArea(top: false,
         child: AppRefresh(
           onRefresh: _refresh,
           child: ListenableBuilder(
@@ -308,30 +330,30 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
             builder: (context, _) => CustomScrollView(
               physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
               slivers: [
-                if (AppModeController.instance.isOrg) ...[
-                  SliverToBoxAdapter(child: _Width(child: Padding(padding: _kSides, child: greeting))),
-                  const SliverToBoxAdapter(child: SizedBox(height: AppSpace.xs)),
-                  // the organization's side of my to-do list (the /me/home block follows the mode's scope)
-                  if ((_todo(provider)?.items ?? const []).isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: _Width(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpace.lg),
-                          child: TeacherTodoSection(
-                            list: _todo(provider)!,
-                            onOpenItem: _openTodo,
-                            onMenu: _todoMenu,
-                            onSeeAll: _openTodoList,
+                if (AppModeController.instance.isOrg)
+                  SliverToBoxAdapter(
+                    child: T1HomeHero(
+                      head: greeting,
+                      // the organization's side of my to-do list (the /me/home block follows the mode's scope), then
+                      // the organization's own home
+                      body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        if ((_todo(provider)?.items ?? const []).isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpace.lg),
+                            child: TeacherTodoSection(
+                              list: _todo(provider)!,
+                              onOpenItem: _openTodo,
+                              onMenu: _todoMenu,
+                              onSeeAll: _openTodoList,
+                            ),
                           ),
-                        ),
-                      ),
+                        deferredOrgMemberHome(showPickerInHero: false),
+                      ]),
                     ),
-                  SliverToBoxAdapter(child: _Width(child: deferredOrgMemberHome(showPickerInHero: false))),
-                ]
+                  )
                 else
                   SliverToBoxAdapter(
-                    child: _Width(
-                      child: TeacherHomeBody(
+                    child: TeacherHomeBody(
                         loading: loading,
                         error: error,
                         staleError: staleError,
@@ -352,15 +374,18 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                         onNewCourse: _newCourse,
                         onOpenEarnings: _openEarnings,
                         onOpenInbox: _openInbox,
+                        onOpenTransfers: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TeacherTransfersScreen())),
+                        onOpenMeetings: AppConfig.disableList.contains(kMeetingLinksFeatureKey) ? null : () => openMeetingLinks(context),
+                        onSetupProfile: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TeacherHubPage())),
                         onOpenApplication: (x) => openHomeApplication(context, x, onClosed: provider.init),
                         greeting: greeting,
                       ),
-                    ),
                   ),
               ],
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -396,7 +421,6 @@ String teacherDaySummary(List<ScheduleSession> schedule, Map<String, int> pendin
 
 /// The home kit's side inset (its sections, strips and cards sit 20 px in from the page's edges).
 const double _kInset = AppSpace.md + AppSpace.xxs;
-const EdgeInsets _kSides = EdgeInsets.symmetric(horizontal: _kInset);
 
 /// Today's sessions in the order of the day, plus one still running from another day (carried over midnight).
 List<ScheduleSession> teacherTodaySessions(List<ScheduleSession> schedule) =>
@@ -488,13 +512,15 @@ class TeacherHomeHero extends StatelessWidget {
   }
 }
 
-/// The instructor's greeting row (D-1100): "Good morning, Ahmed", the day in one line, then at its end the workspace
-/// pill and Go live — the shared HomeGreetingRow, no forest banner, no avatar ring, no clock chip. On a phone (no
-/// shell top bar) the calendar / chat / bell and help sit in the same row. Plain values: the layout harness draws it.
+/// The instructor's hero head (redesign T1, Tea1Home): on phones the icon row (calendar, chat, bell, help, the
+/// account and the meeting links), the headline, the day in one line, then Go live as the red call to action. It
+/// draws on the hero band ([T1HomeHero]) in the on-hero colours. [title] replaces "Good morning, Ahmed" (a room
+/// running, a calm day, a first visit). Plain values: the layout harness draws it.
 class TeacherGreeting extends StatelessWidget {
   const TeacherGreeting({
     super.key,
     required this.name,
+    this.title,
     this.subtitle,
     this.leading,
     this.actions = const [],
@@ -505,6 +531,7 @@ class TeacherGreeting extends StatelessWidget {
   });
 
   final String name;
+  final String? title;
   final String? subtitle;
 
   /// The account chip: drawn on phones only (the shell's top bar carries it on wide screens).
@@ -515,37 +542,98 @@ class TeacherGreeting extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final phone = !HomeHeader.shellTopBar(context);
+    final wide = MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
     return ListenableBuilder(
       // the greeting follows the effective timezone; the offline chip (D-1351, QA_PHASE7 W-7) joins the row only
       // while it has something to say: a hidden one would leave a gap
       listenable: Listenable.merge([AppTime.version, SyncStatus.instance]),
-      builder: (context, _) => HomeGreetingRow(
-        name: name,
-        subline: subtitle,
-        trailing: [
+      builder: (context, _) {
+        final buttons = [
           ?switcher,
           if (phone && !SyncStatus.instance.value.quiet) const SyncStatusChip(),
           ...actions,
           if (phone) ...[...shellActions, if (helpPageId != null) HelpInfoButton(pageId: helpPageId!), ?leading],
-          ?goLive,
-        ],
-      ),
+        ];
+        final head = title ?? HomeHeader.greetingLine(name);
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+          if (buttons.isNotEmpty)
+            ChromeBar(
+              child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, alignment: WrapAlignment.end, children: buttons),
+            ),
+          if (buttons.isNotEmpty) const SizedBox(height: AppSpace.sm),
+          Semantics(
+            header: true,
+            child: Text(head, maxLines: 3, overflow: TextOverflow.ellipsis, style: (wide ? AppType.display(context) : AppType.headline(context)).copyWith(color: c.onHero)),
+          ),
+          if (subtitle != null && subtitle!.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.xs),
+            Text(subtitle!, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: c.onHeroMuted)),
+          ],
+          if (goLive != null) ...[
+            const SizedBox(height: AppSpace.md),
+            wide ? Align(alignment: AlignmentDirectional.centerStart, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 360), child: goLive!)) : goLive!,
+          ],
+        ]);
+      },
     );
   }
 }
 
+/// The hero's headline and line by the day's state (Tea1Home: a room running · a calm day · a first visit; else the
+/// greeting and the day summary as before). [live] / [first] / [calm] say which one drew it.
+class TeacherHeroLine {
+  const TeacherHeroLine({required this.title, this.subtitle, this.live = false, this.first = false, this.calm = false});
+  final String title;
+  final String? subtitle;
+  final bool live, first, calm;
+}
 
-
-
-/// Centered, at most the desktop home's width — phones use the full width.
-class _Width extends StatelessWidget {
-  const _Width({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) =>
-      Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: AppWidth.wide.max), child: child));
+TeacherHeroLine teacherHeroLine({
+  required String name,
+  required List<ScheduleSession> schedule,
+  required List<TeacherCourse> courses,
+  required Map<String, int> pending,
+  int liveMeetings = 0,
+  bool payoutWaiting = false,
+  int? todoCount,
+  bool inboxWaiting = false,
+  bool loaded = true,
+  int orgTodo = 0,
+}) {
+  final summary = loaded
+      ? teacherDaySummary(schedule, pending, liveMeetings, payoutWaiting: payoutWaiting, orgTodo: orgTodo, todoCount: todoCount, inboxWaiting: inboxWaiting)
+      : null;
+  if (!loaded) return TeacherHeroLine(title: HomeHeader.greetingLine(name));
+  final today = teacherTodaySessions(schedule);
+  final running = today.where((s) => s.isOngoing || s.isLive).firstOrNull;
+  if (running != null) {
+    final after = today.where((s) => s != running && !(s.isOngoing || s.isLive) && s.startMin >= running.startMin).length;
+    final title = after > 0
+        ? countText(after,
+                ar1: 'حصة {c} شغّالة الحين، وعندك حصة بعدها',
+                ar2: 'حصة {c} شغّالة الحين، وعندك حصتين بعدها',
+                arFew: 'حصة {c} شغّالة الحين، وعندك {n} حصص بعدها',
+                arMany: 'حصة {c} شغّالة الحين، وعندك {n} حصة بعدها',
+                en1: '{c} is live now, and you have one session after it',
+                en: '{c} is live now, and you have {n} sessions after it')
+            .replaceAll('{n}', '$after')
+        : 't1_hm_h_live_last'.tr;
+    return TeacherHeroLine(title: title.replaceAll('{c}', running.courseName), subtitle: summary, live: true);
+  }
+  if (courses.isEmpty) return TeacherHeroLine(title: _firstHeadline(), subtitle: 't1_hm_h_first_sub'.tr, first: true);
+  final waiting = todoCount ?? pending.values.fold<int>(0, (a, b) => a + b);
+  if (today.isEmpty && liveMeetings == 0 && waiting == 0 && !inboxWaiting) {
+    final coming = [...schedule.where((s) => !s.isToday)]..sort((a, b) => teacherSessionUtc(a, a.startTime).compareTo(teacherSessionUtc(b, b.startTime)));
+    final at = coming.isEmpty ? null : teacherSessionUtc(coming.first, coming.first.startTime);
+    return TeacherHeroLine(
+      title: 't1_hm_h_calm'.tr,
+      subtitle: at == null ? 't1_hm_h_calm_sub_none'.tr : 't1_hm_h_calm_sub'.tr.replaceAll('{when}', '${AppTime.date(at, pattern: 'EEEE')} ${AppTime.time(at)}'),
+      calm: true,
+    );
+  }
+  return TeacherHeroLine(title: HomeHeader.greetingLine(name), subtitle: summary);
 }
 
 /// The Personal side of the instructor home (no providers inside → layout-tested on its own).
@@ -573,6 +661,9 @@ class TeacherHomeBody extends StatelessWidget {
     this.onRetry,
     this.onOpenEarnings,
     this.onOpenInbox,
+    this.onOpenTransfers,
+    this.onOpenMeetings,
+    this.onSetupProfile,
     this.onOpenApplication,
     this.showFeeds = true,
     this.liveNow = const [],
@@ -623,6 +714,12 @@ class TeacherHomeBody extends StatelessWidget {
   final VoidCallback? onOpenEarnings;
   final VoidCallback? onOpenInbox;
 
+  /// The hero's quick-access chips: the bank-transfer requests and the meeting links (null = no chip).
+  final VoidCallback? onOpenTransfers, onOpenMeetings;
+
+  /// First step of a new teacher ("Complete your teacher profile"); null = a plain line.
+  final VoidCallback? onSetupProfile;
+
   /// A case of "Your application" (from [extra]'s `onboarding`) → its applicant page (D-1210).
   final ValueChanged<MeOnboardingItem>? onOpenApplication;
 
@@ -641,19 +738,12 @@ class TeacherHomeBody extends StatelessWidget {
   Widget _build(BuildContext context, bool wide) {
     final c = context.colors;
     if (loading || error != null) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (greeting != null) Padding(padding: const EdgeInsets.fromLTRB(_kInset, AppSpace.sm, _kInset, 0), child: greeting!),
-        if (loading)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(_kInset, AppSpace.md, _kInset, AppSpace.xl),
-            child: AppListSkeleton(items: 5, withAvatar: false, padding: EdgeInsets.zero),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpace.lg),
-            child: AppErrorState(message: error, onRetry: onRetry),
-          ),
-      ]);
+      return T1HomeHero(
+        head: greeting ?? const SizedBox.shrink(),
+        body: loading
+            ? const AppListSkeleton(items: 5, withAvatar: false, padding: EdgeInsets.zero)
+            : Padding(padding: const EdgeInsets.symmetric(vertical: AppSpace.lg), child: AppErrorState(message: error, onRetry: onRetry)),
+      );
     }
 
     // today's sessions, plus one still running from another day (carried over midnight) — it keeps its line
@@ -708,41 +798,23 @@ class TeacherHomeBody extends StatelessWidget {
     final earnings = extra?.earningsMonth;
     // a figure whose tab is switched off stays a plain figure (no tap into a tab the shell dropped)
     final toAnalysis = teacherTabOn(3) ? () => onTab(3) : null;
-    final series = extra?.enrollmentSeries ?? const <double>[];
     final week = teacherWeekSessions(schedule, now: now);
+    final firstTime = courses.isEmpty;
     final figures = <Widget>[
-      AppStatCard(
-        icon: Icons.groups_rounded,
-        value: appCompactNumber(s.totalStudents),
-        label: 'home_students'.tr,
-        tone: AppBlockTone.peach,
-        bars: series.length >= 2 ? series : null,
-        barsCaption: series.length >= 2 ? 'home_t_enrollments_trend'.tr : null,
+      T1Figure(value: firstTime && s.totalStudents == 0 ? '•' : appCompactNumber(s.totalStudents), label: 'home_students'.tr, onTap: toAnalysis),
+      T1Figure(value: s.overallRating > 0 ? s.overallRating.toStringAsFixed(1) : '–', label: 'home_rating'.tr, onTap: toAnalysis),
+      T1Figure(
+        value: earnings != null ? appCompactNumber(earnings) : (firstTime ? '•' : '$published'),
+        label: earnings != null ? 't1_hm_earnings_month'.tr : 'home_t_published'.tr,
         onTap: toAnalysis,
       ),
-      AppStatCard(
-        icon: Icons.star_rounded,
-        value: s.overallRating > 0 ? s.overallRating.toStringAsFixed(1) : '–',
-        label: 'home_rating'.tr,
-        tone: AppBlockTone.gold,
-        onTap: toAnalysis,
-      ),
-      if (earnings != null)
-        AppStatCard(icon: Icons.payments_outlined, value: appCompactNumber(earnings), label: 'home_t_earnings_month'.tr, tone: AppBlockTone.emerald, onTap: toAnalysis)
-      else
-        AppStatCard(icon: Icons.public_rounded, value: '$published', label: 'home_t_published'.tr, tone: AppBlockTone.emerald, onTap: toAnalysis),
-      AppStatCard(
-        icon: Icons.date_range_rounded,
-        value: '$week',
-        label: 'home_week_sessions'.tr,
-        tone: AppBlockTone.sky,
-        onTap: teacherTabOn(2) ? () => onTab(2) : null,
-      ),
+      T1Figure(value: firstTime ? '•' : '$week', label: 't1_hm_upcoming'.tr, onTap: teacherTabOn(2) ? () => onTab(2) : null),
     ];
 
     // ── the queue: the automatic to-do list (D-303), else the "needs you" counts, else "You're all caught up" with
     //    the next session — ALWAYS the one highlighted card
     final hasTodo = todoList != null && todoList.items.isNotEmpty;
+    final needsNoPayout = needs - (hasPayout ? 1 : 0);
     final high = hasTodo ? todoList.highCount : 0;
     final queue = HomeQueueCard(
       title: 'home_tasks'.tr,
@@ -751,8 +823,12 @@ class TeacherHomeBody extends StatelessWidget {
       subtitle: high > 0 ? 'todo_urgent_n'.tr.replaceAll('{n}', '$high') : null,
       actionLabel: hasTodo ? 'todo_see_all'.tr : null,
       onAction: onSeeAllTodo,
-      empty: !hasTodo && needs == 0,
-      emptyState: HomeCaughtUp(message: nextLine),
+      empty: !hasTodo && needsNoPayout == 0,
+      emptyState: T1CaughtUp(
+        message: nextLine == null ? null : 't1_hm_calm_done_sub'.tr.replaceAll('{next}', nextLine),
+        checked: ['t1_hm_checked_attendance'.tr, 't1_hm_checked_grading'.tr, 't1_hm_checked_requests'.tr],
+        payout: hasPayout ? 't1_hm_payout_due'.tr.replaceAll('{n}', appCompactNumber(payout)) : null,
+      ),
       child: hasTodo
           ? ParentComponent(
               featureKey: 'teacher_home.todo',
@@ -788,7 +864,7 @@ class TeacherHomeBody extends StatelessWidget {
         title: 'home_today_sessions'.tr,
         icon: Icons.today_rounded,
         count: items.length,
-        bare: items.isNotEmpty, // the agenda is a card of its own
+        bare: items.isNotEmpty && !wide, // wide: the card rides over the hero, so it keeps its own surface
         actionLabel: teacherTabOn(2) ? 'home_schedule_link'.tr : null,
         onAction: () => onTab(2),
         child: items.isEmpty
@@ -855,29 +931,68 @@ class TeacherHomeBody extends StatelessWidget {
           );
     // live now: the meetings I'm invited to that are live (my own running sessions sit in Today, with "Enter room")
     final apps = extra?.onboarding ?? const <MeOnboardingItem>[];
-    final live = liveNow.isEmpty ? null : HomeLiveNow(rooms: liveNow, now: now, padding: EdgeInsets.zero);
+    final needsAction = apps.isNotEmpty && homeApplicationNeedsAction(apps);
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      HomeA2Layout(
-        greeting: greeting ?? const SizedBox.shrink(),
-        stats: figures,
-        banners: [?stale, ?live, if (apps.isNotEmpty && homeApplicationNeedsAction(apps)) HomeApplicationCard(items: apps, onOpen: onOpenApplication)],
-        queue: HomeEntrance(index: 1, child: queue),
-        side: [
-          HomeEntrance(index: 2, child: todayCard),
-          if (inboxShown) InboxEntry(counts: inboxCounts, unread: unread, onTap: onOpenInbox, padding: EdgeInsets.zero),
-          if (extra == null && showFeeds) const InboxEntryCard(padding: EdgeInsets.zero),
-        ],
-        below: [coursesCard, if (apps.isNotEmpty && !homeApplicationNeedsAction(apps)) HomeApplicationCard(items: apps, onOpen: onOpenApplication)],
-      ),
-      if (showFeeds) ...[
-        const HomeAdsSlider(padding: EdgeInsets.fromLTRB(_kInset, 0, _kInset, AppSpace.sm)),
-        const ParentComponent(
-          child: Padding(key: ValueKey('teacher_home_org'), padding: _kSides, child: HomeOrgMix()),
-        ),
+    // the hero's chips: the transfers, my two busiest courses, the meeting links
+    String courseName(TeacherCourse x) {
+      final ar = x.titleAr ?? '', en = x.titleEn ?? '';
+      return AppConfig.lang == 'ar' ? (ar.isEmpty ? en : ar) : (en.isEmpty ? ar : en);
+    }
+
+    final chips = <Widget>[
+      if (onOpenTransfers != null) T1Chip(icon: Icons.receipt_long_outlined, label: 'transfer_requests_title'.tr, tone: c.warning, onTap: onOpenTransfers),
+      for (final x in focus.take(2)) T1Chip(icon: Icons.menu_book_outlined, label: courseName(x), tone: c.primary, onTap: () => onOpenCourse(x)),
+      if (onOpenMeetings != null) T1Chip(icon: Icons.videocam_outlined, label: t('روابط الاجتماعات', 'Meeting links'), tone: c.accent2, onTap: onOpenMeetings),
+    ];
+
+    // a first visit: the tasks card is the three first steps (the course form from step two on)
+    final Widget queueCard = firstTime && !hasTodo && needsNoPayout == 0
+        ? HomeQueueCard(
+            title: 'home_tasks'.tr,
+            icon: Icons.checklist_rounded,
+            child: T1FirstSteps(steps: [
+              T1Step(title: 't1_hm_step1'.tr, body: 't1_hm_step1_sub'.tr, onTap: onSetupProfile),
+              T1Step(title: 't1_hm_step2'.tr, body: 't1_hm_step2_sub'.tr, onTap: onNewCourse),
+              T1Step(title: 't1_hm_step3'.tr, body: 't1_hm_step3_sub'.tr, onTap: onNewCourse),
+            ]),
+          )
+        : queue;
+
+    final work = T2Columns(
+      from: 900,
+      start: [HomeEntrance(index: 1, child: queueCard)],
+      end: [
+        if (!firstTime) HomeEntrance(index: 2, child: todayCard),
+        if (inboxShown) InboxEntry(counts: inboxCounts, unread: unread, onTap: onOpenInbox, padding: EdgeInsets.zero),
+        if (extra == null && showFeeds) const InboxEntryCard(padding: EdgeInsets.zero),
       ],
-      const SizedBox(height: AppSpace.lg),
-    ]);
+    );
+
+    return T1HomeHero(
+      head: greeting ?? const SizedBox.shrink(),
+      stats: figures,
+      chips: chips,
+      body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (stale != null) ...[stale, const SizedBox(height: AppSpace.md)],
+        for (final r in liveNow) ...[
+          T1LiveCard(room: r, onJoin: () => joinHomeLiveRoom(context, r)),
+          const SizedBox(height: AppSpace.md),
+        ],
+        if (needsAction) ...[HomeApplicationCard(items: apps, onOpen: onOpenApplication), const SizedBox(height: AppSpace.md)],
+        work,
+        const SizedBox(height: AppSpace.md),
+        coursesCard,
+        if (apps.isNotEmpty && !needsAction) ...[const SizedBox(height: AppSpace.md), HomeApplicationCard(items: apps, onOpen: onOpenApplication)],
+        if (showFeeds) ...[
+          const SizedBox(height: AppSpace.md),
+          const HomeAdsSlider(padding: EdgeInsets.zero),
+          const ParentComponent(
+            child: Padding(key: ValueKey('teacher_home_org'), padding: EdgeInsets.only(top: AppSpace.sm), child: HomeOrgMix()),
+          ),
+        ],
+        const SizedBox(height: AppSpace.lg),
+      ]),
+    );
   }
 }
 
@@ -971,3 +1086,9 @@ const _kTeacherTabs = ['home', 'my_courses', 'my_schedule', 'analysis', 'my_prof
 /// Whether the shell shows the tab at full-order index [i]: it drops `teacher_tab_<label>` (feature kill switch).
 bool teacherTabOn(int i) =>
     i >= 0 && i < _kTeacherTabs.length && !AppConfig.disableList.contains('teacher_tab_${_kTeacherTabs[i]}');
+
+/// The first-visit headline names the app from the admin-set identity (never a hard-coded brand).
+String _firstHeadline() {
+  final app = AppIdentity.instance.name;
+  return app.isEmpty ? 't1_hm_h_first_plain'.tr : 't1_hm_h_first'.tr.replaceAll('{app}', app);
+}

@@ -260,6 +260,8 @@ class CourseSpace extends StatelessWidget {
     required this.activeTab,
     required this.onTab,
     this.heroBackground,
+    this.heroOverride,
+    this.pillTabs = false,
     this.topActions = const [],
     this.onBack,
     this.onRefresh,
@@ -277,6 +279,12 @@ class CourseSpace extends StatelessWidget {
 
   /// Replaces the cover image (the intro reel). Null → the cover image over the brand gradient.
   final Widget? heroBackground;
+
+  /// The teacher's header (CourseTeacherHero, T1): replaces the whole masthead, bar included; [hero] is then not drawn.
+  final Widget? heroOverride;
+
+  /// The tab bar as a floating pill row (the teacher's page, T1) instead of underline tabs.
+  final bool pillTabs;
   final List<CourseSpaceTopAction> topActions;
   final VoidCallback? onBack;
   final Future<void> Function()? onRefresh;
@@ -335,6 +343,7 @@ class CourseSpace extends StatelessWidget {
           pinned: true,
           delegate: _TabBarDelegate(
             tabs: tabs,
+            pill: pillTabs,
             active: active?.id ?? '',
             onTab: onTab,
             extent: CourseSpaceTabBar.heightFor(context, width: width, tabs: tabs),
@@ -361,7 +370,7 @@ class CourseSpace extends StatelessWidget {
     ];
   }
 
-  Widget _heroWidget({required bool rounded}) => CourseSpaceHero(
+  Widget _heroWidget({required bool rounded}) => heroOverride ?? CourseSpaceHero(
     data: hero,
     background: heroBackground,
     topActions: topActions,
@@ -374,8 +383,8 @@ class CourseSpace extends StatelessWidget {
   );
 
   /// Desktop: the floating bar (Back + the page's actions, D-648) pinned over the page, then [body].
-  Widget _withBar(Widget body) => onBack == null && topActions.isEmpty
-      ? Padding(padding: const EdgeInsets.only(top: AppSpace.md), child: body)
+  Widget _withBar(Widget body) => heroOverride != null || (onBack == null && topActions.isEmpty)
+      ? (heroOverride != null ? body : Padding(padding: const EdgeInsets.only(top: AppSpace.md), child: body))
       : Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -480,6 +489,7 @@ class CourseSpace extends StatelessWidget {
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   _TabBarDelegate({
     required this.tabs,
+    this.pill = false,
     required this.active,
     required this.onTab,
     required this.extent,
@@ -487,6 +497,7 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   });
 
   final List<CourseSpaceTab> tabs;
+  final bool pill;
   final String active;
   final ValueChanged<String> onTab;
   final double extent;
@@ -507,13 +518,13 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
       // pinned over the list it floats: the faint level-1 lift, none at rest
       decoration: BoxDecoration(color: background, boxShadow: lifted ? AppShadow.card(context) : null),
       // fills the whole extent: a pinned header whose child is shorter fails its geometry check
-      child: SizedBox(height: extent, child: Center(child: CourseSpaceTabBar(tabs: tabs, active: active, onTab: onTab))),
+      child: SizedBox(height: extent, child: Center(child: CourseSpaceTabBar(tabs: tabs, active: active, onTab: onTab, pill: pill))),
     );
   }
 
   @override
   bool shouldRebuild(_TabBarDelegate old) =>
-      old.active != active || old.tabs != tabs || old.extent != extent || old.background != background;
+      old.active != active || old.pill != pill || old.tabs != tabs || old.extent != extent || old.background != background;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

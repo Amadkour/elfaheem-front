@@ -481,6 +481,12 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
                     _ErrorBanner(message: _submitError!),
                   ],
 
+                  const SizedBox(height: AppSpace.sm),
+                  Row(children: [
+                    Icon(Icons.info_outline_rounded, size: AppIconSize.md, color: context.colors.textMedium),
+                    const SizedBox(width: AppSpace.xs),
+                    Expanded(child: Text('t1_cp_mat_bg'.tr, style: AppType.meta(context))),
+                  ]),
                   const SizedBox(height: AppSpace.lg),
 
                   _SubmitButton(
@@ -514,21 +520,14 @@ class _Header extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: AppSpace.xxl - AppSpace.xxs,
-          height: AppSpace.xxl - AppSpace.xxs,
-          decoration: BoxDecoration(color: c.blockEmerald, borderRadius: AppRadius.controlAll),
-          child: Icon(Icons.upload_file_rounded, color: c.blockAccentInk(c.primary, c.blockEmerald), size: AppIconSize.md),
-        ),
-        const SizedBox(width: AppSpace.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Semantics(header: true, child: Text('add_material_title'.tr, style: AppType.pageTitle(context))),
+              Semantics(header: true, child: Text('t1_cp_mat_title'.tr, style: AppType.pageTitle(context))),
               const SizedBox(height: 2),
               Text(
-                'add_material_subtitle'.tr,
+                't1_cp_mat_sub'.tr,
                 style: AppType.meta(context),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -914,14 +913,24 @@ class _SubmitButton extends StatelessWidget {
     return AnimatedOpacity(
       opacity: enabled || saving ? 1 : 0.5,
       duration: AppMotion.of(context).fast,
-      child: AppButton.primary(
-        label: 'add_material_btn'.tr,
-        icon: Icons.add_rounded,
-        size: AppButtonSize.lg,
-        expand: true,
-        busy: saving,
-        onPressed: saving ? null : onPressed,
-      ),
+      child: Row(children: [
+        AppButton.secondary(
+          label: 't1_cp_cancel'.tr,
+          size: AppButtonSize.lg,
+          onPressed: saving ? null : () => Navigator.pop(context),
+        ),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(
+          child: AppButton.primary(
+            label: 't1_cp_mat_add'.tr,
+            icon: Icons.upload_rounded,
+            size: AppButtonSize.lg,
+            expand: true,
+            busy: saving,
+            onPressed: saving ? null : onPressed,
+          ),
+        ),
+      ]),
     );
   }
 }

@@ -374,20 +374,41 @@ class CourseNextCard extends StatelessWidget {
   }
 }
 
-/// "Prepare your course · 2 of 5" — a thin bar while setup is unfinished (staff only); tap = the next step.
+/// "Prepare your course, 2 of 5" (Tea1Course draft, T1): a card with the progress bar and one row per step — a done
+/// step ticked and struck through, an open one with its own action; staff only, until every step is done. A tap on a
+/// row (or its button) is the step ([onStep] with its key). [badge] is the course's state chip ("Draft").
 class CourseSetupBar extends StatelessWidget {
-  const CourseSetupBar({super.key, required this.steps, this.onStep});
+  const CourseSetupBar({super.key, required this.steps, this.onStep, this.badge});
 
   final List<CourseSetupStep> steps;
   final ValueChanged<String>? onStep;
+  final String? badge;
 
   static String stepLabel(String key) => switch (key) {
     'cover' => _t('صورة الغلاف', 'Cover image'),
-    'description' => _t('وصف الكورس', 'Description'),
+    'description' => _t('وصف الدورة', 'Description'),
     'schedule' => _t('الجدول الأسبوعي', 'Weekly schedule'),
-    'rules' => _t('قواعد الكورس', 'Course rules'),
+    'rules' => _t('قواعد الدورة', 'Course rules'),
     'first_exam' => _t('أول امتحان', 'First exam'),
     _ => key,
+  };
+
+  static String stepAction(String key) => switch (key) {
+    'cover' => _t('أضف الصورة', 'Add a picture'),
+    'description' => _t('أضف الوصف', 'Add a description'),
+    'schedule' => _t('أضف المواعيد', 'Add the times'),
+    'rules' => _t('أضف القواعد', 'Add rules'),
+    'first_exam' => _t('أنشئ امتحانًا', 'Create an exam'),
+    _ => key,
+  };
+
+  static IconData stepIcon(String key) => switch (key) {
+    'cover' => Icons.image_outlined,
+    'description' => Icons.notes_rounded,
+    'schedule' => Icons.calendar_month_outlined,
+    'rules' => Icons.gavel_rounded,
+    'first_exam' => Icons.quiz_outlined,
+    _ => Icons.check_circle_outline_rounded,
   };
 
   @override
@@ -395,34 +416,120 @@ class CourseSetupBar extends StatelessWidget {
     final c = context.colors;
     final done = steps.where((s) => s.done).length;
     if (steps.isEmpty || done >= steps.length) return const SizedBox.shrink();
-    final next = steps.firstWhere((s) => !s.done);
     return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
-      onTap: onStep == null ? null : () => onStep!(next.key),
-      child: Row(
+      padding: const EdgeInsets.all(AppSpace.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(Icons.rocket_launch_rounded, size: AppIconSize.md, color: c.accent2),
-          const SizedBox(width: AppSpace.xs),
-          Flexible(
-            child: Text(
-              _t('جهّز كورسك · $done من ${steps.length}', 'Prepare your course · $done of ${steps.length}'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppType.label(context),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _t('جهّز دورتك، $done من ${steps.length}', 'Get your course ready, $done of ${steps.length}'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.section(context),
+                ),
+              ),
+              if (badge != null && badge!.isNotEmpty) ...[
+                const SizedBox(width: AppSpace.sm),
+                AppStatusBadge(label: badge!, tone: AppTone.warning),
+              ],
+            ],
           ),
-          const SizedBox(width: AppSpace.sm),
-          Expanded(child: CourseMeter(value: done / steps.length)),
-          const SizedBox(width: AppSpace.sm),
-          Flexible(
-            child: Text(
-              _t('التالي: ${stepLabel(next.key)}', 'Next: ${stepLabel(next.key)}'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppType.meta(context).copyWith(color: c.primary, fontWeight: FontWeight.w600),
+          const SizedBox(height: AppSpace.sm),
+          CourseMeter(value: done / steps.length),
+          const SizedBox(height: AppSpace.sm),
+          for (final st in steps) ...[
+            _SetupRow(
+              step: st,
+              onTap: onStep == null ? null : () => onStep!(st.key),
+              ok: c.success,
             ),
-          ),
+            const SizedBox(height: AppSpace.xs),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// The row width from which a step's action sits beside its label.
+const double _kSetupInlineAction = 300;
+
+class _SetupRow extends StatelessWidget {
+  const _SetupRow({required this.step, required this.ok, this.onTap});
+
+  final CourseSetupStep step;
+  final Color ok;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final done = step.done;
+    final label = Text(
+      CourseSetupBar.stepLabel(step.key),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: AppType.row(context).copyWith(
+        color: done ? c.textMedium : c.textDark,
+        decoration: done ? TextDecoration.lineThrough : null,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+    return Semantics(
+      button: !done && onTap != null,
+      child: Material(
+        color: done ? appTintOn(context, ok, surface: c.cardBg) : c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          onTap: done ? null : onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: AppTouch.primary),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: done ? ok.withValues(alpha: 0.35) : c.divider, width: AppBorder.hairline),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: AppDashSize.glyph - AppSpace.xs,
+                  height: AppDashSize.glyph - AppSpace.xs,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: done ? ok.withValues(alpha: 0.18) : c.primaryTint,
+                  ),
+                  child: Icon(
+                    done ? Icons.check_rounded : CourseSetupBar.stepIcon(step.key),
+                    size: AppIconSize.md,
+                    color: done ? appInk(context, ok) : appInk(context, c.primary),
+                  ),
+                ),
+                const SizedBox(width: AppSpace.sm),
+                // the action sits under the label while the row is narrow (a long action word, a large text size)
+                Expanded(
+                  child: LayoutBuilder(builder: (context, box) {
+                    final action = done || onTap == null
+                        ? null
+                        : AppButton.primary(label: CourseSetupBar.stepAction(step.key), size: AppButtonSize.sm, onPressed: onTap);
+                    if (action == null) return label;
+                    if (box.maxWidth < _kSetupInlineAction) {
+                      return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        label,
+                        const SizedBox(height: AppSpace.xs),
+                        action,
+                      ]);
+                    }
+                    return Row(children: [Expanded(child: label), const SizedBox(width: AppSpace.sm), action]);
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

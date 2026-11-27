@@ -34,6 +34,7 @@ import 'package:flutter_education_app/features/calendar/calendar_api.dart' show 
 import 'package:flutter_education_app/features/calendar/calendar_meeting.dart' show openMeetingRoom, startQuickMeeting;
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_hub.dart' show CoursePageLoader;
 import 'package:flutter_education_app/features/live/meeting_links.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2HeroPage;
 import 'package:flutter_education_app/features/live/meeting_links_parts.dart';
 
 /// The kill switch of the page and of every entry to it.
@@ -66,6 +67,10 @@ class MeetingLinksIcon extends StatelessWidget {
     );
   }
 }
+
+/// The rooms as a ListView on a plain page, as a Column inside a card that already scrolls (the teacher's page).
+Widget _wrap(bool inset, EdgeInsets pad, List<Widget> children) =>
+    inset ? ListView(padding: pad, children: children) : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
 
 class MeetingLinksPage extends StatefulWidget {
   const MeetingLinksPage({super.key, this.api = const MeetingLinksApi()});
@@ -178,7 +183,9 @@ class _MeetingLinksPageState extends State<MeetingLinksPage> {
   Widget build(BuildContext context) {
     final d = _data;
     // a student's links page is the schedule area (redesign S-C, Stu2Schedule?screen=links)
-    final student = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role == 'student';
+    final role = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role;
+    final student = role == 'student';
+    if (role == 'teacher') return _teacherPage(context, d);
     final page = AdminPage(
       title: t('روابط الاجتماعات', 'Meeting links'),
       subtitle: t('كل روابط حصصك واجتماعاتك في مكان واحد: انضم، انسخ، شارك.',
@@ -209,10 +216,52 @@ class _MeetingLinksPageState extends State<MeetingLinksPage> {
     return student ? AppAreaScope(area: AppArea.sched, child: page) : page;
   }
 
-  Widget _list(BuildContext context, MeetingLinksData d) {
-    final pad = AdminPage.bodyPadding(context);
+  /// A teacher's page (redesign T1, Tea1Home?screen=meetings): the teacher hero with "Meet now" as its call to
+  /// action, the search, the filters and the rooms in one paper card riding up over it.
+  Widget _teacherPage(BuildContext context, MeetingLinksData? d) {
+    final meetOn = !AppConfig.disableList.contains('live.quick_meeting');
+    final Widget body;
+    if (d == null) {
+      body = _error == null
+          ? const AppListSkeleton(items: 4, padding: EdgeInsets.zero)
+          : AppEmpty(icon: Icons.cloud_off_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load);
+    } else {
+      body = _list(context, d, inset: false);
+    }
+    return T2HeroPage(
+      title: t('روابط الاجتماعات', 'Meeting links'),
+      onRefresh: _load,
+      width: AppWidth.content,
+      hero: AppHero(
+        title: t('روابط الاجتماعات', 'Meeting links'),
+        subtitle: 't1_hm_links_sub'.tr,
+        actions: [
+          if (meetOn)
+            AppButton.hot(key: const ValueKey('links.meet_now'), label: 't1_hm_meet_now'.tr, icon: Icons.video_call_rounded, onPressed: _meetNow),
+        ],
+      ),
+      children: [
+        AppCard(
+          padding: const EdgeInsets.all(AppSpace.md),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (d != null && d.items.isNotEmpty) ...[
+              AppSearchField(
+                hint: 't1_hm_links_search'.tr,
+                onChanged: (v) => setState(() => _query = v),
+              ),
+              const SizedBox(height: AppSpace.sm),
+            ],
+            body,
+          ]),
+        ),
+      ],
+    );
+  }
+
+  Widget _list(BuildContext context, MeetingLinksData d, {bool inset = true}) {
+    final pad = inset ? AdminPage.bodyPadding(context) : EdgeInsets.zero;
     if (d.items.isEmpty) {
-      return ListView(padding: pad, children: [
+      return _wrap(inset, pad, [
         const SizedBox(height: AppSpace.xl),
         AppEmpty(
           icon: Icons.link_rounded,
@@ -259,7 +308,8 @@ class _MeetingLinksPageState extends State<MeetingLinksPage> {
       // the page's one entrance: the first cards rise in reading order, once per visit (AppReveal caps at 8)
       var shownAt = 0;
       Widget revealed(Widget w) => AppReveal(index: shownAt++, group: 'links', child: w);
-      return ListView(padding: pad, children: [
+      return _wrap(inset, pad, [
+        if (inset) ...[
         MeetingLinksSummary(
           live: counts[MeetingLinksFilter.live] ?? 0,
           upcoming: counts[MeetingLinksFilter.upcoming] ?? 0,
@@ -267,6 +317,7 @@ class _MeetingLinksPageState extends State<MeetingLinksPage> {
           onFilter: (f) => setState(() => _filter = f),
         ),
         const SizedBox(height: AppSpace.md),
+        ],
         MeetingLinksFilterBar(value: _filter, counts: counts, onChanged: (f) => setState(() => _filter = f)),
         const SizedBox(height: AppSpace.md),
         if (shown.isEmpty)

@@ -31,6 +31,7 @@ import 'package:flutter_education_app/features/courses/course_profile/course_pro
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_announcements.dart' show CpAnnouncementCard;
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_models.dart';
 import 'package:flutter_education_app/features/courses/course_profile/course_profile_screen.dart' show cpCall, cpErrorMessage;
+import 'package:flutter_education_app/features/courses/course_profile/t1_class_parts.dart';
 
 const _base = '/api/v1/course-profile';
 String _pct(dynamic v) => v is num ? '${v.round()}%' : '—';
@@ -1076,56 +1077,97 @@ class CpTeamTab extends StatelessWidget {
     final p = profile;
     final c = context.colors;
     final ins = p.instructor;
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (ins != null)
-        AppCard(
-          child: Row(children: [
-            AppAvatar(name: '${ins['name'] ?? ''}', url: ins['image_url']?.toString(), size: 44),
-            const SizedBox(width: AppSpace.sm),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${ins['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w800, c: c.textDark)),
-                Text(t('أستاذ المقرر — كل الصلاحيات', 'Instructor — full access'), style: appText(12, c: c.textLight)),
-              ]),
-            ),
-          ]),
-        ),
-      const SizedBox(height: AppSpace.sm),
-      AppSectionTitle(t('المعيدون', 'Teaching assistants'),
-          subtitle: t('السكاشن والمعامل افتراضياً — امنح صلاحيات المحاضرات عند الحاجة',
-              'Sections & labs by default — grant lecture rights when needed')),
-      const SizedBox(height: AppSpace.xs),
-      if (p.assistants.isEmpty)
-        AppEmpty(icon: Icons.person_add_alt_rounded, title: t('لا معيدين لهذا المقرر', 'No assistants for this course')),
-      for (final a in p.assistants)
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppSpace.sm),
-          child: AppCard(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(children: [
-                AppAvatar(name: '${_map(a['user'])['name'] ?? ''}', url: _map(a['user'])['image_url']?.toString(), size: 38),
-                const SizedBox(width: AppSpace.sm),
-                Expanded(
-                  child: Text('${_map(a['user'])['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
-                ),
-              ]),
-              AppSwitchTile(
-                title: t('تعديل محتوى المحاضرات', 'Edit lecture content'),
-                subtitle: t('رفع وتعديل وترتيب مواد المحاضرات، والإعلان لكل الطلاب',
-                    'Upload, edit and reorder lecture material, and announce to all students'),
-                value: a['lecture_edit'] == true,
-                onChanged: p.caps.manageStaff ? (v) => _grant(a, edit: v) : null,
+    final team = AppCard(
+      title: t('فريق الدورة', 'Course team'),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (ins != null)
+          Container(
+            padding: const EdgeInsets.all(AppSpace.sm),
+            decoration: BoxDecoration(
+                color: c.cardBg,
+                borderRadius: AppRadius.cardAll,
+                border: Border.all(color: c.divider, width: AppBorder.hairline)),
+            child: Row(children: [
+              AppAvatar(name: '${ins['name'] ?? ''}', url: ins['image_url']?.toString(), size: AppTouch.primary),
+              AppSpace.gapSm,
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${ins['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+                  Text(t('أستاذ الدورة، كل الصلاحيات', 'Course instructor, full access'),
+                      maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                ]),
               ),
-              AppSwitchTile(
-                title: t('تسجيل حضور المحاضرات (بديل)', 'Take lecture attendance (substitute)'),
-                value: a['lecture_attendance'] == true,
-                onChanged: p.caps.manageStaff ? (v) => _grant(a, att: v) : null,
-              ),
+              AppSpace.gapXs,
+              AppTag(t('مالك', 'Owner'), c.primary, icon: Icons.vpn_key_outlined),
             ]),
           ),
-        ),
-    ]);
+        AppSpace.gapMd,
+        Text('${t('المعيدين', 'Assistants')} (${p.assistants.length})', style: AppType.label(context)),
+        Text(t('السكاشن والمعامل افتراضيًا. امنح صلاحيات المحاضرات عند الحاجة.', 'Sections and labs by default. Grant lecture rights when needed.'),
+            style: AppType.meta(context)),
+        AppSpace.gapXs,
+        if (p.assistants.isEmpty)
+          AppEmpty(icon: Icons.person_add_alt_rounded, title: t('لا معيدين لهذه الدورة', 'No assistants for this course')),
+        for (final (i, a) in p.assistants.indexed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.xs),
+            child: AppExpandCard(
+              expanded: i == 0,
+              header: Row(children: [
+                AppAvatar(name: '${_map(a['user'])['name'] ?? ''}', url: _map(a['user'])['image_url']?.toString(), size: AppTouch.min),
+                AppSpace.gapSm,
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('${_map(a['user'])['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+                    Text(
+                        a['lecture_edit'] == true || a['lecture_attendance'] == true
+                            ? t('معيد، السكاشن والمعامل ومحاضرات بصلاحية', 'Assistant, sections, labs and some lectures')
+                            : t('معيد، السكاشن والمعامل', 'Assistant, sections and labs'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppType.meta(context)),
+                  ]),
+                ),
+              ]),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpace.sm, 0, AppSpace.sm, AppSpace.sm),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  AppSwitchTile(
+                    title: t('تعديل محتوى المحاضرات', 'Edit lecture content'),
+                    subtitle: t('رفع وتعديل وترتيب مواد المحاضرات، والإعلان لكل الطلاب',
+                        'Upload, edit and reorder lecture material, and announce to all students'),
+                    value: a['lecture_edit'] == true,
+                    onChanged: p.caps.manageStaff ? (v) => _grant(a, edit: v) : null,
+                  ),
+                  AppSwitchTile(
+                    title: t('تسجيل حضور المحاضرات (بديل)', 'Take lecture attendance (substitute)'),
+                    value: a['lecture_attendance'] == true,
+                    onChanged: p.caps.manageStaff ? (v) => _grant(a, att: v) : null,
+                  ),
+                ]),
+              ),
+            ),
+          ),
+      ]),
+    );
+    final note = ClNote(
+      icon: Icons.info_outline_rounded,
+      title: t('وش يقدر المعيد يسوي؟', 'What can an assistant do?'),
+      text: t('كل صلاحياته تشتغل على سكاشنه بس. الإعلانات توصل لطلاب السكاشن والمعامل اللي يشرف عليها، والتعديلات تنحفظ باسمه في السجل.',
+          'Every right applies to his own sections only. Announcements reach the students of the sections and labs he supervises, and edits are saved under his name in the log.'),
+    );
+    return LayoutBuilder(
+      builder: (context, box) {
+        if (box.maxWidth < 900) {
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [team, AppSpace.gapSm, note]);
+        }
+        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(flex: 3, child: team),
+          AppSpace.gapMd,
+          Expanded(flex: 2, child: note),
+        ]);
+      },
+    );
   }
 }
 
@@ -1188,86 +1230,120 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final out = <Widget>[];
-    if (p.isStudent && p.closed) out.add(_studentView(context));
-    if (p.caps.viewVersions) out.add(CpVersionsCard(profile: p));
+    final studentView = p.isStudent && p.closed ? _studentView(context) : null;
+    final versions = p.caps.viewVersions ? CpVersionsCard(profile: p) : null;
+    Widget? policy;
     if (p.caps.manageArchive) {
       final pol = p.archivePolicy ?? const {};
       final mode = '${pol['mode'] ?? 'request'}';
-      out.add(AppCard(
+      const modes = [
+        ('auto', 'قراءة بس', 'Read only', 'الطلاب يفتحون المحتوى للمراجعة بدون حضور ولا بث', 'Students open the material to review it, with no attendance or live'),
+        ('request', 'بطلب', 'By request', 'الطالب يطلب فتح الأرشيف وأنت توافق', 'A student asks to open the archive and you approve'),
+        ('code', 'بكود', 'With a code', 'يفتح الطالب الأرشيف بكود تعطيه له', 'A student opens the archive with a code you give'),
+      ];
+      policy = AppCard(
+        title: t('بعد ما تقفل الدورة', 'After you close the course'),
+        action: Icon(Icons.lock_outline_rounded, size: AppIconSize.md, color: c.textLight),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          AppSectionTitle(t('الوصول إلى الأرشيف', 'Archive access'),
-              subtitle: t('بعد إغلاق المقرر يفتح الطلاب المحتوى للقراءة فقط', 'After the course closes, students open the material read-only')),
-          if (pol['open_access'] != true)
+          if (pol['open_access'] != true) ...[
+            AppBanner(
+                icon: Icons.admin_panel_settings_rounded,
+                color: c.warning,
+                text: t('الوصول المفتوح غير مفعّل في المؤسسة — كل وصول يحتاج موافقة المسؤول',
+                    'Open archive access is off in the organization — every access needs admin approval')),
+            AppSpace.gapSm,
+          ],
+          for (final m in modes)
             Padding(
-              padding: const EdgeInsets.only(top: AppSpace.xs),
-              child: AppBanner(
-                  icon: Icons.admin_panel_settings_rounded,
-                  color: c.warning,
-                  text: t('الوصول المفتوح غير مفعّل في المؤسسة — كل وصول يحتاج موافقة المسؤول',
-                      'Open archive access is off in the organization — every access needs admin approval')),
+              padding: const EdgeInsets.only(bottom: AppSpace.xs),
+              child: ClOptionCard(
+                title: t(m.$2, m.$3),
+                subtitle: t(m.$4, m.$5),
+                selected: mode == m.$1,
+                onTap: () => _policy(m.$1),
+              ),
             ),
-          const SizedBox(height: AppSpace.sm),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final m in const ['auto', 'request', 'code'])
-              AppChoiceChip(
-                  label: AppConfig.lang == 'ar' ? cpArchiveModeLabel(m).$1 : cpArchiveModeLabel(m).$2,
-                  selected: mode == m,
-                  onTap: () => _policy(m)),
-          ]),
-          if (mode == 'code' && pol['code'] != null) ...[
-            const SizedBox(height: AppSpace.sm),
+          if (mode == 'code' && pol['code'] != null)
             Row(children: [
               Expanded(
                 child: SelectableText('${pol['code']}',
-                    style: appText(22, w: FontWeight.w800, c: c.primary).copyWith(letterSpacing: 4)),
+                    textDirection: TextDirection.ltr, style: AppType.figureLarge(context).copyWith(color: c.primary, letterSpacing: AppSpace.xxs)),
               ),
-              IconButton(
+              AppIconButton(
                   tooltip: t('نسخ', 'Copy'),
-                  icon: const Icon(Icons.copy_rounded),
+                  icon: Icons.copy_rounded,
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: '${pol['code']}'));
-                    appToast(t('تم النسخ', 'Copied'));
+                    showAppNotice(t('تم النسخ', 'Copied'));
                   }),
-              IconButton(tooltip: t('كود جديد', 'New code'), icon: const Icon(Icons.autorenew_rounded),
-                  onPressed: () => _policy('code', newCode: true)),
+              AppIconButton(tooltip: t('كود جديد', 'New code'), icon: Icons.autorenew_rounded, onPressed: () => _policy('code', newCode: true)),
             ]),
-          ],
         ]),
-      ));
+      );
     }
+    Widget? requests;
     if (p.caps.approveArchive) {
-      out.add(AppSectionTitle(t('طلبات فتح الأرشيف', 'Archive requests')));
-      if (_requests == null) {
-        out.add(const SizedBox(height: 160, child: AppListSkeleton(items: 2)));
-      } else if (_requests!.isEmpty) {
-        out.add(AppEmpty(icon: Icons.inbox_rounded, title: t('لا طلبات معلّقة', 'No pending requests')));
-      } else {
-        for (final r in _requests!) {
-          final u = _map(r['student']);
-          out.add(AppCard(
-            child: Row(children: [
-              AppAvatar(name: '${u['name'] ?? ''}', url: u['image_url']?.toString(), size: 36),
-              const SizedBox(width: AppSpace.sm),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${u['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
-                  if ((r['reason'] ?? '').toString().isNotEmpty)
-                    Text('${r['reason']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
-                ]),
-              ),
-              IconButton(tooltip: t('رفض', 'Reject'), icon: Icon(Icons.close_rounded, color: c.danger),
-                  onPressed: () => _decide((r['id'] as num).toInt(), false)),
-              IconButton(tooltip: t('موافقة 30 يوماً', 'Approve 30 days'), icon: Icon(Icons.check_rounded, color: c.success),
-                  onPressed: () => _decide((r['id'] as num).toInt(), true)),
-            ]),
-          ));
-        }
-      }
+      requests = AppCard(
+        title: t('طلبات فتح الأرشيف', 'Archive requests'),
+        action: _requests == null || _requests!.isEmpty ? null : ClCountChip('${_requests!.length}'),
+        child: _requests == null
+            ? const SizedBox(height: 160, child: AppListSkeleton(items: 2))
+            : _requests!.isEmpty
+                ? AppEmpty(icon: Icons.inbox_rounded, title: t('لا طلبات معلّقة', 'No pending requests'))
+                : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    for (final r in _requests!)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                        child: _requestRow(context, r),
+                      ),
+                  ]),
+      );
     }
+    final left = [?policy, ?requests];
+    final right = [?versions];
+    Widget col(List<Widget> w) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var i = 0; i < w.length; i++) ...[if (i > 0) AppSpace.gapSm, w[i]],
+        ]);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      for (final w in out) Padding(padding: const EdgeInsets.only(bottom: AppSpace.sm), child: w),
+      if (studentView != null) ...[studentView, AppSpace.gapSm],
+      LayoutBuilder(builder: (context, box) {
+        if (box.maxWidth < 900 || left.isEmpty || right.isEmpty) return col([...left, ...right]);
+        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: col(left)),
+          AppSpace.gapMd,
+          Expanded(child: col(right)),
+        ]);
+      }),
     ]);
+  }
+
+  /// One student's request: who, why, and Accept / Reject (Approve opens it for 30 days).
+  Widget _requestRow(BuildContext context, Map<String, dynamic> r) {
+    final c = context.colors;
+    final u = _map(r['student']);
+    final id = (r['id'] as num).toInt();
+    final reason = (r['reason'] ?? '').toString();
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(borderRadius: AppRadius.cardAll, border: Border.all(color: c.divider, width: AppBorder.hairline)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          AppAvatar(name: '${u['name'] ?? ''}', url: u['image_url']?.toString(), size: AppTouch.min),
+          AppSpace.gapSm,
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${u['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+              if (reason.isNotEmpty) Text(reason, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ]),
+          ),
+        ]),
+        AppSpace.gapXs,
+        Wrap(alignment: WrapAlignment.end, spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          AppButton.ghost(size: AppButtonSize.sm, label: t('رفض', 'Reject'), onPressed: () => _decide(id, false)),
+          AppButton.primary(size: AppButtonSize.sm, label: t('قبول', 'Accept'), onPressed: () => _decide(id, true)),
+        ]),
+      ]),
+    );
   }
 
   Widget _studentView(BuildContext context) {

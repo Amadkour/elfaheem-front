@@ -80,7 +80,8 @@ class _TeacherSessionsBodyState extends State<TeacherSessionsBody> {
         TeacherSessionsHeader(
           key: const ValueKey('teacher_sessions.header'),
           count: provider.sessionCount,
-          // New session is the page header's (D-943); the empty state below keeps its own first-session button
+          // the reference's list header carries New session beside the count; the empty state keeps its own button
+          onAdd: onAdd,
         ),
         // the course's online meetings (D-1725): Meet now · Repeating meeting, each behind its own kill switch
         // (a hidden one leaves no gap). This body is the teacher's course page only.

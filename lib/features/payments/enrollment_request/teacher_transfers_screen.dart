@@ -10,18 +10,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart' show EntityGuardedChip;
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2HeroPage;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 
@@ -57,54 +56,51 @@ class _TransfersView extends StatelessWidget {
     // Not loaded yet: loader, or error + retry if the first load failed.
     final failedFirstLoad =
         !p.hasLoaded && !p.isLoading && p.errorMessage != null;
+    final currencies = {for (final x in p.items) x.currency};
+    final total = p.items.fold<double>(0, (a, x) => a + x.amount);
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: BasePage(
-        key: const ValueKey('transfer_requests'),
-        useWebCard: true,
-        width: AppWidth.wide,
-        appBar: ScreenAppBar(title: 'transfer_requests_title'.tr),
-        child: !p.hasLoaded && !failedFirstLoad
-            ? const AppListSkeleton()
-            : AppRefresh(
-                onRefresh: p.load,
-                child: failedFirstLoad
-                    ? RequestStateView(
-                        icon: Icons.error_outline_rounded,
-                        color: c.danger,
-                        message: p.errorMessage ?? 'failed_to_load'.tr,
-                        actionLabel: 'retry'.tr,
-                        onAction: p.load,
-                      )
-                    : p.items.isEmpty
-                    ? RequestStateView(
-                        icon: Icons.task_alt_rounded,
-                        message: 'no_pending_requests'.tr,
-                      )
-                    : ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg),
-                        // +1: the hint banner is the first row.
-                        itemCount: p.items.length + 1,
-                        itemBuilder: (_, i) {
-                          if (i == 0) {
-                            return SwipeHintBanner(
-                              key: const ValueKey('transfer_requests.hint'),
-                              count: p.items.length,
-                            );
-                          }
-                          final t = p.items[i - 1];
-                          // The screen's one entrance: the first requests settle in once per visit.
-                          return AppReveal(
-                            key: ValueKey(t.paymentId),
-                            index: i - 1,
-                            group: 'transfers',
-                            child: _TransferCard(transfer: t),
-                          );
-                        },
-                      ),
+      // T1 (Tea1Home?screen=transfers): the teacher hero with the two counts, the requests ride up over it
+      child: T2HeroPage(
+        pageKey: const ValueKey('transfer_requests'),
+        title: 'transfer_requests_title'.tr,
+        onRefresh: p.load,
+        width: AppWidth.content,
+        hero: AppHero(
+          title: 'transfer_requests_title'.tr,
+          subtitle: 't1_hm_transfers_sub'.tr,
+          stats: [
+            if (p.hasLoaded) AppHeroStat(value: '${p.items.length}', label: 't1_hm_tr_waiting'.tr),
+            if (p.hasLoaded && p.items.isNotEmpty && currencies.length == 1)
+              AppHeroStat(value: '${total.toStringAsFixed(total.truncateToDouble() == total ? 0 : 2)} ${currencies.first}', label: 't1_hm_tr_total'.tr),
+          ],
+        ),
+        children: [
+          if (!p.hasLoaded && !failedFirstLoad)
+            const AppListSkeleton(padding: EdgeInsets.zero)
+          else if (failedFirstLoad)
+            RequestStateView(
+              icon: Icons.error_outline_rounded,
+              color: c.danger,
+              message: p.errorMessage ?? 'failed_to_load'.tr,
+              actionLabel: 'retry'.tr,
+              onAction: p.load,
+            )
+          else if (p.items.isEmpty)
+            RequestStateView(icon: Icons.task_alt_rounded, message: 'no_pending_requests'.tr)
+          else ...[
+            SwipeHintBanner(key: const ValueKey('transfer_requests.hint'), count: p.items.length),
+            for (var i = 0; i < p.items.length; i++)
+              // The screen's one entrance: the first requests settle in once per visit.
+              AppReveal(
+                key: ValueKey(p.items[i].paymentId),
+                index: i,
+                group: 'transfers',
+                child: _TransferCard(transfer: p.items[i]),
               ),
+          ],
+        ],
       ),
     );
   }
@@ -138,12 +134,14 @@ class _TransferCard extends StatelessWidget {
   Future<bool> _reject(BuildContext context) async {
     final p = context.read<TeacherTransfersProvider>();
 
-    final reason = await showReasonDialog(
+    final reason = await showAppSheet<String>(
       context,
-      title: 'rejection_reason_title'.tr,
-      hint: 'rejection_reason_hint'.tr,
-      requireReason: true,
-      quickReasons: _quickReasons,
+      (_) => TransferRejectBody(
+        studentName: transfer.studentName,
+        title: 'rejection_reason_title'.tr,
+        hint: 'rejection_reason_hint'.tr,
+        quickReasons: _quickReasons,
+      ),
     );
     if (reason == null || reason.isEmpty) {
       return false; // cancelled → spring back
@@ -231,20 +229,20 @@ class _TransferCard extends StatelessWidget {
                       // whether the record opens (POST /entities/access, one request for the whole list).
                       EntityGuardedChip(
                         EntityRef(EntityKind.student, transfer.studentId, label: transfer.studentName),
-                        maxWidth: 320,
+                        maxWidth: 160,
                       ),
                       EntityGuardedChip(
                         EntityRef(EntityKind.course, transfer.courseId, label: transfer.courseName),
-                        maxWidth: 320,
+                        maxWidth: 160,
                       ),
                     ],
                   ),
                 ),
                 AppSpace.gapXs,
-                _AmountPill(
+                Flexible(child: _AmountPill(
                   amount: transfer.amount,
                   currency: transfer.currency,
-                ),
+                )),
               ],
             ),
             AppSpace.gapMd,
@@ -465,6 +463,84 @@ class _ProofImage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+/// The reject sheet (Tea1Home?screen=reject): who is being turned down, the quick reasons as chips, the reason field
+/// (a reason is always asked for: Reject stays off while it is empty). Pops the reason, or null on Cancel. Plain
+/// values, so the layout harness and the renders draw it as it is.
+class TransferRejectBody extends StatefulWidget {
+  const TransferRejectBody({super.key, required this.title, required this.hint, required this.quickReasons, this.studentName});
+
+  final String title, hint;
+  final List<String> quickReasons;
+  final String? studentName;
+
+  @override
+  State<TransferRejectBody> createState() => _TransferRejectBodyState();
+}
+
+class _TransferRejectBodyState extends State<TransferRejectBody> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final valid = _ctrl.text.trim().isNotEmpty;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.lg),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          Container(
+            width: AppTouch.min,
+            height: AppTouch.min,
+            decoration: BoxDecoration(color: appTintOn(context, c.danger), borderRadius: AppRadius.controlAll),
+            child: Icon(Icons.close_rounded, color: appInkOn(context, c.danger, appTintOn(context, c.danger)), size: AppIconSize.lg),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Semantics(header: true, child: Text(widget.title, style: AppType.headline(context))),
+              if ((widget.studentName ?? '').isNotEmpty)
+                Text(widget.studentName!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: AppSpace.md),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          for (final r in widget.quickReasons)
+            AppChoiceChip(label: r, selected: _ctrl.text == r, onTap: () => setState(() => _ctrl.text = r)),
+        ]),
+        const SizedBox(height: AppSpace.md),
+        TextField(
+          controller: _ctrl,
+          minLines: 3,
+          maxLines: 5,
+          onChanged: (_) => setState(() {}),
+          style: appFieldTextStyle(context),
+          decoration: appFieldDecoration(context, hint: widget.hint),
+        ),
+        const SizedBox(height: AppSpace.md),
+        Row(children: [
+          Expanded(child: AppButton.secondary(label: 'cancel'.tr, onPressed: () => Navigator.pop(context))),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: AppButton.danger(
+              key: const ValueKey('transfer_requests.reject_confirm'),
+              label: 'reject'.tr,
+              onPressed: valid ? () => Navigator.pop(context, _ctrl.text.trim()) : null,
+            ),
+          ),
+        ]),
+      ]),
     );
   }
 }

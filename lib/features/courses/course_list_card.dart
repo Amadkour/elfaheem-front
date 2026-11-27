@@ -43,7 +43,7 @@ import 'package:flutter_education_app/design/app_contrast.dart' show ensureContr
 import 'package:flutter_education_app/design/app_depth.dart' show AppParallaxImage;
 import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer;
 import 'package:flutter_education_app/design/app_inputs.dart' show appFieldDecoration, appFieldTextStyle;
-import 'package:flutter_education_app/design/app_kit.dart' show AppShimmer, AppSkeletonBox;
+import 'package:flutter_education_app/design/app_kit.dart' show AppAreaScope, AppShimmer, AppSkeletonBox;
 import 'package:flutter_education_app/design/app_states.dart' show AppEmpty, AppErrorState;
 import 'package:flutter_education_app/design/app_tabs.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -284,6 +284,7 @@ class CourseListCard extends StatelessWidget {
     this.isPrivate = false,
     this.onTap,
     this.subject,
+    this.priceLine,
   });
 
   final CourseCardShape shape;
@@ -300,6 +301,10 @@ class CourseListCard extends StatelessWidget {
 
   /// The course's subject as the server names it (slug or name); null = read from the title.
   final String? subject;
+
+  /// The teacher's card (Tea1Courses): the price on a line of its own in the area ink, the cover at the start side
+  /// with the status chip on its top corner, and the figures under a hairline. Null: the student's card, as before.
+  final String? priceLine;
 
   /// The text block and footer under a tile's cover at text scale 1 (two editorial title lines, the meta line, the
   /// footer and the insets).
@@ -330,7 +335,7 @@ class CourseListCard extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             borderRadius: radius,
-            child: shape == CourseCardShape.row ? _row(context) : _tile(context),
+            child: shape == CourseCardShape.row ? (priceLine != null ? _teacherRow(context) : _row(context)) : _tile(context),
           ),
         ),
       ),
@@ -348,7 +353,9 @@ class CourseListCard extends StatelessWidget {
     final c = context.colors;
     final style = AppType.meta(context).copyWith(height: 1.4);
     // each part in its own direction: an English teacher name beside an Arabic count read "12 Dr. Mona Adel · جلسة"
-    final text = meta.where((m) => m.trim().isNotEmpty).map(bidiIsolate).join('  ·  ');
+    // a tile has no room for the price's own line: it ends the meta line
+    final parts = [...meta, if (priceLine != null && shape == CourseCardShape.tile) priceLine!];
+    final text = parts.where((m) => m.trim().isNotEmpty).map(bidiIsolate).join('  ·  ');
     return Row(children: [
       if (isPrivate)
         ParentComponent(
@@ -409,6 +416,54 @@ class CourseListCard extends StatelessWidget {
           heroTag: heroTag,
         ),
       );
+
+  Widget _price(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: AppSpace.xs),
+        child: Text(
+          priceLine!,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppType.label(context).copyWith(fontWeight: FontWeight.w700, color: AppAreaScope.of(context).ink),
+        ),
+      );
+
+  /// The teacher's row (Tea1Courses): cover at the start with the status chip on its top corner, the title, the
+  /// meta, the price and the ⋮ at the end, then the figures under a hairline across the card.
+  Widget _teacherRow(BuildContext context) {
+    final c = context.colors;
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      ConstrainedBox(
+        constraints: BoxConstraints(minHeight: _thumb.height + AppSpace.lg),
+        child: Stack(children: [
+          Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(_thumb.width + AppSpace.md, AppSpace.md, AppSpace.sm, AppSpace.md),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: _title(context)),
+                if (corner != null) ...[const SizedBox(width: AppSpace.xxs), corner!],
+              ]),
+              const SizedBox(height: AppSpace.xxs),
+              _meta(context),
+              _price(context),
+            ]),
+          ),
+          PositionedDirectional(
+            start: 0,
+            top: 0,
+            bottom: 0,
+            width: _thumb.width,
+            child: Stack(children: [
+              Positioned.fill(child: AppParallaxImage(maxShift: AppSpace.xxs, image: _picture())),
+              if (chip case final chip?)
+                PositionedDirectional(top: AppSpace.xs, end: AppSpace.xs, child: chip),
+            ]),
+          ),
+        ]),
+      ),
+      Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.kit.line),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm), child: footer),
+    ]);
+  }
 
   Widget _row(BuildContext context) {
     // redesign (Stu1Discover): the text at the start, the subject cover full height on the end side (a Stack, not

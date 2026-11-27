@@ -1005,7 +1005,10 @@ class CourseProgressBar extends StatelessWidget {
 /// The page's sections as underline tabs (the kit's AppUnderlineTabs language): labels in ink, a 2 px ink rule
 /// under the open one sitting on the bar's warm hairline.
 class CourseSpaceTabBar extends StatelessWidget {
-  const CourseSpaceTabBar({super.key, required this.tabs, required this.active, required this.onTab});
+  const CourseSpaceTabBar({super.key, required this.tabs, required this.active, required this.onTab, this.pill = false});
+
+  /// The teacher's floating pill row (T1): a rounded card, the open tab a filled primary pill.
+  final bool pill;
 
   final List<CourseSpaceTab> tabs;
   final String active;
@@ -1086,8 +1089,15 @@ class CourseSpaceTabBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(kCourseGutter, AppSpace.xs, kCourseGutter, AppSpace.xs),
       child: DecoratedBox(
-        // the warm hairline the open tab's rule sits on
-        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline))),
+        // the warm hairline the open tab's rule sits on (the pill row: a rounded card)
+        decoration: pill
+            ? BoxDecoration(
+                color: c.cardBg,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                border: Border.all(color: c.divider, width: AppBorder.hairline),
+                boxShadow: AppShadow.card(context),
+              )
+            : BoxDecoration(border: Border(bottom: BorderSide(color: c.divider, width: AppBorder.hairline))),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(3, 3, 3, 0),
           child: LayoutBuilder(
@@ -1098,7 +1108,7 @@ class CourseSpaceTabBar extends StatelessWidget {
                   (box.maxWidth / visible.length >= _rowW &&
                       !visible.any((t) => _rowNeed(context, t) > box.maxWidth / visible.length));
               Widget item(CourseSpaceTab t) =>
-                  _TabPill(tab: t, active: t.id == active, stacked: stacked, onTap: () => onTab(t.id));
+                  _TabPill(tab: t, active: t.id == active, stacked: stacked, pill: pill, onTap: () => onTab(t.id));
               if (fits) {
                 return Row(children: [for (final t in visible) Expanded(child: item(t))]);
               }
@@ -1195,7 +1205,9 @@ class _ScrollingTabsState extends State<_ScrollingTabs> {
 }
 
 class _TabPill extends StatelessWidget {
-  const _TabPill({required this.tab, required this.active, required this.onTap, this.stacked = false});
+  const _TabPill({required this.tab, required this.active, required this.onTap, this.stacked = false, this.pill = false});
+
+  final bool pill;
 
   final CourseSpaceTab tab;
   final bool active;
@@ -1207,8 +1219,8 @@ class _TabPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final fg = active ? c.textDark : c.textMedium;
-    final iconColor = active ? c.textDark : c.textLight;
+    final fg = pill && active ? appInkOnFill(context, c.primary) : active ? c.textDark : c.textMedium;
+    final iconColor = pill && active ? appInkOnFill(context, c.primary) : active ? c.textDark : c.textLight;
     final count = tab.count != null && tab.count! > 0
         ? Text(
             '${tab.count}',
@@ -1264,16 +1276,21 @@ class _TabPill extends StatelessWidget {
       button: true,
       child: InkWell(
         onTap: onTap,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.chip)),
+        borderRadius: pill ? BorderRadius.circular(AppRadius.pill) : const BorderRadius.vertical(top: Radius.circular(AppRadius.chip)),
         child: AnimatedContainer(
           duration: motion.base,
           curve: AppEase.out,
           padding: stacked ? CourseSpaceTabBar._stackPad : CourseSpaceTabBar._rowPad,
-          foregroundDecoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: active ? c.textDark : c.textDark.withValues(alpha: 0), width: AppBorder.focus),
-            ),
-          ),
+          decoration: pill
+              ? BoxDecoration(color: active ? c.primary : null, borderRadius: BorderRadius.circular(AppRadius.pill))
+              : null,
+          foregroundDecoration: pill
+              ? null
+              : BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: active ? c.textDark : c.textDark.withValues(alpha: 0), width: AppBorder.focus),
+                  ),
+                ),
           child: content,
         ),
       ),

@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter_education_app/features/live/room/annotation/annotation_protocol.dart' show kAnnotLaserTopic, kAnnotTopic;
 import 'package:flutter_education_app/features/live/room/whiteboard/board_protocol.dart' show kBoardLaserTopic, kBoardTopic;
+import 'package:flutter_education_app/features/live/live_room_people.dart' show kLiveServerAskTopic, kLiveServerHandTopic;
 import 'package:flutter_education_app/features/live/live_share_arbiter.dart' show kLiveShareTopic;
 import 'package:flutter_education_app/features/live/room/widgets/live_chat.dart' show kLiveChatTopic;
 import 'package:flutter_education_app/features/live/room/widgets/live_hands.dart' show kLiveHandTopic;
@@ -24,6 +25,9 @@ enum LiveDataRoute {
 
   /// One share at a time: requests, answers, stops (live_share_arbiter.dart).
   share,
+
+  /// WP1: the server's host-only `nb.hand` / `nb.ask` messages about hidden students (a hand raised, a question).
+  serverSignal,
 
   /// Hands and chat: matched by topic, or by payload type for senders that set no topic.
   handOrChat,
@@ -46,6 +50,9 @@ LiveDataRoute liveDataRoute(String? topic) {
       return LiveDataRoute.board;
     case kLiveShareTopic:
       return LiveDataRoute.share;
+    case kLiveServerHandTopic:
+    case kLiveServerAskTopic:
+      return LiveDataRoute.serverSignal;
     case kLiveHandTopic:
     case kLiveChatTopic:
     case null:

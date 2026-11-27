@@ -16,6 +16,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
+import 'package:flutter_education_app/design/app_bidi.dart' show ltrIsolate;
 import 'package:flutter_education_app/design/app_data_table.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
@@ -44,6 +45,33 @@ Widget _personCell(BuildContext context, EntityRef? person, {String? sub}) {
     ),
   ]);
 }
+
+/// A student on a phone (Tea1Courses): name and @username, how many of my courses, the progress bar with its figure,
+/// the last activity and the on-track / needs-attention chip.
+Widget _studentCard(BuildContext context, PersonRow r) => EntityRowFrame(
+      ref: r.person,
+      link: false,
+      title: r.person.name.isEmpty ? '#${r.person.id}' : r.person.name,
+      subtitle: [if (r.username != null) ltrIsolate('@${r.username}'), mdCourses(r.courses)].join(' · '),
+      trailing: r.attention
+          ? AppStatusBadge(label: 'md_p7_needs_attention'.tr, tone: AppTone.warning, dense: true)
+          : AppStatusBadge(label: 'md_p7_on_track'.tr, tone: AppTone.success, dense: true),
+      body: [
+        EntityProgress(r.avgProgress),
+        Text(r.lastActivityAt == null ? 'md_no_activity'.tr : mdText('md_last_activity', {'d': mdAgo(r.lastActivityAt)}),
+            maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+      ],
+    );
+
+/// A hand-in on a phone: the assessment, who handed it in and for which course, when, and the score or what it waits for.
+Widget _submissionCard(BuildContext context, GradeRow g) => EntityRowFrame(
+      ref: g.student ?? const EntityRef(EntityKind.student, 0),
+      link: false,
+      title: g.title.isEmpty ? 'md_p7_grade_untitled'.tr : g.title,
+      subtitle: [?g.student?.name, ?g.course?.ref.name, mdDate(g.at)].where((s) => s.isNotEmpty).join(' · '),
+      leading: entityToneIcon(context, gradeIcon(g.source), g.passed == false ? AppTone.warning : AppTone.info),
+      trailing: gradeBadge(g),
+    );
 
 // ── My students ──────────────────────────────────────────────────────────────
 
@@ -88,7 +116,7 @@ EntityListConfig<PersonRow> teacherStudentsList(int teacherId) => EntityListConf
               : AppStatusBadge(label: 'md_p7_on_track'.tr, tone: AppTone.success, dense: true),
         ),
       ],
-      card: (context, r) => entityRowFor(context, r, link: false),
+      card: (context, r) => _studentCard(context, r),
       export: entityPersonExport(),
       bulk: [entityMessageBulk<PersonRow>((r) => r.person)],
     );
@@ -138,7 +166,7 @@ EntityListConfig<GradeRow> teacherSubmissionsList(int teacherId) => EntityListCo
         AppTableColumn(key: 'score', label: 'md_p7_score'.tr, cell: (context, r) => gradeBadge(r)),
         AppTableColumn.text(key: 'at', label: 'md_p7_date'.tr, text: (r) => mdDate(r.at)),
       ],
-      card: (context, r) => gradeRowFor(context, r, ownerKind: EntityKind.teacher, link: false),
+      card: (context, r) => _submissionCard(context, r),
       export: entityGradeExport(),
       bulk: [entityMessageBulk<GradeRow>((r) => r.student)],
     );
@@ -184,7 +212,7 @@ EntityListConfig<ReviewRow> teacherReviewsList(int teacherId) => EntityListConfi
 
 /// What the teacher's "My courses" tab shows.
 enum TeacherSpace {
-  courses('my_courses', Icons.auto_stories_rounded),
+  courses('t1_cs_tab_courses', Icons.auto_stories_rounded),
   students('md_p7_my_students', Icons.groups_rounded),
   submissions('md_p7_sec_submissions', Icons.assignment_turned_in_outlined),
   reviews('md_p7_sec_reviews', Icons.reviews_outlined);
@@ -202,7 +230,8 @@ enum TeacherSpace {
   }
 }
 
-/// The strip above the page: Courses · My students · Submissions · Reviews.
+/// The strip inside the hero: Courses · My students · Submissions · Reviews as glass chips, the chosen one paper
+/// (Tea1Courses). It scrolls sideways when the four do not fit.
 class TeacherSpaceTabs extends StatelessWidget {
   const TeacherSpaceTabs({super.key, required this.selected, required this.onSelect});
 
@@ -210,13 +239,64 @@ class TeacherSpaceTabs extends StatelessWidget {
   final ValueChanged<TeacherSpace> onSelect;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.xxs),
-        child: AppUnderlineTabs(
-          items: [for (final s in TeacherSpace.values) AppTabItem(s.labelKey.tr, icon: s.icon)],
-          index: selected.index,
-          onChanged: (i) => onSelect(TeacherSpace.values[i]),
+  Widget build(BuildContext context) => Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: Container(
+        padding: const EdgeInsets.all(AppSpace.xxs),
+        decoration: BoxDecoration(
+          color: context.colors.heroGlass,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(color: context.colors.heroGlassBorder, width: AppBorder.hairline),
         ),
+        // hugs its chips from the start edge; a phone that cannot fit the four scrolls them sideways
+        child: LayoutBuilder(builder: (context, box) {
+          final chips = [
+            for (final s in TeacherSpace.values)
+              AppChip(
+                key: ValueKey('teacher.space.${s.name}'),
+                label: s.labelKey.tr,
+                icon: s.icon,
+                onHero: true,
+                selected: s == selected,
+                onTap: () => onSelect(s),
+              ),
+          ];
+          // room: the track hugs its chips (they wrap when a large text size needs it)
+          if (box.maxWidth >= 600) return Wrap(children: chips);
+          return SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(mainAxisSize: MainAxisSize.min, children: chips));
+        }),
+        ),
+      );
+}
+
+/// The hero of the teacher's courses page and of its three lists: title, one line, [stats] (courses only), [action]
+/// (wide only) and the space strip under them. [overlap] false: a list that scrolls on its own sits under it.
+class TeacherSpaceHero extends StatelessWidget {
+  const TeacherSpaceHero({
+    super.key,
+    required this.space,
+    required this.onSelect,
+    this.stats = const [],
+    this.action,
+    this.overlap = true,
+    this.showTabs = true,
+  });
+
+  final TeacherSpace space;
+  final ValueChanged<TeacherSpace> onSelect;
+  final List<AppHeroStat> stats;
+  final Widget? action;
+  final bool overlap;
+  final bool showTabs;
+
+  @override
+  Widget build(BuildContext context) => AppHero(
+        title: space.labelKey.tr,
+        subtitle: 't1_cs_sub_${space.name}'.tr,
+        stats: stats,
+        actions: [?action],
+        overlap: overlap,
+        bottom: showTabs ? TeacherSpaceTabs(selected: space, onSelect: onSelect) : null,
       );
 }
 

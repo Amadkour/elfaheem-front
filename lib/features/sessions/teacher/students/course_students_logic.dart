@@ -124,7 +124,7 @@ String lessonsText(int done, int total) => total <= 0 ? '' : t('الدروس $do
 
 /// The friendly default message; the server fills `{name}` (first name) and `{course}` per student.
 String nudgeTemplate([String? lang]) => (lang ?? AppConfig.lang) == 'ar'
-    ? 'مرحبًا {name}، اشتقنا لك في «{course}»! خطوة صغيرة اليوم تعيدك إلى المسار، ونحن هنا لمساعدتك.'
+    ? 'هلا {name}، لاحظت إنك فوّت كم درس في {course}. الدرس الجاي مهم وأبيك معنا، ولو فيه شي معطّلك كلمني.'
     : 'Hi {name}, we miss you in “{course}”! One small step today gets you back on track, and we\'re here to help.';
 
 /// The message as one student reads it (the composer's preview).

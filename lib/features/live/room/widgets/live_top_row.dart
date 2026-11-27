@@ -38,7 +38,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/plural.dart' show countText;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/live/live_rec_signal.dart' show LiveRemoteRecState;
 import 'package:flutter_education_app/features/live/live_time_limit.dart' show LiveLimitTone, LiveTimeLimit;
@@ -222,7 +224,20 @@ class LiveTopRow extends StatelessWidget {
     this.focused = false,
     this.onMinimize,
     this.pulse,
+    this.peopleCount,
+    this.onPeople,
+    this.waitingCount = 0,
+    this.onWaiting,
   });
+
+  /// The host's head count pill (T1, Tea1Live): people in the room, opens the participants panel. Null hides it
+  /// (students and guests never see a count, D-1950).
+  final int? peopleCount;
+  final VoidCallback? onPeople;
+
+  /// The host's amber "N waiting" pill: opens the lobby. 0 or no [onWaiting] hides it.
+  final int waitingCount;
+  final VoidCallback? onWaiting;
 
   /// (i): the room's info sheet. Null hides it.
   final VoidCallback? onInfo;
@@ -280,6 +295,29 @@ class LiveTopRow extends StatelessWidget {
           )
         else if (onInfo != null)
           _Item('info', _InfoButton(onTap: onInfo!), pinned: true),
+        if (peopleCount != null)
+          _Item(
+            'people',
+            _PeopleChip(count: peopleCount!, onTap: onPeople, compact: compact),
+            fallback: compact ? null : _PeopleChip(count: peopleCount!, onTap: onPeople, compact: true),
+            foldAt: 22,
+            hideAt: 40,
+            menu: [
+              _MenuEntry('live_room.top_more.people', Icons.people_alt_outlined, t('المشاركون', 'Participants'), onTap: onPeople),
+            ],
+          ),
+        if (waitingCount > 0 && onWaiting != null)
+          _Item(
+            'waiting',
+            _WaitingChip(count: waitingCount, onTap: onWaiting!, compact: compact),
+            fallback: compact ? null : _WaitingChip(count: waitingCount, onTap: onWaiting!, compact: true),
+            foldAt: 30,
+            hideAt: 70,
+            menu: [
+              _MenuEntry('live_room.top_more.waiting', Icons.meeting_room_outlined, _WaitingChip.text(waitingCount),
+                  onTap: onWaiting, color: LivePalette.warning),
+            ],
+          ),
         if (limit != null)
           _Item(
             'limit',
@@ -1295,24 +1333,73 @@ class _LiveChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final clock = liveClock(liveFor);
     final live = t('مباشر منذ $clock', 'Live for $clock');
+    // Tea1Live: ONE solid red pill, a white dot and «مباشر، 24:13» (the info glyph is gone; the pill still opens the
+    // room's info sheet and says so in its tooltip).
     return _TopChip(
       key: ValueKey(onInfo != null ? 'live_room.info' : 'live_room.live_chip'),
       tooltip: onInfo != null ? '$live · ${t('عن الغرفة', 'About this room')}' : live,
       dense: compact,
-      lead: onInfo != null && glyph ? Icon(Icons.info_outline_rounded, size: 17, color: LivePalette.ink(0.78)) : null,
+      fill: LivePalette.danger,
+      border: LivePalette.danger,
       parts: [
-        if (tight)
-          _Dot(color: LivePalette.danger, size: 8)
-        else
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-          decoration: BoxDecoration(color: LivePalette.danger, borderRadius: BorderRadius.circular(6)),
-          child: Text(t('مباشر', 'LIVE'), style: _label(LivePalette.textHigh, size: 10.5, w: FontWeight.w900, spacing: 0.8)),
-        ),
+        _Dot(color: LivePalette.textHigh, size: 8),
         SizedBox(width: compact ? 6 : 8),
+        if (!tight) Text(t('مباشر، ', 'Live, '), maxLines: 1, style: _label(LivePalette.textHigh, w: FontWeight.w800)),
         Text(clock, key: const ValueKey('live_room.live_time'), maxLines: 1, style: _label(LivePalette.textHigh)),
       ],
       onTap: onInfo,
+    );
+  }
+}
+
+/// The head count: people icon and the number («9»).
+class _PeopleChip extends StatelessWidget {
+  const _PeopleChip({required this.count, required this.compact, this.onTap});
+  final int count;
+  final bool compact;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => _TopChip(
+        key: const ValueKey('live_room.people_count'),
+        icon: Icons.people_alt_outlined,
+        label: appDigits('$count'),
+        tooltip: t('المشاركون', 'Participants'),
+        dense: compact,
+        onTap: onTap,
+      );
+}
+
+/// «٣ ينتظرون»: the lobby's count in the host's amber (opens the lobby).
+class _WaitingChip extends StatelessWidget {
+  const _WaitingChip({required this.count, required this.compact, required this.onTap});
+  final int count;
+  final bool compact;
+  final VoidCallback onTap;
+
+  static String text(int n) => appDigits(countText(
+        n,
+        ar1: 'ينتظر شخص',
+        ar2: 'ينتظر شخصان',
+        arFew: '{n} ينتظرون',
+        arMany: '{n} ينتظرون',
+        en1: '1 waiting',
+        en: '{n} waiting',
+      ).replaceAll('{n}', '$n'));
+
+  @override
+  Widget build(BuildContext context) {
+    final amber = LivePalette.warning;
+    return _TopChip(
+      key: const ValueKey('live_room.waiting_pill'),
+      icon: Icons.meeting_room_outlined,
+      label: compact ? appDigits('$count') : text(count),
+      tooltip: text(count),
+      dense: compact,
+      fill: amber,
+      border: amber,
+      ink: LivePalette.bg,
+      onTap: onTap,
     );
   }
 }

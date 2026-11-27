@@ -130,24 +130,57 @@ class _NudgeComposerState extends State<NudgeComposer> {
     return t('تذكير $n', 'Nudge $n');
   }
 
+  /// Puts [token] ({name} / {course}) where the cursor is.
+  void _insert(String token) {
+    final txt = _text.text;
+    final sel = _text.selection;
+    final start = sel.isValid ? sel.start : txt.length;
+    final end = sel.isValid ? sel.end : txt.length;
+    _text.value = TextEditingValue(
+      text: txt.replaceRange(start, end, token),
+      selection: TextSelection.collapsed(offset: start + token.length),
+    );
+  }
+
+  /// The message as one student reads it, the name and the course on a tint.
+  List<InlineSpan> _previewSpans(BuildContext context, String message) {
+    final c = context.colors;
+    final style = AppType.body(context).copyWith(color: c.textMedium);
+    final mark = style.copyWith(color: appInk(context, c.primary), backgroundColor: c.primaryTint, fontWeight: FontWeight.w600);
+    final first = widget.previewName.trim().split(RegExp(r'\s+')).first;
+    return [
+      TextSpan(
+        children: [
+          for (final part in message.split(RegExp(r'(?=\{(?:name|course)\})|(?<=\{(?:name|course)\})')))
+            switch (part) {
+              '{name}' => TextSpan(text: ' $first ', style: mark),
+              '{course}' => TextSpan(text: ' ${widget.courseName} ', style: mark),
+              _ => TextSpan(text: part, style: style),
+            },
+        ],
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final message = _text.text.trim();
+    final parentsOn = _parents && widget.withParent > 0;
     final parentsLine = widget.withParent == 0
         ? t('لا يوجد ولي أمر مرتبط', 'No linked parent')
         : widget.students == 1
             ? t('لديه ولي أمر مرتبط', 'Has a linked parent')
-            : t('${widget.withParent} من ${widget.students} لديهم ولي أمر مرتبط', '${widget.withParent} of ${widget.students} have a linked parent');
+            : t('${widget.withParent} من ${widget.students} مربوطين بولي أمر', '${widget.withParent} of ${widget.students} have a linked parent');
+    final previewOf = widget.singleName ?? widget.previewName;
     return AppSheetContent(
       title: _title,
       icon: Icons.notifications_active_outlined,
-      subtitle: t('يصلهم إشعار داخل التطبيق وتنبيه على الهاتف. تذكير واحد لكل طالب كل ${widget.cooldownHours} ساعة.',
-          'They get an in-app notification and a push. One nudge per student every ${widget.cooldownHours} h.'),
+      subtitle: widget.courseName,
       children: [
         if (widget.skipped > 0) ...[
           AppBanner(
-            icon: Icons.schedule_rounded,
+            icon: Icons.info_outline_rounded,
             color: c.warning,
             text: countText(widget.skipped,
                 ar1: 'سيتم تخطي طالب واحد تم تذكيره مؤخرًا.', ar2: 'سيتم تخطي طالبين تم تذكيرهما مؤخرًا.',
@@ -162,46 +195,50 @@ class _NudgeComposerState extends State<NudgeComposer> {
           label: t('الرسالة', 'Message'),
           maxLines: 4,
           maxLength: 500,
-          helper: t('{name} و{course} يُستبدلان باسم كل طالب واسم المقرر.', '{name} and {course} become each student\'s name and the course.'),
+          helper: t('يصلهم إشعار داخل التطبيق وتنبيه على الهاتف. تذكير واحد لكل طالب كل ${widget.cooldownHours} ساعة.',
+              'They get an in-app notification and a push. One nudge per student every ${widget.cooldownHours} h.'),
         ),
-        AppSpace.gapSm,
-        // what one student reads
-        Container(
-          padding: const EdgeInsets.all(AppSpace.sm),
-          decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.controlAll),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(t('معاينة', 'Preview'), style: AppType.meta(context).copyWith(color: c.textLight)),
-            const SizedBox(height: AppSpace.xxs),
-            Text(
-              message.isEmpty
-                  ? nudgePreview(nudgeTemplate(), name: widget.previewName, course: widget.courseName)
-                  : nudgePreview(message, name: widget.previewName, course: widget.courseName),
-              style: AppType.body(context),
-            ),
-          ]),
-        ),
-        AppSpace.gapSm,
-        Row(children: [
-          Expanded(
-            child: AppButton.ghost(
-              key: const ValueKey('nudge.reset'),
-              label: t('استعادة النص المقترح', 'Use the suggested text'),
-              icon: Icons.auto_awesome_outlined,
-              size: AppButtonSize.sm,
-              onPressed: message == nudgeTemplate().trim() ? null : () => _text.text = nudgeTemplate(),
-            ),
+        AppSpace.gapXs,
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          AppChoiceChip(label: '{name}', selected: false, onTap: () => _insert('{name}')),
+          AppChoiceChip(label: '{course}', selected: false, onTap: () => _insert('{course}')),
+          AppButton.ghost(
+            key: const ValueKey('nudge.reset'),
+            label: t('رجّع النص المقترح', 'Use the suggested text'),
+            icon: Icons.undo_rounded,
+            size: AppButtonSize.sm,
+            onPressed: message == nudgeTemplate().trim() ? null : () => _text.text = nudgeTemplate(),
           ),
         ]),
-        Material(
-          type: MaterialType.transparency,
-          child: CheckboxListTile(
+        AppSpace.gapSm,
+        Text(t('معاينة لـ $previewOf', 'Preview for $previewOf'), style: AppType.label(context)),
+        AppSpace.gapXs,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpace.sm),
+          decoration: BoxDecoration(
+            color: Color.alphaBlend(c.blockSky, c.cardBg),
+            borderRadius: AppRadius.cardAll,
+            border: Border.all(color: c.divider, width: AppBorder.hairline),
+          ),
+          child: Text.rich(TextSpan(
+            children: _previewSpans(context, message.isEmpty ? nudgeTemplate() : message),
+          )),
+        ),
+        AppSpace.gapSm,
+        Container(
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: AppRadius.cardAll,
+            border: Border.all(color: c.divider, width: AppBorder.hairline),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+          child: AppSwitchTile(
             key: const ValueKey('nudge.parents'),
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            value: _parents && widget.withParent > 0,
-            onChanged: widget.withParent == 0 ? null : (v) => setState(() => _parents = v ?? false),
-            title: Text(t('أبلغ ولي الأمر أيضًا', 'Also notify the parent'), style: AppType.row(context)),
-            subtitle: Text(parentsLine, style: AppType.meta(context)),
+            title: t('بلّغ ولي الأمر بعد', 'Also notify the parent'),
+            subtitle: parentsLine,
+            value: parentsOn,
+            onChanged: widget.withParent == 0 ? null : (v) => setState(() => _parents = v),
           ),
         ),
         AppSpace.gapMd,
@@ -215,9 +252,10 @@ class _NudgeComposerState extends State<NudgeComposer> {
           ),
           AppSpace.gapSm,
           Expanded(
+            flex: 2,
             child: AppButton.primary(
               key: const ValueKey('nudge.send'),
-              label: t('إرسال التذكير', 'Send nudge'),
+              label: widget.students > 1 ? t('أرسل التذكير (${widget.students})', 'Send nudge (${widget.students})') : t('أرسل التذكير', 'Send nudge'),
               icon: Icons.send_rounded,
               expand: true,
               busy: _busy,
