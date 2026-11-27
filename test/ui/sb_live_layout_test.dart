@@ -2,6 +2,10 @@
 // attend page and the check-in sheet at every layout size; the privacy rule (no count, no classmate); Reduce motion
 // parks the breathing avatar; the token's privacy flag, the hand / question routes and the student's own rows.
 
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:dio/dio.dart' show RequestOptions;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/attendance/analysis/teacher/attendance_model.dart' show FullAttendance;
@@ -190,6 +194,90 @@ void main() {
         expect(store.questions, ['ليش ٢ أس صفر يساوي ١؟']);
         expect(fake.unmatched, isEmpty);
       });
+    });
+
+    group('guest routes', () {
+      final sent = <String, Map<String, dynamic>>{};
+      late FakeApi fake;
+      setUp(() {
+        SharedPreferences.setMockInitialValues({});
+        mockRequestPlugins();
+        sent.clear();
+        Map<String, dynamic> body(RequestOptions o) =>
+            o.data is Map ? Map<String, dynamic>.from(o.data as Map) : Map<String, dynamic>.from(jsonDecode('${o.data}') as Map);
+        fake = FakeApi({
+          'POST /api/v1/public/live/hand': (o) {
+            sent['hand'] = body(o);
+            return {'raised': body(o)['raised'] == true};
+          },
+          'POST /api/v1/public/live/ask': (o) {
+            sent['ask'] = body(o);
+            return {'sent': true};
+          },
+        }, latency: Duration.zero)
+          ..install();
+      });
+      tearDown(() => fake.uninstall());
+
+      test("a guest's hand and question go to the PUBLIC routes with his LiveKit token", () async {
+        final api = GuestStudentLiveApi(const LiveRoomRef.meeting(9), token: () => 'lk-guest-token-123');
+        expect(await api.hand(true), isTrue);
+        expect(await api.ask(' متى نبدأ؟ '), isTrue);
+        expect(sent['hand'], {'token': 'lk-guest-token-123', 'raised': true});
+        expect(sent['ask'], {'token': 'lk-guest-token-123', 'text': 'متى نبدأ؟'});
+        expect(fake.unmatched, isEmpty);
+      });
+    });
+  });
+
+  group('guest room', () {
+    test('every guest gets the private room; staff and hosts the full one', () {
+      expect(liveRoomIsPrivate(isTeacher: false, isGuest: true, host: false, metadata: null), isTrue);
+      expect(liveRoomIsPrivate(isTeacher: false, isGuest: true, host: false, metadata: '{"privacy": "private", "role": "guest"}'), isTrue);
+      expect(liveRoomIsPrivate(isTeacher: false, isGuest: false, host: false, metadata: '{"privacy": "private"}'), isTrue);
+      expect(liveRoomIsPrivate(isTeacher: true, isGuest: false, host: true, metadata: null), isFalse);
+      expect(liveRoomIsPrivate(isTeacher: false, isGuest: false, host: true, metadata: '{"privacy": "private"}'), isFalse);
+      expect(liveRoomIsPrivate(isTeacher: false, isGuest: false, host: false, metadata: null), isFalse);
+    });
+
+    testWidgets("the guest's room shows no head count and no participant list", (t) async {
+      AppConfig.lang = 'en';
+      await t.pumpWidget(layoutHost(_room(), scale: 1));
+      await t.pump(const Duration(milliseconds: 300));
+      expect(find.byIcon(Icons.people_rounded), findsNothing);
+      expect(find.byIcon(Icons.groups_rounded), findsNothing);
+      final bare = t.widgetList<Text>(find.byType(Text)).map((w) => (w.data ?? '').trim()).where((s) => RegExp(r'^[0-9٠-٩]+$').hasMatch(s));
+      expect(bare, isEmpty);
+    });
+  });
+
+  group('check-in errors', () {
+    setUpAll(() => translation = jsonDecode(File('assets/translation.json').readAsStringSync()) as Map<String, dynamic>);
+    tearDownAll(() => translation = {});
+
+    test('the relay, witness and Bluetooth failures read neutral: no classmate, witness or Bluetooth', () {
+      final banned = RegExp(r'classmate|witness|bluetooth|nearby|زميل|زملاء|شهود|بلوتوث|البلوتوث', caseSensitive: false);
+      for (final lang in ['ar', 'en']) {
+        AppConfig.lang = lang;
+        for (final k in ['att_err_no_relay', 'att_err_witnesses', 'att_err_bluetooth_off']) {
+          final s = studentCheckInErrorText(k);
+          expect(s, isNot(k), reason: '$lang $k has a text');
+          expect(s.startsWith('sb_att_'), isFalse, reason: '$lang $k is translated');
+          expect(banned.hasMatch(s), isFalse, reason: '$lang $k: $s');
+        }
+      }
+      AppConfig.lang = 'en';
+      expect(studentCheckInErrorText('att_err_code_format'), 'att_err_code_format'.tr);
+    });
+
+    testWidgets('the failed sheet shows the neutral text', (t) async {
+      await expectNoLayoutErrors(
+        t,
+        () => SingleChildScrollView(
+          child: StudentCheckInView(phase: StudentCheckInPhase.failed, onRetry: () {}, onClose: () {}, error: studentCheckInErrorText('att_err_no_relay')),
+        ),
+        act: (t) async => expect(find.text(studentCheckInErrorText('att_err_no_relay')), findsOneWidget),
+      );
     });
   });
 }
