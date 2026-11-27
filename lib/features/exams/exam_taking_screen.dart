@@ -1291,7 +1291,10 @@ String examTypeHint(String type, String points) {
     'file_upload' => t('ارفع حلّك', 'Upload your answer'),
     _ => t('على الورق', 'On paper'),
   };
-  final marks = points == '1' ? t('درجة', 'mark') : (points == '2' ? t('درجتين', '2 marks') : t('$points درجات', '$points marks'));
+  final whole = int.tryParse(points);
+  final marks = whole == null
+      ? t('$points درجة', '$points marks') // a fraction ("1.5"): Arabic takes the singular after it
+      : countText(whole, ar1: 'درجة', ar2: 'درجتان', arFew: '{n} درجات', arMany: '{n} درجة', en1: '1 mark', en: '{n} marks');
   return appDigits(t('$what، $marks', '$what, $marks'));
 }
 

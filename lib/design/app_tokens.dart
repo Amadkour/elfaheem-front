@@ -434,6 +434,15 @@ enum AppWidth {
   /// Below this a page is a phone page: no centred card, the body uses the whole width.
   static const double phoneMax = 600;
 
+  /// Inside a body, the width roles of one piece (never a page): a mention chip or tag that ellipsizes past this.
+  static const double chip = 160;
+
+  /// One control on a wide row: a Go live button, a single field, a call to action.
+  static const double control = 360;
+
+  /// A tab or segment strip on a wide row (a few short labels side by side).
+  static const double strip = 440;
+
   /// The side gutter of a body [available] wide: the page gutter, [AppSpace.gutter] (16 on phones, 24 above).
   static double gutter(double available) => AppSpace.gutter(available);
 

@@ -996,7 +996,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
               alignment: AlignmentDirectional.centerStart,
               child: _t2b
                   ? const SizedBox.shrink()
-                  : ConstrainedBox(constraints: const BoxConstraints(maxWidth: 440), child: _tabs(context, view, wide: wide, expand: true)),
+                  : ConstrainedBox(constraints: const BoxConstraints(maxWidth: AppWidth.strip), child: _tabs(context, view, wide: wide, expand: true)),
             ),
           ),
           if (_loading && _chunk != null)

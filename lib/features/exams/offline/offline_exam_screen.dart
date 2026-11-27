@@ -12,6 +12,7 @@ import 'package:flutter_education_app/design/app_motion_kit.dart' show AppBreath
 import 'package:flutter_education_app/features/exams/legacy/student/sc_exam_widgets.dart' show ScExamCard, ScFootTone;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/core/screen_security.dart';
 import 'package:flutter_education_app/core/live_focus.dart';
 import 'package:share_plus/share_plus.dart';
@@ -195,8 +196,11 @@ class OfflineExamCard extends StatelessWidget {
       },
       subtitle: startsAt == null ? null : Text(AppTime.dateTime(startsAt!)),
       facts: [
-        t('$questions سؤال', '$questions questions'),
-        if (durationMinutes != null) t('$durationMinutes دقيقة', '$durationMinutes min'),
+        countText(questions,
+            ar1: 'سؤال واحد', ar2: 'سؤالان', arFew: '{n} أسئلة', arMany: '{n} سؤالًا', en1: '1 question', en: '{n} questions'),
+        if (durationMinutes != null)
+          countText(durationMinutes!,
+              ar1: 'دقيقة واحدة', ar2: 'دقيقتان', arFew: '{n} دقائق', arMany: '{n} دقيقة', en1: '1 min', en: '{n} min'),
         t('ينحل بدون نت', 'Solved offline'),
       ],
       foot: offlineStageText(stage, hasKey: hasKey),

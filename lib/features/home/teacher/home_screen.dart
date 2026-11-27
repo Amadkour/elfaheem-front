@@ -573,7 +573,7 @@ class TeacherGreeting extends StatelessWidget {
           ],
           if (goLive != null) ...[
             const SizedBox(height: AppSpace.md),
-            wide ? Align(alignment: AlignmentDirectional.centerStart, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 360), child: goLive!)) : goLive!,
+            wide ? Align(alignment: AlignmentDirectional.centerStart, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: AppWidth.control), child: goLive!)) : goLive!,
           ],
         ]);
       },
