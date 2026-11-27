@@ -24,7 +24,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_api.dart';
 import '../support/redesign/intl_fakes.dart';
-import '../support/redesign/pa_fakes.dart' show paApi, paSetUp;
+import '../support/redesign/pa_fakes.dart' show paApi, paReem, paSetUp;
+import '../support/redesign/wire_fakes.dart' show wirePaymentRow, wirePayments;
 import '../support/redesign/sb_subject_fakes.dart' show sbT;
 import 'layout_harness.dart';
 
@@ -143,7 +144,14 @@ void main() {
       });
 
       testWidgets('parent payments: the payment\'s own currency', (t) async {
-        await paSetUp(paApi(extra: {'GET /api/v1/my-payments': (_) => intlMyPaymentsJson(m)}));
+        await paSetUp(paApi(extra: {
+          // Latin names (data) so the English pass can look for Arabic UI copy
+          'GET /api/v1/parent/children': (_) => [{'id': paReem, 'name': 'Reem'}],
+          'GET /api/v1/parent/children/$paReem/payments': (_) => wirePayments(paReem, rows: [
+                wirePaymentRow(1191, amount: m.price, currency: m.currency, course: 'Maths'),
+                wirePaymentRow(1172, status: 'pending', amount: m.price, currency: m.currency, course: 'Science'),
+              ]),
+        }));
         for (final lang in const ['ar', 'en']) {
           final texts = await _show(t, lang, () => paRole(const ParentPaymentsPage()));
           final all = texts.join('\n');

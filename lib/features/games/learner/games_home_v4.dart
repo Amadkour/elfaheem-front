@@ -16,6 +16,7 @@ import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/games/champions/champions_models.dart';
@@ -29,6 +30,7 @@ import 'package:flutter_education_app/features/games/games_models.dart';
 import 'package:flutter_education_app/features/games/learner/games_settings_sheet.dart';
 import 'package:flutter_education_app/features/games/learner/challenges.dart';
 import 'package:flutter_education_app/features/games/learner/level_map.dart';
+import 'package:flutter_education_app/features/games/learner/nickname_sheet.dart';
 import 'package:flutter_education_app/features/games/learner/wardrobe.dart';
 
 /// The side column of the wide home (the rail and the strip) and the compact progress tile.
@@ -251,6 +253,7 @@ class _GamesHomeV4State extends State<GamesHomeV4> {
         onContinue: cont == null || cont.locked ? null : () => _play(cont),
         onReview: _review,
         onSettings: _settings,
+        onNickname: () => showNicknameSheet(context),
         onChallenges: gamesChallengesOff() ? null : () => Navigator.of(context).push(MaterialPageRoute<void>(settings: const RouteSettings(name: '/games/challenges'), builder: (_) => GamesChallengesPage(api: _api, ageBand: h.profile.ageBand))),
         onWardrobe: () => showWardrobe(context, api: _api, ageBand: h.profile.ageBand).then((_) { if (mounted) _load(); }),
         champions: widget.champions,
@@ -275,6 +278,7 @@ class GamesHomeV4View extends StatelessWidget {
     this.onContinue,
     this.onReview,
     this.onSettings,
+    this.onNickname,
     this.onWardrobe,
     this.champions,
     this.onChampions,
@@ -293,6 +297,9 @@ class GamesHomeV4View extends StatelessWidget {
   final ValueChanged<int>? onSubject;
   final ValueChanged<V4Level>? onOpen;
   final VoidCallback? onContinue, onReview, onSettings, onChampions;
+
+  /// Opens "your name in games" (the nickname and picture other players see, WP4); null hides the chip.
+  final VoidCallback? onNickname;
 
   /// Opens the wardrobe (T73); shown beside the coins while `games.cosmetics` is on.
   final VoidCallback? onWardrobe;
@@ -331,7 +338,7 @@ class GamesHomeV4View extends StatelessWidget {
           squiggle: AppConfig.lang == 'ar' ? 'العب' : 'Play',
           leading: const _Mascot(),
           wipe: false,
-          bottom: _HeroChips(coins: coins, onSettings: onSettings),
+          bottom: _HeroChips(coins: coins, onSettings: onSettings, onNickname: onNickname),
         );
         final cont = home.continueLevel;
         final contCard = cont == null || cont.locked
@@ -430,10 +437,10 @@ class _Mascot extends StatelessWidget {
 
 /// The hero's chips: the coins (sun) and the settings button.
 class _HeroChips extends StatelessWidget {
-  const _HeroChips({this.coins, this.onSettings});
+  const _HeroChips({this.coins, this.onSettings, this.onNickname});
 
   final int? coins;
-  final VoidCallback? onSettings;
+  final VoidCallback? onSettings, onNickname;
 
   @override
   Widget build(BuildContext context) {
@@ -442,7 +449,7 @@ class _HeroChips extends StatelessWidget {
     return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
       if (coins != null)
         Semantics(
-          label: t('$coins عملة', '$coins coins'),
+          label: countText(coins!, ar1: 'عملة واحدة', ar2: 'عملتان', arFew: '{n} عملات', arMany: '{n} عملة', en1: '1 coin', en: '{n} coins'),
           excludeSemantics: true,
           child: Container(
             key: const ValueKey('games.v4.coins'),
@@ -455,6 +462,14 @@ class _HeroChips extends StatelessWidget {
               AppOdometer('$coins', memoryKey: 'games.coins', style: AppType.figure(context).copyWith(color: sun.ink)),
             ]),
           ),
+        ),
+      if (onNickname != null)
+        AppChip(
+          key: const ValueKey('games.v4.nickname'),
+          label: 'sd_nick_chip'.tr,
+          icon: Icons.badge_outlined,
+          onHero: true,
+          onTap: onNickname,
         ),
       AppIconButton(
         key: const ValueKey('games.v4.settings'),

@@ -152,9 +152,9 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   /// "Book for your child" (kill switch `booking`), optionally with the child picked.
   VoidCallback? get _book => paBookingOn() ? () => paPush<void>(context, const ParentBookPage()) : null;
 
-  /// "Payments and invoices" (kill switch `payments`).
+  /// "Payments and invoices" (kill switches `payments`, `parent.payments`).
   VoidCallback? get _payments =>
-      AppConfig.disableList.contains('payments') ? null : () => paPush<void>(context, const ParentPaymentsPage());
+      AppConfig.disableList.contains('payments') || AppConfig.disableList.contains(kParentPaymentsKey) ? null : () => paPush<void>(context, const ParentPaymentsPage());
 
   Widget _lazy(String key, Widget child) => _LazyTab(indexOf: () => _index(key), child: child);
 

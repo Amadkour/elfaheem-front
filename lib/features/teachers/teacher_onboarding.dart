@@ -17,6 +17,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
@@ -30,6 +31,7 @@ import 'package:flutter_education_app/features/teachers/teachers_api.dart';
 import 'package:flutter_education_app/features/teachers/teachers_models.dart';
 import 'package:flutter_education_app/features/teachers/teachers_parts.dart';
 import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_booking_slots.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -148,6 +150,21 @@ class _TeacherHubPageState extends State<TeacherHubPage> {
                     icon: p.status == 'pending' ? Icons.hourglass_top_rounded : Icons.info_outline_rounded,
                     text: teacherPackagesLockedText(p.status),
                   ),
+          ),
+        // the weekly times students book one to one (booking.md, Teacher side); kill switch `booking`
+        if (p.approved)
+          ParentComponent(
+            featureKey: 'booking',
+            child: AppActionCard(
+              key: const ValueKey('teacher.hub.slots'),
+              icon: Icons.event_available_outlined,
+              title: 't2_slots_title'.tr,
+              subtitle: 't2_slots_entry_sub'.tr,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                settings: const RouteSettings(name: '/teacher/booking-slots'),
+                builder: (_) => const TeacherBookingSlotsPage(),
+              )),
+            ),
           ),
         // one way in (D-1665): the Quran record sheet and programs open from here, not from a second Profile entry
         ParentComponent(
