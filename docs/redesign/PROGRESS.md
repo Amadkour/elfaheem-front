@@ -20,7 +20,7 @@ Statuses: todo / doing / done / verified. On a resume, continue from the first l
 | B6 | Demand card subject keys + front contract snapshot refresh (rd/demand-key) | done |
 | 2 | Student | doing: S-A, S-B, S-C, S-D merged. Owed: S-A bodies of categories/journey/recs/guest search/guest live/legal; back `price_label`/`outcomes` on /public/share; guide entry n_notebook (course.notebook) |
 | 3 | Booking and subject flow | done (rd/bk merged). Owner Qs: a booking does not enrol in the course; bank transfer hidden in booking; no map picker; no OTP sign-in in 4ب |
-| 4 | Parent (incl. child code login) | doing (rd/pa) |
+| 4 | Parent (incl. child code login) | done (rd/pa merged). Owed: WP13 parent payments/invoices per child (backend), parent booking for a child (owner Q), calendar filter by child |
 | 5 | Teacher | doing: T2 merged (incl. super admin ads/store); T2b merged; T1 (rd/t1) in progress |
 | 6 | Admin and super admin | doing: A2 merged; A1 (rd/a1) in progress |
 | 7 | Landing (persona pages; rd/landing merged) | done (visual verify in phase 9) |
