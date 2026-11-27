@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'package:flutter_education_app/features/auth/world_phone_field.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../utils/helpers.dart';
@@ -1005,12 +1006,8 @@ class _GoogleRoleSheetState extends State<_GoogleRoleSheet> {
                       child: widget.needPhone && _role != null
                           ? Padding(
                         padding: const EdgeInsets.only(top: 6, bottom: 8),
-                        child: IconTextField(
-                          controller: _phone,
-                          label: 'phone_with_country_code'.tr,
-                          icon: Icons.phone_outlined,
-                          keyboard: TextInputType.phone,
-                        ),
+                        // any country (RULES §3): the country-code picker builds the E.164 number
+                        child: WorldPhoneField(controller: _phone, label: 'phone_with_country_code'.tr, required: true),
                       )
                           : const SizedBox(width: double.infinity),
                     ),

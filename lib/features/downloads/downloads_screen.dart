@@ -392,7 +392,7 @@ class _DownloadTile extends StatelessWidget {
       if ((item.description ?? '').isNotEmpty) item.description!,
       sizeLabel,
       item.tier.label,
-    ].join('، ');
+    ].join((AppConfig.lang == 'ar' ? '، ' : ', '));
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.sm),
       child: AppTile(

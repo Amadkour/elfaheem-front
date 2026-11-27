@@ -428,7 +428,7 @@ class CouponCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         Text(coupon.appliesText, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context)),
         const SizedBox(height: AppSpace.xxs),
-        Text([coupon.sourceText, if (date.isNotEmpty) date].join('، '), style: AppType.meta(context)),
+        Text([coupon.sourceText, if (date.isNotEmpty) date].join((AppConfig.lang == 'ar' ? '، ' : ', ')), style: AppType.meta(context)),
         if (coupon.minOrder > 0)
           Text(t('على مشتريات من ${rewardsMoney(coupon.minOrder, coupon.currency)} فأكثر', 'On purchases of ${rewardsMoney(coupon.minOrder, coupon.currency)} or more'),
               style: AppType.meta(context)),

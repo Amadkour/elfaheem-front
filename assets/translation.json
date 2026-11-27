@@ -26316,5 +26316,7 @@
   "t1_wz_discount_short": {"en": "discount", "ar": "خصم"},
   "t1_wz_private_short": {"en": "Private, code", "ar": "خاصة بالكود"},
   "t1_wz_public_short": {"en": "Public", "ar": "عامة"},
-  "t1_wz_hours_short": {"en": "hours", "ar": "ساعة"}
+  "t1_wz_hours_short": {"en": "hours", "ar": "ساعة"},
+  "intl_new_card_title": {"en": "New card", "ar": "بطاقة جديدة"},
+  "intl_new_card_subtitle": {"en": "Visa · Mastercard · PCI-DSS", "ar": "فيزا · ماستركارد · PCI-DSS"}
 }

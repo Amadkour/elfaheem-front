@@ -96,12 +96,12 @@ List<SubjectStep> subjectStepsOf(
       final at = s.scheduledAt;
       final future = at != null && at.toUtc().isAfter(DateTime.now().toUtc());
       meta = future
-          ? '${'sb_subj_meta_live'.tr}، ${AppTime.date(at.toUtc(), pattern: 'EEEE')} ${AppTime.time(at.toUtc())}'
+          ? '${'sb_subj_meta_live'.tr}${(AppConfig.lang == 'ar' ? '، ' : ', ')}${AppTime.date(at.toUtc(), pattern: 'EEEE')} ${AppTime.time(at.toUtc())}'
           : minutes > 0
-          ? '${'sb_subj_meta_live'.tr}، ${sbMinutes(minutes)}'
+          ? '${'sb_subj_meta_live'.tr}${(AppConfig.lang == 'ar' ? '، ' : ', ')}${sbMinutes(minutes)}'
           : 'sb_subj_meta_live'.tr;
     } else {
-      meta = minutes > 0 ? '${'sb_subj_meta_lesson'.tr}، ${sbMinutes(minutes)}' : 'sb_subj_meta_lesson'.tr;
+      meta = minutes > 0 ? '${'sb_subj_meta_lesson'.tr}${(AppConfig.lang == 'ar' ? '، ' : ', ')}${sbMinutes(minutes)}' : 'sb_subj_meta_lesson'.tr;
     }
     steps.add(SubjectStep(
       id: 's${s.id}',
@@ -123,7 +123,7 @@ List<SubjectStep> subjectStepsOf(
       id: 'e${e.id}',
       number: n,
       title: e.name,
-      meta: e.questionCount > 0 ? '${'sb_subj_meta_exam'.tr}، ${sbQuestions(e.questionCount)}' : 'sb_subj_meta_exam'.tr,
+      meta: e.questionCount > 0 ? '${'sb_subj_meta_exam'.tr}${(AppConfig.lang == 'ar' ? '، ' : ', ')}${sbQuestions(e.questionCount)}' : 'sb_subj_meta_exam'.tr,
       kind: SubjectStepKind.exam,
       state: !unlocked ? SubjectStepState.locked : (e.passed ? SubjectStepState.done : SubjectStepState.todo),
       chip: !e.passed && end != null && end.toUtc().isAfter(DateTime.now().toUtc())

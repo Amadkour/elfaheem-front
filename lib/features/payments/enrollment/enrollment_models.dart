@@ -1,4 +1,5 @@
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/payments/payer_methods.dart';
 /// enrollment_models.dart
 ///
 /// Plain models for the enrollment / payment API. The server is the single
@@ -31,6 +32,14 @@ class GatewayConfig {
   final String? walletFlow;
   final String? applePayMerchantId; // Moyasar Apple Pay only
 
+  /// The method keys of the payer's country (GET /payments/methods) once [forPayer] narrowed the config; null when
+  /// the server did not say.
+  final Set<String>? payerKeys;
+
+  /// مدى is named on the card tile only where the payer can use it (Saudi Arabia on Moyasar, payments.md §1); an
+  /// older server without the country list keeps the gateway's answer.
+  bool get madaOffered => payerKeys?.contains('mada') ?? provider == 'moyasar';
+
   const GatewayConfig({
     this.provider,
     this.publishableKey,
@@ -39,7 +48,28 @@ class GatewayConfig {
     this.walletMethods = const [],
     this.walletFlow,
     this.applePayMerchantId,
+    this.payerKeys,
   });
+
+  /// Narrowed to the method keys the payer's country may use (GET /payments/methods, payments.md §1); null keeps
+  /// the config as it is. A method the country list does not name is turned off (a card counts when `card` or
+  /// `mada` is listed).
+  GatewayConfig forPayer(Set<String>? keys) {
+    if (keys == null) return this;
+    List<PaymentMethodOption> narrow(List<PaymentMethodOption> l) => [
+      for (final m in l) PaymentMethodOption(type: m.type, label: m.label, enabled: m.enabled && payerAllows(keys, m.type)),
+    ];
+    return GatewayConfig(
+      provider: provider,
+      publishableKey: publishableKey,
+      currency: currency,
+      paymentMethods: narrow(paymentMethods),
+      walletMethods: narrow(walletMethods),
+      walletFlow: walletFlow,
+      applePayMerchantId: applePayMerchantId,
+      payerKeys: keys,
+    );
+  }
 
   factory GatewayConfig.fromJson(Map<String, dynamic> j) => GatewayConfig(
     provider: j['provider'] as String?,
@@ -155,6 +185,12 @@ class FeeQuote {
   final double couponDiscount;
   final String? couponCode;
 
+  /// payments.md §1: the server's `vat_applies` (null from an older server: decided by the amount).
+  final bool? vatApplies;
+
+  /// The VAT line is drawn only when the server says VAT applies to this payer (never a hard-coded rate).
+  bool get showVat => vatApplies ?? vatOnPlatform > 0;
+
   const FeeQuote({
     required this.coursePrice,
     required this.platformFee,
@@ -166,6 +202,7 @@ class FeeQuote {
     this.plan,
     this.couponDiscount = 0,
     this.couponCode,
+    this.vatApplies,
   });
 
   factory FeeQuote.fromJson(Map<String, dynamic> j) {
@@ -181,6 +218,7 @@ class FeeQuote {
       plan: j['plan'] as String?,
       couponDiscount: d('coupon_discount'),
       couponCode: j['coupon_code'] is String ? j['coupon_code'] as String : null,
+      vatApplies: j['vat_applies'] is bool ? j['vat_applies'] as bool : null,
     );
   }
 

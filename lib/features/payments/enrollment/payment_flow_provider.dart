@@ -15,6 +15,7 @@ import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:flutter_education_app/features/payments/enrollment/checkout_callback.dart';
 import 'package:flutter_education_app/features/payments/enrollment/checkout_pages.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/features/payments/payer_methods.dart';
 import 'package:flutter_education_app/features/payments/enrollment/checkout_web_impl.dart' if (dart.library.io) 'package:flutter_education_app/features/payments/enrollment/checkout_stub_impl.dart';
 
 enum EnrollStep { method, verifying, pending, success, failed }
@@ -75,7 +76,7 @@ abstract class PaymentFlowProvider extends BaseProvider {
     final path = '/api/v1/config?lang=${AppConfig.lang}${courseId == null ? '' : '&course_id=$courseId'}';
     final json = asJsonMap(await run(() async => api.get(path)));
     if (json == null) return;
-    _gateway = GatewayConfig.fromJson(json);
+    _gateway = GatewayConfig.fromJson(json).forPayer(await payerMethodKeys(api, courseId: courseId));
     safeNotify();
   }
 

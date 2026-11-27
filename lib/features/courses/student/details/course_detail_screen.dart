@@ -873,8 +873,8 @@ class _CoursePageState extends State<_CoursePage> {
         number: i + 1,
         title: s.name,
         meta: s.isLive
-            ? (minutes > 0 ? '${'sb_subj_meta_live'.tr}، ${sbMinutes(minutes)}' : 'sb_subj_meta_live'.tr)
-            : (minutes > 0 ? '${'sb_subj_meta_lesson'.tr}، ${sbMinutes(minutes)}' : 'sb_subj_meta_lesson'.tr),
+            ? (minutes > 0 ? '${'sb_subj_meta_live'.tr}${(AppConfig.lang == 'ar' ? '، ' : ', ')}${sbMinutes(minutes)}' : 'sb_subj_meta_live'.tr)
+            : (minutes > 0 ? '${'sb_subj_meta_lesson'.tr}${(AppConfig.lang == 'ar' ? '، ' : ', ')}${sbMinutes(minutes)}' : 'sb_subj_meta_lesson'.tr),
         kind: s.isLive ? SubjectStepKind.live : SubjectStepKind.lesson,
         state: i == 0 ? SubjectStepState.todo : SubjectStepState.locked,
         onTap: i == 0 && reel != null ? () => _openPreview(reel, c.imageUrl.isNotEmpty ? c.imageUrl : null, title) : null,

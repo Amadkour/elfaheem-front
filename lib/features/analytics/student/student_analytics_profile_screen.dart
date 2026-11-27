@@ -197,7 +197,7 @@ class _State extends State<StudentAnalyticsProfileScreen> {
       wipe: false,
       leading: DlAvatar(name: name, url: p.imageUrl, size: AppDashSize.avatarSm),
       title: name,
-      subtitle: overall == null ? anInsightSentence(prog, att, ex, mine: !widget.teacherMode) : '${anLevel(overall)}، ${anPct(overall)}',
+      subtitle: overall == null ? anInsightSentence(prog, att, ex, mine: !widget.teacherMode) : '${anLevel(overall)}${(AppConfig.lang == 'ar' ? '، ' : ', ')}${anPct(overall)}',
       bottom: scopes.isEmpty
           ? null
           : SingleChildScrollView(

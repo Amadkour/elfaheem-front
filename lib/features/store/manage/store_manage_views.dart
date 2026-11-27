@@ -755,7 +755,7 @@ class StoreOrdersBody extends StatelessWidget {
       columns: [
         AppTableColumn.text(key: 'id', label: '#', width: 72, text: (o) => '#${o.id}'),
         AppTableColumn.text(key: 'user', label: t('المشتري', 'Buyer'), primary: true, flex: 2, text: (o) => o.username == null ? o.userName : '${o.userName} · @${o.username}'),
-        AppTableColumn.text(key: 'items', label: t('العناصر', 'Items'), flex: 3, text: (o) => o.items.join('، ')),
+        AppTableColumn.text(key: 'items', label: t('العناصر', 'Items'), flex: 3, text: (o) => o.items.join((AppConfig.lang == 'ar' ? '، ' : ', '))),
         AppTableColumn.text(key: 'total', label: t('الإجمالي', 'Total'), numeric: true, text: (o) => o.method == 'points' && o.pointsSpent != null ? t('${o.pointsSpent} نقطة', '${o.pointsSpent} pts') : money(o.total, o.currency)),
         AppTableColumn.text(key: 'vat', label: t('الضريبة', 'VAT'), numeric: true, hideBelow: 900, text: (o) => money(o.vatAmount, o.currency)),
         AppTableColumn.text(key: 'method', label: t('الطريقة', 'Method'), text: (o) => storeMethodLabel(o.method)),

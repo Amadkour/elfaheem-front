@@ -572,7 +572,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
     final clash = calConflicts(_filters.apply(_all), e, s, en);
     if (clash.isNotEmpty) {
       final ok = await appConfirm(context,
-          message: '${t('يتعارض مع', 'This overlaps')}: ${clash.take(3).map((x) => x.title).join('، ')}'
+          message: '${t('يتعارض مع', 'This overlaps')}: ${clash.take(3).map((x) => x.title).join((AppConfig.lang == 'ar' ? '، ' : ', '))}'
               '${clash.length > 3 ? ' +${clash.length - 3}' : ''}',
           confirmLabel: t('انقل رغم ذلك', 'Move anyway'));
       if (!ok || !mounted) return;
@@ -599,7 +599,7 @@ class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver
       final busy = calBusyOf(err);
       if (busy.isNotEmpty && mounted) {
         final go = await appConfirm(context,
-            message: '${t('مشغولون في هذا الوقت', 'Busy at this time')}: ${busy.map((b) => asMap(b['user'])['name']).join('، ')}',
+            message: '${t('مشغولون في هذا الوقت', 'Busy at this time')}: ${busy.map((b) => asMap(b['user'])['name']).join((AppConfig.lang == 'ar' ? '، ' : ', '))}',
             confirmLabel: t('انقل رغم ذلك', 'Move anyway'));
         if (go) {
           try {

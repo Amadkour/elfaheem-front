@@ -537,7 +537,7 @@ class LedgerTile extends StatelessWidget {
       if (e.note != null) e.note!,
       if (e.byName != null) e.byName!,
       if (e.createdAt != null) AppTime.date(e.createdAt!),
-    ].join('، ');
+    ].join((AppConfig.lang == 'ar' ? '، ' : ', '));
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: AppTouch.primary),
       child: Padding(

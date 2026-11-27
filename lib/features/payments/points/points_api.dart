@@ -19,8 +19,10 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/features/payments/payer_methods.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/core/app_digits.dart';
 
 /// Kill-switch keys (ParentComponent / AppConfig.disableList).
 const String kPointsFeatureKey = 'profile.points';
@@ -79,7 +81,7 @@ double pointsMoney(int points, double pricePerPoint) => (points * pricePerPoint 
 /// "30 SAR" / "12.50 SAR".
 String moneyText(double amount, String currency) {
   final s = amount == amount.roundToDouble() ? amount.toStringAsFixed(0) : amount.toStringAsFixed(2);
-  return currency.isEmpty ? s : '$s $currency';
+  return appDigits(currency.isEmpty ? s : '$s $currency'); // platform_settings.digits
 }
 
 /// The points typed in the "Buy points" field: null when empty or not a whole number.
@@ -576,6 +578,14 @@ class PointsWallet {
 
   /// The server offers paying by card (`methods` has `card`: the setting is on and a provider is configured).
   bool get hasCard => methods.contains('card');
+
+  /// Only the methods the payer's country may use (GET /payments/methods, payments.md §1: InstaPay only in Egypt,
+  /// and so on); null [keys] keeps the list. A card counts when the country list has `card` or `mada`.
+  PointsWallet forPayer(Set<String>? keys) {
+    if (keys == null) return this;
+    return PointsWallet(balance: balance, pricePerPoint: pricePerPoint, currency: currency, topupMin: topupMin,
+        methods: [for (final m in methods) if (payerAllows(keys, m)) m], history: history, topups: topups);
+  }
 }
 
 /// `POST /me/points/checkout` (§13): the card top-up row and what opens the provider's payment page — the same
@@ -767,7 +777,11 @@ class PointsApi {
   ApiClient get _api => ApiClient();
 
   // ── me ──
-  Future<PointsWallet> wallet() async => PointsWallet.fromJson(await _api.get('$_me/points').timeout(pointsTimeout));
+  Future<PointsWallet> wallet() async {
+    final keys = payerMethodKeys(_api, timeout: pointsTimeout);
+    final w = PointsWallet.fromJson(await _api.get('$_me/points').timeout(pointsTimeout));
+    return w.forPayer(await keys);
+  }
 
   Future<LivePlan> livePlan() async => LivePlan.fromJson(await _api.get('$_me/live-plan').timeout(pointsTimeout));
 

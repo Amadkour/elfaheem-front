@@ -574,7 +574,7 @@ class ScInboxHero extends StatelessWidget {
                 en: '{n} things wait for you') +
             (late == 0
                 ? ''
-                : '، ${countText(late, ar1: 'وحدة متأخرة', ar2: 'ثنتين متأخرة', arFew: '{n} متأخرة', en1: 'one is late', en: '{n} are late')}');
+                : '${(AppConfig.lang == 'ar' ? '، ' : ', ')}${countText(late, ar1: 'وحدة متأخرة', ar2: 'ثنتين متأخرة', arFew: '{n} متأخرة', en1: 'one is late', en: '{n} are late')}');
     return AppHero(overlap: false, wipe: false, title: appDigits(title), bottom: tabs);
   }
 }

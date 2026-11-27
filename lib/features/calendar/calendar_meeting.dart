@@ -274,7 +274,7 @@ class _AudiencePickerState extends State<_AudiencePicker> {
                               a.depts.containsKey(asInt(dp['id'])), () => _toggle(a.depts, asInt(dp['id']), _name(dp))),
                           if (asMapList(dp['heads']).isNotEmpty)
                             row(Icons.verified_user_rounded, '${t('المسؤول', 'Person in charge')} · ${_name(dp)}',
-                                asMapList(dp['heads']).map((h) => '${h['name']}').join('، '),
+                                asMapList(dp['heads']).map((h) => '${h['name']}').join((AppConfig.lang == 'ar' ? '، ' : ', ')),
                                 a.heads.containsKey(asInt(dp['id'])),
                                 () => _toggle(a.heads, asInt(dp['id']), '${t('مسؤول', 'Head')} ${_name(dp)}')),
                         ],
@@ -639,14 +639,14 @@ class _MeetingFormState extends State<MeetingForm> {
           AppBanner(
               icon: Icons.event_busy_rounded,
               color: c.warning,
-              text: '${t('لديك في هذا الوقت', 'You already have')}: ${asMapList(mine.first['items']).map((i) => i['title']).join('، ')}'),
+              text: '${t('لديك في هذا الوقت', 'You already have')}: ${asMapList(mine.first['items']).map((i) => i['title']).join((AppConfig.lang == 'ar' ? '، ' : ', '))}'),
         if (others.isNotEmpty) ...[
           if (mine.isNotEmpty) const SizedBox(height: AppSpace.xs),
           AppBanner(
               icon: Icons.warning_amber_rounded,
               color: c.danger,
               text: '${t('مشغولون في هذا الوقت', 'Busy at this time')}: '
-                  '${others.take(4).map((b) => asMap(b['user'])['name']).join('، ')}'
+                  '${others.take(4).map((b) => asMap(b['user'])['name']).join((AppConfig.lang == 'ar' ? '، ' : ', '))}'
                   '${others.length > 4 ? ' +${others.length - 4}' : ''}'),
         ],
         if (_error != null) ...[
@@ -744,7 +744,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
       if (!mounted) return;
       setState(() => _busy = false);
       if (busy.isNotEmpty) {
-        final names = busy.map((b) => asMap(b['user'])['name']).join('، ');
+        final names = busy.map((b) => asMap(b['user'])['name']).join((AppConfig.lang == 'ar' ? '، ' : ', '));
         final go = await appConfirm(context,
             message: '${t('مشغولون في هذا الوقت', 'Busy at this time')}: $names', confirmLabel: t('انقل رغم ذلك', 'Move anyway'));
         if (go && mounted) await _move(force: true);
