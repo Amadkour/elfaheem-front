@@ -70,6 +70,9 @@ import 'package:flutter_education_app/features/profile/teacher/switch_device_req
 import 'admin_recents.dart';
 import 'adm_kit.dart';
 import 'sup/sup_kit.dart';
+import 'consoles/admin_booking_page.dart' show AdminBookingPage;
+import 'consoles/admin_demand_page.dart' show AdminTeacherDemandPage, kAdminTeacherDemandKey;
+import 'consoles/admin_markets_page.dart' show AdminPaymentMarketsPage, kAdminPaymentMarketsKey;
 import 'package:flutter_education_app/core/plural.dart' show countText;
 import 'live_settings/live_settings_page.dart' show LiveSettingsPage, kLiveSettingsFeatureKey, liveSettingsTitle;
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
@@ -409,6 +412,16 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           featureKey: 'profile.historical_payment',
           onTap: () => push(const AdminFinancePage()),
         ),
+        // currency rates, payment methods per country, VAT rules and the tax number (redesign payments package)
+        AdminService(
+          labelKey: 'a2_svc_markets',
+          descKey: 'a2_svc_markets_d',
+          icon: Icons.public_rounded,
+          colors: AdminPalette.teal,
+          featureKey: kAdminPaymentMarketsKey,
+          visible: isSuper,
+          onTap: () => push(const AdminPaymentMarketsPage()),
+        ),
       ],
     ),
 
@@ -426,6 +439,23 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           icon: Icons.category_rounded,
           colors: AdminPalette.teal,
           onTap: () => push(const AdminCategoriesPage()),
+        ),
+        // the booking package's staff side: prices, in-person centres, groups, time requests (every platform admin)
+        AdminService(
+          labelKey: 'a2_svc_booking',
+          descKey: 'a2_svc_booking_d',
+          icon: Icons.event_seat_rounded,
+          colors: AdminPalette.orange,
+          onTap: () => push(const AdminBookingPage()),
+        ),
+        AdminService(
+          labelKey: 'a2_svc_demand',
+          descKey: 'a2_svc_demand_d',
+          icon: Icons.how_to_reg_rounded,
+          colors: AdminPalette.violet,
+          featureKey: kAdminTeacherDemandKey,
+          visible: isSuper,
+          onTap: () => push(const AdminTeacherDemandPage()),
         ),
         // the digital store (learning hub phase 5, D-1336): every admin manages items; the review queue and the
         // orders are the super admin's only (`/admin/store/*` answers 403 admin_required to admin / developer)
