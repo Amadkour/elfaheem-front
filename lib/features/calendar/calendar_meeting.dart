@@ -1414,7 +1414,7 @@ class T2bProposalCard extends StatelessWidget {
           Expanded(
             child: Text.rich(
               TextSpan(children: [
-                TextSpan(text: name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                TextSpan(text: name, style: AppType.body(context).copyWith(color: set.ink, fontWeight: FontWeight.w700)),
                 TextSpan(text: ' ${'t2_sch_proposes'.tr.replaceAll('{when}', when)}'),
               ]),
               style: AppType.body(context).copyWith(color: set.ink),

@@ -326,7 +326,7 @@ class _UsersViewState extends State<_UsersView> {
       role: admRole(context),
       helpPageId: 'admin.users',
       title: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
-      // no kicker: it would repeat the page's name (and the gold script on the admin hero's light corner is under 3:1)
+      // no kicker: it would repeat the page's name
       headline: p.loaded ? _totalText(p.total) : (isStudent ? 'admin_students'.tr : 'admin_teachers'.tr),
       line: isStudent ? 'a1_students_line'.tr : 'a1_teachers_line'.tr,
       showBack: !widget.embedded,

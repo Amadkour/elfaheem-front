@@ -938,14 +938,9 @@ class _Proposal extends StatelessWidget {
   final BkFlowController c;
   final bool canGoBack;
 
-  String _hours(int from, int to) {
-    String h(int m) {
-      final hh = (m ~/ 60) % 12 == 0 ? 12 : (m ~/ 60) % 12;
-      return m % 60 == 0 ? '$hh' : '$hh:${(m % 60).toString().padLeft(2, '0')}';
-    }
-
-    return appDigits(bkFill('bk_time_range', {'from': h(from), 'to': h(to)}));
-  }
+  // through AppTime: the platform's 12h / 24h setting and its AM / PM words
+  String _hours(int from, int to) =>
+      appDigits(bkFill('bk_time_range', {'from': AppTime.clockMinutes(from), 'to': AppTime.clockMinutes(to)}));
 
   @override
   Widget build(BuildContext context) {

@@ -229,11 +229,11 @@ class _TransferCard extends StatelessWidget {
                       // whether the record opens (POST /entities/access, one request for the whole list).
                       EntityGuardedChip(
                         EntityRef(EntityKind.student, transfer.studentId, label: transfer.studentName),
-                        maxWidth: 160,
+                        maxWidth: AppWidth.chip,
                       ),
                       EntityGuardedChip(
                         EntityRef(EntityKind.course, transfer.courseId, label: transfer.courseName),
-                        maxWidth: 160,
+                        maxWidth: AppWidth.chip,
                       ),
                     ],
                   ),

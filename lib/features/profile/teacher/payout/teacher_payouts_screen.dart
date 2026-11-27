@@ -149,7 +149,7 @@ class _Notice extends StatelessWidget {
         Expanded(
           child: Text.rich(
             TextSpan(children: [
-              if (strong != null) TextSpan(text: '$strong ', style: const TextStyle(fontWeight: FontWeight.w600)),
+              if (strong != null) TextSpan(text: '$strong ', style: AppType.body(context).copyWith(color: warn.ink, fontWeight: FontWeight.w600)),
               TextSpan(text: text),
             ]),
             style: AppType.body(context).copyWith(color: warn.ink),

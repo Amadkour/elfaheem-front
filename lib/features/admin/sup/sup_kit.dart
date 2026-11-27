@@ -202,7 +202,8 @@ class SupPage extends StatelessWidget {
       key: pageKey,
       appBar: appBar,
       floatingActionButton: floatingActionButton,
-      child: refresh == null ? scroll : AppRefresh(onRefresh: refresh, child: scroll),
+      // always the same tree, on or off: a refresh that comes and goes must not rebuild the form under it
+      child: AppRefresh(enabled: refresh != null, onRefresh: refresh ?? _noRefresh, child: scroll),
     );
     if (inShell && helpPageId != null) {
       // the shell's bar carries the title; the page's help sits on the hero's top end
@@ -423,3 +424,5 @@ class SupMoreButton extends StatelessWidget {
     );
   }
 }
+
+Future<void> _noRefresh() async {}

@@ -594,7 +594,7 @@ class _StudyLevelsPickerState extends State<_StudyLevelsPicker> {
       else ...[
         group(t('المرحلة', 'Stage'), [
           for (final s in edu.stages)
-            AppChip(
+            EduChoiceChip(
               key: ValueKey('study.edu_stage.${s.id}'),
               label: s.name,
               selected: s.id == widget.stageId,
@@ -604,7 +604,7 @@ class _StudyLevelsPickerState extends State<_StudyLevelsPicker> {
         if (stage != null && stage.hasGrades && stage.grades.isNotEmpty)
           group(t('الصف', 'Grade'), [
             for (final g in stage.grades)
-              AppChip(
+              EduChoiceChip(
                 key: ValueKey('study.edu_grade.${g.id}'),
                 label: g.name,
                 selected: g.id == widget.gradeId,
@@ -615,7 +615,7 @@ class _StudyLevelsPickerState extends State<_StudyLevelsPicker> {
       if (grade != null && grade.tracks.isNotEmpty)
         group('sa_study_track'.tr, [
           for (final tr in grade.tracks)
-            AppChip(
+            EduChoiceChip(
               key: ValueKey('study.edu_track.${tr.key}'),
               label: tr.name,
               selected: tr.key == widget.trackKey,

@@ -31,7 +31,7 @@
     "track": "#E8F0ED",
     "field_edge": "#CCDED7",
     "top_bar": "#0F3F2C",
-    "warm_on_dark": "#D0A66A",
+    "warm_on_dark": "#E6D1B1",
     "hot_a": "#CEA264",
     "hot_b": "#C08838",
     "hot_fg": "#08261A"
@@ -111,8 +111,8 @@
     "home": {
       "a": "#186848",
       "b": "#2FA26C",
-      "hero_a": "#2FA26C",
-      "hero_mid": "#1B6142",
+      "hero_a": "#186848",
+      "hero_mid": "#155C40",
       "tint": "#DFEAE5",
       "ink": "#186848",
       "tint_dark": "#1D2D28",
@@ -241,8 +241,8 @@
     "me": {
       "a": "#186848",
       "b": "#7A4DF0",
-      "hero_a": "#2FA26C",
-      "hero_mid": "#1B6142",
+      "hero_a": "#186848",
+      "hero_mid": "#155C40",
       "tint": "#DFEAE5",
       "ink": "#186848",
       "tint_dark": "#1D2D28",
@@ -282,8 +282,8 @@
     "admin": {
       "a": "#186848",
       "b": "#C08838",
-      "hero_a": "#2FA26C",
-      "hero_mid": "#1B6142",
+      "hero_a": "#186848",
+      "hero_mid": "#155C40",
       "tint": "#DFEAE5",
       "ink": "#186848",
       "tint_dark": "#1D2D28",

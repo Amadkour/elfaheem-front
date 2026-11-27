@@ -44,6 +44,9 @@ ROLE_SHARED = {"teacher": ("#5F3DC4", "#8B6CF0"), "parent": ("#0B8FB8", "#2FB5A8
 # dark surfaces stay the theme's neutral grey (D-650)
 DARK_BG, DARK_CARD, DARK_TEXT = "#121414", "#1E2021", "#F5EFE6"
 
+# the heroes that carry the gold kicker; every other hero draws its kicker in the on-hero ink
+GOLD_KICKER_HEROES = (("areas", "home"), ("areas", "me"), ("roles", "admin"), ("roles", "teacher"))
+
 FIXED = []   # (what, given ink, used ink): design inks the script had to darken
 
 
@@ -151,8 +154,10 @@ def brand():
     b["track"] = mix(GREEN, WHITE, 0.90)
     b["field_edge"] = mix(GREEN, WHITE, 0.78)
     b["top_bar"] = ink
-    # the gold kicker line / squiggle on a hero: 4.5 on the ink, 3.0 (large text) on the logo green
-    b["warm_on_dark"] = lighten_until(lighten_until(GOLD, [ink], AA), [GREEN], 3.0)
+    # the gold kicker line / squiggle on a hero: 4.5 (small text) on every stop of the green heroes that carry it,
+    # the ink, the deep and the logo green the admin hero starts on, and that hero's middle stop (D-1810 fix round)
+    admin_mid = hero_mid_of(GREEN, ink, False)
+    b["warm_on_dark"] = lighten_until(GOLD, [ink, deep, GREEN, admin_mid], AA)
     # the ONE forward button: gold with the deep ink (white is 3.1:1 on the logo gold)
     b["hot_a"], b["hot_b"], b["hot_fg"] = mix(GOLD, WHITE, 0.22), GOLD, deep
     return b
@@ -168,7 +173,11 @@ def hero_mid(hero_a, br, yellow):
     """The hero's middle stop (45 %): the accent darkened until white reads on it at 6:1, then moved toward the deep
     green ink: 30 % for cool accents, 12 % for the yellow family (yellow + green at 30 % is olive mud; it stays a
     bronze, a grade of gold)."""
-    return mix(darken_until(hero_a, [WHITE], 6.0), br["ink"], 0.12 if yellow else 0.30)
+    return hero_mid_of(hero_a, br["ink"], yellow)
+
+
+def hero_mid_of(hero_a, ink, yellow):
+    return mix(darken_until(hero_a, [WHITE], 6.0), ink, 0.12 if yellow else 0.30)
 
 
 def accent_set(a, b_, br, light_fg=False, hero_a=None, yellow=False, given=None, what=""):
@@ -201,7 +210,7 @@ def build():
     accents = {k: triple(v, G[k], f"accent {k}") for k, v in acc.items()}
     P, PT, W, H = br["primary"], br["partner"], br["warm"], br["hot"]
     areas = {
-        "home": accent_set(P, PT, br, hero_a=PT),
+        "home": accent_set(P, PT, br),   # starts on the logo green: the gold kicker reads on every stop
         "learn": accent_set(W, H, br, light_fg=True, yellow=True),
         "exam": accent_set(A["grape"], P, br, given=G["grape"]),
         "games": accent_set(A["grape"], A["pink"], br, given=G["grape"]),
@@ -211,14 +220,14 @@ def build():
         "sched": accent_set(A["sky"], A["mint"], br, given=G["sky"]),
         "chat": accent_set(A["pink"], W, br, given=G["pink"]),
         "money": accent_set(A["sun"], A["mint"], br, light_fg=True, yellow=True, given=G["sun"]),
-        "me": accent_set(P, A["grape"], br, hero_a=PT),
+        "me": accent_set(P, A["grape"], br),
     }
     # learn's button IS the hot button
     areas["learn"]["btn_a"], areas["learn"]["btn_b"] = br["hot_a"], br["hot_b"]
     roles = {
         "teacher": accent_set(*ROLE_SHARED["teacher"], br),
         "parent": accent_set(*ROLE_SHARED["parent"], br),
-        "admin": accent_set(P, W, br, hero_a=PT),
+        "admin": accent_set(P, W, br),   # starts on the logo green, not the partner: the gold kicker reads on it
         "super": accent_set(H, W, br, yellow=True),
     }
     subjects = {}
@@ -265,11 +274,17 @@ def checks(k):
             ("white on deep", WHITE, br["deep"], AA), ("white on hot", WHITE, br["hot"], AA),
             ("hot_fg on hot_a", br["hot_fg"], br["hot_a"], AA), ("hot_fg on hot_b", br["hot_fg"], br["hot_b"], AA),
             ("warm_on_dark on ink (kicker on a hero)", br["warm_on_dark"], br["ink"], AA),
-            ("warm_on_dark on primary (large text)", br["warm_on_dark"], br["primary"], 3.0),
+            ("warm_on_dark on primary", br["warm_on_dark"], br["primary"], AA),
+            ("warm_on_dark on deep", br["warm_on_dark"], br["deep"], AA),
             ("white on live_fill (count badge)", WHITE, st["live_fill"], AA),
             ("error on white", st["error"], WHITE, AA),
             ("error_ink on error tint", st["error_ink"], st["error_tint"], AA),
             ("lock_ink on white", st["lock_ink"], WHITE, AA)]
+    # the heroes that draw the gold kicker (AppHero.kickerInk: every stop passes; the rest use the on-hero ink)
+    for grp, n in GOLD_KICKER_HEROES:
+        a = k[grp][n]
+        for stop, v in (("hero_a", a["hero_a"]), ("hero_mid", a["hero_mid"]), ("end (deep)", br["deep"])):
+            rows.append((f"{grp[:-1]} {n} hero: gold kicker on {stop}", br["warm_on_dark"], v, AA))
     for n in ("primary", "partner", "warm", "hot"):
         rows += [(f"{n}_ink on white", br[n + "_ink"], WHITE, AA), (f"{n}_ink on {n}_tint", br[n + "_ink"], br[n + "_tint"], AA),
                  (f"{n}_ink_dark on {n}_tint_dark", br[n + "_ink_dark"], br[n + "_tint_dark"], AA)]

@@ -2,7 +2,7 @@
 //
 // The redesign hero (KIT_SPEC §5.2): a full-bleed band in the area's (or role's) radial gradient with three drifting
 // shapes behind it, a gold kicker line, an editorial title (one key word may carry the squiggle), a subtitle, and
-// optional stats, actions, a trailing block (wide) and a bottom row. The page body rides up over its lower edge
+// optional stats, actions, a trailing block (wide), a head action (every width) and a bottom row. The page body rides up over its lower edge
 // through AppHeroOverlap.
 //
 //   AppHero(title:, subtitle:, kicker:, squiggle:, leading:, stats: [AppHeroStat(...)], actions: [...])
@@ -20,6 +20,7 @@ import 'package:flutter_education_app/config/theme/kit_palette.dart' show KitSet
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'app_area.dart';
+import 'app_contrast.dart' show passesContrast;
 import 'app_motion_kit.dart';
 import 'app_responsive.dart' show Breakpoints;
 import 'app_tokens.dart';
@@ -106,16 +107,16 @@ class AppHeroStat extends StatelessWidget {
                   memoryKey: 'herostat:$label', style: AppType.statFigure(context, wide: wide).copyWith(color: c.onHero)),
             ),
           ),
-          if (delta != null && delta!.isNotEmpty) ...[
-            const SizedBox(width: AppSpace.xxs),
-            Text(delta!,
-                maxLines: 1,
-                style: AppType.meta(context)
-                    .copyWith(color: Color.lerp(c.kit.ok.color, c.onHero, .35), fontWeight: FontWeight.w600)),
-          ],
         ]),
         const SizedBox(height: AppSpace.xxs),
         Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
+        // the change sits on its own line under the label, so a long delta never squeezes the figure (320 px, 1.3)
+        if (delta != null && delta!.isNotEmpty)
+          Text(delta!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppType.meta(context)
+                  .copyWith(color: Color.lerp(c.kit.ok.color, c.onHero, .35), fontWeight: FontWeight.w600)),
       ]),
     );
     if (onTap == null) return Semantics(container: true, child: tile);
@@ -149,6 +150,7 @@ class AppHero extends StatelessWidget {
     this.leading,
     this.actions = const [],
     this.trailing,
+    this.headAction,
     this.bottom,
     this.set,
     this.statsOnPhone,
@@ -179,6 +181,10 @@ class AppHero extends StatelessWidget {
   /// Wide only: a block on the end side (a countdown, an activity card).
   final Widget? trailing;
 
+  /// A small control at the end of the title row (an icon button, a menu), on phones and wide pages alike; it sits
+  /// after the text column, before the wide glyph. Keep it compact (one [AppTouch.min] square or a small chip).
+  final Widget? headAction;
+
   /// Under everything, full width, still on the gradient (a search pill, a notice).
   final Widget? bottom;
 
@@ -199,6 +205,13 @@ class AppHero extends StatelessWidget {
 
   /// The leading box: 56 on phones, 72 from 700 px.
   static double leadingSize(bool wide) => wide ? AppDashSize.avatar : AppDashSize.avatarSm;
+
+  /// The kicker's ink on [set]: the gold line only where it reads at 4.5:1 on every stop of the hero (the green
+  /// heroes, teacher); on a light stop (sun, lime, sky, the gold heroes, …) it is the on-hero ink instead.
+  static Color kickerInk(BuildContext context, KitSet set) {
+    final c = context.colors;
+    return passesContrast(c.kit.warmOnDark, set.heroStops) ? c.kit.warmOnDark : c.onHero;
+  }
 
   Widget _title(BuildContext context, TextStyle style) {
     final word = squiggle?.trim();
@@ -244,7 +257,7 @@ class AppHero extends StatelessWidget {
         Text(kicker!,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppType.kicker(context).copyWith(color: c.kit.warmOnDark)),
+            style: AppType.kicker(context).copyWith(color: kickerInk(context, s))),
         const SizedBox(height: AppSpace.xxs),
       ],
       _title(context, titleStyle),
@@ -279,6 +292,7 @@ class AppHero extends StatelessWidget {
         SizedBox(width: wide ? AppSpace.md : AppSpace.sm),
       ],
       Expanded(child: textCol),
+      if (headAction != null) ...[SizedBox(width: wide ? AppSpace.md : AppSpace.xs), headAction!],
       if (glyph != null) ...[const SizedBox(width: AppSpace.md), glyph],
     ]);
 

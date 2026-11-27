@@ -1976,9 +1976,13 @@ class HomeLiveItem {
     this.hostImageUrl,
     this.startedAt,
     this.onOpen,
+    this.actionLabel,
   });
 
   final String title;
+
+  /// The Join button's words ("Join the class" / "Join the meeting"); null = the generic "Join".
+  final String? actionLabel;
 
   /// "Live session" / "Live meeting" — the small line above the title.
   final String? kindLabel;
@@ -2057,8 +2061,8 @@ class _HomeLiveBannerState extends State<HomeLiveBanner> {
     final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     final now = widget.now ?? DateTime.now().toUtc();
     return AnimatedSize(
-      duration: still ? Duration.zero : const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
+      duration: still ? Duration.zero : AppMotion.of(context).base,
+      curve: AppMotion.curve,
       alignment: AlignmentDirectional.topCenter,
       child: items.isEmpty
           ? const SizedBox(width: double.infinity)
@@ -2084,11 +2088,12 @@ class _LiveCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final x = item;
+    final sep = AppConfig.lang == 'ar' ? '، ' : ' · ';
     final since = x.startedAt == null ? null : homeLiveFor(now.difference(x.startedAt!));
     final who = [
       if (x.hostName != null && x.hostName!.isNotEmpty) 'home_live_with'.tr.replaceAll('{name}', x.hostName!),
       if (x.subtitle != null && x.subtitle!.isNotEmpty) x.subtitle!,
-    ].join(' · ');
+    ].join(sep);
     final title = x.title.isEmpty ? (x.kindLabel ?? 'home_live'.tr) : x.title;
     final name = (x.hostName ?? title).trim();
     final u = x.hostImageUrl;
@@ -2100,12 +2105,12 @@ class _LiveCard extends StatelessWidget {
         index: index,
         title: title,
         subtitle: who.isEmpty ? null : who,
-        tag: [x.kindLabel ?? 'home_live_badge'.tr, ?since].join(' · '),
+        tag: [x.kindLabel ?? 'home_live_badge'.tr, ?since].join(sep),
         host: u != null && u.startsWith('http')
             ? AppNetworkImage(url: u, width: AppDashSize.ringSm, height: AppDashSize.ringSm)
             : null,
         hostInitial: name.isEmpty ? null : name.characters.first.toUpperCase(),
-        actionLabel: 'home_live_join'.tr,
+        actionLabel: x.actionLabel ?? 'home_live_join'.tr,
         onAction: x.onJoin,
         onTap: x.onOpen ?? x.onJoin,
       ),

@@ -72,6 +72,17 @@ void main() {
     aa('hot_fg on hot_a', b.hotFg, b.hotA);
     aa('hot_fg on hot_b', b.hotFg, b.hotB);
     aa('warm_on_dark on ink', b.warmOnDark, b.ink);
+    // the heroes that draw the gold kicker (GOLD_KICKER_HEROES in kit_palette.py): every stop reads it as small text
+    for (final (name, set) in [
+      ('home', p.areas['home']!),
+      ('me', p.areas['me']!),
+      ('admin', p.roles['admin']!),
+      ('teacher', p.roles['teacher']!),
+    ]) {
+      for (final stop in [set.heroA, set.heroMid, b.deep]) {
+        aa('warm_on_dark on the $name hero ${stop.toARGB32().toRadixString(16)}', b.warmOnDark, stop);
+      }
+    }
   });
 
   test('KitColors resolves the dark tone', () {
